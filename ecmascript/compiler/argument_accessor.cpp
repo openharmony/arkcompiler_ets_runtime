@@ -114,6 +114,9 @@ void ArgumentAccessor::CollectArgs()
             GateRef actualArgcGate = circuit_->GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
             GateRef newTargetGate = circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED,
                 GateType::UndefinedType());
+            if (method_->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
+                newTargetGate = args_[1]; // 1: mean func index
+            }
             args_.insert(args_.begin() + 1, actualArgcGate);
             args_.insert(args_.begin() + 3, newTargetGate); // 3: newtarget index
         }

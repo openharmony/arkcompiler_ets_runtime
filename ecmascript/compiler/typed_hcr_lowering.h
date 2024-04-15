@@ -191,6 +191,7 @@ private:
     void LowerJSFastCallThisTargetTypeCheck(GateRef gate);
     void LowerJSNoGCCallThisTargetTypeCheck(GateRef gate);
     void LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate);
+    void LowerJSNewObjRangeCallTargetCheck(GateRef gate);
     void LowerTypedNewAllocateThis(GateRef gate, GateRef glue);
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);

@@ -148,6 +148,29 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     }
 }
 
+void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hclass, GateRef size)
+{
+    auto env = GetEnvironment();
+    size_ = size;
+    Label initialize(env);
+    HeapAlloc(result, &initialize, RegionSpaceFlag::IN_YOUNG_SPACE, hclass);
+    Bind(&initialize);
+    StoreHClassWithoutBarrier(glue_, result->ReadVariable(), hclass);
+    DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
+    Label afterInitialize(env);
+    InitializeWithSpeicalValue(&afterInitialize,
+        result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_));
+    Bind(&afterInitialize);
+    auto emptyArray = GetGlobalConstantValue(
+        VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
+    SetPropertiesArray(VariableType::INT64(),
+        glue_, result->ReadVariable(), emptyArray);
+    SetElementsArray(VariableType::INT64(),
+        glue_, result->ReadVariable(), emptyArray);
+    Jump(exit);
+}
+
 GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass)
 {
     auto env = GetEnvironment();

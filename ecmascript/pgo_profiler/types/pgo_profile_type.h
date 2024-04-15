@@ -339,9 +339,20 @@ public:
         return GetCallMethodId() > 0;
     }
 
+    bool IsValidClassConstructorMethodId() const
+    {
+        return GetClassConstructorMethodId() > 0;
+    }
+
     uint32_t GetCallMethodId() const
     {
         ASSERT(IsMethodId());
+        return GetId();
+    }
+
+    uint32_t GetClassConstructorMethodId() const
+    {
+        ASSERT(IsClassType());
         return GetId();
     }
 

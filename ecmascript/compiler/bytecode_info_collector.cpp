@@ -122,8 +122,6 @@ void BytecodeInfoCollector::ProcessClasses()
         MethodLiteral *method = jsPandaFile_->GetMethodLiteralByIndex(index.GetOffset());
         if (method != nullptr) {
             method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
-            method->SetIsFastCall(false);
-            bytecodeInfo_.ModifyMethodOffsetToCanFastCall(index.GetOffset(), false);
         }
     }
     // Collect import(infer-needed) and export relationship among all records.
@@ -164,11 +162,6 @@ void BytecodeInfoCollector::ProcessMethod()
         recordName, methodOffset, classConstructIndexes);
     processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
     SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
-    // class Construct need to use new target, can not fastcall
-    if (methodLiteral->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
-        methodLiteral->SetIsFastCall(false);
-        bytecodeInfo_.ModifyMethodOffsetToCanFastCall(methodIdx.GetOffset(), false);
-    }
 }
 
 void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,

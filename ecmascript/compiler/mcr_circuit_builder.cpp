@@ -626,13 +626,14 @@ GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, con
                                  inList.size(), inList.data(), GateType::AnyType());
 }
 
-GateRef CircuitBuilder::TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState)
+GateRef CircuitBuilder::TypedNewAllocateThis(GateRef ctor, GateRef hclass, GateRef size, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedNewAllocateThis(),
-        MachineType::ANYVALUE, {currentControl, currentDepend, ctor, hclassIndex, frameState}, GateType::TaggedValue());
+        MachineType::ANYVALUE, {currentControl, currentDepend, ctor, hclass,
+        size, frameState}, GateType::TaggedValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
