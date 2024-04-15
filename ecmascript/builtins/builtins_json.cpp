@@ -16,9 +16,11 @@
 #include "ecmascript/builtins/builtins_json.h"
 
 #include "ecmascript/base/fast_json_stringifier.h"
+#include "ecmascript/base/senable_fast_json_stringifier.h"
 #include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/base/json_stringifier.h"
+#include "ecmascript/base/senable_json_stringifier.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -174,8 +176,14 @@ JSTaggedValue BuiltinsJson::StringifyWithTransformType(EcmaRuntimeCallInfo *argv
     }
     if (argc == 1 && thread->GetCurrentEcmaContext()->IsAotEntry()) {
         JSHandle<JSTaggedValue> handleValue(thread, value);
-        panda::ecmascript::base::FastJsonStringifier stringifier(thread);
-        JSHandle<JSTaggedValue> result = stringifier.Stringify(handleValue);
+        JSHandle<JSTaggedValue> result;
+        if (transformType == TransformType::SENDABLE) {
+            panda::ecmascript::base::SendableFastJsonStringifier stringifier(thread);
+            result = stringifier.Stringify(handleValue);
+        } else {
+            panda::ecmascript::base::FastJsonStringifier stringifier(thread);
+            result = stringifier.Stringify(handleValue);
+        }
         return result.GetTaggedValue();
     }
     JSTaggedValue replacer = JSTaggedValue::Undefined();
@@ -191,8 +199,14 @@ JSTaggedValue BuiltinsJson::StringifyWithTransformType(EcmaRuntimeCallInfo *argv
     JSHandle<JSTaggedValue> handleValue(thread, value);
     JSHandle<JSTaggedValue> handleReplacer(thread, replacer);
     JSHandle<JSTaggedValue> handleGap(thread, gap);
-    panda::ecmascript::base::JsonStringifier stringifier(thread);
-    JSHandle<JSTaggedValue> result = stringifier.Stringify(handleValue, handleReplacer, handleGap);
+    JSHandle<JSTaggedValue> result;
+    if (transformType == TransformType::SENDABLE) {
+        panda::ecmascript::base::SendableJsonStringifier stringifier(thread);
+        result = stringifier.Stringify(handleValue, handleReplacer, handleGap);
+    } else {
+        panda::ecmascript::base::JsonStringifier stringifier(thread);
+        result = stringifier.Stringify(handleValue, handleReplacer, handleGap);
+    }
 
     return result.GetTaggedValue();
 }

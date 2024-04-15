@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/fast_json_stringifier.h"
+#include "ecmascript/base/senable_fast_json_stringifier.h"
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/json_helper.h"
@@ -32,9 +32,12 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
+#include "ecmascript/builtins/builtins_shared_map.h"
 
+using BuiltinsSharedMap = panda::ecmascript::builtins::BuiltinsSharedMap;
 namespace panda::ecmascript::base {
-JSHandle<JSTaggedValue> FastJsonStringifier::Stringify(const JSHandle<JSTaggedValue> &value)
+JSHandle<JSTaggedValue> SendableFastJsonStringifier::Stringify(const JSHandle<JSTaggedValue> &value)
 {
     factory_ = thread_->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> jsonCache = thread_->GetEcmaVM()->GetGlobalEnv()->GetJsonObjectHclassCache();
@@ -44,6 +47,9 @@ JSHandle<JSTaggedValue> FastJsonStringifier::Stringify(const JSHandle<JSTaggedVa
         hclassCache_ = JSHandle<TaggedArray>::Cast(jsonCache);
     }
     JSTaggedValue tagValue = value.GetTaggedValue();
+    if (tagValue.IsJSSharedJSONValue()) {
+        tagValue = JSSharedJSONValue::Cast(tagValue)->GetValue();
+    }
     handleValue_ = JSMutableHandle<JSTaggedValue>(thread_, tagValue);
     handleKey_ = JSMutableHandle<JSTaggedValue>(thread_, factory_->GetEmptyString());
 
@@ -63,8 +69,8 @@ JSHandle<JSTaggedValue> FastJsonStringifier::Stringify(const JSHandle<JSTaggedVa
     return thread_->GlobalConstants()->GetHandledUndefined();
 }
 
-JSTaggedValue FastJsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &key,
-                                                     const JSHandle<JSTaggedValue> &value)
+JSTaggedValue SendableFastJsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &key,
+                                                             const JSHandle<JSTaggedValue> &value)
 {
     JSTaggedValue tagValue = value.GetTaggedValue();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
@@ -88,9 +94,16 @@ JSTaggedValue FastJsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValu
     return tagValue;
 }
 
-JSTaggedValue FastJsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValue> &value)
+JSTaggedValue SendableFastJsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValue> &value)
 {
     JSTaggedValue tagValue = value.GetTaggedValue();
+    if (tagValue.IsJSSharedJSONValue()) {
+        tagValue = JSSharedJSONValue::Cast(tagValue)->GetValue();
+    }
+    // sharedObject is stored by shardMap, but JSON.stringify not support map, so we need change to object
+    if (tagValue.IsJSSharedMap()) {
+        tagValue = FromEntries(JSHandle<JSTaggedValue>(thread_, tagValue));
+    }
     if (!tagValue.IsHeapObject()) {
         JSTaggedType type = tagValue.GetRawData();
         switch (type) {
@@ -123,7 +136,8 @@ JSTaggedValue FastJsonStringifier::SerializeJSONProperty(const JSHandle<JSTagged
         JSType jsType = tagValue.GetTaggedObject()->GetClass()->GetObjectType();
         JSHandle<JSTaggedValue> valHandle(thread_, tagValue);
         switch (jsType) {
-            case JSType::JS_ARRAY: {
+            case JSType::JS_ARRAY:
+            case JSType::JS_SHARED_ARRAY: {
                 SerializeJSArray(valHandle);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                 return tagValue;
@@ -170,7 +184,7 @@ JSTaggedValue FastJsonStringifier::SerializeJSONProperty(const JSHandle<JSTagged
     return JSTaggedValue::Undefined();
 }
 
-CString FastJsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, bool hasContent)
+CString SendableFastJsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, bool hasContent)
 {
     if (hasContent) {
         result_ += ",";
@@ -191,7 +205,7 @@ CString FastJsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &k
     return str;
 }
 
-bool FastJsonStringifier::PushValue(const JSHandle<JSTaggedValue> &value)
+bool SendableFastJsonStringifier::PushValue(const JSHandle<JSTaggedValue> &value)
 {
     uint32_t thisLen = stack_.size();
 
@@ -206,12 +220,12 @@ bool FastJsonStringifier::PushValue(const JSHandle<JSTaggedValue> &value)
     return false;
 }
 
-void FastJsonStringifier::PopValue()
+void SendableFastJsonStringifier::PopValue()
 {
     stack_.pop_back();
 }
 
-bool FastJsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value)
+bool SendableFastJsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value)
 {
     bool isContain = PushValue(value);
     if (isContain) {
@@ -220,19 +234,28 @@ bool FastJsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &val
 
     result_ += "{";
     bool hasContent = false;
+    JSHandle<JSTaggedValue> tempValue = value;
+    if (value->IsJSSharedJSONValue()) {
+        tempValue = JSHandle<JSTaggedValue>(thread_, JSSharedJSONValue::Cast(value.GetTaggedValue())->GetValue());
+    }
 
-    ASSERT(!value->IsAccessor());
-    JSHandle<JSObject> obj(value);
-    if (UNLIKELY(value->IsJSProxy() || value->IsTypedArray())) {  // serialize proxy and typedArray
+    ASSERT(!tempValue->IsAccessor());
+    JSHandle<JSObject> obj(tempValue);
+    if (UNLIKELY(tempValue->IsJSProxy() || tempValue->IsTypedArray())) {  // serialize proxy and typedArray
         JSHandle<TaggedArray> propertyArray = JSObject::EnumerableOwnNames(thread_, obj);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         uint32_t arrLength = propertyArray->GetLength();
         for (uint32_t i = 0; i < arrLength; i++) {
             handleKey_.Update(propertyArray->Get(i));
-            JSHandle<JSTaggedValue> valueHandle = JSTaggedValue::GetProperty(thread_, value, handleKey_).GetValue();
+            JSHandle<JSTaggedValue> valueHandle = JSTaggedValue::GetProperty(thread_, tempValue, handleKey_).GetValue();
+            JSHandle<JSTaggedValue> handleValue = valueHandle;
+            if (valueHandle->IsJSSharedJSONValue()) {
+                handleValue = JSHandle<JSTaggedValue>(thread_,
+                    JSSharedJSONValue::Cast(valueHandle.GetTaggedValue())->GetValue());
+            }
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
-            if (UNLIKELY(valueHandle->IsECMAObject() || valueHandle->IsBigInt())) {
-                JSTaggedValue serializeValue = GetSerializeValue(handleKey_, valueHandle);
+            if (UNLIKELY(handleValue->IsECMAObject() || handleValue->IsBigInt())) {
+                JSTaggedValue serializeValue = GetSerializeValue(handleKey_, handleValue);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 if (UNLIKELY(serializeValue.IsUndefined() || serializeValue.IsSymbol() ||
                     (serializeValue.IsECMAObject() && serializeValue.IsCallable()))) {
@@ -240,7 +263,7 @@ bool FastJsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &val
                 }
                 handleValue_.Update(serializeValue);
             } else {
-                handleValue_.Update(valueHandle);
+                handleValue_.Update(handleValue);
             }
             SerializeObjectKey(handleKey_, hasContent);
             JSTaggedValue res = SerializeJSONProperty(handleValue_);
@@ -297,7 +320,7 @@ bool FastJsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &val
     return true;
 }
 
-bool FastJsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object)
+bool SendableFastJsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object)
 {
     bool isContain = PushValue(object);
     if (isContain) {
@@ -338,7 +361,7 @@ bool FastJsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object
     return true;
 }
 
-bool FastJsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value)
+bool SendableFastJsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value)
 {
     // If state.[[Stack]] contains value, throw a TypeError exception because the structure is cyclical.
     bool isContain = PushValue(value);
@@ -347,8 +370,15 @@ bool FastJsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value)
     }
 
     result_ += "[";
-    JSHandle<JSArray> jsArr(value);
-    uint32_t len = jsArr->GetArrayLength();
+    uint32_t len = 0;
+    if (value->IsJSArray()) {
+        JSHandle<JSArray> jsArr(value);
+        len = jsArr->GetArrayLength();
+    } else if (value->IsJSSharedArray()) {
+        JSHandle<JSSharedArray> jsArr(value);
+        len = jsArr->GetArrayLength();
+    }
+
     if (len > 0) {
         for (uint32_t i = 0; i < len; i++) {
             JSTaggedValue tagVal = ObjectFastOperator::FastGetPropertyByIndex(thread_, value.GetTaggedValue(), i);
@@ -381,7 +411,7 @@ bool FastJsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value)
     return true;
 }
 
-void FastJsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef)
+void SendableFastJsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef)
 {
     JSTaggedValue primitive = JSPrimitiveRef::Cast(primitiveRef.GetTaggedValue().GetTaggedObject())->GetValue();
     if (primitive.IsString()) {
@@ -405,8 +435,8 @@ void FastJsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &p
     }
 }
 
-bool FastJsonStringifier::TryCacheSerializeElements(const JSHandle<JSObject> &obj, bool hasContent,
-                                                    CVector<std::pair<CString, int>> &strCache)
+bool SendableFastJsonStringifier::TryCacheSerializeElements(const JSHandle<JSObject> &obj, bool hasContent,
+                                                            CVector<std::pair<CString, int>> &strCache)
 {
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
@@ -452,7 +482,7 @@ bool FastJsonStringifier::TryCacheSerializeElements(const JSHandle<JSObject> &ob
     return hasContent;
 }
 
-bool FastJsonStringifier::SerializeElementsWithCache(const JSHandle<JSObject> &obj, bool hasContent,
+bool SendableFastJsonStringifier::SerializeElementsWithCache(const JSHandle<JSObject> &obj, bool hasContent,
     CVector<std::pair<CString, int>> &strCache, uint32_t &cacheIndex, uint32_t elementSize)
 {
     if (!ElementAccessor::IsDictionaryMode(obj)) {
@@ -485,8 +515,8 @@ bool FastJsonStringifier::SerializeElementsWithCache(const JSHandle<JSObject> &o
     return hasContent;
 }
 
-bool FastJsonStringifier::TryCacheSerializeKeys(const JSHandle<JSObject> &obj, bool hasContent,
-                                                CVector<std::pair<CString, int>> &strCache)
+bool SendableFastJsonStringifier::TryCacheSerializeKeys(const JSHandle<JSObject> &obj, bool hasContent,
+                                                        CVector<std::pair<CString, int>> &strCache)
 {
     JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties());
     if (!propertiesArr->IsDictionaryMode()) {
@@ -500,8 +530,9 @@ bool FastJsonStringifier::TryCacheSerializeKeys(const JSHandle<JSObject> &obj, b
     return TryCacheSerializeKeysFromNameDictionary(obj, hasContent, strCache);
 }
 
-bool FastJsonStringifier::TryCacheSerializeKeysFromPropertiesArray(const JSHandle<JSObject> &obj, bool hasContent,
-                                                                   CVector<std::pair<CString, int>> &strCache)
+bool SendableFastJsonStringifier::TryCacheSerializeKeysFromPropertiesArray(const JSHandle<JSObject> &obj,
+                                                                           bool hasContent,
+                                                                           CVector<std::pair<CString, int>> &strCache)
 {
     JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties());
     JSHandle<JSHClass> jsHclass(thread_, obj->GetJSHClass());
@@ -543,8 +574,8 @@ bool FastJsonStringifier::TryCacheSerializeKeysFromPropertiesArray(const JSHandl
     return hasContent;
 }
 
-bool FastJsonStringifier::TryCacheSerializeKeysFromEnumCache(const JSHandle<JSObject> &obj, bool hasContent,
-                                                             CVector<std::pair<CString, int>> &strCache)
+bool SendableFastJsonStringifier::TryCacheSerializeKeysFromEnumCache(const JSHandle<JSObject> &obj, bool hasContent,
+                                                                     CVector<std::pair<CString, int>> &strCache)
 {
     JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties());
     JSHandle<JSHClass> jsHclass(thread_, obj->GetJSHClass());
@@ -579,8 +610,8 @@ bool FastJsonStringifier::TryCacheSerializeKeysFromEnumCache(const JSHandle<JSOb
     return hasContent;
 }
 
-bool FastJsonStringifier::TryCacheSerializeKeysFromGlobalObject(const JSHandle<JSObject> &obj, bool hasContent,
-                                                                CVector<std::pair<CString, int>> &strCache)
+bool SendableFastJsonStringifier::TryCacheSerializeKeysFromGlobalObject(const JSHandle<JSObject> &obj, bool hasContent,
+                                                                        CVector<std::pair<CString, int>> &strCache)
 {
     JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties());
     JSHandle<GlobalDictionary> globalDic(propertiesArr);
@@ -616,8 +647,9 @@ bool FastJsonStringifier::TryCacheSerializeKeysFromGlobalObject(const JSHandle<J
     return hasContent;
 }
 
-bool FastJsonStringifier::TryCacheSerializeKeysFromNameDictionary(const JSHandle<JSObject> &obj, bool hasContent,
-                                                                  CVector<std::pair<CString, int>> &strCache)
+bool SendableFastJsonStringifier::TryCacheSerializeKeysFromNameDictionary(const JSHandle<JSObject> &obj,
+                                                                          bool hasContent,
+                                                                          CVector<std::pair<CString, int>> &strCache)
 {
     JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties());
     JSHandle<NameDictionary> nameDic(propertiesArr);
@@ -653,8 +685,8 @@ bool FastJsonStringifier::TryCacheSerializeKeysFromNameDictionary(const JSHandle
     return hasContent;
 }
 
-bool FastJsonStringifier::SerializeKeysWithCache(const JSHandle<JSObject> &obj, bool hasContent,
-                                                 CVector<std::pair<CString, int>> &strCache, uint32_t &cacheIndex)
+bool SendableFastJsonStringifier::SerializeKeysWithCache(
+    const JSHandle<JSObject> &obj, bool hasContent, CVector<std::pair<CString, int>> &strCache, uint32_t &cacheIndex)
 {
     JSHandle<JSHClass> jsHclass(thread_, obj->GetJSHClass());
     JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties());
@@ -715,7 +747,8 @@ bool FastJsonStringifier::SerializeKeysWithCache(const JSHandle<JSObject> &obj, 
     return hasContent;
 }
 
-bool FastJsonStringifier::AppendJsonString(bool hasContent, CVector<std::pair<CString, int>> &strCache, int index)
+bool SendableFastJsonStringifier::AppendJsonString(bool hasContent, CVector<std::pair<CString, int>> &strCache,
+                                                   int index)
 {
     if (handleValue_->IsECMAObject() || handleValue_->IsBigInt()) {
         JSTaggedValue serializeValue = GetSerializeValue(handleKey_, handleValue_);
@@ -737,7 +770,7 @@ bool FastJsonStringifier::AppendJsonString(bool hasContent, CVector<std::pair<CS
     return hasContent;
 }
 
-bool FastJsonStringifier::FastAppendJsonString(bool hasContent, CString &key)
+bool SendableFastJsonStringifier::FastAppendJsonString(bool hasContent, CString &key)
 {
     if (handleValue_->IsECMAObject() || handleValue_->IsBigInt()) {
         JSTaggedValue serializeValue = GetSerializeValue(handleKey_, handleValue_);
@@ -758,7 +791,7 @@ bool FastJsonStringifier::FastAppendJsonString(bool hasContent, CString &key)
     return hasContent;
 }
 
-bool FastJsonStringifier::DefaultSerializeElements(const JSHandle<JSObject> &obj, bool hasContent)
+bool SendableFastJsonStringifier::DefaultSerializeElements(const JSHandle<JSObject> &obj, bool hasContent)
 {
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
@@ -804,7 +837,7 @@ bool FastJsonStringifier::DefaultSerializeElements(const JSHandle<JSObject> &obj
     return hasContent;
 }
 
-bool FastJsonStringifier::DefaultSerializeKeys(const JSHandle<JSObject> &obj, bool hasContent)
+bool SendableFastJsonStringifier::DefaultSerializeKeys(const JSHandle<JSObject> &obj, bool hasContent)
 {
     JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties());
     if (!propertiesArr->IsDictionaryMode()) {
@@ -822,8 +855,8 @@ bool FastJsonStringifier::DefaultSerializeKeys(const JSHandle<JSObject> &obj, bo
     }
 }
 
-bool FastJsonStringifier::SerializeKeysFromCache(const JSHandle<JSObject> &obj, JSTaggedValue enumCache,
-                                                 const JSHandle<TaggedArray> &propertiesArr, bool hasContent)
+bool SendableFastJsonStringifier::SerializeKeysFromCache(const JSHandle<JSObject> &obj, JSTaggedValue enumCache,
+                                                         const JSHandle<TaggedArray> &propertiesArr, bool hasContent)
 {
     JSHandle<TaggedArray> cache(thread_, enumCache);
     uint32_t length = cache->GetLength();
@@ -838,8 +871,10 @@ bool FastJsonStringifier::SerializeKeysFromCache(const JSHandle<JSObject> &obj, 
     return hasContent;
 }
 
-bool FastJsonStringifier::SerializeKeysFromLayout(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jsHclass,
-                                                  const JSHandle<TaggedArray> &propertiesArr, bool hasContent)
+bool SendableFastJsonStringifier::SerializeKeysFromLayout(const JSHandle<JSObject> &obj,
+                                                          const JSHandle<JSHClass> &jsHclass,
+                                                          const JSHandle<TaggedArray> &propertiesArr,
+                                                          bool hasContent)
 {
     int end = static_cast<int>(jsHclass->NumberOfProps());
     if (end <= 0) {
@@ -856,9 +891,9 @@ bool FastJsonStringifier::SerializeKeysFromLayout(const JSHandle<JSObject> &obj,
     return hasContent;
 }
 
-bool FastJsonStringifier::SerializeKeysFromGlobalDictionary(const JSHandle<JSObject> &obj,
-                                                            const JSHandle<TaggedArray> &propertiesArr,
-                                                            bool hasContent)
+bool SendableFastJsonStringifier::SerializeKeysFromGlobalDictionary(const JSHandle<JSObject> &obj,
+                                                                    const JSHandle<TaggedArray> &propertiesArr,
+                                                                    bool hasContent)
 {
     JSHandle<GlobalDictionary> globalDic(propertiesArr);
     int size = globalDic->Size();
@@ -893,9 +928,9 @@ bool FastJsonStringifier::SerializeKeysFromGlobalDictionary(const JSHandle<JSObj
     return hasContent;
 }
 
-bool FastJsonStringifier::SerializeKeysFromNameDictionary(const JSHandle<JSObject> &obj,
-                                                          const JSHandle<TaggedArray> &propertiesArr,
-                                                          bool hasContent)
+bool SendableFastJsonStringifier::SerializeKeysFromNameDictionary(const JSHandle<JSObject> &obj,
+                                                                  const JSHandle<TaggedArray> &propertiesArr,
+                                                                  bool hasContent)
 {
     JSHandle<NameDictionary> nameDic(propertiesArr);
     int size = nameDic->Size();
@@ -930,8 +965,8 @@ bool FastJsonStringifier::SerializeKeysFromNameDictionary(const JSHandle<JSObjec
     return hasContent;
 }
 
-bool FastJsonStringifier::SerializeKeyValue(const JSHandle<JSObject> &obj, JSTaggedValue key,
-                                            const JSHandle<TaggedArray> &propertiesArr, bool hasContent)
+bool SendableFastJsonStringifier::SerializeKeyValue(const JSHandle<JSObject> &obj, JSTaggedValue key,
+                                                    const JSHandle<TaggedArray> &propertiesArr, bool hasContent)
 {
     handleKey_.Update(key);
     JSHandle<JSHClass> jsHclass(thread_, obj->GetJSHClass());
@@ -956,7 +991,7 @@ bool FastJsonStringifier::SerializeKeyValue(const JSHandle<JSObject> &obj, JSTag
     return hasContent;
 }
 
-bool FastJsonStringifier::AppendJsonString(bool hasContent)
+bool SendableFastJsonStringifier::AppendJsonString(bool hasContent)
 {
     if (handleValue_->IsECMAObject() || handleValue_->IsBigInt()) {
         JSTaggedValue serializeValue = GetSerializeValue(handleKey_, handleValue_);
@@ -977,8 +1012,8 @@ bool FastJsonStringifier::AppendJsonString(bool hasContent)
     return hasContent;
 }
 
-bool FastJsonStringifier::DefaultSerializeObject(const JSTaggedValue &object, uint32_t numOfKeys,
-                                                 uint32_t numOfElements)
+bool SendableFastJsonStringifier::DefaultSerializeObject(const JSTaggedValue &object, uint32_t numOfKeys,
+                                                         uint32_t numOfElements)
 {
     JSHandle<JSTaggedValue> value(thread_, object);
     bool isContain = PushValue(value);
@@ -1002,5 +1037,33 @@ bool FastJsonStringifier::DefaultSerializeObject(const JSTaggedValue &object, ui
     result_ += "}";
     PopValue();
     return true;
+}
+
+JSTaggedValue SendableFastJsonStringifier::FromEntries(const JSHandle<JSTaggedValue> &iterable)
+{
+    // 1. Perform ? RequireObjectCoercible(iterable).
+    if (iterable->IsUndefined() || iterable->IsNull()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "iterable is undefined or null", JSTaggedValue::Exception());
+    }
+
+    // 2. Let obj be ! OrdinaryObjectCreate(%Object.prototype%).
+    // 3. Assert: obj is an extensible ordinary object with no own properties.
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> constructor(env->GetObjectFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(constructor);
+
+    // 4. Let stepsDefine be the algorithm steps defined in CreateDataPropertyOnObject Functions.
+    // 5. Let lengthDefine be the number of non-optional parameters of the function definition in
+    //    CreateDataPropertyOnObject Functions.
+    // 6. Let adder be ! CreateBuiltinFunction(stepsDefine, lengthDefine, "", « »).
+    JSHandle<Method> method(thread_,
+        thread_->GetEcmaVM()->GetMethodByIndex(MethodIndex::BUILTINS_OBJECT_CREATE_DATA_PROPERTY_ON_OBJECT_FUNCTIONS));
+    JSHandle<JSFunction> addrFunc = factory->NewJSFunction(env, method);
+
+    JSHandle<JSTaggedValue> adder(thread_, addrFunc.GetTaggedValue());
+
+    // 7. Return ? AddEntriesFromIterable(obj, iterable, adder).
+    return BuiltinsSharedMap::AddEntriesFromIterable(thread_, obj, iterable, adder, factory);
 }
 }  // namespace panda::ecmascript::base
