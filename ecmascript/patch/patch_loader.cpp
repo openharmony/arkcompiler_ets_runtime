@@ -326,7 +326,7 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
                 ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
                 LOG_ECMA(DEBUG) << "Replace base method: "
                                 << baseMethod->GetRecordNameStr() << ": "
-                                << baseMethod->GetMethodName(); 
+                                << baseMethod->GetMethodName();
 
                 BaseMethodIndex indexs = {constpoolNum, constpoolIndex};
                 SaveBaseMethodInfo(patchInfo, baseFile, baseMethodId, indexs);
@@ -383,7 +383,7 @@ void PatchLoader::FindAndReplaceClassLiteral(JSThread *thread, const JSPandaFile
         ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
         LOG_ECMA(DEBUG) << "Replace base method: "
                         << baseMethod->GetRecordNameStr() << ": "
-                        << baseMethod->GetMethodName(); 
+                        << baseMethod->GetMethodName();
 
         BaseMethodIndex indexs = {constpoolNum, constpoolIndex, literalIndex};
         SaveBaseMethodInfo(patchInfo, baseFile, baseMethodId, indexs);
