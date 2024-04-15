@@ -63,7 +63,7 @@ public:
         //   (2) Map.prototype [ @@toStringTag ]
         //   (3) Map.prototype [ @@iterator ] -- removed
         //   (4) get Map.prototype.size -- removed
-        return GetJsonValuePrototypeFunctions().Size() + 2;
+        return GetJsonValuePrototypeFunctions().Size() + 2; // 2 : constructor and prototype
     }
 
     static Span<const std::pair<std::string_view, bool>> GetPrototypeProperties()

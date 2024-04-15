@@ -121,9 +121,6 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
         case JSType::JS_ASYNC_FUNCTION:
             SerializeAsyncFunctionFieldIndividually(root, start, end);
             return true;
-        case JSType::METHOD:
-            SerializeMethodFieldIndividually(root, start, end);
-            return true;
         default:
             return false;
     }
@@ -281,28 +278,6 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
                 data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
                 data_->WriteUint32(sizeof(uintptr_t));
                 data_->WriteRawData(reinterpret_cast<uint8_t *>(slot.SlotAddress()), sizeof(uintptr_t));
-                slot++;
-                break;
-            }
-            default: {
-                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
-                slot++;
-                break;
-            }
-        }
-    }
-}
-
-void BaseSerializer::SerializeMethodFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
-{
-    ASSERT(root->GetClass()->IsMethod());
-    ObjectSlot slot = start;
-    while (slot < end) {
-        size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
-        switch (fieldOffset) {
-            case Method::CONSTANT_POOL_OFFSET:{
-                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
-                data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
                 slot++;
                 break;
             }

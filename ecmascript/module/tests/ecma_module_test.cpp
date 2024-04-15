@@ -770,4 +770,24 @@ HWTEST_F_L0(EcmaModuleTest, ConcatNotSoNormalizedOhmurl)
     CString exceptOutFileName = "@normalized:N&&&har/Index&1.0.0";
     EXPECT_EQ(outFileName, exceptOutFileName);
 }
+
+HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized)
+{
+    CString requestPath = "@native:system.app";
+    CString baseFileName = "";
+    CString recordName = "";
+    ModulePathHelper::TranslateExpressionToNormalized(thread, nullptr, baseFileName, recordName, requestPath);
+    CString exceptOutFileName = "@native:system.app";
+    EXPECT_EQ(requestPath, exceptOutFileName);
+
+    requestPath = "@ohos:hilog";
+    ModulePathHelper::TranslateExpressionToNormalized(thread, nullptr, baseFileName, recordName, requestPath);
+    exceptOutFileName = "@ohos:hilog";
+    EXPECT_EQ(requestPath, exceptOutFileName);
+
+    requestPath = "@normalized:N&&&har/Index&1.0.0";
+    ModulePathHelper::TranslateExpressionToNormalized(thread, nullptr, baseFileName, recordName, requestPath);
+    exceptOutFileName = "@normalized:N&&&har/Index&1.0.0";
+    EXPECT_EQ(requestPath, exceptOutFileName);
+}
 }  // namespace panda::test

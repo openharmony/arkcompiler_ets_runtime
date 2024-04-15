@@ -179,9 +179,6 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::JS_SHARED_ARRAY_BUFFER:
             SerializeJSSharedArrayBufferPrologue(object);
             break;
-        case JSType::METHOD:
-            SerializeMethodPrologue(reinterpret_cast<Method *>(object));
-            break;
         case JSType::JS_ARRAY: {
             JSArray *array = reinterpret_cast<JSArray *>(object);
             trackInfo = array->GetTrackInfo();
@@ -347,19 +344,6 @@ void ValueSerializer::SerializeJSSharedArrayBufferPrologue(TaggedObject *object)
         data_->WriteEncodeFlag(EncodeFlag::SHARED_ARRAY_BUFFER);
         data_->insertSharedArrayBuffer(reinterpret_cast<uintptr_t>(buffer));
     }
-}
-
-void ValueSerializer::SerializeMethodPrologue(Method *method)
-{
-    JSTaggedValue constPoolVal = method->GetConstantPool();
-    if (!constPoolVal.IsHeapObject()) {
-        return;
-    }
-    ConstantPool *constPool = reinterpret_cast<ConstantPool *>(constPoolVal.GetTaggedObject());
-    const JSPandaFile *jsPandaFile = constPool->GetJSPandaFile();
-    data_->WriteEncodeFlag(EncodeFlag::METHOD);
-    data_->WriteJSTaggedType(method->GetLiteralInfo());
-    data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(jsPandaFile));
 }
 
 void ValueSerializer::SerializeJSRegExpPrologue(JSRegExp *jsRegExp)

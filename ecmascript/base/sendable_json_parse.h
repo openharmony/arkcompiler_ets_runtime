@@ -170,7 +170,7 @@ protected:
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                         break;
                     case Tokens::LITERAL_FALSE:
-                        value = factory_->NewSJSONNull();
+                        value = factory_->NewSJSONFalse();
                         value->SetValue(thread_, ParseLiteralFalse());
                         parseValue = JSHandle<JSTaggedValue>(value);
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);

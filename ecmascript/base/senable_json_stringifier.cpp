@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/json_stringifier.h"
+#include "ecmascript/base/senable_json_stringifier.h"
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/json_helper.h"
@@ -32,13 +32,17 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/builtins/builtins_shared_map.h"
 
+using BuiltinsSharedMap = panda::ecmascript::builtins::BuiltinsSharedMap;
 namespace panda::ecmascript::base {
 constexpr int GAP_MAX_LEN = 10;
 
-JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue> &value,
-                                                   const JSHandle<JSTaggedValue> &replacer,
-                                                   const JSHandle<JSTaggedValue> &gap)
+JSHandle<JSTaggedValue> SendableJsonStringifier::Stringify(const JSHandle<JSTaggedValue> &value,
+                                                           const JSHandle<JSTaggedValue> &replacer,
+                                                           const JSHandle<JSTaggedValue> &gap)
 {
     factory_ = thread_->GetEcmaVM()->GetFactory();
     handleValue_ = JSMutableHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
@@ -47,12 +51,21 @@ JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue>
     bool isArray = replacer->IsArray(thread_);
     // ReturnIfAbrupt(isArray).
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
+    
+    JSHandle<JSTaggedValue> tempValue = value;
+    if (value->IsJSSharedJSONValue()) {
+        tempValue = JSHandle<JSTaggedValue>(thread_, JSSharedJSONValue::Cast(value.GetTaggedValue())->GetValue());
+    }
+
     // If isArray is true, then
     if (isArray) {
         uint32_t len = 0;
         if (replacer->IsJSArray()) {
             // FastPath
             JSHandle<JSArray> arr(replacer);
+            len = arr->GetArrayLength();
+        } else if (replacer->IsJSSharedArray()) {
+            JSHandle<JSSharedArray> arr(replacer);
             len = arr->GetArrayLength();
         } else {
             // Let len be ToLength(Get(replacer, "length")).
@@ -70,6 +83,9 @@ JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue>
             for (uint32_t i = 0; i < len; i++) {
                 // a. Let v be Get(replacer, ToString(k)).
                 JSTaggedValue prop = ObjectFastOperator::FastGetPropertyByIndex(thread_, replacer.GetTaggedValue(), i);
+                if (prop.IsJSSharedJSONValue()) {
+                    prop = JSSharedJSONValue::Cast(prop)->GetValue();
+                }
                 // b. ReturnIfAbrupt(v).
                 RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
                 /*
@@ -125,7 +141,7 @@ JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue>
     }
 
     JSHandle<JSTaggedValue> key(factory_->GetEmptyString());
-    JSTaggedValue serializeValue = GetSerializeValue(value, key, value, replacer);
+    JSTaggedValue serializeValue = GetSerializeValue(tempValue, key, tempValue, replacer);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
     handleValue_.Update(serializeValue);
     JSTaggedValue result = SerializeJSONProperty(handleValue_, replacer);
@@ -137,7 +153,7 @@ JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue>
     return thread_->GlobalConstants()->GetHandledUndefined();
 }
 
-void JsonStringifier::AddDeduplicateProp(const JSHandle<JSTaggedValue> &property)
+void SendableJsonStringifier::AddDeduplicateProp(const JSHandle<JSTaggedValue> &property)
 {
     JSHandle<EcmaString> primString = JSTaggedValue::ToString(thread_, property);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -152,7 +168,7 @@ void JsonStringifier::AddDeduplicateProp(const JSHandle<JSTaggedValue> &property
     propList_.emplace_back(addVal);
 }
 
-bool JsonStringifier::CalculateNumberGap(JSTaggedValue gap)
+bool SendableJsonStringifier::CalculateNumberGap(JSTaggedValue gap)
 {
     double numValue = gap.GetNumber();
     int num = static_cast<int>(numValue);
@@ -166,7 +182,7 @@ bool JsonStringifier::CalculateNumberGap(JSTaggedValue gap)
     return true;
 }
 
-bool JsonStringifier::CalculateStringGap(const JSHandle<EcmaString> &primString)
+bool SendableJsonStringifier::CalculateStringGap(const JSHandle<EcmaString> &primString)
 {
     CString gapString = ConvertToString(*primString, StringConvertedUsage::LOGICOPERATION);
     uint32_t gapLen = gapString.length();
@@ -186,10 +202,10 @@ bool JsonStringifier::CalculateStringGap(const JSHandle<EcmaString> &primString)
     return true;
 }
 
-JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &object,
-                                                 const JSHandle<JSTaggedValue> &key,
-                                                 const JSHandle<JSTaggedValue> &value,
-                                                 const JSHandle<JSTaggedValue> &replacer)
+JSTaggedValue SendableJsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &object,
+                                                         const JSHandle<JSTaggedValue> &key,
+                                                         const JSHandle<JSTaggedValue> &value,
+                                                         const JSHandle<JSTaggedValue> &replacer)
 {
     JSTaggedValue tagValue = value.GetTaggedValue();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
@@ -229,10 +245,17 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
     return tagValue;
 }
 
-JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValue> &value,
-                                                     const JSHandle<JSTaggedValue> &replacer)
+JSTaggedValue SendableJsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValue> &value,
+                                                             const JSHandle<JSTaggedValue> &replacer)
 {
     JSTaggedValue tagValue = value.GetTaggedValue();
+    if (tagValue.IsJSSharedJSONValue()) {
+        tagValue = JSSharedJSONValue::Cast(tagValue)->GetValue();
+    }
+    // sharedObject is stored by shardMap, but JSON.stringify not support map, so we need change to object
+    if (tagValue.IsJSSharedMap()) {
+        tagValue = FromEntries(JSHandle<JSTaggedValue>(thread_, tagValue));
+    }
     if (!tagValue.IsHeapObject()) {
         JSTaggedType type = tagValue.GetRawData();
         switch (type) {
@@ -265,7 +288,8 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
         JSType jsType = tagValue.GetTaggedObject()->GetClass()->GetObjectType();
         JSHandle<JSTaggedValue> valHandle(thread_, tagValue);
         switch (jsType) {
-            case JSType::JS_ARRAY: {
+            case JSType::JS_ARRAY:
+            case JSType::JS_SHARED_ARRAY: {
                 SerializeJSArray(valHandle, replacer);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                 return tagValue;
@@ -326,7 +350,7 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
     return JSTaggedValue::Undefined();
 }
 
-void JsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, bool hasContent)
+void SendableJsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, bool hasContent)
 {
     CString stepBegin;
     CString stepEnd;
@@ -353,7 +377,7 @@ void JsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, boo
     result_ += stepEnd;
 }
 
-bool JsonStringifier::PushValue(const JSHandle<JSTaggedValue> &value)
+bool SendableJsonStringifier::PushValue(const JSHandle<JSTaggedValue> &value)
 {
     uint32_t thisLen = stack_.size();
 
@@ -368,12 +392,13 @@ bool JsonStringifier::PushValue(const JSHandle<JSTaggedValue> &value)
     return false;
 }
 
-void JsonStringifier::PopValue()
+void SendableJsonStringifier::PopValue()
 {
     stack_.pop_back();
 }
 
-bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer)
+bool SendableJsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value,
+                                                  const JSHandle<JSTaggedValue> &replacer)
 {
     bool isContain = PushValue(value);
     if (isContain) {
@@ -385,19 +410,29 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
 
     result_ += "{";
     bool hasContent = false;
+    JSHandle<JSTaggedValue> tempValue = value;
+    if (value->IsJSSharedJSONValue()) {
+        tempValue = JSHandle<JSTaggedValue>(thread_, JSSharedJSONValue::Cast(value.GetTaggedValue())->GetValue());
+    }
 
-    ASSERT(!value->IsAccessor());
-    JSHandle<JSObject> obj(value);
+    ASSERT(!tempValue->IsAccessor());
+    JSHandle<JSObject> obj(tempValue);
     if (!replacer->IsArray(thread_)) {
-        if (UNLIKELY(value->IsJSProxy() || value->IsTypedArray())) {  // serialize proxy and typedArray
+        if (UNLIKELY(tempValue->IsJSProxy() || tempValue->IsTypedArray())) {  // serialize proxy and typedArray
             JSHandle<TaggedArray> propertyArray = JSObject::EnumerableOwnNames(thread_, obj);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             uint32_t arrLength = propertyArray->GetLength();
             for (uint32_t i = 0; i < arrLength; i++) {
                 handleKey_.Update(propertyArray->Get(i));
-                JSHandle<JSTaggedValue> valueHandle = JSTaggedValue::GetProperty(thread_, value, handleKey_).GetValue();
+                JSHandle<JSTaggedValue> valueHandle =
+                    JSTaggedValue::GetProperty(thread_, tempValue, handleKey_).GetValue();
+                JSHandle<JSTaggedValue> handleValue = valueHandle;
+                if (valueHandle->IsJSSharedJSONValue()) {
+                    handleValue = JSHandle<JSTaggedValue>(
+                        thread_, JSSharedJSONValue::Cast(valueHandle.GetTaggedValue())->GetValue());
+                }
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
-                JSTaggedValue serializeValue = GetSerializeValue(value, handleKey_, valueHandle, replacer);
+                JSTaggedValue serializeValue = GetSerializeValue(tempValue, handleKey_, handleValue, replacer);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 if (UNLIKELY(serializeValue.IsUndefined() || serializeValue.IsSymbol() ||
                     (serializeValue.IsECMAObject() && serializeValue.IsCallable()))) {
@@ -415,11 +450,11 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
             uint32_t numOfKeys = obj->GetNumberOfKeys();
             uint32_t numOfElements = obj->GetNumberOfElements();
             if (numOfElements > 0) {
-                hasContent = JsonStringifier::SerializeElements(obj, replacer, hasContent);
+                hasContent = SendableJsonStringifier::SerializeElements(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             if (numOfKeys > 0) {
-                hasContent = JsonStringifier::SerializeKeys(obj, replacer, hasContent);
+                hasContent = SendableJsonStringifier::SerializeKeys(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
         }
@@ -456,7 +491,8 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
     return true;
 }
 
-bool JsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object, const JSHandle<JSTaggedValue> &replacer)
+bool SendableJsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object,
+                                               const JSHandle<JSTaggedValue> &replacer)
 {
     bool isContain = PushValue(object);
     if (isContain) {
@@ -507,7 +543,8 @@ bool JsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object, co
     return true;
 }
 
-bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer)
+bool SendableJsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value,
+                                               const JSHandle<JSTaggedValue> &replacer)
 {
     // If state.[[Stack]] contains value, throw a TypeError exception because the structure is cyclical.
     bool isContain = PushValue(value);
@@ -524,8 +561,15 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
         stepBegin += indent_;
     }
     result_ += "[";
-    JSHandle<JSArray> jsArr(value);
-    uint32_t len = jsArr->GetArrayLength();
+    uint32_t len = 0;
+    if (value->IsJSArray()) {
+        JSHandle<JSArray> jsArr(value);
+        len = jsArr->GetArrayLength();
+    } else if (value->IsJSSharedArray()) {
+        JSHandle<JSSharedArray> jsArr(value);
+        len = jsArr->GetArrayLength();
+    }
+
     if (len > 0) {
         for (uint32_t i = 0; i < len; i++) {
             JSTaggedValue tagVal = ObjectFastOperator::FastGetPropertyByIndex(thread_, value.GetTaggedValue(), i);
@@ -563,7 +607,7 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
     return true;
 }
 
-void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef)
+void SendableJsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef)
 {
     JSTaggedValue primitive = JSPrimitiveRef::Cast(primitiveRef.GetTaggedValue().GetTaggedObject())->GetValue();
     if (primitive.IsString()) {
@@ -587,8 +631,8 @@ void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primi
     }
 }
 
-bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer,
-                                        bool hasContent)
+bool SendableJsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer,
+                                                bool hasContent)
 {
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
@@ -596,7 +640,10 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
             if (!ElementAccessor::Get(obj, i).IsHole()) {
                 handleKey_.Update(JSTaggedValue(i));
                 handleValue_.Update(ElementAccessor::Get(obj, i));
-                hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+                if (handleValue_->IsJSSharedJSONValue()) {
+                    handleValue_.Update(JSSharedJSONValue::Cast(handleValue_.GetTaggedValue())->GetValue());
+                }
+                hasContent = SendableJsonStringifier::AppendJsonString(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
         }
@@ -630,15 +677,15 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
-            hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+            hasContent = SendableJsonStringifier::AppendJsonString(obj, replacer, hasContent);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         }
     }
     return hasContent;
 }
 
-bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer,
-                                    bool hasContent)
+bool SendableJsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer,
+                                            bool hasContent)
 {
     enum ServType : uint8_t {
         Num_Zero,
@@ -659,7 +706,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
         JSHandle<JSHClass> jsHclass(thread_, obj->GetJSHClass());
         JSTaggedValue enumCache = jsHclass->GetEnumCache();
         if (enumCache.GetRawData() > 0x1000000000000000) {
-            LOG_DEBUGGER(FATAL) << "[wxj]JsonStringifier::SerializeKeys, jsHclass addr = " << *jsHclass
+            LOG_DEBUGGER(FATAL) << "[wxj]SendableJsonStringifier::SerializeKeys, jsHclass addr = " << *jsHclass
             << ", [wxj] obj addr:" << *obj
             << ", [wxj] Type = " << JSHClass::DumpJSType(jsHclass->GetObjectType())
             << ", [wxj] enumCache = " << std::hex << enumCache.GetRawData()
@@ -711,7 +758,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 }
                 handleValue_.Update(value);
-                hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+                hasContent = SendableJsonStringifier::AppendJsonString(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             return hasContent;
@@ -742,7 +789,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                     }
                     handleValue_.Update(value);
-                    hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+                    hasContent = SendableJsonStringifier::AppendJsonString(obj, replacer, hasContent);
                     if (obj->GetProperties().IsDictionary()) {
                         hasChangedToDictionaryMode = true;
                         propertiesArr = JSHandle<TaggedArray>(thread_, obj->GetProperties());
@@ -769,7 +816,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                         jsHclass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
                     }
                     handleValue_.Update(value);
-                    hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+                    hasContent = SendableJsonStringifier::AppendJsonString(obj, replacer, hasContent);
                     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
         }
@@ -806,7 +853,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
-            hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+            hasContent = SendableJsonStringifier::AppendJsonString(obj, replacer, hasContent);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         }
         return hasContent;
@@ -841,14 +888,14 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         }
         handleValue_.Update(value);
-        hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+        hasContent = SendableJsonStringifier::AppendJsonString(obj, replacer, hasContent);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
     }
     return hasContent;
 }
 
-bool JsonStringifier::AppendJsonString(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer,
-                                       bool hasContent)
+bool SendableJsonStringifier::AppendJsonString(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer,
+                                               bool hasContent)
 {
     JSTaggedValue serializeValue = GetSerializeValue(JSHandle<JSTaggedValue>(obj), handleKey_, handleValue_, replacer);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
@@ -864,5 +911,33 @@ bool JsonStringifier::AppendJsonString(const JSHandle<JSObject> &obj, const JSHa
         return true;
     }
     return hasContent;
+}
+
+JSTaggedValue SendableJsonStringifier::FromEntries(const JSHandle<JSTaggedValue> &iterable)
+{
+    // 1. Perform ? RequireObjectCoercible(iterable).
+    if (iterable->IsUndefined() || iterable->IsNull()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "iterable is undefined or null", JSTaggedValue::Exception());
+    }
+
+    // 2. Let obj be ! OrdinaryObjectCreate(%Object.prototype%).
+    // 3. Assert: obj is an extensible ordinary object with no own properties.
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> constructor(env->GetObjectFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(constructor);
+
+    // 4. Let stepsDefine be the algorithm steps defined in CreateDataPropertyOnObject Functions.
+    // 5. Let lengthDefine be the number of non-optional parameters of the function definition in
+    //    CreateDataPropertyOnObject Functions.
+    // 6. Let adder be ! CreateBuiltinFunction(stepsDefine, lengthDefine, "", « »).
+    JSHandle<Method> method(thread_,
+        thread_->GetEcmaVM()->GetMethodByIndex(MethodIndex::BUILTINS_OBJECT_CREATE_DATA_PROPERTY_ON_OBJECT_FUNCTIONS));
+    JSHandle<JSFunction> addrFunc = factory->NewJSFunction(env, method);
+
+    JSHandle<JSTaggedValue> adder(thread_, addrFunc.GetTaggedValue());
+
+    // 7. Return ? AddEntriesFromIterable(obj, iterable, adder).
+    return BuiltinsSharedMap::AddEntriesFromIterable(thread_, obj, iterable, adder, factory);
 }
 }  // namespace panda::ecmascript::base

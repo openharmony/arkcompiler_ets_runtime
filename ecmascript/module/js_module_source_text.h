@@ -198,6 +198,7 @@ public:
 
     static bool IsEvaluatingModule(JSThread *thread, StateVisit &stateVisit,
         const JSHandle<SourceTextModule> &module);
+
     static bool IsInstaniatedModule(JSThread *thread, StateVisit &stateVisit,
         const JSHandle<SourceTextModule> &module);
 
