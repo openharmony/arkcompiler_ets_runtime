@@ -1879,7 +1879,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
                                                 const JSHandle<JSTaggedValue> inputStr,
                                                 bool isFastPath, bool useCache, bool isIntermediateResult)
 {
-    ASSERT(JSObject::IsRegExp(thread, regexp));
+    ASSERT(regexp->IsJSRegExp());
     ASSERT(inputStr->IsString());
     BUILTINS_API_TRACE(thread, RegExp, RegExpBuiltinExec);
     uint32_t lastIndex = static_cast<uint32_t>(GetLastIndex(thread, regexp, isFastPath));

@@ -141,3 +141,4 @@ true
 true
 
 SyntaxError: nothing to repeat
+null

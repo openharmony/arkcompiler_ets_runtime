@@ -592,3 +592,10 @@ e.exec = function() {
 }
 "".replace(e, "");
 delete e.exec;
+
+{
+  const v0 = /qeu(?<a>.)\k<a>(x)(x)(x)\1*xyz{93}/ugysd;
+  const v4 = typeof Date === "string";
+  v0[Symbol.match] = v4;
+  print(v0["exec"]());
+}
