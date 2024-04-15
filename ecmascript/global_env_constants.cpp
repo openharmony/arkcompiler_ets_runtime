@@ -261,6 +261,9 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, RBTreeNode::SIZE, JSType::RB_TREENODE));
     SetConstant(ConstantIndex::CLASS_LITERAL_HCLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ClassLiteral::SIZE, JSType::CLASS_LITERAL));
+    SetConstant(ConstantIndex::RESOLVED_RECORD_INEDX_BINDING_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ResolvedRecordIndexBinding::SIZE,
+        JSType::RESOLVEDRECORDINDEXBINDING_RECORD));
     SetConstant(ConstantIndex::RESOLVED_RECORD_BINDING_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ResolvedRecordBinding::SIZE, JSType::RESOLVEDRECORDBINDING_RECORD));
 }

@@ -66,12 +66,14 @@ JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
     }
     ASSERT(moduleEnvironment.IsTaggedArray());
     JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
-    if (resolvedBinding.IsResolvedRecordBinding()) {
-        return ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, module, resolvedBinding);
+    if (resolvedBinding.IsResolvedRecordIndexBinding()) {
+        return ModuleManagerHelper::GetModuleValueFromIndexBinding(thread, module, resolvedBinding);
     } else if (resolvedBinding.IsResolvedIndexBinding()) {
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
         JSHandle<SourceTextModule> resolvedModule(thread, binding->GetModule().GetTaggedObject());
         return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetIndex());
+    } else if (resolvedBinding.IsResolvedRecordBinding()) {
+        return ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, module, resolvedBinding);
     }
     LOG_ECMA(FATAL) << "Unexpect binding";
     UNREACHABLE();
