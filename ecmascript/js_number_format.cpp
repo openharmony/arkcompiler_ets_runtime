@@ -877,7 +877,7 @@ JSHandle<JSTaggedValue> JSNumberFormat::UnwrapNumberFormat(JSThread *thread, con
     // 2. If nf does not have an [[InitializedNumberFormat]] internal slot and ?
     //  InstanceofOperator(nf, %NumberFormat%) is true, then Let nf be ? Get(nf, %Intl%.[[FallbackSymbol]]).
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    bool hasInstance = JSObject::InstanceOf(thread, nf, env->GetNumberFormatFunction());
+    bool hasInstance = JSFunction::OrdinaryHasInstance(thread, env->GetNumberFormatFunction(), nf);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
 
     bool isJSNumberFormat = nf->IsJSNumberFormat();

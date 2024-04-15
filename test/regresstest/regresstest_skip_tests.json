@@ -1663,7 +1663,6 @@
         "intl/number-format/rounding-increment-v3.js",
         "intl/number-format/format-range-string.js",
         "intl/number-format/format-string.js",
-        "intl/number-format/UnwrapNumberFormatUseOrdinaryHasInstance.js",
         "intl/number-format/rounding-increment-resolved-match-v3.js",
         "intl/number-format/format-range-numbering-system.js",
         "intl/number-format/check-digit-ranges.js",
