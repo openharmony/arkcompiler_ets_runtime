@@ -69,11 +69,11 @@ public:
     ElementsKind PUBLIC_API GetElementsKindByEntityId(panda_file::File::EntityId id);
 
     // hclass
-    void RecordHClass(ProfileType rootType, ProfileType childType, JSTaggedType hclass);
+    void RecordHClass(ProfileType rootType, ProfileType childType, JSTaggedType hclass, bool update = false);
 
     uint32_t PUBLIC_API GetHClassIndexByProfileType(ProfileTyper type) const;
 
-    JSTaggedValue PUBLIC_API QueryHClass(ProfileType rootType, ProfileType childType) const;
+    JSTaggedValue PUBLIC_API QueryHClass(ProfileType rootType, ProfileType childType) ;
     ElementsKind QueryElementKind(ProfileType rootType);
 
     inline ProfileType GetRootIdByLocation(const PGOTypeLocation &loc)
@@ -103,7 +103,13 @@ public:
     {
         locToElmsKindMap_.emplace(loc, kind);
     }
- 
+    inline void ClearHCInfoLocal()
+    {
+        hclassInfoLocal_.clear();
+    }
+public:
+    JSHandle<TaggedArray> GenJITHClassInfo();
+    void GenJITHClassInfoLocal();
 private:
     // snapshot
     void GenHClassInfo();
@@ -128,6 +134,12 @@ private:
     // Since there is only one PGOTypeManager instance during compilation,
     // the currently compiled jspandafile needs to be set to satisfy multi-file compilation.
     const JSPandaFile *curJSPandaFile_ {nullptr};
+    Mutex mutex_;
+    CVector<JSTaggedValue> hclassInfoLocal_ {};
+    // When the passmanager iterates each method, the curCP_ and curCPID_ should be updated,
+    // so that subsequent passes (type_infer, ts_hcr_lowering) can obtain the correct constpool.
+    JSTaggedValue curCP_ {JSTaggedValue::Hole()};
+    int32_t curCPID_ {0};
 };
 }  // panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_MANAGER_H

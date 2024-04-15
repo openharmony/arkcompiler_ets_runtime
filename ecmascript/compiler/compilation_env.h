@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 
 namespace panda::ecmascript {
 namespace kungfu {
@@ -62,6 +63,7 @@ public:
 
     NativeAreaAllocator *GetNativeAreaAllocator() const;
     virtual JSRuntimeOptions &GetJSOptions() = 0;
+    virtual std::shared_ptr<pgo::PGOProfiler> GetPGOProfiler() const;
 
     // thread
     virtual const CMap<ElementsKind, ConstantIndex> &GetArrayHClassIndexMap() const = 0;
@@ -105,6 +107,18 @@ public:
     {
         ASSERT(0);
         return nullptr;
+    }
+    
+    virtual const uint8_t *GetMethodPcStart() const
+    {
+        ASSERT(0);
+        return nullptr;
+    }
+
+    virtual pgo::ApEntityId GetMethodAbcId() const
+    {
+        ASSERT(0);
+        return 0;
     }
 
 protected:

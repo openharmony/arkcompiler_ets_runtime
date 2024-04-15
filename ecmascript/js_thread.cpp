@@ -653,6 +653,10 @@ void JSThread::CheckOrSwitchPGOStubs()
 
 void JSThread::SwitchJitProfileStubs()
 {
+    // if jit enable pgo, use pgo stub
+    if (GetEcmaVM()->GetJSOptions().IsEnableJITPGO()) {
+        return;
+    }
     bool isSwitch = false;
     if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
         SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);

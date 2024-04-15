@@ -19,21 +19,31 @@
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/jit/jit.h"
+#include "jsnapi_expo.h"
 
 namespace panda::ecmascript::kungfu {
 using PGOProfilerManager = pgo::PGOProfilerManager;
-bool JitPassManager::Compile(AOTFileGenerator &gen, int32_t osrOffset)
+bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
+                             AOTFileGenerator &gen, int32_t osrOffset)
 {
     const JSPandaFile *jsPandaFile = compilationEnv_->GetJSPandaFile();
     MethodLiteral *methodLiteral = compilationEnv_->GetMethodLiteral();
+    const uint8_t *pcStart = compilationEnv_->GetMethodPcStart();
+    const panda_file::File::Header *header = jsPandaFile->GetPandaFile()->GetHeader();
+    ApEntityId abcId = compilationEnv_->GetMethodAbcId();
+    std::string fileName = jsPandaFile->GetFileName();
 
     collector_ = new BytecodeInfoCollector(compilationEnv_, const_cast<JSPandaFile*>(jsPandaFile),
         profilerDecoder_, passOptions_->EnableCollectLiteralInfo());
-    std::string fileName = jsPandaFile->GetFileName();
 
     gen.SetCurrentCompileFileName(jsPandaFile->GetNormalizedFileDesc());
     lOptions_ = new LOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
@@ -49,13 +59,19 @@ bool JitPassManager::Compile(AOTFileGenerator &gen, int32_t osrOffset)
                                           log_->OutputASM(),
                                           maxMethodsInModule_,
                                           compilationEnv_->GetJSOptions().GetCompilerMethodsRange());
-    cmpDriver_->CompileMethod(jsPandaFile, methodLiteral, [this, &fileName, &osrOffset] (const CString recordName,
-                                                             const std::string &methodName,
-                                                             MethodLiteral *methodLiteral,
-                                                             uint32_t methodOffset,
-                                                             const MethodPcInfo &methodPCInfo,
-                                                             MethodInfo &methodInfo,
-                                                             Module *m) {
+    cmpDriver_->CompileMethod(jsPandaFile, methodLiteral, profileTypeInfo, pcStart, header, abcId,
+                              [this, &fileName, &osrOffset] (
+                                const CString recordName,
+                                const std::string &methodName,
+                                MethodLiteral *methodLiteral,
+                                JSHandle<ProfileTypeInfo> &profileTypeInfo,
+                                uint32_t methodOffset,
+                                const MethodPcInfo &methodPCInfo,
+                                MethodInfo &methodInfo,
+                                Module *m,
+                                const uint8_t *pcStart,
+                                const panda_file::File::Header *header,
+                                ApEntityId abcId) {
         if (compilationEnv_->GetJSOptions().GetTraceJIT()) {
             LOG_COMPILER(INFO) << "JIT Compile Method Start: " << methodName << ", " << methodOffset << "\n";
         }
@@ -77,14 +93,23 @@ bool JitPassManager::Compile(AOTFileGenerator &gen, int32_t osrOffset)
             LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
         }
 
+        if (compilationEnv_->GetJSOptions().IsEnableJITPGO()) {
+            Jit::JitLockHolder lock(compilationEnv_, "PGO ProfileBytecode");
+            jitProfiler_ = compilationEnv_->GetPGOProfiler()->GetJITProfile();
+            LOG_COMPILER(INFO) << "GetPGOProfiler(): " << static_cast<void *>(compilationEnv_->GetPGOProfiler().get());
+            jitProfiler_->ProfileBytecode(profileTypeInfo, methodLiteral->GetMethodId(), abcId, pcStart,
+                                          methodLiteral->GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),
+                                          header);
+        } else {
+            jitProfiler_ = nullptr;
+        }
         circuit_ = new Circuit(compilationEnv_->GetNativeAreaAllocator(), ctx_->GetAOTModule()->GetDebugInfo(),
             fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
         PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
 
         builder_ = new BytecodeCircuitBuilder(jsPandaFile, methodLiteral, methodPCInfo,
             circuit_, ctx_->GetByteCodes(), enableMethodLog && log_->OutputCIR(),
-            passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false);
-
+            passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false, jitProfiler_);
         builder_->SetOsrOffset(osrOffset);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);

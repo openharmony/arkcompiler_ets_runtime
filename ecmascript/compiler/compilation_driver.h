@@ -399,7 +399,9 @@ public:
     Module *GetModule();
 
     template <class Callback>
-    void CompileMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral, const Callback &cb)
+    void CompileMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
+                       JSHandle<ProfileTypeInfo> &profileTypeInfo, const uint8_t *pcStart,
+                       const panda_file::File::Header *header, ApEntityId abcId, const Callback &cb)
     {
         SetCurrentCompilationFile();
         for (auto mi : bytecodeInfo_.GetMethodList()) {
@@ -416,8 +418,8 @@ public:
         bytecodeInfo_.EraseSkippedMethod(methodOffset);
 
         Module *module = GetModule();
-        cb(bytecodeInfo_.GetRecordName(0), methodName, methodLiteral, methodOffset,
-            methodPcInfo, methodInfo, module);
+        cb(bytecodeInfo_.GetRecordName(0), methodName, methodLiteral, profileTypeInfo, methodOffset, methodPcInfo,
+            methodInfo, module, pcStart, header, abcId);
     }
 };
 } // namespace panda::ecmascript::kungfu

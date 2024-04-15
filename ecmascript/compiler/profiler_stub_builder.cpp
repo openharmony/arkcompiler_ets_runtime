@@ -806,7 +806,7 @@ void ProfilerStubBuilder::SetPreDumpPeriodIndex(GateRef glue, GateRef profileTyp
 
 GateRef ProfilerStubBuilder::IsHotForJitCompiling(GateRef profileTypeInfo, ProfileOperation callback)
 {
-    if (callback.IsJitEmpty()) {
+    if (callback.IsEmpty() && callback.IsJitEmpty()) {
         return Boolean(true);
     }
     return IsHotForJitCompiling(profileTypeInfo);
@@ -875,7 +875,14 @@ GateRef ProfilerStubBuilder::IsHotForJitCompiling(GateRef profileTypeInfo)
     DEFVARIABLE(result, VariableType::BOOL(), False());
     GateRef hotnessThreshold = GetJitHotnessThreshold(profileTypeInfo);
     GateRef hotnessCnt = GetJitHotnessCnt(profileTypeInfo);
+    Label checkThreshold(env);
+    Label jitDisable(env);
     Label greaterThreshold(env);
+    Branch(Int32Equal(hotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &jitDisable, &checkThreshold);
+    Bind(&jitDisable);
+    result = True();
+    Jump(&exit);
+    Bind(&checkThreshold);
     BRANCH(Int32GreaterThan(hotnessCnt, hotnessThreshold), &greaterThreshold, &exit);
     Bind(&greaterThreshold);
     result = True();
@@ -900,13 +907,15 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, GateRef pc, GateRef func, 
     Label equalOsrThreshold(env);
     Label notEqualOsrThreshold(env);
     Label incOsrHotnessCnt(env);
+    Label checkJit(env);
     Label exit(env);
 
     GateRef jitHotnessThreshold = GetJitHotnessThreshold(profileTypeInfo);
     GateRef jitHotnessCnt = GetJitHotnessCnt(profileTypeInfo);
     GateRef osrHotnessThreshold = GetOsrHotnessThreshold(profileTypeInfo);
     GateRef osrHotnessCnt = GetOsrHotnessCnt(profileTypeInfo);
-
+    Branch(Int32Equal(jitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &exit, &checkJit);
+    Bind(&checkJit);
     BRANCH(Int32Equal(jitHotnessCnt, jitHotnessThreshold), &equalJitThreshold, &notEqualJitThreshold);
     Bind(&equalJitThreshold);
     {
@@ -920,6 +929,9 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, GateRef pc, GateRef func, 
     }
     Bind(&incJitHotnessCntAndCmpOpcode);
     {
+#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+        CallRuntime(glue, RTSTUB_ID(CountInterpExecFuncs), { func });
+#endif
         GateRef newJitHotnessCnt = Int16Add(jitHotnessCnt, Int16(1));
         GateRef jitHotnessCntOffset = GetJitHotnessCntOffset(profileTypeInfo);
         Store(VariableType::INT16(), glue, profileTypeInfo, jitHotnessCntOffset, newJitHotnessCnt);

@@ -128,7 +128,7 @@ bool JitCompilerTask::Compile()
         return false;
     }
     jitCodeGenerator_.reset(aotFileGenerator);
-    return passManager_->Compile(*jitCodeGenerator_, offset_);
+    return passManager_->Compile(profileTypeInfo_, *jitCodeGenerator_, offset_);
 }
 
 void JitCompilerTask::ReleaseJitPassManager()

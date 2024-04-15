@@ -27,6 +27,11 @@ JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm, JSHandle<JSFun
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     jsPandaFile_ = const_cast<JSPandaFile*>(method->GetJSPandaFile());
     methodLiteral_ = method->GetMethodLiteral();
+    pcStart_ = method->GetBytecodeArray();
+    abcId_ = PGOProfiler::GetMethodAbcId(*jsFunction);
+    if (method->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
+        methodLiteral_->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
+    }
 }
 
 JSRuntimeOptions &JitCompilationEnv::GetJSOptions()
@@ -53,6 +58,11 @@ void JitCompilationEnv::SetTsManagerCompilationEnv()
 {
     auto pt = hostThread_->GetCurrentEcmaContext()->GetPTManager();
     ptManager_ = pt;
+}
+
+std::shared_ptr<pgo::PGOProfiler> JitCompilationEnv::GetPGOProfiler() const
+{
+    return hostThread_->GetEcmaVM()->GetPGOProfiler();
 }
 
 JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFile *jsPandaFile,

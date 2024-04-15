@@ -285,9 +285,13 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
         {"compiler-enable-jit", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT},
         {"compiler-enable-osr", required_argument, nullptr, OPTION_COMPILER_ENABLE_OSR},
+        {"compiler-trace-jit", required_argument, nullptr, OPTION_COMPILER_TRACE_JIT},
         {"compiler-jit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_JIT_HOTNESS_THRESHOLD},
         {"compiler-osr-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_OSR_HOTNESS_THRESHOLD},
         {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
+        {"compiler-enable-jit-pgo", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_PGO},
+        {"compiler-enable-aot-pgo", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_PGO},
+        {"compiler-enable-profile-dump", required_argument, nullptr, OPTION_COMPILER_ENABLE_PROPFILE_DUMP},
         {"compiler-typed-op-profiler", required_argument, nullptr, OPTION_COMPILER_TYPED_OP_PROFILER},
         {"compiler-opt-branch-profiling", required_argument, nullptr, OPTION_COMPILER_OPT_BRANCH_PROFILING},
         {"test-assert", required_argument, nullptr, OPTION_TEST_ASSERT},
@@ -1043,6 +1047,30 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTestAssert(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_JIT_PGO:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableJITPGO(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_PROPFILE_DUMP:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableProfileDump(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_AOT_PGO:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableAOTPGO(argBool);
                 } else {
                     return false;
                 }

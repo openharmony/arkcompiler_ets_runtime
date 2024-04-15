@@ -58,6 +58,9 @@ public:
     void Destroy();
     void CheckMechineCodeSpaceMemory(JSThread *thread, int remainSize);
 
+    // dfx for jit preheat compile
+    static void CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction);
+
     NO_COPY_SEMANTIC(Jit);
     NO_MOVE_SEMANTIC(Jit);
 

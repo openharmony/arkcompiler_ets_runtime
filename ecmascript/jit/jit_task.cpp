@@ -18,7 +18,9 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/dfx/vmstat/jit_preheat_profiler.h"
 
 namespace panda::ecmascript {
 
@@ -133,6 +135,14 @@ void JitTask::InstallCode()
     [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
 
     JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
+    auto ptManager = hostThread_->GetCurrentEcmaContext()->GetPTManager();
+    if (GetHostVM()->GetJSOptions().IsEnableJITPGO()) {
+        auto info = ptManager->GenJITHClassInfo();
+        auto ecmaContext = hostThread_->GetCurrentEcmaContext();
+        auto unsharedConstantPool = ConstantPool::Cast(
+            ecmaContext->FindUnsharedConstpool(methodHandle->GetConstantPool()).GetTaggedObject());
+        unsharedConstantPool->SetAotHClassInfoWithBarrier(hostThread_, info.GetTaggedValue());
+    }
 
     size_t funcEntryDesSizeAlign = AlignUp(codeDesc_.funcEntryDesSize, MachineCode::TEXT_ALIGN);
 
@@ -169,6 +179,12 @@ void JitTask::InstallCode()
     jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
 
     LOG_JIT(DEBUG) << "Install machine code:" << GetMethodInfo();
+#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+    auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
+    if (profMap.find(GetMethodInfo()) != profMap.end()) {
+        profMap[GetMethodInfo()] = true;
+    }
+#endif
 }
 
 void JitTask::SustainingJSHandles()

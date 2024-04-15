@@ -694,6 +694,7 @@ ecma_source = [
   "ecmascript/jit/jit.cpp",
   "ecmascript/jit/jit_task.cpp",
   "ecmascript/jit/jit_thread.cpp",
+  "ecmascript/jit/jit_profiler.cpp",
   "ecmascript/jobs/micro_job_queue.cpp",
   "ecmascript/jspandafile/js_pandafile.cpp",
   "ecmascript/jspandafile/js_pandafile_manager.cpp",

@@ -365,6 +365,11 @@ public:
         Barriers::SetPrimitive(GetData(), GetAotHClassInfoOffset(), info.GetRawData());
     }
 
+    inline void SetAotHClassInfoWithBarrier(JSThread *thread, JSTaggedValue info)
+    {
+        Set(thread, (GetLength() - AOT_HCLASS_INFO_INDEX), info);
+    }
+
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
         Set(thread, index, value);

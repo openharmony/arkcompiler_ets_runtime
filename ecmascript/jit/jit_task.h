@@ -116,6 +116,11 @@ public:
         return offset_;
     }
 
+    JSHandle<ProfileTypeInfo> GetProfileTypeInfo() const
+    {
+        return profileTypeInfo_;
+    }
+
     bool IsCompileSuccess() const
     {
         return state_ == CompileState::SUCCESS;

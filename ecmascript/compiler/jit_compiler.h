@@ -71,8 +71,8 @@ class JitCompilerTask final {
 public:
     JitCompilerTask(JitTask *jitTask) : jsFunction_(jitTask->GetJsFunction()), offset_(jitTask->GetOffset()),
         jitCompilationEnv_(new JitCompilationEnv(jitTask->GetCompilerVM(), jitTask->GetHostVM(), jsFunction_)),
+        profileTypeInfo_(jitTask->GetProfileTypeInfo()),
         passManager_(nullptr), jitCodeGenerator_(nullptr) { };
-
     static JitCompilerTask *CreateJitCompilerTask(JitTask *jitTask);
 
     bool Compile();
@@ -84,6 +84,7 @@ private:
     JSHandle<JSFunction> jsFunction_;
     int32_t offset_;
     std::unique_ptr<JitCompilationEnv> jitCompilationEnv_;
+    JSHandle<ProfileTypeInfo> profileTypeInfo_;
     std::unique_ptr<JitPassManager> passManager_;
     // need refact AOTFileGenerator to JitCodeGenerator
     std::unique_ptr<AOTFileGenerator> jitCodeGenerator_;

@@ -17,6 +17,7 @@
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/dfx/vmstat/jit_preheat_profiler.h"
 
 namespace panda::ecmascript {
 void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
@@ -135,6 +136,7 @@ bool Jit::SupportJIT(Method *method)
         case FunctionKind::NORMAL_FUNCTION:
         case FunctionKind::BASE_CONSTRUCTOR:
         case FunctionKind::ARROW_FUNCTION:
+        case FunctionKind::CLASS_CONSTRUCTOR:
             return true;
         default:
             return false;
@@ -144,6 +146,17 @@ bool Jit::SupportJIT(Method *method)
 void Jit::DeleteJitCompile(void *compiler)
 {
     deleteJitCompile_(compiler);
+}
+
+void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
+{
+    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
+    CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
+    CString methodInfo = fileDesc + ":" + CString(method->GetMethodName());
+    auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
+    if (profMap.find(methodInfo) == profMap.end()) {
+        profMap.insert({methodInfo, false});
+    }
 }
 
 void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, int32_t offset, JitCompileMode mode)
@@ -159,29 +172,43 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, int32_t offset, 
 
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
+#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+    CString methodInfo = fileDesc + ":" + CString(method->GetMethodName());
+#else
     uint32_t codeSize = method->GetCodeSize();
     CString methodInfo = method->GetRecordNameStr() + "." + CString(method->GetMethodName()) + ", at:" + fileDesc +
         ", code size:" + ToCString(codeSize);
-
     constexpr uint32_t maxSize = 9000;
     if (codeSize > maxSize) {
         LOG_JIT(DEBUG) << "skip jit task, as too large:" << methodInfo;
         return;
     }
+#endif
     if (vm->GetJSThread()->IsMachineCodeLowMemory()) {
         LOG_JIT(DEBUG) << "skip jit task, as low code memory:" << methodInfo;
         return;
     }
     bool isJSSharedFunction = jsFunction.GetTaggedValue().IsJSSharedFunction();
-    if (!jit->SupportJIT(method) || jsFunction.GetTaggedValue().IsJSSharedFunction()) {
+    if (!jit->SupportJIT(method) || isJSSharedFunction) {
         FunctionKind kind = method->GetFunctionKind();
-        LOG_JIT(DEBUG) << "method does not support jit:" << methodInfo << ", kind:" << static_cast<int>(kind)
+#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+        LOG_JIT(ERROR) << "method does not support jit:" << methodInfo << ", kind:" << static_cast<int>(kind)
             <<", JSSharedFunction:" << isJSSharedFunction;
+#else
+        LOG_JIT(INFO) << "method does not support jit:" << methodInfo << ", kind:" << static_cast<int>(kind)
+            <<", JSSharedFunction:" << isJSSharedFunction;
+#endif
         return;
     }
 
     if (jsFunction->GetMachineCode() == JSTaggedValue::Hole()) {
         LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodInfo;
+#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+        auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
+        if (profMap.find(methodInfo) != profMap.end()) {
+            profMap.erase(methodInfo);
+        }
+#endif
         return;
     }
 

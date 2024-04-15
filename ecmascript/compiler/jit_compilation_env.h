@@ -34,6 +34,8 @@ public:
     JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const override;
     void SetTsManagerCompilationEnv();
 
+    std::shared_ptr<pgo::PGOProfiler> GetPGOProfiler() const override;
+
     // context
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id) const override;
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index) const override;
@@ -70,12 +72,23 @@ public:
     {
         return methodLiteral_;
     }
+    
+    const uint8_t *GetMethodPcStart() const override
+    {
+        return pcStart_;
+    }
 
+    pgo::ApEntityId GetMethodAbcId() const override
+    {
+        return abcId_;
+    }
 private:
     JSThread *hostThread_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
     JSPandaFile *jsPandaFile_ {nullptr};
     MethodLiteral *methodLiteral_ {nullptr};
+    const uint8_t* pcStart_ {nullptr};
+    pgo::ApEntityId abcId_ {0};
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_JIT_COMPILATION_ENV_H

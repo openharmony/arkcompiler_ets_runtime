@@ -251,6 +251,9 @@ bool EcmaVM::IsEnableJit() const
 
 void EcmaVM::EnableJit() const
 {
+    if (pgoProfiler_ != nullptr) {
+        pgoProfiler_->InitJITProfiler();
+    }
     GetJSThread()->SwitchJitProfileStubs();
 }
 

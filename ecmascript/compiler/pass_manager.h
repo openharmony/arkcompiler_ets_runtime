@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/ir_module.h"
 #include "ecmascript/compiler/pass_options.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
@@ -183,7 +184,7 @@ public:
         : PassManager(env, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions,
                       nullptr, CVector<AbcFileInfo> {}, "") { };
 
-    bool Compile(AOTFileGenerator &gen, int32_t osrOffset = -1);
+    bool Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo, AOTFileGenerator &gen, int32_t osrOffset = -1);
     bool RunCg();
     virtual ~JitPassManager();
 
@@ -195,6 +196,7 @@ private:
     PassContext *ctx_ {nullptr};
     Circuit *circuit_ {nullptr};
     BytecodeCircuitBuilder *builder_ {nullptr};
+    JITProfiler *jitProfiler_ {nullptr};
     PassData *data_ {nullptr};
 };
 }
