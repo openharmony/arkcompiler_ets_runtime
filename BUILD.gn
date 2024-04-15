@@ -818,6 +818,7 @@ ecma_source = [
   "ecmascript/module/js_shared_module.cpp",
   "ecmascript/module/js_shared_module_manager.cpp",
   "ecmascript/module/module_data_extractor.cpp",
+  "ecmascript/module/module_manager_helper.cpp",
   "ecmascript/module/module_path_helper.cpp",
   "ecmascript/module/napi_module_loader.cpp",
   "ecmascript/mutator_lock.cpp",

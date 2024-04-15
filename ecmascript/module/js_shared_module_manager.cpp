@@ -16,17 +16,14 @@
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/interpreter/slow_runtime_stub.h"
-#include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/runtime_lock.h"
@@ -54,31 +51,6 @@ JSTaggedValue SharedModuleManager::GetSendableModuleValue(JSThread *thread, int3
     return GetSendableModuleValueImpl(thread, index, currentModule);
 }
 
-JSTaggedValue SharedModuleManager::GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, int index) const
-{
-    ModuleTypes moduleType = module->GetTypes();
-    if (SourceTextModule::IsNativeModule(moduleType)) {
-        JSHandle<JSTaggedValue> nativeExports = JSHandle<JSTaggedValue>(thread,
-            module->GetModuleValue(thread, 0, false));
-        if (!nativeExports->IsJSObject()) {
-            JSHandle<JSTaggedValue> recordName(thread, module->GetEcmaModuleRecordName());
-            LOG_FULL(WARN) << "Lazy load native module failed, so is " <<
-                ConvertToString(recordName.GetTaggedValue());
-            return nativeExports.GetTaggedValue();
-        }
-        return SourceTextModule::GetValueFromExportObject(thread, nativeExports, index);
-    }
-    if (SourceTextModule::IsCjsModule(moduleType)) {
-        JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
-        JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
-        if (cjsExports->IsHole()) {
-            LOG_FULL(FATAL) << "Lazy load cjs module failed,  is " << ConvertToString(cjsModuleName.GetTaggedValue());
-        }
-        return SourceTextModule::GetValueFromExportObject(thread, cjsExports, index);
-    }
-    return module->GetModuleValue(thread, index, false);
-}
-
 JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
     JSThread *thread, int32_t index, JSTaggedValue currentModule) const
 {
@@ -87,7 +59,7 @@ JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
         UNREACHABLE();
     }
 
-    SourceTextModule *module = SourceTextModule::Cast(currentModule.GetTaggedObject());
+    JSHandle<SourceTextModule> module(thread, currentModule.GetTaggedObject());
     JSTaggedValue moduleEnvironment = module->GetEnvironment();
     if (moduleEnvironment.IsUndefined()) {
         return thread->GlobalConstants()->GetUndefined();
@@ -95,29 +67,11 @@ JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
     ASSERT(moduleEnvironment.IsTaggedArray());
     JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
     if (resolvedBinding.IsResolvedRecordBinding()) {
-        ResolvedRecordBinding *binding = ResolvedRecordBinding::Cast(resolvedBinding.GetTaggedObject());
-        JSTaggedValue moduleRecord = binding->GetModuleRecord();
-        ASSERT(moduleRecord.IsString());
-        // moduleRecord is string, find at current vm
-        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-        JSHandle<SourceTextModule> resolvedModule;
-        if (moduleManager->IsEvaluatedModule(moduleRecord)) {
-            resolvedModule = moduleManager->HostGetImportedModule(moduleRecord);
-        } else {
-            auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
-            CString record = ConvertToString(moduleRecord);
-            CString fileName = ConvertToString(module->GetEcmaModuleFilename());
-            if (!JSPandaFileExecutor::LazyExecuteModule(thread, record, fileName, isMergedAbc)) {
-                LOG_ECMA(FATAL) << "LazyExecuteModule failed";
-            }
-            resolvedModule = moduleManager->HostGetImportedModule(moduleRecord);
-        }
-
-        return GetModuleValue(thread, resolvedModule, binding->GetIndex());
+        return ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, module, resolvedBinding);
     } else if (resolvedBinding.IsResolvedIndexBinding()) {
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
         JSHandle<SourceTextModule> resolvedModule(thread, binding->GetModule().GetTaggedObject());
-        return GetModuleValue(thread, resolvedModule, binding->GetIndex());
+        return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetIndex());
     }
     LOG_ECMA(FATAL) << "Unexpect binding";
     UNREACHABLE();
