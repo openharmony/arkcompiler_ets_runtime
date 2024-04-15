@@ -101,7 +101,7 @@ JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
         // moduleRecord is string, find at current vm
         ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
         JSHandle<SourceTextModule> resolvedModule;
-        if (moduleManager->IsImportedModuleLoaded(moduleRecord) && moduleManager->IsEvaluatedModule(moduleRecord)) {
+        if (moduleManager->IsEvaluatedModule(moduleRecord)) {
             resolvedModule = moduleManager->HostGetImportedModule(moduleRecord);
         } else {
             auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();

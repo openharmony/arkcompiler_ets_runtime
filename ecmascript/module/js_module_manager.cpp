@@ -784,7 +784,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<EcmaString> record = factory->NewFromASCII(recordName.c_str());
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    if (IsImportedModuleLoaded(record.GetTaggedValue())) {
+    if (IsEvaluatedModule(record.GetTaggedValue())) {
         JSHandle<SourceTextModule> moduleRecord = HostGetImportedModule(record.GetTaggedValue());
         requiredModule.Update(moduleRecord);
     } else {
@@ -810,7 +810,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteJsonModule(JSThread *thread, const
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<EcmaString> record = factory->NewFromASCII(recordName.c_str());
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    if (IsImportedModuleLoaded(record.GetTaggedValue())) {
+    if (IsEvaluatedModule(record.GetTaggedValue())) {
         JSHandle<SourceTextModule> moduleRecord = HostGetImportedModule(record.GetTaggedValue());
         requiredModule.Update(moduleRecord);
     } else {
@@ -836,7 +836,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteCjsModule(JSThread *thread, const 
     JSHandle<EcmaString> record = factory->NewFromASCII(moduleRecord);
 
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    if (IsImportedModuleLoaded(record.GetTaggedValue())) {
+    if (IsEvaluatedModule(record.GetTaggedValue())) {
         requiredModule.Update(HostGetImportedModule(record.GetTaggedValue()));
     } else {
         JSHandle<SourceTextModule> module =
