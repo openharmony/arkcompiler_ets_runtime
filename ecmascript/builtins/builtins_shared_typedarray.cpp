@@ -1330,7 +1330,6 @@ JSTaggedValue BuiltinsSharedTypedArray::Set(EcmaRuntimeCallInfo *argv)
             srcBuf = BuiltinsArrayBuffer::GetDataPointFromBuffer(
                 srcBufferHandle.GetTaggedValue(), srcByteIndex);
         }
-        BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBufferHandle.GetTaggedValue(), srcByteIndex);
         void *targetBuf = BuiltinsSendableArrayBuffer::GetDataPointFromBuffer(
             targetBuffer.GetTaggedValue(), targetByteIndex);
         if (memcpy_s(targetBuf, srcLength * srcElementSize, srcBuf, srcLength * srcElementSize) != EOK) {
