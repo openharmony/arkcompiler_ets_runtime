@@ -650,8 +650,11 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     uint64_t newByteLength = 0;
     if (length->IsUndefined()) {
         if (bufferByteLength % elementSize != 0) {
-            THROW_RANGE_ERROR_AND_RETURN(thread, "The bufferByteLength cannot be an integral multiple of elementSize.",
-                                         JSTaggedValue::Exception());
+            std::string ctorName = EcmaStringAccessor(
+                JSTaggedValue::ToString(thread, GetConstructorNameFromType(thread, arrayType))).ToStdString();
+            std::string message = "The byte length of " + ctorName + " should be a multiple of " +
+                std::to_string(elementSize);
+            THROW_RANGE_ERROR_AND_RETURN(thread, message.c_str(), JSTaggedValue::Exception());
         }
         if (bufferByteLength < offset) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is less than 0.", JSTaggedValue::Exception());
@@ -722,8 +725,11 @@ JSTaggedValue TypedArrayHelper::CreateFromSendableArrayBuffer(EcmaRuntimeCallInf
     uint64_t newByteLength = 0;
     if (length->IsUndefined()) {
         if (bufferByteLength % elementSize != 0) {
-            THROW_RANGE_ERROR_AND_RETURN(thread, "The bufferByteLength cannot be an integral multiple of elementSize.",
-                                         JSTaggedValue::Exception());
+            std::string ctorName = EcmaStringAccessor(
+                JSTaggedValue::ToString(thread, GetConstructorNameFromType(thread, arrayType))).ToStdString();
+            std::string message = "The byte length of " + ctorName + " should be a multiple of " +
+                std::to_string(elementSize);
+            THROW_RANGE_ERROR_AND_RETURN(thread, message.c_str(), JSTaggedValue::Exception());
         }
         if (bufferByteLength < offset) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is less than 0.", JSTaggedValue::Exception());
