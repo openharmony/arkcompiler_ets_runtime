@@ -286,6 +286,7 @@ struct Reference;
         STAR_EXPORTENTRY_RECORD, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVEDBINDING_RECORD, /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVEDINDEXBINDING_RECORD, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
+        RESOLVEDRECORDINDEXBINDING_RECORD, /* /////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVEDRECORDBINDING_RECORD, /* //////////////////////////////////////////////////////////////////-PADDING */ \
         CELL_RECORD,          /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         COMPLETION_RECORD, /* JS_RECORD_LAST ////////////////////////////////////////////////////////////////////// */ \
@@ -1742,6 +1743,11 @@ public:
     inline bool IsResolvedIndexBinding() const
     {
         return GetObjectType() == JSType::RESOLVEDINDEXBINDING_RECORD;
+    }
+
+    inline bool IsResolvedRecordIndexBinding() const
+    {
+        return GetObjectType() == JSType::RESOLVEDRECORDINDEXBINDING_RECORD;
     }
 
     inline bool IsResolvedRecordBinding() const

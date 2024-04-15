@@ -159,6 +159,7 @@ class CjsRequire;
 class CjsExports;
 class ResolvedBinding;
 class ResolvedIndexBinding;
+class ResolvedRecordIndexBinding;
 class ResolvedRecordBinding;
 class BigInt;
 class AsyncGeneratorRequest;
@@ -829,10 +830,15 @@ public:
     JSHandle<ResolvedBinding> NewSResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
         const JSHandle<JSTaggedValue> &bindingName);
 
+    JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord();
+
+    JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord(
+        const JSHandle<EcmaString> &moduleRecord, int32_t index);
+
     JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord();
 
-    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord(const JSHandle<EcmaString> &moduleRecord,
-                                                                    int32_t index);
+    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord(
+        const JSHandle<EcmaString> &moduleRecord, const JSHandle<JSTaggedValue> &bindingName);
 
     JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
 

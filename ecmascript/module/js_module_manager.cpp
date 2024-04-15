@@ -144,12 +144,15 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         JSTaggedValue resolvedModule = binding->GetModule();
         JSHandle<SourceTextModule> module(thread, resolvedModule);
         if (SourceTextModule::IsNativeModule(module->GetTypes())) {
-            return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedModule, binding);
+            return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedModule, binding->GetBindingName());
         }
         if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
             JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
             return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
         }
+    }
+    if (resolvedBinding.IsResolvedRecordIndexBinding()) {
+        return ModuleManagerHelper::GetModuleValueFromIndexBinding(thread, currentModuleHdl, resolvedBinding);
     }
     if (resolvedBinding.IsResolvedRecordBinding()) {
         return ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, currentModuleHdl, resolvedBinding);

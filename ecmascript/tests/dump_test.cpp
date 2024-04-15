@@ -1494,6 +1494,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(resolvedBinding);
                 break;
             }
+            case JSType::RESOLVEDRECORDINDEXBINDING_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordIndexBinding::SIZE, 2U);
+                JSHandle<ResolvedRecordIndexBinding> recordBinding = factory->NewSResolvedRecordIndexBindingRecord();
+                DUMP_FOR_HANDLE(recordBinding);
+                break;
+            }
             case JSType::RESOLVEDRECORDBINDING_RECORD: {
                 CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordBinding::SIZE, 2U);
                 JSHandle<ResolvedRecordBinding> recordBinding = factory->NewSResolvedRecordBindingRecord();

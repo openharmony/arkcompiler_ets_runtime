@@ -814,23 +814,43 @@ JSHandle<ResolvedBinding> ObjectFactory::NewSResolvedBindingRecord(const JSHandl
     return obj;
 }
 
-JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord()
+JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord()
 {
     JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
     JSHandle<EcmaString> ecmaModule(undefinedValue);
     int32_t index = 0;
-    return NewSResolvedRecordBindingRecord(ecmaModule, index);
+    return NewSResolvedRecordIndexBindingRecord(ecmaModule, index);
+}
+
+JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord(
+    const JSHandle<EcmaString> &moduleRecord, int32_t index)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordIndexBindingClass().GetTaggedObject()));
+    JSHandle<ResolvedRecordIndexBinding> obj(thread_, header);
+    obj->SetModuleRecord(thread_, moduleRecord);
+    obj->SetIndex(index);
+    return obj;
+}
+
+JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord()
+{
+    JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
+    JSHandle<EcmaString> ecmaModule(undefinedValue);
+    JSHandle<JSTaggedValue> bindingName(undefinedValue);
+    return NewSResolvedRecordBindingRecord(ecmaModule, bindingName);
 }
 
 JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord(
-    const JSHandle<EcmaString> &moduleRecord, int32_t index)
+    const JSHandle<EcmaString> &moduleRecord, const JSHandle<JSTaggedValue> &bindingName)
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordBindingClass().GetTaggedObject()));
     JSHandle<ResolvedRecordBinding> obj(thread_, header);
     obj->SetModuleRecord(thread_, moduleRecord);
-    obj->SetIndex(index);
+    obj->SetBindingName(thread_, bindingName);
     return obj;
 }
 

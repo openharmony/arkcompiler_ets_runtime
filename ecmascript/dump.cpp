@@ -532,6 +532,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ResolvedBindingRecord";
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             return "ResolvedIndexBindingRecord";
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            return "ResolvedRecordIndexBindingRecord";
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             return "ResolvedRecordBindingRecord";
         case JSType::IMPORTENTRY_RECORD:
@@ -1313,6 +1315,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->Dump(os);
+            break;
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            ResolvedRecordIndexBinding::Cast(obj)->Dump(os);
             break;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->Dump(os);
@@ -4046,13 +4051,23 @@ void ResolvedIndexBinding::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void ResolvedRecordBinding::Dump(std::ostream &os) const
+void ResolvedRecordIndexBinding::Dump(std::ostream &os) const
 {
     os << " - Module: ";
     GetModuleRecord().Dump(os);
     os << "\n";
     os << " - Index: ";
     GetIndex();
+    os << "\n";
+}
+
+void ResolvedRecordBinding::Dump(std::ostream &os) const
+{
+    os << " - Module: ";
+    GetModuleRecord().Dump(os);
+    os << "\n";
+    os << " - BindingName: ";
+    GetBindingName().Dump(os);
     os << "\n";
 }
 
@@ -4659,6 +4674,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             return;
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            ResolvedRecordIndexBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->DumpForSnapshot(vec);
@@ -6377,10 +6395,16 @@ void ResolvedIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
 }
 
-void ResolvedRecordBinding::DumpForSnapshot(std::vector<Reference> &vec) const
+void ResolvedRecordIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
+}
+
+void ResolvedRecordBinding::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
+    vec.emplace_back(CString("BindingName"), GetBindingName());
 }
 
 void ModuleNamespace::DumpForSnapshot(std::vector<Reference> &vec) const
