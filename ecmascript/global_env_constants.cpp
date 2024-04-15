@@ -295,10 +295,39 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->CreateSLayoutInfo(0));
 }
 
-void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
+void GlobalEnvConstants::InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory *factory)
 {
-    JSHClass *hClass = JSHClass::Cast(GetHClassClass().GetTaggedObject());
+    SetConstant(ConstantIndex::JS_API_LINKED_LIST_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPILinkedListIterator::SIZE, JSType::JS_API_LINKED_LIST_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_LIST_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIListIterator::SIZE, JSType::JS_API_LIST_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_PLAIN_ARRAY_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIPlainArrayIterator::SIZE, JSType::JS_API_PLAIN_ARRAY_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_QUEUE_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIQueueIterator::SIZE, JSType::JS_API_QUEUE_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_STACK_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIStackIterator::SIZE, JSType::JS_API_STACK_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_VECTOR_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIVectorIterator::SIZE, JSType::JS_API_VECTOR_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_HASH_MAP_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIHashMapIterator::SIZE, JSType::JS_API_HASHMAP_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_HASH_SET_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIHashSetIterator::SIZE, JSType::JS_API_HASHSET_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_TREE_MAP_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPITreeMapIterator::SIZE, JSType::JS_API_TREEMAP_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_TREE_SET_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPITreeSetIterator::SIZE, JSType::JS_API_TREESET_ITERATOR));
+    SetConstant(ConstantIndex::OBJECT_HCLASS_INDEX, factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
+    SetConstant(ConstantIndex::CLASS_PROTOTYPE_HCLASS_INDEX,
+                factory->CreateDefaultClassPrototypeHClass(hClass));
+    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
+                factory->CreateDefaultClassConstructorHClass(hClass));
+    SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
+}
 
+void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory)
+{
     SetConstant(ConstantIndex::JS_REALM_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSRealm::SIZE, JSType::JS_REALM));
     SetConstant(ConstantIndex::JS_REGEXP_ITERATOR_CLASS_INDEX,
@@ -327,33 +356,14 @@ void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
     SetConstant(ConstantIndex::JS_API_LIGHTWEIGHTSET_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPILightWeightSetIterator::SIZE,
                 JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_LINKED_LIST_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPILinkedListIterator::SIZE, JSType::JS_API_LINKED_LIST_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_LIST_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIListIterator::SIZE, JSType::JS_API_LIST_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_PLAIN_ARRAY_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIPlainArrayIterator::SIZE, JSType::JS_API_PLAIN_ARRAY_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_QUEUE_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIQueueIterator::SIZE, JSType::JS_API_QUEUE_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_STACK_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIStackIterator::SIZE, JSType::JS_API_STACK_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_VECTOR_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIVectorIterator::SIZE, JSType::JS_API_VECTOR_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_HASH_MAP_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIHashMapIterator::SIZE, JSType::JS_API_HASHMAP_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_HASH_SET_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIHashSetIterator::SIZE, JSType::JS_API_HASHSET_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_TREE_MAP_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPITreeMapIterator::SIZE, JSType::JS_API_TREEMAP_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_TREE_SET_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPITreeSetIterator::SIZE, JSType::JS_API_TREESET_ITERATOR));
-    SetConstant(ConstantIndex::OBJECT_HCLASS_INDEX, factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
-    SetConstant(ConstantIndex::CLASS_PROTOTYPE_HCLASS_INDEX,
-                factory->CreateDefaultClassPrototypeHClass(hClass));
-    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
-                factory->CreateDefaultClassConstructorHClass(hClass));
-    SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
+}
+
+void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
+{
+    JSHClass *hClass = JSHClass::Cast(GetHClassClass().GetTaggedObject());
+
+    InitRootsClassesPartOne(hClass, factory);
+    InitRootsClassesPartTwo(hClass, factory);
     // JS_PROXY_CALLABLE_CLASS_INDEX
     JSHClass *jsProxyCallableClass = *factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY);
     jsProxyCallableClass->SetCallable(true);
