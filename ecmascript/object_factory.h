@@ -31,6 +31,7 @@
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/byte_array.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
 
 namespace panda::ecmascript {
 struct MethodLiteral;
@@ -333,10 +334,20 @@ public:
     JSHandle<job::PendingJob> NewPendingJob(const JSHandle<JSFunction> &func, const JSHandle<TaggedArray> &argv);
 
     JSHandle<JSArray> NewJSArray();
-    JSHandle<JSSharedArray> NewJSSArray();
+    JSHandle<JSSharedArray> PUBLIC_API NewJSSArray();
+    JSHandle<JSSharedMap> PUBLIC_API NewJSSMap();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONArray();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONTrue();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONFalse();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONString();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNumber();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNull();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONObject();
     JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
+    JSHandle<TaggedArray> PUBLIC_API NewSJsonFixedArray(size_t start, size_t length,
+                                                    const std::vector<JSHandle<JSTaggedValue>> &vec);
 
     JSHandle<JSProxy> NewJSProxy(const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &handler);
     JSHandle<JSRealm> NewJSRealm();
@@ -499,6 +510,7 @@ public:
 
     void NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length);
     void NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayBuffer> &array, int32_t length);
+    JSHandle<JSSendableArrayBuffer> NewJSSendableArrayBuffer(int32_t length);
 
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length);
 

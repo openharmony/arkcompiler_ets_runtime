@@ -49,6 +49,22 @@ void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bo
 }
 } // namespace
 
+std::pair<bool, int> CheckVersion(JSRuntimeOptions &runtimeOptions, bool result)
+{
+    if (runtimeOptions.IsCheckPgoVersion()) {
+        if (result) {
+            return std::pair(true, 0);
+        } else {
+            LOG_COMPILER(ERROR) << "CheckVersion ap and abc do not match";
+            return std::pair(true, 1);
+        }
+    }
+    if (!result) {
+        return std::pair(true, 1);
+    }
+    return std::pair(false, 0);
+}
+
 int Main(const int argc, const char **argv)
 {
     auto startTime =
@@ -117,8 +133,12 @@ int Main(const int argc, const char **argv)
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
         cPreprocessor.SetShouldCollectLiteralInfo(cOptions, &log);
-        if (!cPreprocessor.GenerateAbcFileInfos()) {
-            return 1;
+        uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
+        // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
+        // need support muilt abc
+        auto result = CheckVersion(runtimeOptions, cPreprocessor.HandleMergedPgoFile(checksum));
+        if (result.first) {
+            return result.second;
         }
         cPreprocessor.GeneratePGOTypes(cOptions);
         cPreprocessor.SnapshotInitialize();

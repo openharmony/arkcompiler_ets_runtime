@@ -1188,7 +1188,6 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
         // set TaskInfo for TaskPool
         generatorObjectHandle->SetTaskInfo(thread->GetTaskInfo());
-        thread->SetTaskInfo(0);
         // save stack, should copy cur_frame, function execute over will free cur_frame
         SaveFrameToContext(thread, genContextHandle);
 
@@ -2602,7 +2601,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
         // set TaskInfo for TaskPool
         generatorObjectHandle->SetTaskInfo(thread->GetTaskInfo());
-        thread->SetTaskInfo(0);
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
             generatorObjectHandle->SetGeneratorState(JSGeneratorState::SUSPENDED_YIELD);

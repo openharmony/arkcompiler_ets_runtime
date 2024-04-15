@@ -18,18 +18,18 @@
 
 #include "ecmascript/base/builtins_base.h"
 
-#define TYPED_ARRAY_TYPES(V)      \
-    V(Int8Array)                  \
-    V(Uint8Array)                 \
-    V(Uint8ClampedArray)          \
-    V(Int16Array)                 \
-    V(Uint16Array)                \
-    V(Int32Array)                 \
-    V(Uint32Array)                \
-    V(Float32Array)               \
-    V(Float64Array)               \
-    V(BigInt64Array)              \
-    V(BigUint64Array)
+#define SHARED_TYPED_ARRAY_TYPES(V)     \
+    V(SharedInt8Array)                  \
+    V(SharedUint8Array)                 \
+    V(SharedUint8ClampedArray)          \
+    V(SharedInt16Array)                 \
+    V(SharedUint16Array)                \
+    V(SharedInt32Array)                 \
+    V(SharedUint32Array)                \
+    V(SharedFloat32Array)               \
+    V(SharedFloat64Array)               \
+    V(SharedBigInt64Array)              \
+    V(SharedBigUint64Array)
 
 // All types of %TypedArray%.
 // V(Type, ctorName, TYPE, bytesPerElement) where JSType::JS_##TYPE is the type index.
@@ -68,8 +68,6 @@
 // List of functions in %TypedArray%.prototype, excluding the constructor and '@@' properties.
 // V(name, func, length, stubIndex)
 // where BuiltinsSharedTypedArray::func refers to the native implementation of %TypedArray%.prototype[name].
-// The following functions are not included:
-//   - %TypedArray%.prototype.toString ( ), which is strictly equal to Array.prototype.toString
 #define BUILTIN_SHARED_TYPED_ARRAY_PROTOTYPE_FUNCTIONS(V)                               \
     /* %TypedArray%.prototype.at ( index ) */                                           \
     V("at",             At,             1, INVALID)                                     \
@@ -106,13 +104,17 @@
     /* %TypedArray%.prototype.set ( source [ , offset ] ) */                            \
     V("set",            Set,            1, INVALID)                                     \
     /* %TypedArray%.prototype.slice ( start, end ) */                                   \
-    V("slice",          Slice,          2, TypedArraySlice)                             \
+    V("slice",          Slice,          2, INVALID)                                     \
     /* %TypedArray%.prototype.some ( callbackfn [ , thisArg ] ) */                      \
     V("some",           Some,           1, INVALID)                                     \
     /* %TypedArray%.prototype.sort ( comparefn ) */                                     \
     V("sort",           Sort,           1, INVALID)                                     \
     /* %TypedArray%.prototype.subarray ( begin, end ) */                                \
-    V("subarray",       Subarray,       2, TypedArraySubArray)                          \
+    V("subarray",       Subarray,       2, INVALID)                                     \
+    /* %TypedArray%.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */       \
+    V("toLocaleString", ToLocaleString, 0, INVALID)                                     \
+    /* %TypedArray%.prototype.toString ( ) */                                           \
+    V("toString",      ToString,        0, INVALID)                                     \
     /* %TypedArray%.prototype.values ( ) */                                             \
     V("values",         Values,         0, INVALID)
 
@@ -120,7 +122,6 @@ namespace panda::ecmascript::builtins {
 class BuiltinsSharedTypedArray : public base::BuiltinsBase {
 public:
     enum SeparatorFlag : int { MINUS_ONE = -1, MINUS_TWO = -2 };
-    // 22.2.1
     static JSTaggedValue TypedArrayBaseConstructor(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Int8ArrayConstructor(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Uint8ArrayConstructor(EcmaRuntimeCallInfo *argv);
@@ -134,70 +135,40 @@ public:
     static JSTaggedValue BigInt64ArrayConstructor(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue BigUint64ArrayConstructor(EcmaRuntimeCallInfo *argv);
 
-    // 22.2.1.2.1
     static JSTaggedValue AllocateTypedArray(EcmaRuntimeCallInfo *argv);
-
-    // 22.2.2.1
     static JSTaggedValue From(EcmaRuntimeCallInfo *argv);
-    // 22.2.2.2
     static JSTaggedValue Of(EcmaRuntimeCallInfo *argv);
-    // 22.2.2.4
     static JSTaggedValue Species(EcmaRuntimeCallInfo *argv);
 
     // prototype
-    // 22.2.3.1
     static JSTaggedValue GetBuffer(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.2
     static JSTaggedValue GetByteLength(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.3
     static JSTaggedValue GetByteOffset(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.5
     static JSTaggedValue CopyWithin(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.6
     static JSTaggedValue Entries(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.7
     static JSTaggedValue Every(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.8
     static JSTaggedValue Fill(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.9
     static JSTaggedValue Filter(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.10
     static JSTaggedValue Find(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.11
     static JSTaggedValue FindIndex(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.12
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.13
     static JSTaggedValue IndexOf(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.14
     static JSTaggedValue Join(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.15
     static JSTaggedValue Keys(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.17
     static JSTaggedValue GetLength(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.18
     static JSTaggedValue Map(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.19
     static JSTaggedValue Reduce(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.21
     static JSTaggedValue Reverse(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.22
     static JSTaggedValue Set(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.23
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.24
     static JSTaggedValue Some(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.25
     static JSTaggedValue Sort(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.26
     static JSTaggedValue Subarray(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.29
+    static JSTaggedValue ToLocaleString(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
-    // 22.2.3.31
     static JSTaggedValue ToStringTag(EcmaRuntimeCallInfo *argv);
-    // es12 23.2.3.13
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
-    // 23.2.3.1
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
     static const uint32_t MAX_ARRAY_INDEX = std::numeric_limits<uint32_t>::max();
 
@@ -221,13 +192,12 @@ public:
 
     static size_t GetNumPrototypeInlinedProperties()
     {
-        // 4 : 4 more inline properties in %TypedArray%.prototype for the following functions/accessors:
+        // 3 : 3 more inline properties in %TypedArray%.prototype for the following functions/accessors:
         //   (1) %TypedArray%.prototype.constructor
-        //   (2) %TypedArray%.prototype.toString, which is strictly equal to Array.prototype.toString
-        //   (3) %TypedArray%.prototype[@@iterator]
-        //   (4) %TypedArray%.prototype[@@toStringTag]
+        //   (2) %TypedArray%.prototype[@@iterator]
+        //   (3) %TypedArray%.prototype[@@toStringTag]
         return GetTypedArrayPrototypeFunctions().Size() +
-               GetTypedArrayPrototypeAccessors().Size() + 4;
+               GetTypedArrayPrototypeAccessors().Size() + 3;
     }
 
     static Span<const std::pair<std::string_view, bool>> GetPrototypeProperties()
@@ -243,6 +213,11 @@ public:
     static Span<const std::pair<std::string_view, bool>> GetSpecificFunctionProperties()
     {
         return Span<const std::pair<std::string_view, bool>>(SPECIFIC_TYPED_ARRAY_FUNCTION_PROPERTIES);
+    }
+
+    static Span<const std::pair<std::string_view, bool>> GetSpecificArrayPrototypeProperties()
+    {
+        return Span<const std::pair<std::string_view, bool>>(SPECIFIC_TYPED_ARRAY_PROTOTYPE_PROPERTIES);
     }
 
 private:
@@ -272,7 +247,6 @@ private:
         std::pair<std::string_view, bool>("byteLength", true),
         std::pair<std::string_view, bool>("byteOffset", true),
         std::pair<std::string_view, bool>("length", true),
-        std::pair<std::string_view, bool>("toString", false),
         std::pair<std::string_view, bool>("[Symbol.iterator]", false),
         std::pair<std::string_view, bool>("[Symbol.toStringTag]", false),
     };
@@ -289,6 +263,11 @@ private:
         std::pair<std::string_view, bool>("length", false),
         std::pair<std::string_view, bool>("name", false),
         std::pair<std::string_view, bool>("prototype", false),
+        std::pair<std::string_view, bool>("BYTES_PER_ELEMENT", false),
+    };
+
+    static constexpr std::array SPECIFIC_TYPED_ARRAY_PROTOTYPE_PROPERTIES = {
+        std::pair<std::string_view, bool>("constructor", false),
         std::pair<std::string_view, bool>("BYTES_PER_ELEMENT", false),
     };
 #undef TYPED_ARRAY_PROPERTIES_PAIR

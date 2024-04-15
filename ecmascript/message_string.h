@@ -31,6 +31,7 @@ namespace panda::ecmascript {
     V(UpdateSendableAttributes, "Cannot update sendable object's attributes")                \
     V(SetProtoWithSendable, "Cannot set proto with sendable object")                         \
     V(ClassNotDerivedFromShared, "Class not derived from a sendable object")                 \
+    V(StringifySendableObject, "Only sendable object can stringify")                         \
     V(NotSendableSubClass, "The subclass of sendable class must be a sendable class")        \
     V(FunctionCallNotConstructor, "class constructor cannot call")                           \
     V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions")             \
@@ -58,7 +59,8 @@ namespace panda::ecmascript {
     V(CanNotConvertContainerObject, "Can not delete property in Container Object")           \
     V(InvalidStringLength, "Invalid string length")                                          \
     V(InvalidNewTarget, "new.target is not an object")                                       \
-    V(ObjIsNotCallable, "obj is not Callable")
+    V(ObjIsNotCallable, "obj is not Callable")                                               \
+    V(SharedObjectRefersLocalObject, "shared object refers a local object")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

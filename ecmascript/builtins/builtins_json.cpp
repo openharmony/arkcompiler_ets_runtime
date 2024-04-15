@@ -29,6 +29,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/base/sendable_json_parse.h"
 
 namespace panda::ecmascript::builtins {
 namespace {
@@ -90,19 +91,28 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JS
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     JSHandle<EcmaString> parseString = JSTaggedValue::ToString(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> result;
-    if (EcmaStringAccessor(parseString).IsUtf8()) {
-        panda::ecmascript::base::Utf8JsonParser parser(thread, transformType);
-        result = parser.Parse(parseString);
+    if (transformType ==  TransformType::SENDABLE) {
+        if (EcmaStringAccessor(parseString).IsUtf8()) {
+            panda::ecmascript::base::Utf8SendableJsonParser parser(thread, transformType);
+            result = parser.Parse(parseString);
+        } else {
+            panda::ecmascript::base::Utf16SendableJsonParser parser(thread, transformType);
+            result = parser.Parse(*parseString);
+        }
     } else {
-        panda::ecmascript::base::Utf16JsonParser parser(thread, transformType);
-        result = parser.Parse(*parseString);
+        if (EcmaStringAccessor(parseString).IsUtf8()) {
+            panda::ecmascript::base::Utf8JsonParser parser(thread, transformType);
+            result = parser.Parse(parseString);
+        } else {
+            panda::ecmascript::base::Utf16JsonParser parser(thread, transformType);
+            result = parser.Parse(*parseString);
+        }
     }
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue reviver = JSTaggedValue::Undefined();
     if (reviverVal->IsJSFunction()) {
         reviver = reviverVal.GetTaggedValue();
@@ -136,6 +146,16 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JS
 // 24.5.2
 JSTaggedValue BuiltinsJson::Stringify(EcmaRuntimeCallInfo *argv)
 {
+    return BuiltinsJson::StringifyWithTransformType(argv, TransformType::NORMAL);
+}
+
+JSTaggedValue BuiltinsSendableJson::Stringify(EcmaRuntimeCallInfo *argv)
+{
+    return BuiltinsJson::StringifyWithTransformType(argv, TransformType::SENDABLE);
+}
+
+JSTaggedValue BuiltinsJson::StringifyWithTransformType(EcmaRuntimeCallInfo *argv, TransformType transformType)
+{
     BUILTINS_API_TRACE(argv->GetThread(), Json, Stringify);
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
@@ -143,6 +163,15 @@ JSTaggedValue BuiltinsJson::Stringify(EcmaRuntimeCallInfo *argv)
 
     uint32_t argc = argv->GetArgsNumber();
     JSTaggedValue value = GetCallArg(argv, 0).GetTaggedValue();
+    if (value.IsJSSharedJSONValue()) {
+        value = JSSharedJSONValue::Cast(value)->GetValue();
+    }
+    if (transformType == TransformType::SENDABLE) {
+        if (value.IsHeapObject() && !value.IsJSShared() && !value.IsString()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(StringifySendableObject),
+                                        JSTaggedValue::Exception());
+        }
+    }
     if (argc == 1 && thread->GetCurrentEcmaContext()->IsAotEntry()) {
         JSHandle<JSTaggedValue> handleValue(thread, value);
         panda::ecmascript::base::FastJsonStringifier stringifier(thread);

@@ -298,6 +298,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-induction-variable", required_argument, nullptr, OPTION_COMPILER_OPT_INDUCTION_VARIABLE},
         {"compiler-trace-induction-variable", required_argument, nullptr, OPTION_COMPILER_TRACE_INDUCTION_VARIABLE},
         {"compiler-memory-analysis", required_argument, nullptr, OPTION_COMPILER_MEMORY_ANALYSIS},
+        {"compiler-check-pgo-version", required_argument, nullptr, OPTION_COMPILER_CHECK_PGO_VERSION},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1090,6 +1091,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableMemoryAnalysis(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_CHECK_PGO_VERSION:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCheckPgoVersion(argBool);
                 } else {
                     return false;
                 }

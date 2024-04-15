@@ -54,6 +54,9 @@ JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue>
             // FastPath
             JSHandle<JSArray> arr(replacer);
             len = arr->GetArrayLength();
+        } else if (replacer->IsJSSharedArray()) {
+            JSHandle<JSSharedArray> arr(replacer);
+            len = arr->GetArrayLength();
         } else {
             // Let len be ToLength(Get(replacer, "length")).
             JSHandle<JSTaggedValue> lengthKey = thread_->GlobalConstants()->GetHandledLengthString();
@@ -266,6 +269,11 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
         JSHandle<JSTaggedValue> valHandle(thread_, tagValue);
         switch (jsType) {
             case JSType::JS_ARRAY: {
+                SerializeJSArray(valHandle, replacer);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                return tagValue;
+            }
+            case JSType::JS_SHARED_ARRAY: {
                 SerializeJSArray(valHandle, replacer);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                 return tagValue;
@@ -524,8 +532,15 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
         stepBegin += indent_;
     }
     result_ += "[";
-    JSHandle<JSArray> jsArr(value);
-    uint32_t len = jsArr->GetArrayLength();
+    uint32_t len = 0;
+    if (value->IsJSArray()) {
+        JSHandle<JSArray> jsArr(value);
+        len = jsArr->GetArrayLength();
+    } else if (value->IsJSSharedArray()) {
+        JSHandle<JSSharedArray> jsArr(value);
+        len = jsArr->GetArrayLength();
+    }
+
     if (len > 0) {
         for (uint32_t i = 0; i < len; i++) {
             JSTaggedValue tagVal = ObjectFastOperator::FastGetPropertyByIndex(thread_, value.GetTaggedValue(), i);

@@ -237,6 +237,16 @@
       panda::ecmascript::ObjectFactory::NewSTaggedArray*;
       panda::ecmascript::ObjectFactory::NewSEcmaHClassDictMode*;
       panda::ecmascript::SendableClassDefiner::AddFieldTypeToHClass*;
+      panda::ecmascript::ObjectFactory::NewJSSArray*;
+      panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;
+      panda::ecmascript::ObjectFactory::NewSJSONArray*;
+      panda::ecmascript::ObjectFactory::NewSJSONTrue*;
+      panda::ecmascript::ObjectFactory::NewSJSONFalse*;
+      panda::ecmascript::ObjectFactory::NewSJSONString*;
+      panda::ecmascript::ObjectFactory::NewSJSONNumber*;
+      panda::ecmascript::ObjectFactory::NewSJSONNull*;
+      panda::ecmascript::ObjectFactory::NewSJSONObject*;
+      panda::ecmascript::ObjectFactory::NewJSSMap*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageSize*;

@@ -127,6 +127,7 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -313,6 +314,20 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
     array->SetArrayBufferData(thread_, pointer);
     array->SetWithNativeAreaAllocator(true);
     nativeAreaAllocator->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
+}
+
+JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(int32_t length)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+
+    JSHandle<JSFunction> constructor(env->GetSBuiltininArrayBufferFunction());
+    JSHandle<JSSendableArrayBuffer> sendableArrayBuffer(NewJSObjectByConstructor(constructor));
+    sendableArrayBuffer->SetArrayBufferByteLength(length);
+    if (length > 0) {
+        NewJSSendableArrayBufferData(sendableArrayBuffer, length);
+        sendableArrayBuffer->SetShared(true);
+    }
+    return sendableArrayBuffer;
 }
 
 void ObjectFactory::NewJSSharedArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length)
@@ -736,13 +751,6 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSHClas
     return obj;
 }
 
-JSHandle<JSSharedArray> ObjectFactory::NewJSSArray()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedArrayFunction());
-    return JSHandle<JSSharedArray>(NewJSObjectByConstructor(function));
-}
-
 JSHandle<JSArray> ObjectFactory::NewJSArray()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -1013,7 +1021,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
                                      env->GetObjectFunctionPrototype());
         }
         JSHandle<JSObject> obj;
-        if (jshclass->IsJSSharedObject()) {
+        if (jshclass->IsJSShared()) {
             obj = NewSharedOldSpaceJSObject(jshclass);
             if (jshclass->IsDictionaryMode()) {
                 auto fieldLayout = jshclass->GetLayout();
@@ -1022,6 +1030,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
                 auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
                 obj->SetProperties(thread_, properties);
             }
+            InitializeJSObject(obj, jshclass);
         } else {
             obj = NewJSObjectWithInit(jshclass);
         }
@@ -1091,6 +1100,16 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ITERATOR: {
+            break;
+        }
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY: {
+            JSSharedJSONValue::Cast(*obj)->SetValue(thread_, JSTaggedValue::Null());
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -2643,6 +2662,9 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, 
             break;
         case MemSpaceType::OLD_SPACE:
             header = heap_->AllocateOldOrHugeObject(arrayClass, size);
+            break;
+        case MemSpaceType::SHARED_OLD_SPACE:
+            header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
