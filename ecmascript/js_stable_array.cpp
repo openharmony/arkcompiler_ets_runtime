@@ -365,6 +365,10 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
         JSTaggedValue element = JSTaggedValue::Undefined();
         if (k < elementsLength) {
             element = ElementAccessor::Get(obj, k);
+            if (element.IsHole() && JSTaggedValue::HasProperty(thread, receiverValue, k)) {
+                element = JSArray::FastGetPropertyByValue(thread, receiverValue, k).GetTaggedValue();
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            }
         }
         if (!element.IsUndefinedOrNull() && !element.IsHole()) {
             if (!element.IsString()) {

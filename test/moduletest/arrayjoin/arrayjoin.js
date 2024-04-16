@@ -103,3 +103,12 @@ print(v6.join(String.fromCodePoint(0)));
 const v7 = new Float32Array(2);
 v7[0] = NaN;
 print(v7.join(String.fromCodePoint(0)));
+
+const element = {
+    toString() {
+        Array.prototype[1] = 'b';
+        return 'a';
+    }
+};
+const arr_join = [element, ,'c'];
+print("abc" == arr_join.join(''));

@@ -1985,7 +1985,6 @@
         "mjsunit/math-abs.js",
         "mjsunit/promise-perform-all-resolve-lookup.js",
         "mjsunit/constant-folding-2.js",
-        "mjsunit/array-join-element-tostring-prototype-side-effects.js",
         "mjsunit/console.js",
         "mjsunit/readonly.js",
         "mjsunit/large-object-literal-slow-elements.js",
