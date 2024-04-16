@@ -2661,7 +2661,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructProxy(JSThread *thread, JSHandle<
     if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor: handler is null", JSTaggedValue::Exception());
     }
-    ASSERT(handler->IsJSObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> target(thread, ctor->GetTarget());
 
     // 5.Let trap be GetMethod(handler, "construct").
