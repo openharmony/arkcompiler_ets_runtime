@@ -27,10 +27,10 @@ namespace panda::ecmascript::kungfu {
 
 // BUILTINS_STUB_LIST is shared both ASM Interpreter and AOT.
 // AOT_BUILTINS_STUB_LIST is used in AOT only.
-#define BUILTINS_STUB_LIST(V, D)                    \
+#define BUILTINS_STUB_LIST(V, D, C)                 \
     BUILTINS_METHOD_STUB_LIST(D, D, D, D)           \
     BUILTINS_WITH_CONTAINERS_STUB_BUILDER(D)        \
-    BUILTINS_CONSTRUCTOR_STUB_LIST(V)               \
+    BUILTINS_CONSTRUCTOR_STUB_LIST(C)               \
     AOT_AND_BUILTINS_STUB_LIST(V)                   \
     BUILTINS_ARKTOOLS_STUB_BUILDER(D)
 
@@ -253,7 +253,7 @@ public:
 #define DEF_STUB_ID(name) name,
 #define DEF_STUB_ID_DYN(name, type, ...) type##name,
         PADDING_BUILTINS_STUB_LIST(DEF_STUB_ID)
-        BUILTINS_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN)
+        BUILTINS_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN, DEF_STUB_ID)
         NUM_OF_BUILTINS_STUBS,
         AOT_BUILTINS_STUB_LIST(DEF_STUB_ID)
         AOT_BUILTINS_INLINE_LIST(DEF_STUB_ID)

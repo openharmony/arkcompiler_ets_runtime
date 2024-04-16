@@ -245,6 +245,53 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
     __ Ret();
 }
 
+// * uint64_t CallBuiltinConstructorStub(uintptr_t glue, uintptr_t codeAddress, uint32_t argc, ...)
+// * webkit_jscc calling convention call runtime_id's runtime function(c-abi)
+//
+// * Construct Native Leave Frame Layout:
+//          +--------------------------+
+//          |       argv[N-1]          |
+//          +--------------------------+
+//          |      . . . . . .         |
+//          +--------------------------+
+//          |      argv[3]=a0          |
+//          +--------------------------+
+//          |      argv[2]=this        |
+//          +--------------------------+
+//          |   argv[1]=new-target     |
+//          +--------------------------+
+//          |   argv[0]=call-target    |
+//          +--------------------------+ -----------------
+//          |       argc               |                 ^
+//          |--------------------------|                 |
+//          |       thread             |                 |
+//          |--------------------------|                 |
+//          |       returnAddr         |    OptimizedBuiltinLeaveFrame
+//  sp ---> |--------------------------|                 |
+//          |       callsiteFp         |                 |
+//          |--------------------------|                 |
+//          |       frameType          |                 v
+//          +--------------------------+ -----------------
+
+void OptimizedCall::CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
+                                               Register glue, Register temp)
+{
+    __ Movq(Operand(rsp, 0), temp);
+    __ Movq(glue, Operand(rsp, 0));
+    __ Push(temp);
+
+    AsmInterpreterCall::PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_CALL_LEAVE_FRAME);
+    __ PushAlignBytes();
+    __ Pushq(argv);
+    __ Callq(builtinStub);
+    // resume rsp
+    __ Movq(rbp, rsp);
+    __ Pop(rbp);
+    __ Pop(temp);
+    __ Movq(temp, Operand(rsp, 0));
+    __ Ret();
+}
+
 // * uint64_t JSProxyCallInternalWithArgV(uintptr_t glue, JSTaggedType calltarget)
 // * c++ calling convention call js function
 // * Arguments:
@@ -437,18 +484,15 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
         Label lCall1;
         Label lCall2;
         Label lCall3;
-        Label lexit;
         argV = rax;
 
         __ Movq(rsp, argV);
         auto argvSlotOffset = kungfu::ArgumentAccessor::GetFixArgsNum() +
             kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
         __ Addq(argvSlotOffset *FRAME_SLOT_SIZE, argV);
-        __ Pushq(rbp);
-        __ Pushq(static_cast<int32_t>(FrameType::ASM_BRIDGE_FRAME));
-        __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
-
         if (!isNew) {
+            PushAsmBridgeFrame(assembler);
+
             __ Cmpl(0, r9);  // 0: callarg0
             __ Je(&lCall0);
             __ Cmpl(1, r9);  // 1: callarg1
@@ -465,7 +509,8 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
                 __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
                 __ Callq(r10);
                 __ Addq(QUADRUPLE_SLOT_SIZE, rsp);
-                __ Jmp(&lexit);
+                __ Pop(rbp);
+                __ Ret();
             }
 
             __ Bind(&lCall1);
@@ -476,7 +521,8 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
                 __ Pushq(r11);
                 __ Callq(r10);
                 __ Addq(QUADRUPLE_SLOT_SIZE, rsp);
-                __ Jmp(&lexit);
+                __ Pop(rbp);
+                __ Ret();
             }
 
             __ Bind(&lCall2);
@@ -488,7 +534,8 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
                 __ Pushq(r11);
                 __ Callq(r10);
                 __ Addq(QUADRUPLE_SLOT_SIZE, rsp);
-                __ Jmp(&lexit);
+                __ Pop(rbp);
+                __ Ret();
             }
 
             __ Bind(&lCall3);
@@ -501,17 +548,12 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
                 __ Pushq(r11);
                 __ Callq(r10);
                 __ Addq(QUADRUPLE_SLOT_SIZE, rsp);
+                __ Pop(rbp);
+                __ Ret();
             }
         } else {
-            __ Pushq(argV);                                        // argv
-            __ Callq(r10);
-            __ Addq(DOUBLE_SLOT_SIZE, rsp);
-        }
-
-        __ Bind(&lexit);
-        {
-            __ Pop(rbp);
-            __ Ret();
+            CallBuiltinConstructorStub(assembler, r10, argV, glueReg, r11);
+            __ Int3();
         }
     }
 
@@ -521,6 +563,13 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
     }
     __ Bind(&lJSProxy);
     JSProxyCallInternal(assembler, jsFuncReg);
+}
+
+void OptimizedCall::PushAsmBridgeFrame(ExtendedAssembler *assembler)
+{
+    __ Pushq(rbp);
+    __ Pushq(static_cast<int32_t>(FrameType::ASM_BRIDGE_FRAME));
+    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
 }
 
 void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
@@ -1124,9 +1173,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
 
     Register glueReg = rdi;
-    __ Pushq(rbp);
-    __ Pushq(static_cast<int32_t>(FrameType::ASM_BRIDGE_FRAME));
-    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
+    PushAsmBridgeFrame(assembler);
     __ Push(glueReg);
     __ PushCppCalleeSaveRegisters();
 
