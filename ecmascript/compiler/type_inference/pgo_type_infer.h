@@ -26,10 +26,10 @@ struct CollectedType;
 class PGOTypeInfer {
 public:
     PGOTypeInfer(Circuit *circuit, TSManager *tsManager, PGOTypeManager *ptManager, BytecodeCircuitBuilder *builder,
-                 const std::string &name, Chunk *chunk, bool enableLog)
+                 const std::string &name, Chunk *chunk, bool enableLog, CompilationEnv *env)
         : circuit_(circuit), acc_(circuit), argAcc_(circuit), tsManager_(tsManager),
           ptManager_(ptManager), helper_(tsManager), builder_(builder), methodName_(name), chunk_(chunk),
-          enableLog_(enableLog), profiler_(chunk) {}
+          enableLog_(enableLog), profiler_(chunk), compilationEnv_(env) {}
     ~PGOTypeInfer() = default;
 
     void Run();
@@ -89,13 +89,14 @@ private:
     GateAccessor acc_;
     ArgumentAccessor argAcc_;
     TSManager *tsManager_ {nullptr};
-    PGOTypeManager *ptManager_ {nullptr};
+    [[maybe_unused]] PGOTypeManager *ptManager_ {nullptr};
     PGOTypeInferHelper helper_;
     BytecodeCircuitBuilder *builder_ {nullptr};
     const std::string &methodName_;
     Chunk *chunk_ {nullptr};
     bool enableLog_ {false};
     Profiler profiler_;
+    CompilationEnv *compilationEnv_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_PGO_TYPE_INFER_H

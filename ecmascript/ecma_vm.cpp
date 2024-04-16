@@ -35,7 +35,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/jit/jit.h"
+#include "ecmascript/jit/jit_task.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -193,6 +193,22 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     SetEnableOsr(options_.IsEnableOSR() && options_.IsEnableJIT() && options_.GetEnableAsmInterpreter());
 }
 
+// for jit
+EcmaVM::EcmaVM()
+    : nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
+      heapRegionAllocator_(nullptr),
+      chunk_(nativeAreaAllocator_.get()) {}
+
+void EcmaVM::InitializeForJit(JitThread *jitThread)
+{
+    thread_ = jitThread;
+    stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
+    ASSERT(stringTable_);
+    // ObjectFactory only sypport alloc string in sharedheap
+    factory_ = chunk_.New<ObjectFactory>(thread_, nullptr, SharedHeap::GetInstance());
+    SetIsJitCompileVM(true);
+}
+
 void EcmaVM::InitializePGOProfiler()
 {
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
@@ -235,6 +251,9 @@ bool EcmaVM::IsEnableJit() const
 
 void EcmaVM::EnableJit() const
 {
+    if (pgoProfiler_ != nullptr) {
+        pgoProfiler_->InitJITProfiler();
+    }
     GetJSThread()->SwitchJitProfileStubs();
 }
 
@@ -290,6 +309,15 @@ bool EcmaVM::Initialize()
 
 EcmaVM::~EcmaVM()
 {
+    if (isJitCompileVM_) {
+        if (factory_ != nullptr) {
+            delete factory_;
+            factory_ = nullptr;
+        }
+        stringTable_ = nullptr;
+        thread_ = nullptr;
+        return;
+    }
     ASSERT(thread_->IsInRunningStateOrProfiling());
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -304,6 +332,9 @@ EcmaVM::~EcmaVM()
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     DeleteHeapProfile();
 #endif
+    if (IsEnableJit()) {
+        GetJit()->ClearTaskWithVm(this);
+    }
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 

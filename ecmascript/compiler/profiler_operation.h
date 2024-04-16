@@ -112,7 +112,9 @@ public:
 
     inline void TryJitCompile() const
     {
-        if (jitCallback_) {
+        if (callback_) {
+            callback_({ }, OperationType::TRY_JIT);
+        } else if (jitCallback_) {
             jitCallback_({ }, OperationType::TRY_JIT);
         }
     }

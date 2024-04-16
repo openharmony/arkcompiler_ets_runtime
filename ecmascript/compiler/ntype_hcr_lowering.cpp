@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef NTypeHCRLowering::VisitGate(GateRef gate)
@@ -21,11 +22,15 @@ GateRef NTypeHCRLowering::VisitGate(GateRef gate)
     GateRef glue = acc_.GetGlueFromArgList();
     auto op = acc_.GetOpCode(gate);
     switch (op) {
-        case OpCode::CREATE_ARRAY:
-            LowerCreateArray(gate, glue);
+        case OpCode::CREATE_ARRAY: {
+                Jit::JitLockHolder lock(compilationEnv_, "LowerCreateArray");
+                LowerCreateArray(gate, glue);
+            }
             break;
-        case OpCode::CREATE_ARRAY_WITH_BUFFER:
-            LowerCreateArrayWithBuffer(gate, glue);
+        case OpCode::CREATE_ARRAY_WITH_BUFFER: {
+                Jit::JitLockHolder lock(compilationEnv_, "LowerCreateArrayWithBuffer");
+                LowerCreateArrayWithBuffer(gate, glue);
+            }
             break;
         case OpCode::CREATE_ARGUMENTS:
             LowerCreateArguments(gate, glue);
@@ -89,7 +94,11 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     GateRef literialElements = LoadFromConstPool(constpool, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
     uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
     JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
-    JSHandle<JSArray> arrayHandle(thread_, arr);
+    if (arr.IsUndefined()) {
+        return;
+    }
+    DISALLOW_GARBAGE_COLLECTION;
+    JSArray *arrayHandle = JSArray::Cast(arr.GetTaggedObject());
     TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements());
     uint32_t literialLength = arrayLiteral->GetLength();
     uint32_t arrayLength = acc_.GetArraySize(gate);
@@ -168,14 +177,14 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     ElementsKind kind = acc_.GetArrayMetaDataAccessor(gate).GetElementsKind();
     GateRef hclass = Circuit::NullGate();
     if (!Elements::IsGeneric(kind)) {
-        auto hclassIndex = thread_->GetArrayHClassIndexMap().at(kind);
+        auto hclassIndex = compilationEnv_->GetArrayHClassIndexMap().at(kind);
         hclass = builder_.GetGlobalConstantValue(hclassIndex);
     } else {
         GateRef globalEnv = builder_.GetGlobalEnv();
         hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
     }
 
-    JSHandle<JSFunction> arrayFunc(thread_->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
+    JSHandle<JSFunction> arrayFunc(compilationEnv_->GetGlobalEnv()->GetArrayFunction());
     JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass();
     JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
     size_t arraySize = arrayHC->GetObjectSize();

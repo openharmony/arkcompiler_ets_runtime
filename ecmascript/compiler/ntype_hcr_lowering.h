@@ -27,7 +27,7 @@ public:
         : PassVisitor(circuit, chunk, visitor),
           circuit_(circuit),
           acc_(circuit),
-          thread_(ctx->GetEcmaVM()->GetJSThread()),
+          compilationEnv_(ctx->GetCompilationEnv()),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
           jsPandaFile_(ctx->GetJSPandaFile()),
@@ -64,20 +64,19 @@ private:
 
     JSTaggedValue GetConstantpoolValue(uint32_t cpId)
     {
-        return thread_->GetCurrentEcmaContext()->FindConstpool(jsPandaFile_, cpId);
+        return compilationEnv_->FindConstpool(jsPandaFile_, cpId);
     }
 
     JSTaggedValue GetArrayLiteralValue(uint32_t cpId, uint32_t cpIdx)
     {
         JSTaggedValue cp = GetConstantpoolValue(cpId);
-        JSTaggedValue unsharedCp = thread_->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(cp);
-        return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-            thread_, unsharedCp, cpIdx, recordName_);
+        JSTaggedValue unsharedCp = compilationEnv_->FindOrCreateUnsharedConstpool(cp);
+        return compilationEnv_->GetArrayLiteralFromCache(unsharedCp, cpIdx, recordName_);
     }
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
-    JSThread *thread_ {nullptr};
+    CompilationEnv *compilationEnv_ {nullptr};
     CircuitBuilder builder_;
     GateRef dependEntry_;
     const JSPandaFile *jsPandaFile_ {nullptr};

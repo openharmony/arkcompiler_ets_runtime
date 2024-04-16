@@ -17,10 +17,9 @@
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/dfx/vmstat/jit_preheat_profiler.h"
 
 namespace panda::ecmascript {
-std::deque<JitTask*> Jit::asyncCompileJitTasks_;
-Mutex Jit::asyncCompileJitTasksMtx_;
 void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
 bool(*Jit::jitCompile_)(void*, JitTask*) = nullptr;
 bool(*Jit::jitFinalize_)(void*, JitTask*) = nullptr;
@@ -36,6 +35,7 @@ Jit *Jit::GetInstance()
 
 void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnable)
 {
+    LockHolder holder(setEnableLock_);
     if (options.IsEnableAPPJIT()) {
         // temporary for app jit options test.
         LOG_JIT(DEBUG) << (isEnable ? "jit is enable" : "jit is disable");
@@ -51,6 +51,24 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnable)
     if (initialized_ && !jitEnable_) {
         jitEnable_ = true;
         initJitCompiler_(options);
+        JitTaskpool::GetCurrentTaskpool()->Initialize();
+    }
+}
+
+void Jit::Destroy()
+{
+    if (!initialized_) {
+        return;
+    }
+
+    LockHolder holder(setEnableLock_);
+
+    JitTaskpool::GetCurrentTaskpool()->Destroy();
+    initialized_ = false;
+    jitEnable_ = false;
+    if (libHandle_ != nullptr) {
+        CloseLib(libHandle_);
+        libHandle_ = nullptr;
     }
 }
 
@@ -109,10 +127,6 @@ void Jit::Initialize()
 
 Jit::~Jit()
 {
-    if (libHandle_ != nullptr) {
-        CloseLib(libHandle_);
-        libHandle_ = nullptr;
-    }
 }
 
 bool Jit::SupportJIT(Method *method)
@@ -122,6 +136,7 @@ bool Jit::SupportJIT(Method *method)
         case FunctionKind::NORMAL_FUNCTION:
         case FunctionKind::BASE_CONSTRUCTOR:
         case FunctionKind::ARROW_FUNCTION:
+        case FunctionKind::CLASS_CONSTRUCTOR:
             return true;
         default:
             return false;
@@ -131,6 +146,17 @@ bool Jit::SupportJIT(Method *method)
 void Jit::DeleteJitCompile(void *compiler)
 {
     deleteJitCompile_(compiler);
+}
+
+void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
+{
+    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
+    CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
+    CString methodInfo = fileDesc + ":" + CString(method->GetMethodName());
+    auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
+    if (profMap.find(methodInfo) == profMap.end()) {
+        profMap.insert({methodInfo, false});
+    }
 }
 
 void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, int32_t offset, JitCompileMode mode)
@@ -146,93 +172,85 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, int32_t offset, 
 
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
-    FunctionKind kind = method->GetFunctionKind();
-    CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName()) + ", at:" + fileDesc;
-    if (!jit->SupportJIT(method)) {
-        LOG_JIT(INFO) << "method does not support jit:" << methodName << ", kind:" << static_cast<int>(kind);
+#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+    CString methodInfo = fileDesc + ":" + CString(method->GetMethodName());
+#else
+    uint32_t codeSize = method->GetCodeSize();
+    CString methodInfo = method->GetRecordNameStr() + "." + CString(method->GetMethodName()) + ", at:" + fileDesc +
+        ", code size:" + ToCString(codeSize);
+    constexpr uint32_t maxSize = 9000;
+    if (codeSize > maxSize) {
+        LOG_JIT(DEBUG) << "skip jit task, as too large:" << methodInfo;
+        return;
+    }
+#endif
+    if (vm->GetJSThread()->IsMachineCodeLowMemory()) {
+        LOG_JIT(DEBUG) << "skip jit task, as low code memory:" << methodInfo;
+        return;
+    }
+    bool isJSSharedFunction = jsFunction.GetTaggedValue().IsJSSharedFunction();
+    if (!jit->SupportJIT(method) || isJSSharedFunction) {
+        FunctionKind kind = method->GetFunctionKind();
+#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+        LOG_JIT(ERROR) << "method does not support jit:" << methodInfo << ", kind:" << static_cast<int>(kind)
+            <<", JSSharedFunction:" << isJSSharedFunction;
+#else
+        LOG_JIT(INFO) << "method does not support jit:" << methodInfo << ", kind:" << static_cast<int>(kind)
+            <<", JSSharedFunction:" << isJSSharedFunction;
+#endif
         return;
     }
 
     if (jsFunction->GetMachineCode() == JSTaggedValue::Hole()) {
-        LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodName;
+        LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodInfo;
+#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+        auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
+        if (profMap.find(methodInfo) != profMap.end()) {
+            profMap.erase(methodInfo);
+        }
+#endif
         return;
     }
 
     if (jsFunction->GetMachineCode() != JSTaggedValue::Undefined()) {
         MachineCode *machineCode = MachineCode::Cast(jsFunction->GetMachineCode().GetTaggedObject());
         if (machineCode->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {
-            LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
+            LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodInfo;
             return;
         }
     }
 
     // using hole value to indecate compiling. todo: reset when failed
     jsFunction->SetMachineCode(vm->GetJSThread(), JSTaggedValue::Hole());
-
-    LOG_JIT(DEBUG) << "start compile:" << methodName << ", kind:" << static_cast<int>(kind) <<
-        ", mode:" << ((mode == SYNC) ? "sync" : "async") <<
-        (offset == MachineCode::INVALID_OSR_OFFSET ? "" : ", OSR offset: " + std::to_string(offset));
-
     {
-        CString msg = "compile method:" + methodName + ", in work thread";
-        Scope scope(msg);
-
-        JitTask *jitTask = new JitTask(vm, jit, jsFunction, methodName, offset, vm->GetJSThread()->GetThreadId());
+        CString msg = "compile method:" + methodInfo + ", in work thread";
+        TimeScope scope(msg);
+        JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
+        EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
+        std::shared_ptr<JitTask> jitTask = std::make_shared<JitTask>(vm->GetJSThread(), compilerVm->GetJSThread(),
+            jit, jsFunction, methodInfo, offset, vm->GetJSThread()->GetThreadId(), mode);
 
         jitTask->PrepareCompile();
-
-        jitTask->Optimize();
-
+        JitTaskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<JitTask::AsyncTask>(jitTask, vm->GetJSThread()->GetThreadId()));
         if (mode == SYNC) {
-            // cg
-            jitTask->Finalize();
+            // sync mode, also compile in taskpool as litecg unsupport parallel compile,
+            // wait task compile finish then install code
+            jitTask->WaitFinish();
             jitTask->InstallCode();
-            // free
-            delete jitTask;
-        } else {
-            jit->AddAsyncCompileTask(jitTask);
         }
     }
 }
 
-JitTask *Jit::GetAsyncCompileTask()
-{
-    LockHolder holder(asyncCompileJitTasksMtx_);
-    if (asyncCompileJitTasks_.empty()) {
-        return nullptr;
-    } else {
-        auto jitTask = asyncCompileJitTasks_.front();
-        return jitTask;
-    }
-}
-
-void Jit::AddAsyncCompileTask(JitTask *jitTask)
-{
-    LockHolder holder(asyncCompileJitTasksMtx_);
-    if (asyncCompileJitTasks_.empty()) {
-        Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<JitTask::AsyncTask>(jitTask, jitTask->GetVM()->GetJSThread()->GetThreadId()));
-    }
-    asyncCompileJitTasks_.push_back(jitTask);
-}
-
-void Jit::RemoveAsyncCompileTask([[maybe_unused]] JitTask *jitTask)
-{
-    LockHolder holder(asyncCompileJitTasksMtx_);
-    ASSERT(!asyncCompileJitTasks_.empty());
-    ASSERT(asyncCompileJitTasks_.front() == jitTask);
-    asyncCompileJitTasks_.pop_front();
-}
-
-void Jit::RequestInstallCode(JitTask *jitTask)
+void Jit::RequestInstallCode(std::shared_ptr<JitTask> jitTask)
 {
     LockHolder holder(installJitTasksDequeMtx_);
     auto &taskQueue = installJitTasks_[jitTask->GetTaskThreadId()];
     taskQueue.push_back(jitTask);
 
     // set
-    jitTask->GetVM()->GetJSThread()->SetInstallMachineCode(true);
-    jitTask->GetVM()->GetJSThread()->SetCheckSafePointStatus();
+    jitTask->GetHostThread()->SetInstallMachineCode(true);
+    jitTask->GetHostThread()->SetCheckSafePointStatus();
 }
 
 void Jit::InstallTasks(uint32_t threadId)
@@ -240,10 +258,9 @@ void Jit::InstallTasks(uint32_t threadId)
     LockHolder holder(installJitTasksDequeMtx_);
     auto &taskQueue = installJitTasks_[threadId];
     for (auto it = taskQueue.begin(); it != taskQueue.end(); it++) {
-        JitTask *task = *it;
+        std::shared_ptr<JitTask> task = *it;
         // check task state
         task->InstallCode();
-        delete task;
     }
     taskQueue.clear();
 }
@@ -266,8 +283,54 @@ void *Jit::CreateJitCompilerTask(JitTask *jitTask)
     return createJitCompilerTask_(jitTask);
 }
 
-Jit::Scope::~Scope()
+void Jit::ClearTask(const std::function<bool(Task *task)> &checkClear)
 {
-    LOG_JIT(INFO) << message_ << ": " << TotalSpentTime() << "ms";
+    JitTaskpool::GetCurrentTaskpool()->ForEachTask([&checkClear](Task *task) {
+        JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
+        if (checkClear(asyncTask)) {
+            asyncTask->Terminated();
+        }
+
+        if (asyncTask->IsRunning()) {
+            asyncTask->WaitFinish();
+        }
+    });
+}
+
+void Jit::ClearTask(EcmaContext *ecmaContext)
+{
+    ClearTask([ecmaContext](Task *task) {
+        JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
+        return ecmaContext == asyncTask->GetEcmaContext();
+    });
+}
+
+void Jit::ClearTaskWithVm(EcmaVM *vm)
+{
+    ClearTask([vm](Task *task) {
+        JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
+        return vm == asyncTask->GetHostVM();
+    });
+
+    LockHolder holder(installJitTasksDequeMtx_);
+    auto &taskQueue = installJitTasks_[vm->GetJSThread()->GetThreadId()];
+    taskQueue.clear();
+}
+
+void Jit::CheckMechineCodeSpaceMemory(JSThread *thread, int remainSize)
+{
+    if (!thread->IsMachineCodeLowMemory()) {
+        return;
+    }
+    if (remainSize > MIN_CODE_SPACE_SIZE) {
+        thread->SetMachineCodeLowMemory(false);
+    }
+}
+
+Jit::TimeScope::~TimeScope()
+{
+    if (outPutLog_) {
+        LOG_JIT(INFO) << message_ << ": " << TotalSpentTime() << "ms";
+    }
 }
 }  // namespace panda::ecmascript

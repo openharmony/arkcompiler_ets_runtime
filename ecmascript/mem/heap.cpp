@@ -47,6 +47,7 @@
 #include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/runtime_lock.h"
+#include "ecmascript/jit/jit.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -637,6 +638,7 @@ TriggerGCType Heap::SelectGCType() const
 
 void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
+    Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
         ASSERT(thread_->IsInRunningStateOrProfiling());
         RecursionScope recurScope(this);
@@ -800,6 +802,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 #endif
     ASSERT(thread_->IsPropertyCacheCleared());
     ProcessGCListeners();
+
+    if (GetEcmaVM()->IsEnableJit()) {
+        // check machine code space if enough
+        int remainSize = config_.GetDefaultMachineCodeSpaceSize() - GetMachineCodeSpace()->GetHeapObjectSize();
+        Jit::GetInstance()->CheckMechineCodeSpaceMemory(GetEcmaVM()->GetJSThread(), remainSize);
+    }
 }
 
 void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,

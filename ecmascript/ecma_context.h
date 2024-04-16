@@ -49,6 +49,8 @@ class JSPromise;
 class RegExpExecResultCache;
 class EcmaHandleScope;
 class GlobalIndexMap;
+class SustainingJSHandleList;
+class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
 
 template<typename T>
@@ -269,6 +271,7 @@ public:
     // For new version instruction.
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
     JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
+    JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSHandle<ConstantPool> CreateConstpoolPair(JSPandaFile *jsPandaFile, EntityId methodId);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
     void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
@@ -506,6 +509,9 @@ public:
     }
 
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+
+    void AddSustainingJSHandle(SustainingJSHandle*);
+    void RemoveSustainingJSHandle(SustainingJSHandle*);
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
@@ -619,6 +625,9 @@ private:
     static constexpr uint32_t STRINGIFY_CACHE_SIZE = 64;
     std::array<CVector<std::pair<CString, int>>, STRINGIFY_CACHE_SIZE> stringifyCache_ {};
     bool isAotEntry_ { false };
+
+    // SustainingJSHandleList for jit compile hold ref
+    SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

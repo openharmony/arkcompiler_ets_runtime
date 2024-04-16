@@ -27,8 +27,7 @@ public:
                  PassContext *ctx, bool enableLog, const std::string &name)
         : PassVisitor(circuit, chunk, visitor),
           builder_(circuit, ctx->GetCompilerConfig()),
-          ptManager_(ctx->GetPTManager()),
-          thread_(ctx->GetEcmaVM()->GetJSThread()),
+          compilationEnv_(ctx->GetCompilationEnv()),
           enableLog_(enableLog),
           methodName_(name) {}
 
@@ -49,7 +48,7 @@ private:
 
     JSTaggedValue GetStringFromConstantPool(uint32_t methodOffset, uint32_t cpIdx) const
     {
-        return ptManager_->GetStringFromConstantPool(methodOffset, cpIdx);
+        return compilationEnv_->GetStringFromConstantPool(methodOffset, cpIdx);
     }
 
     GateRef VisitTypedBinaryOp(GateRef gate);
@@ -63,8 +62,7 @@ private:
     GateRef ConvertToSingleCharComparison(GateRef left, GateRef right);
 
     CircuitBuilder builder_;
-    PGOTypeManager *ptManager_ {nullptr};
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
 };

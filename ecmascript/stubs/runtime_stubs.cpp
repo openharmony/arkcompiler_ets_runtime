@@ -1560,6 +1560,14 @@ DEF_RUNTIME_STUBS(JitCompile)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CountInterpExecFuncs)
+{
+    RUNTIME_STUBS_HEADER(CountInterpExecFuncs);
+    JSHandle thisFunc = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
+    Jit::CountInterpExecFuncs(thisFunc);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CheckSafePoint)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);

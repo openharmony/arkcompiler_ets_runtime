@@ -10,6 +10,7 @@
       vtable?for?panda::ecmascript::kungfu::MethodSnapshotInfo;
       vtable?for?panda::ecmascript::kungfu::ObjectLiteralSnapshotInfo;
       vtable?for?panda::ecmascript::kungfu::StringSnapshotInfo;
+      vtable?for?panda::ecmascript::Taskpool;
 
       panda::ecmascript::COMMON_HELP_HEAD_MSG*;
       panda::ecmascript::HELP_OPTION_MSG*;
@@ -119,6 +120,7 @@
       panda::ecmascript::EcmaContext::FindConstpool*;
       panda::ecmascript::EcmaContext::FindOrCreateConstPool*;
       panda::ecmascript::EcmaContext::FindOrCreateUnsharedConstpool*;
+      panda::ecmascript::EcmaContext::FindUnsharedConstpool*;
       panda::ecmascript::EcmaContext::SetTSManager*;
       panda::ecmascript::EcmaRuntimeStat::StartCount*;
       panda::ecmascript::EcmaRuntimeStat::StopCount*;
@@ -178,9 +180,12 @@
       panda::ecmascript::JSPandaFile::GetFunctionKind*;
       panda::ecmascript::JSPandaFile::GetNormalizedFileDesc*;
       panda::ecmascript::JSPandaFile::GetRecordNameWithBundlePack*;
+      panda::ecmascript::JSPandaFile::IsFirstMergedAbc*;
       panda::ecmascript::JSProxy::IsArray*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
       panda::ecmascript::JSTaggedValue::IsInSharedHeap*;
+      panda::ecmascript::JitThread::GetHostThread*;
+      panda::ecmascript::Jit::TimeScope::~TimeScope*;
       panda::ecmascript::Heap::AddGCListener*;
       panda::ecmascript::Heap::RemoveGCListener*;
       panda::ecmascript::JSTaggedValue::SetProperty*;
@@ -240,6 +245,7 @@
       panda::ecmascript::ObjectFactory::NewSharedOldSpaceJSObjectWithInit*;
       panda::ecmascript::ObjectFactory::NewSTaggedArray*;
       panda::ecmascript::ObjectFactory::NewSEcmaHClassDictMode*;
+      panda::ecmascript::ObjectFactory::GetRawStringFromStringTable*;
       panda::ecmascript::SendableClassDefiner::AddFieldTypeToHClass*;
       panda::ecmascript::ObjectFactory::NewJSSArray*;
       panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;

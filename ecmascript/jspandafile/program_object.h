@@ -365,6 +365,11 @@ public:
         Barriers::SetPrimitive(GetData(), GetAotHClassInfoOffset(), info.GetRawData());
     }
 
+    inline void SetAotHClassInfoWithBarrier(JSThread *thread, JSTaggedValue info)
+    {
+        Set(thread, (GetLength() - AOT_HCLASS_INFO_INDEX), info);
+    }
+
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
         Set(thread, index, value);
@@ -616,6 +621,20 @@ public:
         return false;
     }
 
+    template <ConstPoolType type>
+    static JSTaggedValue GetLiteralFromCache(JSTaggedValue constpool, uint32_t index, [[maybe_unused]] CString entry)
+    {
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        auto val = taggedPool->GetObjectFromCache(index);
+        JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
+
+        bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
+        if (isLoadedAOT && val.IsAOTLiteralInfo()) {
+            val = JSTaggedValue::Hole();
+        }
+        return val.IsHole() ? JSTaggedValue::Undefined() : val;
+    }
+
     static panda_file::File::EntityId GetIdFromCache(JSTaggedValue constpool, uint32_t index)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
@@ -629,6 +648,24 @@ public:
     {
         CString entry = ModuleManager::GetRecordName(module);
         return GetLiteralFromCache<type>(thread, constpool, index, entry);
+    }
+
+    static JSTaggedValue PUBLIC_API GetStringFromCacheForJit(JSThread *thread, JSTaggedValue constpool, uint32_t index)
+    {
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        auto val = taggedPool->Get(index);
+        if (val.IsHole()) {
+            JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
+            panda_file::File::EntityId id = taggedPool->GetEntityId(index);
+            auto foundStr = jsPandaFile->GetStringData(id);
+
+            EcmaVM *vm = thread->GetEcmaVM();
+            ObjectFactory *factory = vm->GetFactory();
+            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::SHARED_OLD_SPACE,
+                jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
+            val = JSTaggedValue(string);
+        }
+        return val;
     }
 
     static JSTaggedValue PUBLIC_API GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)

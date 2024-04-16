@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_COMPILER_PASS_H
 #define ECMASCRIPT_COMPILER_PASS_H
 
+#include "ecmascript/compiler/aot_compilation_env.h"
+#include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
@@ -282,7 +284,8 @@ public:
         bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         Chunk chunk(data->GetNativeAreaAllocator());
         PGOTypeInfer pgoTypeInfer(data->GetCircuit(), data->GetTSManager(), data->GetPTManager(), data->GetBuilder(),
-                                  data->GetMethodName(), &chunk, enableLog);
+                                  data->GetMethodName(), &chunk, enableLog,
+                                  data->GetPassContext()->GetCompilationEnv());
         pgoTypeInfer.Run();
         return true;
     }
@@ -309,7 +312,7 @@ public:
         }
         TimeScope timescope("EscapeAnalysisPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         EscapeAnalysis escapeAnalysis(data->GetCircuit(), &visitor, &chunk, runtimeOption.GetTraceEscapeAnalysis());
@@ -336,7 +339,7 @@ public:
         TimeScope timescope("InductionVariableAnalysisPass", data->GetMethodName(),
                             data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
         Chunk chunk(data->GetNativeAreaAllocator());
         InductionVariableAnalysis inductionVariableAnalysis(data->GetCircuit(), data->GetPassContext(), enableLog,
                                                             data->GetMethodName(), &chunk,
@@ -442,6 +445,7 @@ public:
             Chunk chunk(data->GetNativeAreaAllocator());
             CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
             TypedHCRLowering lowering(data->GetCircuit(),
+                                    data->GetPassContext()->GetCompilationEnv(),
                                     &visitor,
                                     data->GetCompilerConfig(),
                                     data->GetTSManager(),
@@ -686,7 +690,7 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
         EarlyElimination earlyElimination(data->GetCircuit(), &visitor, &chunk, runtimeOption.IsEnableMemoryAnalysis());
         visitor.AddPass(&earlyElimination);
         visitor.VisitGraph();
@@ -724,7 +728,7 @@ public:
         if (!passOptions->EnableTypeLowering() || !passOptions->EnableValueNumbering()) {
             return false;
         }
-        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
         TimeScope timescope("ValueNumberingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
@@ -743,7 +747,7 @@ class InstructionCombinePass {
 public:
     bool Run(PassData *data)
     {
-        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
         if (runtimeOption.IsEnableInstrcutionCombine()) {
             TimeScope timescope("InstructionCombinePass", data->GetMethodName(), data->GetMethodOffset(),
                                 data->GetLog());
@@ -799,7 +803,7 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool licm = data->GetPassOptions()->EnableOptLoopInvariantCodeMotion();
-        bool liteCG = data->GetPassContext()->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
+        bool liteCG = data->GetPassContext()->GetCompilationEnv()->GetJSOptions().IsCompilerEnableLiteCG();
         GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm, liteCG)
             .Run(data->GetCfg());
         PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());

@@ -1683,6 +1683,8 @@ public:
     void CollectMethodOffsetInfo(std::map<uint32_t, uint32_t> &info) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> TryCalCallSiteInfoFromMachineCode(
+        uintptr_t retAddr) const;
     int GetCallSiteDelta(uintptr_t retAddr) const;
 
     Method *CheckAndGetMethod() const;

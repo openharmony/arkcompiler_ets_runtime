@@ -3230,6 +3230,7 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
     if (vm_->IsEnableJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetJitHotnessThreshold();
+        ASSERT(threshold != ProfileTypeInfo::JIT_DISABLE_FLAG);
         array->SetJitHotnessThreshold(threshold);
         threshold = vm_->GetJSOptions().GetOsrHotnessThreshold();
         array->SetOsrHotnessThreshold(threshold);
@@ -3254,6 +3255,7 @@ JSHandle<BigInt> ObjectFactory::NewBigInt(uint32_t length)
 // static
 void ObjectFactory::NewObjectHook() const
 {
+    CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
     if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
@@ -5117,5 +5119,23 @@ void ObjectFactory::FillFreeMemoryRange(uintptr_t start, uintptr_t end)
         Barriers::SetPrimitive<JSTaggedType>(reinterpret_cast<void*>(start), 0, FREE_MEMMORY_ADDRESS_ZAM_VALUE);
         start += sizeof(JSTaggedType);
     }
+}
+
+// jit compile should not modify method which is shared
+// remove it when compiled code flag move to jsfunction
+JSHandle<Method> ObjectFactory::CloneMethodTemporaryForJIT(JSHandle<Method> method)
+{
+    TaggedObject *header = nullptr;
+    header = heap_->AllocateOldOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetMethodClass().GetTaggedObject()));
+    JSHandle<Method> newmethod(thread_, header);
+
+    newmethod->SetCallField(method->GetCallField());
+    newmethod->SetLiteralInfo(method->GetLiteralInfo());
+    newmethod->SetNativePointerOrBytecodeArray(method->GetNativePointerOrBytecodeArray());
+    newmethod->SetExtraLiteralInfo(method->GetExtraLiteralInfo());
+    newmethod->SetCodeEntryOrLiteral(method->GetCodeEntryOrLiteral());
+    newmethod->SetConstantPool(thread_, method->GetConstantPool());
+    return newmethod;
 }
 }  // namespace panda::ecmascript

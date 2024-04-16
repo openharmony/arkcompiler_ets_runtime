@@ -26,7 +26,7 @@
 namespace panda::ecmascript::pgo {
 class PGOTypeGenerator {
 public:
-    ProfileType GenerateProfileType(ProfileType rootType, JSTaggedType hclass)
+    ProfileType GenerateProfileType(ProfileType rootType, JSTaggedType hclass, bool &generateNewType)
     {
         {
             LockHolder lock(mutex_);
@@ -41,6 +41,7 @@ public:
         ProfileType type(rootType.GetAbcId(), traceId, rootType.GetKind());
         LockHolder lock(mutex_);
         exsitId_.emplace(hclass, type);
+        generateNewType = true;
         return type;
     }
 
@@ -54,14 +55,15 @@ public:
         return ProfileType::PROFILE_TYPE_NONE;
     }
 
-    void InsertProfileType(JSTaggedType hclass, ProfileType type)
+    bool InsertProfileType(JSTaggedType hclass, ProfileType type)
     {
         LockHolder lock(mutex_);
         auto iter = exsitId_.find(hclass);
         if (iter != exsitId_.end()) {
-            return;
+            return false;
         }
         exsitId_.emplace(hclass, type);
+        return true;
     }
 
     void UpdateProfileType(JSTaggedType oldHClass, JSTaggedType newHClass)
