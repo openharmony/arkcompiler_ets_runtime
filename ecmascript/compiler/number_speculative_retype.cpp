@@ -153,6 +153,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitLoadArrayLength(gate);
         case OpCode::LOAD_STRING_LENGTH:
             return VisitLoadStringLength(gate);
+        case OpCode::LOAD_MAP_SIZE:
+            return VisitLoadMapSize(gate);
         case OpCode::LOAD_ELEMENT:
             return VisitLoadElement(gate);
         case OpCode::STORE_ELEMENT:
@@ -1332,6 +1334,15 @@ GateRef NumberSpeculativeRetype::VisitLoadArrayLength(GateRef gate)
 }
 
 GateRef NumberSpeculativeRetype::VisitLoadStringLength(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::IntType());
+    }
+
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitLoadMapSize(GateRef gate)
 {
     if (IsRetype()) {
         return SetOutputType(gate, GateType::IntType());

@@ -129,6 +129,7 @@ private:
     void LowerTypedLdArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdTypedArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdStringLength(const LoadBulitinObjTypeInfoAccessor &tacc);
+    void LowerTypedLdMapSize(const LoadBulitinObjTypeInfoAccessor &tacc);
     bool TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
 
     void LowerTypedLdObjByIndex(GateRef gate);

@@ -134,6 +134,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)                     \
     V(JSTaggedValue, JSAPIAsyncIteratorFuncHClass, JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
+    V(JSTaggedValue, JSMapClass, JS_MAP_HCLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
@@ -236,6 +237,7 @@ class ObjectFactory;
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \
     V(ConstructorString,              CONSTRUCTOR_STRING_INDEX,              "constructor")                 \
     V(PrototypeString,                PROTOTYPE_STRING_INDEX,                "prototype")                   \
+    V(SizeString,                     SIZE_STRING_INDEX,                     "size")                        \
     V(LengthString,                   LENGTH_STRING_INDEX,                   "length")                      \
     V(ValueString,                    VALUE_STRING_INDEX,                    "value")                       \
     V(SetString,                      SET_STRING_INDEX,                      "set")                         \

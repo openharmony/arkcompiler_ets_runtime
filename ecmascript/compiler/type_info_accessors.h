@@ -977,6 +977,11 @@ public:
         return types_.size();
     }
 
+    bool IsBuiltinsMap() const
+    {
+        return types_[0].IsBuiltinsMap();
+    }
+
     bool IsBuiltinsString() const
     {
         return types_[0].IsBuiltinsString();

@@ -828,6 +828,15 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitin
             return true;
         }
     }
+
+    EcmaString *sizeString = EcmaString::Cast(compilationEnv_->GlobalConstants()->GetSizeString().GetTaggedObject());
+    if (propString == sizeString) {
+        if (tacc.IsBuiltinsMap()) {
+            LowerTypedLdMapSize(tacc);
+            return true;
+        }
+    }
+
     // (2) other functions
     return false;
 }
@@ -951,6 +960,18 @@ void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBulitinObjTypeInf
         builder_.EcmaStringCheck(str);
     }
     GateRef result = builder_.LoadStringLength(str);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+}
+
+void TypedBytecodeLowering::LowerTypedLdMapSize(const LoadBulitinObjTypeInfoAccessor &tacc)
+{
+    GateRef gate = tacc.GetGate();
+    GateRef jsMap = tacc.GetReceiver();
+    AddProfiling(gate);
+    if (!Uncheck()) {
+        builder_.EcmaMapCheck(jsMap);
+    }
+    GateRef result = builder_.LoadMapSize(jsMap);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 

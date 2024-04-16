@@ -495,6 +495,7 @@ public:
     GateRef ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
     GateRef EcmaStringCheck(GateRef gate);
+    GateRef EcmaMapCheck(GateRef gate);
     GateRef FlattenTreeStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
@@ -614,6 +615,7 @@ public:
     GateRef LoadArrayLength(GateRef array);
     inline GateRef LoadFromTaggedArray(GateRef array, size_t index);
     GateRef LoadStringLength(GateRef string);
+    GateRef LoadMapSize(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
         MemoryOrder order = MemoryOrder::Default());
     GateRef LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index);
@@ -698,6 +700,7 @@ public:
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
     inline GateRef TaggedObjectIsByteArray(GateRef obj);
+    inline GateRef TaggedObjectIsMap(GateRef obj);
     inline GateRef TaggedObjectIsDataView(GateRef obj);
     inline GateRef IsSpecialHole(GateRef x);
     inline GateRef IsNotSpecialHole(GateRef x);

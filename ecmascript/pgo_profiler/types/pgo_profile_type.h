@@ -367,6 +367,15 @@ public:
         return builtinsArrayId.GetTransitionElementsKind();
     }
 
+    bool IsBuiltinsMap() const
+    {
+        if (IsBuiltinsType()) {
+            JSType type = GetBuiltinsType();
+            return type == JSType::JS_MAP;
+        }
+        return false;
+    }
+
     bool IsBuiltinsString() const
     {
         if (IsBuiltinsType()) {
