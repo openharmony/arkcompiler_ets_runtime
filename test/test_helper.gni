@@ -4473,3 +4473,76 @@ template("host_aot_builtin_inlining_test_action") {
     deps = []
   }
 }
+
+template("host_jit_test_action") {
+  _target_name_ = "${target_name}"
+  _deps_ = invoker.deps
+
+  _test_ts_path_ = "./${_target_name_}.ts"
+  _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
+  _script_args_ = rebase_path(_test_abc_path_)
+  _test_expect_path_ = "./expect_output.txt"
+
+  es2abc_gen_abc("gen_${_target_name_}_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+
+    if (defined(invoker.run_multi_file_tests) && invoker.run_multi_file_tests) {
+      src_js = rebase_path("./")
+    } else {
+      src_js = rebase_path(_test_ts_path_)
+    }
+    dst_file = rebase_path(_test_abc_path_)
+    extension = "ts"
+    extra_args = [
+      "--module",
+      "--merge-abc",
+    ]
+    in_puts = [ _test_ts_path_ ]
+    out_puts = [ _test_abc_path_ ]
+  }
+
+  action("${_target_name_}JitAction") {
+    testonly = true
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _host_jsoptimizer_lib_ = "//arkcompiler/ets_runtime/ecmascript/compiler:libark_jsoptimizer(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+    _osr_run_options_ =
+        " --asm-interpreter=true" + " --compiler-enable-jit=true" +
+        " --compiler-enable-jit-pgo=true" +
+        " --compiler-jit-hotness-threshold=1" + " --enable-pgo-profiler=true" +
+        " --compiler-enable-litecg=true" + " --entry-point=${_target_name_}"
+
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_jsoptimizer_lib_,
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _osr_run_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-file",
+      rebase_path(_test_expect_path_),
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/" ]
+  }
+}
