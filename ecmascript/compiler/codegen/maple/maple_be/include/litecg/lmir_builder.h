@@ -17,6 +17,7 @@
 #define MAPLE_LITECG_LMIR_BUILDER_H
 
 #include <cstdint>
+#include <variant>
 #include <vector>
 #include <map>
 #include <string>
@@ -133,13 +134,12 @@ enum LiteCGValueKind {
     kPregKind,
     kSymbolKind,
     kConstKind,
+    kGlueAdd,
 };
 
 struct LiteCGValue {
-    PregIdx pregIdx;
-    MIRSymbol *symbol;
-    MIRConst *constVal;
     LiteCGValueKind kind;
+    std::variant<PregIdx, MIRSymbol*, MIRConst*> data;
 };
 
 using Args = std::vector<Expr>;

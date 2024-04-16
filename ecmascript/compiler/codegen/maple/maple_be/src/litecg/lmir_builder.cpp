@@ -142,12 +142,12 @@ void LMIRBuilder::SetCallStmtDeoptBundleInfo(Stmt &callNode,
     for (const auto itr : deoptBundleInfo) {
         auto value = itr.second;
         if (value.kind == kPregKind) {
-            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(value.pregIdx)));
+            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(std::get<PregIdx>(value.data))));
         } else if (itr.second.kind == kSymbolKind) {
             CHECK_FATAL(false, "symbol is not supported currently");
-            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(value.symbol)));
+            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(std::get<MIRSymbol*>(value.data))));
         } else {
-            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(value.constVal)));
+            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(std::get<MIRConst*>(value.data))));
         }
     }
     if (callNode.GetOpCode() == OP_call) {

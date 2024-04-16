@@ -1247,9 +1247,9 @@ public:
     {
         return dim;
     }
-    void SetDim(uint16 dim)
+    void SetDim(uint16 newDim)
     {
-        this->dim = dim;
+        this->dim = newDim;
     }
 
     const TypeAttrs &GetTypeAttrs() const
@@ -1411,9 +1411,9 @@ public:
     {
         return fields;
     }
-    void SetFields(const FieldVector &fields)
+    void SetFields(const FieldVector &newFields)
     {
-        this->fields = fields;
+        this->fields = newFields;
     }
 
     const FieldPair &GetFieldsElemt(size_t n) const
@@ -1461,9 +1461,9 @@ public:
     {
         return parentFields;
     }
-    void SetParentFields(const FieldVector &parentFields)
+    void SetParentFields(const FieldVector &newParentFields)
     {
-        this->parentFields = parentFields;
+        this->parentFields = newParentFields;
     }
     const FieldVector &GetParentFields() const
     {
