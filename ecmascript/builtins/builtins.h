@@ -357,6 +357,7 @@ private:
     void SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                               JSHandle<JSTaggedValue> &value) const;
     void RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const;
+    void RegisterSendableJSONValue(const JSHandle<GlobalEnv> &env) const;
 
     // For SharedObject/SharedFunction
     void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const;

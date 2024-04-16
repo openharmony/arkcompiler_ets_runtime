@@ -170,8 +170,9 @@ JSTaggedValue BuiltinsJson::StringifyWithTransformType(EcmaRuntimeCallInfo *argv
     }
     if (transformType == TransformType::SENDABLE) {
         if (value.IsHeapObject() && !value.IsJSShared() && !value.IsString()) {
-            THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(StringifySendableObject),
-                                        JSTaggedValue::Exception());
+            auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                "Parameter error. Only sendable object can stringify.");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     if (argc == 1 && thread->GetCurrentEcmaContext()->IsAotEntry()) {
