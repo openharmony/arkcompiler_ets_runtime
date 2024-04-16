@@ -1569,8 +1569,6 @@
       "reason": "Add remaining Intl test cases and temporarily skip execution failure cases(111)",
       "files": [
         "intl/default_locale.js",
-        "intl/collator/check-co-option.js",
-        "intl/collator/options.js",
         "intl/collator/property-override.js",
         "intl/segmenter/check-lb-option.js",
         "intl/localematcher/bestfit-supplemental-files.js",

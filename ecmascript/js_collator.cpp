@@ -449,8 +449,17 @@ JSHandle<JSObject> JSCollator::ResolvedOptions(JSThread *thread, const JSHandle<
 
     // [[Collation]]
     JSMutableHandle<JSTaggedValue> collationValue(thread, collator->GetCollation());
+    UErrorCode status = U_ZERO_ERROR;
+    icu::Collator *icuCollator = collator->GetIcuCollator();
+    icu::Locale icu_locale(icuCollator->getLocale(ULOC_VALID_LOCALE, status));
+    std::string collation_value =
+        icu_locale.getUnicodeKeywordValue<std::string>("co", status);
     if (collationValue->IsUndefined()) {
-        collationValue.Update(globalConst->GetDefaultString());
+        if (collation_value != "search" && collation_value != "") {
+            collationValue.Update(factory->NewFromStdString(collation_value).GetTaggedValue());
+        } else {
+            collationValue.Update(globalConst->GetDefaultString());
+        }
     }
     JSObject::CreateDataProperty(thread, options, globalConst->GetHandledCollationString(), collationValue);
 
