@@ -111,3 +111,13 @@ print(Object.prototype.toString.call(pro1));
         print(error);
     }
 }
+class C9{};
+let v4 = new Proxy(Uint32Array,Reflect);
+class C4 extends v4 {
+  constructor(a6,a7,a8){
+    super();
+    new C9(a7,C4);
+  }
+}
+new C4();
+print("test proxy constructor success!")
