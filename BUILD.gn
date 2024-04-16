@@ -556,6 +556,7 @@ ecma_source = [
   "ecmascript/base/json_stringifier.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/path_helper.cpp",
+  "ecmascript/base/sort_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
   "ecmascript/base/utf_helper.cpp",

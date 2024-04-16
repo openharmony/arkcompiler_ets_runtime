@@ -16,6 +16,7 @@
 #include "ecmascript/base/array_helper.h"
 
 #include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/base/sort_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -428,7 +429,7 @@ JSHandle<TaggedArray> ArrayHelper::SortIndexedProperties(JSThread *thread, const
     // 4. Sort items using an implementation-defined sequence of calls to SortCompare.
     // If any such call returns an abrupt completion,
     // stop before performing any further calls to SortCompare and return that Completion Record.
-    JSArray::SortElements(thread, items, callbackFnHandle);
+    TimSort::Sort(thread, items, callbackFnHandle);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
     // 5. Return items.
     return items;
