@@ -147,15 +147,29 @@ void ICStubBuilder::LoadICByName(
 {
     auto env = GetEnvironment();
     Label loadWithHandler(env);
+    Label isNumber(env);
+    Label notNumber(env);
 
     SetLabels(tryFastPath, slowPath, success);
     DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), Undefined());
     NamedICAccessor(&cachedHandler, &loadWithHandler);
     Bind(&loadWithHandler);
     {
-        GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
-        result->WriteVariable(ret);
-        BRANCH(TaggedIsHole(ret), slowPath_, success_);
+        BRANCH(TaggedIsNumber(receiver_), &isNumber, &notNumber);
+        Bind(&isNumber);
+        {
+            GateRef primitive = NewJSPrimitiveRef(glue_, GlobalEnv::NUMBER_FUNCTION_INDEX, receiver_);
+            GateRef ret = LoadICWithHandler(glue_, primitive, primitive, *cachedHandler, callback);
+            result->WriteVariable(ret);
+            BRANCH(TaggedIsHole(ret), slowPath_, success_);
+        }
+        Bind(&notNumber);
+        {
+            GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
+            result->WriteVariable(ret);
+            BRANCH(TaggedIsHole(ret), slowPath_, success_);
+        }
+        
     }
 }
 
