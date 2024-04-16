@@ -659,7 +659,7 @@ JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, do
         base += "e" + (n >= 1 ? std::string("+") : "") + std::to_string(n - 1);
     }
     result += base;
-    return factory->NewFromASCII(result.c_str());
+    return factory->NewFromASCIISkippingStringTable(result.c_str());
 }
 
 // 7.1.12.1 ToString Applied to the Number Type

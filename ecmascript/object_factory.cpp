@@ -4109,6 +4109,15 @@ JSHandle<EcmaString> ObjectFactory::NewFromASCII(std::string_view data)
     return GetStringFromStringTable(utf8Data, data.length(), true);
 }
 
+// At this situation, Create string directly without using a StringTable.
+JSHandle<EcmaString> ObjectFactory::NewFromASCIISkippingStringTable(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
+    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, data.length(), true);
+    return JSHandle<EcmaString>(thread_, str);
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromASCIINonMovable(std::string_view data)
 {
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
