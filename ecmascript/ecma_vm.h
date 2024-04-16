@@ -633,7 +633,7 @@ public:
 
     Jit *GetJit() const;
     bool PUBLIC_API IsEnableJit() const;
-    void EnableJit() const;
+    void EnableJit();
 
     bool IsEnableOsr() const
     {
