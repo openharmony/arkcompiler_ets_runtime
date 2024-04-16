@@ -1859,8 +1859,9 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
 #endif
 }
 
-void Heap::StatisticHeapDetail() const
+void Heap::StatisticHeapDetail()
 {
+    Prepare();
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
     static const int MIN_COUNT_THRESHOLD = 1000;
