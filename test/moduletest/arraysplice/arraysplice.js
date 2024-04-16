@@ -56,3 +56,16 @@ for (let i = 0; i < 2; i++) {
         let spliced = array.splice(1, 3, 'one', 'two', 'three');
     }
 }
+
+let a = 0;
+class C3 extends Array {
+    constructor(a5, a6, a7, a8) {
+        a++;
+        super(-9223372036854775808, Set);
+        if (a == 1) {
+            this.splice(Array);
+        }
+        return "n"
+    }
+}
+try { new C3(C3, Array, Array, C3); } catch (err) {print(err)};
