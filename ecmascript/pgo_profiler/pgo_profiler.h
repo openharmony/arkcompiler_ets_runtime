@@ -446,8 +446,8 @@ private:
         WorkNode *last_ { nullptr };
     };
 public:
-    static ApEntityId GetMethodAbcId(JSFunction *jsFunction);
-    static ApEntityId GetMethodAbcId(JSTaggedValue jsMethod);
+    static ApEntityId PUBLIC_API GetMethodAbcId(JSFunction *jsFunction);
+    static ApEntityId PUBLIC_API GetMethodAbcId(JSTaggedValue jsMethod);
 private:
     ProfileType GetRecordProfileType(JSFunction *jsFunction, const CString &recordName);
     ProfileType GetRecordProfileType(ApEntityId abcId, const CString &recordName);
