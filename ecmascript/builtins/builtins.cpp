@@ -50,6 +50,7 @@
 #include "ecmascript/builtins/builtins_reflect.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_set.h"
+#include "ecmascript/builtins/builtins_shared_json_value.h"
 #include "ecmascript/builtins/builtins_sharedarraybuffer.h"
 #include "ecmascript/builtins/builtins_shared_typedarray.h"
 #include "ecmascript/builtins/builtins_string.h"
@@ -301,6 +302,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     } else {
         CopySObjectAndSFunction(env, runtimeGlobalEnv);
         RegisterSendableContainers(env);
+        RegisterSendableJSONValue(env);
     }
     if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
@@ -1603,8 +1605,7 @@ void Builtins::InitializeSendableJson(const JSHandle<GlobalEnv> &env,
     JSHandle<JSObject> jsonObject = factory_->NewJSObjectWithInit(jsonHClass);
 
     SetFunction(env, jsonObject, "parse", SendableJson::Parse, FunctionLength::TWO);
-    SetFunction(env, jsonObject, "stringify", SendableJson::Stringify,
-        FunctionLength::THREE, BUILTINS_STUB_ID(JsonStringify));
+    SetFunction(env, jsonObject, "stringify", SendableJson::Stringify, FunctionLength::THREE);
     PropertyDescriptor jsonDesc(thread_, JSHandle<JSTaggedValue>::Cast(jsonObject), true, false, true);
     JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCII("SENDABLE_JSON"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
@@ -3873,5 +3874,18 @@ void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
     }
     BUILTIN_SHARED_TYPED_ARRAY_TYPES(REGISTER_BUILTIN_SHARED_TYPED_ARRAY)
 #undef REGISTER_BUILTIN_SHARED_TYPED_ARRAY
+}
+
+void Builtins::RegisterSendableJSONValue(const JSHandle<GlobalEnv> &env) const
+{
+    auto globalObject = JSHandle<JSObject>::Cast(env->GetJSGlobalObject());
+#define REGISTER_BUILTIN_SHARED_JSON_VALUE(Type, ctorName, TYPE)                             \
+    {                                                                                        \
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(#ctorName));                \
+        PropertyDescriptor desc(thread_, env->Get##ctorName##Function(), true, false, true); \
+        JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                \
+    }
+    BUILTIN_SHARED_JSON_VALUE_TYPES(REGISTER_BUILTIN_SHARED_JSON_VALUE)
+#undef REGISTER_BUILTIN_SHARED_JSON_VALUE
 }
 }  // namespace panda::ecmascript

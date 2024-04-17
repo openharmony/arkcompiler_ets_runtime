@@ -58,12 +58,10 @@ public:
 
     static size_t GetNumPrototypeInlinedProperties()
     {
-        // 4 : 4 more inline properties in Map.prototype
-        //   (1) Map.prototype.constructor
-        //   (2) Map.prototype [ @@toStringTag ]
-        //   (3) Map.prototype [ @@iterator ] -- removed
-        //   (4) get Map.prototype.size -- removed
-        return GetJsonValuePrototypeFunctions().Size() + 2; // 2 : constructor and prototype
+        // 2 : 2 more inline properties in JsonValue.prototype:
+        //   (1) JsonValue.prototype.constructor
+        //   (2) JsonValue.prototype [ @@toStringTag ]
+        return GetJsonValuePrototypeFunctions().Size() + 2;
     }
 
     static Span<const std::pair<std::string_view, bool>> GetPrototypeProperties()

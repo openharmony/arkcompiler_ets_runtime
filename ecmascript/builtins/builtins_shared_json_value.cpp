@@ -66,7 +66,7 @@ JSTaggedValue BuiltinsJsonValue::JSONTrueConstructor([[maybe_unused]]EcmaRuntime
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
         JSTaggedValue error = containers::ContainerError::BusinessError(
-            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONFalse's constructor cannot be directly invoked.");
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONTrue's constructor cannot be directly invoked.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 2.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
@@ -141,7 +141,7 @@ JSTaggedValue BuiltinsJsonValue::JSONNumberConstructor(EcmaRuntimeCallInfo *argv
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
         JSTaggedValue error = containers::ContainerError::BusinessError(
-            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONObject's constructor cannot be directly invoked.");
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONNumber's constructor cannot be directly invoked.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 2. Get the initial value.
@@ -173,7 +173,7 @@ JSTaggedValue BuiltinsJsonValue::JSONStringConstructor(EcmaRuntimeCallInfo *argv
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
         JSTaggedValue error = containers::ContainerError::BusinessError(
-            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONObject's constructor cannot be directly invoked.");
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONString's constructor cannot be directly invoked.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 2. Get the initial value.
@@ -205,14 +205,14 @@ JSTaggedValue BuiltinsJsonValue::JSONArrayConstructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
         JSTaggedValue error = containers::ContainerError::BusinessError(
-            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONObject's constructor cannot be directly invoked.");
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONArray's constructor cannot be directly invoked.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 2. Get the initial value.
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     if (!value->IsJSSharedArray()) {
         JSTaggedValue error = containers::ContainerError::ParamError(
-            thread, "Parameter error. Only accept ArkTS Array.");
+            thread, "Parameter error. Only accept sendable array.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 3.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
@@ -233,6 +233,11 @@ JSTaggedValue BuiltinsJsonValue::Get([[maybe_unused]]EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self(GetThis(argv));
+    if (!self->IsJSSharedJSONValue()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The get method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(self);
     return jsonValue->GetValue();
 }
