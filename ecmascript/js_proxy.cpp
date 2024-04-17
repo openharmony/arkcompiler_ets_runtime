@@ -1026,9 +1026,15 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
     JSHandle<JSArray> arrHandle = JSArray::CreateArrayFromList(thread, taggedArray);
 
     // step 8 ~ 9 Call(trap, handler, «target, argArray, newTarget »).
-    JSHandle<JSTaggedValue> newTarget(info->GetNewTarget());
+    JSHandle<JSTaggedValue> newTarget(thread, info->GetNewTargetValue());
     const uint32_t argsLength = 3;  // 3: «target, argArray, newTarget »
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+
+    JSTaggedType *currentSp = reinterpret_cast<JSTaggedType *>(info);
+    InterpretedEntryFrame *currentEntryState = InterpretedEntryFrame::GetFrameFromSp(currentSp);
+    JSTaggedType *prevSp =  currentEntryState->base.prev;
+    thread->SetCurrentSPFrame(prevSp);
+
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, method, handler, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
