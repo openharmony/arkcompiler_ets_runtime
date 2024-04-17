@@ -511,23 +511,23 @@ JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInf
     }
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<EcmaString> mapString = factory->NewFromUtf8("Map");
+    JSHandle<EcmaString> mapString = factory->NewFromUtf8ReadOnly("Map");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(mapString))) {
         return JSTaggedValue(PropertyDetector::IsMapIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> setString = factory->NewFromUtf8("Set");
+    JSHandle<EcmaString> setString = factory->NewFromUtf8ReadOnly("Set");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(setString))) {
         return JSTaggedValue(PropertyDetector::IsSetIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> stringString = factory->NewFromUtf8("String");
+    JSHandle<EcmaString> stringString = factory->NewFromUtf8ReadOnly("String");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(stringString))) {
         return JSTaggedValue(PropertyDetector::IsStringIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> arrayString = factory->NewFromUtf8("Array");
+    JSHandle<EcmaString> arrayString = factory->NewFromUtf8ReadOnly("Array");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(arrayString))) {
         return JSTaggedValue(PropertyDetector::IsArrayIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8("TypedArray");
+    JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8ReadOnly("TypedArray");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(typedarrayString))) {
         return JSTaggedValue(PropertyDetector::IsTypedArrayIteratorDetectorValid(env));
     }

@@ -79,17 +79,31 @@ HWTEST_F_L0(GlueRegsTest, ConstantSpecialTest)
     EXPECT_TRUE(globalConst->GetHandledEmptyString()->IsString());
 }
 
+HWTEST_F_L0(GlueRegsTest, ConstantConstantTest)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    ASSERT_NE(globalConst, nullptr);
+
+#define CONSTANT_CONSTANT_ITERATOR(Type, Name, Index, Desc)              \
+    Type Name##value = globalConst->Get##Name();                         \
+    EXPECT_TRUE(!Name##value.IsNull());                                  \
+    JSHandle<Type> Name##handledValue = globalConst->GetHandled##Name(); \
+    EXPECT_TRUE(!Name##handledValue->IsNull());
+    GLOBAL_ENV_CONSTANT_CONSTANT(CONSTANT_CONSTANT_ITERATOR)
+#undef CONSTANT_CONSTANT_ITERATOR
+}
+
 HWTEST_F_L0(GlueRegsTest, ConstantStringTest)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ASSERT_NE(globalConst, nullptr);
 
-#define CONSTANT_STRING_ITERATOR(Type, Name, Index, Desc)                \
-    Type Name##value = globalConst->Get##Name();                         \
-    EXPECT_TRUE(!Name##value.IsNull());                                  \
-    JSHandle<Type> Name##handledValue = globalConst->GetHandled##Name(); \
-    EXPECT_TRUE(!Name##handledValue->IsNull());
-    GLOBAL_ENV_CONSTANT_CONSTANT(CONSTANT_STRING_ITERATOR)
+#define CONSTANT_STRING_ITERATOR(Name, Index, Desc)                                     \
+    JSTaggedValue Name##value = globalConst->Get##Name();                               \
+    EXPECT_TRUE(Name##value.IsString());                                                \
+    Region *Name##region = Region::ObjectAddressToRange(Name##value.GetTaggedObject()); \
+    EXPECT_TRUE(Name##region->InSharedReadOnlySpace());
+    SHARED_GLOBAL_ENV_CONSTANT_STRING(CONSTANT_STRING_ITERATOR)
 #undef CONSTANT_STRING_ITERATOR
 }
 
