@@ -154,21 +154,11 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
         return;
     }
     sem_init(&g_heapdumpCnt, 0, THREAD_COUNT);
-    // dump host vm
     uint32_t curTid = vm->GetTid();
     LOG_ECMA(INFO) << "DumpHeapSnapshot tid " << tid << " curTid " << curTid;
     if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
         DumpHeapSnapshotWithVm(vm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
     }
-    // dump worker vm
-    const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
-        curTid = workerVm->GetTid();
-        LOG_ECMA(INFO) << "DumpHeapSnapshot tid " << tid << " curTid " << curTid;
-        if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
-            DumpHeapSnapshotWithVm(workerVm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
-            return;
-        }
-    });
 }
 
 void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
@@ -203,6 +193,14 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
         delete dump;
         delete work;
     });
+    // dump worker vm
+    const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
+        uint32_t curTid = workerVm->GetTid();
+        LOG_ECMA(INFO) << "DumpHeapSnapshot workthread curTid " << curTid;
+        DumpHeapSnapshotWithVm(workerVm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
+        return;
+    });
+
     if (ret != 0) {
         LOG_ECMA(ERROR) << "uv_queue_work fail ret " << ret;
         delete dumpStruct;
