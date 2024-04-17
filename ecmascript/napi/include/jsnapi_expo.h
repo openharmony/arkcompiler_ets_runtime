@@ -493,6 +493,7 @@ public:
     bool IsVector();
     bool IsSharedObject();
     bool IsJSShared();
+    bool IsHeapObject();
 
 private:
     JSTaggedType value_;
@@ -1397,6 +1398,8 @@ public:
 
     // Napi Heavy Logics fast path
     static Local<JSValueRef> NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativeObj, const char* utf8Key);
+
+    static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
 
 private:
     static int vmCount_;
