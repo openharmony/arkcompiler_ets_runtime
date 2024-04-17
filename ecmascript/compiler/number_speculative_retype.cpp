@@ -255,6 +255,9 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitDateNow(gate);
         case OpCode::BIGINT_CONSTRUCTOR:
             return VisitBigIntConstructor(gate);
+        case OpCode::MAP_CLEAR:
+        case OpCode::SET_CLEAR:
+            return VisitOthers(gate, GateType::UndefinedType());
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:

@@ -346,6 +346,8 @@ public:
             case BuiltinsStubCSigns::ID::TypedArrayValues:
             case BuiltinsStubCSigns::ID::SetValues:
             case BuiltinsStubCSigns::ID::SetEntries:
+            case BuiltinsStubCSigns::ID::MapClear:
+            case BuiltinsStubCSigns::ID::SetClear:
                 return true;
             default:
                 return false;
@@ -482,6 +484,10 @@ public:
                 return ConstantIndex::SET_VALUES_INDEX;
             case BuiltinsStubCSigns::ID::SetEntries:
                 return ConstantIndex::SET_ENTRIES_INDEX;
+            case BuiltinsStubCSigns::ID::MapClear:
+                return ConstantIndex::MAP_CLEAR_INDEX;
+            case BuiltinsStubCSigns::ID::SetClear:
+                return ConstantIndex::SET_CLEAR_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
@@ -629,6 +635,8 @@ public:
             {SetHas, "Set.has"},
             {MapDelete, "Map.delete"},
             {SetDelete, "Set.delete"},
+            {MapClear, "Map.clear"},
+            {SetClear, "Set.clear"},
             {BigIntConstructor, "BigInt"},
         };
         if (builtinId2Str.count(id) > 0) {

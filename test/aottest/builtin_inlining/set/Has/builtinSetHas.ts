@@ -143,5 +143,7 @@ try {
 
 // Check after clearing
 mySet.clear();
+//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetHas
+print(mySet.has(0));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
-print(mySet.has(0)); //: false
+//: false

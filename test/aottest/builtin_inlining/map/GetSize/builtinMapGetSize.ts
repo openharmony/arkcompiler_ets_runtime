@@ -58,6 +58,7 @@ print(myMap.size); //: 7
 
 // Check after clearing
 myMap.clear();
+//aot: [trace] aot inline builtin: Map.clear, caller function name:func_main_0@builtinMapGetSize
 print(myMap.size); //: 0
 
 // Check deoptimization

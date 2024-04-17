@@ -265,6 +265,12 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::BIGINT_CONSTRUCTOR_UINT32:
             LowerBigIntConstructorInt32<false>(gate);
             break;
+        case OpCode::MAP_CLEAR:
+            LowerToBuiltinStub(gate, BuiltinsStubCSigns::MapClear);
+            break;
+        case OpCode::SET_CLEAR:
+            LowerToBuiltinStub(gate, BuiltinsStubCSigns::SetClear);
+            break;
         default:
             break;
     }

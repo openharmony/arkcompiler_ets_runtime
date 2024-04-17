@@ -198,6 +198,8 @@ class ObjectFactory;
     V(JSTaggedValue, SetDelete, SET_DELETE_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, SetValues, SET_VALUES_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, SetEntries, SET_ENTRIES_INDEX, ecma_roots_builtins)                                \
+    V(JSTaggedValue, MapClear, MAP_CLEAR_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, SetClear, SET_CLEAR_INDEX, ecma_roots_builtins)                                    \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_builtins)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_builtins)                 \
     V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_builtins)         \

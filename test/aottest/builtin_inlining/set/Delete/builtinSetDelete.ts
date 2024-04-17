@@ -146,8 +146,10 @@ print(mySet.delete(obj)); //: false
 
 // Check after clearing
 mySet.clear();
+//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetDelete
+print(mySet.delete(2000));
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetDelete
-print(mySet.delete(2000)); //: false
+//: false
 
 let truedelete = Set.prototype.delete;
 let m = new Set();
