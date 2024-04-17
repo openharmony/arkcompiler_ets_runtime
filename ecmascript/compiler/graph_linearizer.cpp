@@ -231,15 +231,23 @@ public:
 
     size_t UnionFind(size_t idx)
     {
+        std::stack<size_t> allIdxs;
+        allIdxs.emplace(idx);
         size_t pIdx = parentIdx_[idx];
-        if (pIdx == idx) {
-            return idx;
+        while (pIdx != allIdxs.top()) {
+            allIdxs.emplace(pIdx);
+            pIdx = parentIdx_[pIdx];
         }
-        size_t unionFindSetRoot = UnionFind(pIdx);
-        if (semiDom_[minIdx_[idx]] > semiDom_[minIdx_[pIdx]]) {
-            minIdx_[idx] = minIdx_[pIdx];
+        size_t unionFindSetRoot = pIdx;
+        while (!allIdxs.empty()) {
+            if (semiDom_[minIdx_[allIdxs.top()]] > semiDom_[minIdx_[pIdx]]) {
+                minIdx_[allIdxs.top()] = minIdx_[pIdx];
+            }
+            parentIdx_[allIdxs.top()] = unionFindSetRoot;
+            pIdx = allIdxs.top();
+            allIdxs.pop();
         }
-        return parentIdx_[idx] = unionFindSetRoot;
+        return unionFindSetRoot;
     }
 
     void Merge(size_t fatherIdx, size_t sonIdx)

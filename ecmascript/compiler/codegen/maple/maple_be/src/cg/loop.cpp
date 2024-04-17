@@ -89,18 +89,13 @@ void LoopAnalysis::SetExitBBs(LoopDesc &loop) const
     }
 }
 
-void LoopAnalysis::ProcessBB(BB &bb)
+void LoopAnalysis::GenerateLoop(BB *bb)
 {
-    if (&bb == cgFunc.GetCommonExitBB()) {
-        return;
-    }
-
-    // generate loop based on the dom information
-    for (auto *pred : bb.GetPreds()) {
-        if (!dom.Dominate(bb, *pred)) {
+    for (auto *pred : bb->GetPreds()) {
+        if (!dom.Dominate(*bb, *pred)) {
             continue;
         }
-        auto *loop = GetOrCreateLoopDesc(bb);
+        auto *loop = GetOrCreateLoopDesc(*bb);
         loop->InsertBackEdges(*pred);
         std::list<BB*> bodyList;
         bodyList.push_back(pred);
@@ -108,7 +103,7 @@ void LoopAnalysis::ProcessBB(BB &bb)
             auto *curBB = bodyList.front();
             bodyList.pop_front();
             // skip bb or if it has already been dealt with
-            if (curBB == &bb || loop->Has(*curBB)) {
+            if (curBB == bb || loop->Has(*curBB)) {
                 continue;
             }
             SetLoopParent4BB(*curBB, *loop);
@@ -116,13 +111,28 @@ void LoopAnalysis::ProcessBB(BB &bb)
                 bodyList.push_back(curPred);
             }
         }
-        SetLoopParent4BB(bb, *loop);
+        SetLoopParent4BB(*bb, *loop);
         SetExitBBs(*loop);
     }
+}
 
-    // process dom tree
-    for (auto domChildBBId : dom.GetDomChildren(bb.GetId())) {
-        ProcessBB(*cgFunc.GetBBFromID(domChildBBId));
+void LoopAnalysis::ProcessBB(BB &entryBB)
+{
+    std::queue<BB *> allBBs;
+    allBBs.emplace(&entryBB);
+    while (!allBBs.empty()) {
+        BB *bb = allBBs.front();
+        allBBs.pop();
+        if (bb == cgFunc.GetCommonExitBB()) {
+            continue;
+        }
+
+        // generate loop based on the dom information
+        GenerateLoop(bb);
+        // process dom tree
+        for (auto domChildBBId : dom.GetDomChildren(bb->GetId())) {
+            allBBs.emplace(cgFunc.GetBBFromID(domChildBBId));
+        }
     }
 }
 
