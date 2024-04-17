@@ -548,7 +548,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Label cfgEntry(env);
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
-    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
+    DEFVARIABLE(res, VariableType::BOOL(), False());
     HashStubBuilder hashBuilder(this, glue_);
     GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
@@ -557,7 +557,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Bind(&findEntry);
     {
         RemoveEntry(linkedTable, entry);
-        res = TaggedTrue();
+        res = True();
         Jump(&exit);
     }
 

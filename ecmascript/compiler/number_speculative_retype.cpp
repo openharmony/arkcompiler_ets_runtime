@@ -248,6 +248,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitBigIntAsIntN(gate);
         case OpCode::MAP_HAS:
         case OpCode::SET_HAS:
+        case OpCode::MAP_DELETE:
+        case OpCode::SET_DELETE:
             return VisitOthers(gate, GateType::BooleanType());
         case OpCode::DATE_NOW:
             return VisitDateNow(gate);
@@ -1563,6 +1565,7 @@ GateRef NumberSpeculativeRetype::VisitNumberOrGlobalBuiltin(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
+
     // We change IsNan/IsFinite to constant if input is INT32 without check
     // So we skip tagged input with int profiled type
     auto type = GetNumberInputTypeInfo(input, true);

@@ -250,6 +250,12 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::DateNow:
                 TryInlineWhitoutParamBuiltin(gate, argc, id, circuit_->DateNow(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::MapDelete:
+                InlineStubBuiltin(gate, 1U, argc, id, circuit_->MapDelete(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::SetDelete:
+                InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetDelete(), skipThis);
+                break;
             default:
                 break;
         }

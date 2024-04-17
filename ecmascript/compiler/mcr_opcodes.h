@@ -128,6 +128,8 @@ namespace panda::ecmascript::kungfu {
     V(DateGetTime, DATE_GET_TIME, GateFlags::NO_WRITE, 1, 1, 1)                                 \
     V(MapHas, MAP_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
     V(SetHas, SET_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(MapDelete, MAP_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
+    V(SetDelete, SET_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
     V(DateNow, DATE_NOW, GateFlags::NONE_FLAG, 1, 1, 0)                                         \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 

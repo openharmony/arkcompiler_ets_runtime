@@ -335,6 +335,8 @@ public:
             case BuiltinsStubCSigns::ID::MapGet:
             case BuiltinsStubCSigns::ID::MapHas:
             case BuiltinsStubCSigns::ID::SetHas:
+            case BuiltinsStubCSigns::ID::MapDelete:
+            case BuiltinsStubCSigns::ID::SetDelete:
             case BuiltinsStubCSigns::ID::TypedArrayEntries:
             case BuiltinsStubCSigns::ID::TypedArrayKeys:
             case BuiltinsStubCSigns::ID::TypedArrayValues:
@@ -460,6 +462,10 @@ public:
                 return ConstantIndex::MAP_HAS_INDEX;
             case BuiltinsStubCSigns::ID::SetHas:
                 return ConstantIndex::SET_HAS_INDEX;
+            case BuiltinsStubCSigns::ID::MapDelete:
+                return ConstantIndex::MAP_DELETE_INDEX;
+            case BuiltinsStubCSigns::ID::SetDelete:
+                return ConstantIndex::SET_DELETE_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
@@ -594,6 +600,8 @@ public:
             {MapGet, "Map.get"},
             {MapHas, "Map.has"},
             {SetHas, "Set.has"},
+            {MapDelete, "Map.delete"},
+            {SetDelete, "Set.delete"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
@@ -647,6 +655,8 @@ public:
             {"isNan", GlobalIsNan},
             {"asIntN", BigIntAsIntN},
             {"asUintN", BigIntAsUintN},
+            {"mapDelete", MapDelete},
+            {"setDelete", SetDelete},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);

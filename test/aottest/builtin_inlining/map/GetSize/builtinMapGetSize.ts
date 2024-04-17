@@ -43,8 +43,10 @@ try {
 }
 
 // Check after deleting elements
+//aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapGetSize
 myMap.delete(-1);
 print(myMap.size); //: 6
+//aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapGetSize
 myMap.delete(-200);
 print(myMap.size); //: 6
 

@@ -1226,6 +1226,28 @@ void CreateJSTypedArrayValuesStubBuilder::GenerateCircuit()
     Return(*result);
 }
 
+void JSMapDeleteStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Delete(linkedTable, key));
+}
+
+void JSSetDeleteStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Delete(linkedTable, key));
+}
+
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()

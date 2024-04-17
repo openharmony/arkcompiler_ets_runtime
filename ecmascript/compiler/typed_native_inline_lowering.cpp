@@ -235,6 +235,12 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             LowerTypedArrayIterator(gate, CommonStubCSigns::CreateJSTypedArrayValues,
                                     IterationKind::VALUE);
             break;
+        case OpCode::MAP_DELETE:
+            LowerToCommonStub(gate, CommonStubCSigns::JSMapDelete);
+            break;
+        case OpCode::SET_DELETE:
+            LowerToCommonStub(gate, CommonStubCSigns::JSSetDelete);
+            break;
         default:
             break;
     }

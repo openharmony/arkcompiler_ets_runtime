@@ -2450,6 +2450,26 @@ DEF_CALL_SIGNATURE(JSSetHas)
         });
 }
 
+DEF_CALL_SIGNATURE(JSMapDelete)
+{
+    *callSign = CallSignature("JSMapDelete", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
+DEF_CALL_SIGNATURE(JSSetDelete)
+{
+    *callSign = CallSignature("JSSetDelete", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
 DEF_CALL_SIGNATURE(FastStringEqual)
 {
     // 3 : 3 input parameters
