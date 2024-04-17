@@ -2832,7 +2832,6 @@
         "mjsunit/harmony/regexp-property-exact-match.js",
         "mjsunit/harmony/private-fields-special-object.js",
         "mjsunit/harmony/array-to-spliced.js",
-        "mjsunit/harmony/atomics-on-arraybuffer-detach.js",
         "mjsunit/harmony/sharedarraybuffer.js",
         "mjsunit/harmony/atomics-waitasync-1thread-wake-up-fifo.js",
         "mjsunit/harmony/modules-import-10.js",

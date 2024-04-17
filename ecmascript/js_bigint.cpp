@@ -608,6 +608,11 @@ void BigInt::BigIntToInt64(JSThread *thread, JSHandle<JSTaggedValue> bigint, int
     if (bigint->IsBoolean()) {
         bigint = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, bigint));
         RETURN_IF_ABRUPT_COMPLETION(thread);
+    } else if (!bigint->IsBigInt()) {
+        JSHandle<BigInt> bigInt64(thread, JSTaggedValue::ToBigInt64(thread, bigint));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+        *cValue = bigInt64->ToInt64();
+        return;
     }
     JSHandle<BigInt> bigInt64(thread, JSTaggedValue::ToBigInt64(thread, bigint));
     RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -626,6 +631,11 @@ void BigInt::BigIntToUint64(JSThread *thread, JSHandle<JSTaggedValue> bigint, ui
     if (bigint->IsBoolean()) {
         bigint = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, bigint));
         RETURN_IF_ABRUPT_COMPLETION(thread);
+    } else if (!bigint->IsBigInt()) {
+        JSHandle<BigInt> bigInt64(thread, JSTaggedValue::ToBigUint64(thread, bigint));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+        *cValue = bigInt64->ToInt64();
+        return;
     }
     JSHandle<BigInt> bigUint64(thread, JSTaggedValue::ToBigUint64(thread, bigint));
     RETURN_IF_ABRUPT_COMPLETION(thread);
