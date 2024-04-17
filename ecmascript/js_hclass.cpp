@@ -1061,7 +1061,6 @@ PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread,
 PropertyLookupResult JSHClass::LookupPropertyInPGOHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    ASSERT(hclass->IsTS());
 
     PropertyLookupResult result;
     if (hclass->IsDictionaryMode()) {

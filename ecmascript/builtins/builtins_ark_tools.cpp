@@ -1142,4 +1142,57 @@ JSTaggedValue BuiltinsArkTools::ClearFunctionFeedback([[maybe_unused]] EcmaRunti
     LOG_ECMA(DEBUG) << "Enter ClearFunctionFeedback()";
     return JSTaggedValue::Undefined();
 }
+
+JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+
+    auto jit = Jit::GetInstance();
+    if (!jit->IsEnable()) {
+        return JSTaggedValue::False();
+    }
+    if (jsFunction->GetMachineCode() == JSTaggedValue::Undefined()) {
+        return JSTaggedValue::False();
+    }
+    while (jsFunction->GetMachineCode() == JSTaggedValue::Hole()) {
+        // just spin check
+        thread->CheckSafepoint();
+    }
+    return JSTaggedValue::True();
+}
 }  // namespace panda::ecmascript::builtins

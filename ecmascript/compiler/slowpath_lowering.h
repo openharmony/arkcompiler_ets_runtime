@@ -112,7 +112,7 @@ public:
     SlowPathLowering(Circuit *circuit, CompilationConfig *cmpCfg,
                      PassContext *ctx, const MethodLiteral *methodLiteral,
                      bool enableLog, const std::string& name)
-        : thread_(ctx->GetEcmaVM()->GetJSThread()), methodLiteral_(methodLiteral),
+        : compilationEnv_(ctx->GetCompilationEnv()), methodLiteral_(methodLiteral),
           circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
           enableLog_(enableLog), methodName_(name), glue_(acc_.GetGlueFromArgList())
@@ -320,7 +320,7 @@ private:
     void LowerLdStr(GateRef gate);
     void LowerGetConstPool(GateRef gate);
 
-    JSThread *thread_;
+    CompilationEnv *compilationEnv_;
     const MethodLiteral *methodLiteral_ {nullptr};
     Circuit *circuit_;
     GateAccessor acc_;

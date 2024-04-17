@@ -945,7 +945,7 @@ public:
     size_t VerifyHeapObjects(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     size_t VerifyOldToNewRSet(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     void StatisticHeapObject(TriggerGCType gcType) const;
-    void StatisticHeapDetail() const;
+    void StatisticHeapDetail();
     void PrintHeapInfo(TriggerGCType gcType) const;
 
     bool OldSpaceExceedCapacity(size_t size) const override

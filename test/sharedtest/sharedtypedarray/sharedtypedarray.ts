@@ -80,7 +80,7 @@ print(uint8); // [0, 22, 33]
 uint8 = new SharedUint8Array(new SharedUint8Array([11, 22, 33]));
 print(uint8); // [11, 22, 33]
 uint8 = new SharedUint8Array(new SharedUint32Array([1024, 11, 22]));
-print(uint8); // [0, 22, 33]
+print(uint8); // [0, 11, 22]
 
 // From an non-shared ArrayBuffer
 try {
@@ -99,7 +99,34 @@ try {
 } catch (e) {
   print("error: " + e);
 }
-
+try {
+  let arrBuf = new SendableArrayBuffer(16);
+  let sliced = new SharedInt16Array(arrBuf.slice(4, 10));
+  print(sliced);
+} catch (e) {
+  print(e);
+}
+try {
+  let arrBuf = new SendableArrayBuffer(16);
+  let sliced = new SharedInt16Array(arrBuf.slice(4, 7));
+  print(sliced);
+} catch (e) {
+  print(e);
+}
+try {
+  let arrBuf = new SendableArrayBuffer(16);
+  let sliced = new SharedInt32Array(arrBuf.slice(4, 11));
+  print(sliced);
+} catch (e) {
+  print(e);
+}
+try {
+  let arrBuf = new SendableArrayBuffer(16);
+  let sliced = new SharedFloat64Array(arrBuf.slice(4, 11));
+  print(sliced);
+} catch (e) {
+  print(e);
+}
 // From an arrayLike
 class SharedObject {
   constructor() {
@@ -117,7 +144,6 @@ const iterable = (function* () {
 })();
 let float64FromIterable = new SharedFloat64Array(iterable);
 print("From an iterable: " + float64FromIterable.length + ", array: [" + float64FromIterable + "]");
-
 print("================Test At================");
 [
   SharedFloat64Array,
@@ -566,6 +592,7 @@ print("================Test From================");
 
 print("================Test Set================");
 let uint8Arr;
+let uint16Arr;
 let uint32Arr;
 // Shared array
 uint8Arr = new SharedUint8Array(8);
@@ -593,6 +620,22 @@ uint8Arr = new SharedUint8Array(8);
 uint32Arr = new Uint32Array([1024, 1, 2])
 uint8Arr.set(uint32Arr, 3);
 print(uint8Arr);
+// Set self
+let uint8c = new Uint8ClampedArray(11);
+uint8c.set(uint8c);
+print(uint8c);
+uint8Arr = new Uint8Array(11);
+uint8Arr.fill(1);
+uint8Arr.set(uint8Arr);
+print(uint8Arr);
+uint16Arr = new Uint16Array(11);
+uint16Arr.fill(513);
+uint16Arr.set(uint16Arr);
+print(uint16Arr);
+uint32Arr = new Uint32Array(11);
+uint32Arr.fill(65536);
+uint32Arr.set(uint32Arr);
+print(uint32Arr);
 
 print("================Test Freeze================");
 try {

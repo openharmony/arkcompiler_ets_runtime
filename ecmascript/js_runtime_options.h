@@ -166,6 +166,9 @@ enum CommandValues {
     OPTION_COMPILER_OSR_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
+    OPTION_COMPILER_ENABLE_JIT_PGO,
+    OPTION_COMPILER_ENABLE_AOT_PGO,
+    OPTION_COMPILER_ENABLE_PROPFILE_DUMP,
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
     OPTION_COMPILER_OPT_BRANCH_PROFILING,
@@ -1658,6 +1661,36 @@ public:
         return checkPgoVersion_;
     }
 
+    void SetEnableJITPGO(bool value)
+    {
+        enableJITPGO_ = value;
+    }
+
+    bool IsEnableJITPGO() const
+    {
+        return enableJITPGO_;
+    }
+
+    void SetEnableProfileDump(bool value)
+    {
+        enableProfileDump_ = value;
+    }
+
+    bool IsEnableProfileDump() const
+    {
+        return enableProfileDump_;
+    }
+
+    void SetEnableAOTPGO(bool value)
+    {
+        enableAOTPGO_ = value;
+    }
+
+    bool IsEnableAOTPGO() const
+    {
+        return enableAOTPGO_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1763,6 +1796,9 @@ private:
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
+    bool enableJITPGO_ {false};
+    bool enableAOTPGO_ {true};
+    bool enableProfileDump_ {true};
     bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};

@@ -155,13 +155,8 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
     JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     auto size = static_cast<size_t>(allocateSize.GetInt());
     auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-    auto space = heap->GetNewSpace();
-    ASSERT(size <= MAX_REGULAR_HEAP_OBJECT_SIZE);
-    auto result = reinterpret_cast<TaggedObject *>(space->Allocate(size));
-    if (result == nullptr) {
-        result = heap->AllocateYoungOrHugeObject(size);
-        ASSERT(result != nullptr);
-    }
+    auto result = heap->AllocateYoungOrHugeObject(size);
+    ASSERT(result != nullptr);
     if (argc > 1) { // 1: means the first parameter
         JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
         auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
@@ -1562,6 +1557,14 @@ DEF_RUNTIME_STUBS(JitCompile)
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue offset = GetArg(argv, argc, 1);  // 1: means the first parameter
     Jit::Compile(thread->GetEcmaVM(), thisFunc, offset.GetInt(), JitCompileMode::ASYNC);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CountInterpExecFuncs)
+{
+    RUNTIME_STUBS_HEADER(CountInterpExecFuncs);
+    JSHandle thisFunc = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
+    Jit::CountInterpExecFuncs(thisFunc);
     return JSTaggedValue::Undefined().GetRawData();
 }
 

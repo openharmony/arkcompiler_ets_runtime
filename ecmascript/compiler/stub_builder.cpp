@@ -4781,15 +4781,6 @@ GateRef StubBuilder::SameValue(GateRef glue, GateRef left, GateRef right)
                 Label leftIsInt(env);
                 Label leftNotInt(env);
                 Label getRight(env);
-                Label fastPath(env);
-                Label slowPath(env);
-                BRANCH(BoolAnd(TaggedIsInt(left), TaggedIsInt(right)), &fastPath, &slowPath);
-                Bind(&fastPath);
-                {
-                    result = False();
-                    Jump(&exit);
-                }
-                Bind(&slowPath);
                 BRANCH(TaggedIsInt(left), &leftIsInt, &leftNotInt);
                 Bind(&leftIsInt);
                 {

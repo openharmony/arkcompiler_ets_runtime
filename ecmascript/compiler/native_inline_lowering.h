@@ -37,9 +37,9 @@ public:
           tsManager_(ctx->GetTSManager()),
           enableLog_(enableLog),
           methodName_(name),
-          nocheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
-          traceInline_(ctx->GetEcmaVM()->GetJSOptions().GetTraceInline()),
-          thread_(ctx->GetEcmaVM()->GetJSThread()) {}
+          nocheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
+          traceInline_(ctx->GetCompilationEnv()->GetJSOptions().GetTraceInline()),
+          compilationEnv_(ctx->GetCompilationEnv()) {}
     ~NativeInlineLowering() = default;
     void RunNativeInlineLowering();
 
@@ -101,7 +101,7 @@ private:
     std::string methodName_;
     bool nocheck_;
     bool traceInline_;
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
 };
 }
 #endif // ECMASCRIPT_COMPILER_BUILTIN_INLINE_H

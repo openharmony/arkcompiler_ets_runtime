@@ -23,13 +23,28 @@ namespace panda::ecmascript {
 class ModuleManagerHelper {
 public:
     static JSTaggedValue PUBLIC_API GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, int index);
+
+    static JSTaggedValue GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, 
+                                        JSTaggedValue bindingName);
+
     static JSTaggedValue PUBLIC_API GetNativeModuleValue(JSThread *thread, JSTaggedValue resolvedModule,
-                                                         ResolvedBinding *binding);
+                                                         JSTaggedValue bindingName);
+
     static JSTaggedValue PUBLIC_API GetNativeModuleValue(JSThread *thread, JSTaggedValue resolvedModule,
                                                          int32_t index);
+
     static JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue resolvedModule, int32_t index);
+
+    static JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue resolvedModule,
+                                           JSTaggedValue bindingName);
+
+    static JSTaggedValue PUBLIC_API GetModuleValueFromIndexBinding(JSThread *thread,
+                                                                   JSHandle<SourceTextModule> module,
+                                                                   JSTaggedValue resolvedBinding);
+
     static JSTaggedValue PUBLIC_API GetModuleValueFromRecordBinding(JSThread *thread,
-        JSHandle<SourceTextModule> module, JSTaggedValue resolvedBinding);
+                                                                    JSHandle<SourceTextModule> module,
+                                                                    JSTaggedValue resolvedBinding);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_SHARED_MODULE_H

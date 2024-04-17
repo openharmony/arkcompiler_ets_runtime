@@ -44,6 +44,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #include "ecmascript/builtin_entries.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript {
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
@@ -54,6 +55,30 @@ thread_local JSThread *currentThread = nullptr;
 JSThread *JSThread::GetCurrent()
 {
     return currentThread;
+}
+
+// static
+void JSThread::RegisterThread(JSThread *jsThread)
+{
+    Runtime::GetInstance()->RegisterThread(jsThread);
+    // If it is not true, we created a new thread for future fork
+    if (currentThread == nullptr) {
+        currentThread = jsThread;
+        jsThread->UpdateState(ThreadState::NATIVE);
+    }
+}
+
+void JSThread::UnregisterThread(JSThread *jsThread)
+{
+    if (currentThread == jsThread) {
+        jsThread->UpdateState(ThreadState::TERMINATED);
+        currentThread = nullptr;
+    } else {
+        // We have created this JSThread instance but hadn't forked it.
+        ASSERT(jsThread->GetState() == ThreadState::CREATED);
+        jsThread->UpdateState(ThreadState::TERMINATED);
+    }
+    Runtime::GetInstance()->UnregisterThread(jsThread);
 }
 
 // static
@@ -78,12 +103,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
 
-    Runtime::GetInstance()->RegisterThread(jsThread);
-    // If it is not true, we created a new thread for future fork
-    if (currentThread == nullptr) {
-        currentThread = jsThread;
-        jsThread->UpdateState(ThreadState::NATIVE);
-    }
+    RegisterThread(jsThread);
     return jsThread;
 }
 
@@ -115,6 +135,12 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
 }
 
+JSThread::JSThread(EcmaVM *vm, bool isJit) : id_(os::thread::GetCurrentThreadId()), vm_(vm), isJitThread_(isJit)
+{
+    ASSERT(isJit);
+    RegisterThread(this);
+};
+
 JSThread::~JSThread()
 {
     readyForGCIterating_ = false;
@@ -144,15 +170,7 @@ JSThread::~JSThread()
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
     }
-    if (currentThread == this) {
-        UpdateState(ThreadState::TERMINATED);
-        currentThread = nullptr;
-    } else {
-        // We have created this JSThread instance but hadn't forked it.
-        ASSERT(GetState() == ThreadState::CREATED);
-        UpdateState(ThreadState::TERMINATED);
-    }
-    Runtime::GetInstance()->UnregisterThread(this);
+    UnregisterThread(this);
 }
 
 void JSThread::SetException(JSTaggedValue exception)
@@ -635,6 +653,10 @@ void JSThread::CheckOrSwitchPGOStubs()
 
 void JSThread::SwitchJitProfileStubs()
 {
+    // if jit enable pgo, use pgo stub
+    if (GetEcmaVM()->GetJSOptions().IsEnableJITPGO()) {
+        return;
+    }
     bool isSwitch = false;
     if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
         SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
@@ -684,7 +706,7 @@ bool JSThread::CheckSafepoint()
         interruptMutex_.Unlock();
     }
 
-    if (vm_->IsEnableJit() && HasInstallMachineCode()) {
+    if (HasInstallMachineCode()) {
         vm_->GetJit()->InstallTasks(GetThreadId());
         SetInstallMachineCode(false);
     }

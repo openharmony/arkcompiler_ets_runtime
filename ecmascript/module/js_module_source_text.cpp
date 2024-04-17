@@ -1401,7 +1401,8 @@ JSTaggedValue SourceTextModule::GetNativeModuleValue(JSThread *thread, JSHandle<
 {
     DISALLOW_GARBAGE_COLLECTION;
     ResolvedBinding *resolvedBinding = ResolvedBinding::Cast(binding.GetTaggedValue().GetTaggedObject());
-    return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedBinding->GetModule(), resolvedBinding);
+    return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedBinding->GetModule(),
+                                                     resolvedBinding->GetBindingName());
 }
 
 JSTaggedValue SourceTextModule::GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedIndexBinding> &binding)

@@ -159,6 +159,7 @@ class CjsRequire;
 class CjsExports;
 class ResolvedBinding;
 class ResolvedIndexBinding;
+class ResolvedRecordIndexBinding;
 class ResolvedRecordBinding;
 class BigInt;
 class AsyncGeneratorRequest;
@@ -587,6 +588,7 @@ public:
     // ----------------------------------- new string ----------------------------------------
     JSHandle<EcmaString> PUBLIC_API NewFromASCII(std::string_view data);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf8(std::string_view data);
+    JSHandle<EcmaString> NewFromASCIISkippingStringTable(std::string_view data);
     JSHandle<EcmaString> NewFromUtf16(std::u16string_view data);
 
     JSHandle<EcmaString> NewFromStdString(const std::string &data);
@@ -829,10 +831,15 @@ public:
     JSHandle<ResolvedBinding> NewSResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
         const JSHandle<JSTaggedValue> &bindingName);
 
+    JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord();
+
+    JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord(
+        const JSHandle<EcmaString> &moduleRecord, int32_t index);
+
     JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord();
 
-    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord(const JSHandle<EcmaString> &moduleRecord,
-                                                                    int32_t index);
+    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord(
+        const JSHandle<EcmaString> &moduleRecord, const JSHandle<JSTaggedValue> &bindingName);
 
     JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
 
@@ -863,6 +870,7 @@ public:
     JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<Method> CloneMethodTemporaryForJIT(JSHandle<Method> method);
 
 private:
     friend class GlobalEnv;

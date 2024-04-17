@@ -436,8 +436,9 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
 {
 #ifdef COMPILE_MAPLE
     if (useLiteCG_) {
-        LMIRModule *irModule = new LMIRModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple, isJit);
-        LiteCGAssembler *ass = new LiteCGAssembler(*irModule, vm_->GetJSOptions().GetCompilerCodegenOptions());
+        LMIRModule *irModule = new LMIRModule(compilationEnv_->GetNativeAreaAllocator(), name, logDebug, triple, isJit);
+        LiteCGAssembler *ass = new LiteCGAssembler(*irModule,
+            compilationEnv_->GetJSOptions().GetCompilerCodegenOptions());
         modulePackage_.emplace_back(Module(irModule, ass));
         if (stackMapInfo_ == nullptr) {
             stackMapInfo_ = new LiteCGStackMapInfo();
@@ -445,7 +446,7 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
         return &modulePackage_.back();
     }
 #endif
-    LLVMModule *m = new LLVMModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
+    LLVMModule *m = new LLVMModule(compilationEnv_->GetNativeAreaAllocator(), name, logDebug, triple);
     LLVMAssembler *ass = new LLVMAssembler(m, option);
     modulePackage_.emplace_back(Module(m, ass));
     if (stackMapInfo_ == nullptr) {
@@ -500,7 +501,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     Module *latestModule = GetLatestModule();
 #ifdef COMPILE_MAPLE
     static uint32_t lastModulePC = 0;
-    if (useLiteCG_ && vm_->IsEnableJit()) {
+    if (useLiteCG_ && compilationEnv_->IsJitCompiler()) {
         lastModulePC = 0;
     }
     if (latestModule->GetModule()->GetModuleKind() != MODULE_LLVM) {
@@ -514,7 +515,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     uint32_t latestModuleIdx = GetModuleVecSize() - 1;
     {
         TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));
-        bool fastCompileMode = vm_->GetJSOptions().GetFastAOTCompileMode();
+        bool fastCompileMode = compilationEnv_->GetJSOptions().GetFastAOTCompileMode();
         latestModule->RunAssembler(*(log_), fastCompileMode);
     }
     {
@@ -655,10 +656,10 @@ bool AOTFileGenerator::isAArch64() const
 void AOTFileGenerator::SaveSnapshotFile()
 {
     TimeScope timescope("LLVMCodeGenPass-AI", const_cast<CompilerLog *>(log_));
-    Snapshot snapshot(vm_);
-    const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
+    Snapshot snapshot(compilationEnv_->GetEcmaVM());
+    const CString snapshotPath(compilationEnv_->GetJSOptions().GetAOTOutputFile().c_str());
     const auto &methodToEntryIndexMap = aotInfo_.GetMethodToEntryIndexMap();
-    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
     ptManager->GetAOTSnapshot().ResolveSnapshotData(methodToEntryIndexMap);
 
     CString aiPath = snapshotPath + AOTFileManager::FILE_EXTENSION_AI;

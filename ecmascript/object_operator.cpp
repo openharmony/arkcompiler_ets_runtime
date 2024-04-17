@@ -76,6 +76,9 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
             }
         }
         key_ = JSHandle<JSTaggedValue>::Cast(base::NumberHelper::NumberToString(thread_, key.GetTaggedValue()));
+        if (!EcmaStringAccessor(key_.GetTaggedValue()).IsInternString()) {
+                key_ = JSHandle<JSTaggedValue>(thread_, thread_->GetEcmaVM()->GetFactory()->InternString(key_));
+        }
         return;
     }
 

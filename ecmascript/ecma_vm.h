@@ -91,6 +91,7 @@ class FunctionCallTimer;
 class EcmaStringTable;
 class JSObjectResizingStrategy;
 class Jit;
+class JitThread;
 
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
@@ -113,7 +114,7 @@ public:
 
     EcmaVM();
 
-    ~EcmaVM();
+    virtual ~EcmaVM();
 
     void SetLoop(void *loop)
     {
@@ -142,6 +143,7 @@ public:
     bool PUBLIC_API IsEnableElementsKind() const;
 
     bool Initialize();
+    void InitializeForJit(JitThread *thread);
 
     GCStats *GetEcmaGCStats() const
     {
@@ -670,6 +672,16 @@ public:
         return nativePointerCallbacks_;
     }
 
+    void SetIsJitCompileVM(bool isJitCompileVM)
+    {
+        isJitCompileVM_ = isJitCompileVM;
+    }
+
+    bool IsJitCompileVM() const
+    {
+        return isJitCompileVM_;
+    }
+
     static void InitializeIcuData(const JSRuntimeOptions &options);
 
     std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
@@ -800,9 +812,11 @@ private:
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
     friend class EcmaContext;
+    friend class JitVM;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;
     bool isEnableOsr_ {false};
+    bool isJitCompileVM_ {false};
     bool overLimit_ {false};
     void *env_ = nullptr;
 };

@@ -309,12 +309,26 @@ JSTaggedValue BuiltinsSendableArrayBuffer::CloneArrayBuffer(JSThread *thread,
         }
     }
     // 4. Let srcLength be the value of srcBuffer’s [[ArrayBufferByteLength]] internal slot.
-    JSHandle<JSSendableArrayBuffer> arrBuf(srcBuffer);
-    uint32_t srcLen = arrBuf->GetArrayBufferByteLength();
-    // 5. Assert: srcByteOffset ≤ srcLength.
-    ASSERT(srcByteOffset <= srcLen);
-    // 6. Let cloneLength be srcLength – srcByteOffset.
-    int32_t cloneLen = static_cast<int32_t>(srcLen - srcByteOffset);
+    uint32_t srcLen = 0;
+    int32_t cloneLen = 0;
+    if (srcBuffer->IsByteArray()) {
+        JSHandle<ByteArray> byteArrayBuf(srcBuffer);
+        srcLen = byteArrayBuf->GetArrayLength();
+        int32_t byteLen = byteArrayBuf->GetByteLength();
+        // 5. Assert: srcByteOffset ≤ srcLength.
+        ASSERT(srcByteOffset <= srcLen);
+        // 6. Let cloneLength be (srcLength – srcByteOffset) * byteLen.
+        cloneLen = static_cast<int32_t>(srcLen - srcByteOffset) * byteLen;
+        srcByteOffset *= byteLen;
+    } else {
+        JSHandle<JSSendableArrayBuffer> arrBuf(srcBuffer);
+        srcLen = arrBuf->GetArrayBufferByteLength();
+        // 5. Assert: srcByteOffset ≤ srcLength.
+        ASSERT(srcByteOffset <= srcLen);
+        // 6. Let cloneLength be srcLength – srcByteOffset.
+        cloneLen = static_cast<int32_t>(srcLen - srcByteOffset);
+    }
+
     // 8. Let targetBuffer be AllocateArrayBuffer(cloneConstructor, cloneLength).
     JSTaggedValue taggedBuf = AllocateSendableArrayBuffer(thread, constructor, cloneLen);
     // 9. ReturnIfAbrupt(targetBuffer).
@@ -327,7 +341,7 @@ JSTaggedValue BuiltinsSendableArrayBuffer::CloneArrayBuffer(JSThread *thread,
     JSHandle<JSSendableArrayBuffer> newArrBuf(thread, taggedBuf);
     // Perform CopyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, cloneLength).
     // 7. Let srcBlock be the value of srcBuffer’s [[ArrayBufferData]] internal slot.
-    void *fromBuf = GetDataPointFromBuffer(arrBuf.GetTaggedValue());
+    void *fromBuf = GetDataPointFromBuffer(srcBuffer.GetTaggedValue());
     void *toBuf = GetDataPointFromBuffer(taggedBuf);
     if (cloneLen > 0) {
         JSSendableArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, srcByteOffset, cloneLen);

@@ -46,11 +46,11 @@ std::optional<std::pair<size_t, bool>> NativeInlineLowering::GetCallInfo(GateRef
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             return {{3U, true}};
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8: {
-            CallRangeTypeInfoAccessor tia(thread_, circuit_, gate);
+            CallRangeTypeInfoAccessor tia(compilationEnv_, circuit_, gate);
             return {{tia.GetArgc(), false}};
         }
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
-            CallThisRangeTypeInfoAccessor tia(thread_, circuit_, gate);
+            CallThisRangeTypeInfoAccessor tia(compilationEnv_, circuit_, gate);
             return {{tia.GetArgc(), true}};
         }
         default:
@@ -72,7 +72,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
             continue;
         }
         auto [argc, skipThis] = optCallInfo.value();
-        CallTypeInfoAccessor ctia(thread_, circuit_, gate);
+        CallTypeInfoAccessor ctia(compilationEnv_, circuit_, gate);
         BuiltinsStubCSigns::ID id = ctia.TryGetPGOBuiltinMethodId();
         switch (id) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
@@ -257,7 +257,7 @@ void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -281,7 +281,7 @@ void NativeInlineLowering::TryInlineNumberIsFinite(GateRef gate, size_t argc, bo
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -299,7 +299,7 @@ void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, b
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -317,7 +317,7 @@ void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool 
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -335,7 +335,7 @@ void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t arg
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -516,7 +516,7 @@ void NativeInlineLowering::TryInlineArrayBufferIsView(GateRef gate,
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(), builder_.IntPtr(static_cast<int64_t>(id)), {tacc.GetArg0()});
