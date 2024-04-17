@@ -81,6 +81,12 @@ inline uint32 GetPrimTypeBitSize(PrimType primType)
     return GetPrimTypeSize(primType) << k8BitShift;
 }
 
+inline uint32 GetAlignedPrimTypeBitSize(PrimType primType)
+{
+    auto size = GetPrimTypeBitSize(primType);
+    return size <= k32BitSize ? k32BitSize : k64BitSize;
+}
+
 inline uint32 GetPrimTypeActualBitSize(PrimType primType)
 {
     // GetPrimTypeSize(PTY_u1) will return 1, so we take it as a special case
