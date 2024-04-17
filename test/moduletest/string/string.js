@@ -269,3 +269,20 @@ const v4 = v0.join();
 print(v4.startsWith(v4,v0))
 let strFromCodePoint = String.fromCodePoint(49,50,51,0)
 print(strFromCodePoint);
+
+{
+    const v1 = [5.101952721978723,-1.2836190437943387,-1.1815850946332814e+308,2.220446049250313e-16,-680.5741773264597,0.8970365641701358,NaN];
+    function f2(a3, a4, a5) {
+        return BigInt64Array.bind();
+    }
+
+    const o8 = {
+        "get": f2,
+    };
+    const v10 = new Proxy(v1, o8);
+    try {
+        ("n").search(v10)
+    } catch (err) {
+        print(err);
+    }
+}

@@ -646,7 +646,7 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!matcher->IsUndefined()) {
-            ASSERT(matcher->IsJSFunction());
+            ASSERT(matcher->IsJSFunctionBase());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1499,7 +1499,7 @@ JSTaggedValue BuiltinsString::Search(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> searcher = JSObject::GetMethod(thread, regexp, searchTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!searcher->IsUndefined()) {
-            ASSERT(searcher->IsJSFunction());
+            ASSERT(searcher->IsJSFunctionBase());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, searcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
