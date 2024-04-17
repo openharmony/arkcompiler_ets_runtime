@@ -2988,6 +2988,12 @@ void* JSNApi::GetCurrentTaskInfo(const EcmaVM *vm)
     return reinterpret_cast<void*>(thread->GetTaskInfo());
 }
 
+void JSNApi::ClearCurrentTaskInfo(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    thread->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
+}
+
 void JSNApi::SetBundleName(EcmaVM *vm, const std::string &bundleName)
 {
     ecmascript::CString name = bundleName.c_str();
