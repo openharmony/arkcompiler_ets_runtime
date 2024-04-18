@@ -25,6 +25,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_queue.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript::job {
 uint32_t MicroJobQueue::GetPromiseQueueSize(JSThread *thread, JSHandle<MicroJobQueue> jobQueue)
@@ -42,7 +43,20 @@ void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueu
     // 3. Assert: arguments is a List that has the same number of elements as the number of parameters required by job.
     // 4. Let callerContext be the running execution context.
     // 5. Let callerRealm be callerContext’s Realm.
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "MicroJobQueue::EnqueueJob");
+#if defined(ENABLE_BYTRACE)
+    if (thread->GetEcmaVM()->GetJSOptions().EnableMicroJobTrace()) {
+        std::vector<JsFrameInfo> jsStackInfo = JsStackInfo::BuildJsStackInfo(thread, true);
+        if (!jsStackInfo.empty()) {
+            JsFrameInfo jsFrameInfo = jsStackInfo.front();
+            std::string strTrace = "MicroJobQueue::EnqueueJob: threadId: " + std::to_string(thread->GetThreadId());
+            strTrace += ", funcName: " + jsFrameInfo.functionName;
+            strTrace += ", url: " + jsFrameInfo.fileName + ":" + jsFrameInfo.pos;
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, strTrace);
+        }
+    } else {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "MicroJobQueue::EnqueueJob");
+    }
+#endif
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<PendingJob> pendingJob(factory->NewPendingJob(job, argv));
