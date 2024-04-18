@@ -54,7 +54,7 @@ std::string GetHelper()
     return str;
 }
 
-bool QuickFixQueryFunc(std::string baseFileName,
+bool QuickFixQueryFuncColdPatch(std::string baseFileName,
                        std::string &patchFileName, void ** patchBuffer, size_t &patchBufferSize)
 {
     return true;
@@ -153,7 +153,7 @@ int Main(const int argc, const char **argv)
             std::cout << "QuickFix load patch success" << std::endl;
 
             if (size > entryNum) {
-                JSNApi::RegisterQuickFixQueryFunc(vm, QuickFixQueryFunc);
+                JSNApi::RegisterQuickFixQueryFunc(vm, QuickFixQueryFuncColdPatch);
                 res = JSNApi::Execute(vm, baseFileName, entryList[0]);
             }
 
