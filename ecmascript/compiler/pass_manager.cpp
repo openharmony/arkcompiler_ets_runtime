@@ -282,8 +282,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
                       compilationEnv_->GetNativeAreaAllocator(), decoder, passOptions_,
                       optBCRange_);
         PassRunner<PassData> pipeline(&data);
-        if (data.GetMethodLiteral()->HasDebuggerStmt()) {
-            data.AbortCompilation();
+        if (!pipeline.RunPass<PreCompileCheckPass>()) {
             return;
         }
         pipeline.RunPass<RunFlowCyclesVerifierPass>();
