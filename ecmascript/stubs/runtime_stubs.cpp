@@ -687,6 +687,16 @@ DEF_RUNTIME_STUBS(NewCOWTaggedArray)
     return factory->NewCOWMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ForceGC)
+{
+    RUNTIME_STUBS_HEADER(ForceGC);
+    if (!thread->GetEcmaVM()->GetJSOptions().EnableForceGC()) {
+        return JSTaggedValue::Hole().GetRawData();
+    }
+    thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(RuntimeDump)
 {
     RUNTIME_STUBS_HEADER(RuntimeDump);

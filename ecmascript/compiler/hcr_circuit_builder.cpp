@@ -71,8 +71,7 @@ GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const
     return result;
 }
 
-GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
-                                           bool isNew, const char* comment)
+GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     int index = 0;
@@ -81,6 +80,7 @@ GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const s
     } else {
         index = static_cast<int>(RTSTUB_ID(PushCallNewAndDispatchNative));
     }
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
 
     const CallSignature *cs = RuntimeStubCSigns::Get(index);
     GateRef target = IntPtr(index);
@@ -88,17 +88,17 @@ GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const s
     if (depend == Gate::InvalidGateRef) {
         depend = label->GetDepend();
     }
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), name.c_str());
     return result;
 }
 
-GateRef CircuitBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
-                                                        const char* comment)
+GateRef CircuitBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     int index = 0;
 
     index = static_cast<int>(RTSTUB_ID(PushNewTargetAndDispatchNative));
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
 
     const CallSignature *cs = RuntimeStubCSigns::Get(index);
     GateRef target = IntPtr(index);
@@ -106,7 +106,7 @@ GateRef CircuitBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef de
     if (depend == Gate::InvalidGateRef) {
         depend = label->GetDepend();
     }
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), name.c_str());
     return result;
 }
 

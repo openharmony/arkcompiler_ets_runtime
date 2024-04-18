@@ -48,8 +48,6 @@ public:
 
     static void OptimizedCallAndPushUndefined(ExtendedAssembler *assembler);
 
-    static void CallBuiltinTrampoline(ExtendedAssembler *assembler);
-
     static void JSProxyCallInternalWithArgV(ExtendedAssembler *assembler);
 
     static void JSCall(ExtendedAssembler *assembler);
@@ -86,7 +84,11 @@ private:
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
     static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
-    
+    static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
+    static void CallBuiltinTrampoline(ExtendedAssembler *assembler);
+    static void CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
+                                           Register glue, Register temp);
+
     friend class OptimizedFastCall;
 };
 
