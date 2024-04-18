@@ -2670,14 +2670,13 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
     return method->IsNativeWithCallField();
 }
 
-void FunctionRef::SetData(const EcmaVM *vm, void *data, Deleter deleter, bool callNapi)
+void FunctionRef::SetData(const EcmaVM *vm, void *data, Deleter deleter, [[maybe_unused]] bool callNapi)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> function(funcValue);
     function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
-    function->SetCallNapi(callNapi);
 }
 
 void* FunctionRef::GetData(const EcmaVM *vm)
@@ -2686,9 +2685,6 @@ void* FunctionRef::GetData(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> function(funcValue);
-    if (!function->IsCallNapi()) {
-        return nullptr;
-    }
     JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
     if (!extraInfoValue.IsNativePointer()) {
         return nullptr;
@@ -2977,7 +2973,6 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         return false;
     }
     transFunc->SetFunctionExtraInfo(thread, nullptr, nullptr, taskInfo);
-    transFunc->SetCallNapi(false);
     thread->SetTaskInfo(reinterpret_cast<uintptr_t>(taskInfo));
     return true;
 }
