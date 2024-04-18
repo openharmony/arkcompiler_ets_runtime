@@ -326,7 +326,8 @@ bool CallThisTypeInfoAccessor::CanOptimizeAsFastCall()
         return false;
     }
     if (!profileType->IsNone()) {
-        if (profileType->IsProfileTypeNone() || op != OpCode::LOAD_PROPERTY) {
+        if (profileType->IsProfileTypeNone() ||
+            (op != OpCode::LOAD_PROPERTY && op != OpCode::MONO_LOAD_PROPERTY_ON_PROTO)) {
             return false;
         }
         return true;
