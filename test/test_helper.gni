@@ -385,7 +385,7 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
-    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+    if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
       _asm_run_options_ += " --enable-elements-kind=true"
     }
 
@@ -443,7 +443,7 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
-    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+    if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
       _asm_run_options_ += " --enable-elements-kind=true"
     }
 
@@ -839,7 +839,7 @@ template("host_moduletest_assert_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
-    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+    if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
       _asm_run_options_ += " --enable-elements-kind=true"
     }
 
@@ -898,7 +898,7 @@ template("host_moduletest_assert_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
-    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+    if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
       _asm_run_options_ += " --enable-elements-kind=true"
     }
 

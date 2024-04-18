@@ -104,9 +104,14 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
 
     JSHandle<JSArray> newArray(obj);
     // For new Array(Len), the elementsKind should be Hole
-    if (thread->GetEcmaVM()->IsEnableElementsKind() && (newTarget.GetTaggedValue() == arrayFunc.GetTaggedValue()) &&
-        normalArrayLength != 0) {
-        JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::HOLE);
+    if (thread->GetEcmaVM()->IsEnableElementsKind()) {
+        if ((newTarget.GetTaggedValue() == arrayFunc.GetTaggedValue()) && normalArrayLength != 0) {
+            #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+            JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::GENERIC);
+            #else
+            JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::HOLE);
+            #endif
+        }
     }
 
     return JSHandle<JSTaggedValue>(obj);
@@ -254,7 +259,11 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uin
     // Add this switch because we do not support ElementsKind for instance from new Array
     if (thread->GetEcmaVM()->IsEnableElementsKind() && !array->IsElementDict()) {
         ElementsKind oldKind = array->GetClass()->GetElementsKind();
+        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+        ElementsKind newKind = ElementsKind::GENERIC;
+        #else
         ElementsKind newKind = ElementsKind::NONE;
+        #endif
         for (uint32_t i = 0; i < newLen; ++i) {
             JSTaggedValue val = ElementAccessor::Get(array, i);
             newKind = Elements::ToElementsKind(val, newKind);
