@@ -5130,7 +5130,7 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(holder, VariableType::JS_ANY(), receiver);
-    Label icPath(env);
+
     Label slowPath(env);
     Label exit(env);
     Label isEcmaObj(env);
@@ -5147,7 +5147,7 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
         BRANCH(TaggedIsHeapObject(firstValue), &firstValueHeapObject, &hclassNotHit);
         Bind(&firstValueHeapObject);
         GateRef hclass = LoadHClass(*holder);
-        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &icPath, &hclassNotHit);
+        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &slowPath, &hclassNotHit);
     }
     Bind(&hclassNotHit);
     // found entry -> slow path
@@ -5181,18 +5181,10 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
         Bind(&loopExit);
         {
             holder = GetPrototypeFromHClass(LoadHClass(*holder));
-            BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &icPath);
+            BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &slowPath);
         }
         Bind(&loopEnd);
         LoopEnd(&loopHead, env, glue);
-    }
-    Bind(&icPath);
-    {
-        // IC do the same thing as stobjbyname
-        AccessObjectStubBuilder builder(this);
-        StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
-        result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
-        Jump(&exit);
     }
     Bind(&slowPath);
     {
