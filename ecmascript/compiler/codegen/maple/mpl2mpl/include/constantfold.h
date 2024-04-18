@@ -94,7 +94,7 @@ private:
     ConstvalNode *FoldCeil(const ConstvalNode &cst, PrimType fromType, PrimType toType) const;
     ConstvalNode *FoldFloor(const ConstvalNode &cst, PrimType fromType, PrimType toType) const;
     ConstvalNode *FoldRound(const ConstvalNode &cst, PrimType fromType, PrimType toType) const;
-    ConstvalNode *FoldTrunk(const ConstvalNode &cst, PrimType fromType, PrimType toType) const;
+    ConstvalNode *FoldTrunc(const ConstvalNode &cst, PrimType fromType, PrimType toType) const;
     ConstvalNode *FoldTypeCvt(const ConstvalNode &cst, PrimType fromType, PrimType toType) const;
     ConstvalNode *FoldConstComparison(Opcode opcode, PrimType resultType, PrimType opndType, const ConstvalNode &const0,
                                       const ConstvalNode &const1) const;

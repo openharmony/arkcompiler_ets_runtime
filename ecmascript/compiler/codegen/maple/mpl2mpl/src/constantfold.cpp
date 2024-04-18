@@ -1105,20 +1105,26 @@ ConstvalNode *ConstantFold::FoldCeil(const ConstvalNode &cst, PrimType fromType,
         const MIRFloatConst *constValue = safe_cast<MIRFloatConst>(cst.GetConstVal());
         ASSERT_NOT_NULL(constValue);
         float floatValue = ceil(constValue->GetValue());
-        if (FloatToIntOverflow(floatValue, toType)) {
+        if (IsPrimitiveFloat(toType)) {
+            resultConst->SetConstVal(GlobalTables::GetFpConstTable().GetOrCreateFloatConst(floatValue));
+        } else if (FloatToIntOverflow(floatValue, toType)) {
             return nullptr;
+        } else {
+            resultConst->SetConstVal(
+                GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(floatValue), resultType));
         }
-        resultConst->SetConstVal(
-            GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<int64>(floatValue), resultType));
     } else {
         const MIRDoubleConst *constValue = safe_cast<MIRDoubleConst>(cst.GetConstVal());
         ASSERT_NOT_NULL(constValue);
         double doubleValue = ceil(constValue->GetValue());
-        if (DoubleToIntOverflow(doubleValue, toType)) {
+        if (IsPrimitiveFloat(toType)) {
+            resultConst->SetConstVal(GlobalTables::GetFpConstTable().GetOrCreateDoubleConst(doubleValue));
+        } else if (DoubleToIntOverflow(doubleValue, toType)) {
             return nullptr;
+        } else {
+            resultConst->SetConstVal(
+                GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(doubleValue), resultType));
         }
-        resultConst->SetConstVal(GlobalTables::GetIntConstTable().GetOrCreateIntConst(
-            static_cast<uint64>(static_cast<int64>(doubleValue)), resultType));
     }
     return resultConst;
 }
@@ -1151,16 +1157,22 @@ MIRConst *ConstantFold::FoldFloorMIRConst(const MIRConst &cst, PrimType fromType
         if (isFloor) {
             floatValue = floor(constValue.GetValue());
         }
+        if (IsPrimitiveFloat(toType)) {
+            return GlobalTables::GetFpConstTable().GetOrCreateFloatConst(floatValue);
+        }
         if (FloatToIntOverflow(floatValue, toType)) {
             return nullptr;
         }
         floatValue = CalIntValueFromFloatValue(floatValue, resultType);
-        return GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<int64>(floatValue), resultType);
+        return GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(floatValue), resultType);
     } else {
         const auto &constValue = static_cast<const MIRDoubleConst&>(cst);
         double doubleValue = constValue.GetValue();
         if (isFloor) {
             doubleValue = floor(constValue.GetValue());
+        }
+        if (IsPrimitiveFloat(toType)) {
+            return GlobalTables::GetFpConstTable().GetOrCreateDoubleConst(doubleValue);
         }
         if (DoubleToIntOverflow(doubleValue, toType)) {
             return nullptr;
@@ -1243,7 +1255,7 @@ ConstvalNode *ConstantFold::FoldRound(const ConstvalNode &cst, PrimType fromType
     return resultConst;
 }
 
-ConstvalNode *ConstantFold::FoldTrunk(const ConstvalNode &cst, PrimType fromType, PrimType toType) const
+ConstvalNode *ConstantFold::FoldTrunc(const ConstvalNode &cst, PrimType fromType, PrimType toType) const
 {
     ConstvalNode *resultConst = mirModule->CurFuncCodeMemPool()->New<ConstvalNode>();
     resultConst->SetPrimType(toType);
@@ -1252,20 +1264,26 @@ ConstvalNode *ConstantFold::FoldTrunk(const ConstvalNode &cst, PrimType fromType
         const MIRFloatConst *constValue = safe_cast<MIRFloatConst>(cst.GetConstVal());
         CHECK_NULL_FATAL(constValue);
         float floatValue = trunc(constValue->GetValue());
-        if (FloatToIntOverflow(floatValue, toType)) {
+        if (IsPrimitiveFloat(toType)) {
+            resultConst->SetConstVal(GlobalTables::GetFpConstTable().GetOrCreateFloatConst(floatValue));
+        } else if (FloatToIntOverflow(floatValue, toType)) {
             return nullptr;
+        } else {
+            resultConst->SetConstVal(
+                GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(floatValue), resultType));
         }
-        resultConst->SetConstVal(
-            GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<int64>(floatValue), resultType));
     } else {
         const MIRDoubleConst *constValue = safe_cast<MIRDoubleConst>(cst.GetConstVal());
         CHECK_NULL_FATAL(constValue);
         double doubleValue = trunc(constValue->GetValue());
-        if (DoubleToIntOverflow(doubleValue, toType)) {
+        if (IsPrimitiveFloat(toType)) {
+            resultConst->SetConstVal(GlobalTables::GetFpConstTable().GetOrCreateDoubleConst(doubleValue));
+        } else if (DoubleToIntOverflow(doubleValue, toType)) {
             return nullptr;
+        } else {
+            resultConst->SetConstVal(
+                GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(doubleValue), resultType));
         }
-        resultConst->SetConstVal(GlobalTables::GetIntConstTable().GetOrCreateIntConst(
-            static_cast<uint64>(static_cast<int64>(doubleValue)), resultType));
     }
     return resultConst;
 }
@@ -1507,7 +1525,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldTypeCvt(TypeCvtNod
                 break;
             }
             case OP_trunc: {
-                result = FoldTrunk(*cst, fromPtyp, destPtyp);
+                result = FoldTrunc(*cst, fromPtyp, destPtyp);
                 break;
             }
             default:
@@ -1776,7 +1794,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode 
             result = NegateTree(r);
         } else if ((op == OP_mul || op == OP_div || op == OP_rem || op == OP_ashr || op == OP_lshr || op == OP_shl ||
                     op == OP_band || op == OP_cand || op == OP_land) &&
-                cst == 0) {
+                    cst == 0) {
             // 0 * X -> 0
             // 0 / X -> 0
             // 0 % X -> 0
