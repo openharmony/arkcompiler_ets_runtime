@@ -682,14 +682,8 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     Jump(&exit);
 
     Bind(&slowPath);
-    std::string name;
-    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
-        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(MapConstructor));
-    } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
-        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(SetConstructor));
-    }
     returnValue = CallBuiltinRuntimeWithNewTarget(glue_, {glue_, nativeCode, func, thisValue,
-        numArgs, argv, newTarget}, name.c_str());
+        numArgs, argv, newTarget});
     Jump(&exit);
 
     Bind(&exit);

@@ -157,10 +157,8 @@ public:
     GateRef CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
     GateRef GetAotCodeAddr(GateRef jsFunc);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
-    GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
-                               bool isNew = false, const char* comment = nullptr);
-    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args,
-                                            const char* comment = nullptr);
+    GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
+    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args);
     void DebugPrint(GateRef thread, std::initializer_list<GateRef> args);
     void FatalPrint(GateRef thread, std::initializer_list<GateRef> args);
     // memory
@@ -825,7 +823,7 @@ public:
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);
-    void CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, GateRef actualNumArgs,
+    void CallFastBuiltin(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, GateRef actualNumArgs,
                       GateRef callField, GateRef method, Label* notFastBuiltins, Label* exit, Variable* result,
                       std::initializer_list<GateRef> args, JSCallMode mode);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
@@ -875,6 +873,7 @@ private:
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
     bool IsCallModeSupportPGO(JSCallMode mode);
+    bool IsCallModeSupportCallBuiltin(JSCallMode mode);
     GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
 
     CallSignature *callSignature_ {nullptr};

@@ -68,6 +68,7 @@ private:
     void TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id);
     void InlineStubBuiltin(GateRef gate, size_t builtinArgc, size_t realArgc, BuiltinsStubCSigns::ID id,
         const GateMetaData* op, bool skipThis);
+    void TryInlineDateGetTime(GateRef gate, size_t argc, bool skipThis);
 
     void AddTraceLogs(GateRef gate, BuiltinsStubCSigns::ID id);
 

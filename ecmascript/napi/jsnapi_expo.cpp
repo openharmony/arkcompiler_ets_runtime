@@ -827,6 +827,11 @@ bool JSValueRef::IsJSShared()
     return JSNApiHelper::ToJSTaggedValue(this).IsJSShared();
 }
 
+bool JSValueRef::IsHeapObject()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsHeapObject();
+}
+
 // ---------------------------------- DataView -----------------------------------
 Local<DataViewRef> DataViewRef::New(
     const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset, uint32_t byteLength)
@@ -2983,6 +2988,12 @@ void* JSNApi::GetCurrentTaskInfo(const EcmaVM *vm)
     return reinterpret_cast<void*>(thread->GetTaskInfo());
 }
 
+void JSNApi::ClearCurrentTaskInfo(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    thread->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
+}
+
 void JSNApi::SetBundleName(EcmaVM *vm, const std::string &bundleName)
 {
     ecmascript::CString name = bundleName.c_str();
@@ -4201,6 +4212,13 @@ Local<JSValueRef> JSNApi::NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativ
                                                                    keyValue.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, ret)));
+}
+
+Local<JSValueRef> JSNApi::CreateLocal(const EcmaVM *vm, panda::JSValueRef src)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    JSHandle<JSTaggedValue> handle(vm->GetJSThread(), JSNApiHelper::ToJSTaggedValue(&src));
+    return JSNApiHelper::ToLocal<JSValueRef>(handle);
 }
 
 Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)

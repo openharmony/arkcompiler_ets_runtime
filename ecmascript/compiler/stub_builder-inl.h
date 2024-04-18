@@ -257,19 +257,14 @@ inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initial
     return result;
 }
 
-inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
-                                               bool isNew, const char* comment)
+inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew)
 {
-    GateRef result = env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew, comment);
-    return result;
+    return env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew);
 }
 
-inline GateRef StubBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args,
-                                                            const char* comment)
+inline GateRef StubBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args)
 {
-    GateRef result = env_->GetBuilder()->CallBuiltinRuntimeWithNewTarget(glue, Gate::InvalidGateRef, args, comment);
-
-    return result;
+    return env_->GetBuilder()->CallBuiltinRuntimeWithNewTarget(glue, Gate::InvalidGateRef, args);
 }
 
 inline void StubBuilder::DebugPrint(GateRef glue, std::initializer_list<GateRef> args)

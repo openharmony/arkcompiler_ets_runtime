@@ -15,3 +15,4 @@ ark.profile. = shell:shell:0775
 persist.ark.properties = shell:shell:0775
 persist.ark.longpausetime = shell:shell:0775
 persist.ark.asminterpreter = shell:shell:0775
+ark.jit.enable.litecg = shell:shell:0775

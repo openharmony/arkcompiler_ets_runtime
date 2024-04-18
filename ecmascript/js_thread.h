@@ -1227,7 +1227,7 @@ public:
         uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
         return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
     }
-    void UpdateState(ThreadState newState);
+    void PUBLIC_API UpdateState(ThreadState newState);
     void SuspendThread(bool internalSuspend);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();

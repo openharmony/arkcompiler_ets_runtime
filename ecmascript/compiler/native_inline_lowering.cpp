@@ -177,6 +177,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::GlobalIsNan:
                 TryInlineGlobalNanBuiltin(gate, argc, id, circuit_->GlobalIsNan(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::DateGetTime:
+                TryInlineDateGetTime(gate, argc, skipThis);
+                break;
             case BuiltinsStubCSigns::ID::MathMin:
                 TryInlineMathMinMaxBuiltin(gate, argc, id, circuit_->MathMin(), base::POSITIVE_INFINITY, skipThis);
                 break;
@@ -603,6 +606,28 @@ void NativeInlineLowering::InlineStubBuiltin(GateRef gate, size_t builtinArgc, s
         args.push_back(i <= realArgc ? acc_.GetValueIn(gate, i) : builder_.Undefined());
     }
     GateRef ret = builder_.BuildControlDependOp(op, args);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineDateGetTime(GateRef gate, size_t argc, bool skipThis)
+{
+    // Always shout be "this", we can't inline this function without instance of object
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    // We are sure, that "this" is passed to this function, so always need to do +1
+    bool firstParam = 1;
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::DateGetTime)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, BuiltinsStubCSigns::ID::DateGetTime);
+    }
+    // Take object using "this"
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef ret = builder_.BuildControlDependOp(circuit_->DateGetTime(), {obj});
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 

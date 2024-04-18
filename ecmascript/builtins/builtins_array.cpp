@@ -510,7 +510,8 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
             }
             // iii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(𝔽(n)), E).
             // iv. Set n to n + 1.
-            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, n, ele);
+            toKey.Update(JSTaggedValue(n));
+            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, ele);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             n++;
         }

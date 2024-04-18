@@ -493,6 +493,7 @@ public:
     bool IsVector();
     bool IsSharedObject();
     bool IsJSShared();
+    bool IsHeapObject();
 
 private:
     JSTaggedType value_;
@@ -1378,6 +1379,7 @@ public:
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func, void *taskInfo);
     static void* GetCurrentTaskInfo(const EcmaVM *vm);
+    static void ClearCurrentTaskInfo(const EcmaVM *vm);
     static void SetBundleName(EcmaVM *vm, const std::string &bundleName);
     static std::string GetBundleName(EcmaVM *vm);
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
@@ -1397,6 +1399,8 @@ public:
 
     // Napi Heavy Logics fast path
     static Local<JSValueRef> NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativeObj, const char* utf8Key);
+
+    static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
 
 private:
     static int vmCount_;

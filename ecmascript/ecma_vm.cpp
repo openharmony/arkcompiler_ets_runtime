@@ -95,6 +95,10 @@
 
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 
+#ifdef JIT_SWITCH_COMPILE_MODE
+#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
+#endif
+
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -167,7 +171,6 @@ void EcmaVM::PostFork()
     ResetPGOProfiler();
 
     bool isEnableJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
-    options_.SetEnableAPPJIT(true);
     if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
         Jit::GetInstance()->SetEnableOrDisable(options_, isEnableJit);
         if (isEnableJit) {
@@ -249,12 +252,17 @@ bool EcmaVM::IsEnableJit() const
     return GetJit()->IsEnable();
 }
 
-void EcmaVM::EnableJit() const
+void EcmaVM::EnableJit()
 {
     if (pgoProfiler_ != nullptr) {
         pgoProfiler_->InitJITProfiler();
     }
     GetJSThread()->SwitchJitProfileStubs();
+#ifdef JIT_SWITCH_COMPILE_MODE
+    bool jitEnableLitecg = OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);
+    LOG_JIT(INFO) << "jit enable litecg: " << jitEnableLitecg;
+    options_.SetCompilerEnableLiteCG(jitEnableLitecg);
+#endif
 }
 
 Jit *EcmaVM::GetJit() const
