@@ -915,26 +915,36 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, OffsetInfo offsetInfo,
     Label equalOsrThreshold(env);
     Label notEqualOsrThreshold(env);
     Label incOsrHotnessCnt(env);
-    Label checkJit(env);
+    Label checkFastJit(env);
+    Label checkBaselineJit(env);
     Label exit(env);
+    Label checkNeedIncHotnessCnt(env);
 
     GateRef jitHotnessThreshold = GetJitHotnessThreshold(profileTypeInfo);
     GateRef jitHotnessCnt = GetJitHotnessCnt(profileTypeInfo);
     GateRef osrHotnessThreshold = GetOsrHotnessThreshold(profileTypeInfo);
     GateRef osrHotnessCnt = GetOsrHotnessCnt(profileTypeInfo);
-    Branch(Int32Equal(jitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &exit, &checkJit);
-    Bind(&checkJit);
     GateRef baselineJitHotnessThreshold = GetBaselineJitHotnessThreshold(profileTypeInfo);
+    Branch(Int32Equal(baselineJitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)),
+        &checkFastJit, &checkBaselineJit);
 
+    Bind(&checkBaselineJit);
     BRANCH(Int32Equal(jitHotnessCnt, baselineJitHotnessThreshold),
-        &equalBaselineJitThreshold, &checkEqualJitThreshold);
+        &equalBaselineJitThreshold, &checkFastJit);
     Bind(&equalBaselineJitThreshold);
     {
         CallRuntime(glue, RTSTUB_ID(BaselineJitCompile), { func });
-        Jump(&checkEqualJitThreshold);
+        Jump(&checkFastJit);
     }
-    Bind(&checkEqualJitThreshold);
 
+    Bind(&checkFastJit);
+    Branch(Int32Equal(jitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)),
+        &checkNeedIncHotnessCnt, &checkEqualJitThreshold);
+    Bind(&checkNeedIncHotnessCnt);
+    Branch(Int32Equal(baselineJitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)),
+        &exit, &incJitHotnessCntAndExit);
+
+    Bind(&checkEqualJitThreshold);
     BRANCH(Int32Equal(jitHotnessCnt, jitHotnessThreshold), &equalJitThreshold, &notEqualJitThreshold);
     Bind(&equalJitThreshold);
     {

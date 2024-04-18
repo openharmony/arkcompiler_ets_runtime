@@ -177,9 +177,8 @@ void FrameIterator::Advance()
         case FrameType::BASELINE_BUILTIN_FRAME: {
             auto frame = GetFrame<BaselineBuiltinFrame>();
             if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
-                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
-                optimizedReturnAddr_ = frame->GetReturnAddr();
-                needCalCallSiteInfo = true;
+                optimizedCallSiteSp_ = 0;
+                optimizedReturnAddr_ = 0;
             }
             current_ = frame->GetPrevFrameFp();
             break;
@@ -633,7 +632,8 @@ void OptimizedJSFunctionFrame::GetFuncCalleeRegAndOffset(
 ARK_INLINE void AsmInterpretedFrame::GCIterate(const FrameIterator &it,
     const RootVisitor &visitor,
     const RootRangeVisitor &rangeVisitor,
-    const RootBaseAndDerivedVisitor &derivedVisitor) const
+    const RootBaseAndDerivedVisitor &derivedVisitor,
+    bool isBaselineFrame) const
 {
     AsmInterpretedFrame *frame = AsmInterpretedFrame::GetFrameFromSp(it.GetSp());
     uintptr_t start = ToUintPtr(it.GetSp());
@@ -641,11 +641,14 @@ ARK_INLINE void AsmInterpretedFrame::GCIterate(const FrameIterator &it,
     rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
     visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->function)));
     visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->thisObj)));
-    if (frame->pc != nullptr) {
+    if (frame->pc != nullptr || isBaselineFrame) {
         visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->acc)));
         visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->env)));
     }
 
+    if (isBaselineFrame) {
+        return;
+    }
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG
