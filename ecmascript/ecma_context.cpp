@@ -337,7 +337,9 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
 #endif
     }
     if (!executeFromJob) {
+        JSHandle<JSTaggedValue> handleResult(thread_, result);
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        result = handleResult.GetTaggedValue();
     }
     return result;
 }
