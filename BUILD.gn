@@ -1106,6 +1106,10 @@ ohos_source_set("libark_jsruntime_test_set") {
 
   deps = []
   external_deps = [ "zlib:libz" ]
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
   if (defined(is_arkui_x) && is_arkui_x) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
@@ -1271,17 +1275,19 @@ ohos_shared_library("libark_jsruntime") {
 ohos_shared_library("libark_jsruntime_test") {
   stack_protector_ret = false
   deps = [ ":libark_jsruntime_test_set" ]
-  external_deps = [ "runtime_core:libarkfile_static" ]
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
 
-  if (enable_hilog) {
-    external_deps += [ "hilog:libhilog" ]
-  }
   if (!ark_standalone_build) {
-    public_external_deps = [ "zlib:libz" ]
+    public_external_deps = [
+      "runtime_core:libarkfile_static",
+      "zlib:libz",
+    ]
   } else {
-    external_deps += [ "zlib:libz" ]
+    external_deps = [
+      "runtime_core:libarkfile_static",
+      "zlib:libz",
+    ]
   }
 
   ldflags = []
@@ -1298,9 +1304,7 @@ ohos_shared_library("libark_jsruntime_test") {
     output_extension = "so"
   }
 
-  # Set the subsystem name
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
+  subsystem_name = "test"
 }
 
 ohos_prebuilt_etc("app_aot_enable_list") {
