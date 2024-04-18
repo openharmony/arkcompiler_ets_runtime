@@ -55,7 +55,12 @@ ProfileType::ProfileType(PGOContext &context, ProfileTypeRef typeRef)
 ProfileType &ProfileType::Remap([[maybe_unused]]const PGOContext &context)
 {
     if ((GetAbcId() >= PGOAbcFilePool::RESERVED_COUNT) && (!context.GetAbcIdRemap().empty())) {
-        UpdateAbcId(context.GetAbcIdRemap().at(GetAbcId()));
+        if (GetAbcId() >= context.GetAbcIdRemap().size() + PGOAbcFilePool::RESERVED_COUNT) {
+            LOG_ECMA(ERROR) << "invalid abc id: " << GetAbcId() << ", " << GetTypeString()
+                            << "remap size: " << context.GetAbcIdRemap().size();
+        } else {
+            UpdateAbcId(context.GetAbcIdRemap().at(GetAbcId()));
+        }
     }
     return *this;
 }
