@@ -198,6 +198,12 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::DATE_GET_TIME:
             LowerDateGetTime(gate);
             break;
+        case OpCode::MAP_HAS:
+            LowerToCommonStub(gate, CommonStubCSigns::JSMapHas);
+            break;
+        case OpCode::SET_HAS:
+            LowerToCommonStub(gate, CommonStubCSigns::JSSetHas);
+            break;
         default:
             break;
     }

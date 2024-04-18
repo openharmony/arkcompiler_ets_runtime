@@ -272,6 +272,7 @@ public:
     GateRef Int64ToTaggedInt(GateRef x);
     GateRef Int64ToTaggedIntPtr(GateRef x);
     GateRef DoubleToTaggedDoublePtr(GateRef x);
+    GateRef BooleanToTaggedBooleanPtr(GateRef x);
     GateRef TaggedPtrToTaggedDoublePtr(GateRef x);
     GateRef TaggedPtrToTaggedIntPtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
@@ -306,6 +307,7 @@ public:
     GateRef Int64LessThanOrEqual(GateRef x, GateRef y);
     GateRef Int64GreaterThanOrEqual(GateRef x, GateRef y);
     GateRef Int64UnsignedLessThanOrEqual(GateRef x, GateRef y);
+    GateRef Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y);
     GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     // cast operation
     GateRef ChangeInt64ToIntPtr(GateRef val);

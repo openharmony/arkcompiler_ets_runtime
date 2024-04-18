@@ -195,6 +195,8 @@ class ObjectFactory;
     V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, MapGet, MAP_GET_INDEX, ecma_roots_builtins)                                        \
+    V(JSTaggedValue, MapHas, MAP_HAS_INDEX, ecma_roots_builtins)                                        \
+    V(JSTaggedValue, SetHas, SET_HAS_INDEX, ecma_roots_builtins)                                        \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_builtins)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_builtins)                 \
     V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_builtins)         \

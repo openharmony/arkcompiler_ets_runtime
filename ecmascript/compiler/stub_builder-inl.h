@@ -829,6 +829,11 @@ inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
     return env_->GetBuilder()->DoubleToTaggedDoublePtr(x);
 }
 
+inline GateRef StubBuilder::BooleanToTaggedBooleanPtr(GateRef x)
+{
+    return env_->GetBuilder()->BooleanToTaggedBooleanPtr(x);
+}
+
 inline GateRef StubBuilder::TaggedPtrToTaggedDoublePtr(GateRef x)
 {
     return DoubleToTaggedDoublePtr(CastInt64ToFloat64(ChangeTaggedPointerToInt64(x)));
@@ -993,6 +998,11 @@ inline GateRef StubBuilder::Int64GreaterThanOrEqual(GateRef x, GateRef y)
 inline GateRef StubBuilder::Int64UnsignedLessThanOrEqual(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int64UnsignedLessThanOrEqual(x, y);
+}
+
+inline GateRef StubBuilder::Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int64UnsignedGreaterThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)

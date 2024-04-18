@@ -174,7 +174,8 @@ class PostSchedule;
     V(Int64LessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SLE))            \
     V(Int64GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \
     V(Int64GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))         \
-    V(Int64UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))
+    V(Int64UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))    \
+    V(Int64UnsignedGreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::UGE))
 
 class CircuitBuilder {
 public:

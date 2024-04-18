@@ -241,6 +241,9 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitDataViewSet(gate);
         case OpCode::DATE_GET_TIME:
             return VisitDateGetTime(gate);
+        case OpCode::MAP_HAS:
+        case OpCode::SET_HAS:
+            return VisitOthers(gate, GateType::BooleanType());
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:
@@ -795,10 +798,10 @@ GateRef NumberSpeculativeRetype::VisitFrameState(GateRef gate)
     return Circuit::NullGate();
 }
 
-GateRef NumberSpeculativeRetype::VisitOthers(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitOthers(GateRef gate, GateType outputType)
 {
     if (IsRetype()) {
-        return SetOutputType(gate, GateType::AnyType());
+        return SetOutputType(gate, outputType);
     }
     if (IsConvert()) {
         size_t valueNum = acc_.GetNumValueIn(gate);
