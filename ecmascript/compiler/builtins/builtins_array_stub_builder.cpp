@@ -502,8 +502,13 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                         BRANCH(Int64LessThan(*i, thisLen), &next, &loopExit);
                                         Bind(&next);
                                         GateRef ele = GetTaggedValueWithElementsKind(thisValue, *i);
+                                        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
                                         SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                                                 Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                            Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                                        #else
+                                        SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                        #endif
                                         Jump(&loopEnd);
                                     }
                                     Bind(&loopEnd);
@@ -521,8 +526,13 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                         BRANCH(Int64LessThan(*k, argLen), &next1, &loopExit1);
                                         Bind(&next1);
                                         GateRef ele = GetTaggedValueWithElementsKind(arg0, *k);
+                                        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+                                        SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                                                 Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                                        #else
                                         SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
                                                                  Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                        #endif
                                         Jump(&loopEnd1);
                                     }
                                     Bind(&loopEnd1);

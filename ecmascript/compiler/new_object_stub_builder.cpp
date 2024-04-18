@@ -82,9 +82,15 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
         BRANCH(Equal(TruncInt64ToInt32(size), Int32(0)), &initObj, &notEmptyArray);
         Bind(&notEmptyArray);
         {
+            #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+            GateRef holeKindArrayClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue_,
+                                                                ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+            StoreHClass(glue_, result, holeKindArrayClass);
+            #else
             GateRef holeKindArrayClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue_,
                                                                 ConstantIndex::ELEMENT_HOLE_HCLASS_INDEX);
             StoreHClass(glue_, result, holeKindArrayClass);
+            #endif
             Jump(&initObj);
         }
     }

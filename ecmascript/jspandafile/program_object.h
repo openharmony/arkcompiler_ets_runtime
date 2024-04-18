@@ -563,7 +563,11 @@ public:
                 case ConstPoolType::ARRAY_LITERAL: {
                     // literal fetching from AOT ArrayInfos
                     JSMutableHandle<TaggedArray> literal(thread, JSTaggedValue::Undefined());
+                    #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+                    ElementsKind dataKind = ElementsKind::GENERIC;
+                    #else
                     ElementsKind dataKind = ElementsKind::NONE;
+                    #endif
                     bool loadedFromAOT = constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag,
                                                                                 entryIndexes, literal, &dataKind);
                     if (!loadedFromAOT) {
