@@ -1665,7 +1665,7 @@ JSTaggedValue BuiltinsString::CreateArrayFromString(JSThread *thread, EcmaVM *ec
 {
     bool isUtf8 = EcmaStringAccessor(thisString).IsUtf8();
     bool canBeCompressed = false;
-    if (EcmaStringAccessor(thisString).IsLineString() || EcmaStringAccessor(thisString).IsConstantString()) {
+    if (EcmaStringAccessor(thisString).IsLineOrConstantString()) {
         canBeCompressed = EcmaStringAccessor::CanBeCompressed(*thisString);
     }
     bool isOneByte = isUtf8 & canBeCompressed;
