@@ -274,6 +274,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::SetEntries:
                 InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetEntries(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::BigIntConstructor:
+                TryInlineBigIntConstructor(gate, argc, skipThis);
+                break;
             default:
                 break;
         }
@@ -716,12 +719,57 @@ void NativeInlineLowering::InlineStubBuiltin(GateRef gate, size_t builtinArgc, s
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
+
     std::vector<GateRef> args {};
     for (size_t i = 0; i <= builtinArgc; i++) {
         args.push_back(i <= realArgc ? acc_.GetValueIn(gate, i) : builder_.Undefined());
     }
     GateRef ret = builder_.BuildControlDependOp(op, args);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::ReplaceGateWithPendingException(GateRef hirGate, GateRef value)
+{
+    GateRef state = builder_.GetState();
+    // copy depend-wire of hirGate to value
+    GateRef depend = builder_.GetDepend();
+    // exception value
+    GateRef exceptionVal = builder_.ExceptionConstant();
+    // compare with trampolines result
+    GateRef equal = builder_.Equal(value, exceptionVal);
+    auto ifBranch = builder_.Branch(state, equal, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
+
+    GateRef ifTrue = builder_.IfTrue(ifBranch);
+    GateRef ifFalse = builder_.IfFalse(ifBranch);
+    GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+    GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+    StateDepend success(ifFalse, sDepend);
+    StateDepend exception(ifTrue, eDepend);
+    acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
+
+}
+
+void NativeInlineLowering::TryInlineBigIntConstructor(GateRef gate, size_t argc, bool skipThis)
+{
+    Environment env(gate, circuit_, &builder_);
+    bool firstParam = skipThis ? 1 : 0;
+    auto id = BuiltinsStubCSigns::ID::BigIntConstructor;
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+                                 builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+
+    auto param = builder_.Undefined();
+    if (argc > 0) {
+        param = acc_.GetValueIn(gate, firstParam);
+    }
+
+    GateRef ret = builder_.BuildControlDependOp(circuit_->BigIntConstructor(), {param});
+    ReplaceGateWithPendingException(gate, ret);
+    return;
 }
 
 void NativeInlineLowering::TryInlineDateGetTime(GateRef gate, size_t argc, bool skipThis)

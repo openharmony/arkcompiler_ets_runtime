@@ -256,6 +256,15 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::SET_ENTRIES:
             LowerToCommonStub(gate, CommonStubCSigns::JSSetEntries);
             break;
+        case OpCode::BIGINT_CONSTRUCTOR:
+            LowerBigIntConstructor(gate);
+            break;
+        case OpCode::BIGINT_CONSTRUCTOR_INT32:
+            LowerBigIntConstructorInt32<true>(gate);
+            break;
+        case OpCode::BIGINT_CONSTRUCTOR_UINT32:
+            LowerBigIntConstructorInt32<false>(gate);
+            break;
         default:
             break;
     }
@@ -1790,7 +1799,6 @@ void TypedNativeInlineLowering::LowerToCommonStub(GateRef gate, CommonStubCSigns
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
 }
 
-
 void TypedNativeInlineLowering::LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1831,4 +1839,45 @@ void TypedNativeInlineLowering::LowerGeneralWithoutArgs(GateRef gate, RuntimeStu
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
+void TypedNativeInlineLowering::LowerBigIntConstructor(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label hasException(&builder_);
+    Label exit(&builder_);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef glue = acc_.GetGlueFromArgList();
+    auto result = builder_.CallRuntime(glue, RTSTUB_ID(BigIntConstructor), Gate::InvalidGateRef, {value}, gate);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+template <bool IS_SIGNED>
+void TypedNativeInlineLowering::LowerBigIntConstructorInt32(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    size_t length = 1;
+    size_t size = AlignUp(BigInt::ComputeSize(length), static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    GateRef sizeGate = builder_.IntPtr(size);
+    GateRef hclass = builder_.GetGlobalConstantValue(ConstantIndex::BIGINT_CLASS_INDEX);
+    GateRef sign = builder_.Int32(0);
+    if constexpr (IS_SIGNED) {
+        sign = builder_.Int32LSR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
+        auto temp = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
+        value = builder_.Int32Sub(builder_.Int32Xor(value, temp), temp);
+    }
+
+    // looks like code from StartAllocate to FinishAllocate must be linear
+    builder_.StartAllocate();
+    GateRef object = builder_.HeapAlloc(acc_.GetGlueFromArgList(), sizeGate, GateType::TaggedValue(),
+                                        RegionSpaceFlag::IN_SHARED_NON_MOVABLE);
+    // initialization
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass,
+                              MemoryOrder::NeedBarrierAndAtomic());
+    builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::LENGTH_OFFSET, builder_.Int32(length));
+    builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::BIT_FIELD_OFFSET, sign);
+    builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::DATA_OFFSET, value);
+    GateRef ret = builder_.FinishAllocate(object);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
 }

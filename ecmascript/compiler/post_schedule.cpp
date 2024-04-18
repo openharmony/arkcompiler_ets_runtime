@@ -74,7 +74,8 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
 {
     int64_t flag = acc_.TryGetValue(gate);
     ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE ||
-           flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE);
+           flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
+           flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE);
     std::vector<GateRef> currentBBGates;
     std::vector<GateRef> successBBGates;
     std::vector<GateRef> failBBGates;
@@ -92,7 +93,7 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
         ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
         return true;
 #endif
-    } else if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
+    } else if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE || flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
         LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
         ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
         return false;
@@ -312,14 +313,15 @@ void PostSchedule::LoweringHeapAllocate(GateRef gate,
     GateRef taggedIntMask = circuit_->GetConstantGateWithoutCache(
         MachineType::I64, JSTaggedValue::TAG_INT, GateType::NJSValue());
     GateRef taggedSize = builder_.Int64Or(size, taggedIntMask);
-    GateRef target;
-    if (flag == RegionSpaceFlag::IN_YOUNG_SPACE) {
-        target = circuit_->GetConstantGateWithoutCache(
-            MachineType::ARCH, RTSTUB_ID(AllocateInYoung), GateType::NJSValue());
+    auto id = RTSTUB_ID(AllocateInYoung);
+    if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
+        id = RTSTUB_ID(AllocateInSOld);
+    } else if (flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
+        id = RTSTUB_ID(AllocateInSNonMovable);
     } else {
-        target = circuit_->GetConstantGateWithoutCache(
-            MachineType::ARCH, RTSTUB_ID(AllocateInSOld), GateType::NJSValue());
+        ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
     }
+    GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, id, GateType::NJSValue());
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
     ASSERT(cs->IsRuntimeStub());
     GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());

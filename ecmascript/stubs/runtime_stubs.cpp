@@ -32,6 +32,7 @@
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_iterator.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
@@ -166,21 +167,28 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
     return JSTaggedValue(result).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(AllocateInSOld)
-{
-    RUNTIME_STUBS_HEADER(AllocateInSOld);
-    JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    auto size = static_cast<size_t>(allocateSize.GetInt());
-    auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());
-    auto result = sharedHeap->AllocateOldOrHugeObject(thread, size);
-    ASSERT(result != nullptr);
-    if (argc > 1) { // 1: means the first parameter
-        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
-        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
-        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+#define ALLOCATE_IN_SHARED_HEAP(SPACE)                                                     \
+    DEF_RUNTIME_STUBS(AllocateInS##SPACE)                                                  \
+    {                                                                                      \
+        RUNTIME_STUBS_HEADER(AllocateInS##SPACE);                                          \
+        JSTaggedValue allocateSize = GetArg(argv, argc, 0);                                \
+        auto size = static_cast<size_t>(allocateSize.GetInt());                            \
+        auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());              \
+        ASSERT(size <= MAX_REGULAR_HEAP_OBJECT_SIZE);                                      \
+        auto result = sharedHeap->Allocate##SPACE##OrHugeObject(thread, size);             \
+        ASSERT(result != nullptr);                                                         \
+        if (argc > 1) {                                                                    \
+            JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);            \
+            auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject()); \
+            sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);         \
+        }                                                                                  \
+        return JSTaggedValue(result).GetRawData();                                         \
     }
-    return JSTaggedValue(result).GetRawData();
-}
+
+ALLOCATE_IN_SHARED_HEAP(Old)
+ALLOCATE_IN_SHARED_HEAP(NonMovable)
+
+#undef ALLOCATE_IN_SHARED_HEAP
 
 DEF_RUNTIME_STUBS(TypedArraySpeciesCreate)
 {
@@ -968,6 +976,13 @@ DEF_RUNTIME_STUBS(DumpObject)
     target->Dump(oss);
     LOG_ECMA(INFO) << "dump log for instance of target: " << oss.str();
     return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(BigIntConstructor)
+{
+    RUNTIME_STUBS_HEADER(BigIntConstructor);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);
+    return builtins::BuiltinsBigInt::BigIntConstructorInternal(thread, value).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateGeneratorObj)

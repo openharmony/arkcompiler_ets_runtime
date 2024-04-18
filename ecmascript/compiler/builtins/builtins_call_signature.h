@@ -238,6 +238,7 @@ namespace panda::ecmascript::kungfu {
     V(DateNow)                                      \
     V(GlobalIsFinite)                               \
     V(GlobalIsNan)                                  \
+    V(BigIntConstructor)                            \
     V(ArrayBufferIsView)                            \
     V(BigIntAsIntN)                                 \
     V(BigIntAsUintN)                                \
@@ -628,6 +629,7 @@ public:
             {SetHas, "Set.has"},
             {MapDelete, "Map.delete"},
             {SetDelete, "Set.delete"},
+            {BigIntConstructor, "BigInt"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
@@ -683,6 +685,7 @@ public:
             {"asUintN", BigIntAsUintN},
             {"mapDelete", MapDelete},
             {"setDelete", SetDelete},
+            {"BigInt", BigIntConstructor},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);

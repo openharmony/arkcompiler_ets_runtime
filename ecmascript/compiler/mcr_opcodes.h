@@ -119,6 +119,9 @@ namespace panda::ecmascript::kungfu {
     V(NewNumber, NEW_NUMBER, GateFlags::CHECKABLE, 1, 1, 2)                                     \
     V(GlobalIsFinite, GLOBAL_IS_FINITE, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(GlobalIsNan, GLOBAL_IS_NAN, GateFlags::NO_WRITE, 1, 1, 1)                                 \
+    V(BigIntConstructor, BIGINT_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)                      \
+    V(BigIntConstructorInt32, BIGINT_CONSTRUCTOR_INT32, GateFlags::NO_WRITE, 1, 1, 1)           \
+    V(BigIntConstructorUint32, BIGINT_CONSTRUCTOR_UINT32, GateFlags::NO_WRITE, 1, 1, 1)         \
     V(ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW, GateFlags::NO_WRITE, 1, 1, 1)                    \
     V(DataViewGet, DATA_VIEW_GET, GateFlags::NO_WRITE, 1, 1, 5)                                 \
     V(DataViewSet, DATA_VIEW_SET, GateFlags::NO_WRITE, 1, 1, 6)                                 \

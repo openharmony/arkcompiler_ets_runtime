@@ -536,6 +536,19 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
     return object;
 }
 
+TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return AllocateHugeObject(thread, size);
+    }
+    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
+        "SharedHeap::AllocateNonMovableOrHugeObject");
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
+    return object;
+}
+
 TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();

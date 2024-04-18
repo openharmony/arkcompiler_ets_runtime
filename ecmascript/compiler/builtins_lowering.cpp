@@ -194,6 +194,7 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
         case BuiltinsStubCSigns::ID::TypeArrayProtoIterator: {
             return LowerCallTargetCheckWithDetector(gate, id);
         }
+        case BuiltinsStubCSigns::ID::BigIntConstructor:
         case BuiltinsStubCSigns::ID::NumberConstructor: {
             return LowerCallTargetCheckWithGlobalEnv(gate, id);
         }

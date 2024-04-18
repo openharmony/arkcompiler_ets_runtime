@@ -799,8 +799,8 @@ void Builtins::InitializeBigInt(const JSHandle<GlobalEnv> &env, const JSHandle<J
         factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, JSType::JS_PRIMITIVE_REF, bigIntFuncPrototypeValue);
     // BigInt = new Function()
     JSHandle<JSObject> bigIntFunction(
-        NewBuiltinConstructor(env, bigIntFuncPrototype,
-                              BuiltinsBigInt::BigIntConstructor, "BigInt", FunctionLength::ONE));
+        NewBuiltinConstructor(env, bigIntFuncPrototype, BuiltinsBigInt::BigIntConstructor, "BigInt",
+                              FunctionLength::ONE, kungfu::BuiltinsStubCSigns::BigIntConstructor));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(bigIntFunction),
                                                      bigIntFuncInstanceHClass.GetTaggedValue());

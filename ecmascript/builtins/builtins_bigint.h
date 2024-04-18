@@ -45,6 +45,7 @@ class BuiltinsBigInt : public base::BuiltinsBase {
 public:
     // 21.2.1.1
     static JSTaggedValue BigIntConstructor(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue BigIntConstructorInternal(JSThread *thread, JSHandle<JSTaggedValue> value);
     // 21.2.2.1
     static JSTaggedValue AsIntN(EcmaRuntimeCallInfo *argv);
     // 21.2.2.2

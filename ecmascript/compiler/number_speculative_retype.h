@@ -113,6 +113,7 @@ private:
     GateRef VisitDataViewGet(GateRef gate);
     GateRef VisitDataViewSet(GateRef gate);
     GateRef VisitOthers(GateRef gate, GateType outputType = GateType::AnyType());
+    GateRef VisitBigIntConstructor(GateRef gate);
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);
     GateRef VisitIsTrueOrFalse(GateRef gate);

@@ -72,6 +72,9 @@ private:
     void LowerNumberIsNaN(GateRef gate);
     void LowerNumberIsSafeInteger(GateRef gate);
     void LowerDateGetTime(GateRef gate);
+    void LowerBigIntConstructor(GateRef gate);
+    template <bool IS_SIGNED>
+    void LowerBigIntConstructorInt32(GateRef gate);
     GateRef BuiltinIdToSize(GateRef ID);
     GateRef GetValueFromBuffer(GateRef bufferIndex, GateRef dataPointer, GateRef isLittleEndian, GateRef builtinId);
     GateRef SetValueInBuffer(GateRef bufferIndex,
