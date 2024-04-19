@@ -34,6 +34,7 @@ public:
           circuit_(circuit),
           acc_(circuit),
           builder_(circuit, cmpCfg),
+          vm_(ctx->GetCompilationEnv()->GetEcmaVM()),
           isLiteCG_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerEnableLiteCG()) {}
     ~TypedNativeInlineLowering() = default;
     GateRef VisitGate(GateRef gate) override;
@@ -58,6 +59,7 @@ private:
     void LowerClz32Float64(GateRef gate);
     void LowerClz32Int32(GateRef gate);
     void LowerMathSqrt(GateRef gate);
+    void LowerNewNumber(GateRef gate);
     GateRef BuildRounding(GateRef gate, GateRef value, OpCode op);
     void LowerTaggedRounding(GateRef gate);
     void LowerDoubleRounding(GateRef gate);
@@ -118,6 +120,7 @@ private:
     Circuit* circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
+    EcmaVM *vm_ {nullptr};
     bool isLiteCG_ {false};
 };
 }
