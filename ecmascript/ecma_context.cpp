@@ -50,6 +50,7 @@
 #include "ecmascript/platform/log.h"
 #include "ecmascript/global_index_map.h"
 #include "ecmascript/sustaining_js_handle.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -775,6 +776,9 @@ bool EcmaContext::ExecutePromisePendingJob()
     if (!thread_->HasPendingException()) {
         isProcessingPendingJob_ = true;
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        if (thread_->HasPendingException()) {
+            JsStackInfo::BuildCrashInfo(true);
+        }
         isProcessingPendingJob_ = false;
         return true;
     }

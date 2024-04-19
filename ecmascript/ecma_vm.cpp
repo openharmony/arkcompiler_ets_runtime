@@ -93,6 +93,7 @@
 #include "ecmascript/taskpool/taskpool.h"
 
 #include "ecmascript/ohos/enable_aot_list_helper.h"
+#include "ecmascript/ohos/jit_tools.h"
 
 #ifdef JIT_SWITCH_COMPILE_MODE
 #include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
@@ -106,6 +107,7 @@ namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 AOTFileManager *JsStackInfo::loader = nullptr;
+JSRuntimeOptions *JsStackInfo::options = nullptr;
 
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 {
@@ -127,6 +129,9 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     Runtime::GetInstance()->InitializeIfFirstVm(vm);
     if (JsStackInfo::loader == nullptr) {
         JsStackInfo::loader = vm->GetAOTFileManager();
+    }
+    if (JsStackInfo::options == nullptr) {
+        JsStackInfo::options = &(vm->GetJSOptions());
     }
 #if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (SetThreadInfoCallback != nullptr) {
@@ -183,6 +188,12 @@ void EcmaVM::PostFork()
     if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
         Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
         options_.SetEnableAPPJIT(true);
+        bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
+        if ((!jitEscapeDisable) && JSNApi::IsJitEscape()) {
+            isEnableFastJit = false;
+            isEnableBaselineJit = false;
+            options_.SetEnableJIT(false);
+        }
         if (isEnableFastJit || isEnableBaselineJit) {
             EnableJit();
         }

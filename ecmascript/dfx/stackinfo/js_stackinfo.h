@@ -110,9 +110,10 @@ public:
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread, bool currentStack = false);
     static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile = true);
     static AOTFileManager *loader;
+    static JSRuntimeOptions *options;
+    static void BuildCrashInfo(bool isJsCrash, uintptr_t pc = 0);
 };
 void CrashCallback(char *buf, size_t len, void *ucontext);
-void BuildCrashInfo();
 uint64_t GetMicrosecondsTimeStamp();
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
