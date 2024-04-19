@@ -2120,6 +2120,8 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
                 return;
             }
             inlinedProps.emplace_back(converted.second.GetRawData());
+        } else if (compilationEnv_ != nullptr && compilationEnv_->IsJitCompiler() && value.IsString()) {
+            inlinedProps.emplace_back(value.GetRawData());
         } else {
             return;
         }
