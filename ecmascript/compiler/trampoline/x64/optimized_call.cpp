@@ -429,7 +429,7 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
             __ Movq(kungfu::RuntimeStubCSigns::ID_CallRuntime, r10);
             __ Movq(Operand(rax, r10, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r10);
             __ Callq(r10); // call CallRuntime
-            __ Addq(4 * FRAME_SLOT_SIZE, rsp);
+            __ Addq(4 * FRAME_SLOT_SIZE, rsp); // 4: sp + 32 argv
             __ Pop(rbp);
             __ Ret();
         }
@@ -615,7 +615,7 @@ void OptimizedCall::ThrowNonCallableInternal(ExtendedAssembler *assembler, Regis
     __ Movq(Operand(rax, r10, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r10);
     __ Callq(r10); // call CallRuntime
     __ Movabs(JSTaggedValue::VALUE_EXCEPTION, rax); // return exception
-    __ Addq(4 * FRAME_SLOT_SIZE, rsp); // 32: sp + 32 argv
+    __ Addq(4 * FRAME_SLOT_SIZE, rsp); // 4: sp + 32 argv
     __ Pop(rbp);
     __ Ret();
 }
@@ -796,7 +796,7 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Pushq(rax);
 
     __ Movq(rbp, rdx);
-    // 16: rbp & return address
+    // 2: rbp & return address
     __ Addq(2 * FRAME_SLOT_SIZE, rdx);
 
     __ Movq(Operand(rdx, 0), r10);
@@ -804,7 +804,7 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Movq(rax, rdi);
     // 8: argc
     __ Movq(Operand(rdx, FRAME_SLOT_SIZE), rsi);
-    // 16: argv
+    // 2: argv
     __ Addq(2 * FRAME_SLOT_SIZE, rdx);
     __ Callq(r10);
 
@@ -992,7 +992,7 @@ void OptimizedCall::PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, R
 void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 {
     Register sp(rsp);
-    // 16 : 16 means pop call site sp and type
+    // 2 : 2 means pop call site sp and type
     __ Addq(Immediate(2 * FRAME_SLOT_SIZE), sp);
     __ Popq(rbp);
 }

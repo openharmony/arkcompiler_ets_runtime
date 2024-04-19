@@ -228,7 +228,7 @@ DEF_RUNTIME_STUBS(CallInternalSetter)
     RUNTIME_STUBS_HEADER(CallInternalSetter);
     JSHandle<JSObject> receiver = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedType argSetter = GetTArg(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
     auto setter = AccessorData::Cast((reinterpret_cast<TaggedObject *>(argSetter)));
     auto result = setter->CallInternalSet(thread, receiver, value, true);
     if (!result) {
@@ -918,7 +918,6 @@ DEF_RUNTIME_STUBS(Exp)
     RUNTIME_STUBS_HEADER(Exp);
     JSTaggedValue baseValue = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue exponentValue = GetArg(argv, argc, 1);  // 1: means the first parameter
-
     if (baseValue.IsNumber() && exponentValue.IsNumber()) {
         // fast path
         double doubleBase = baseValue.IsInt() ? baseValue.GetInt() : baseValue.GetDouble();
@@ -1098,9 +1097,9 @@ DEF_RUNTIME_STUBS(SuperCallSpread)
 DEF_RUNTIME_STUBS(OptSuperCallSpread)
 {
     RUNTIME_STUBS_HEADER(OptSuperCallSpread);
-    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
-    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);
-    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 2);
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the first parameter
+    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
     return RuntimeSuperCallSpread(thread, func, newTarget, array).GetRawData();
 }
 

@@ -633,13 +633,15 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
     if (type == FrameType::BUILTIN_FRAME) {
         // push stack args
         __ Add(next, sp, Immediate(BuiltinFrame::GetStackArgsToFpDelta(false)));
-        // 16: type & next
+        // 2: -2 * FRAME_SLOT_SIZE means type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
+        // 2: 2 * FRAME_SLOT_SIZE means skip next and frame type
+        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));
     } else {
-        // 16: type & next
+        // 2: -2 * FRAME_SLOT_SIZE means type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
+        // 2: 2 * FRAME_SLOT_SIZE means skip next and frame type
+        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));
     }
 }
 
@@ -1237,7 +1239,7 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
                                 << "This frame has been modified, and the offset CppToAsmInterp should be updated too.";
         }
     }
-    __ Add(fp, sp, Immediate(4 * FRAME_SLOT_SIZE));  // 32: skip frame type, prevSp, pc and glue
+    __ Add(fp, sp, Immediate(4 * FRAME_SLOT_SIZE));  // 4: 32 means skip frame type, prevSp, pc and glue
 }
 
 void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)

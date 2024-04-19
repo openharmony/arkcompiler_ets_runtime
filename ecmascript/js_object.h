@@ -258,6 +258,7 @@ class PropertyMetaData {
 public:
     using IsFoundField = BitField<bool, 0, 1>;
     using IsInlinedPropsField = IsFoundField::NextFlag;
+    // 3: The bit field that represents the "Representation" of the property
     using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;
     using OffsetField = RepresentationField::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
 

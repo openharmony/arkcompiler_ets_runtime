@@ -2671,8 +2671,8 @@ DECLARE_ASM_HANDLER(HandleReturn)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                       { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                         *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -2743,8 +2743,8 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                       { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                         *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -2825,8 +2825,8 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                      *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -2906,8 +2906,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                      *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -3250,8 +3250,8 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                      *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -5063,8 +5063,8 @@ DECLARE_ASM_HANDLER(BCDebuggerEntry)
             varHotnessCounter = GetHotnessCounterFromMethod(method);
             GateRef jumpSize = IntPtr(0);
             CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndRollback),
-                        { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                            *varAcc, *varHotnessCounter, jumpSize });
+                { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+                *varAcc, *varHotnessCounter, jumpSize });
             Return();
         }
     }

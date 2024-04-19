@@ -27,7 +27,7 @@ class MainEditor {
 
     this.filePoint_ = '';
     this.files_ = [];
-    this.viewer_ = {}
+    this.viewer_ = {};
     LogParser.Load('test.txt', this.onLoad.bind(this));
 
     this.selectFile_ = new XSelect(this.files_, this.filePoint_);

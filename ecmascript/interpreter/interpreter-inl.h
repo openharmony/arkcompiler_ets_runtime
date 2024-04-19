@@ -4300,7 +4300,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
                 newSp[index++] = ToUintPtr(thread);
-                newSp[index++] = numArgs + 2; // +1 for this
+                newSp[index++] = numArgs + 2; // 2: +1 for this
                 // func
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = ctor.GetRawData();

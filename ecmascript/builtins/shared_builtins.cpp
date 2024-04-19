@@ -230,7 +230,7 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     // SharedSet.prototype functions, excluding keys()
     for (const base::BuiltinFunctionEntry &entry: BuiltinsSharedSet::GetSetPrototypeFunctions()) {
         SetSFunction(env, setPrototype, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,
-                    entry.GetLength(), entry.GetBuiltinStubId());
+        entry.GetLength(), entry.GetBuiltinStubId());
     }
     // SharedSet.prototype.keys, which is strictly equal to Set.prototype.values
     JSHandle<JSTaggedValue> keys(factory_->NewFromASCII("keys"));

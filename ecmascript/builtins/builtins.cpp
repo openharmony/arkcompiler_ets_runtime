@@ -905,6 +905,7 @@ void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<
 
 void Builtins::InitializeProxy(const JSHandle<GlobalEnv> &env)
 {
+    // 2: The number of parameters is 2
     JSHandle<JSObject> proxyFunction(InitializeExoticConstructor(env, Proxy::ProxyConstructor, "Proxy", 2));
 
     // Proxy method
@@ -3704,7 +3705,7 @@ void Builtins::InitializeCjsModule(const JSHandle<GlobalEnv> &env) const
     JSHandle<JSTaggedValue> loaded(factory_->NewEmptyJSObject());
     JSHandle<JSTaggedValue> children(factory_->NewEmptyJSObject());
     JSHandle<JSTaggedValue> cache = JSHandle<JSTaggedValue>::Cast(CjsModuleCache::Create(thread_,
-                                                                  CjsModuleCache::DEAULT_DICTIONART_CAPACITY));
+        CjsModuleCache::DEAULT_DICTIONART_CAPACITY));
 
     // CjsModule.prototype members
     SetNonConstantObject(cjsModulePrototype, "id", id);
