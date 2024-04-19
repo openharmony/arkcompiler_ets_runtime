@@ -197,6 +197,7 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
         case BuiltinsStubCSigns::ID::DateGetTime:
         case BuiltinsStubCSigns::ID::MapGet:
         case BuiltinsStubCSigns::ID::MapHas:
+        case BuiltinsStubCSigns::ID::SetAdd:
         case BuiltinsStubCSigns::ID::SetHas: {
             return LowerCallTargetCheckWithObjectType(gate, id);
         }
@@ -279,6 +280,7 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithObjectType(GateRef gate, Builti
             expectType = JSType::JS_MAP;
             break;
         }
+        case BuiltinsStubCSigns::ID::SetAdd:
         case BuiltinsStubCSigns::ID::SetHas: {
             expectType = JSType::JS_SET;
             break;

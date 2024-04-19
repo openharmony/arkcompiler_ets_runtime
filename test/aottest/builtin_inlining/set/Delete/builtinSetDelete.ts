@@ -47,6 +47,7 @@ let mySet = new Set([0, 0.0, -5, 2.5, 1e-78, NaN, "xyz", "12345"]);
 print(mySet.delete()); //: false
 
 // Check with adding element undefined
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 mySet.add(undefined, 42);
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetDelete
 print(mySet.delete()); //: true
@@ -68,6 +69,7 @@ print(mySet.delete(-5, 0)); //: true
 print(mySet.delete(-51, 10.2, 15)); //: false
 
 // Check after inserting elements
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 mySet.add(2000);
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetDelete
 print(mySet.delete(2000)); //: true
@@ -118,6 +120,7 @@ try {
 let obj = {};
 obj.valueOf = (() => { return 0; });
 
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 mySet.add(0, 0);
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetDelete
 print(mySet.delete(obj)); //: false
@@ -133,6 +136,7 @@ function Throwing() {
 }
 
 let throwingObj = new Throwing();
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 mySet.add(2);
 try {
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetDelete
@@ -153,11 +157,16 @@ print(mySet.delete(2000));
 
 let truedelete = Set.prototype.delete;
 let m = new Set();
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m.add(1);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m.add(2);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m.add("ab");
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m.add("cd");
 let obj1 = {};
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m.add(obj1);
 
 print("prototype"); //: prototype
@@ -182,11 +191,13 @@ print(m.delete(obj2)); //: false
 
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetDelete
 print(m.delete()); //: false
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m.add(undefined, -1);
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetDelete
 print(m.delete()); //: true
 
 print("baseline"); //: baseline
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m.add(10);
 let m2 = new Set([1]);
 let m3 = new Set([1]);
@@ -209,10 +220,14 @@ if (ArkTools.isAOTCompiled(printDelete2)) {
 }
 
 // Nothing changed
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m.add(10);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m2.add(10);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetDelete
 m3.add(10);
-m4.add(10); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
+//aot: [trace] Check Type: BuiltinInstanceHClassMismatch
+m4.add(10);
 
 //aot: [trace] aot inline builtin: Set.delete, caller function name:printDelete2@builtinSetDelete
 printDelete2(m, 10);  //: true

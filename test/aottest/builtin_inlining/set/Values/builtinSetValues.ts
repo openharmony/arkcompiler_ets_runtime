@@ -128,8 +128,8 @@ print(iter1.next().value); //: undefined
 let iter2 = mySet.values();
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetValues
 mySet.delete(5);
-mySet.add(30);
-mySet.add(NaN);
+mySet.add(30);  //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetValues
+mySet.add(NaN); //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetValues
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetValues
 mySet.delete("12345");
 for (let key of iter2) {

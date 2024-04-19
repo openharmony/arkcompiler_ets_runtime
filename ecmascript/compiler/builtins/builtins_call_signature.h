@@ -348,6 +348,7 @@ public:
             case BuiltinsStubCSigns::ID::SetEntries:
             case BuiltinsStubCSigns::ID::MapClear:
             case BuiltinsStubCSigns::ID::SetClear:
+            case BuiltinsStubCSigns::ID::SetAdd:
             case BuiltinsStubCSigns::ID::NumberParseFloat:
                 return true;
             default:
@@ -489,6 +490,8 @@ public:
                 return ConstantIndex::MAP_CLEAR_INDEX;
             case BuiltinsStubCSigns::ID::SetClear:
                 return ConstantIndex::SET_CLEAR_INDEX;
+            case BuiltinsStubCSigns::ID::SetAdd:
+                return ConstantIndex::SET_ADD_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
@@ -640,6 +643,7 @@ public:
             {SetDelete, "Set.delete"},
             {MapClear, "Map.clear"},
             {SetClear, "Set.clear"},
+            {SetAdd, "Set.add"},
             {BigIntConstructor, "BigInt"},
             {NumberParseFloat, "Number.parseFloat"},
         };

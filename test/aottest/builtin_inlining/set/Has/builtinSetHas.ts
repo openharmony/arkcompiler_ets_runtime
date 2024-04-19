@@ -40,6 +40,7 @@ let mySet = new Set([0, 0.0, -5, 2.5, 1e-78, NaN, "xyz", "12345"]);
 print(mySet.has()); //: false
 
 // Check with adding element undefined
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetHas
 mySet.add(undefined);
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has()); //: true
@@ -67,7 +68,9 @@ print(mySet.has(-21, 10.2, 15)); //: false
 print(mySet.has(2.5, -800, 0.56, 0)); //: true
 
 // Check after inserting elements
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetHas
 mySet.add(-5);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetHas
 mySet.add(133.33);
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(-5)); //: true

@@ -262,6 +262,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::SetHas:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetHas(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::SetAdd:
+                InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetAdd(), skipThis);
+                break;
             case BuiltinsStubCSigns::ID::DateNow:
                 TryInlineWhitoutParamBuiltin(gate, argc, id, circuit_->DateNow(), skipThis);
                 break;

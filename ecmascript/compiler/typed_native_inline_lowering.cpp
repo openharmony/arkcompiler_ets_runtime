@@ -232,6 +232,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::SET_HAS:
             LowerToCommonStub(gate, CommonStubCSigns::JSSetHas);
             break;
+        case OpCode::SET_ADD:
+            LowerToCommonStub(gate, CommonStubCSigns::JSSetAdd);
+            break;
         case OpCode::DATE_NOW:
             LowerGeneralWithoutArgs(gate, RTSTUB_ID(CallDateNow));
             break;

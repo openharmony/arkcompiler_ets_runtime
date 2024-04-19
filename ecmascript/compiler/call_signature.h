@@ -537,6 +537,7 @@ private:
     V(JSMapKeys)                                \
     V(JSMapValues)                              \
     V(JSSetHas)                                 \
+    V(JSSetAdd)                                 \
     V(JSMapDelete)                              \
     V(JSSetDelete)                              \
     V(CreateJSTypedArrayEntries)                \

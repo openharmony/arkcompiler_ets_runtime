@@ -135,6 +135,7 @@ namespace panda::ecmascript::kungfu {
     V(MapValues, MAP_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MapEntries, MAP_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                                    \
     V(SetHas, SET_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(SetAdd, SET_ADD, GateFlags::NO_WRITE, 1, 1, 2)                                            \
     V(MapDelete, MAP_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
     V(SetDelete, SET_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
     V(DateNow, DATE_NOW, GateFlags::NONE_FLAG, 1, 1, 0)                                         \
