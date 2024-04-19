@@ -1186,6 +1186,8 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
     if (genObj->IsGeneratorObject()) {
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
+        // set TaskInfo for TaskPool
+        generatorObjectHandle->SetTaskInfo(thread->GetTaskInfo());
         // save stack, should copy cur_frame, function execute over will free cur_frame
         SaveFrameToContext(thread, genContextHandle);
 
@@ -2597,6 +2599,8 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
 
     if (genObj->IsGeneratorObject()) {
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
+        // set TaskInfo for TaskPool
+        generatorObjectHandle->SetTaskInfo(thread->GetTaskInfo());
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
             generatorObjectHandle->SetGeneratorState(JSGeneratorState::SUSPENDED_YIELD);
@@ -2657,7 +2661,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructProxy(JSThread *thread, JSHandle<
     if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor: handler is null", JSTaggedValue::Exception());
     }
-    ASSERT(handler->IsJSObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> target(thread, ctor->GetTarget());
 
     // 5.Let trap be GetMethod(handler, "construct").

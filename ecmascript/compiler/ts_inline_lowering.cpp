@@ -329,7 +329,7 @@ GateRef TSInlineLowering::BuildAccessor(InlineTypeInfoAccessor &info)
     ASSERT(pgoTypes->GetCount() == 1);
     auto pgoType = pgoTypes->GetObjectInfo(0);
     ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
-    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
     int holderHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
     ASSERT(ptManager->QueryHClass(holderType.first, holderType.second).IsJSHClass());
     ArgumentAccessor argAcc(circuit_);
@@ -526,7 +526,7 @@ void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
     ASSERT(pgoTypes->GetCount() == 1);
     auto pgoType = pgoTypes->GetObjectInfo(0);
     ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
-    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
     int receiverHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(receiverType));
     ASSERT(ptManager->QueryHClass(receiverType.first, receiverType.second).IsJSHClass());
 
@@ -644,9 +644,9 @@ bool TSInlineLowering::IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t call
 void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
 {
     GateRef receiver = GetAccessorReceiver(gate);
-    InlineTypeInfoAccessor tacc(thread_, circuit_, gate, receiver, kind);
+    InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, receiver, kind);
     if (tacc.IsEnableAccessorInline()) {
-        workList.emplace(thread_, circuit_, gate, receiver, kind);
+        workList.emplace(compilationEnv_, circuit_, gate, receiver, kind);
         lastCallId_ = acc_.GetId(gate);
     }
 }
@@ -655,7 +655,7 @@ void TSInlineLowering::CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeIn
 {
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     auto func = acc_.GetValueIn(gate, funcIndex);
-    InlineTypeInfoAccessor tacc(thread_, circuit_, gate, func, kind);
+    InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, func, kind);
     if (tacc.IsEnableNormalInline()) {
         workList.push(tacc);
         lastCallId_ = acc_.GetId(gate);

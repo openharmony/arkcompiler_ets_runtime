@@ -561,9 +561,11 @@ ecma_source = [
   "ecmascript/base/dtoa_helper.cpp",
   "ecmascript/base/error_helper.cpp",
   "ecmascript/base/fast_json_stringifier.cpp",
+  "ecmascript/base/senable_fast_json_stringifier.cpp",
   "ecmascript/base/json_helper.cpp",
   "ecmascript/base/json_parser.cpp",
   "ecmascript/base/json_stringifier.cpp",
+  "ecmascript/base/senable_json_stringifier.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/path_helper.cpp",
   "ecmascript/base/string_helper.cpp",
@@ -611,6 +613,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_shared_set.cpp",
   "ecmascript/builtins/builtins_shared_map.cpp",
   "ecmascript/builtins/builtins_shared_typedarray.cpp",
+  "ecmascript/builtins/builtins_shared_json_value.cpp",
   "ecmascript/builtins/builtins_symbol.cpp",
   "ecmascript/builtins/builtins_typedarray.cpp",
   "ecmascript/builtins/builtins_weak_map.cpp",
@@ -692,6 +695,8 @@ ecma_source = [
   "ecmascript/intl/locale_helper.cpp",
   "ecmascript/jit/jit.cpp",
   "ecmascript/jit/jit_task.cpp",
+  "ecmascript/jit/jit_thread.cpp",
+  "ecmascript/jit/jit_profiler.cpp",
   "ecmascript/jobs/micro_job_queue.cpp",
   "ecmascript/jspandafile/js_pandafile.cpp",
   "ecmascript/jspandafile/js_pandafile_manager.cpp",
@@ -817,6 +822,7 @@ ecma_source = [
   "ecmascript/module/js_shared_module.cpp",
   "ecmascript/module/js_shared_module_manager.cpp",
   "ecmascript/module/module_data_extractor.cpp",
+  "ecmascript/module/module_manager_helper.cpp",
   "ecmascript/module/module_path_helper.cpp",
   "ecmascript/module/napi_module_loader.cpp",
   "ecmascript/mutator_lock.cpp",
@@ -852,6 +858,7 @@ ecma_source = [
   "ecmascript/stackmap/llvm/llvm_stackmap_parser.cpp",
   "ecmascript/stackmap/llvm/llvm_stackmap_type.cpp",
   "ecmascript/subtyping_operator.cpp",
+  "ecmascript/sustaining_js_handle.cpp",
   "ecmascript/taskpool/taskpool.cpp",
   "ecmascript/taskpool/runner.cpp",
   "ecmascript/taskpool/task_queue.cpp",
@@ -1098,7 +1105,11 @@ ohos_source_set("libark_jsruntime_test_set") {
   defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
   deps = []
-  external_deps = []
+  external_deps = [ "zlib:libz" ]
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
   if (defined(is_arkui_x) && is_arkui_x) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
@@ -1264,12 +1275,19 @@ ohos_shared_library("libark_jsruntime") {
 ohos_shared_library("libark_jsruntime_test") {
   stack_protector_ret = false
   deps = [ ":libark_jsruntime_test_set" ]
-  external_deps = [ "runtime_core:libarkfile_static" ]
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
 
-  if (enable_hilog) {
-    external_deps += [ "hilog:libhilog" ]
+  if (!ark_standalone_build) {
+    public_external_deps = [
+      "runtime_core:libarkfile_static",
+      "zlib:libz",
+    ]
+  } else {
+    external_deps = [
+      "runtime_core:libarkfile_static",
+      "zlib:libz",
+    ]
   }
 
   ldflags = []
@@ -1286,9 +1304,7 @@ ohos_shared_library("libark_jsruntime_test") {
     output_extension = "so"
   }
 
-  # Set the subsystem name
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
+  subsystem_name = "test"
 }
 
 ohos_prebuilt_etc("app_aot_enable_list") {
@@ -1303,6 +1319,15 @@ ohos_prebuilt_etc("app_aot_enable_list") {
 ohos_prebuilt_etc("app_aot_disable_list") {
   relative_install_dir = "ark"
   source = "$js_root/ecmascript/ohos/app_aot_disable_list.conf"
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_prebuilt_etc("app_jit_enable_list") {
+  relative_install_dir = "ark"
+  source = "$js_root/ecmascript/ohos/app_jit_enable_list.conf"
 
   # Set the subsystem name
   part_name = "ets_runtime"

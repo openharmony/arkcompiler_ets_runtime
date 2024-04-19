@@ -493,6 +493,7 @@ public:
     bool IsVector();
     bool IsSharedObject();
     bool IsJSShared();
+    bool IsHeapObject();
 
 private:
     JSTaggedType value_;
@@ -1048,6 +1049,18 @@ private:
     uint16_t oldThreadState_;
 };
 
+class ECMA_PUBLIC_API JsiFastNativeScope {
+public:
+    explicit JsiFastNativeScope(const EcmaVM *vm);
+    ~JsiFastNativeScope();
+    ECMA_DISALLOW_COPY(JsiFastNativeScope);
+    ECMA_DISALLOW_MOVE(JsiFastNativeScope);
+
+private:
+    JSThread *thread_;
+    uint16_t oldThreadState_;
+};
+
 /**
  * JsiRuntimeCallInfo is used for ace_engine and napi, is same to ark EcamRuntimeCallInfo except data.
  */
@@ -1366,6 +1379,7 @@ public:
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func, void *taskInfo);
     static void* GetCurrentTaskInfo(const EcmaVM *vm);
+    static void ClearCurrentTaskInfo(const EcmaVM *vm);
     static void SetBundleName(EcmaVM *vm, const std::string &bundleName);
     static std::string GetBundleName(EcmaVM *vm);
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
@@ -1382,6 +1396,12 @@ public:
                     int32_t triggerMode)> &cb);
     static void SetSearchHapPathTracker(EcmaVM *vm, std::function<bool(const std::string moduleName,
                     std::string &hapPath)> cb);
+
+    // Napi Heavy Logics fast path
+    static Local<JSValueRef> NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativeObj, const char* utf8Key);
+
+    static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
+
 private:
     static int vmCount_;
     static bool initialize_;

@@ -565,10 +565,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
 // [[Construct]]
 JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
 {
-    if (info == nullptr) {
-        return JSTaggedValue::Exception();
-    }
-
+    ASSERT(info != nullptr);
     JSThread *thread = info->GetThread();
     JSHandle<JSFunction> func(info->GetFunction());
     JSHandle<JSTaggedValue> newTarget(info->GetNewTarget());
@@ -603,16 +600,17 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     if (resultValue.IsECMAObject()) {
         return resultValue;
     }
-
     if (func->IsBase()) {
         return obj.GetTaggedValue();
     }
-
     // derived ctor(sub class) return the obj which created by base ctor(parent class)
     if (func->IsDerivedConstructor()) {
+        if (!resultValue.IsECMAObject() && !resultValue.IsUndefined()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread,
+                "derived class constructor must return an object or undefined", JSTaggedValue::Exception());
+        }
         return resultValue;
     }
-
     if (!resultValue.IsUndefined()) {
         RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "function is non-constructor", JSTaggedValue::Exception());

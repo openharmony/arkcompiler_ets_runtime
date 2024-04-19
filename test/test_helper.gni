@@ -140,6 +140,10 @@ template("host_moduletest_action") {
   if (defined(invoker.is_commonjs) && invoker.is_commonjs) {
     _is_commonjs_ = true
   }
+  _is_gen_js_ = false
+  if (defined(invoker.is_gen_js_by_script) && invoker.is_gen_js_by_script) {
+    _is_gen_js_ = true
+  }
   _is_merge_ = false
   if (defined(invoker.is_merge) && invoker.is_merge) {
     _is_merge_ = true
@@ -163,9 +167,14 @@ template("host_moduletest_action") {
     _src_postfix_ = invoker.src_postfix
   }
 
-  _test_js_path_ = "${_src_dir_}/${_target_name_}.${_src_postfix_}"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
   _test_expect_path_ = "${_src_dir_}/expect_output.txt"
+  if (_is_gen_js_) {
+    _test_js_template_path_ = "${_src_dir_}/${_target_name_}.${_src_postfix_}"
+    _test_js_path_ = "$target_out_dir/${_target_name_}.${_src_postfix_}"
+  } else {
+    _test_js_path_ = "${_src_dir_}/${_target_name_}.${_src_postfix_}"
+  }
 
   if (_is_merge_abc_) {
     merge_file_raw = "./${_target_name_}.txt"
@@ -188,13 +197,28 @@ template("host_moduletest_action") {
       outputs = [ merge_file ]
     }
   }
-
+  if (_is_gen_js_) {
+    action("gen_${_target_name_}_js_file") {
+      script = "../../quickfix/generate_js_and_merge_file.py"
+      src_file = rebase_path(_test_js_template_path_)
+      dst_file = rebase_path(_test_js_path_)
+      args = [
+        "--input=$src_file",
+        "--output=$dst_file",
+      ]
+      inputs = [ _test_js_template_path_ ]
+      outputs = [ _test_js_path_ ]
+    }
+  }
   es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     src_js = rebase_path(_test_js_path_)
     dst_file = rebase_path(_test_abc_path_)
     extra_args = []
+    if (_is_gen_js_) {
+      extra_dependencies = [ ":gen_${_target_name_}_js_file" ]
+    }
     if (_is_module_) {
       extra_args += [ "--module" ]
     }
@@ -361,7 +385,7 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
-    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+    if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
       _asm_run_options_ += " --enable-elements-kind=true"
     }
 
@@ -419,7 +443,7 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
-    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+    if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
       _asm_run_options_ += " --enable-elements-kind=true"
     }
 
@@ -574,6 +598,10 @@ template("host_moduletest_assert_action") {
   if (defined(invoker.is_commonjs) && invoker.is_commonjs) {
     _is_commonjs_ = true
   }
+  _is_gen_js_ = false
+  if (defined(invoker.is_gen_js_by_script) && invoker.is_gen_js_by_script) {
+    _is_gen_js_ = true
+  }
   _is_merge_ = false
   if (defined(invoker.is_merge) && invoker.is_merge) {
     _is_merge_ = true
@@ -597,8 +625,14 @@ template("host_moduletest_assert_action") {
     _src_postfix_ = invoker.src_postfix
   }
 
-  _test_js_path_ = "${_src_dir_}/${_target_name_}.${_src_postfix_}"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
+
+  if (_is_gen_js_) {
+    _test_js_template_path_ = "${_src_dir_}/${_target_name_}.${_src_postfix_}"
+    _test_js_path_ = "$target_out_dir/${_target_name_}.${_src_postfix_}"
+  } else {
+    _test_js_path_ = "${_src_dir_}/${_target_name_}.${_src_postfix_}"
+  }
 
   if (_is_merge_abc_) {
     merge_file_raw = "./${_target_name_}.txt"
@@ -621,6 +655,19 @@ template("host_moduletest_assert_action") {
       outputs = [ merge_file ]
     }
   }
+  if (_is_gen_js_) {
+    action("gen_${_target_name_}_js_file") {
+      script = "../../quickfix/generate_js_and_merge_file.py"
+      src_file = rebase_path(_test_js_template_path_)
+      dst_file = rebase_path(_test_js_path_)
+      args = [
+        "--input=$src_file",
+        "--output=$dst_file",
+      ]
+      inputs = [ _test_js_template_path_ ]
+      outputs = [ _test_js_path_ ]
+    }
+  }
 
   es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
@@ -628,6 +675,9 @@ template("host_moduletest_assert_action") {
     src_js = rebase_path(_test_js_path_)
     dst_file = rebase_path(_test_abc_path_)
     extra_args = []
+    if (_is_gen_js_) {
+      extra_dependencies = [ ":gen_${_target_name_}_js_file" ]
+    }
     if (_is_module_) {
       extra_args += [ "--module" ]
     }
@@ -789,7 +839,7 @@ template("host_moduletest_assert_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
-    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+    if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
       _asm_run_options_ += " --enable-elements-kind=true"
     }
 
@@ -848,7 +898,7 @@ template("host_moduletest_assert_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
-    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+    if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
       _asm_run_options_ += " --enable-elements-kind=true"
     }
 
@@ -4345,24 +4395,39 @@ template("host_quickfix_test_action") {
     } else {
       merge_file_raw += "${_target_name_}/${filename}.txt"
     }
-
     merge_file = "$target_out_dir/${_target_name_}/${filename}.txt"
     merge_file_prefix =
         "//arkcompiler/ets_runtime/test/quickfix/${_target_name_}/"
 
-    action("gen_${_target_name_}_${filename}_merge_file") {
-      script = "//arkcompiler/ets_runtime/test/quickfix/generate_merge_file.py"
-      args = [
-        "--input",
-        rebase_path(merge_file_raw),
-        "--output",
-        rebase_path(merge_file),
-        "--prefix",
-        rebase_path(merge_file_prefix),
-      ]
-
-      inputs = [ merge_file_raw ]
-      outputs = [ merge_file ]
+    if (defined(invoker.is_gen_js_by_script) && invoker.is_gen_js_by_script) {
+      action("gen_${_target_name_}_${filename}_js_file_and_merge") {
+        script = "//arkcompiler/ets_runtime/test/quickfix/generate_js_and_merge_file.py"
+        args = [
+          "--input",
+          rebase_path(merge_file_raw),
+          "--output",
+          rebase_path(merge_file),
+          "--prefix",
+          rebase_path(merge_file_prefix),
+        ]
+        inputs = [ merge_file_raw ]
+        outputs = [ merge_file ]
+      }
+    } else {
+      action("gen_${_target_name_}_${filename}_merge_file") {
+        script =
+            "//arkcompiler/ets_runtime/test/quickfix/generate_merge_file.py"
+        args = [
+          "--input",
+          rebase_path(merge_file_raw),
+          "--output",
+          rebase_path(merge_file),
+          "--prefix",
+          rebase_path(merge_file_prefix),
+        ]
+        inputs = [ merge_file_raw ]
+        outputs = [ merge_file ]
+      }
     }
 
     abc_path = "$target_out_dir/${_target_name_}/${filename}.abc"
@@ -4370,7 +4435,12 @@ template("host_quickfix_test_action") {
     es2abc_gen_abc("gen_${_target_name_}_${filename}_abc") {
       extra_visibility =
           [ ":*" ]  # Only targets in this file can depend on this.
-      extra_dependencies = [ ":gen_${_target_name_}_${filename}_merge_file" ]
+      if (defined(invoker.is_gen_js_by_script) && invoker.is_gen_js_by_script) {
+        extra_dependencies =
+            [ ":gen_${_target_name_}_${filename}_js_file_and_merge" ]
+      } else {
+        extra_dependencies = [ ":gen_${_target_name_}_${filename}_merge_file" ]
+      }
 
       if (defined(invoker.is_hotpatch) && filename == "patch") {
         extra_dependencies += [ ":gen_${_target_name_}_base_abc" ]

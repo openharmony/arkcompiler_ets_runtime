@@ -107,6 +107,7 @@ public:
     static constexpr size_t INITIAL_PEROID_INDEX = 0;
     static constexpr size_t INITIAL_OSR_HOTNESS_THRESHOLD = 0;
     static constexpr size_t INITIAL_OSR_HOTNESS_CNT = 0;
+    static constexpr uint16_t JIT_DISABLE_FLAG = 0xFFFF;
     static constexpr size_t PRE_DUMP_PEROID_INDEX = 1;
     static constexpr size_t DUMP_PEROID_INDEX = 2;
     static constexpr size_t JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 4;  // 4 : 4 byte offset from bitfield
@@ -157,6 +158,7 @@ public:
         Barriers::SetPrimitive<JSTaggedType>(GetData(), capacity * JSTaggedValue::TaggedTypeSize(),
                                              JSTaggedValue::Undefined().GetRawData());
         SetPeriodIndex(INITIAL_PEROID_INDEX);
+        SetJitHotnessThreshold(JIT_DISABLE_FLAG);
         SetOsrHotnessThreshold(INITIAL_OSR_HOTNESS_THRESHOLD);
         SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
     }

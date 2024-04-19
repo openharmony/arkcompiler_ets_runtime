@@ -21,6 +21,7 @@
 namespace panda::ecmascript::kungfu {
 bool ObjectAccessHelper::Compute(ChunkVector<ObjectAccessInfo> &infos)
 {
+    ASSERT(compilationEnv_->IsAotCompiler());
     ASSERT(infos.empty());
     bool result = false;
     ObjectAccessInfo info(type_);
@@ -55,7 +56,7 @@ bool ObjectAccessHelper::ComputeForClassInstance(ObjectAccessInfo &info)
         return false;
     }
 
-    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread_, hclass, key_);
+    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(compilationEnv_->GetJSThread(), hclass, key_);
     info.Set(hclassIndex, plr);
 
     if (IsLoading()) {
@@ -80,7 +81,7 @@ bool ObjectAccessHelper::ComputeForClassOrObject(ObjectAccessInfo &info)
     }
 
     JSHClass *hclass = JSHClass::Cast(tsManager_->GetAOTHClassInfoByIndex(hclassIndex).GetTaggedObject());
-    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread_, hclass, key_);
+    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(compilationEnv_->GetJSThread(), hclass, key_);
     info.Set(hclassIndex, plr);
 
     if (IsLoading()) {
@@ -128,7 +129,7 @@ bool ObjectAccessHelper::ComputePolymorphism(ChunkVector<ObjectAccessInfo> &info
 bool PGOObjectAccessHelper::ComputeForClassInstance(PGOObjectAccessInfo &info)
 {
     auto type = info.Type();
-    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
     int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(type));
     if (hclassIndex == -1) {
         return false;
@@ -136,7 +137,7 @@ bool PGOObjectAccessHelper::ComputeForClassInstance(PGOObjectAccessInfo &info)
 
     JSHClass *hclass = JSHClass::Cast(ptManager->QueryHClass(type.first, type.second).GetTaggedObject());
 
-    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(thread_, hclass, key_);
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilationEnv_->GetJSThread(), hclass, key_);
     info.Set(hclassIndex, plr);
 
     if (IsLoading()) {
@@ -149,7 +150,7 @@ bool PGOObjectAccessHelper::ComputeForClassInstance(PGOObjectAccessInfo &info)
 bool PGOObjectAccessHelper::ClassInstanceIsCallable(PGOObjectAccessInfo &info)
 {
     auto type = info.Type();
-    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
     int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(type));
     if (hclassIndex == -1) {
         return false;

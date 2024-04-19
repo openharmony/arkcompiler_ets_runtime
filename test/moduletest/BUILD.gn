@@ -170,6 +170,7 @@ group("ark_js_moduletest") {
     "objectfreeze",
     "sharedcheck",
     "sharedarray",
+    "sharedtypedarray",
     "sharedcollectionsexception",
     "definesendableclass",
     "sendablecontext",
@@ -177,6 +178,7 @@ group("ark_js_moduletest") {
     "sharedmodule",
     "sharedset",
     "sharedmap",
+    "sharedJSON",
     "sharedic",
   ]
 
@@ -355,6 +357,7 @@ group("ark_asm_test") {
     "getpropertybyic",
     "sharedcheck",
     "sharedarray",
+    "sharedtypedarray",
     "sharedcollectionsexception",
     "definesendableclass",
     "sendablecontext",
@@ -362,6 +365,7 @@ group("ark_asm_test") {
     "sharedmodule",
     "sharedset",
     "sharedmap",
+    "sharedJSON",
     "sharedic",
   ]
 
@@ -518,6 +522,7 @@ group("ark_asm_single_step_test") {
     "regressarraybuffer",
     "sharedcheck",
     "sharedarray",
+    "sharedtypedarray",
     "sharedcollectionsexception",
     "definesendableclass",
     "sendablecontext",
@@ -526,6 +531,7 @@ group("ark_asm_single_step_test") {
     "sharedic",
     "sharedset",
     "sharedmap",
+    "sharedJSON",
   ]
 
   deps = []

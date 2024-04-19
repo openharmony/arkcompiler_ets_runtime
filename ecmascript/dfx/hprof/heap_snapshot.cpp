@@ -278,6 +278,15 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_SHARED_FUNCTION: {
             return GetString("JSSharedFunction");
         }
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY: {
+            return GetString("SharedJSONValue");
+        }
         case JSType::FREE_OBJECT_WITH_ONE_FIELD:
         case JSType::FREE_OBJECT_WITH_NONE_FIELD:
         case JSType::FREE_OBJECT_WITH_TWO_FIELD:
@@ -544,6 +553,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("ResolvedBinding");
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             return GetString("ResolvedIndexBinding");
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            return GetString("ResolvedRecordIndexBinding");
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             return GetString("ResolvedRecordBinding");
         case JSType::JS_MODULE_NAMESPACE:

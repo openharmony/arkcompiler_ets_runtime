@@ -109,10 +109,9 @@ private:
     GateRef VisitStoreProperty(GateRef gate);
     GateRef VisitLoadProperty(GateRef gate);
     GateRef VisitNumberRelated(GateRef gate, ParamType paramType);
-    GateRef VisitCallBuiltins(GateRef gate);
     GateRef VisitDataViewGet(GateRef gate);
     GateRef VisitDataViewSet(GateRef gate);
-    GateRef VisitOthers(GateRef gate);
+    GateRef VisitOthers(GateRef gate, GateType outputType = GateType::AnyType());
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);
     GateRef VisitIsTrueOrFalse(GateRef gate);
@@ -125,6 +124,7 @@ private:
     GateRef VisitMonoLoadPropertyOnProto(GateRef gate);
     GateRef VisitMonoCallGetterOnProto(GateRef gate);
     GateRef VisitMonoStoreProperty(GateRef gate);
+    GateRef VisitDateGetTime(GateRef gate);
 
     void ConvertForNumberBinaryOp(GateRef gate);
     void ConvertForNumberCompareOp(GateRef gate);

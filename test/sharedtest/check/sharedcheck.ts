@@ -486,6 +486,7 @@ function testObjectAttributesAndExtensible(testObj: SubClass)
   } catch (error) {
     print("Fail to call Object.freeze. err: " + error)
   }
+  print("isFrozen: " + Object.isFrozen(testObj))
   print("isSealed: " + Object.isSealed(testObj))
   try {
     Object.seal(testObj);
@@ -708,16 +709,45 @@ function testSetMismatchedType(testObj: SubClass)
   }
 }
 
-let b = new SubClass()
-b.subClassPropSendable = new SimpleStringSendable()
-b.propSenableOrNull = new SimpleStringSendable()
-b.propSenableOrUndefined = new SimpleStringSendable()
-testUpdate(b)
-testDelete(b)
-testExtend(b)
-testObjectProtoFunc(b)
-testUpdateWithType(b)
-testKeywords(b)
-testNormInherit()
+function testSharedObjectFreeze(testObj: SubClass)
+{
+  print("Start testSharedObjectFreeze");
+  print("isFrozen: " + Object.isFrozen(testObj));
+  Object.freeze(testObj);
+  print("isFrozen: " + Object.isFrozen(testObj));
+  try {
+    testObj.subClassPropString = "I'm string";
+  } catch (error) {
+    print("Fail to set properties after frozen. err: " + error);
+  }
+}
+
+function testSharedFunctionFreeze(testClass)
+{
+  print("Start testSharedFunctionFreeze");
+  print("isFrozen: " + Object.isFrozen(testClass));
+  Object.freeze(testClass);
+  print("isFrozen: " + Object.isFrozen(testClass));
+  try {
+    testClass.staticSubClassPropString = "I'm string";
+  } catch (error) {
+    print("Fail to set properties after frozen. err: " + error);
+  }
+}
+
+let b = new SubClass();
+let c = new SubClass();
+b.subClassPropSendable = new SimpleStringSendable();
+b.propSenableOrNull = new SimpleStringSendable();
+b.propSenableOrUndefined = new SimpleStringSendable();
+testUpdate(b);
+testDelete(b);
+testExtend(b);
+testObjectProtoFunc(c);
+testUpdateWithType(b);
+testKeywords(b);
+testNormInherit();
 testICChecking(b);
 testSetMismatchedType(b);
+testSharedObjectFreeze(b);
+testSharedFunctionFreeze(SubClass);

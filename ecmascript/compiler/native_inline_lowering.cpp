@@ -46,11 +46,11 @@ std::optional<std::pair<size_t, bool>> NativeInlineLowering::GetCallInfo(GateRef
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             return {{3U, true}};
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8: {
-            CallRangeTypeInfoAccessor tia(thread_, circuit_, gate);
+            CallRangeTypeInfoAccessor tia(compilationEnv_, circuit_, gate);
             return {{tia.GetArgc(), false}};
         }
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
-            CallThisRangeTypeInfoAccessor tia(thread_, circuit_, gate);
+            CallThisRangeTypeInfoAccessor tia(compilationEnv_, circuit_, gate);
             return {{tia.GetArgc(), true}};
         }
         default:
@@ -72,7 +72,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
             continue;
         }
         auto [argc, skipThis] = optCallInfo.value();
-        CallTypeInfoAccessor ctia(thread_, circuit_, gate);
+        CallTypeInfoAccessor ctia(compilationEnv_, circuit_, gate);
         BuiltinsStubCSigns::ID id = ctia.TryGetPGOBuiltinMethodId();
         switch (id) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
@@ -177,6 +177,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::GlobalIsNan:
                 TryInlineGlobalNanBuiltin(gate, argc, id, circuit_->GlobalIsNan(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::DateGetTime:
+                TryInlineDateGetTime(gate, argc, skipThis);
+                break;
             case BuiltinsStubCSigns::ID::MathMin:
                 TryInlineMathMinMaxBuiltin(gate, argc, id, circuit_->MathMin(), base::POSITIVE_INFINITY, skipThis);
                 break;
@@ -221,6 +224,12 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MapGet:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->MapGet(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::MapHas:
+                InlineStubBuiltin(gate, 1U, argc, id, circuit_->MapHas(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::SetHas:
+                InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetHas(), skipThis);
+                break;
             default:
                 break;
         }
@@ -257,7 +266,7 @@ void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -281,7 +290,7 @@ void NativeInlineLowering::TryInlineNumberIsFinite(GateRef gate, size_t argc, bo
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -299,7 +308,7 @@ void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, b
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -317,7 +326,7 @@ void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool 
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -335,7 +344,7 @@ void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t arg
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
@@ -516,7 +525,7 @@ void NativeInlineLowering::TryInlineArrayBufferIsView(GateRef gate,
     if (argc != 1) {
         return;
     }
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(), builder_.IntPtr(static_cast<int64_t>(id)), {tacc.GetArg0()});
@@ -603,6 +612,28 @@ void NativeInlineLowering::InlineStubBuiltin(GateRef gate, size_t builtinArgc, s
         args.push_back(i <= realArgc ? acc_.GetValueIn(gate, i) : builder_.Undefined());
     }
     GateRef ret = builder_.BuildControlDependOp(op, args);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineDateGetTime(GateRef gate, size_t argc, bool skipThis)
+{
+    // Always shout be "this", we can't inline this function without instance of object
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    // We are sure, that "this" is passed to this function, so always need to do +1
+    bool firstParam = 1;
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::DateGetTime)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, BuiltinsStubCSigns::ID::DateGetTime);
+    }
+    // Take object using "this"
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef ret = builder_.BuildControlDependOp(circuit_->DateGetTime(), {obj});
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 

@@ -769,10 +769,22 @@ CString ModulePathHelper::ConcatNotSoNormalizedOhmurl(const CString &moduleName,
         PathHelper::NORMALIZED_OHMURL_TAG + version;
 }
 
-void ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, [[maybe_unused]] CString &baseFileName,
-                                                       CString recordName, CString &requestPath)
+bool ModulePathHelper::NeedTranslateToNormalized(const CString &requestName)
 {
-    if (StringHelper::StringStartWith(requestPath, PREFIX_NORMALIZED)) {
+    // if start with @normalized:xxx @native:xxx.xxx @ohos:xxx
+    // no translation is required
+    if (StringHelper::StringStartWith(requestName, PREFIX_NORMALIZED) ||
+        (requestName[0] == PathHelper::NAME_SPACE_TAG &&
+         requestName.find(PathHelper::COLON_TAG) != CString::npos)) {
+            return false;
+    }
+    return true;
+}
+
+void ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
+    [[maybe_unused]] CString &baseFileName, CString recordName, CString &requestPath)
+{
+    if (!NeedTranslateToNormalized(requestPath)) {
         return;
     }
     EcmaVM *vm = thread->GetEcmaVM();
@@ -780,8 +792,7 @@ void ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, [[maybe
         CString moduleRequestName = RemoveSuffix(requestPath);
         size_t pos = moduleRequestName.find(PathHelper::CURRENT_DIREATORY_TAG);
         if (pos == 0) {
-            size_t tagLength = 2;
-            moduleRequestName = moduleRequestName.substr(tagLength);
+            moduleRequestName = moduleRequestName.substr(CURRENT_DIREATORY_TAG_LEN);
         }
         pos = recordName.rfind(PathHelper::SLASH_TAG);
         if (pos != CString::npos) {
@@ -797,6 +808,10 @@ void ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, [[maybe
         CString pkgName = vm->GetPkgNameWithAlias(requestPath);
         CVector<CString> data = GetPkgContextInfoListElements(thread, currentModuleName, pkgName);
         if (data.size() == 0) {
+            CString outEntryPoint;
+            if (jsPandaFile->FindOhmUrlInPF(requestPath, outEntryPoint)) {
+                requestPath = outEntryPoint;
+            }
             ChangeTag(requestPath);
             return;
         }
@@ -807,8 +822,7 @@ void ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, [[maybe
         CString isSO = data[PKGINFO_IS_SO_INDEX];
         size_t pos = entryPath.find(PathHelper::CURRENT_DIREATORY_TAG);
         if (pos == 0) {
-            size_t tagLength = 2;
-            entryPath = entryPath.substr(tagLength);
+            entryPath = entryPath.substr(CURRENT_DIREATORY_TAG_LEN);
         }
         if (isSO == TRUE_FLAG) {
             requestPath = ConcatNativeSoNormalizedOhmurl(moduleName, bundleName, pkgName, version);

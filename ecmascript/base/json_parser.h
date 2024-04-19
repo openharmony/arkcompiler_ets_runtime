@@ -187,13 +187,12 @@ protected:
                         Advance();
                         continue;
                     case Tokens::ARRAY:
-                        // sendable array not support now
-                        if (UNLIKELY(transformType_ == TransformType::SENDABLE)) {
-                            THROW_SYNTAX_ERROR_AND_RETURN(thread_, GET_MESSAGE_STRING(SendableArrayForJson),
-                                                          JSTaggedValue::Exception());
-                        }
                         if (EmptyArrayCheck()) {
-                            parseValue = JSHandle<JSTaggedValue>(factory_->NewJSArray(0, initialJSArrayClass_));
+                            if (transformType_ == TransformType::SENDABLE) {
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewJSSArray());
+                            } else {
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewJSArray(0, initialJSArrayClass_));
+                            }
                             GetNextNonSpaceChar();
                             break;
                         }
@@ -244,7 +243,11 @@ protected:
                             Advance();
                             break;
                         }
-                        parseValue = CreateJsonArray(continuation, elementsList);
+                        if (transformType_ == TransformType::SENDABLE) {
+                            parseValue = CreateSJsonArray(continuation, elementsList);
+                        } else {
+                            parseValue = CreateJsonArray(continuation, elementsList);
+                        }
                         if (*current_ != ']') {
                             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON",
                                                           JSTaggedValue::Exception());
@@ -302,6 +305,19 @@ protected:
         size_t size = elementsList.size() - start;
         JSHandle<JSArray> array = factory_->NewJSArray(size, initialJSArrayClass_);
         JSHandle<TaggedArray> elements = factory_->NewJsonFixedArray(start, size, elementsList);
+        JSHandle<JSObject> obj(array);
+        obj->SetElements(thread_, elements);
+        return JSHandle<JSTaggedValue>(array);
+    }
+
+    JSHandle<JSTaggedValue> CreateSJsonArray([[maybe_unused]] JsonContinuation continuation,
+                                             [[maybe_unused]] std::vector<JSHandle<JSTaggedValue>> &elementsList)
+    {
+        size_t start = continuation.index_;
+        size_t size = elementsList.size() - start;
+        JSHandle<JSSharedArray> array = factory_->NewJSSArray();
+        array->SetArrayLength(thread_, size);
+        JSHandle<TaggedArray> elements = factory_->NewSJsonFixedArray(start, size, elementsList);
         JSHandle<JSObject> obj(array);
         obj->SetElements(thread_, elements);
         return JSHandle<JSTaggedValue>(array);
@@ -387,7 +403,8 @@ protected:
         ASSERT(key->IsString());
         auto newKey = key.GetTaggedValue();
         auto stringAccessor = EcmaStringAccessor(newKey);
-        if (!stringAccessor.IsLineString() || IsNumberCharacter(*stringAccessor.GetDataUtf8())) {
+        if (!stringAccessor.IsLineString() || (stringAccessor.IsUtf8() &&
+            IsNumberCharacter(*stringAccessor.GetDataUtf8()))) {
             uint32_t index = 0;
             if (stringAccessor.ToElementIndex(&index)) {
                 return ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>(thread_,

@@ -540,10 +540,9 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
     GateRef glue = acc_.GetGlueFromArgList();
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef ihcMatches = Circuit::NullGate();
-    JSThread *thread = tsManager_->GetThread();
     if (type == BuiltinTypeId::ARRAY) {
         if (Elements::IsGeneric(kind)) {
-            auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+            auto arrayHClassIndexMap = compilationEnv_->GetArrayHClassIndexMap();
             auto iter = arrayHClassIndexMap.find(kind);
             ASSERT(iter != arrayHClassIndexMap.end());
             GateRef initialIhcAddress = builder_.GetGlobalConstantValue(iter->second);
@@ -582,9 +581,8 @@ void TypedHCRLowering::BuiltinPrototypeHClassCheck(Environment *env, GateRef gat
     GateRef frameState = GetFrameState(gate);
     GateRef glue = acc_.GetGlueFromArgList();
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    JSThread *thread = tsManager_->GetThread();
     // Only HClasses recorded in the JSThread during builtin initialization are available
-    [[maybe_unused]] JSHClass *initialPrototypeHClass = thread->GetBuiltinPrototypeHClass(type);
+    [[maybe_unused]] JSHClass *initialPrototypeHClass = compilationEnv_->GetBuiltinPrototypeHClass(type);
     ASSERT(initialPrototypeHClass != nullptr);
 
     // Phc = PrototypeHClass

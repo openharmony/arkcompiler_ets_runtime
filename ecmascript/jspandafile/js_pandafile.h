@@ -438,7 +438,7 @@ public:
     static FunctionKind PUBLIC_API GetFunctionKind(panda_file::FunctionKind funcKind);
     static FunctionKind GetFunctionKind(ConstPoolType type);
 
-    bool IsFirstMergedAbc() const;
+    bool PUBLIC_API IsFirstMergedAbc() const;
     const void *GetBase() const
     {
         return static_cast<const void *>(pf_->GetBase());

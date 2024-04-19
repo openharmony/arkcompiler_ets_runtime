@@ -127,6 +127,7 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -313,6 +314,20 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
     array->SetArrayBufferData(thread_, pointer);
     array->SetWithNativeAreaAllocator(true);
     nativeAreaAllocator->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
+}
+
+JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(int32_t length)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+
+    JSHandle<JSFunction> constructor(env->GetSBuiltininArrayBufferFunction());
+    JSHandle<JSSendableArrayBuffer> sendableArrayBuffer(NewJSObjectByConstructor(constructor));
+    sendableArrayBuffer->SetArrayBufferByteLength(length);
+    if (length > 0) {
+        NewJSSendableArrayBufferData(sendableArrayBuffer, length);
+        sendableArrayBuffer->SetShared(true);
+    }
+    return sendableArrayBuffer;
 }
 
 void ObjectFactory::NewJSSharedArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length)
@@ -736,13 +751,6 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSHClas
     return obj;
 }
 
-JSHandle<JSSharedArray> ObjectFactory::NewJSSArray()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedArrayFunction());
-    return JSHandle<JSSharedArray>(NewJSObjectByConstructor(function));
-}
-
 JSHandle<JSArray> ObjectFactory::NewJSArray()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -1013,7 +1021,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
                                      env->GetObjectFunctionPrototype());
         }
         JSHandle<JSObject> obj;
-        if (jshclass->IsJSSharedObject()) {
+        if (jshclass->IsJSShared()) {
             obj = NewSharedOldSpaceJSObject(jshclass);
             if (jshclass->IsDictionaryMode()) {
                 auto fieldLayout = jshclass->GetLayout();
@@ -1022,6 +1030,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
                 auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
                 obj->SetProperties(thread_, properties);
             }
+            InitializeJSObject(obj, jshclass);
         } else {
             obj = NewJSObjectWithInit(jshclass);
         }
@@ -1091,6 +1100,16 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ITERATOR: {
+            break;
+        }
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY: {
+            JSSharedJSONValue::Cast(*obj)->SetValue(thread_, JSTaggedValue::Null());
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -2644,6 +2663,9 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, 
         case MemSpaceType::OLD_SPACE:
             header = heap_->AllocateOldOrHugeObject(arrayClass, size);
             break;
+        case MemSpaceType::SHARED_OLD_SPACE:
+            header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
+            break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -2816,7 +2838,7 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
                                                  JSTaggedValue initVal, MemSpaceType type,
                                                  [[maybe_unused]] ElementsKind kind)
 {
-    ASSERT(length > old->GetLength());
+    ASSERT(length >= old->GetLength());
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     JSHClass *arrayClass = nullptr;
@@ -3208,6 +3230,7 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
     if (vm_->IsEnableJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetJitHotnessThreshold();
+        ASSERT(threshold != ProfileTypeInfo::JIT_DISABLE_FLAG);
         array->SetJitHotnessThreshold(threshold);
         threshold = vm_->GetJSOptions().GetOsrHotnessThreshold();
         array->SetOsrHotnessThreshold(threshold);
@@ -3232,6 +3255,7 @@ JSHandle<BigInt> ObjectFactory::NewBigInt(uint32_t length)
 // static
 void ObjectFactory::NewObjectHook() const
 {
+    CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
     if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
@@ -4085,6 +4109,15 @@ JSHandle<EcmaString> ObjectFactory::NewFromASCII(std::string_view data)
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
     return GetStringFromStringTable(utf8Data, data.length(), true);
+}
+
+// At this situation, Create string directly without using a StringTable.
+JSHandle<EcmaString> ObjectFactory::NewFromASCIISkippingStringTable(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
+    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, data.length(), true);
+    return JSHandle<EcmaString>(thread_, str);
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromASCIINonMovable(std::string_view data)
@@ -5086,5 +5119,23 @@ void ObjectFactory::FillFreeMemoryRange(uintptr_t start, uintptr_t end)
         Barriers::SetPrimitive<JSTaggedType>(reinterpret_cast<void*>(start), 0, FREE_MEMMORY_ADDRESS_ZAM_VALUE);
         start += sizeof(JSTaggedType);
     }
+}
+
+// jit compile should not modify method which is shared
+// remove it when compiled code flag move to jsfunction
+JSHandle<Method> ObjectFactory::CloneMethodTemporaryForJIT(JSHandle<Method> method)
+{
+    TaggedObject *header = nullptr;
+    header = heap_->AllocateOldOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetMethodClass().GetTaggedObject()));
+    JSHandle<Method> newmethod(thread_, header);
+
+    newmethod->SetCallField(method->GetCallField());
+    newmethod->SetLiteralInfo(method->GetLiteralInfo());
+    newmethod->SetNativePointerOrBytecodeArray(method->GetNativePointerOrBytecodeArray());
+    newmethod->SetExtraLiteralInfo(method->GetExtraLiteralInfo());
+    newmethod->SetCodeEntryOrLiteral(method->GetCodeEntryOrLiteral());
+    newmethod->SetConstantPool(thread_, method->GetConstantPool());
+    return newmethod;
 }
 }  // namespace panda::ecmascript

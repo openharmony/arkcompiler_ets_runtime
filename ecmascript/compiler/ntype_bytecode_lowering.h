@@ -35,7 +35,7 @@ public:
           methodName_(name),
           glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit),
-          thread_(ctx->GetEcmaVM()->GetJSThread()) {}
+          compilationEnv_(ctx->GetCompilationEnv()) {}
 
     ~NTypeBytecodeLowering() = default;
 
@@ -93,7 +93,7 @@ private:
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NTYPE_BYTECODE_LOWERING_H

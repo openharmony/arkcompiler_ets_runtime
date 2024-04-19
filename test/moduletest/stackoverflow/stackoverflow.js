@@ -37,3 +37,25 @@ try {
         print("stack overflow!");
     }
 }
+
+function runNearStackLimit(f) {
+    function t() {
+        try {
+            t();
+        } catch (e) {
+            f();
+        }
+    };
+    try {
+        t();
+    } catch (e) {
+    }
+}
+const v3 = new Proxy(Boolean, []);
+const v4 = v3.bind();
+function f5(a6, a7) {
+    4294967296n + v4;
+    return runNearStackLimit(f5);
+}
+f5();
+print("stack overflow success");

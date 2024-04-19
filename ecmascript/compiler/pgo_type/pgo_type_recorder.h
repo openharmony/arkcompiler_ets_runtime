@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_RECORD_H
 #define ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_RECORD_H
 
+#include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
@@ -58,6 +59,13 @@ public:
     void IterateHClassTreeDesc(Callback callback) const
     {
         decoder_.IterateHClassTreeDesc(callback);
+    }
+
+    void InitMap(JITProfiler* jitProfile)
+    {
+        bcOffsetPGOOpTypeMap_ = jitProfile->GetOpTypeMap();
+        bcOffsetPGODefOpTypeMap_ = jitProfile->GetDefOpTypeMap();
+        bcOffsetPGORwTypeMap_ = jitProfile->GetRwTypeMap();
     }
 
 private:

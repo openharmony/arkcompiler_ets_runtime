@@ -93,3 +93,31 @@ try {
 let arr1 = new Array;
 let pro1 = new Proxy(arr1, {});
 print(Object.prototype.toString.call(pro1));
+
+
+{
+    const v0 = [1.0,2.2250738585072014e-308,-7.829944258836235e+307,-7.46187308415638,-413646.9640026712,5.525707214803659e+305,-1000000000000.0];
+    const o1 = {
+    };
+    const v3 = new Proxy(v0, o1);
+
+    function F4(a6, a7) {
+        const v9 = new Proxy(RegExp, v3);
+        new v9(a6, v9, F4);
+    }
+    try {
+        new F4();
+    } catch (error) {
+        print(error);
+    }
+}
+class C9{};
+let v4 = new Proxy(Uint32Array,Reflect);
+class C4 extends v4 {
+  constructor(a6,a7,a8){
+    super();
+    new C9(a7,C4);
+  }
+}
+new C4();
+print("test proxy constructor success!")

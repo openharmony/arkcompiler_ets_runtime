@@ -27,10 +27,10 @@ namespace panda::ecmascript::kungfu {
 
 // BUILTINS_STUB_LIST is shared both ASM Interpreter and AOT.
 // AOT_BUILTINS_STUB_LIST is used in AOT only.
-#define BUILTINS_STUB_LIST(V, D)                    \
+#define BUILTINS_STUB_LIST(V, D, C)                 \
     BUILTINS_METHOD_STUB_LIST(D, D, D, D)           \
     BUILTINS_WITH_CONTAINERS_STUB_BUILDER(D)        \
-    BUILTINS_CONSTRUCTOR_STUB_LIST(V)               \
+    BUILTINS_CONSTRUCTOR_STUB_LIST(C)               \
     AOT_AND_BUILTINS_STUB_LIST(V)                   \
     BUILTINS_ARKTOOLS_STUB_BUILDER(D)
 
@@ -127,6 +127,10 @@ namespace panda::ecmascript::kungfu {
     V(ParseFloat,      Number,    Undefined())
 
 #define BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)    \
+    V(Reverse,         TypedArray,  Undefined())    \
+    V(LastIndexOf,     TypedArray,  Undefined())    \
+    V(IndexOf,         TypedArray,  Undefined())    \
+    V(Find,            TypedArray,  Undefined())    \
     V(Includes,        TypedArray,  Undefined())    \
     V(CopyWithin,      TypedArray,  Undefined())    \
     V(ReduceRight,     TypedArray,  Undefined())    \
@@ -134,11 +138,14 @@ namespace panda::ecmascript::kungfu {
     V(Every,           TypedArray,  Undefined())    \
     V(Some,            TypedArray,  Undefined())    \
     V(Filter,          TypedArray,  Undefined())    \
+    V(With,            TypedArray,  Undefined())    \
     V(Slice,           TypedArray,  Undefined())    \
     V(SubArray,        TypedArray,  Undefined())    \
+    V(Sort,            TypedArray,  Undefined())    \
     V(GetByteLength,   TypedArray,  Undefined())    \
     V(GetByteOffset,   TypedArray,  Undefined())    \
-    V(Set,             TypedArray,  Undefined())
+    V(Set,             TypedArray,  Undefined())    \
+    V(FindIndex,       TypedArray,  Undefined())
 
 #define BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)                           \
     V(SetInt32,     DataView,  INT32,     SetTypedValue, Undefined())    \
@@ -224,6 +231,7 @@ namespace panda::ecmascript::kungfu {
     V(MathMin)                                      \
     V(MathMax)                                      \
     V(MathImul)                                     \
+    V(DateGetTime)                                  \
     V(GlobalIsFinite)                               \
     V(GlobalIsNan)                                  \
     V(ArrayBufferIsView)                            \
@@ -253,7 +261,7 @@ public:
 #define DEF_STUB_ID(name) name,
 #define DEF_STUB_ID_DYN(name, type, ...) type##name,
         PADDING_BUILTINS_STUB_LIST(DEF_STUB_ID)
-        BUILTINS_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN)
+        BUILTINS_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN, DEF_STUB_ID)
         NUM_OF_BUILTINS_STUBS,
         AOT_BUILTINS_STUB_LIST(DEF_STUB_ID)
         AOT_BUILTINS_INLINE_LIST(DEF_STUB_ID)
@@ -319,6 +327,8 @@ public:
         switch (builtinId) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
             case BuiltinsStubCSigns::ID::MapGet:
+            case BuiltinsStubCSigns::ID::MapHas:
+            case BuiltinsStubCSigns::ID::SetHas:
                 return true;
             default:
                 return false;
@@ -437,6 +447,10 @@ public:
                 return ConstantIndex::MATH_IMUL_INDEX;
             case BuiltinsStubCSigns::ID::MapGet:
                 return ConstantIndex::MAP_GET_INDEX;
+            case BuiltinsStubCSigns::ID::MapHas:
+                return ConstantIndex::MAP_HAS_INDEX;
+            case BuiltinsStubCSigns::ID::SetHas:
+                return ConstantIndex::SET_HAS_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
@@ -455,6 +469,8 @@ public:
                 return ConstantIndex::ITERATOR_PROTO_RETURN_INDEX;
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
+            case BuiltinsStubCSigns::ID::DateGetTime:
+                return ConstantIndex::DATE_GET_TIME_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsFinite:
                 return ConstantIndex::GLOBAL_IS_FINITE_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsNan:
@@ -545,9 +561,12 @@ public:
             {MathImul, "Math.imul"},
             {MathMax, "Math.max"},
             {MathMin, "Math.min"},
+            {DateGetTime, "Date.prototype.getTime"},
             {GlobalIsFinite, "isFinite"},
             {GlobalIsNan, "isNan"},
             {MapGet, "Map.get"},
+            {MapHas, "Map.has"},
+            {SetHas, "Set.has"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
@@ -595,6 +614,7 @@ public:
             {"next", StringIteratorProtoNext},
             {"sort", ArraySort},
             {"stringify", JsonStringify},
+            {"getTime", DateGetTime},
             {"isFinite", GlobalIsFinite},
             {"isNan", GlobalIsNan},
         };

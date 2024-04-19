@@ -155,13 +155,8 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
     JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     auto size = static_cast<size_t>(allocateSize.GetInt());
     auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-    auto space = heap->GetNewSpace();
-    ASSERT(size <= MAX_REGULAR_HEAP_OBJECT_SIZE);
-    auto result = reinterpret_cast<TaggedObject *>(space->Allocate(size));
-    if (result == nullptr) {
-        result = heap->AllocateYoungOrHugeObject(size);
-        ASSERT(result != nullptr);
-    }
+    auto result = heap->AllocateYoungOrHugeObject(size);
+    ASSERT(result != nullptr);
     if (argc > 1) { // 1: means the first parameter
         JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
         auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
@@ -176,13 +171,8 @@ DEF_RUNTIME_STUBS(AllocateInSOld)
     JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     auto size = static_cast<size_t>(allocateSize.GetInt());
     auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());
-    auto oldSpace = sharedHeap->GetOldSpace();
-    ASSERT(size <= MAX_REGULAR_HEAP_OBJECT_SIZE);
-    auto result = reinterpret_cast<TaggedObject *>(oldSpace->Allocate(thread, size));
-    if (result == nullptr) {
-        result = sharedHeap->AllocateOldOrHugeObject(thread, size);
-        ASSERT(result != nullptr);
-    }
+    auto result = sharedHeap->AllocateOldOrHugeObject(thread, size);
+    ASSERT(result != nullptr);
     if (argc > 1) { // 1: means the first parameter
         JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
         auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
@@ -217,7 +207,7 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);
-    if (memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
+    if (count > 0 && memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
         LOG_FULL(FATAL) << "memmove_s failed";
         UNREACHABLE();
     }
@@ -695,6 +685,16 @@ DEF_RUNTIME_STUBS(NewCOWTaggedArray)
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     return factory->NewCOWMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ForceGC)
+{
+    RUNTIME_STUBS_HEADER(ForceGC);
+    if (!thread->GetEcmaVM()->GetJSOptions().EnableForceGC()) {
+        return JSTaggedValue::Hole().GetRawData();
+    }
+    thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    return JSTaggedValue::Hole().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(RuntimeDump)
@@ -1567,6 +1567,14 @@ DEF_RUNTIME_STUBS(JitCompile)
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue offset = GetArg(argv, argc, 1);  // 1: means the first parameter
     Jit::Compile(thread->GetEcmaVM(), thisFunc, offset.GetInt(), JitCompileMode::ASYNC);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CountInterpExecFuncs)
+{
+    RUNTIME_STUBS_HEADER(CountInterpExecFuncs);
+    JSHandle thisFunc = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
+    Jit::CountInterpExecFuncs(thisFunc);
     return JSTaggedValue::Undefined().GetRawData();
 }
 

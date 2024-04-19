@@ -51,6 +51,30 @@ bool JSDebugger::SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> 
     return true;
 }
 
+bool JSDebugger::SetSmartBreakpoint(const JSPtLocation &location)
+{
+    std::unique_ptr<PtMethod> ptMethod = FindMethod(location);
+    if (ptMethod == nullptr) {
+        LOG_DEBUGGER(ERROR) << "SetSmartBreakpoint: Cannot find MethodLiteral";
+        return false;
+    }
+
+    if (location.GetBytecodeOffset() >= ptMethod->GetCodeSize()) {
+        LOG_DEBUGGER(ERROR) << "SetSmartBreakpoint: Invalid breakpoint location";
+        return false;
+    }
+
+    auto [_, success] = smartBreakpoints_.emplace(location.GetSourceFile(), ptMethod.release(),
+        location.GetBytecodeOffset(), Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_)));
+    if (!success) {
+        // also return true
+        LOG_DEBUGGER(WARN) << "SetSmartBreakpoint: Breakpoint already exists";
+    }
+
+    DumpBreakpoints();
+    return true;
+}
+
 bool JSDebugger::RemoveBreakpoint(const JSPtLocation &location)
 {
     std::unique_ptr<PtMethod> ptMethod = FindMethod(location);
@@ -102,11 +126,22 @@ bool JSDebugger::HandleNativeOut()
 
 bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
 {
-    auto breakpoint = FindBreakpoint(method, bcOffset);
-    if (hooks_ == nullptr || !breakpoint.has_value()) {
+    if (hooks_ == nullptr) {
         return false;
     }
-    if (!IsBreakpointCondSatisfied(breakpoint)) {
+
+    auto smartBreakpoint = FindSmartBreakpoint(method, bcOffset);
+    if (smartBreakpoint.has_value()) {
+        JSPtLocation smartLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset,
+            smartBreakpoint.value().GetSourceFile()};
+        std::unique_ptr<PtMethod> ptMethod = FindMethod(smartLocation);
+        RemoveSmartBreakpoint(ptMethod, bcOffset);
+        hooks_->Breakpoint(smartLocation);
+        return true;
+    }
+
+    auto breakpoint = FindBreakpoint(method, bcOffset);
+    if (!breakpoint.has_value() || !IsBreakpointCondSatisfied(breakpoint)) {
         return false;
     }
     JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset,
@@ -172,6 +207,18 @@ std::optional<JSBreakpoint> JSDebugger::FindBreakpoint(JSHandle<Method> method, 
     return {};
 }
 
+std::optional<JSBreakpoint> JSDebugger::FindSmartBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const
+{
+    for (const auto &bp : smartBreakpoints_) {
+        if ((bp.GetBytecodeOffset() == bcOffset) &&
+            (bp.GetPtMethod()->GetJSPandaFile() == method->GetJSPandaFile()) &&
+            (bp.GetPtMethod()->GetMethodId() == method->GetMethodId())) {
+            return bp;
+        }
+    }
+    return {};
+}
+
 bool JSDebugger::RemoveBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset)
 {
     for (auto it = breakpoints_.begin(); it != breakpoints_.end(); ++it) {
@@ -180,6 +227,21 @@ bool JSDebugger::RemoveBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uin
             (bp.GetPtMethod()->GetJSPandaFile() == ptMethod->GetJSPandaFile()) &&
             (bp.GetPtMethod()->GetMethodId() == ptMethod->GetMethodId())) {
             it = breakpoints_.erase(it);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool JSDebugger::RemoveSmartBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset)
+{
+    for (auto it = smartBreakpoints_.begin(); it != smartBreakpoints_.end(); ++it) {
+        const auto &bp = *it;
+        if ((bp.GetBytecodeOffset() == bcOffset) &&
+            (bp.GetPtMethod()->GetJSPandaFile() == ptMethod->GetJSPandaFile()) &&
+            (bp.GetPtMethod()->GetMethodId() == ptMethod->GetMethodId())) {
+            it = smartBreakpoints_.erase(it);
             return true;
         }
     }

@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "macros.h"
+#include "ecmascript/compiler/aot_compilation_env.h"
 
 namespace panda::ecmascript::kungfu {
 class OhosPkgArgs;
@@ -99,7 +100,8 @@ public:
           runtimeOptions_(runtimeOptions),
           pkgsArgs_(pkgsArgs),
           profilerDecoder_(profilerDecoder),
-          pandaFileNames_(pandaFileNames) {};
+          pandaFileNames_(pandaFileNames),
+          aotCompilationEnv_(vm) {};
 
     ~AotCompilerPreprocessor() = default;
 
@@ -111,7 +113,9 @@ public:
 
     void SetShouldCollectLiteralInfo(CompilationOptions &cOptions, const CompilerLog *log);
 
-    bool GenerateAbcFileInfos();
+    uint32_t GenerateAbcFileInfos();
+
+    bool HandleMergedPgoFile(uint32_t checksum);
 
     void GeneratePGOTypes(const CompilationOptions &cOptions);
 
@@ -204,6 +208,7 @@ private:
     arg_list_t &pandaFileNames_;
     CVector<AbcFileInfo> fileInfos_;
     CallMethodFlagMap callMethodFlagMap_;
+    AOTCompilationEnv aotCompilationEnv_;
     friend class OhosPkgArgs;
 };
 }  // namespace panda::ecmascript::kungfu

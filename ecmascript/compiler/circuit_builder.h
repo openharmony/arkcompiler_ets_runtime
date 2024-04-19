@@ -174,7 +174,8 @@ class PostSchedule;
     V(Int64LessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SLE))            \
     V(Int64GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \
     V(Int64GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))         \
-    V(Int64UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))
+    V(Int64UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))    \
+    V(Int64UnsignedGreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::UGE))
 
 class CircuitBuilder {
 public:
@@ -422,10 +423,8 @@ public:
                           GateRef hirGate);
     GateRef CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                      const char* comment = nullptr);
-    GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
-                               bool isNew = false, const char* comment = nullptr);
-    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
-                                            const char* comment = nullptr);
+    GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew = false);
+    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args);
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
                  const std::vector<GateRef> &args, GateRef hirGate, const char* comment = nullptr);
     GateRef NoLabelCallRuntime(GateRef glue, GateRef depend, size_t index, std::vector<GateRef> &args, GateRef hirGate);

@@ -101,6 +101,7 @@ class ObjectFactory;
     V(JSTaggedValue, RBTreeNode, RB_TREENODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
+    V(JSTaggedValue, ResolvedRecordIndexBindingClass, RESOLVED_RECORD_INEDX_BINDING_CLASS_INDEX, ecma_roots_class)    \
     V(JSTaggedValue, ResolvedRecordBindingClass, RESOLVED_RECORD_BINDING_CLASS_INDEX, ecma_roots_class)               \
 
 #define GLOBAL_ENV_CONSTANT_CLASS(V)                                                                                  \
@@ -194,6 +195,8 @@ class ObjectFactory;
     V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, MapGet, MAP_GET_INDEX, ecma_roots_builtins)                                        \
+    V(JSTaggedValue, MapHas, MAP_HAS_INDEX, ecma_roots_builtins)                                        \
+    V(JSTaggedValue, SetHas, SET_HAS_INDEX, ecma_roots_builtins)                                        \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_builtins)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_builtins)                 \
     V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_builtins)         \
@@ -220,6 +223,7 @@ class ObjectFactory;
     V(JSTaggedValue, DataViewSetUint8, DATA_VIEW_SET_UINT8_INDEX, ecma_roots_builtins)                  \
     V(JSTaggedValue, DataViewSetUint16, DATA_VIEW_SET_UINT16_INDEX, ecma_roots_builtins)                \
     V(JSTaggedValue, DataViewSetUint32, DATA_VIEW_SET_UINT32_INDEX, ecma_roots_builtins)                \
+    V(JSTaggedValue, DateGetTime, DATE_GET_TIME_INDEX, ecma_roots_special)                              \
     V(JSTaggedValue, NumberIsNaN, NUMBER_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, NumberIsFinite, NUMBER_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, NumberIsInteger, NUMBER_IS_INTEGER_INDEX, ecma_roots_builtins)                     \
@@ -744,6 +748,8 @@ private:
     void InitSharedRootsClasses(ObjectFactory *factory);
     void InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory);
     void InitRootsClasses(ObjectFactory *factory);
+    void InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory *factory);
+    void InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory);
     void InitMiscellanious(JSThread *thread, ObjectFactory *factory);
     void InitGlobalCaches();
     void InitJSAPIContainers();

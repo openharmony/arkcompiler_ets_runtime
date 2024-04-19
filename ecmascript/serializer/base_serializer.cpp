@@ -121,9 +121,6 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
         case JSType::JS_ASYNC_FUNCTION:
             SerializeAsyncFunctionFieldIndividually(root, start, end);
             return true;
-        case JSType::METHOD:
-            SerializeMethodFieldIndividually(root, start, end);
-            return true;
         default:
             return false;
     }
@@ -196,11 +193,7 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
                 break;
             }
             case JSFunction::ECMA_MODULE_OFFSET: {
-                // Module of shared function should write pointer directly when serialize
-                TaggedObject *module = JSFunction::Cast(root)->GetModule().GetTaggedObject();
-                if (!SerializeReference(module)) {
-                    SerializeSharedObject(module);
-                }
+                SerializeSFunctionModule(JSFunction::Cast(root));
                 slot++;
                 break;
             }
@@ -216,6 +209,20 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
                 break;
             }
         }
+    }
+}
+
+void BaseSerializer::SerializeSFunctionModule(JSFunction *func)
+{
+    JSTaggedValue moduleValue = func->GetModule();
+    if (moduleValue.IsHeapObject()) {
+        if (!SerializeReference(moduleValue.GetTaggedObject())) {
+            // Module of shared function should write pointer directly when serialize
+            SerializeSharedObject(moduleValue.GetTaggedObject());
+        }
+    } else {
+        data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+        data_->WriteJSTaggedValue(moduleValue);
     }
 }
 
@@ -271,28 +278,6 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
                 data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
                 data_->WriteUint32(sizeof(uintptr_t));
                 data_->WriteRawData(reinterpret_cast<uint8_t *>(slot.SlotAddress()), sizeof(uintptr_t));
-                slot++;
-                break;
-            }
-            default: {
-                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
-                slot++;
-                break;
-            }
-        }
-    }
-}
-
-void BaseSerializer::SerializeMethodFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
-{
-    ASSERT(root->GetClass()->IsMethod());
-    ObjectSlot slot = start;
-    while (slot < end) {
-        size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
-        switch (fieldOffset) {
-            case Method::CONSTANT_POOL_OFFSET:{
-                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
-                data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
                 slot++;
                 break;
             }

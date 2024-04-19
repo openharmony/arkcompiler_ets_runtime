@@ -20,6 +20,7 @@
 
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/mem/assert_scope.h"
 
 /*
  * JSHandle: A JSHandle provides a reference to an object that survives relocation by the garbage collector.
@@ -107,6 +108,7 @@ public:
 
     inline JSTaggedValue GetTaggedValue() const
     {
+        CHECK_NO_DEREF_HANDLE;
         if (GetAddress() == 0U) {
             return JSTaggedValue::Undefined();
         }
@@ -115,6 +117,7 @@ public:
 
     inline JSTaggedType GetTaggedType() const
     {
+        CHECK_NO_DEREF_HANDLE;
         if (GetAddress() == 0U) {
             return JSTaggedValue::Undefined().GetRawData();
         }

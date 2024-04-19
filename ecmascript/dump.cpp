@@ -16,6 +16,7 @@
 #include <codecvt>
 #include <iomanip>
 #include <iostream>
+#include <ostream>
 #include <string>
 
 #include "ecmascript/accessor_data.h"
@@ -24,6 +25,8 @@
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -127,6 +130,8 @@
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/js_displaynames.h"
 #include "ecmascript/js_list_format.h"
+#include "js_hclass.h"
+#include "shared_objects/js_shared_json_value.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -527,6 +532,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ResolvedBindingRecord";
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             return "ResolvedIndexBindingRecord";
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            return "ResolvedRecordIndexBindingRecord";
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             return "ResolvedRecordBindingRecord";
         case JSType::IMPORTENTRY_RECORD:
@@ -535,6 +542,14 @@ CString JSHClass::DumpJSType(JSType type)
             return "LocalExportEntry";
         case JSType::STAR_EXPORTENTRY_RECORD:
             return "StarExportEntry";
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY:
+            return "SharedJSONValue";
         default: {
             CString ret = "unknown type ";
             return ret.append(std::to_string(static_cast<char>(type)));
@@ -895,6 +910,21 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_BIGUINT64_ARRAY:
             needDumpHClass = true;
             JSTypedArray::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_TYPED_ARRAY:
+        case JSType::JS_SHARED_INT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_SHARED_INT16_ARRAY:
+        case JSType::JS_SHARED_UINT16_ARRAY:
+        case JSType::JS_SHARED_INT32_ARRAY:
+        case JSType::JS_SHARED_UINT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+        case JSType::JS_SHARED_BIGUINT64_ARRAY:
+            needDumpHClass = true;
+            JSSharedTypedArray::Cast(obj)->Dump(os);
             break;
         case JSType::BIGINT:
             BigInt::Cast(obj)->Dump(os);
@@ -1286,6 +1316,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->Dump(os);
             break;
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            ResolvedRecordIndexBinding::Cast(obj)->Dump(os);
+            break;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->Dump(os);
             break;
@@ -1312,6 +1345,15 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::CLASS_LITERAL:
             ClassLiteral::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY:
+            JSSharedJSONValue::Cast(obj)->Dump(os);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -4009,13 +4051,23 @@ void ResolvedIndexBinding::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void ResolvedRecordBinding::Dump(std::ostream &os) const
+void ResolvedRecordIndexBinding::Dump(std::ostream &os) const
 {
     os << " - Module: ";
     GetModuleRecord().Dump(os);
     os << "\n";
     os << " - Index: ";
     GetIndex();
+    os << "\n";
+}
+
+void ResolvedRecordBinding::Dump(std::ostream &os) const
+{
+    os << " - Module: ";
+    GetModuleRecord().Dump(os);
+    os << "\n";
+    os << " - BindingName: ";
+    GetBindingName().Dump(os);
     os << "\n";
 }
 
@@ -4416,6 +4468,15 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_SENDABLE_ARRAY_BUFFER:
             JSSendableArrayBuffer::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_ARRAY:
+        case JSType::JS_SHARED_JSON_STRING:
+            JSSharedJSONValue::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_PROXY_REVOC_FUNCTION:
             JSProxyRevocFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -4613,6 +4674,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             return;
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            ResolvedRecordIndexBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->DumpForSnapshot(vec);
@@ -4850,6 +4914,20 @@ void LinkedHashMap::DumpForSnapshot(std::vector<Reference> &vec) const
             KeyToStd(str, key);
             vec.emplace_back(str, val);
         }
+    }
+}
+
+void JSSharedJSONValue::Dump(std::ostream &os) const
+{
+    JSObject::Dump(os);
+    auto value = GetValue();
+    os << "wrapped value(Raw): " << std::hex << value.GetRawData() << "\n";
+    if (value.IsJSSharedArray()) {
+        JSSharedArray::Cast(value)->Dump(os);
+    } else if (value.IsJSSharedMap()) {
+        JSSharedMap::Cast(value)->Dump(os);
+    } else {
+        value.DumpTaggedValue(os);
     }
 }
 
@@ -5707,6 +5785,12 @@ void JSSendableArrayBuffer::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSSharedJSONValue::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("value"), GetValue());
+    JSObject::DumpForSnapshot(vec);
+}
+
 void PromiseReaction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("promise-capability"), GetPromiseCapability());
@@ -6311,10 +6395,16 @@ void ResolvedIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
 }
 
-void ResolvedRecordBinding::DumpForSnapshot(std::vector<Reference> &vec) const
+void ResolvedRecordIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
+}
+
+void ResolvedRecordBinding::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
+    vec.emplace_back(CString("BindingName"), GetBindingName());
 }
 
 void ModuleNamespace::DumpForSnapshot(std::vector<Reference> &vec) const

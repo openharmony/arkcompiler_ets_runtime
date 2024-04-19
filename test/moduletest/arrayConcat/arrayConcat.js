@@ -63,3 +63,19 @@ print([1, 2].concat([3, , 5])); // [1, 2, 3, empty, 5]
 
 const emptyArr = [];
 print(emptyArr.concat([]).length);
+
+let px = new Proxy([], {});
+
+let idx = 0;
+class A extends Array {
+    constructor() {
+        super(2);
+        idx++;
+        if (idx == 1) {
+            this.concat(A);
+        }
+        return px;
+    }
+}
+let a = new A();
+print("proxy defineproperty success!");

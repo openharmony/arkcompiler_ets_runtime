@@ -801,6 +801,10 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
     CVector<JSHandle<EcmaString>> vec;
     JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    if (length <= 1) {
+        // sep unused, set isOneByte to default(true)
+        isOneByte = true;
+    }
     for (uint32_t k = 0; k < length; k++) {
         JSTaggedValue element = JSTypedArray::GetProperty(thread, thisHandle, k).GetValue().GetTaggedValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -821,10 +825,6 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
         }
     }
     allocateLength += sepLength * (length - 1);
-    if (allocateLength <= 1) {
-        // sep unused, set isOneByte to default(true)
-        isOneByte = true;
-    }
     auto newString = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), allocateLength, isOneByte);
     int current = 0;
     DISALLOW_GARBAGE_COLLECTION;

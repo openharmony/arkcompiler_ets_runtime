@@ -153,10 +153,6 @@ JSTaggedValue BuiltinsString::FromCodePoint(EcmaRuntimeCallInfo *argv)
         if (cp < 0 || cp > ENCODE_MAX_UTF16) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "CodePoint < 0 or CodePoint > 0x10FFFF", JSTaggedValue::Exception());
         }
-        if (cp == 0) {
-            CVector<uint16_t> data {0x00};
-            return factory->NewFromUtf16Literal(data.data(), 1).GetTaggedValue();
-        }
         if (cp > UINT16_MAX) {
             uint16_t cu1 =
                 std::floor((static_cast<uint32_t>(cp) - ENCODE_SECOND_FACTOR) / ENCODE_FIRST_FACTOR) + ENCODE_LEAD_LOW;
@@ -650,7 +646,7 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!matcher->IsUndefined()) {
-            ASSERT(matcher->IsJSFunction());
+            ASSERT(matcher->IsJSFunctionBase());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1503,7 +1499,7 @@ JSTaggedValue BuiltinsString::Search(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> searcher = JSObject::GetMethod(thread, regexp, searchTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!searcher->IsUndefined()) {
-            ASSERT(searcher->IsJSFunction());
+            ASSERT(searcher->IsJSFunctionBase());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, searcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1669,7 +1665,7 @@ JSTaggedValue BuiltinsString::CreateArrayFromString(JSThread *thread, EcmaVM *ec
 {
     bool isUtf8 = EcmaStringAccessor(thisString).IsUtf8();
     bool canBeCompressed = false;
-    if (EcmaStringAccessor(thisString).IsLineString() || EcmaStringAccessor(thisString).IsConstantString()) {
+    if (EcmaStringAccessor(thisString).IsLineOrConstantString()) {
         canBeCompressed = EcmaStringAccessor::CanBeCompressed(*thisString);
     }
     bool isOneByte = isUtf8 & canBeCompressed;

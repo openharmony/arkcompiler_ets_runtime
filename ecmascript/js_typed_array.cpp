@@ -19,6 +19,7 @@
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
+#include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 
 namespace panda::ecmascript {
 using TypedArrayHelper = base::TypedArrayHelper;
@@ -433,12 +434,7 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
     // 13. Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
     DataViewType elementType = TypedArrayHelper::GetType(typedarrayObj);
     // 14. Return GetValueFromBuffer(buffer, indexedPosition, elementType).
-    JSTaggedValue result;
-    if (buffer.IsSendableArrayBuffer()) {
-        result = BuiltinsSendableArrayBuffer::GetValueFromBuffer(thread, buffer, byteIndex, elementType, true);
-    } else {
-        result = BuiltinsArrayBuffer::GetValueFromBuffer(thread, buffer, byteIndex, elementType, true);
-    }
+    JSTaggedValue result = BuiltinsArrayBuffer::GetValueFromBuffer(thread, buffer, byteIndex, elementType, true);
     return OperationResult(thread, result, PropertyMetaData(true));
 }
 
@@ -477,34 +473,44 @@ bool JSTypedArray::IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray
 DataViewType JSTypedArray::GetTypeFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat32ArrayString())) {
-        return DataViewType::FLOAT32;
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt8ArrayString())) {
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt8ArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedInt8ArrayString())) {
         return DataViewType::INT8;
     }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint8ArrayString())) {
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint8ArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedUint8ArrayString())) {
         return DataViewType::UINT8;
     }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint8ClampedArrayString())) {
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint8ClampedArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedUint8ClampedArrayString())) {
         return DataViewType::UINT8_CLAMPED;
     }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt16ArrayString())) {
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt16ArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedInt16ArrayString())) {
         return DataViewType::INT16;
     }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint16ArrayString())) {
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint16ArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedUint16ArrayString())) {
         return DataViewType::UINT16;
     }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt32ArrayString())) {
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt32ArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedInt32ArrayString())) {
         return DataViewType::INT32;
     }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint32ArrayString())) {
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint32ArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedUint32ArrayString())) {
         return DataViewType::UINT32;
     }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat64ArrayString())) {
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat32ArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedFloat32ArrayString())) {
+        return DataViewType::FLOAT32;
+    }
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat64ArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedFloat64ArrayString())) {
         return DataViewType::FLOAT64;
     }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledBigInt64ArrayString())) {
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledBigInt64ArrayString()) ||
+        JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedBigInt64ArrayString())) {
         return DataViewType::BIGINT64;
     }
     return DataViewType::BIGUINT64;
@@ -545,14 +551,8 @@ bool JSTypedArray::FastCopyElementToArray(JSThread *thread, const JSHandle<JSTag
         // 12. Let indexedPosition = (index × elementSize) + offset.
         uint32_t byteIndex = index * elementSize + offset;
         // 14. Return GetValueFromBuffer(buffer, indexedPosition, elementType).
-        JSTaggedValue result;
-        if (bufferHandle.GetTaggedValue().IsSendableArrayBuffer()) {
-            result = BuiltinsSendableArrayBuffer::GetValueFromBuffer(thread, bufferHandle.GetTaggedValue(),
-                                                                     byteIndex, elementType, true);
-        } else {
-            result = BuiltinsArrayBuffer::GetValueFromBuffer(thread, bufferHandle.GetTaggedValue(),
-                                                             byteIndex, elementType, true);
-        }
+        JSTaggedValue result = BuiltinsArrayBuffer::GetValueFromBuffer(thread, bufferHandle.GetTaggedValue(),
+                                                                       byteIndex, elementType, true);
         array->Set(thread, index, result);
     }
     return true;
@@ -592,12 +592,7 @@ OperationResult JSTypedArray::FastElementGet(JSThread *thread, const JSHandle<JS
     // 13. Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
     DataViewType elementType = TypedArrayHelper::GetType(typedarrayObj);
     // 14. Return GetValueFromBuffer(buffer, indexedPosition, elementType).
-    JSTaggedValue result;
-    if (buffer.IsSendableArrayBuffer()) {
-        result = BuiltinsSendableArrayBuffer::GetValueFromBuffer(thread, buffer, byteIndex, elementType, true);
-    } else {
-        result = BuiltinsArrayBuffer::GetValueFromBuffer(thread, buffer, byteIndex, elementType, true);
-    }
+    JSTaggedValue result = BuiltinsArrayBuffer::GetValueFromBuffer(thread, buffer, byteIndex, elementType, true);
     return OperationResult(thread, result, PropertyMetaData(true));
 }
 
@@ -638,12 +633,7 @@ bool JSTypedArray::IntegerIndexedElementSet(JSThread *thread, const JSHandle<JST
         // 10. Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
         DataViewType elementType = TypedArrayHelper::GetType(typedarrayObj);
         // 11. Perform SetValueInBuffer(buffer, indexedPosition, elementType, numValue).
-        if (buffer.IsSendableArrayBuffer()) {
-            BuiltinsSendableArrayBuffer::SetValueInBuffer(
-                thread, buffer, byteIndex, elementType, numValueHandle, true);
-        } else {
-            BuiltinsArrayBuffer::SetValueInBuffer(thread, buffer, byteIndex, elementType, numValueHandle, true);
-        }
+        BuiltinsArrayBuffer::SetValueInBuffer(thread, buffer, byteIndex, elementType, numValueHandle, true);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
     return true;
@@ -689,7 +679,7 @@ JSTaggedValue JSTypedArray::FastGetPropertyByIndex(JSThread *thread, const JSTag
 {
     // Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and
     // [[TypedArrayName]] internal slots.
-    ASSERT(typedarray.IsTypedArray());
+    ASSERT(typedarray.IsTypedArray() || typedarray.IsSharedTypedArray());
     // Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSTypedArray *typedarrayObj = JSTypedArray::Cast(typedarray.GetTaggedObject());
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
@@ -716,9 +706,6 @@ JSTaggedValue JSTypedArray::FastGetPropertyByIndex(JSThread *thread, const JSTag
     // Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
     DataViewType elementType = TypedArrayHelper::GetType(jsType);
     // Return GetValueFromBuffer(buffer, indexedPosition, elementType).
-    if (buffer.IsSendableArrayBuffer()) {
-        return BuiltinsSendableArrayBuffer::GetValueFromBuffer(thread, buffer, byteIndex, elementType, true);
-    }
     return BuiltinsArrayBuffer::GetValueFromBuffer(thread, buffer, byteIndex, elementType, true);
 }
 
@@ -727,7 +714,7 @@ JSTaggedValue JSTypedArray::FastSetPropertyByIndex(JSThread *thread, const JSTag
 {
     // Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and
     // [[TypedArrayName]] internal slots.
-    ASSERT(typedarray.IsTypedArray());
+    ASSERT(typedarray.IsTypedArray() || typedarray.IsSharedTypedArray());
     // If O.[[ContentType]] is BigInt, let numValue be ? ToBigInt(value).
     JSTypedArray *typedarrayObj = JSTypedArray::Cast(typedarray.GetTaggedObject());
     if (UNLIKELY(typedarrayObj->GetContentType() == ContentType::BigInt || value.IsECMAObject())) {
@@ -756,10 +743,6 @@ JSTaggedValue JSTypedArray::FastSetPropertyByIndex(JSThread *thread, const JSTag
     // Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
     DataViewType elementType = TypedArrayHelper::GetType(jsType);
     // Perform SetValueInBuffer(buffer, indexedPosition, elementType, numValue).
-    if (buffer.IsSendableArrayBuffer()) {
-        return BuiltinsSendableArrayBuffer::FastSetValueInBuffer(thread,
-            buffer, byteIndex, elementType, numValue.GetNumber(), true);
-    }
     return BuiltinsArrayBuffer::FastSetValueInBuffer(thread,
         buffer, byteIndex, elementType, numValue.GetNumber(), true);
 }
@@ -787,6 +770,35 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
     JSHandle<JSTaggedValue> typeName(thread, typedArray->GetTypedArrayName());
     DataViewType arrayType = JSTypedArray::GetTypeFromName(thread, typeName);
     JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetNotOnHeapHclassFromType(
+        thread, typedArray, arrayType);
+    TaggedObject::Cast(*typedArray)->SynchronizedSetClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
+
+    return arrayBuffer.GetTaggedValue();
+}
+
+JSTaggedValue JSTypedArray::GetSharedOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray)
+{
+    JSTaggedValue arrBuf = typedArray->GetViewedArrayBufferOrByteArray();
+    if (arrBuf.IsSendableArrayBuffer()) {
+        return arrBuf;
+    }
+
+    ByteArray *byteArray = ByteArray::Cast(arrBuf.GetTaggedObject());
+    int32_t length = static_cast<int32_t>(byteArray->GetArrayLength() * byteArray->GetByteLength());
+    JSHandle<JSSendableArrayBuffer> arrayBuffer = thread->GetEcmaVM()->GetFactory()->NewJSSendableArrayBuffer(length);
+
+    if (length > 0) {
+        void *fromBuf = reinterpret_cast<void *>(ToUintPtr(
+            ByteArray::Cast(typedArray->GetViewedArrayBufferOrByteArray().GetTaggedObject())->GetData()));
+        JSTaggedValue data = arrayBuffer->GetArrayBufferData();
+        void *toBuf = reinterpret_cast<void *>(
+            ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())->GetExternalPointer()));
+        JSSendableArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, 0, length);
+    }
+    typedArray->SetViewedArrayBufferOrByteArray(thread, arrayBuffer.GetTaggedValue());
+    JSHandle<JSTaggedValue> typeName(thread, typedArray->GetTypedArrayName());
+    DataViewType arrayType = JSTypedArray::GetTypeFromName(thread, typeName);
+    JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetSharedNotOnHeapHclassFromType(
         thread, typedArray, arrayType);
     TaggedObject::Cast(*typedArray)->SynchronizedSetClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 
@@ -821,13 +833,8 @@ bool JSTypedArray::FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedV
     uint64_t byteBeginOffset = start * elementSize + offset;
     uint64_t byteEndOffset = std::min(end, arrLen) * elementSize + offset;
     if (byteBeginOffset <= byteEndOffset) {
-        if (buffer.IsSendableArrayBuffer()) {
-            BuiltinsSendableArrayBuffer::TryFastSetValueInBuffer(thread, buffer,
-                byteBeginOffset, byteEndOffset, elementType, numValue.GetNumber(), true);
-        } else {
-            BuiltinsArrayBuffer::TryFastSetValueInBuffer(thread, buffer,
-                byteBeginOffset, byteEndOffset, elementType, numValue.GetNumber(), true);
-        }
+        BuiltinsArrayBuffer::TryFastSetValueInBuffer(thread, buffer,
+            byteBeginOffset, byteEndOffset, elementType, numValue.GetNumber(), true);
     }
     return true;
 }

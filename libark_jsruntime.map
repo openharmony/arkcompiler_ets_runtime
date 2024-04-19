@@ -10,6 +10,7 @@
       vtable?for?panda::ecmascript::kungfu::MethodSnapshotInfo;
       vtable?for?panda::ecmascript::kungfu::ObjectLiteralSnapshotInfo;
       vtable?for?panda::ecmascript::kungfu::StringSnapshotInfo;
+      vtable?for?panda::ecmascript::Taskpool;
 
       panda::ecmascript::COMMON_HELP_HEAD_MSG*;
       panda::ecmascript::HELP_OPTION_MSG*;
@@ -70,6 +71,7 @@
       panda::JSON::*;
       panda::JsiRuntimeCallInfo::*;
       panda::JsiNativeScope::*;
+      panda::JsiFastNativeScope::*;
       panda::JSExecutionScope::*;
 
       panda::ecmascript::Log::*;
@@ -107,6 +109,7 @@
       panda::ecmascript::AnFileInfo::Save*;
       panda::ecmascript::Barriers::Update*;
       panda::ecmascript::BigInt::SameValue*;
+      panda::ecmascript::BindSmallCpuCore*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
       panda::ecmascript::ConvertToStdString*;
       panda::ecmascript::ConvertToString*;
@@ -118,6 +121,7 @@
       panda::ecmascript::EcmaContext::FindConstpool*;
       panda::ecmascript::EcmaContext::FindOrCreateConstPool*;
       panda::ecmascript::EcmaContext::FindOrCreateUnsharedConstpool*;
+      panda::ecmascript::EcmaContext::FindUnsharedConstpool*;
       panda::ecmascript::EcmaContext::SetTSManager*;
       panda::ecmascript::EcmaRuntimeStat::StartCount*;
       panda::ecmascript::EcmaRuntimeStat::StopCount*;
@@ -177,9 +181,12 @@
       panda::ecmascript::JSPandaFile::GetFunctionKind*;
       panda::ecmascript::JSPandaFile::GetNormalizedFileDesc*;
       panda::ecmascript::JSPandaFile::GetRecordNameWithBundlePack*;
+      panda::ecmascript::JSPandaFile::IsFirstMergedAbc*;
       panda::ecmascript::JSProxy::IsArray*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
       panda::ecmascript::JSTaggedValue::IsInSharedHeap*;
+      panda::ecmascript::JitThread::GetHostThread*;
+      panda::ecmascript::Jit::TimeScope::~TimeScope*;
       panda::ecmascript::Heap::AddGCListener*;
       panda::ecmascript::Heap::RemoveGCListener*;
       panda::ecmascript::JSTaggedValue::SetProperty*;
@@ -198,6 +205,10 @@
       panda::ecmascript::ModuleManager::GetRecordName*;
       panda::ecmascript::ModuleManager::HostGetImportedModule*;
       panda::ecmascript::ModuleManager::HostResolveImportedModuleWithMerge*;
+      panda::ecmascript::ModuleManagerHelper::GetModuleValue*;
+      panda::ecmascript::ModuleManagerHelper::GetNativeModuleValue*;
+      panda::ecmascript::ModuleManagerHelper::GetModuleValueFromIndexBinding*;
+      panda::ecmascript::ModuleManagerHelper::GetModuleValueFromRecordBinding*;
       panda::ecmascript::ModulePathHelper::ConcatFileNameWithMerge*;
       panda::ecmascript::NativeAreaAllocator::AllocateBuffer*;
       panda::ecmascript::NativeAreaAllocator::FreeeBuffer*;
@@ -235,7 +246,18 @@
       panda::ecmascript::ObjectFactory::NewSharedOldSpaceJSObjectWithInit*;
       panda::ecmascript::ObjectFactory::NewSTaggedArray*;
       panda::ecmascript::ObjectFactory::NewSEcmaHClassDictMode*;
+      panda::ecmascript::ObjectFactory::GetRawStringFromStringTable*;
       panda::ecmascript::SendableClassDefiner::AddFieldTypeToHClass*;
+      panda::ecmascript::ObjectFactory::NewJSSArray*;
+      panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;
+      panda::ecmascript::ObjectFactory::NewSJSONArray*;
+      panda::ecmascript::ObjectFactory::NewSJSONTrue*;
+      panda::ecmascript::ObjectFactory::NewSJSONFalse*;
+      panda::ecmascript::ObjectFactory::NewSJSONString*;
+      panda::ecmascript::ObjectFactory::NewSJSONNumber*;
+      panda::ecmascript::ObjectFactory::NewSJSONNull*;
+      panda::ecmascript::ObjectFactory::NewSJSONObject*;
+      panda::ecmascript::ObjectFactory::NewJSSMap*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageSize*;
@@ -362,11 +384,14 @@
       panda::ecmascript::ohos::DecrypRemoveKey*;
       panda::ecmascript::ohos::DecryptAssociateKey*;
       panda::ecmascript::ohos::DecryptSetKey*;
+      panda::ecmascript::ohos::EnableAotListHelper*;
       panda::ecmascript::pgo::ApNameUtils::GetMergedApName*;
       panda::ecmascript::pgo::ApNameUtils::GetOhosPkgApName*;
       panda::ecmascript::pgo::ApNameUtils::GetRuntimeApName*;
       panda::ecmascript::pgo::PGOMethodInfo::CalcChecksum*;
       panda::ecmascript::pgo::PGOProfiler::ProfileCreateObject*;
+      panda::ecmascript::pgo::PGOProfiler::GetMethodAbcId*;
+      panda::ecmascript::pgo::JITProfiler::ProfileBytecode*;
       panda::ecmascript::pgo::PGOProfilerManager::GetInstance*;
       panda::ecmascript::pgo::PGOProfilerManager::MergeApFiles*;
       panda::panda_file::ClassDataAccessor::ClassDataAccessor*;

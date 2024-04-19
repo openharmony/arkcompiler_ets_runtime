@@ -194,7 +194,7 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
     }
-    if (receiver->IsTypedArray()) {
+    if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
         return LoadTypedArrayValueMiss(receiver, key);
     }
     // fixme(hzzhouzebin) Open IC for SharedArray later.
@@ -332,7 +332,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
-    if (receiver->IsTypedArray()) {
+    if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
         return StoreTypedArrayValueMiss(receiver, key, value);
     }
     ICKind kind = GetICKind();

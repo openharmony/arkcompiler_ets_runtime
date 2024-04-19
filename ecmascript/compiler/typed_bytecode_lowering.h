@@ -57,8 +57,8 @@ public:
           glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit),
           pgoTypeLog_(circuit),
-          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
-          thread_(ctx->GetEcmaVM()->GetJSThread()),
+          noCheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
+          compilationEnv_(ctx->GetCompilationEnv()),
           enableLoweringBuiltin_(enableLoweringBuiltin),
           recordName_(recordName),
           callMethodFlagMap_(callMethodFlagMap),
@@ -248,7 +248,7 @@ private:
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
     bool noCheck_ {false};
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     const CString &recordName_;
     const CallMethodFlagMap *callMethodFlagMap_;

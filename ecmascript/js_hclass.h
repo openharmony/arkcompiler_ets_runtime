@@ -119,6 +119,13 @@ struct Reference;
         JS_SHARED_SET, /*  ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_MAP,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SHARED_MAP, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_OBJECT, /* SHARED_JSON_VALUE_FIRST /////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_STRING, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_NUMBER, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_TRUE,   /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_FALSE,  /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_ARRAY,  /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_NULL,   /* SHARED_JSON_VALUE_LAST///////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_MAP, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_SET, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_REF, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -279,6 +286,7 @@ struct Reference;
         STAR_EXPORTENTRY_RECORD, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVEDBINDING_RECORD, /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVEDINDEXBINDING_RECORD, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
+        RESOLVEDRECORDINDEXBINDING_RECORD, /* /////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVEDRECORDBINDING_RECORD, /* //////////////////////////////////////////////////////////////////-PADDING */ \
         CELL_RECORD,          /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         COMPLETION_RECORD, /* JS_RECORD_LAST ////////////////////////////////////////////////////////////////////// */ \
@@ -309,6 +317,9 @@ struct Reference;
                                                                                                                        \
         JS_ERROR_FIRST = JS_ERROR,      /* ////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ERROR_LAST = JS_TERMINATION_ERROR,    /* ///////////////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
+        SHARED_JSON_VALUE_FIRST = JS_SHARED_JSON_OBJECT, /* ///////////////////////////////////////////////-PADDING */ \
+        SHARED_JSON_VALUE_LAST = JS_SHARED_JSON_NULL,    /* ///////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         JS_ITERATOR_FIRST = JS_ITERATOR,      /* //////////////////////////////////////////////////////////-PADDING */ \
         JS_ITERATOR_LAST = JS_STRING_ITERATOR, /* /////////////////////////////////////////////////////////-PADDING */ \
@@ -974,6 +985,11 @@ public:
     bool IsJSSharedMap() const
     {
         return GetObjectType() == JSType::JS_SHARED_MAP;
+    }
+
+    bool IsJSSharedJSONValue() const
+    {
+        return GetObjectType() >= JSType::SHARED_JSON_VALUE_FIRST && GetObjectType() <= JSType::SHARED_JSON_VALUE_LAST;
     }
 
     bool IsJSWeakMap() const
@@ -1729,6 +1745,11 @@ public:
         return GetObjectType() == JSType::RESOLVEDINDEXBINDING_RECORD;
     }
 
+    inline bool IsResolvedRecordIndexBinding() const
+    {
+        return GetObjectType() == JSType::RESOLVEDRECORDINDEXBINDING_RECORD;
+    }
+
     inline bool IsResolvedRecordBinding() const
     {
         return GetObjectType() == JSType::RESOLVEDRECORDBINDING_RECORD;
@@ -1747,6 +1768,41 @@ public:
     inline bool IsJSSharedArray() const
     {
         return GetObjectType() == JSType::JS_SHARED_ARRAY;
+    }
+
+    inline bool IsJSSharedJSONFalse() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_FALSE;
+    }
+
+    inline bool IsJSSharedJSONTrue() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_TRUE;
+    }
+
+    inline bool IsJSSharedJSONString() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_STRING;
+    }
+
+    inline bool IsJSSharedJSONNull() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_NULL;
+    }
+
+    inline bool IsJSSharedJSONObject() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_OBJECT;
+    }
+
+    inline bool IsJSSharedJSONNumber() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_NUMBER;
+    }
+
+    inline bool IsJSSharedJSONArray() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_ARRAY;
     }
 
     inline void SetElementsKind(ElementsKind kind)

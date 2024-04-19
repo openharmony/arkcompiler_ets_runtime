@@ -1321,6 +1321,17 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
     GateRef objectNotInShare = BoolNot(InSharedHeap(objectRegion));
     GateRef valueRegionInShare = InSharedSweepableSpace(valueRegion);
+#ifndef NDEBUG
+    Label fatal(env);
+    Label noFatal(env);
+    BRANCH(BoolAnd(InSharedHeap(objectRegion), BoolNot(InSharedHeap(valueRegion))), &fatal, &noFatal);
+    Bind(&fatal);
+    {
+        FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(SharedObjectRefersLocalObject)) });
+        Jump(&exit);
+    }
+    Bind(&noFatal);
+#endif
     BRANCH(BoolAnd(objectNotInShare, valueRegionInShare), &shareBarrier, &shareBarrierExit);
     Bind(&shareBarrier);
     {
@@ -4770,15 +4781,6 @@ GateRef StubBuilder::SameValue(GateRef glue, GateRef left, GateRef right)
                 Label leftIsInt(env);
                 Label leftNotInt(env);
                 Label getRight(env);
-                Label fastPath(env);
-                Label slowPath(env);
-                BRANCH(BoolAnd(TaggedIsInt(left), TaggedIsInt(right)), &fastPath, &slowPath);
-                Bind(&fastPath);
-                {
-                    result = False();
-                    Jump(&exit);
-                }
-                Bind(&slowPath);
                 BRANCH(TaggedIsInt(left), &leftIsInt, &leftNotInt);
                 Bind(&leftIsInt);
                 {
@@ -6774,7 +6776,6 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
     GateRef xInt64 = Int64Sub(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
     GateRef fractionBits = Int64And(xInt64, Int64(base::DOUBLE_SIGNIFICAND_MASK));
     GateRef expBits = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-    GateRef signBit = Int64And(xInt64, Int64(base::DOUBLE_SIGN_MASK));
     GateRef isZero = BoolAnd(
         Int64Equal(expBits, Int64(0)),
         Int64Equal(fractionBits, Int64(0)));
@@ -6794,22 +6795,8 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
         BRANCH(CanDoubleRepresentInt(exp, expBits, fractionBits), &calcHash, &convertToInt);
         Bind(&convertToInt);
         {
-            GateRef shift = Int64Sub(Int64(base::DOUBLE_SIGNIFICAND_SIZE), exp);
-            GateRef intVal = Int64Add(
-                Int64LSL(Int64(1), exp),
-                Int64LSR(fractionBits, shift));
-            DEFVARIABLE(intVariable, VariableType::INT64(), intVal);
-            Label negate(env);
-            Label pass(env);
-            BRANCH(Int64NotEqual(signBit, Int64(0)), &negate, &pass);
-            Bind(&negate);
-            {
-                intVariable = Int64Sub(Int64(0), intVal);
-                Jump(&pass);
-            }
-            Bind(&pass);
-            value = IntToTaggedPtr(TruncInt64ToInt32(*intVariable));
-            Jump(&calcHash);
+            *res = ChangeFloat64ToInt32(CastInt64ToFloat64(xInt64));
+            Jump(exit);
         }
         Bind(&calcHash);
         {
@@ -6819,7 +6806,7 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
     }
 
     Bind(&zero);
-    *res = env_->GetBuilder()->CalcHashcodeForInt(IntToTaggedPtr(Int32(0)));
+    *res = Int32(0);
     Jump(exit);
 }
 
@@ -6988,6 +6975,23 @@ bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
     }
 }
 
+bool StubBuilder::IsCallModeSupportCallBuiltin(JSCallMode mode)
+{
+    switch (mode) {
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG3:
+            return true;
+        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+            return false;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                                     GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
                                     ProfileOperation callback, bool checkIsCallable)
@@ -7052,7 +7056,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0: {
                 thisValue = data[0];
-                CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltinsArg0, &exit, &result, args, mode);
                 Bind(&notFastBuiltinsArg0);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
@@ -7066,7 +7070,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 break;
             case JSCallMode::CALL_THIS_ARG1: {
                 thisValue = data[1];
-                CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltinsArg1, &exit, &result, args, mode);
                 Bind(&notFastBuiltinsArg1);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
@@ -7080,7 +7084,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 break;
             case JSCallMode::CALL_THIS_ARG2: {
                 thisValue = data[2];
-                CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltinsArg2, &exit, &result, args, mode);
                 Bind(&notFastBuiltinsArg2);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
@@ -7094,7 +7098,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 break;
             case JSCallMode::CALL_THIS_ARG3: {
                 thisValue = data[3];
-                CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltinsArg3, &exit, &result, args, mode);
                 Bind(&notFastBuiltinsArg3);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
@@ -7121,7 +7125,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 break;
             case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV: {
-                CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltins, &exit, &result, args, mode);
                 Bind(&notFastBuiltins);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatchNative),
@@ -7646,19 +7650,25 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     return ret;
 }
 
-void StubBuilder::CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue,
+void StubBuilder::CallFastBuiltin(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue,
     GateRef actualNumArgs, GateRef callField, GateRef method, Label* notFastBuiltins, Label* exit, Variable* result,
     std::initializer_list<GateRef> args, JSCallMode mode)
 {
     auto env = GetEnvironment();
     auto data = std::begin(args);
     Label isFastBuiltins(env);
+    Label supportCall(env);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef isFastBuiltinsMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsFastBuiltinBit::START_BIT);
     BRANCH(Int64NotEqual(Int64And(callField, isFastBuiltinsMask), Int64(0)), &isFastBuiltins, notFastBuiltins);
     Bind(&isFastBuiltins);
+    GateRef builtinId = GetBuiltinId(method);
+    if (IsCallModeSupportCallBuiltin(mode)) {
+        BRANCH(Int32GreaterThanOrEqual(builtinId, Int32(kungfu::BuiltinsStubCSigns::BUILTINS_CONSTRUCTOR_STUB_FIRST)),
+            notFastBuiltins, &supportCall);
+        Bind(&supportCall);
+    }
     {
-        GateRef builtinId = GetBuiltinId(method);
         GateRef ret;
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
@@ -7689,7 +7699,6 @@ void StubBuilder::CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, G
         result->WriteVariable(ret);
         Jump(exit);
     }
-    Bind(notFastBuiltins);
 }
 
 GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)

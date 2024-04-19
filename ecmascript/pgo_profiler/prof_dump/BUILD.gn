@@ -31,6 +31,7 @@ ohos_executable("profdump") {
     "runtime_core:arkfile_header_deps",
     "runtime_core:libarkbase_static",
     "runtime_core:libarkfile_static",
+    "zlib:libz",
   ]
 
   configs = [

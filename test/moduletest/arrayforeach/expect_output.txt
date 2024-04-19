@@ -21,3 +21,6 @@
 test arrayforeach success!!!
 test arrayforeach success!!!
 CallbackFn is not callable
+0
+2
+1

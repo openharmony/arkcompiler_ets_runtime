@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "file_mapper.h"
-#include "unzip.h"
+#include <contrib/minizip/unzip.h>
 
 namespace panda {
 namespace ecmascript {

@@ -20,6 +20,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
@@ -189,6 +190,13 @@ bool JSHClass::IsJSTypeShared(JSType type)
         case JSType::CONSTANT_STRING:
         case JSType::SLICED_STRING:
         case JSType::TREE_STRING:
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY:
             isShared = true;
             break;
         default:
@@ -242,7 +250,12 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     JSType type = jshclass->GetObjectType();
     uint32_t size = jshclass->GetInlinedPropsStartSize();
     uint32_t numInlinedProps = withoutInlinedProperties ? 0 : jshclass->GetInlinedProperties() + incInlinedProperties;
-    JSHandle<JSHClass> newJsHClass = thread->GetEcmaVM()->GetFactory()->NewEcmaHClass(size, type, numInlinedProps);
+    JSHandle<JSHClass> newJsHClass;
+    if (jshclass.GetTaggedValue().IsInSharedHeap()) {
+        newJsHClass = thread->GetEcmaVM()->GetFactory()->NewSEcmaHClass(size, type, numInlinedProps);
+    } else {
+        newJsHClass = thread->GetEcmaVM()->GetFactory()->NewEcmaHClass(size, type, numInlinedProps);
+    }
     // Copy all
     newJsHClass->Copy(thread, *jshclass);
     newJsHClass->SetTransitions(thread, JSTaggedValue::Undefined());
@@ -1048,7 +1061,6 @@ PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread,
 PropertyLookupResult JSHClass::LookupPropertyInPGOHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    ASSERT(hclass->IsTS());
 
     PropertyLookupResult result;
     if (hclass->IsDictionaryMode()) {

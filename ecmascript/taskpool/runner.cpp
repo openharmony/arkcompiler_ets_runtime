@@ -22,7 +22,11 @@
 #endif
 
 namespace panda::ecmascript {
-Runner::Runner(uint32_t threadNum) : totalThreadNum_(threadNum)
+Runner::Runner(uint32_t threadNum, const std::function<void(os::thread::native_handle_type)> prologueHook,
+    const std::function<void(os::thread::native_handle_type)> epilogueHook)
+    : totalThreadNum_(threadNum),
+    prologueHook_(prologueHook),
+    epilogueHook_(epilogueHook)
 {
     for (uint32_t i = 0; i < threadNum; i++) {
         // main thread is 0;
@@ -65,6 +69,17 @@ void Runner::TerminateThread()
     threadPool_.clear();
 }
 
+void Runner::ForEachTask(const std::function<void(Task*)> &f)
+{
+    taskQueue_.ForEachTask(f);
+    LockHolder holder(mtx_);
+    for (uint32_t i = 0; i < runningTask_.size(); i++) {
+        if (runningTask_[i] != nullptr) {
+            f(runningTask_[i]);
+        }
+    }
+}
+
 void Runner::SetQosPriority([[maybe_unused]] bool isForeground)
 {
 #ifdef ENABLE_QOS
@@ -96,11 +111,13 @@ void Runner::Run(uint32_t threadId)
 {
     os::thread::native_handle_type thread = os::thread::GetNativeHandle();
     os::thread::SetThreadName(thread, "OS_GC_Thread");
+    PrologueHook(thread);
     RecordThreadId();
     while (std::unique_ptr<Task> task = taskQueue_.PopTask()) {
         SetRunTask(threadId, task.get());
         task->Run(threadId);
         SetRunTask(threadId, nullptr);
     }
+    EpilogueHook(thread);
 }
 }  // namespace panda::ecmascript
