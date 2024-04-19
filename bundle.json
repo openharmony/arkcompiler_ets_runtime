@@ -69,15 +69,6 @@
                       ],
                       "header_base": "//arkcompiler/ets_runtime/ecmascript/napi/include"
                     }
-                },
-                {
-                    "name": "//arkcompiler/ets_runtime:libark_jsruntime_test",
-                    "header": {
-                      "header_files": [
-                        "jsnapi.h"
-                      ],
-                      "header_base": "//arkcompiler/ets_runtime/ecmascript/napi/include"
-                    }
                 }
             ],
             "test": [

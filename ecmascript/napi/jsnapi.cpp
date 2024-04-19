@@ -102,7 +102,7 @@ using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 extern "C" {
     bool StartDebug(const std::string& componentName, void* vm, bool isDebugMode, int32_t instanceId,
         const DebuggerPostTask& debuggerPostTask, int port);
-    void StopDebug(const std::string& componentName);
+    void StopDebug(void* vm);
     void WaitForDebugger(void* vm);
 }
 } // namespace OHOS::ArkCompiler::Toolchain
