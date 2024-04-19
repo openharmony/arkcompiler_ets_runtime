@@ -150,3 +150,18 @@ myMap.clear();
 print(myMap.has(2000));
 //aot: [trace] aot inline builtin: Map.has, caller function name:func_main_0@builtinMapHas
 //: false
+print(myMap.has(2000)); //: false
+
+function checkObjWithMapProto() {
+    let o = {};
+    Object.setPrototypeOf(o, Map.prototype);
+    try {
+        print((o as Map<number, number>).has(1));
+    } catch(e) {
+        print(e);
+    }
+}
+
+//aot: [trace] Check Type: NotCallTarget1
+//: TypeError: obj is not JSMap
+checkObjWithMapProto();

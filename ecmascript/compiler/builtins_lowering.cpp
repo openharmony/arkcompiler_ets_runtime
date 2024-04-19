@@ -194,6 +194,12 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
         case BuiltinsStubCSigns::ID::TypeArrayProtoIterator: {
             return LowerCallTargetCheckWithDetector(gate, id);
         }
+        case BuiltinsStubCSigns::ID::DateGetTime:
+        case BuiltinsStubCSigns::ID::MapGet:
+        case BuiltinsStubCSigns::ID::MapHas:
+        case BuiltinsStubCSigns::ID::SetHas: {
+            return LowerCallTargetCheckWithObjectType(gate, id);
+        }
         case BuiltinsStubCSigns::ID::BigIntConstructor:
         case BuiltinsStubCSigns::ID::NumberConstructor: {
             return LowerCallTargetCheckWithGlobalEnv(gate, id);
@@ -262,6 +268,34 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, Builtins
     GateRef markerCell = builder_.GetGlobalEnvObj(glueGlobalEnv, detectorIndex);
     GateRef check2 = builder_.BoolAnd(check1, builder_.IsMarkerCellValid(markerCell));
     return check2;
+}
+
+GateRef BuiltinLowering::LowerCallTargetCheckWithObjectType(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    JSType expectType = JSType::INVALID;
+    switch (id) {
+        case BuiltinsStubCSigns::ID::MapGet:
+        case BuiltinsStubCSigns::ID::MapHas: {
+            expectType = JSType::JS_MAP;
+            break;
+        }
+        case BuiltinsStubCSigns::ID::SetHas: {
+            expectType = JSType::JS_SET;
+            break;
+        }
+        case BuiltinsStubCSigns::ID::DateGetTime: {
+            expectType = JSType::JS_DATE;
+            break;
+        }
+        default: {
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
+    GateRef obj = acc_.GetValueIn(gate, 2);  // 2: receiver obj
+    GateRef check1 = builder_.IsSpecificObjectType(obj, expectType);
+    GateRef check2 = LowerCallTargetCheckDefault(gate, id);
+    return builder_.BoolAnd(check1, check2);
 }
 
 GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)

@@ -82,6 +82,20 @@ mySet.has = replace
 print(mySet.has(2.5)); //: 2.5
 mySet.has = true_has
 
+function checkObjWithSetProto() {
+    let o = {};
+    Object.setPrototypeOf(o, Set.prototype);
+    try {
+        print((o as Set<number>).has(1));
+    } catch(e) {
+        print(e);
+    }
+}
+
+//aot: [trace] Check Type: NotCallTarget1
+//: TypeError: obj is not JSSet
+checkObjWithSetProto();
+
 //aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
 printHas(-5); //: true
 // Call standard builtin with non-number param

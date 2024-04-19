@@ -740,8 +740,9 @@ void NativeInlineLowering::InlineStubBuiltin(GateRef gate, size_t builtinArgc, s
     }
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
+        GateRef obj = acc_.GetValueIn(gate, 0);
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, realArgc + 1U),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+                                 builder_.IntPtr(static_cast<int64_t>(id)), {obj});
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -809,8 +810,9 @@ void NativeInlineLowering::TryInlineDateGetTime(GateRef gate, size_t argc, bool 
     // We are sure, that "this" is passed to this function, so always need to do +1
     bool firstParam = 1;
     if (!Uncheck()) {
+        GateRef obj = acc_.GetValueIn(gate, 0);
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::DateGetTime)));
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::DateGetTime)), {obj});
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, BuiltinsStubCSigns::ID::DateGetTime);

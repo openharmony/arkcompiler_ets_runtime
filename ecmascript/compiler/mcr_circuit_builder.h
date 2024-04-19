@@ -285,6 +285,12 @@ GateRef CircuitBuilder::TaggedObjectIsJSSet(GateRef obj)
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_SET)));
 }
 
+GateRef CircuitBuilder::TaggedObjectIsJSDate(GateRef obj)
+{
+    GateRef objType = GetObjectType(LoadHClass(obj));
+    return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_DATE)));
+}
+
 GateRef CircuitBuilder::TaggedObjectIsTypedArray(GateRef obj)
 {
     GateRef jsType = GetObjectType(LoadHClass(obj));
