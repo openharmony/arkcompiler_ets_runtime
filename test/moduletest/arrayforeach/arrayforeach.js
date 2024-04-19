@@ -50,3 +50,40 @@ try {
 } catch (e) {
     print("CallbackFn is not callable")
 }
+
+var callCnt1 = 0;
+
+function callbackfn1(val, idx, obj)
+{
+  callCnt1++;
+}
+print(callCnt1)
+
+var arr1 = [1, 2, , 4, 5];
+arr1.forEach(callbackfn1);
+
+var callCnt2 = 0;
+
+function callbackfn2(val, idx, obj)
+{
+  arr2[1000] = 3;
+  callCnt2++;
+}
+
+var arr2 = new Array(10);
+arr2[1] = 1;
+arr2[2] = 2;
+arr2.forEach(callbackfn2);
+print(callCnt2)
+
+var callCnt3 = 0;
+
+function callbackfn3(val, idx, obj)
+{
+  callCnt3++;
+}
+
+var arr3 = new Array(10);
+arr3[1] = undefined;
+arr3.forEach(callbackfn3);
+print(callCnt3)

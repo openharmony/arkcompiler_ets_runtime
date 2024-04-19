@@ -867,19 +867,153 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
     [[maybe_unused]] Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
-    Label thisIsEmpty(env);
+    Label thisExists(env);
     Label isHeapObject(env);
-    // Fast path if all the conditions below are satisfied:
-    // (1) this is an empty array with constructor not reset (see ArraySpeciesCreate for details);
-    // (2) callbackFn is callable (otherwise a TypeError shall be thrown in the slow path)
-    JsArrayRequirements req;
-    req.defaultConstructor = true;
-    BRANCH(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, req), &thisIsEmpty, slowPath);
-    Bind(&thisIsEmpty);
-    // Do nothing on fast path
-    BRANCH(TaggedIsHeapObject(GetCallArg0(numArgs)), &isHeapObject, slowPath);
+    Label isJsArray(env);
+    Label defaultConstr(env);
+    Label isStability(env);
+    Label notCOWArray(env);
+    Label equalCls(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(IsCallable(GetCallArg0(numArgs)), exit, slowPath);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+    BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
+    Bind(&notCOWArray);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef arrayCls = LoadHClass(thisValue);
+    BRANCH(Equal(intialHClass, arrayCls), &equalCls, slowPath);
+    Bind(&equalCls);
+
+    Label arg0HeapObject(env);
+    Label callable(env);
+    Label thisIsStable(env);
+    Label thisNotStable(env);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+    GateRef argHandle = GetCallArg1(numArgs);
+
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(thisLen, VariableType::INT32(), Int32(0));
+    thisLen = GetArrayLength(thisValue);
+    Jump(&thisIsStable);
+
+    Bind(&thisIsStable);
+    {
+        DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Label loopExit(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label nextStep(env);
+            Label kValueIsHole(env);
+            Label callDispatch(env);
+            Label hasProperty(env);
+            Label hasException0(env);
+            Label hasException1(env);
+            GateRef newLen = GetArrayLength(thisValue);
+            BRANCH(BoolAnd(IsStableJSArray(glue, thisValue), Int32Equal(*thisLen, newLen)),
+                &nextStep, &thisNotStable);
+            Bind(&nextStep);
+            BRANCH(Int64GreaterThanOrEqual(*i, ZExtInt32ToInt64(*thisLen)), &loopExit, &next);
+            Bind(&next);
+            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
+            Bind(&kValueIsHole);
+            {
+                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+                BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
+                Bind(&hasProperty);
+                kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
+                BRANCH(HasPendingException(glue), &hasException0, &callDispatch);
+                Bind(&hasException0);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+            Bind(&callDispatch);
+            {
+                GateRef key = Int64ToTaggedInt(*i);
+                JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                    { argHandle, *kValue, key, thisValue });
+                BRANCH(HasPendingException(glue), &hasException1, &loopEnd);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        Jump(exit);
+    }
+
+    Bind(&thisNotStable);
+    {
+        DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Label loopExit(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label hasProperty(env);
+            Label hasException0(env);
+            Label notHasException0(env);
+            Label hasException1(env);
+            BRANCH(Int64GreaterThanOrEqual(*i, ZExtInt32ToInt64(*thisLen)), &loopExit, &next);
+            Bind(&next);
+            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+            BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
+            Bind(&hasProperty);
+            kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
+            BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+            Bind(&hasException0);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException0);
+            {
+                GateRef key = Int64ToTaggedInt(*i);
+                JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                    { argHandle, *kValue, key, thisValue });
+                BRANCH(HasPendingException(glue), &hasException1, &loopEnd);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        Jump(exit);
+    }
 }
 
 // Note: unused arguments are reserved for further development
