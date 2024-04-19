@@ -263,3 +263,25 @@ let arr = Array(14);
 let tree_str = arr + 512;
 tree_str.substring(0,arr.length);
 print("sub_string test success!");
+
+// startsWith 边界值测试
+const textStr = "abcd"
+const matchStr = "abcd"
+const offset = 0
+
+class C3{ 
+	constructor(offset) {
+    let bb = textStr.startsWith(matchStr, offset);
+	print(bb); // true
+    }
+}
+new C3();
+
+const offset1 = 1
+class C4{ 
+	constructor(offset1) {
+    let flag = textStr.startsWith(matchStr, offset1);
+	print(flag); // false
+    }
+}
+new C4();
