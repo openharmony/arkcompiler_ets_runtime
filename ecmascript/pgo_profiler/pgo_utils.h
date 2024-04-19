@@ -18,9 +18,11 @@
 
 #include <string>
 
-#include "mem/mem.h"
-#include "libpandafile/file.h"
 #include "ecmascript/common.h"
+#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
+#include "libpandafile/file.h"
+#include "mem/mem.h"
 
 namespace panda::ecmascript::pgo {
 static constexpr Alignment ALIGN_SIZE = Alignment::LOG_ALIGN_4;
@@ -55,6 +57,41 @@ public:
 
 private:
     static std::string GetBriefApName(const std::string &ohosModuleName);
+};
+
+struct ConcurrentGuardValues {
+    mutable std::atomic_int last_tid_ {0};
+    mutable std::atomic_int count_ {0};
+};
+
+class ConcurrentGuard {
+public:
+    ConcurrentGuard(ConcurrentGuardValues& v): v_(v)
+    {
+        auto tid = Gettid();
+        auto except = 0;
+        if (!v_.count_.compare_exchange_strong(except, 1)) {
+            LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 0, but get " << except
+                            << ", current tid: " << tid << ", last tid: " << v_.last_tid_;
+        }
+        v_.last_tid_ = tid;
+    }
+    ~ConcurrentGuard()
+    {
+        auto tid = Gettid();
+        auto except = 1;
+        if (!v_.count_.compare_exchange_strong(except, 0)) {
+            LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 1, but get " << except
+                            << ", current tid: " << tid << ", last tid: " << v_.last_tid_;
+        }
+    };
+
+private:
+    ConcurrentGuardValues& v_;
+    int Gettid()
+    {
+        return os::thread::GetCurrentThreadId();
+    }
 };
 }  // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H

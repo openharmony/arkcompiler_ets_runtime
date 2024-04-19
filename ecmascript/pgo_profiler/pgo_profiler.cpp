@@ -165,7 +165,7 @@ void PGOProfiler::UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHC
     auto rootProfileType = generator->GetProfileType(JSTaggedType(oldRootHClass));
     {
         LockHolder lock(tracedProfilesMutex_);
-        vm_->GetNativeAreaAllocator()->Delete(iter->second);
+        nativeAreaAllocator_->Delete(iter->second);
         tracedProfiles_.erase(iter);
     }
     if (rootProfileType.IsNone()) {
@@ -267,7 +267,7 @@ void PGOProfiler::PGODump(JSTaggedType func)
     auto function = JSFunction::Cast(funcValue);
     auto workNode = reinterpret_cast<WorkNode *>(function->GetWorkNodePointer());
     if (workNode == nullptr) {
-        workNode = vm_->GetNativeAreaAllocator()->New<WorkNode>(JSTaggedType(function));
+        workNode = nativeAreaAllocator_->New<WorkNode>(JSTaggedType(function));
         function->SetWorkNodePointer(reinterpret_cast<uintptr_t>(workNode));
         LockHolder lock(mutex_);
         dumpWorkList_.PushBack(workNode);
@@ -282,14 +282,10 @@ void PGOProfiler::PGODump(JSTaggedType func)
             dumpWorkList_.PushBack(workNode);
         }
     }
-    if (state_ == State::STOP) {
-        state_ = State::START;
-        Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
-    }
+    StartPGODump();
 }
 
-void PGOProfiler::WaitPGODumpPause()
+void PGOProfiler::WaitPGODumpPauseForGC()
 {
     if (!isEnable_) {
         return;
@@ -304,7 +300,7 @@ void PGOProfiler::WaitPGODumpPause()
     }
 }
 
-void PGOProfiler::WaitPGODumpResume()
+void PGOProfiler::WaitPGODumpResumeForGC()
 {
     if (!isEnable_) {
         return;
@@ -316,6 +312,22 @@ void PGOProfiler::WaitPGODumpResume()
             std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
     } else if (state_ == State::FORCE_SAVE_PAUSE) {
         state_ = State::FORCE_SAVE;
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
+    }
+}
+
+void PGOProfiler::StopPGODump()
+{
+    LockHolder lock(mutex_);
+    state_ = State::STOP;
+    NotifyGC();
+}
+
+void PGOProfiler::StartPGODump()
+{
+    if (state_ == State::STOP) {
+        state_ = State::START;
         Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
     }
@@ -349,7 +361,7 @@ void PGOProfiler::PGOPreDump(JSTaggedType func)
     auto function = JSFunction::Cast(funcValue);
     auto workNode = reinterpret_cast<WorkNode *>(function->GetWorkNodePointer());
     if (workNode == nullptr) {
-        workNode = vm_->GetNativeAreaAllocator()->New<WorkNode>(JSTaggedType(function));
+        workNode = nativeAreaAllocator_->New<WorkNode>(JSTaggedType(function));
         function->SetWorkNodePointer(reinterpret_cast<uintptr_t>(workNode));
         LockHolder lock(mutex_);
         preDumpWorkList_.PushBack(workNode);
@@ -424,8 +436,9 @@ void PGOProfiler::HandlePGOPreDump()
     });
 }
 
-void PGOProfiler::HandlePGODump(bool force)
+void PGOProfiler::HandlePGODumpByDumpThread(bool force)
 {
+    ConcurrentGuard guard(v_);
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
@@ -468,13 +481,15 @@ void PGOProfiler::HandlePGODump(bool force)
         ProfileBytecode(abcId, recordName, value);
         current = PopFromProfileQueue();
     }
-    if (state_ == State::PAUSE) {
+    ASSERT(state_ != State::STOP);
+    if (IsGCWaitingWithLock()) {
         return;
     }
-    SaveProfiler(force);
+    MergeProfilerAndDispatchAsyncSaveTask(force);
+    StopPGODump();
 }
 
-void PGOProfiler::SaveProfiler(bool force)
+void PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask(bool force)
 {
     // Merged every 50 methods and merge interval greater than minimal interval
     auto interval = std::chrono::system_clock::now() - saveTimestamp_;
@@ -496,13 +511,10 @@ PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
     LockHolder lock(mutex_);
     WorkNode* node = nullptr;
     while (node == nullptr) {
-        if (dumpWorkList_.IsEmpty()) {
-            state_ = State::STOP;
-            condition_.SignalAll();
+        if (IsGCWaiting()) {
             break;
         }
-        if (state_ == State::PAUSE) {
-            condition_.SignalAll();
+        if (dumpWorkList_.IsEmpty()) {
             break;
         }
         node = dumpWorkList_.PopFront();
@@ -510,14 +522,23 @@ PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
     return node;
 }
 
-bool PGOProfiler::PausePGODump()
+bool PGOProfiler::IsGCWaitingWithLock()
 {
     if (state_ == State::PAUSE) {
         LockHolder lock(mutex_);
         if (state_ == State::PAUSE) {
-            condition_.SignalAll();
+            NotifyGC();
             return true;
         }
+    }
+    return false;
+}
+
+bool PGOProfiler::IsGCWaiting()
+{
+    if (state_ == State::PAUSE) {
+        NotifyGC();
+        return true;
     }
     return false;
 }
@@ -540,7 +561,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
     auto bcInsLast = bcIns.JumpTo(codeSize);
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
-        if (PausePGODump()) {
+        if (IsGCWaitingWithLock()) {
             break;
         }
         auto opcode = bcIns.GetOpcode();
@@ -1572,7 +1593,7 @@ bool PGOProfiler::InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, P
         return generator->InsertProfileType(child, traceType);
     } else {
         LockHolder lock(tracedProfilesMutex_);
-        auto generator = vm_->GetNativeAreaAllocator()->New<PGOTypeGenerator>();
+        auto generator = nativeAreaAllocator_->New<PGOTypeGenerator>();
         generator->InsertProfileType(child, traceType);
         tracedProfiles_.emplace(root, generator);
         return true;
@@ -1624,7 +1645,7 @@ void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
         JSTaggedType object = iter->first;
         auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
         if (fwd == nullptr) {
-            vm_->GetNativeAreaAllocator()->Delete(iter->second);
+            nativeAreaAllocator_->Delete(iter->second);
             iter = tracedProfiles_.erase(iter);
             continue;
         }
@@ -1643,7 +1664,7 @@ void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
         auto fwd = visitor(object);
         if (fwd == nullptr) {
             preDumpWorkList_.Remove(node);
-            vm_->GetNativeAreaAllocator()->Delete(node);
+            nativeAreaAllocator_->Delete(node);
             return;
         }
         if (fwd != object) {
@@ -1666,7 +1687,8 @@ void PGOProfiler::Iterate(const RootVisitor &visitor)
     });
 }
 
-PGOProfiler::PGOProfiler(EcmaVM *vm, bool isEnable) : vm_(vm), isEnable_(isEnable)
+PGOProfiler::PGOProfiler(EcmaVM* vm, bool isEnable)
+    : nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()), vm_(vm), isEnable_(isEnable)
 {
     if (isEnable_) {
         recordInfos_ = std::make_unique<PGORecordDetailInfos>(0);
@@ -1677,7 +1699,7 @@ PGOProfiler::~PGOProfiler()
 {
     Reset(false);
     for (auto iter : tracedProfiles_) {
-        vm_->GetNativeAreaAllocator()->Delete(iter.second);
+        nativeAreaAllocator_->Delete(iter.second);
     }
 }
 

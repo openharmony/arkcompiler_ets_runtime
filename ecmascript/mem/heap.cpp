@@ -705,7 +705,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
         }
         gcType_ = gcType;
-        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpPause();
+        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpPauseForGC();
         switch (gcType) {
             case TriggerGCType::YOUNG_GC:
                 // Use partial GC for young generation.
@@ -761,7 +761,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                 UNREACHABLE();
                 break;
         }
-        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpResume();
+        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpResumeForGC();
 
         // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
         if (shouldThrowOOMError_) {
