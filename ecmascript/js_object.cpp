@@ -189,7 +189,6 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
     ASSERT(!jshclass->GetLayout().IsNull());
     ASSERT(!jshclass->IsJSShared());
     JSHandle<LayoutInfo> layoutInfoHandle(thread, jshclass->GetLayout());
-    ASSERT(layoutInfoHandle->GetLength() != 0);
     JSMutableHandle<NameDictionary> dict(
         thread, NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(propNumber)));
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
