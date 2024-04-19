@@ -106,6 +106,9 @@ public:
 
     inline ParamType GetParamType() const
     {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return ParamType::AnyType();
+        }
         return PGOSampleTypeToParamType();
     }
 
