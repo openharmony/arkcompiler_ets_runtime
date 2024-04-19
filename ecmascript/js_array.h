@@ -112,7 +112,13 @@ public:
                              const JSHandle<JSTaggedValue> &fn);
     static void SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
                                      const JSHandle<JSTaggedValue> &fn);
-    
+    static void SortElementsByInsertionSort(JSThread *thread, const JSHandle<TaggedArray> &elements, uint32_t len,
+        const JSHandle<JSTaggedValue> &fn);
+    static void SortElementsByMergeSort(JSThread *thread, const JSHandle<TaggedArray> &elements,
+        const JSHandle<JSTaggedValue> &fn, int64_t startIdx, int64_t endIdx);
+    static void MergeSortedElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
+        const JSHandle<JSTaggedValue> &fn, int64_t startIdx, int64_t middleIdx, int64_t endIdx);
+
     template <class Callback>
     static JSTaggedValue ArrayCreateWithInit(JSThread *thread, uint32_t length, const Callback &cb)
     {
