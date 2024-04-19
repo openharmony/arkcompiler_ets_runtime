@@ -64,3 +64,7 @@ var classTestD = new ClassD()
 print(classTestD.d)
 print("export as ... case test : " + tmp);
 f();
+
+const {add} = await import('./exportas');
+const sum = add(1, 2);
+print(sum);
