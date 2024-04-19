@@ -329,10 +329,7 @@ ohos_source_set("libark_jsoptimizer_set") {
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   if (enable_local_code_sign) {
-    external_deps += [
-      "code_signature:libcode_sign_utils",
-      "code_signature:liblocal_code_sign_sdk",
-    ]
+    external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
   }
   deps += hiviewdfx_deps
 
@@ -379,10 +376,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   if (enable_local_code_sign) {
-    external_deps += [
-      "code_signature:libcode_sign_utils",
-      "code_signature:liblocal_code_sign_sdk",
-    ]
+    external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
   }
 
   part_name = "ets_runtime"

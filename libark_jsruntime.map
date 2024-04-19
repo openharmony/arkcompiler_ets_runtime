@@ -153,6 +153,9 @@
       panda::ecmascript::FileMapForAlignAddress*;
       panda::ecmascript::FileMap*;
       panda::ecmascript::FileUnMap*;
+      panda::ecmascript::LoadLib*;
+      panda::ecmascript::FindSymbol*;
+      panda::ecmascript::CloseLib*;
       panda::ecmascript::ForceCreateDirectory*;
       panda::ecmascript::GetFileDelimiter*;
       panda::ecmascript::GetPathSeparator*;
