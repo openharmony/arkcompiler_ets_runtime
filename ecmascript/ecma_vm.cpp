@@ -99,6 +99,10 @@
 #include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
 #endif
 
+#ifdef PANDA_TARGET_OHOS
+#include "parameters.h"
+#endif
+
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -129,6 +133,10 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     if (SetThreadInfoCallback != nullptr) {
         SetThreadInfoCallback(CrashCallback);
     }
+#endif
+#ifdef PANDA_TARGET_OHOS
+    int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
+    vm->GetJSOptions().SetArkProperties(arkProperties);
 #endif
     return vm;
 }
@@ -180,6 +188,10 @@ void EcmaVM::PostFork()
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
+#endif
+#ifdef PANDA_TARGET_OHOS
+    int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
+    GetJSOptions().SetArkProperties(arkProperties);
 #endif
 }
 
