@@ -48,6 +48,7 @@ private:
     void TryInlineNumberIsFinite(GateRef gate, size_t argc, bool skipThis);
     void TryInlineNumberIsInteger(GateRef gate, size_t argc, bool skipThis);
     void TryInlineNumberIsNaN(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineNumberParseFloat(GateRef gate, size_t argc, bool skipThis);
     void TryInlineNumberIsSafeInteger(GateRef gate, size_t argc, bool skipThis);
     void TryInlineTypedArrayIteratorBuiltin(GateRef gate, BuiltinsStubCSigns::ID id,
                                             const GateMetaData* op, bool skipThis);

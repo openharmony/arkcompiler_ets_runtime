@@ -741,6 +741,7 @@ public:
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
     GateRef NumberIsNaN(GateRef gate);
+    GateRef NumberParseFloat(GateRef gate, GateRef frameState);
     GateRef NumberIsFinite(GateRef gate);
     GateRef NumberIsInteger(GateRef gate);
     GateRef NumberIsSafeInteger(GateRef gate);

@@ -235,6 +235,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::NUMBER_IS_INTEGER:
         case OpCode::NUMBER_IS_SAFEINTEGER:
             return VisitNumberIsInteger(gate);
+        case OpCode::NUMBER_PARSE_FLOAT:
+            return VisitNumberParseFloat(gate);
         case OpCode::MATH_IMUL:
             return VisitMathImul(gate);
         case OpCode::DATA_VIEW_GET:
@@ -1619,6 +1621,15 @@ GateRef NumberSpeculativeRetype::VisitNumberIsInteger(GateRef gate)
     ResizeAndSetTypeInfo(input, TypeInfo::FLOAT64);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitNumberParseFloat(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::DoubleType());
+    }
+    ASSERT(IsConvert());
     return Circuit::NullGate();
 }
 

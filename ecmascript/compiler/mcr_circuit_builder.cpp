@@ -1792,6 +1792,19 @@ GateRef CircuitBuilder::NumberIsNaN(GateRef gate)
     return ret;
 }
 
+GateRef CircuitBuilder::NumberParseFloat(GateRef gate, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->NumberParseFloat(), MachineType::I64,
+            { currentControl, currentDepend, gate, frameState }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::NumberIsSafeInteger(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();

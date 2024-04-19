@@ -348,6 +348,7 @@ public:
             case BuiltinsStubCSigns::ID::SetEntries:
             case BuiltinsStubCSigns::ID::MapClear:
             case BuiltinsStubCSigns::ID::SetClear:
+            case BuiltinsStubCSigns::ID::NumberParseFloat:
                 return true;
             default:
                 return false;
@@ -566,6 +567,8 @@ public:
                 return ConstantIndex::NUMBER_IS_NAN_INDEX;
             case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
                 return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
+            case BuiltinsStubCSigns::ID::NumberParseFloat:
+                return ConstantIndex::NUMBER_PARSE_FLOAT_INDEX;
             default:
                 LOG_COMPILER(ERROR) << "GetConstantIndex Invalid Id:" << builtinId;
                 return ConstantIndex::INVALID;
@@ -638,6 +641,7 @@ public:
             {MapClear, "Map.clear"},
             {SetClear, "Set.clear"},
             {BigIntConstructor, "BigInt"},
+            {NumberParseFloat, "Number.parseFloat"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);

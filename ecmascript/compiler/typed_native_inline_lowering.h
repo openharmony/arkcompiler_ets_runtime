@@ -71,6 +71,7 @@ private:
     void LowerNumberIsInteger(GateRef gate);
     void LowerNumberIsNaN(GateRef gate);
     void LowerNumberIsSafeInteger(GateRef gate);
+    void LowerNumberParseFloat(GateRef gate);
     void LowerDateGetTime(GateRef gate);
     void LowerBigIntConstructor(GateRef gate);
     template <bool IS_SIGNED>

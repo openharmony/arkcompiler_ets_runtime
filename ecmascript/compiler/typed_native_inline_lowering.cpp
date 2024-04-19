@@ -208,6 +208,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::NUMBER_IS_SAFEINTEGER:
             LowerNumberIsSafeInteger(gate);
             break;
+        case OpCode::NUMBER_PARSE_FLOAT:
+            LowerNumberParseFloat(gate);
+            break;
         case OpCode::MAP_GET:
             LowerToCommonStub(gate, CommonStubCSigns::JSMapGet);
             break;
@@ -1790,6 +1793,51 @@ void TypedNativeInlineLowering::LowerNumberIsSafeInteger(GateRef gate)
     auto result = builder_.Int64LessThanOrEqual(res, builder_.Int64(base::MAX_SAFE_INTEGER));
 
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+}
+
+void TypedNativeInlineLowering::LowerNumberParseFloat(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.HoleConstant());
+    Label slowPath(&builder_);
+    Label exit(&builder_);
+
+    Label definedMsg(&builder_);
+    Label undefinedMsg(&builder_);
+    GateRef msg = acc_.GetValueIn(gate, 0);
+    builder_.Branch(builder_.BoolNot(builder_.TaggedIsUndefined(msg)), &definedMsg, &undefinedMsg);
+    builder_.Bind(&definedMsg);
+    {
+        auto frameState = acc_.GetFrameState(gate);
+        builder_.DeoptCheck(builder_.TaggedIsString(msg), frameState, DeoptType::NOTSTRING1);
+        Label isIntegerStr(&builder_);
+        Label notIntegerStr(&builder_);
+        Label exitIntegerStr(&builder_);
+        builder_.Branch(builder_.IsIntegerString(msg), &isIntegerStr, &notIntegerStr);
+        builder_.Bind(&isIntegerStr);
+        {
+            result = builder_.ChangeInt32ToFloat64(builder_.GetRawHashFromString(msg));
+            builder_.Jump(&exitIntegerStr);
+        }
+        builder_.Bind(&notIntegerStr);
+        {
+            GateRef glue = acc_.GetGlueFromArgList();
+            auto taggedDouble = builder_.CallNGCRuntime(glue, RTSTUB_ID(NumberHelperStringToDouble),
+                                                        Gate::InvalidGateRef, { msg }, gate);
+            result = builder_.GetDoubleOfTDouble(taggedDouble);
+            builder_.Jump(&exitIntegerStr);
+        }
+        builder_.Bind(&exitIntegerStr);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&undefinedMsg);
+    {
+        result = builder_.Double(base::NAN_VALUE);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerToCommonStub(GateRef gate, CommonStubCSigns::ID id)
