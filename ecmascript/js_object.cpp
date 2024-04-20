@@ -2131,6 +2131,12 @@ JSHandle<GlobalEnv> JSObject::GetFunctionRealm(JSThread *thread, const JSHandle<
         JSHandle<JSTaggedValue> proxyTarget(thread, JSHandle<JSProxy>(object)->GetTarget());
         return GetFunctionRealm(thread, proxyTarget);
     }
+
+    if (object->IsJSShared()) {
+        // LexicalEnv in sharedConstructor is constructor itself. And Shared Constructors shares the same GlobalEnv.
+        return thread->GetEcmaVM()->GetGlobalEnv();
+    }
+
     JSTaggedValue maybeGlobalEnv = JSHandle<JSFunction>(object)->GetLexicalEnv();
     while (!maybeGlobalEnv.IsJSGlobalEnv()) {
         if (maybeGlobalEnv.IsUndefined()) {

@@ -650,6 +650,61 @@ function arrayFromNotArray() {
     }
 }
 
+function derivedSlice() {
+    print("Start Test derivedSlice")
+    let animals = new SubSharedClass();
+    animals.push('ant');
+    animals.push('bison');
+    animals.push('camel');
+    animals.push('duck');
+    animals.push('elephant');
+    print("instanceOf slice result: " + (animals.slice() instanceof SubSharedClass));
+}
+
+function derivedSort() {
+    print("Start Test derivedSort")
+    let months = new SubSharedClass();
+    months.push('March')
+    months.push('Jan')
+    months.push('Feb')
+    months.push('Dec')
+
+    const sortedMonth = months.sort();
+    print("instanceOf derived sort result: " + (sortedMonth instanceof SubSharedClass));
+}
+
+function derivedForEach() {
+    print("Start Test derivedForEach")
+    let array = new SubSharedClass();
+    array.push('March')
+    array.push('Jan')
+    array.push('Feb')
+    array.push('Dec')
+    array.forEach((element: string, index: number, array: SharedArray<string>) => print(`a[${index}] = ${element}, ${array instanceof SubSharedClass}`))
+}
+
+function derivedMap() {
+    print("Start derivedMap")
+    let array = new SubSharedClass();
+    array.push(1);
+    array.push(4);
+    array.push(9);
+    array.push(16);
+    print("instanceOf derived map result: " + (array.map<string>((x: number) => x + x + "") instanceof SubSharedClass));
+}
+
+function derivedFill() {
+    print("Start Test derivedFill")
+    let array = new SubSharedClass();
+    array.push(1);
+    array.push(2);
+    array.push(3);
+    array.push(4);
+    const filledArray = array.fill(0, 2, 4);
+    print(array); // [1, 2, 0, 0]
+    print("instanceOf derived fill result: " + (filledArray instanceof SubSharedClass));
+}
+
 at()
 
 entries()
@@ -711,3 +766,9 @@ arrayFromSet()
 arrayFromNormalMap()
 arrayFromSharedMap()
 arrayFromNotArray()
+
+derivedSlice()
+derivedSort()
+derivedForEach()
+derivedMap()
+derivedFill()
