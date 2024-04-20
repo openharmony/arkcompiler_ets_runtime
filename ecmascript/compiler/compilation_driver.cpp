@@ -14,9 +14,10 @@
  */
 
 #include "ecmascript/compiler/compilation_driver.h"
+
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
@@ -45,10 +46,6 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
       maxMethodsInModule_(maxMethodsInModule),
       optionMethodsRange_(compilerMethodsRange)
 {
-    if (compilationEnv_->IsAotCompiler()) {
-        compilationEnv_->GetTSManager()->SetCompilationDriver(this);
-    }
-
     if (!optionSelectMethods.empty() && !optionSkipMethods.empty()) {
         LOG_COMPILER(FATAL) <<
             "--compiler-select-methods and --compiler-skip-methods should not be set at the same time";
@@ -60,13 +57,6 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
 
     if (!optionSkipMethods.empty()) {
         ParseOption(optionSkipMethods, optionSkipMethods_);
-    }
-}
-
-CompilationDriver::~CompilationDriver()
-{
-    if (compilationEnv_->IsAotCompiler()) {
-        compilationEnv_->GetTSManager()->SetCompilationDriver(nullptr);
     }
 }
 

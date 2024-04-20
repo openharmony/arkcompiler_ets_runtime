@@ -25,7 +25,6 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/snapshot/mem/snapshot_processor.h"
 #include "ecmascript/snapshot/tests/snapshot_mock.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 using namespace panda::ecmascript;
 

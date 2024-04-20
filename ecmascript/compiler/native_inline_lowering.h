@@ -24,7 +24,6 @@
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/js_dataview.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NativeInlineLowering {
@@ -35,7 +34,6 @@ public:
           builder_(circuit, cmpCfg),
           acc_(circuit),
           glue_(acc_.GetGlueFromArgList()),
-          tsManager_(ctx->GetTSManager()),
           enableLog_(enableLog),
           methodName_(name),
           nocheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
@@ -103,7 +101,6 @@ private:
     CircuitBuilder builder_;
     GateAccessor acc_;
     GateRef glue_;
-    TSManager *tsManager_;
     bool enableLog_;
     std::string methodName_;
     bool nocheck_;

@@ -54,13 +54,11 @@ struct JitCompilationOptions {
     bool isEnableValueNumbering_;
     bool isEnableOptInlining_;
     bool isEnableOptString_;
-    bool isEnableTypeInfer_;
     bool isEnableOptPGOType_;
     bool isEnableOptTrackField_;
     bool isEnableOptLoopPeeling_;
     bool isEnableOptOnHeapCheck_;
     bool isEnableOptLoopInvariantCodeMotion_;
-    bool isEnableCollectLiteralInfo_;
     bool isEnableOptConstantFolding_;
     bool isEnableLexenvSpecialization_;
     bool isEnableNativeInline_;

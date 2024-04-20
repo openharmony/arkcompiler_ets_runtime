@@ -116,7 +116,7 @@ int Main(const int argc, const char **argv)
         LocalScope scope(vm);
         arg_list_t pandaFileNames {};
         std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
-        CompilationOptions cOptions(vm, runtimeOptions);
+        CompilationOptions cOptions(runtimeOptions);
 
         CompilerLog log(cOptions.logOption_);
         log.SetEnableCompilerLogTime(cOptions.compilerLogTime_);
@@ -134,7 +134,6 @@ int Main(const int argc, const char **argv)
         profilerDecoder.SetHotnessThreshold(cOptions.hotnessThreshold_);
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
-        cPreprocessor.SetShouldCollectLiteralInfo(cOptions, &log);
         uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
         // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
         // need support muilt abc
@@ -155,14 +154,12 @@ int Main(const int argc, const char **argv)
                 .EnableEarlyElimination(cOptions.isEnableEarlyElimination_)
                 .EnableLaterElimination(cOptions.isEnableLaterElimination_)
                 .EnableValueNumbering(cOptions.isEnableValueNumbering_)
-                .EnableTypeInfer(cOptions.isEnableTypeInfer_)
                 .EnableOptInlining(cOptions.isEnableOptInlining_)
                 .EnableOptString(cOptions.isEnableOptString_)
                 .EnableOptPGOType(cOptions.isEnableOptPGOType_)
                 .EnableOptTrackField(cOptions.isEnableOptTrackField_)
                 .EnableOptLoopPeeling(cOptions.isEnableOptLoopPeeling_)
                 .EnableOptLoopInvariantCodeMotion(cOptions.isEnableOptLoopInvariantCodeMotion_)
-                .EnableCollectLiteralInfo(cOptions.isEnableCollectLiteralInfo_)
                 .EnableOptConstantFolding(cOptions.isEnableOptConstantFolding_)
                 .EnableLexenvSpecialization(cOptions.isEnableLexenvSpecialization_)
                 .EnableInlineNative(cOptions.isEnableNativeInline_)

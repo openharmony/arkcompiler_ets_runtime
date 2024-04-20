@@ -34,7 +34,7 @@
 #include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript::kungfu {
-bool TypedBytecodeLowering::RunTypedBytecodeLowering()
+void TypedBytecodeLowering::RunTypedBytecodeLowering()
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
@@ -43,18 +43,6 @@ bool TypedBytecodeLowering::RunTypedBytecodeLowering()
         auto op = acc_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
             Lower(gate);
-            allJSBcCount_++;
-        }
-    }
-
-    bool success = true;
-    double typeHitRate = 0.0;
-    auto allTypedOpCount = allJSBcCount_ - allNonTypedOpCount_;
-    if (allTypedOpCount != 0) {
-        typeHitRate = static_cast<double>(hitTypedOpCount_) / static_cast<double>(allTypedOpCount);
-        auto typeThreshold = const_cast<CompilationEnv*>(compilationEnv_)->GetJSOptions().GetTypeThreshold();
-        if (typeHitRate <= typeThreshold) {
-            success = false;
         }
     }
 
@@ -70,10 +58,6 @@ bool TypedBytecodeLowering::RunTypedBytecodeLowering()
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << " =========================== End typeHitRate: "
-                           << std::to_string(typeHitRate)
-                           << " ===========================" << "\033[0m";
         for (auto a : bytecodeMap_) {
             if (bytecodeHitTimeMap_.find(a.first) != bytecodeHitTimeMap_.end()) {
                 double rate = static_cast<double>(bytecodeHitTimeMap_[a.first]) / static_cast<double>(a.second);
@@ -91,8 +75,6 @@ bool TypedBytecodeLowering::RunTypedBytecodeLowering()
             }
         }
     }
-
-    return success;
 }
 
 void TypedBytecodeLowering::ParseOptBytecodeRange()
@@ -1419,7 +1401,7 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
 void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 {
     SuperCallTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
-    if (!tacc.IsClassTypeKind() && !tacc.IsValidCallMethodId()) {
+    if (!tacc.IsValidCallMethodId()) {
         return;
     }
     AddProfiling(gate);

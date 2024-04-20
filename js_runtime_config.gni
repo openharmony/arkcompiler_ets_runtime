@@ -152,9 +152,6 @@ template("libark_jsruntime_common_set") {
           rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an")
     }
     defines = [ "STUB_AN_FILE=\"${stub_an_file_path}\"" ]
-    target_builtins_dts_path =
-        "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
-    defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
     if (current_cpu == "arm64") {
       defines += [ "ENABLE_POSTFORK_FORCEEXPAND" ]

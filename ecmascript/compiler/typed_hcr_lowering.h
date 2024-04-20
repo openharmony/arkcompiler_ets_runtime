@@ -104,7 +104,6 @@ public:
                      CompilationEnv *env,
                      RPOVisitor* visitor,
                      CompilationConfig* cmpCfg,
-                     TSManager* tsManager,
                      Chunk* chunk,
                      bool enableLoweringBuiltin)
         : PassVisitor(circuit, chunk, visitor),
@@ -113,7 +112,6 @@ public:
           acc_(circuit),
           builder_(circuit, cmpCfg),
           dependEntry_(circuit->GetDependRoot()),
-          tsManager_(tsManager),
           enableLoweringBuiltin_(enableLoweringBuiltin)
     {
         if (cmpCfg != nullptr) {
@@ -276,7 +274,6 @@ private:
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_;
-    [[maybe_unused]] TSManager *tsManager_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     bool typedOpProfiling_ {false};
 };

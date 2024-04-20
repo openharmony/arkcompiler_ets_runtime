@@ -602,20 +602,6 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
                 return GetString("MachineCode");
             case JSType::CLASS_INFO_EXTRACTOR:
                 return GetString("ClassInfoExtractor");
-            case JSType::TS_OBJECT_TYPE:
-                return GetString("TSObjectType");
-            case JSType::TS_INTERFACE_TYPE:
-                return GetString("TSInterfaceType");
-            case JSType::TS_CLASS_TYPE:
-                return GetString("TSClassType");
-            case JSType::TS_UNION_TYPE:
-                return GetString("TSUnionType");
-            case JSType::TS_CLASS_INSTANCE_TYPE:
-                return GetString("TSClassInstanceType");
-            case JSType::TS_FUNCTION_TYPE:
-                return GetString("TSFunctionType");
-            case JSType::TS_ARRAY_TYPE:
-                return GetString("TSArrayType");
             default:
                 break;
         }

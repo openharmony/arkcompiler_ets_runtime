@@ -85,15 +85,6 @@ class ObjectFactory;
     V(JSTaggedValue, ResolvedIndexBindingClass, RESOLVED_INDEX_BINDING_CLASS_INDEX, ecma_roots_class)                 \
     V(JSTaggedValue, MachineCodeClass, MACHINE_CODE_CLASS_INDEX, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassInfoExtractorHClass, CLASS_INFO_EXTRACTOR_HCLASS_INDEX, ecma_roots_class)                   \
-    V(JSTaggedValue, TSObjectTypeClass, TS_OBJECT_TYPE_CLASS_INDEX, ecma_roots_class)                                 \
-    V(JSTaggedValue, TSClassTypeClass, TS_CLASS_TYPE_CLASS_INDEX, ecma_roots_class)                                   \
-    V(JSTaggedValue, TSUnionTypeClass, TS_UNION_TYPE_CLASS_INDEX, ecma_roots_class)                                   \
-    V(JSTaggedValue, TSInterfaceTypeClass, TS_INTERFACE_TYPE_CLASS_INDEX, ecma_roots_class)                           \
-    V(JSTaggedValue, TSClassInstanceTypeClass, TS_CLASS_INSTANCE_TYPE_CLASS_INDEX, ecma_roots_class)                  \
-    V(JSTaggedValue, TSFunctionTypeClass, TS_FUNCTION_TYPE_CLASS_INDEX, ecma_roots_class)                             \
-    V(JSTaggedValue, TSArrayTypeClass, TS_ARRAY_TYPE_CLASS_INDEX, ecma_roots_class)                                   \
-    V(JSTaggedValue, TSIteratorInstanceTypeClass, TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX, ecma_roots_class)            \
-    V(JSTaggedValue, TSNamespaceTypeClass, TS_NAMESPACE_TYPE_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, AOTLiteralInfoClass, AOT_LITERAL_INFO_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, MethodClass, METHOD_CLASS_INDEX, ecma_roots_class)                                               \

@@ -238,7 +238,7 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
 
     es2abc_path = Constants.ES2ABC_PATH
     # tranmit abc
-    cmd = [es2abc_path, "--type-extractor", "--module", "--merge-abc", "--extension=js", js_file_path]
+    cmd = [es2abc_path, "--module", "--merge-abc", "--extension=js", js_file_path]
 
     logger.info("run cmd: %s", cmd)
     ret = subprocess.run(cmd)

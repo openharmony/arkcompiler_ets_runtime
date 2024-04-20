@@ -89,7 +89,7 @@ def get_es2abc_cmd(filepath):
     abc_file_path = ("%s.abc" % (os.path.splitext(filepath)[0]))
     abc_file_path_temp = abc_file_path
     cmd = [args.es2abc + 'es2abc']
-    cmd.extend(['--module', '--merge-abc', '--type-extractor', '--extension=ts', '--output', abc_file_path, filepath])
+    cmd.extend(['--module', '--merge-abc', '--extension=ts', '--output', abc_file_path, filepath])
     return cmd, abc_file_path_temp
 
 

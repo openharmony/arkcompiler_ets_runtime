@@ -23,6 +23,7 @@
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
@@ -83,14 +84,6 @@ bool EcmaContext::Destroy(EcmaContext *context)
     return false;
 }
 
-void EcmaContext::SetTSManager(TSManager *set)
-{
-    if (tsManager_ != nullptr) {
-        delete tsManager_;
-    }
-    tsManager_ = set;
-}
-
 bool EcmaContext::Initialize()
 {
     LOG_ECMA(DEBUG) << "EcmaContext::Initialize";
@@ -125,7 +118,6 @@ bool EcmaContext::Initialize()
     SetupStringToListResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
-    tsManager_ = new TSManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
@@ -233,10 +225,6 @@ EcmaContext::~EcmaContext()
     if (moduleManager_ != nullptr) {
         delete moduleManager_;
         moduleManager_ = nullptr;
-    }
-    if (tsManager_ != nullptr) {
-        delete tsManager_;
-        tsManager_ = nullptr;
     }
     if (ptManager_ != nullptr) {
         delete ptManager_;
@@ -902,9 +890,6 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 
     if (moduleManager_) {
         moduleManager_->Iterate(v);
-    }
-    if (tsManager_) {
-        tsManager_->Iterate(v);
     }
     if (ptManager_) {
         ptManager_->Iterate(v);

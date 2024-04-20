@@ -17,6 +17,7 @@
 #define ECMASCRIPT_LEXICALENV_H
 
 #include "ecmascript/js_object.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 class LexicalEnv : public TaggedArray {

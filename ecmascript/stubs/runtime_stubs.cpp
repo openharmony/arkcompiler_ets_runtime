@@ -74,10 +74,8 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/stubs/runtime_stubs.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_node.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/builtins/builtins_object.h"
 #include "libpandafile/bytecode_instruction-inl.h"
@@ -541,9 +539,6 @@ DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
 
     JSHClass::AddPropertyToNewHClass(thread, oldHClassHandle, newHClassHandle, keyHandle, attrValue);
 
-    if (oldHClassHandle->HasTSSubtyping()) {
-        SubtypingOperator::TryMaintainTSSubtyping(thread, oldHClassHandle, newHClassHandle, keyHandle);
-    }
     return JSTaggedValue::Hole().GetRawData();
 }
 
