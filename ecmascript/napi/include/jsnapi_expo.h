@@ -1404,6 +1404,9 @@ public:
 
     static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
 
+    // Napi helper function
+    static bool KeyIsNumber(const char* utf8);
+
 private:
     static int vmCount_;
     static bool initialize_;

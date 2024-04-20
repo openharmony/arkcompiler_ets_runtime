@@ -1740,6 +1740,23 @@ bool ObjectRef::Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value)
     if (!obj->IsHeapObject()) {
         return JSTaggedValue::SetProperty(thread, obj, keyValue, JSHandle<JSTaggedValue>(thread, valueValue));
     }
+    JSTaggedValue res = ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(thread, obj.GetTaggedValue(),
+                                                                                    keyValue.GetTaggedValue(),
+                                                                                    valueValue);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    if (!res.IsHole()) {
+        return !res.IsException();
+    }
+    if (!JSNApi::KeyIsNumber(utf8)) {
+        res = ObjectFastOperator::SetPropertyByName(thread, obj.GetTaggedValue(), keyValue.GetTaggedValue(),
+                                                    valueValue);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        if (!res.IsHole()) {
+            return !res.IsException();
+        }
+        return JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(thread, obj.GetTaggedValue()), keyValue,
+                                          JSHandle<JSTaggedValue>(thread, valueValue), true);
+    }
     return ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(),
                                                       keyValue.GetTaggedValue(),
                                                       valueValue);
@@ -3686,6 +3703,19 @@ void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb
     vm->SetDeviceDisconnectCallback(cb);
 }
 
+bool JSNApi::KeyIsNumber(const char* utf8)
+{
+    const char *ptr = utf8;
+    for (char c = *ptr; c; c = *++ptr) {
+        if (c >= '0' && c <= '9') {
+            continue;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool JSNApi::IsAotCrash()
 {
     std::string realOutPath;
@@ -4213,10 +4243,27 @@ Local<JSValueRef> JSNApi::NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativ
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(ret.GetValue()));
     }
-    JSTaggedValue ret = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(),
-                                                                   keyValue.GetTaggedValue());
+
+    // FastPath - Try find key entry in cache directly.
+    JSTaggedValue res = ObjectFastOperator::TryGetPropertyByNameThroughCacheAtLocal(thread, obj.GetTaggedValue(),
+                                                                                    keyValue.GetTaggedValue());
+    if (!res.IsHole()) {
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
+    }
+    if (!KeyIsNumber(utf8Key)) {
+        res = ObjectFastOperator::GetPropertyByName(thread, obj.GetTaggedValue(), keyValue.GetTaggedValue());
+        if (res.IsHole()) {
+            res = JSTaggedValue::GetProperty(thread, obj, keyValue).GetValue().GetTaggedValue();
+            RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+            return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
+        }
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
+    }
+    res = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(), keyValue.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
-    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, ret)));
+    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
 }
 
 Local<JSValueRef> JSNApi::CreateLocal(const EcmaVM *vm, panda::JSValueRef src)
