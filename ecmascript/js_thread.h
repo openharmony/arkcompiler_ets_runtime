@@ -114,9 +114,7 @@ public:
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
-    using VMNeedTerminationBit = VMHasSuspendedBit::NextFlag;
-    using VMHasTerminatedBit = VMNeedTerminationBit::NextFlag;
-    using InstallMachineCodeBit = VMHasTerminatedBit::NextFlag;
+    using InstallMachineCodeBit = VMHasSuspendedBit::NextFlag;
     using PGOStatusBits = BitField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_START, BOOL_BITFIELD_NUM>;
     using BCStubStatusBits = PGOStatusBits::NextField<BCStubStatus, BCSTUBSTATUS_BITFIELD_NUM>;
     using ThreadId = uint32_t;
@@ -436,7 +434,7 @@ public:
     {
         PGOProfilerStatus status =
             enable ? PGOProfilerStatus::PGO_PROFILER_ENABLE : PGOProfilerStatus::PGO_PROFILER_DISABLE;
-        PGOStatusBits::Set(status, &glueData_.interruptVector_);
+        SetInterruptValue<PGOStatusBits>(status);
     }
 
     bool IsPGOProfilerEnable() const
@@ -447,7 +445,7 @@ public:
 
     void SetBCStubStatus(BCStubStatus status)
     {
-        BCStubStatusBits::Set(status, &glueData_.interruptVector_);
+        SetInterruptValue<BCStubStatusBits>(status);
     }
 
     BCStubStatus GetBCStubStatus() const
@@ -570,119 +568,65 @@ public:
 
     void SetCheckSafePointStatus()
     {
-        LockHolder lock(interruptMutex_);
         ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
-        CheckSafePointBit::Set(true, &glueData_.interruptVector_);
+        SetInterruptValue<CheckSafePointBit>(true);
     }
 
     void ResetCheckSafePointStatus()
     {
-        LockHolder lock(interruptMutex_);
-        ResetCheckSafePointStatusWithoutLock();
-    }
-
-    inline void ResetCheckSafePointStatusWithoutLock()
-    {
-        // The interruptMutex_ should be locked before calling this function.
         ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
-        CheckSafePointBit::Set(false, &glueData_.interruptVector_);
+        SetInterruptValue<CheckSafePointBit>(false);
     }
 
     void SetVMNeedSuspension(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        VMNeedSuspensionBit::Set(flag, &glueData_.interruptVector_);
+        SetInterruptValue<VMNeedSuspensionBit>(flag);
     }
 
     bool VMNeedSuspension()
     {
-        LockHolder lock(interruptMutex_);
-        return VMNeedSuspensionWithoutLock();
-    }
-
-    inline bool VMNeedSuspensionWithoutLock()
-    {
-        // The interruptMutex_ should be locked before calling this function.
         return VMNeedSuspensionBit::Decode(glueData_.interruptVector_);
     }
 
     void SetVMSuspended(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        VMHasSuspendedBit::Set(flag, &glueData_.interruptVector_);
+        SetInterruptValue<VMHasSuspendedBit>(flag);
     }
 
     bool IsVMSuspended()
     {
-        LockHolder lock(interruptMutex_);
         return VMHasSuspendedBit::Decode(glueData_.interruptVector_);
     }
 
     bool HasTerminationRequest() const
     {
-        LockHolder lock(interruptMutex_);
-        return HasTerminationRequestWithoutLock();
-    }
-
-    inline bool HasTerminationRequestWithoutLock() const
-    {
-        // The interruptMutex_ should be locked before calling this function.
-        return VMNeedTerminationBit::Decode(glueData_.interruptVector_);
+        return needTermination_;
     }
 
     void SetTerminationRequest(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        SetTerminationRequestWithoutLock(flag);
-    }
-
-    inline void SetTerminationRequestWithoutLock(bool flag)
-    {
-        // The interruptMutex_ should be locked before calling this function.
-        VMNeedTerminationBit::Set(flag, &glueData_.interruptVector_);
+        needTermination_ = flag;
     }
 
     void SetVMTerminated(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        SetVMTerminatedWithoutLock(flag);
-    }
-
-    inline void SetVMTerminatedWithoutLock(bool flag)
-    {
-        // The interruptMutex_ should be locked before calling this function.
-        VMHasTerminatedBit::Set(flag, &glueData_.interruptVector_);
+        hasTerminated_ = flag;
     }
 
     bool HasTerminated() const
     {
-        LockHolder lock(interruptMutex_);
-        return VMHasTerminatedBit::Decode(glueData_.interruptVector_);
+        return hasTerminated_;
     }
 
     void TerminateExecution();
 
     void SetInstallMachineCode(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        SetInstallMachineCodeWithoutLock(flag);
-    }
-
-    inline void SetInstallMachineCodeWithoutLock(bool flag)
-    {
-        // The interruptMutex_ should be locked before calling this function.
-        InstallMachineCodeBit::Set(flag, &glueData_.interruptVector_);
+        SetInterruptValue<InstallMachineCodeBit>(flag);
     }
 
     bool HasInstallMachineCode() const
     {
-        LockHolder lock(interruptMutex_);
-        return HasInstallMachineCodeWithoutLock();
-    }
-
-    inline bool HasInstallMachineCodeWithoutLock() const
-    {
-        // The interruptMutex_ should be locked before calling this function.
         return InstallMachineCodeBit::Decode(glueData_.interruptVector_);
     }
 
@@ -817,6 +761,22 @@ public:
     void ResetDebugModeState()
     {
         glueData_.isDebugMode_ = false;
+    }
+
+    template<typename T, typename V>
+    void SetInterruptValue(V value)
+    {
+        volatile auto interruptValue =
+            reinterpret_cast<volatile std::atomic<uint64_t> *>(&glueData_.interruptVector_);
+        uint64_t oldValue = interruptValue->load(std::memory_order_relaxed);
+        uint64_t oldValueBeforeCAS;
+        do {
+            auto newValue = oldValue;
+            T::Set(value, &newValue);
+            oldValueBeforeCAS = oldValue;
+            std::atomic_compare_exchange_strong_explicit(interruptValue, &oldValue, newValue,
+                std::memory_order_release, std::memory_order_relaxed);
+        } while (oldValue != oldValueBeforeCAS);
     }
 
     void InvokeWeakNodeFreeGlobalCallBack();
@@ -1361,7 +1321,6 @@ private:
 
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};
-    mutable Mutex interruptMutex_;
 
     Mutex suspendLock_;
     int32_t suspendCount_ {0};
@@ -1373,6 +1332,9 @@ private:
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
 #endif
+
+    std::atomic<bool> needTermination_ {false};
+    std::atomic<bool> hasTerminated_ {false};
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;
