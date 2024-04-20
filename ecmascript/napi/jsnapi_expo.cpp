@@ -2417,6 +2417,7 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     EscapeLocalScope scope(vm);
     ObjectFactory *factory = vm->GetFactory();
 
+    bool hasParent = !parent->IsNull();
     JSNapiSendable sendable(thread, infos, name);
     JSHandle<JSHClass> prototypeHClass = JSHClass::CreateSPrototypeHClass(thread, sendable.GetNonStaticDescs());
     JSHandle<JSObject> prototype = factory->NewSharedOldSpaceJSObject(prototypeHClass);
@@ -2429,23 +2430,28 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     JSObject::SetSProperties(thread, JSHandle<JSObject>::Cast(constructor), constructorHClass,
                              sendable.GetStaticDescs());
 
-    if (!parent->IsNull()) {
+    if (hasParent) {
         auto parentPrototype = parent->GetFunctionPrototype(vm);
         prototypeHClass->SetPrototype(thread, JSNApiHelper::ToJSHandle(parentPrototype));
         constructorHClass->SetPrototype(thread, JSNApiHelper::ToJSHandle(parent));
     }
-    prototype->GetJSHClass()->SetExtensible(false);
+    prototypeHClass->SetExtensible(false);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);
     constructor->SetLexicalEnv(thread, constructor);
     constructor->SetCallNapi(callNapi);
     constructor->SetSFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingSize);
 
-    JSHandle<JSHClass> iHClass = JSHClass::CreateSHClass(thread, sendable.GetInstanceDescs());
+    JSHClass *parentIHClass{nullptr};
+    if (hasParent) {
+        JSHandle<JSFunction> parentHandle(JSNApiHelper::ToJSHandle(parent));
+        parentIHClass = reinterpret_cast<JSHClass *>(parentHandle->GetProtoOrHClass().GetTaggedObject());
+    }
+    JSHandle<JSHClass> iHClass = JSHClass::CreateSHClass(thread, sendable.GetInstanceDescs(), parentIHClass);
     iHClass->SetPrototype(thread, JSHandle<JSTaggedValue>(prototype));
     iHClass->SetExtensible(false);
     constructor->SetProtoOrHClass(thread, iHClass);
-    constructor->GetJSHClass()->SetExtensible(false);
+    constructorHClass->SetExtensible(false);
 
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(constructor));
     return scope.Escape(result);

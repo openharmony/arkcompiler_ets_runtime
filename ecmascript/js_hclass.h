@@ -1966,13 +1966,20 @@ public:
 
     static JSHandle<JSHClass> CreateSHClass(JSThread *thread,
                                             const std::vector<PropertyDescriptor> &descs,
+                                            const JSHClass *parentHClass = nullptr,
                                             bool isFunction = false);
     static JSHandle<JSHClass> CreateSConstructorHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
     static JSHandle<JSHClass> CreateSPrototypeHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
 
 private:
-    static JSHandle<LayoutInfo> CreateSInlinedLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
-    static JSHandle<NameDictionary> CreateSDictLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
+    static void CreateSInlinedLayout(JSThread *thread,
+                                     const std::vector<PropertyDescriptor> &descs,
+                                     const JSHandle<JSHClass> &hclass,
+                                     const JSHClass *parentHClass = nullptr);
+    static void CreateSDictLayout(JSThread *thread,
+                                  const std::vector<PropertyDescriptor> &descs,
+                                  const JSHandle<JSHClass> &hclass,
+                                  const JSHClass *parentHClass = nullptr);
     static inline void AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                       const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                       PropertyAttributes attr);
