@@ -309,7 +309,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_NativePointerRef)
     GTEST_LOG_(INFO) << "sample_NativePointer adress: " << nativePointerTestClass;
     Local<NativePointerRef> nativePoint = NativePointerRef::New(
         vm_, nativePointerTestClass,
-        [](void *value, void *hint) {
+        [](void *env, void *value, void *hint) {
             GTEST_LOG_(INFO) << "NativePointerCb value : " << value;
             GTEST_LOG_(INFO) << "NativePointerCb hint  : " << hint;
             NativePointerTestClass *ptr = static_cast<NativePointerTestClass *>(value);
@@ -1085,7 +1085,7 @@ Local<FunctionRef> Greeter::NewClassFunction(EcmaVM *vm)
             thisRef->Set(vm, StringRef::NewFromUtf8(vm, "greeting"), greet);
             return thisRef;
         },
-        [](void *nativePointer, void *data) {
+        [](void *env, void *nativePointer, void *data) {
             GTEST_LOG_(INFO) << "NewClassFunction, nativePointer is " << nativePointer;
             Tag *t = static_cast<Tag *>(data);
             delete t;
@@ -2148,7 +2148,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_ArrayBufferWithBuffer_New_Detach)
     const int32_t length = 5; // arraybuffer length = 5
     Data *data = new Data();
     data->length = length;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         delete currentData;
@@ -2183,7 +2183,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_BufferWithBuffer_New_GetBuffer)
     const int32_t length = 5; // buffer length = 5
     Data *data = new Data();
     data->length = length;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         delete currentData;

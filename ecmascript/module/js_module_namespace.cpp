@@ -329,7 +329,7 @@ bool ModuleNamespace::ValidateKeysAvailable(JSThread *thread, const JSHandle<Tag
 }
 
 void ModuleNamespace::SetModuleDeregisterProcession(JSThread *thread, const JSHandle<ModuleNamespace> &nameSpace,
-    const DeleteEntryPoint &callback)
+    const NativePointerCallback &callback)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 

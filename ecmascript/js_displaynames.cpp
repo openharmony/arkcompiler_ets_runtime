@@ -53,7 +53,7 @@ icu::LocaleDisplayNames *JSDisplayNames::GetIcuLocaleDisplayNames() const
     return reinterpret_cast<icu::LocaleDisplayNames *>(result);
 }
 
-void JSDisplayNames::FreeIcuLocaleDisplayNames(void *pointer, [[maybe_unused]] void* hint)
+void JSDisplayNames::FreeIcuLocaleDisplayNames([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void* hint)
 {
     if (pointer == nullptr) {
         return;
@@ -64,7 +64,7 @@ void JSDisplayNames::FreeIcuLocaleDisplayNames(void *pointer, [[maybe_unused]] v
 
 void JSDisplayNames::SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<JSDisplayNames> &displayNames,
                                               icu::LocaleDisplayNames* iculocaledisplaynames,
-                                              const DeleteEntryPoint &callback)
+                                              const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -73,7 +73,7 @@ void JSDisplayNames::SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<J
     JSTaggedValue data = displayNames->GetIcuLDN();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(iculocaledisplaynames);
+        native->ResetExternalPointer(thread, iculocaledisplaynames);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(iculocaledisplaynames, callback);

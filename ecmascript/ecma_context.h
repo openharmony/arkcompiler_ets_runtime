@@ -91,7 +91,6 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              PromiseRejectionEvent operation,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
-using IcuDeleteEntry = void(*)(void *pointer, void *data);
 class EcmaContext {
 public:
     static EcmaContext *CreateAndInitialize(JSThread *thread);
@@ -304,7 +303,7 @@ public:
 
     // For icu objects cache
     void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
-                                IcuDeleteEntry deleteEntry = nullptr)
+                                NativePointerCallback deleteEntry = nullptr)
     {
         EcmaContext::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
         icuObjCache_[static_cast<int>(type)] = icuFormatter;
@@ -319,13 +318,13 @@ public:
         return nullptr;
     }
 
-    void ClearIcuCache()
+    void ClearIcuCache(JSThread *thread)
     {
         for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); i++) {
             auto &icuFormatter = icuObjCache_[i];
-            IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
+            NativePointerCallback deleteEntry = icuFormatter.deleteEntry;
             if (deleteEntry != nullptr) {
-                deleteEntry(icuFormatter.icuObj, vm_);
+                deleteEntry(thread->GetEnv(), icuFormatter.icuObj, vm_);
             }
             icuFormatter = EcmaContext::IcuFormatter{};
         }
@@ -584,10 +583,10 @@ private:
     struct IcuFormatter {
         std::string locale;
         void *icuObj {nullptr};
-        IcuDeleteEntry deleteEntry {nullptr};
+        NativePointerCallback deleteEntry {nullptr};
 
         IcuFormatter() = default;
-        IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
+        IcuFormatter(const std::string &locale, void *icuObj, NativePointerCallback deleteEntry = nullptr)
             : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
     IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];

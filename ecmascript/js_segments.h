@@ -61,7 +61,7 @@ public:
         return reinterpret_cast<icu::BreakIterator *>(result);
     }
 
-    static void FreeIcuBreakIterator(void *pointer, [[maybe_unused]] void* hint)
+    static void FreeIcuBreakIterator([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void* hint)
     {
         if (pointer == nullptr) {
             return;
@@ -71,9 +71,9 @@ public:
     }
 
     static void SetIcuBreakIterator(JSThread *thread, const JSHandle<JSSegments> &segments,
-                                    icu::BreakIterator* icuBreakIterator, const DeleteEntryPoint &callback);
+                                    icu::BreakIterator* icuBreakIterator, const NativePointerCallback &callback);
 
-    static void FreeUString(void *pointer, [[maybe_unused]] void* hint)
+    static void FreeUString([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void* hint)
     {
         if (pointer == nullptr) {
             return;
@@ -83,7 +83,7 @@ public:
     }
 
     static void SetUString(JSThread *thread, const JSHandle<JSSegments> &segments,
-                           icu::UnicodeString* icuUnicodeString, const DeleteEntryPoint &callback);
+                           icu::UnicodeString* icuUnicodeString, const NativePointerCallback &callback);
 
     icu::UnicodeString *GetUString() const
     {

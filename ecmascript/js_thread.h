@@ -1267,6 +1267,16 @@ public:
     {
         return machineCodeLowMemory_;
     }
+
+    void *GetEnv() const
+    {
+        return env_;
+    }
+
+    void SetEnv(void *env)
+    {
+        env_ = env;
+    }
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -1315,6 +1325,7 @@ private:
     GlueData glueData_;
     std::atomic<ThreadId> id_;
     EcmaVM *vm_ {nullptr};
+    void *env_ {nullptr};
     Area *regExpCache_ {nullptr};
 
     // MM: handles, global-handles, and aot-stubs.

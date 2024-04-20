@@ -259,7 +259,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
         }
-        pointer->ResetExternalPointer(newData);
+        pointer->ResetExternalPointer(thread_, newData);
         vm_->GetNativeAreaAllocator()->ModifyNativeSizeStats(pointer->GetBindingSize(), size,
                                                              NativeFlag::ARRAY_BUFFER);
         return;
@@ -294,7 +294,7 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
         }
-        pointer->ResetExternalPointer(newData);
+        pointer->ResetExternalPointer(thread_, newData);
         nativeAreaAllocator->ModifyNativeSizeStats(pointer->GetBindingSize(), size,
                                                    NativeFlag::ARRAY_BUFFER);
         return;
@@ -368,8 +368,8 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
     return arrayBuffer;
 }
 
-JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(void *buffer, int32_t length, const DeleteEntryPoint &deleter,
-                                                        void *data, bool share)
+JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(void *buffer, int32_t length,
+                                                        const NativePointerCallback &deleter, void *data, bool share)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
@@ -451,7 +451,7 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
     JSTaggedValue data = regexp->GetByteCodeBuffer();
     if (!data.IsUndefined()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(newBuffer);
+        native->ResetExternalPointer(thread_, newBuffer);
         return;
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newBuffer, NativeAreaAllocator::FreeBufferFunc,

@@ -61,10 +61,10 @@ public:
 
     icu::ListFormatter *GetIcuListFormatter() const;
 
-    static void FreeIcuListFormatter(void *pointer, [[maybe_unused]] void* hint);
+    static void FreeIcuListFormatter(void *env, void *pointer, [[maybe_unused]] void* hint);
 
     static void SetIcuListFormatter(JSThread *thread, const JSHandle<JSListFormat> obj,
-                                    icu::ListFormatter *icuListFormatter, const DeleteEntryPoint &callback);
+                                    icu::ListFormatter *icuListFormatter, const NativePointerCallback &callback);
 
     static JSHandle<TaggedArray> GetAvailableLocales(JSThread *thread);
 

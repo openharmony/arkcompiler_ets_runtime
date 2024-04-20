@@ -526,7 +526,7 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy();
+                object->Destroy(thread_);
                 iter = nativePointerList_.erase(iter);
             } else {
                 ++iter;
@@ -581,7 +581,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy();
+                object->Destroy(thread_);
                 iter = nativePointerList_.erase(iter);
                 continue;
             }
@@ -636,14 +636,14 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
     if (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-        object->Destroy();
+        object->Destroy(thread_);
         nativePointerList_.erase(iter);
     }
     auto newIter = std::find(concurrentNativePointerList_.begin(), concurrentNativePointerList_.end(), pointer);
     if (newIter != concurrentNativePointerList_.end()) {
         JSNativePointer *object = *newIter;
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-        object->Destroy();
+        object->Destroy(thread_);
         concurrentNativePointerList_.erase(newIter);
     }
 }
@@ -670,10 +670,10 @@ bool EcmaVM::ContainInDeregisterModuleList(CString module)
 void EcmaVM::ClearBufferData()
 {
     for (auto iter : nativePointerList_) {
-        iter->Destroy();
+        iter->Destroy(thread_);
     }
     for (auto iter : concurrentNativePointerList_) {
-        iter->Destroy();
+        iter->Destroy(thread_);
     }
     nativePointerList_.clear();
     thread_->GetCurrentEcmaContext()->ClearBufferData();

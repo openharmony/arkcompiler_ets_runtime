@@ -87,7 +87,6 @@ struct HmsMap {
     uint32_t sinceVersion;
 };
 
-using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
 using WeakFinalizeTaskCallback = std::function<void()>;
 using EcmaVM = ecmascript::EcmaVM;
@@ -620,7 +619,7 @@ private:
     bool hasConfigurable_ = false;
 };
 
-using NativePointerCallback = void (*)(void* value, void* hint);
+using NativePointerCallback = void (*)(void *env, void* data, void* hint);
 class ECMA_PUBLIC_API NativePointerRef : public JSValueRef {
 public:
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize = 0);
@@ -714,27 +713,39 @@ public:
         SendablePropertiesInfo staticPropertiesInfo;
         SendablePropertiesInfo nonStaticPropertiesInfo;
     };
-    static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
+    static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, NativePointerCallback deleter = nullptr,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
-    static Local<FunctionRef> NewConcurrent(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
+    static Local<FunctionRef> NewConcurrent(EcmaVM *vm,
+                                            FunctionCallback nativeFunc,
+                                            NativePointerCallback deleter = nullptr,
+                                            void *data = nullptr,
+                                            bool callNapi = false,
+                                            size_t nativeBindingsize = 0);
+    static Local<FunctionRef> New(EcmaVM *vm, InternalFunctionCallback nativeFunc, NativePointerCallback deleter,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
-    static Local<FunctionRef> New(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
-        void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
-    static Local<FunctionRef> NewConcurrent(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
-        void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewConcurrent(EcmaVM *vm,
+                                            InternalFunctionCallback nativeFunc,
+                                            NativePointerCallback deleter,
+                                            void *data = nullptr,
+                                            bool callNapi = false,
+                                            size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewSendable(EcmaVM *vm,
                                           InternalFunctionCallback nativeFunc,
-                                          Deleter deleter,
+                                          NativePointerCallback deleter,
                                           void *data = nullptr,
                                           bool callNapi = false,
                                           size_t nativeBindingsize = 0);
-    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, NativePointerCallback deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
-    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
-        void *data, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm,
+                                               InternalFunctionCallback nativeFunc,
+                                               NativePointerCallback deleter,
+                                               void *data,
+                                               bool callNapi = false,
+                                               size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewSendableClassFunction(const EcmaVM *vm,
                                                        InternalFunctionCallback nativeFunc,
-                                                       Deleter deleter,
+                                                       NativePointerCallback deleter,
                                                        void *data,
                                                        Local<StringRef> name,
                                                        SendablePropertiesInfos &infos,
@@ -754,7 +765,7 @@ public:
     Local<StringRef> GetName(const EcmaVM *vm);
     Local<StringRef> GetSourceCode(const EcmaVM *vm, int lineNumber);
     bool IsNative(const EcmaVM *vm);
-    void SetData(const EcmaVM *vm, void *data, Deleter deleter = nullptr, bool callNapi = false);
+    void SetData(const EcmaVM *vm, void *data, NativePointerCallback deleter = nullptr, bool callNapi = false);
     void* GetData(const EcmaVM *vm);
 };
 
@@ -908,8 +919,8 @@ public:
 class ECMA_PUBLIC_API ArrayBufferRef : public ObjectRef {
 public:
     static Local<ArrayBufferRef> New(const EcmaVM *vm, int32_t length);
-    static Local<ArrayBufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter,
-                                     void *data);
+    static Local<ArrayBufferRef> New(const EcmaVM *vm, void *buffer, int32_t length,
+                                     const NativePointerCallback &deleter, void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
     void *GetBuffer();
@@ -1150,7 +1161,7 @@ public:
 class ECMA_PUBLIC_API BufferRef : public ObjectRef {
 public:
     static Local<BufferRef> New(const EcmaVM *vm, int32_t length);
-    static Local<BufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter,
+    static Local<BufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const NativePointerCallback &deleter,
                                 void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
