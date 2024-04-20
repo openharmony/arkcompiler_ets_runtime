@@ -113,6 +113,7 @@ print(iter1.next().value); //: undefined
 
 // Check using after deleting
 let iter2 = myMap.keys();
+//aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapKeys
 myMap.delete(NaN);
 myMap.set("xyz", -100);
 for (let key of iter2) {

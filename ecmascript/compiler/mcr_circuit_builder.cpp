@@ -145,6 +145,19 @@ GateRef CircuitBuilder::EcmaStringCheck(GateRef gate)
     return ret;
 }
 
+GateRef CircuitBuilder::EcmaMapCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->EcmaMapCheck(),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::FlattenTreeStringCheck(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -890,6 +903,18 @@ GateRef CircuitBuilder::LoadStringLength(GateRef string)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->LoadStringLength(), MachineType::I64,
+                                     { currentControl, currentDepend, string }, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::LoadMapSize(GateRef string)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->LoadMapSize(), MachineType::I64,
                                      { currentControl, currentDepend, string }, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -1774,6 +1799,32 @@ GateRef CircuitBuilder::NumberIsSafeInteger(GateRef gate)
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret =
         GetCircuit()->NewGate(circuit_->NumberIsSafeInteger(), MachineType::I64,
+            { currentControl, currentDepend, gate }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::BuildBigIntAsIntN(const GateMetaData* op, std::vector<GateRef> &&args)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(op, MachineType::I64,
+            ConcatParams({std::vector{currentControl, currentDepend}, args}), GateType::TaggedValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::BuildTypedArrayIterator(GateRef gate, const GateMetaData* op)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(op, MachineType::I64,
             { currentControl, currentDepend, gate }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

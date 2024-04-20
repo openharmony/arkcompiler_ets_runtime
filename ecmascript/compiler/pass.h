@@ -551,8 +551,8 @@ public:
         }
 
         if (passOptions->EnableInlineNative()) {
-            NativeInlineLowering nativeInline(data->GetCircuit(), data->GetPassContext(), enableLog,
-                                              data->GetMethodName());
+            NativeInlineLowering nativeInline(data->GetCircuit(), data->GetCompilerConfig(), data->GetPassContext(),
+                                              enableLog, data->GetMethodName());
             nativeInline.RunNativeInlineLowering();
         }
         return true;

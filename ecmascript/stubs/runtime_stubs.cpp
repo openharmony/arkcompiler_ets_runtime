@@ -16,6 +16,8 @@
 #include <cmath>
 #include <cfenv>
 #include <sstream>
+#include <sys/time.h>
+
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
@@ -53,6 +55,7 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_map_iterator.h"
@@ -2520,6 +2523,22 @@ DEF_RUNTIME_STUBS(LdBigInt)
     return RuntimeLdBigInt(thread, numberBigInt).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CallBigIntAsIntN)
+{
+    RUNTIME_STUBS_HEADER(CallBigIntAsIntN);
+    JSTaggedValue bits = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue bigint = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeCallBigIntAsIntN(thread, bits, bigint).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallBigIntAsUintN)
+{
+    RUNTIME_STUBS_HEADER(CallBigIntAsUintN);
+    JSTaggedValue bits = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue bigint = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeCallBigIntAsUintN(thread, bits, bigint).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ToNumeric)
 {
     RUNTIME_STUBS_HEADER(ToNumeric);
@@ -3060,6 +3079,17 @@ double RuntimeStubs::FloatPow(double base, double exp)
 bool RuntimeStubs::NumberIsFinite(double x)
 {
     return std::isfinite(x);
+}
+
+double RuntimeStubs::CallDateNow()
+{
+    // time from now is in ms.
+    int64_t ans;
+    struct timeval tv {
+    };
+    gettimeofday(&tv, nullptr);
+    ans = static_cast<int64_t>(tv.tv_sec) * MS_PER_SECOND + (tv.tv_usec / MS_PER_SECOND);
+    return static_cast<double>(ans);
 }
 
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)

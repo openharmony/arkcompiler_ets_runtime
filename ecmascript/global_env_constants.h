@@ -134,6 +134,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)                     \
     V(JSTaggedValue, JSAPIAsyncIteratorFuncHClass, JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
+    V(JSTaggedValue, JSMapClass, JS_MAP_HCLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
@@ -192,11 +193,15 @@ class ObjectFactory;
     V(JSTaggedValue, MathCeil, MATH_CEIL_INDEX, ecma_roots_builtins)                                    \
     V(JSTaggedValue, MathFloor, MATH_FLOOR_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, MathImul, MATH_IMUL_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, BigIntAsIntN, BIGINT_AS_INTN_INDEX, ecma_roots_builtins)                           \
+    V(JSTaggedValue, BigIntAsUintN, BIGINT_AS_UINTN_INDEX, ecma_roots_builtins)                         \
     V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, MapGet, MAP_GET_INDEX, ecma_roots_builtins)                                        \
     V(JSTaggedValue, MapHas, MAP_HAS_INDEX, ecma_roots_builtins)                                        \
     V(JSTaggedValue, SetHas, SET_HAS_INDEX, ecma_roots_builtins)                                        \
+    V(JSTaggedValue, MapDelete, MAP_DELETE_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, SetDelete, SET_DELETE_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_builtins)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_builtins)                 \
     V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_builtins)         \
@@ -206,6 +211,9 @@ class ObjectFactory;
     V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)      \
     V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX, ecma_roots_builtins)             \
     V(JSTaggedValue, StringFromCharCode, STRING_FROM_CHAR_CODE_INDEX, ecma_roots_builtins)              \
+    V(JSTaggedValue, TypedArrayEntries, TYPED_ARRAY_ENTRIES_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, TypedArrayKeys, TYPED_ARRAY_KEYS_INDEX, ecma_roots_special)                        \
+    V(JSTaggedValue, TypedArrayValues, TYPED_ARRAY_VALUES_INDEX, ecma_roots_special)                    \
     V(JSTaggedValue, ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW_INDEX, ecma_roots_builtins)                \
     V(JSTaggedValue, DataViewGetFloat32, DATA_VIEW_GET_FLOAT32_INDEX, ecma_roots_builtins)              \
     V(JSTaggedValue, DataViewGetFloat64, DATA_VIEW_GET_FLOAT64_INDEX, ecma_roots_builtins)              \
@@ -224,6 +232,7 @@ class ObjectFactory;
     V(JSTaggedValue, DataViewSetUint16, DATA_VIEW_SET_UINT16_INDEX, ecma_roots_builtins)                \
     V(JSTaggedValue, DataViewSetUint32, DATA_VIEW_SET_UINT32_INDEX, ecma_roots_builtins)                \
     V(JSTaggedValue, DateGetTime, DATE_GET_TIME_INDEX, ecma_roots_special)                              \
+    V(JSTaggedValue, DateNow, DATE_NOW_INDEX, ecma_roots_special)                                       \
     V(JSTaggedValue, NumberIsNaN, NUMBER_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, NumberIsFinite, NUMBER_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, NumberIsInteger, NUMBER_IS_INTEGER_INDEX, ecma_roots_builtins)                     \
@@ -233,6 +242,7 @@ class ObjectFactory;
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \
     V(ConstructorString,              CONSTRUCTOR_STRING_INDEX,              "constructor")                 \
     V(PrototypeString,                PROTOTYPE_STRING_INDEX,                "prototype")                   \
+    V(SizeString,                     SIZE_STRING_INDEX,                     "size")                        \
     V(LengthString,                   LENGTH_STRING_INDEX,                   "length")                      \
     V(ValueString,                    VALUE_STRING_INDEX,                    "value")                       \
     V(SetString,                      SET_STRING_INDEX,                      "set")                         \

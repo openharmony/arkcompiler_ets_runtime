@@ -30,6 +30,7 @@
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
@@ -37,6 +38,10 @@
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/message_string.h"
 #include "macros.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
@@ -185,6 +190,12 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::ARRAY_BUFFER_IS_VIEW:
             LowerArrayBufferIsView(gate);
             break;
+        case OpCode::BIGINT_ASINTN:
+            LowerBigIntAsIntN<false>(gate);
+            break;
+        case OpCode::BIGINT_ASUINTN:
+            LowerBigIntAsIntN<true>(gate);
+            break;
         case OpCode::NUMBER_IS_FINITE:
             LowerNumberIsFinite(gate);
             break;
@@ -208,6 +219,27 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::SET_HAS:
             LowerToCommonStub(gate, CommonStubCSigns::JSSetHas);
+            break;
+        case OpCode::DATE_NOW:
+            LowerGeneralWithoutArgs(gate, RTSTUB_ID(CallDateNow));
+            break;
+        case OpCode::TYPED_ARRAY_ENTRIES:
+            LowerTypedArrayIterator(gate, CommonStubCSigns::CreateJSTypedArrayEntries,
+                                    IterationKind::KEY_AND_VALUE);
+            break;
+        case OpCode::TYPED_ARRAY_KEYS:
+            LowerTypedArrayIterator(gate, CommonStubCSigns::CreateJSTypedArrayKeys,
+                                    IterationKind::KEY);
+            break;
+        case OpCode::TYPED_ARRAY_VALUES:
+            LowerTypedArrayIterator(gate, CommonStubCSigns::CreateJSTypedArrayValues,
+                                    IterationKind::VALUE);
+            break;
+        case OpCode::MAP_DELETE:
+            LowerToCommonStub(gate, CommonStubCSigns::JSMapDelete);
+            break;
+        case OpCode::SET_DELETE:
+            LowerToCommonStub(gate, CommonStubCSigns::JSSetDelete);
             break;
         default:
             break;
@@ -255,6 +287,91 @@ void TypedNativeInlineLowering::LowerMathCeilFloorWithRuntimeCall(GateRef gate)
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
+
+GateRef TypedNativeInlineLowering::AllocateTypedArrayIterator(GateRef glue, GateRef self,
+                                                              GateRef iteratorHClass,
+                                                              IterationKind iterationKind)
+{
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    GateRef kind = builder_.Int32(static_cast<int32_t>(iterationKind));
+
+    builder_.StartAllocate();
+
+    GateRef iterator = builder_.HeapAlloc(glue, builder_.IntPtr(JSArrayIterator::SIZE),
+        GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), iterator, TaggedObject::HCLASS_OFFSET,
+        iteratorHClass, MemoryOrder::NeedBarrierAndAtomic());
+    builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::HASH_OFFSET,
+        builder_.Int64(JSTaggedValue(0).GetRawData()));
+    builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::PROPERTIES_OFFSET, emptyArray);
+    builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::ELEMENTS_OFFSET, emptyArray);
+
+    builder_.StoreConstOffset(VariableType::JS_ANY(), iterator, JSArrayIterator::ITERATED_ARRAY_OFFSET, self);
+    builder_.StoreConstOffset(VariableType::INT32(), iterator, JSArrayIterator::NEXT_INDEX_OFFSET, builder_.Int32(0));
+    builder_.StoreConstOffset(VariableType::INT32(), iterator, JSArrayIterator::BIT_FIELD_OFFSET, kind);
+
+    GateRef result = builder_.FinishAllocate(iterator);
+    builder_.SubCfgExit();
+
+    return result;
+}
+
+void TypedNativeInlineLowering::LowerTypedArrayIterator(GateRef gate, CommonStubCSigns::ID index,
+                                                        IterationKind iterationKind)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef self = acc_.GetValueIn(gate, 0);
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+
+    Label selfExistsLabel(&env);
+    Label isHeapObjectLabel(&env);
+    Label isTypedArrayLabel(&env);
+    Label selfValidLabel(&env);
+    Label selfInvalidLabel(&env);
+    Label exit(&env);
+
+    GateRef selfExists = builder_.TaggedIsNotUndefinedAndNullAndHole(self);
+    BRANCH_CIR(selfExists, &selfExistsLabel, &selfInvalidLabel);
+    builder_.Bind(&selfExistsLabel);
+
+    GateRef isHeapObject = builder_.TaggedIsHeapObject(self);
+    BRANCH_CIR(isHeapObject, &isHeapObjectLabel, &selfInvalidLabel);
+    builder_.Bind(&isHeapObjectLabel);
+
+    GateRef isTypedArray = builder_.IsTypedArray(self);
+    BRANCH_CIR(isTypedArray, &isTypedArrayLabel, &selfInvalidLabel);
+    builder_.Bind(&isTypedArrayLabel);
+
+    GateRef hasNoConstructor = builder_.BoolNot(builder_.HasConstructor(self));
+    BRANCH_CIR(hasNoConstructor, &selfValidLabel, &selfInvalidLabel);
+    builder_.Bind(&selfValidLabel);
+    {
+        GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env.Is32Bit()));
+        GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef prototype = builder_.GetGlobalEnvValue(VariableType::JS_POINTER(), glueGlobalEnv,
+                                                       GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
+
+        GateRef iteratorHClass = builder_.GetGlobalConstantValue(ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX);
+        GateRef offset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
+        builder_.Store(VariableType::JS_POINTER(), glue, iteratorHClass, offset, prototype);
+
+        result = AllocateTypedArrayIterator(glue, self, iteratorHClass, iterationKind);
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&selfInvalidLabel);
+    {
+        result = builder_.CallStub(glue, gate, index, { glue, self });
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
 GateRef TypedNativeInlineLowering::LowerGlobalDoubleIsFinite(GateRef value)
 {
     // set the sign bit to 0 by shift left then right.
@@ -991,6 +1108,85 @@ void TypedNativeInlineLowering::LowerArrayBufferIsView(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
+template <bool IS_UNSIGNED>
+void TypedNativeInlineLowering::LowerBigIntAsIntN(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label hasException(&builder_);
+    Label exit(&builder_);
+    Label returnBigInt(&builder_);
+    Label notZeroBigInt(&builder_);
+    Label commonCase(&builder_);
+#if BIGINT_CONSTRUCTOR_IMPLEMENTED // NOTE: add fastpath after BigInt constructor implementing
+    Label zeroBits(&builder_);
+    Label notZeroBits(&builder_);
+#endif // BIGINT_CONSTRUCTOR_IMPLEMENTED
+
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef bits = acc_.GetValueIn(gate, 0);
+    GateRef bigint = acc_.GetValueIn(gate, 1);
+    GateRef frameState = acc_.GetValueIn(gate, 2);
+    GateRef bitness = builder_.GetDoubleOfTDouble(bits);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+
+    // Deoptimization if bitness is negative or more than safe number
+    GateRef safeNumber = builder_.Double(SAFE_NUMBER);
+    GateRef positiveCheck = builder_.DoubleGreaterThanOrEqual(bitness, builder_.Double(0));
+    GateRef safeCheck = builder_.DoubleLessThanOrEqual(bitness, safeNumber);
+    builder_.DeoptCheck(positiveCheck, frameState, DeoptType::RANGE_ERROR);
+    builder_.DeoptCheck(safeCheck, frameState, DeoptType::RANGE_ERROR);
+    builder_.DeoptCheck(builder_.TaggedIsBigInt(bigint), frameState, DeoptType::NOT_BIG_INT);
+
+    // Return bigint(0), if bits == 0
+#if BIGINT_CONSTRUCTOR_IMPLEMENTED // NOTE: add fastpath after BigInt constructor implementing
+    BRANCH_CIR(builder_.DoubleEqual(bitness, builder_.Double(0)), &zeroBits, &notZeroBits);
+    builder_.Bind(&zeroBits);
+    {
+        result = builder_.BigIntConstructor(0);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notZeroBits);
+#endif // BIGINT_CONSTRUCTOR_IMPLEMENTED
+
+    // Return bigint, if bigint == 0
+    GateRef lengthOffset = builder_.IntPtr(BigInt::LENGTH_OFFSET);
+    GateRef length = builder_.Load(VariableType::INT32(), bigint, lengthOffset);
+    GateRef isOneBit = builder_.Int32Equal(length, builder_.Int32(1));
+
+    GateRef dataOffset = builder_.IntPtr(BigInt::DATA_OFFSET);
+    GateRef firstDigit = builder_.Load(VariableType::INT32(), bigint, dataOffset);
+    GateRef isZero = builder_.Int32Equal(firstDigit, builder_.Int32(0));
+    BRANCH_CIR(builder_.BoolAnd(isOneBit, isZero), &returnBigInt, &notZeroBigInt);
+
+    // Return bigint, if bits >= max_value
+    builder_.Bind(&notZeroBigInt);
+    GateRef maxLengthBits = builder_.Double(static_cast<double>(BigInt::kMaxLengthBits));
+    BRANCH_CIR(builder_.DoubleGreaterThanOrEqual(bitness, maxLengthBits), &returnBigInt, &commonCase);
+    builder_.Bind(&returnBigInt);
+    {
+        result = bigint;
+        builder_.Jump(&exit);
+    }
+
+    // Common case
+    builder_.Bind(&commonCase);
+    if constexpr (IS_UNSIGNED) {
+        result = builder_.CallRuntime(glue, RTSTUB_ID(CallBigIntAsUintN), Gate::InvalidGateRef,
+                                      {bits, bigint}, gate);
+    } else {
+        result = builder_.CallRuntime(glue, RTSTUB_ID(CallBigIntAsIntN), Gate::InvalidGateRef,
+                                      {bits, bigint}, gate);
+    }
+    BRANCH_CIR(builder_.HasPendingException(glue), &hasException, &exit);
+    builder_.Bind(&hasException);
+    {
+        result = builder_.ExceptionConstant();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
 void TypedNativeInlineLowering::LowerDataViewProtoFunc(GateRef gate, DataViewProtoFunc func)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1609,6 +1805,14 @@ void TypedNativeInlineLowering::LowerDateGetTime(GateRef gate)
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef dateValueOffset = builder_.IntPtr(JSDate::TIME_VALUE_OFFSET);
     GateRef result = builder_.Load(VariableType::JS_ANY(), obj, dateValueOffset);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypedNativeInlineLowering::LowerGeneralWithoutArgs(GateRef gate, RuntimeStubCSigns::ID stubId)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef result = builder_.CallNGCRuntime(glue, stubId, Gate::InvalidGateRef, {glue}, gate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

@@ -432,6 +432,8 @@ private:
     V(StringsAreEquals)                         \
     V(BigIntEquals)                             \
     V(BigIntSameValueZero)                      \
+    V(CallBigIntAsIntN)                         \
+    V(CallBigIntAsUintN)                        \
     V(Dump)                                     \
     V(DebugDump)                                \
     V(DumpWithHint)                             \
@@ -474,6 +476,7 @@ private:
     V(FloatFloor)                               \
     V(FloatPow)                                 \
     V(FloatCeil)                                \
+    V(CallDateNow)                              \
     V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
@@ -514,6 +517,11 @@ private:
     V(JSMapGet)                                 \
     V(JSMapHas)                                 \
     V(JSSetHas)                                 \
+    V(JSMapDelete)                              \
+    V(JSSetDelete)                              \
+    V(CreateJSTypedArrayEntries)                \
+    V(CreateJSTypedArrayKeys)                   \
+    V(CreateJSTypedArrayValues)                 \
     V(JSHClassFindProtoTransitions)             \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \

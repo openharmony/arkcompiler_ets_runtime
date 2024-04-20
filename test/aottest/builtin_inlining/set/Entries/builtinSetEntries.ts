@@ -114,9 +114,11 @@ print(iter1.next().value);
 
 // Check using after inserting / deleting
 let iter2 = mySet.entries();
+//aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetEntries
 mySet.delete(5);
 mySet.add(30);
 mySet.add(NaN);
+//aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetEntries
 mySet.delete("12345");
 for (let key of iter2) {
     print(key);

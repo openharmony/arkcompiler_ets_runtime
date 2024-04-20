@@ -202,6 +202,7 @@ public:
     GateRef GetElementsArray(GateRef object);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
+    GateRef IsTypedArray(GateRef array);
     GateRef GetSuperConstructor(GateRef ctor);
     GateRef Merge(const std::vector<GateRef> &inList);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -495,6 +496,7 @@ public:
     GateRef ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
     GateRef EcmaStringCheck(GateRef gate);
+    GateRef EcmaMapCheck(GateRef gate);
     GateRef FlattenTreeStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
@@ -614,6 +616,7 @@ public:
     GateRef LoadArrayLength(GateRef array);
     inline GateRef LoadFromTaggedArray(GateRef array, size_t index);
     GateRef LoadStringLength(GateRef string);
+    GateRef LoadMapSize(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
         MemoryOrder order = MemoryOrder::Default());
     GateRef LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index);
@@ -646,6 +649,7 @@ public:
     GateRef TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn);
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);
+    GateRef BuildBigIntAsIntN(const GateMetaData* op, std::vector<GateRef> &&args);
 
     // bit operation
     inline GateRef TaggedIsInt(GateRef x);
@@ -697,6 +701,7 @@ public:
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
     inline GateRef TaggedObjectIsByteArray(GateRef obj);
+    inline GateRef TaggedObjectIsMap(GateRef obj);
     inline GateRef TaggedObjectIsDataView(GateRef obj);
     inline GateRef IsSpecialHole(GateRef x);
     inline GateRef IsNotSpecialHole(GateRef x);
@@ -835,6 +840,8 @@ public:
     inline GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOpWithOverflow(GateRef x, GateRef y);
+
+    GateRef BuildTypedArrayIterator(GateRef gate, const GateMetaData* op);
 
 #define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                                        \
     inline GateRef NAME(GateRef x, GateRef y, GateType type = GateType::Empty(), const char* comment = nullptr)  \

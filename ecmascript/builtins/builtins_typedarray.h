@@ -76,7 +76,7 @@
     /* %TypedArray%.prototype.copyWithin ( target, start [ , end ] ) */                 \
     V("copyWithin",     CopyWithin,     2, TypedArrayCopyWithin)                        \
     /* %TypedArray%.prototype.entries ( ) */                                            \
-    V("entries",        Entries,        0, INVALID)                                     \
+    V("entries",        Entries,        0, TypedArrayEntries)                           \
     /* %TypedArray%.prototype.every ( callbackfn [ , thisArg ] ) */                     \
     V("every",          Every,          1, TypedArrayEvery)                             \
     /* %TypedArray%.prototype.fill ( value [ , start [ , end ] ] ) */                   \
@@ -100,7 +100,7 @@
     /* %TypedArray%.prototype.join ( separator ) */                                     \
     V("join",           Join,           1, INVALID)                                     \
     /* %TypedArray%.prototype.keys ( ) */                                               \
-    V("keys",           Keys,           0, INVALID)                                     \
+    V("keys",           Keys,           0, TypedArrayKeys)                              \
     /* %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */          \
     V("lastIndexOf",    LastIndexOf,    1, TypedArrayLastIndexOf)                       \
     /* %TypedArray%.prototype.map ( callbackfn [ , thisArg ] ) */                       \
@@ -128,7 +128,7 @@
     /* %TypedArray%.prototype.toSorted ( comparefn ) */                                 \
     V("toSorted",       ToSorted,       1, INVALID)                                     \
     /* %TypedArray%.prototype.values ( ) */                                             \
-    V("values",         Values,         0, INVALID)                                     \
+    V("values",         Values,         0, TypedArrayValues)                            \
     /* %TypedArray%.prototype.with ( index, value ) */                                  \
     V("with",           With,           2, TypedArrayWith)
 

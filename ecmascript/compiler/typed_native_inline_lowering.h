@@ -60,6 +60,8 @@ private:
     void LowerClz32Int32(GateRef gate);
     void LowerMathSqrt(GateRef gate);
     void LowerNewNumber(GateRef gate);
+    template <bool IS_UNSIGNED>
+    void LowerBigIntAsIntN(GateRef gate);
     GateRef BuildRounding(GateRef gate, GateRef value, OpCode op);
     void LowerTaggedRounding(GateRef gate);
     void LowerDoubleRounding(GateRef gate);
@@ -107,6 +109,10 @@ private:
     void LowerMathImul(GateRef gate);
     void LowerGlobalIsFinite(GateRef gate);
     void LowerGlobalIsNan(GateRef gate);
+    void LowerGeneralWithoutArgs(GateRef gate, RuntimeStubCSigns::ID stubId);
+    GateRef AllocateTypedArrayIterator(GateRef glue, GateRef self,
+                                       GateRef iteratorHClass, IterationKind iterationKind);
+    void LowerTypedArrayIterator(GateRef gate, CommonStubCSigns::ID index, IterationKind iterationKind);
 
     GateRef LowerGlobalDoubleIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsFinite(GateRef value);
