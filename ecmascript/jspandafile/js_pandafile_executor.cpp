@@ -530,4 +530,30 @@ int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread
     }
     return ROUTE_SUCCESS;
 }
+
+bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unused]] const CString &bundleName,
+    const CString &moduleName, const CString &entry)
+{
+    CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
+    bool isValid = JSPandaFileManager::GetInstance()->CheckFilePath(thread, abcFilePath);
+    if (!isValid) {
+        return false;
+    }
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entry);
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(ERROR) << "When checking if module is in abc file, loading panda file failed. Current file is " <<
+            abcFilePath;
+        return false;
+    }
+    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(),
+        abcFilePath, "", entry);
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    if (!hasRecord) {
+        LOG_ECMA(ERROR) << "When checking if module is in abc file, Cannot find module '" << entryPoint << "'";
+        return false;
+    }
+    return true;
+}
 }  // namespace panda::ecmascript
