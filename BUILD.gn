@@ -786,6 +786,7 @@ ecma_source = [
   "ecmascript/mem/stw_young_gc.cpp",
   "ecmascript/mem/space.cpp",
   "ecmascript/mem/sparse_space.cpp",
+  "ecmascript/mem/thread_local_allocation_buffer.cpp",
   "ecmascript/mem/verification.cpp",
   "ecmascript/mem/work_space_chunk.cpp",
   "ecmascript/mem/work_manager.cpp",

@@ -339,6 +339,8 @@ void Heap::Initialize()
     auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
     auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
+    sOldTlab_ = new ThreadLocalAllocationBuffer(this);
+    thread_->ReSetSOldSpaceAllocationAddress(sOldTlab_->GetTopAddress(), sOldTlab_->GetEndAddress());
     inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
 
     // whether should verify heap duration gc
@@ -408,8 +410,23 @@ void Heap::Initialize()
     gcListeners_.reserve(16U);
 }
 
+void Heap::ResetTlab()
+{
+    sOldTlab_->Reset();
+}
+
+void Heap::FillBumpPointerForTlab()
+{
+    sOldTlab_->FillBumpPointer();
+}
+
 void Heap::Destroy()
 {
+    if (sOldTlab_ != nullptr) {
+        sOldTlab_->Reset();
+        delete sOldTlab_;
+        sOldTlab_ = nullptr;
+    }
     if (workManager_ != nullptr) {
         delete workManager_;
         workManager_ = nullptr;
