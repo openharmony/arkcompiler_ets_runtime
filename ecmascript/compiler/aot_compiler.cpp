@@ -32,17 +32,19 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
 
+#include "ecmascript/compiler/aot_compiler_stats.h"
+
 namespace panda::ecmascript::kungfu {
 namespace {
 void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bool &ret,
-                       const CVector<AbcFileInfo> &fileInfos)
+                       const CVector<AbcFileInfo> &fileInfos, AotCompilerStats &compilerStats)
 {
     for (const AbcFileInfo &fileInfo : fileInfos) {
         JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
         const std::string &extendedFilePath = fileInfo.extendedFilePath_;
         LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;
         generator.SetCurrentCompileFileName(jsPandaFile->GetNormalizedFileDesc());
-        if (passManager.Compile(jsPandaFile, extendedFilePath, generator) == false) {
+        if (passManager.Compile(jsPandaFile, extendedFilePath, generator, compilerStats) == false) {
             ret = false;
             continue;
         }
@@ -68,14 +70,6 @@ std::pair<bool, int> CheckVersion(JSRuntimeOptions &runtimeOptions, bool result)
 
 int Main(const int argc, const char **argv)
 {
-    auto startTime =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch())
-                    .count();
-    LOG_ECMA(DEBUG) << "Print ark_aot_compiler received args:";
-    for (int i = 0; i < argc; i++) {
-        LOG_ECMA(DEBUG) << argv[i];
-    }
-
     if (argc < 2) { // 2: at least have two arguments
         LOG_COMPILER(ERROR) << AotCompilerPreprocessor::GetHelper();
         return -1;
@@ -93,10 +87,6 @@ int Main(const int argc, const char **argv)
         if (!deviceIsScreenOff) {
             BindSmallCpuCore();
         }
-    }
-
-    if (runtimeOptions.IsStartupTime()) {
-        LOG_COMPILER(DEBUG) << "Startup start time: " << startTime;
     }
 
     bool ret = true;
@@ -131,6 +121,16 @@ int Main(const int argc, const char **argv)
             // no need to compile in partial mode without any ap files.
             return 0;
         }
+
+        AotCompilerStats compilerStats;
+        std::string bundleName = "";
+        if (cPreprocessor.GetMainPkgArgs()) {
+            bundleName = cPreprocessor.GetMainPkgArgs()->GetBundleName();
+        }
+        compilerStats.SetBundleName(bundleName);
+        compilerStats.SetAotFilePath(cOptions.outputFileName_);
+        compilerStats.SetPgoPath(cOptions.profilerIn_);
+        compilerStats.StartCompiler();
         profilerDecoder.SetHotnessThreshold(cOptions.hotnessThreshold_);
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
@@ -140,6 +140,12 @@ int Main(const int argc, const char **argv)
         // need support muilt abc
         auto result = CheckVersion(runtimeOptions, cPreprocessor.HandleMergedPgoFile(checksum));
         if (result.first) {
+            if (result.second != 0) {
+                compilerStats.SetPgoFileLegal(false);
+            }
+            if (runtimeOptions.IsTargetCompilerMode()) {
+                compilerStats.PrintCompilerStatsLog();
+            }
             return result.second;
         }
         cPreprocessor.GeneratePGOTypes(cOptions);
@@ -187,21 +193,22 @@ int Main(const int argc, const char **argv)
                                 cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
-        if (cPreprocessor.GetMainPkgArgs()) {
-            std::string bundleName = cPreprocessor.GetMainPkgArgs()->GetBundleName();
-            if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
-                isEnableLiteCG = true;
-            }
+        if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+            isEnableLiteCG = true;
         }
         vm->GetJSOptions().SetCompilerEnableLiteCG(isEnableLiteCG);
+        compilerStats.SetIsLiteCg(isEnableLiteCG);
 
         AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);
 
-        CompileValidFiles(passManager, generator, ret, fileInfos);
+        CompileValidFiles(passManager, generator, ret, fileInfos, compilerStats);
         std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();
         generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature);
         generator.SaveSnapshotFile();
         log.Print();
+        if (runtimeOptions.IsTargetCompilerMode()) {
+            compilerStats.PrintCompilerStatsLog();
+        }
     }
 
     LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");
