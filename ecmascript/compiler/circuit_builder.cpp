@@ -782,8 +782,15 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate == Circuit::NullGate()) {
         hirGate = index;
     }
-    auto cacheValue = GetValueFromTaggedArray(constPool, index);
-    DEFVALUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    // Call runtime to create unshared constpool when current context's cache is hole in multi-thread.
+    DEFVALUE(cacheValue, env_, VariableType::JS_ANY(), Undefined());
+    if (type == ConstPoolType::ARRAY_LITERAL || type == ConstPoolType::OBJECT_LITERAL) {
+        GateRef unsharedConstPool = GetUnsharedConstpoolFromGlue(glue, constPool);
+        cacheValue = GetValueFromTaggedArray(unsharedConstPool, index);
+    } else {
+        cacheValue = GetValueFromTaggedArray(constPool, index);
+    }
+    DEFVALUE(result, env_, VariableType::JS_ANY(), *cacheValue);
     BRANCH_CIR2(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {
