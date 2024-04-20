@@ -1003,6 +1003,16 @@ void AsmAssembler::Xor(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
     Emit("\n");
 }
 
+/* bsr */
+void AsmAssembler::Bsr(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    Emit("\bbsr");
+    EmitInsnSuffix(insnSize);
+    Emit("\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
+}
+
 /* not */
 void AsmAssembler::Not(InsnSize insnSize, Reg reg)
 {
