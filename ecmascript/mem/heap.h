@@ -940,7 +940,7 @@ public:
      */
 
     template<class Callback>
-    void IterateOverObjects(const Callback &cb) const;
+    void IterateOverObjects(const Callback &cb, bool isSimplify = false) const;
 
     size_t VerifyHeapObjects(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     size_t VerifyOldToNewRSet(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;

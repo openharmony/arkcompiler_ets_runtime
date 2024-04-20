@@ -101,10 +101,10 @@ HeapSnapshot::~HeapSnapshot()
     stringTable_ = nullptr;
 }
 
-bool HeapSnapshot::BuildUp()
+bool HeapSnapshot::BuildUp(bool isSimplify)
 {
-    FillNodes(true);
-    FillEdges();
+    FillNodes(true, isSimplify);
+    FillEdges(isSimplify);
     AddSyntheticRoot();
     return Verify();
 }
@@ -662,18 +662,18 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
     return nodeType;
 }
 
-void HeapSnapshot::FillNodes(bool isInFinish)
+void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
 {
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
-        heap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
-            GenerateNode(JSTaggedValue(obj), 0, isInFinish);
-        });
+        heap->IterateOverObjects([this, isInFinish, isSimplify](TaggedObject *obj) {
+            GenerateNode(JSTaggedValue(obj), 0, isInFinish, isSimplify);
+        }, isSimplify);
     }
 }
 
-Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish)
+Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish, bool isSimplify)
 {
     Node *node = nullptr;
     if (entry.IsHeapObject()) {
@@ -730,7 +730,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
                 return existNode;
             }
         }
-    } else {
+    } else if (!isSimplify) {
         CString primitiveName;
         if (entry.IsInt()) {
             if (!captureNumericValue_) {
@@ -1041,7 +1041,7 @@ Node *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bool is
     return node;
 }
 
-void HeapSnapshot::FillEdges()
+void HeapSnapshot::FillEdges(bool isSimplify)
 {
     size_t length = nodes_.size();
     auto iter = nodes_.begin();
@@ -1068,7 +1068,7 @@ void HeapSnapshot::FillEdges()
                 entryTo = entryMap_.FindEntry(Node::NewAddress(to));
             }
             if (entryTo == nullptr) {
-                entryTo = GenerateNode(toValue, 0, true);
+                entryTo = GenerateNode(toValue, 0, true, isSimplify);
             }
             if (entryTo != nullptr) {
                 Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?

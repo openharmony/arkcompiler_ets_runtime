@@ -148,15 +148,17 @@ void Heap::EnumerateRegions(const Callback &cb) const
 }
 
 template<class Callback>
-void Heap::IterateOverObjects(const Callback &cb) const
+void Heap::IterateOverObjects(const Callback &cb, bool isSimplify) const
 {
     activeSemiSpace_->IterateOverObjects(cb);
     oldSpace_->IterateOverObjects(cb);
-    readOnlySpace_->IterateOverObjects(cb);
-    appSpawnSpace_->IterateOverMarkedObjects(cb);
     nonMovableSpace_->IterateOverObjects(cb);
     hugeObjectSpace_->IterateOverObjects(cb);
     hugeMachineCodeSpace_->IterateOverObjects(cb);
+    if (!isSimplify) {
+        readOnlySpace_->IterateOverObjects(cb);
+        appSpawnSpace_->IterateOverMarkedObjects(cb);
+    }
 }
 
 TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass)
