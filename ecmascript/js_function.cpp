@@ -894,7 +894,7 @@ bool JSFunction::NameSetter(JSThread *thread, const JSHandle<JSObject> &self, co
     return true;
 }
 
-void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
+void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
                                       void *data, size_t nativeBindingsize, Concurrent isConcurrent)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
@@ -937,7 +937,7 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const 
 }
 
 void JSFunction::SetSFunctionExtraInfo(
-    JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize)
+    JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter, void *data, size_t nativeBindingsize)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     EcmaVM *vm = thread->GetEcmaVM();

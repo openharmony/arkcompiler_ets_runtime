@@ -78,12 +78,12 @@ public:
 
     icu::LocaleDisplayNames *GetIcuLocaleDisplayNames() const;
 
-    static void FreeIcuLocaleDisplayNames(void *pointer, [[maybe_unused]] void* hint);
+    static void FreeIcuLocaleDisplayNames(void *env, void *pointer, void* hint);
 
     static JSHandle<TaggedArray> GetAvailableLocales(JSThread *thread);
     
     static void SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<JSDisplayNames> &displayNames,
-                                             icu::LocaleDisplayNames* icuPointer, const DeleteEntryPoint &callback);
+                                         icu::LocaleDisplayNames* icuPointer, const NativePointerCallback &callback);
 
     // 12.1.1  CanonicalCodeForDisplayNames ( type, code )
     static JSHandle<EcmaString> CanonicalCodeForDisplayNames(JSThread *thread,

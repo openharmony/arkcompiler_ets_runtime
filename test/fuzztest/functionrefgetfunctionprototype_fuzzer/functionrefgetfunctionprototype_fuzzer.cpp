@@ -37,7 +37,7 @@ void FunctionRefGetFunctionPrototypeFuzzTest(const uint8_t *data, size_t size)
         return;
     }
     FunctionCallback nativeFunc = FuncRefConCallbackForTest;
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<FunctionRef> func = FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
     func->GetFunctionPrototype(vm);
     JSNApi::DestroyJSVM(vm);

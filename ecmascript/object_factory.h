@@ -502,8 +502,8 @@ public:
 
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length);
 
-    JSHandle<JSArrayBuffer> NewJSArrayBuffer(void *buffer, int32_t length, const DeleteEntryPoint &deleter, void *data,
-                                             bool share = false);
+    JSHandle<JSArrayBuffer> NewJSArrayBuffer(void *buffer, int32_t length, const NativePointerCallback &deleter,
+                                             void *data, bool share = false);
 
     JSHandle<JSDataView> NewJSDataView(JSHandle<JSArrayBuffer> buffer, uint32_t offset, uint32_t length);
 
@@ -516,12 +516,12 @@ public:
     void NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, void *buffer, size_t size);
 
     template<typename T, typename S>
-    inline void NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const DeleteEntryPoint &callback);
+    inline void NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const NativePointerCallback &callback);
 
     EcmaString *PUBLIC_API InternString(const JSHandle<JSTaggedValue> &key);
 
     inline JSHandle<JSNativePointer> NewJSNativePointer(void *externalPointer,
-                                                        const DeleteEntryPoint &callBack = nullptr,
+                                                        const NativePointerCallback &callBack = nullptr,
                                                         void *data = nullptr,
                                                         bool nonMovable = false,
                                                         size_t nativeBindingsize = 0,
@@ -830,7 +830,7 @@ public:
                                             const JSHandle<JSTaggedValue> &prototype, bool isAccessor = true);
 
     JSHandle<JSNativePointer> NewSJSNativePointer(void *externalPointer,
-                                                  const DeleteEntryPoint &callBack,
+                                                  const NativePointerCallback &callBack,
                                                   void *data = nullptr,
                                                   bool nonMovable = false,
                                                   size_t nativeBindingsize = 0,

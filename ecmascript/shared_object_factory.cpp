@@ -503,7 +503,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewSEmptyMutantArray()
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPointer,
-                                                             const DeleteEntryPoint &callBack,
+                                                             const NativePointerCallback &callBack,
                                                              void *data,
                                                              bool nonMovable,
                                                              size_t nativeBindingsize,

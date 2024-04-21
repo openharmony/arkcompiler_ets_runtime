@@ -380,7 +380,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsFunction_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
     bool callNative = true;
     size_t nativeBindingSize = 15;
@@ -529,7 +529,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsArrayBuffer)
     const int32_t length = 15;
     Data *data = new Data();
     data->length = length;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         delete currentData;
@@ -554,7 +554,7 @@ HWTEST_F_L0(JSNApiSplTest, BufferRef_New1)
         int32_t length;
     };
     const int32_t length = 15;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         delete currentData;
@@ -850,7 +850,7 @@ HWTEST_F_L0(JSNApiSplTest, ArrayBufferRef_New1)
         int32_t length;
     };
     const int32_t length = 15;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         delete currentData;
@@ -6335,7 +6335,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_InitForConcurrentFunction)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
     bool callNative = true;
     size_t nativeBindingsize = 15;

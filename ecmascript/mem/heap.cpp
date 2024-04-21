@@ -1761,7 +1761,7 @@ void Heap::CleanCallBack()
     auto &callbacks = this->GetEcmaVM()->GetNativePointerCallbacks();
     if (!callbacks.empty()) {
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<DeleteCallbackTask>(this->GetJSThread()->GetThreadId(), callbacks)
+            std::make_unique<DeleteCallbackTask>(thread_, thread_->GetThreadId(), callbacks)
         );
     }
     ASSERT(callbacks.empty());
@@ -1771,7 +1771,7 @@ bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     for (auto iter : nativePointerCallbacks_) {
         if (iter.first != nullptr) {
-            iter.first(iter.second.first, iter.second.second);
+            iter.first(thread_, iter.second.first, iter.second.second);
         }
     }
     return true;

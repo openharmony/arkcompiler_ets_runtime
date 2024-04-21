@@ -208,7 +208,7 @@ EcmaContext::~EcmaContext()
         }
     }
     // clear icu cache
-    ClearIcuCache();
+    ClearIcuCache(thread_);
 
     if (runtimeStat_ != nullptr) {
         vm_->GetChunk()->Delete(runtimeStat_);

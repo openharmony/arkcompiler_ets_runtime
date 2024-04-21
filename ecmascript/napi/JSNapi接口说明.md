@@ -6,7 +6,7 @@ ArrayBufferRef ÊÇÒ»ÖÖÍ¨ÓÃµÄ¡¢¹Ì¶¨³¤¶ÈµÄÔ­Ê¼¶ş½øÖÆÊı¾İ»º³åÇø¡£Ëü²»ÄÜÖ±½Ó¶ÁÈ¡»ò²Ù×
 
 Local<ArrayBufferRef> ArrayBufferRef::New(const EcmaVM *vm, int32_t length)£»
 
-Local<ArrayBufferRef> ArrayBufferRef::New(const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter, void *data)£»
+Local<ArrayBufferRef> ArrayBufferRef::New(const EcmaVM *vm, void *buffer, int32_t length, const NativePointerCallback &deleter, void *data)£»
 
 ´´½¨Ò»¸öArrayBuffer¶ÔÏó¡£
 
@@ -17,7 +17,7 @@ Local<ArrayBufferRef> ArrayBufferRef::New(const EcmaVM *vm, void *buffer, int32_
 | vm      | const EcmaVM *  | ÊÇ   | ĞéÄâ»ú¶ÔÏó¡£                |
 | length  | int32_t         | ÊÇ   | Ö¸¶¨µÄ³¤¶È¡£                |
 | buffer  | void *          | ÊÇ   | Ö¸¶¨»º³åÇø¡£                |
-| deleter | const Deleter & | ÊÇ   | É¾³ıArrayBufferÊ±Ëù×÷µÄ²Ù×÷ |
+| deleter | const NativePointerCallback & | ÊÇ   | É¾³ıArrayBufferÊ±Ëù×÷µÄ²Ù×÷ |
 | data    | void *          | ÊÇ   | Ö¸¶¨Êı¾İ¡£                  |
 
 **·µ»ØÖµ£º**
@@ -33,7 +33,7 @@ Local<ArrayBufferRef> arrayBuffer1 = ArrayBufferRef::New(vm, 10);
 uint8_t *buffer = new uint8_t[10]();
 int *data = new int;
 *data = 10;
-Deleter deleter = [](void *buffer, void *data) -> void {
+NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
     delete[] reinterpret_cast<uint8_t *>(buffer);
     int *currentData = reinterpret_cast<int *>(data);
     delete currentData;
@@ -65,7 +65,7 @@ void *ArrayBufferRef::GetBuffer()£»
 uint8_t *buffer = new uint8_t[10]();
 int *data = new int;
 *data = 10;
-Deleter deleter = [](void *buffer, void *data) -> void {
+NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
 delete[] reinterpret_cast<uint8_t *>(buffer);
     int *currentData = reinterpret_cast<int *>(data);
     delete currentData;
@@ -188,7 +188,7 @@ Local<BooleanRef> boolRef = BooleanRef::New(vm, true);
 
 Local<BufferRef> BufferRef::New(const EcmaVM *vm, int32_t length);
 
-Local<BufferRef> BufferRef::New(const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter, void *data)
+Local<BufferRef> BufferRef::New(const EcmaVM *vm, void *buffer, int32_t length, const NativePointerCallback &deleter, void *data)
 
 ´´½¨Ò»¸öBufferRef¶ÔÏó¡£
 
@@ -199,7 +199,7 @@ Local<BufferRef> BufferRef::New(const EcmaVM *vm, void *buffer, int32_t length, 
 | vm      | const EcmaVM *  | ÊÇ   | ĞéÄâ»ú¶ÔÏó¡£                                       |
 | length  | int32_t         | ÊÇ   | Ö¸¶¨µÄ³¤¶È¡£                                       |
 | buffer  | void *          | ÊÇ   | Ö¸¶¨»º³åÇø                                         |
-| deleter | const Deleter & | ÊÇ   | Ò»¸öÉ¾³ıÆ÷¶ÔÏó£¬ÓÃÓÚÔÚ²»ÔÙĞèÒª»º³åÇøÊ±ÊÍ·ÅÆäÄÚ´æ¡£ |
+| deleter | const NativePointerCallback & | ÊÇ   | Ò»¸öÉ¾³ıÆ÷¶ÔÏó£¬ÓÃÓÚÔÚ²»ÔÙĞèÒª»º³åÇøÊ±ÊÍ·ÅÆäÄÚ´æ¡£ |
 | data    | void *          | ÊÇ   | ´«µİ¸øÉ¾³ıÆ÷µÄ¶îÍâÊı¾İ¡£                           |
 
 **·µ»ØÖµ£º**
@@ -215,7 +215,7 @@ Local<BufferRef> bufferRef1 = BufferRef::New(vm, 10);
 uint8_t *buffer = new uint8_t[10]();
 int *data = new int;
 *data = 10;
-Deleter deleter = [](void *buffer, void *data) -> void {
+NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
     delete[] reinterpret_cast<uint8_t *>(buffer);
     int *currentData = reinterpret_cast<int *>(data);
     delete currentData;
@@ -272,7 +272,7 @@ void *BufferRef::GetBuffer()£»
 uint8_t *buffer = new uint8_t[10]();
 int *data = new int;
 *data = 10;
-Deleter deleter = [](void *buffer, void *data) -> void {
+NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
     delete[] reinterpret_cast<uint8_t *>(buffer);
     int *currentData = reinterpret_cast<int *>(data);
     delete currentData;
@@ -4115,7 +4115,7 @@ object->SetPrototype(vm_, prototype);
 
 ### New
 
-Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)£»
+Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc, NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)£»
 
 ´´½¨Ò»¸öĞÂµÄº¯Êı¶ÔÏó¡£
 
@@ -4125,7 +4125,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc, Del
 | :---------------: | ---------------- | ---- | ------------------------------------------------------------ |
 |        vm         | const EcmaVM *   | ÊÇ   | Ö¸¶¨ĞéÄâ»ú¶ÔÏó¡£                                             |
 |    nativeFunc     | FunctionCallback | ÊÇ   | Ò»¸ö»Øµ÷º¯Êı£¬µ±JSµ÷ÓÃÕâ¸ö±¾µØº¯ÊıÊ±£¬½«µ÷ÓÃÕâ¸ö»Øµ÷º¯¡£     |
-|      deleter      | Deleter          | ·ñ   | Ò»¸öÉ¾³ıÆ÷º¯Êı£¬ÓÃÓÚÔÚ²»ÔÙĞèÒª`FunctionRef`¶ÔÏóÊ±ÊÍ·ÅÆä×ÊÔ´¡£ |
+|      deleter      | NativePointerCallback          | ·ñ   | Ò»¸öÉ¾³ıÆ÷º¯Êı£¬ÓÃÓÚÔÚ²»ÔÙĞèÒª`FunctionRef`¶ÔÏóÊ±ÊÍ·ÅÆä×ÊÔ´¡£ |
 |       data        | void *           | ·ñ   | Ò»¸ö¿ÉÑ¡µÄÖ¸Õë£¬¿ÉÒÔ´«µİ¸ø»Øµ÷º¯Êı»òÉ¾³ıÆ÷º¯Êı¡£             |
 |     callNapi      | bool             | ·ñ   | Ò»¸ö²¼¶ûÖµ£¬±íÊ¾ÊÇ·ñÔÚ´´½¨`FunctionRef`¶ÔÏóÊ±Á¢¼´µ÷ÓÃ»Øµ÷º¯Êı¡£Èç¹ûÎª`true`£¬ÔòÔÚ´´½¨¶ÔÏóÊ±Á¢¼´µ÷ÓÃ»Øµ÷º¯Êı£»Èç¹ûÎª`false`£¬ÔòĞèÒªÊÖ¶¯µ÷ÓÃ»Øµ÷º¯Êı¡£ |
 | nativeBindingsize | size_t           | ·ñ   | ±íÊ¾nativeFuncº¯ÊıµÄ´óĞ¡£¬0±íÊ¾Î´Öª´óĞ¡¡£                    |
@@ -4149,7 +4149,7 @@ Local<FunctionRef> callback = FunctionRef::New(vm, FunCallback);
 
 ### NewClassFunction
 
-Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)£»
+Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)£»
 
 ´´½¨Ò»¸öĞÂµÄÀàº¯Êı¶ÔÏó¡£
 
@@ -4159,7 +4159,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
 | :---------------: | ---------------- | ---- | ------------------------------------------------------------ |
 |        vm         | const EcmaVM *   | ÊÇ   | Ö¸¶¨ĞéÄâ»ú¶ÔÏó¡£                                             |
 |    nativeFunc     | FunctionCallback | ÊÇ   | Ò»¸ö»Øµ÷º¯Êı£¬µ±JSµ÷ÓÃÕâ¸ö±¾µØº¯ÊıÊ±£¬½«µ÷ÓÃÕâ¸ö»Øµ÷º¯¡£     |
-|      deleter      | Deleter          | ·ñ   | Ò»¸öÉ¾³ıÆ÷º¯Êı£¬ÓÃÓÚÔÚ²»ÔÙĞèÒª`FunctionRef`¶ÔÏóÊ±ÊÍ·ÅÆä×ÊÔ´¡£ |
+|      deleter      | NativePointerCallback          | ·ñ   | Ò»¸öÉ¾³ıÆ÷º¯Êı£¬ÓÃÓÚÔÚ²»ÔÙĞèÒª`FunctionRef`¶ÔÏóÊ±ÊÍ·ÅÆä×ÊÔ´¡£ |
 |       data        | void *           | ·ñ   | Ò»¸ö¿ÉÑ¡µÄÖ¸Õë£¬¿ÉÒÔ´«µİ¸ø»Øµ÷º¯Êı»òÉ¾³ıÆ÷º¯Êı¡£             |
 |     callNapi      | bool             | ·ñ   | Ò»¸ö²¼¶ûÖµ£¬±íÊ¾ÊÇ·ñÔÚ´´½¨`FunctionRef`¶ÔÏóÊ±Á¢¼´µ÷ÓÃ»Øµ÷º¯Êı¡£Èç¹ûÎª`true`£¬ÔòÔÚ´´½¨¶ÔÏóÊ±Á¢¼´µ÷ÓÃ»Øµ÷º¯Êı£»Èç¹ûÎª`false`£¬ÔòĞèÒªÊÖ¶¯µ÷ÓÃ»Øµ÷º¯Êı¡£ |
 | nativeBindingsize | size_t           | ·ñ   | ±íÊ¾nativeFuncº¯ÊıµÄ´óĞ¡£¬0±íÊ¾Î´Öª´óĞ¡¡£                    |
@@ -4178,7 +4178,7 @@ Local<JSValueRef> FunCallback(JsiRuntimeCallInfo *info)
     EscapeLocalScope scope(info->GetVM());
     return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
 }
-Deleter deleter = nullptr;
+NativePointerCallback deleter = nullptr;
 void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
 bool callNative = true;
 size_t nativeBindingSize = 15;

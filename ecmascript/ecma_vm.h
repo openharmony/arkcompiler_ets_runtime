@@ -102,7 +102,7 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
-using DeleteEntryPoint = void (*)(void *, void *);
+using NativePointerCallback = void (*)(void *, void *, void *);
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options);
@@ -666,7 +666,7 @@ public:
         return thread_->GetThreadId();
     }
 
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetNativePointerCallbacks()
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetNativePointerCallbacks()
     {
         return nativePointerCallbacks_;
     }
@@ -683,21 +683,10 @@ public:
 
     static void InitializeIcuData(const JSRuntimeOptions &options);
 
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
     {
         return sharedNativePointerCallbacks_;
     }
-
-    void *GetEnv() const
-    {
-        return env_;
-    }
-
-    void SetEnv(void *env)
-    {
-        env_ = env;
-    }
-
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -728,9 +717,9 @@ private:
     ObjectFactory *factory_ {nullptr};
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
     CList<JSNativePointer *> sharedNativePointerList_;
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
 
@@ -817,7 +806,6 @@ private:
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
     bool overLimit_ {false};
-    void *env_ = nullptr;
 };
 }  // namespace ecmascript
 }  // namespace panda

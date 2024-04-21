@@ -242,7 +242,7 @@ void JSThread::InvokeSharedNativePointerCallbacks()
         ASSERT(callbackPair.first != nullptr && callbackPair.second.first != nullptr &&
                callbackPair.second.second != nullptr);
         auto callback = callbackPair.first;
-        (*callback)(callbackPair.second.first, callbackPair.second.second);
+        (*callback)(env_, callbackPair.second.first, callbackPair.second.second);
     }
 }
 
