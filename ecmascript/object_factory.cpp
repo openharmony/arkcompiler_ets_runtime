@@ -2420,6 +2420,7 @@ JSHandle<job::PendingJob> ObjectFactory::NewPendingJob(const JSHandle<JSFunction
     obj->SetSpanId(0);
     obj->SetParentSpanId(0);
     obj->SetFlags(0);
+    obj->SetJobId(0);
 #endif
     return obj;
 }
