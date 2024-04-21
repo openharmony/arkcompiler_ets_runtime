@@ -1783,7 +1783,7 @@ private:
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
-    bool enableJITPGO_ {false};
+    bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};
     bool reportModuleResolvingFailure_ {true};

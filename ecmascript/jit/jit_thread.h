@@ -37,6 +37,7 @@ private:
 class JitVM final : public EcmaVM {
 public:
     JitVM() : EcmaVM() {}
+    ~JitVM();
     static JitVM *Create();
     static void Destroy(EcmaVM *jitvm);
 

@@ -217,6 +217,8 @@ void JitTask::SustainingJSHandles()
 
 void JitTask::ReleaseSustainingJSHandle()
 {
+    // in abort case, vm exit before task finish, release by explict
+    sustainingJSHandle_ = nullptr;
 }
 
 void JitTask::CloneProfileTypeInfo()

@@ -24,10 +24,7 @@ namespace panda::ecmascript {
 
 class SustainingJSHandle {
 public:
-    SustainingJSHandle(EcmaVM *vm) : vm_(vm)
-    {
-        Init();
-    }
+    SustainingJSHandle(EcmaVM *vm);
     ~SustainingJSHandle();
     template <typename T>
     JSHandle<T> NewHandle(JSHandle<T> value)
@@ -43,12 +40,7 @@ public:
 
     void Iterate(const RootRangeVisitor &rv);
 
-    void SetTerminated()
-    {
-        isTerminate_ = true;
-    }
 private:
-    void Init();
     uintptr_t GetJsHandleSlot(JSTaggedType value);
     uintptr_t Expand();
 
@@ -58,7 +50,7 @@ private:
     JSTaggedType *blockLimit_ { nullptr };
     SustainingJSHandle *pre_ { nullptr };
     SustainingJSHandle *next_ { nullptr };
-    std::atomic_bool isTerminate_ {false};
+    EcmaContext *context_ { nullptr };
 
     static constexpr uint32_t BLOCK_SIZE = 256L;
     std::vector<std::array<JSTaggedType, BLOCK_SIZE>*> handleBlocks_;

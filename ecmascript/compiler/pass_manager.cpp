@@ -42,7 +42,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
     std::string fileName = jsPandaFile->GetFileName();
 
     collector_ = new BytecodeInfoCollector(compilationEnv_, const_cast<JSPandaFile*>(jsPandaFile),
-        profilerDecoder_, passOptions_->EnableCollectLiteralInfo());
+        profilerDecoder_);
 
     gen.SetCurrentCompileFileName(jsPandaFile->GetNormalizedFileDesc());
     lOptions_ = new LOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
@@ -126,17 +126,12 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             pipeline.RunPass<LoopOptimizationPass>();
             pipeline.RunPass<RedundantPhiEliminationPass>();
         }
-        //  support when remove tsmanager in pass
-        const bool enablepass = false;
-        if (enablepass) {
-            {
-                Jit::JitLockHolder lock(compilationEnv_, "PGOTypeInferPass");
-                pipeline.RunPass<PGOTypeInferPass>();
-            }
-            {
-                Jit::JitLockHolder lock(compilationEnv_, "TSInlineLoweringPass");
-                pipeline.RunPass<TSInlineLoweringPass>();
-            }
+        if (passOptions_->EnableTypeLowering()) {
+            pipeline.RunPass<PGOTypeInferPass>();
+        }
+        {
+            Jit::JitLockHolder lock(compilationEnv_, "TSInlineLoweringPass");
+            pipeline.RunPass<TSInlineLoweringPass>();
         }
 
         pipeline.RunPass<RedundantPhiEliminationPass>();

@@ -826,6 +826,19 @@ void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string 
     THROW_OOM_ERROR(thread, oss.str().c_str());
 }
 
+void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName)
+{
+    std::ostringstream oss;
+    oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: "
+        << functionName.c_str();
+    LOG_ECMA_MEM(ERROR) << oss.str().c_str();
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::OOM_ERROR, oss.str().c_str());
+    thread->SetException(error.GetTaggedValue());
+}
+
 void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
     bool NonMovableObjNearOOM)
 {
