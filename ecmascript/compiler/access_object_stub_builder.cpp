@@ -133,7 +133,7 @@ GateRef AccessObjectStubBuilder::ResolvePropKey(GateRef glue, GateRef prop, cons
     ASSERT(info.IsValid());
     InterpreterToolsStubBuilder builder(GetCallSignature(), GetEnvironment());
     GateRef stringId = builder.GetStringId(info);
-    return GetStringFromConstPool(glue, info.constpool, stringId);
+    return GetStringFromConstPool(glue, info.GetConstantPool(), stringId);
 }
 
 GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef profileTypeInfo,

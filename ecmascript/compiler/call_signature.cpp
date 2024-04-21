@@ -990,6 +990,79 @@ DEF_CALL_SIGNATURE(AsmInterpreterEntry)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+#define BASELINE_CALL_ARGS_SIGNATURE_COMMON(name)                           \
+    /* 1 : 1 input parameters */                                            \
+    CallSignature signature(#name, 0, 1,                                    \
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());             \
+    *callSign = signature;                                                  \
+    std::array<VariableType, 1> params = { /* 1: 1 input parameters */      \
+        VariableType::NATIVE_POINTER(),                                     \
+    };                                                                      \
+    callSign->SetVariadicArgs(true);                                        \
+    callSign->SetParameters(params.data());                                 \
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC); \
+    callSign->SetCallConv(CallSignature::CallConv::GHCCallConv);
+
+DEF_CALL_SIGNATURE(BaselineCallArg0)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallArg0)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallArg1)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallArg1)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallArgs2)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallArgs2)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallArgs3)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallArgs3)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallThisArg0)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisArg0)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallThisArg1)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisArg1)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallThisArgs2)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisArgs2)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallThisArgs3)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisArgs3)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallRange)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallRange)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallNew)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallNew)
+}
+
+DEF_CALL_SIGNATURE(BaselineSuperCall)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineSuperCall)
+}
+
+DEF_CALL_SIGNATURE(BaselineCallThisRange)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisRange)
+}
+
 DEF_CALL_SIGNATURE(GeneratorReEnterAsmInterp)
 {
     /* 2 : 2 input parameters */

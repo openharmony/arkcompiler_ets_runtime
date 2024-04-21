@@ -21,6 +21,13 @@
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
+
+struct TraceIdInfo {
+    GateRef pc = 0;
+    GateRef traceId = 0;
+    bool isPc = true;
+};
+
 class NewObjectStubBuilder : public StubBuilder {
 public:
     explicit NewObjectStubBuilder(StubBuilder *parent)
@@ -77,9 +84,9 @@ public:
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
     GateRef CreateEmptyObject(GateRef glue);
     GateRef CreateEmptyArray(GateRef glue);
-    GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId,
-                             ProfileOperation callback);
-    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, GateRef pc,
+    GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
+        GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
+    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, TraceIdInfo traceIdInfo,
                                   GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
     void NewMutantTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
@@ -92,13 +99,12 @@ public:
     void NewByteArray(Variable *result, Label *exit, GateRef elementSize, GateRef length);
     GateRef GetElementSizeFromType(GateRef glue, GateRef type);
     GateRef GetOnHeapHClassFromType(GateRef glue, GateRef type);
-
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
-    GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId,
-        GateRef arrayLiteral, ProfileOperation callback);
+    GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
+        GateRef profileTypeInfo, GateRef slotId, GateRef arrayLiteral, ProfileOperation callback);
     GateRef LoadArrayHClassSlowPath(
-        GateRef glue, GateRef jsFunc, GateRef pc, GateRef arrayLiteral, ProfileOperation callback);
+        GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo, GateRef arrayLiteral, ProfileOperation callback);
     GateRef CreateEmptyArrayCommon(GateRef glue, GateRef hclass, GateRef trackInfo);
     void AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit);
     void AllocateInYoung(Variable *result, Label *exit, GateRef hclass);

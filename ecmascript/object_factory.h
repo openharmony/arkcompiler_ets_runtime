@@ -554,7 +554,7 @@ public:
 
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
-    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc *desc, JSHandle<Method> &method);
+    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc, JSHandle<Method> &method);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 

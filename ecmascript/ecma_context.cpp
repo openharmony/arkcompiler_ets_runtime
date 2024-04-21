@@ -30,6 +30,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -193,7 +194,7 @@ EcmaContext::~EcmaContext()
     handleScopeCount_ = 0;
     handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
 
-    if (vm_->IsEnableJit()) {
+    if (vm_->IsEnableBaselineJit() || vm_->IsEnableFastJit()) {
         // clear jit task
         vm_->GetJit()->ClearTask(this);
     }
@@ -320,9 +321,15 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else if (vm_->GetJSOptions().IsEnableForceJitCompileMain()) {
-            Jit::Compile(vm_, func);
+            Jit::Compile(vm_, func, CompilerTier::FAST);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, entryPoint, nullptr);
+        } else if (vm_->GetJSOptions().IsEnableForceBaselineCompileMain()) {
+            Jit::Compile(vm_, func, CompilerTier::BASELINE);
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
+            EcmaRuntimeStatScope runtimeStatScope(vm_);
+            result = EcmaInterpreter::Execute(info);
         } else {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);

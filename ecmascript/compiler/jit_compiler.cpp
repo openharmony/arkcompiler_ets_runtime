@@ -19,7 +19,9 @@
 #include <vector>
 
 #include "ecmascript/compiler/jit_compiler.h"
+#include "ecmascript/compiler/baseline/baseline_compiler.h"
 
+#include "ecmascript/jit/jit_task.h"
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/platform/file.h"
@@ -103,6 +105,17 @@ JitCompilerTask *JitCompilerTask::CreateJitCompilerTask(JitTask *jitTask)
 
 bool JitCompilerTask::Compile()
 {
+    if (compilerTier_ == CompilerTier::BASELINE) {
+        auto baselineCompiler =
+            new (std::nothrow) BaselineCompiler(jitCompilationEnv_->GetHostThread()->GetEcmaVM());
+        if (baselineCompiler == nullptr) {
+            return false;
+        }
+        baselineCompiler_.reset(baselineCompiler);
+        baselineCompiler_->Compile(jsFunction_);
+        return true;
+    }
+
     JitCompiler *jitCompiler = JitCompiler::GetInstance();
     auto jitPassManager = new (std::nothrow) JitPassManager(jitCompilationEnv_.get(),
                                                             jitCompiler->GetJitOptions().triple_,
@@ -138,6 +151,10 @@ bool JitCompilerTask::Finalize(JitTask *jitTask)
 {
     if (jitTask == nullptr) {
         return false;
+    }
+    if (compilerTier_ == CompilerTier::BASELINE) {
+        baselineCompiler_->CollectMemoryCodeInfos(jitTask->GetMachineCodeDesc());
+        return true;
     }
     jitCodeGenerator_->JitCreateLitecgModule();
     passManager_->RunCg();

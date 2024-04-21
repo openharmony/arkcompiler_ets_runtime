@@ -1290,8 +1290,8 @@ GateRef NewObjectStubBuilder::NewThisObjectChecked(GateRef glue, GateRef ctor)
     return ret;
 }
 
-GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo,
-    GateRef slotId, GateRef arrayLiteral, ProfileOperation callback)
+GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
+    GateRef profileTypeInfo, GateRef slotId, GateRef arrayLiteral, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1310,7 +1310,7 @@ GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRe
     }
     Bind(&uninitialized);
     {
-        auto hclass = LoadArrayHClassSlowPath(glue, jsFunc, pc, arrayLiteral, callback);
+        auto hclass = LoadArrayHClassSlowPath(glue, jsFunc, traceIdInfo, arrayLiteral, callback);
         // emptyarray
         if (arrayLiteral == Circuit::NullGate()) {
             ret = NewTrackInfo(glue, hclass, jsFunc, RegionSpaceFlag::IN_YOUNG_SPACE, Int32(0));
@@ -1330,7 +1330,7 @@ GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRe
 }
 
 GateRef NewObjectStubBuilder::LoadArrayHClassSlowPath(
-    GateRef glue, GateRef jsFunc, GateRef pc, GateRef arrayLiteral, ProfileOperation callback)
+    GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo, GateRef arrayLiteral, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1346,8 +1346,14 @@ GateRef NewObjectStubBuilder::LoadArrayHClassSlowPath(
     BRANCH(Int32Equal(indexInfosLength, Int32(0)), &originLoad, &aotLoad);
     Bind(&aotLoad);
     {
-        auto pfAddr = LoadPfHeaderFromConstPool(jsFunc);
-        GateRef traceId = TruncPtrToInt32(PtrSub(pc, pfAddr));
+        GateRef traceId = 0;
+        if (traceIdInfo.isPc) {
+            auto pfAddr = LoadPfHeaderFromConstPool(jsFunc);
+            traceId = TruncPtrToInt32(PtrSub(traceIdInfo.pc, pfAddr));
+        } else {
+            traceId = traceIdInfo.traceId;
+        }
+
         GateRef hcIndex = LoadHCIndexFromConstPool(hcIndexInfos, indexInfosLength, traceId, &originLoad);
         GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
             IntPtr(JSThread::GlueData::GetGlobalConstOffset(env->Is32Bit())));
@@ -1421,8 +1427,8 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue)
     return CreateEmptyArrayCommon(glue, hclass, *trackInfo);
 }
 
-GateRef NewObjectStubBuilder::CreateEmptyArray(
-    GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
+GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
+    GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1436,14 +1442,14 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(
     BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &mayFastpath);
     Bind(&mayFastpath);
     {
-        trackInfo = LoadTrackInfo(glue, jsFunc, pc, profileTypeInfo, slotId, Circuit::NullGate(), callback);
+        trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, Circuit::NullGate(), callback);
         hclass = Load(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
         trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
     Bind(&slowpath);
     {
-        hclass = LoadArrayHClassSlowPath(glue, jsFunc, pc, Circuit::NullGate(), callback);
+        hclass = LoadArrayHClassSlowPath(glue, jsFunc, traceIdInfo, Circuit::NullGate(), callback);
         Jump(&createArray);
     }
     Bind(&createArray);
@@ -1452,8 +1458,8 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(
     return result;
 }
 
-GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue,
-    GateRef index, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
+GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc,
+    TraceIdInfo traceIdInfo, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1476,14 +1482,14 @@ GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue,
     BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &mayFastpath);
     Bind(&mayFastpath);
     {
-        trackInfo = LoadTrackInfo(glue, jsFunc, pc, profileTypeInfo, slotId, obj, callback);
+        trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, obj, callback);
         hclass = Load(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
         trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
     Bind(&slowpath);
     {
-        hclass = LoadArrayHClassSlowPath(glue, jsFunc, pc, obj, callback);
+        hclass = LoadArrayHClassSlowPath(glue, jsFunc, traceIdInfo, obj, callback);
         Jump(&createArray);
     }
     Bind(&createArray);

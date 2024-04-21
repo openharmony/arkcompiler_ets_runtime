@@ -889,6 +889,12 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef jsFunc)
     return Load(VariableType::NATIVE_POINTER(), jsFunc, codeAddOffset);
 }
 
+GateRef CircuitBuilder::GetBaselineCodeAddr(GateRef baselineCode)
+{
+    auto codeAddrOffset = IntPtr(MachineCode::FUNCADDR_OFFSET);
+    return Load(VariableType::NATIVE_POINTER(), baselineCode, codeAddrOffset);
+}
+
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);

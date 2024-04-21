@@ -47,7 +47,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
 #define RUNTIME_ASM_STUB_LIST(V)             \
     JS_CALL_TRAMPOLINE_LIST(V)               \
     FAST_CALL_TRAMPOLINE_LIST(V)             \
-    ASM_INTERPRETER_TRAMPOLINE_LIST(V)
+    ASM_INTERPRETER_TRAMPOLINE_LIST(V)       \
+    BASELINE_TRAMPOLINE_LIST(V)
 
 #define ASM_INTERPRETER_TRAMPOLINE_LIST(V)   \
     V(AsmInterpreterEntry)                   \
@@ -77,6 +78,20 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallGetter)                            \
     V(CallContainersArgs3)                   \
     V(CallReturnWithArgv)
+
+#define BASELINE_TRAMPOLINE_LIST(V)          \
+    V(BaselineCallArg0)                      \
+    V(BaselineCallArg1)                      \
+    V(BaselineCallArgs2)                     \
+    V(BaselineCallArgs3)                     \
+    V(BaselineCallThisArg0)                  \
+    V(BaselineCallThisArg1)                  \
+    V(BaselineCallThisArgs2)                 \
+    V(BaselineCallThisArgs3)                 \
+    V(BaselineCallRange)                     \
+    V(BaselineCallNew)                       \
+    V(BaselineSuperCall)                     \
+    V(BaselineCallThisRange)
 
 #define JS_CALL_TRAMPOLINE_LIST(V)           \
     V(CallRuntime)                           \
@@ -282,6 +297,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(PGOPreDump)                         \
     V(JitCompile)                         \
     V(CountInterpExecFuncs)               \
+    V(BaselineJitCompile)                 \
     V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \

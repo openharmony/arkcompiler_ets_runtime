@@ -195,7 +195,8 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
     PopAsmInterpBridgeFrame(assembler);
     __ Ret();
     __ Bind(&target);
-    AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT);
+    AsmInterpreterCall::JSCallCommonEntry(
+        assembler, JSCallMode::CALL_FROM_AOT, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 // * uint64_t CallBuiltinTrampoline(uintptr_t glue, uintptr_t codeAddress, uint32_t argc, ...)

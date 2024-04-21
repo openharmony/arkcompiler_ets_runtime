@@ -104,6 +104,8 @@ public:
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();
     void SetUpForBuiltinsStubs();
+    void SetUpForBaselineStubs();
+
     LLVMValueRef AddFunc(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile);
     LLVMModuleRef GetModule() const
     {
@@ -327,6 +329,7 @@ private:
     LLVMValueRef GetFunctionFromGlobalValue(LLVMValueRef glue, const CallSignature *signature,
                                             LLVMValueRef reloc) const;
     bool IsInterpreted() const;
+    bool IsBaselineBuiltin() const;
     bool IsOptimized() const;
     bool IsOptimizedJSFunction() const;
     void SetGCLeafFunction(LLVMValueRef call);

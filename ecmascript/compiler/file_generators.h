@@ -211,7 +211,7 @@ public:
         curCompileFileName_ = fileName.c_str();
     }
 
-    void GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc);
+    void GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc);
     void JitCreateLitecgModule();
     bool isAArch64() const;
 
@@ -234,7 +234,8 @@ private:
 enum class StubFileKind {
     BC,
     COM,
-    BUILTIN
+    BUILTIN,
+    BASELINE
 };
 
 class StubFileGenerator : public FileGenerator {

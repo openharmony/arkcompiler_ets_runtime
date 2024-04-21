@@ -165,7 +165,7 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
 
         __ Leaq(Operand(argvRegister, NUM_MANDATORY_JSFUNC_ARGS * JSTaggedValue::TaggedTypeSize()),
             argvRegister);
-        JSCallCommonEntry(assembler, JSCallMode::CALL_ENTRY);
+        JSCallCommonEntry(assembler, JSCallMode::CALL_ENTRY, CompilerTierCheck::CHECK_BASELINE_CODE);
     }
     __ Bind(&notCallable);
     {
@@ -284,7 +284,8 @@ void AsmInterpreterCall::GetNumVregsFromCallField(ExtendedAssembler *assembler, 
     __ Andq(MethodLiteral::NumVregsBits::Mask() >> MethodLiteral::NumVregsBits::START_BIT, numVregsRegister);
 }
 
-void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode)
+void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
+    JSCallMode mode, CompilerTierCheck tierCheck)
 {
     Label stackOverflow;
     Register glueRegister = __ GlueRegister();
@@ -309,7 +310,7 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
     __ Bind(&fastPathEntry);
     JSCallCommonFastPath(assembler, mode, &stackOverflow);
     __ Bind(&pushCallThis);
-    PushCallThis(assembler, mode, &stackOverflow);
+    PushCallThis(assembler, mode, &stackOverflow, tierCheck);
     __ Bind(&slowPathEntry);
     JSCallCommonSlowPath(assembler, mode, &fastPathEntry, &pushCallThis, &stackOverflow);
 
@@ -358,72 +359,72 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
 void AsmInterpreterCall::PushCallThisRangeAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisRangeAndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_WITH_ARGV);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_WITH_ARGV, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushCallRangeAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallRangeAndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_WITH_ARGV);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_WITH_ARGV, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushCallNewAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallNewAndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushSuperCallAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushSuperCallAndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::SUPER_CALL_WITH_ARGV);
+    JSCallCommonEntry(assembler, JSCallMode::SUPER_CALL_WITH_ARGV, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushCallArgs3AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArgs3AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG3);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG3, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushCallArgs2AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArgs2AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG2);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG2, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushCallArg1AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArg1AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG1);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG1, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushCallArg0AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArg0AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 void AsmInterpreterCall::PushCallThisArg0AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg0AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG0);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG0, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushCallThisArg1AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg1AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG1);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG1, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs2AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs3AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow)
@@ -612,7 +613,8 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
 
 // Input: %r14 - callField
 //        %rdi - argv
-void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow)
+void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler,
+    JSCallMode mode, Label *stackOverflow, CompilerTierCheck tierCheck)
 {
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
@@ -666,7 +668,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     // fall through
     __ Bind(&pushVregs);
     {
-        PushVregs(assembler, stackOverflow);
+        PushVregs(assembler, stackOverflow, tierCheck);
     }
 }
 
@@ -676,7 +678,8 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
 //        %r14 - callField
 //        %rdx - jumpSizeAfterCall
 //        %r10 - fp
-void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOverflow)
+void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
+    Label *stackOverflow, CompilerTierCheck tierCheck)
 {
     Register glueRegister = __ GlueRegister();
     Register prevSpRegister = rbp;
@@ -708,6 +711,37 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
 
         PushFrameState(assembler, prevSpRegister, fpRegister,
             callTargetRegister, thisRegister, methodRegister, pcRegister, tempRegister);
+    }
+    if (tierCheck == CompilerTierCheck::CHECK_BASELINE_CODE) {
+        __ Movq(Operand(callTargetRegister, JSFunction::BASELINECODE_OFFSET), tempRegister);
+        Label baselineCodeUndefined;
+        __ Cmpq(JSTaggedValue::Undefined().GetRawData(), tempRegister);
+        __ Je(&baselineCodeUndefined);
+
+        // check is compiling
+        __ Cmpq(JSTaggedValue::Hole().GetRawData(), tempRegister);
+        __ Je(&baselineCodeUndefined);
+
+        Label stackAligned;
+        // align 16 bytes
+        __ Testq(15, rsp);  // 15: low 4 bits must be 0b0000
+        __ Jz(&stackAligned);
+        __ PushAlignBytes();
+        __ Bind(&stackAligned);
+
+        __ Movq(Operand(tempRegister, MachineCode::FUNCADDR_OFFSET), tempRegister);
+        if (glueRegister != r13) {
+            __ Movq(glueRegister, r13);
+        }
+        if (methodRegister != rbx) {
+            __ Movq(methodRegister, rbx);
+        }
+        const int32_t pcOffsetFromSP = -24; // -24: 3 slots, frameType, prevFrame, pc
+        __ Movq(Immediate(0), Operand(newSpRegister, pcOffsetFromSP));
+        __ Movq(newSpRegister, rbp);
+        __ Jmp(tempRegister);
+
+        __ Bind(&baselineCodeUndefined);
     }
     DispatchCall(assembler, pcRegister, newSpRegister, callTargetRegister, methodRegister);
 }
@@ -1080,7 +1114,7 @@ void AsmInterpreterCall::CallGetter(ExtendedAssembler *assembler)
     PopAsmInterpBridgeFrame(assembler);
     __ Ret();
     __ Bind(&target);
-    JSCallCommonEntry(assembler, JSCallMode::CALL_GETTER);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_GETTER, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 void AsmInterpreterCall::CallSetter(ExtendedAssembler *assembler)
@@ -1092,7 +1126,7 @@ void AsmInterpreterCall::CallSetter(ExtendedAssembler *assembler)
     PopAsmInterpBridgeFrame(assembler);
     __ Ret();
     __ Bind(&target);
-    JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER, CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
 }
 
 // Input: glue             - %rdi
@@ -1114,7 +1148,8 @@ void AsmInterpreterCall::CallReturnWithArgv(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
-        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
+                          CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
     }
 }
 
@@ -1129,7 +1164,8 @@ void AsmInterpreterCall::CallContainersArgs3(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
-        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                          CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
     }
 }
 

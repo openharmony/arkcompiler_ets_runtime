@@ -101,23 +101,23 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-worker:                      Whether is worker vm. Default: 'false'\n"
     "--log-level:                          Log level: ['debug', 'info', 'warning', 'error', 'fatal'].\n"
     "--log-components:                     Enable logs from specified components: ['all', 'gc', 'ecma','interpreter',\n"
-    "                                      'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all']. \n"
+    "                                      'debugger', 'compiler', 'builtins', 'trace', 'jit', 'baselinejit', 'all']. \n"
     "                                      Default: 'all'\n"
     "--log-debug:                          Enable debug or above logs for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
-    "                                      Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit',\n"
+    "                                      'baselinejit', 'all']. Default: 'all'\n"
     "--log-error:                          Enable error log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
-    "                                      Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit',\n"
+    "                                      'baselinejit', 'all']. Default: 'all'\n"
     "--log-fatal:                          Enable fatal log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
-    "                                      Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit',\n"
+    "                                      'baselinejit', 'all']. Default: 'all'\n"
     "--log-info:                           Enable info log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
-    "                                      Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit',\n"
+    "                                      'baselinejit', 'all']. Default: 'all'\n"
     "--log-warning:                        Enable warning log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'trace', 'jit', 'builtins', \n"
-    "                                      'all']. Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'trace', 'jit', \n"
+    "                                      'baselinejit', 'builtins', 'all']. Default: 'all'\n"
     "--compiler-opt-max-method:            Enable aot compiler to skip method larger than limit (KB). Default: '32'\n"
     "--compiler-module-methods:            The number of max compiled methods in a module. Default: '100'\n"
     "--max-unmovable-space:                Set max unmovable space capacity\n"
@@ -295,6 +295,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-trace-induction-variable", required_argument, nullptr, OPTION_COMPILER_TRACE_INDUCTION_VARIABLE},
         {"compiler-memory-analysis", required_argument, nullptr, OPTION_COMPILER_MEMORY_ANALYSIS},
         {"compiler-check-pgo-version", required_argument, nullptr, OPTION_COMPILER_CHECK_PGO_VERSION},
+        {"compiler-enable-baselinejit", required_argument, nullptr, OPTION_COMPILER_ENABLE_BASELINEJIT},
+        {"compiler-baselinejit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD},
+        {"compiler-force-baselinejit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1040,6 +1043,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_ENABLE_BASELINEJIT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableBaselineJIT(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_METHODS_RANGE:
                 ParseListArgParam(optarg, &argListStr, COLON);
                 SetCompilerMethodsRange(&argListStr);
@@ -1080,6 +1091,16 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD:
+                ret = ParseUint32Param("compiler-baselinejit-hotness-threshold", &argUint32);
+                if (ret) {
+                    uint16_t val = argUint32 > std::numeric_limits<uint16_t>::max() ?
+                        std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(argUint32);
+                    SetBaselineJitHotnessThreshold(val);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_MEMORY_ANALYSIS:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -1092,6 +1113,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCheckPgoVersion(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetForceBaselineCompileMain(argBool);
                 } else {
                     return false;
                 }
