@@ -57,21 +57,6 @@ bool ArgumentAccessor::ArgGateNotExisted(const size_t currentVreg)
     return false;
 }
 
-GateRef ArgumentAccessor::GetTypedArgGate(const size_t argIndex) const
-{
-    if (argIndex == static_cast<size_t>(TypedArgIdx::FUNC)) {
-        return GetCommonArgGate(CommonArgIdx::FUNC);
-    }
-    if (argIndex == static_cast<size_t>(TypedArgIdx::NEW_TARGET)) {
-        return GetCommonArgGate(CommonArgIdx::NEW_TARGET);
-    }
-    if (argIndex == static_cast<size_t>(TypedArgIdx::THIS_OBJECT)) {
-        return GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
-    }
-    return args_.at(argIndex - static_cast<size_t>(TypedArgIdx::NUM_OF_TYPED_ARGS) +
-        static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS));
-}
-
 GateRef ArgumentAccessor::GetCommonArgGate(const CommonArgIdx arg) const
 {
     return args_.at(static_cast<size_t>(arg));
@@ -115,21 +100,6 @@ size_t ArgumentAccessor::GetFunctionArgIndex(const size_t currentVreg, const boo
         }
     }
     return currentVreg - numCommonArgs + static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS);
-}
-
-void ArgumentAccessor::FillArgsGateType(const TypeRecorder *typeRecorder)
-{
-    ASSERT(method_ != nullptr);
-    GateAccessor gateAcc(circuit_);
-    const size_t numOfTypedArgs = method_->GetNumArgsWithCallField() +
-        static_cast<size_t>(TypedArgIdx::NUM_OF_TYPED_ARGS);
-    for (uint32_t argIndex = 0; argIndex < numOfTypedArgs; argIndex++) {
-        auto argType = typeRecorder->GetArgType(argIndex);
-        if (!argType.IsAnyType()) {
-            auto gate = GetTypedArgGate(argIndex);
-            gateAcc.SetGateType(gate, argType);
-        }
-    }
 }
 
 void ArgumentAccessor::CollectArgs()

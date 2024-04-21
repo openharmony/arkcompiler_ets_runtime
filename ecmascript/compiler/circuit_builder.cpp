@@ -210,6 +210,14 @@ GateRef CircuitBuilder::GetLengthOfJSTypedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
 }
 
+GateRef CircuitBuilder::IsTypedArray(GateRef array)
+{
+    GateRef hclass = LoadHClass(array);
+    GateRef type = GetObjectType(hclass);
+    return BoolAnd(Int32GreaterThan(type, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), type));
+}
+
 void CircuitBuilder::Jump(Label *label)
 {
     ASSERT(label);
@@ -774,8 +782,15 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate == Circuit::NullGate()) {
         hirGate = index;
     }
-    auto cacheValue = GetValueFromTaggedArray(constPool, index);
-    DEFVALUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    // Call runtime to create unshared constpool when current context's cache is hole in multi-thread.
+    DEFVALUE(cacheValue, env_, VariableType::JS_ANY(), Undefined());
+    if (type == ConstPoolType::ARRAY_LITERAL || type == ConstPoolType::OBJECT_LITERAL) {
+        GateRef unsharedConstPool = GetUnsharedConstpoolFromGlue(glue, constPool);
+        cacheValue = GetValueFromTaggedArray(unsharedConstPool, index);
+    } else {
+        cacheValue = GetValueFromTaggedArray(constPool, index);
+    }
+    DEFVALUE(result, env_, VariableType::JS_ANY(), *cacheValue);
     BRANCH_CIR2(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {

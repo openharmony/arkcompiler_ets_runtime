@@ -940,7 +940,7 @@ public:
      */
 
     template<class Callback>
-    void IterateOverObjects(const Callback &cb) const;
+    void IterateOverObjects(const Callback &cb, bool isSimplify = false) const;
 
     size_t VerifyHeapObjects(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     size_t VerifyOldToNewRSet(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
@@ -1095,8 +1095,9 @@ private:
 
     class DeleteCallbackTask : public Task {
     public:
-        DeleteCallbackTask(int32_t id, std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &callbacks)
-            : Task(id)
+        DeleteCallbackTask(JSThread *thread, int32_t id,
+                           std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &callbacks)
+            : Task(id), thread_(thread)
         {
             std::swap(callbacks, nativePointerCallbacks_);
         };
@@ -1107,7 +1108,8 @@ private:
         NO_MOVE_SEMANTIC(DeleteCallbackTask);
 
     private:
-        std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+        std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+        JSThread *thread_ {nullptr};
     };
 
     class RecursionScope {

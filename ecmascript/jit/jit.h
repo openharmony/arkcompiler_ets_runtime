@@ -17,9 +17,11 @@
 #define ECMASCRIPT_JIT_H
 
 #include "ecmascript/common.h"
+#include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/clock_scope.h"
+#include "ecmascript/mem/machine_code.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/jit/jit_thread.h"
 

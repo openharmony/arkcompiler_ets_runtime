@@ -91,7 +91,6 @@
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/taskpool/taskpool.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 
@@ -539,7 +538,7 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy();
+                object->Destroy(thread_);
                 iter = nativePointerList_.erase(iter);
             } else {
                 ++iter;
@@ -594,7 +593,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy();
+                object->Destroy(thread_);
                 iter = nativePointerList_.erase(iter);
                 continue;
             }
@@ -649,14 +648,14 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
     if (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-        object->Destroy();
+        object->Destroy(thread_);
         nativePointerList_.erase(iter);
     }
     auto newIter = std::find(concurrentNativePointerList_.begin(), concurrentNativePointerList_.end(), pointer);
     if (newIter != concurrentNativePointerList_.end()) {
         JSNativePointer *object = *newIter;
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-        object->Destroy();
+        object->Destroy(thread_);
         concurrentNativePointerList_.erase(newIter);
     }
 }
@@ -683,10 +682,10 @@ bool EcmaVM::ContainInDeregisterModuleList(CString module)
 void EcmaVM::ClearBufferData()
 {
     for (auto iter : nativePointerList_) {
-        iter->Destroy();
+        iter->Destroy(thread_);
     }
     for (auto iter : concurrentNativePointerList_) {
-        iter->Destroy();
+        iter->Destroy(thread_);
     }
     nativePointerList_.clear();
     thread_->GetCurrentEcmaContext()->ClearBufferData();
@@ -833,10 +832,6 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         return;
     }
     JSHandle<JSFunction> functionInfo(functionValue);
-    if (functionInfo->IsCallNapi()) {
-        LOG_ECMA(INFO) << "Function is not taskpool task";
-        return;
-    }
     JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo();
     if (!extraInfoValue.IsJSNativePointer()) {
         LOG_ECMA(INFO) << "FunctionExtraInfo is not JSNativePointer";

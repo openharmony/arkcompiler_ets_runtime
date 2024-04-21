@@ -49,6 +49,7 @@
 namespace panda::ecmascript {
 using CommonStubCSigns = kungfu::CommonStubCSigns;
 using BytecodeStubCSigns = kungfu::BytecodeStubCSigns;
+using SnapshotGlobalData = kungfu::SnapshotGlobalData;
 
 void AOTFileManager::Iterate(const RootVisitor &v)
 {

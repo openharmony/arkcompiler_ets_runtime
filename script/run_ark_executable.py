@@ -159,13 +159,15 @@ def judge_output(args: object):
             expect_output = ''.join(file.readlines()[13:])
             file.close()
             out_str = out.decode('UTF-8', errors="ignore")
-            if out_str != expect_output or returncode != "0":
+            result_cmp = compare_line_by_line(expect_output, out_str)
+            if result_cmp or returncode != "0":
                 print(">>>>> ret <<<<<")
                 print(returncode)
                 print(">>>>> err <<<<<")
                 print(err_str)
-                print(">>>>> Expect : [" + expect_output \
-                    + "]\n>>>>> But got: [" + out_str + "]")
+                print(">>>>> Expect {} lines: [{}]\n>>>>> But got {} lines: [{}]".format(
+                    expect_output.count('\n'), expect_output, out_str.count('\n'), out_str
+                ))
                 raise RuntimeError("Run [" + cmd + "] failed!")
     else:
         raise RuntimeError("Run [" + cmd + "] with no expect !")
@@ -173,6 +175,37 @@ def judge_output(args: object):
     print("Run [" + cmd + "] success!")
     print("used: %.5f seconds" % (time.time() - start_time))
 
+def compare_line_by_line(expect_output:str, got_output:str):
+    expect_output_list = expect_output.split("\n")
+    got_output_list = got_output.split("\n")
+    for index, (expect_line, got_line) in enumerate(zip(expect_output_list, got_output_list)):
+        if expect_line == got_line:
+            continue
+        error_msg = ""
+
+        if "__INT_MORE_PREV__" in expect_line:
+            prev_got_value = reverse_find_first_not_trace_line(got_output_list, index-1)
+            if got_line.isdigit() and prev_got_value.isdigit() and int(prev_got_value) < int(got_line):
+                continue
+            error_msg = "Got integer result is not more than previous integer result"
+
+        if "__INT__" in expect_line:
+            if got_line.isdigit():
+                continue
+            error_msg = "Got not integer"
+
+        print(">>>>> diff <<<<<")
+        if error_msg:
+            print(error_msg)
+        print("Difference in line {}:\nExcepted: [{}]\nBut got:  [{}]".format(index+1, expect_line, got_line))
+        return True
+    return False
+
+def reverse_find_first_not_trace_line(output_list: list, init_index: int) -> str:
+    for i in range(init_index, -1, -1):
+        if "[trace]" not in output_list[i]:
+            return output_list[i]
+    return ""
 
 if __name__ == '__main__':
     input_args = parse_args()

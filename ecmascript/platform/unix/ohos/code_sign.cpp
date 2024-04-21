@@ -15,10 +15,10 @@
 
 #include "ecmascript/platform/code_sign.h"
 
-#include <code_sign_utils.h>
 #include <local_code_sign_kit.h>
 
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/platform/file.h"
 
 using namespace OHOS::Security::CodeSign;
 namespace panda::ecmascript {
@@ -30,10 +30,26 @@ void CodeSignatureForAOTFile(const std::string &filename, const std::string &app
         LOG_ECMA(ERROR) << "Failed to sign the aot file!";
         return;
     }
-    if (CodeSignUtils::EnforceCodeSignForFile(filename, sig) != CommonErrCode::CS_SUCCESS) {
+
+    const std::string codeSignLib = "libcode_sign_utils.z.so";
+    // mangle for func: int32_t CodeSignUtils::EnforceCodeSignForFile(const std::string&, const ByteBuffer&)
+    const char *codeSignFuncStr = "_ZN4OHOS8Security8CodeSign13CodeSignUtils22EnforceCodeSignForFile\
+ERKNSt3__h12basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEERKNS1_10ByteBufferE";
+    void *libHandle = LoadLib(codeSignLib);
+    if (libHandle == nullptr) {
+        LOG_ECMA(FATAL) << "Failed to load libcode_sign_utils.z.so!";
+    }
+    auto enforceCodeSignForFile = reinterpret_cast<int32_t(*)(const std::string&, const ByteBuffer&)>(
+        FindSymbol(libHandle, codeSignFuncStr));
+    if (enforceCodeSignForFile == nullptr) {
+        LOG_ECMA(FATAL) << "Failed to find symbol enforceCodeSignForFile";
+    }
+
+    if (enforceCodeSignForFile(filename, sig) != CommonErrCode::CS_SUCCESS) {
         LOG_ECMA(ERROR) << "Failed to enable code signature for the aot file!";
         return;
     }
+    CloseLib(libHandle);
     LOG_ECMA(DEBUG) << "sign the aot file success";
 }
 }  // namespace panda::ecmascript

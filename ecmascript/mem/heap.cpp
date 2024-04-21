@@ -1043,7 +1043,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
             << " value:" << std::to_string(pid);
     }
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC);
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
@@ -1761,7 +1761,7 @@ void Heap::CleanCallBack()
     auto &callbacks = this->GetEcmaVM()->GetNativePointerCallbacks();
     if (!callbacks.empty()) {
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<DeleteCallbackTask>(this->GetJSThread()->GetThreadId(), callbacks)
+            std::make_unique<DeleteCallbackTask>(thread_, thread_->GetThreadId(), callbacks)
         );
     }
     ASSERT(callbacks.empty());
@@ -1771,7 +1771,7 @@ bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     for (auto iter : nativePointerCallbacks_) {
         if (iter.first != nullptr) {
-            iter.first(iter.second.first, iter.second.second);
+            iter.first(thread_, iter.second.first, iter.second.second);
         }
     }
     return true;

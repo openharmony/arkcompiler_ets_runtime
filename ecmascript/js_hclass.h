@@ -292,15 +292,6 @@ struct Reference;
         COMPLETION_RECORD, /* JS_RECORD_LAST ////////////////////////////////////////////////////////////////////// */ \
         MACHINE_CODE_OBJECT,                                                                                           \
         CLASS_INFO_EXTRACTOR, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_ARRAY_TYPE,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_UNION_TYPE,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_FUNCTION_TYPE,  /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_OBJECT_TYPE,  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_CLASS_TYPE,    /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_CLASS_INSTANCE_TYPE,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_INTERFACE_TYPE,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_ITERATOR_INSTANCE_TYPE,    /* //////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_NAMESPACE_TYPE,  /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         VTABLE,                       /* //////////////////////////////////////////////////////////////////-PADDING */ \
         AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -335,9 +326,6 @@ struct Reference;
                                                                                                                        \
         MODULE_RECORD_FIRST = MODULE_RECORD, /* ///////////////////////////////////////////////////////////-PADDING */ \
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
-                                                                                                                       \
-        TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_TYPE_LAST = TS_NAMESPACE_TYPE, /* //////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         STRING_FIRST = LINE_STRING, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         STRING_LAST = TREE_STRING  /* /////////////////////////////////////////////////////////////////////-PADDING */
@@ -489,8 +477,7 @@ public:
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
 
-    static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                 JSTaggedValue addedKey = JSTaggedValue::Undefined());
+    static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
@@ -1626,57 +1613,6 @@ public:
     inline bool IsMachineCodeObject() const
     {
         return GetObjectType() == JSType::MACHINE_CODE_OBJECT;
-    }
-
-    inline bool IsTSType() const
-    {
-        JSType jsType = GetObjectType();
-        return jsType >= JSType::TS_TYPE_FIRST && jsType <= JSType::TS_TYPE_LAST;
-    }
-
-    inline bool IsTSObjectType() const
-    {
-        return GetObjectType() == JSType::TS_OBJECT_TYPE;
-    }
-
-    inline bool IsTSClassType() const
-    {
-        return GetObjectType() == JSType::TS_CLASS_TYPE;
-    }
-
-    inline bool IsTSInterfaceType() const
-    {
-        return GetObjectType() == JSType::TS_INTERFACE_TYPE;
-    }
-
-    inline bool IsTSUnionType() const
-    {
-        return GetObjectType() == JSType::TS_UNION_TYPE;
-    }
-
-    inline bool IsTSClassInstanceType() const
-    {
-        return GetObjectType() == JSType::TS_CLASS_INSTANCE_TYPE;
-    }
-
-    inline bool IsTSFunctionType() const
-    {
-        return GetObjectType() == JSType::TS_FUNCTION_TYPE;
-    }
-
-    inline bool IsTSArrayType() const
-    {
-        return GetObjectType() == JSType::TS_ARRAY_TYPE;
-    }
-
-    inline bool IsTSIteratorInstanceType() const
-    {
-        return GetObjectType() == JSType::TS_ITERATOR_INSTANCE_TYPE;
-    }
-
-    inline bool IsTSNamespaceType() const
-    {
-        return GetObjectType() == JSType::TS_NAMESPACE_TYPE;
     }
 
     inline bool IsAOTLiteralInfo() const

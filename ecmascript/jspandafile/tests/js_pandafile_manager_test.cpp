@@ -342,4 +342,21 @@ HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
     pfManager->RemoveJSPandaFile(pf1.get());
     pfManager->RemoveJSPandaFile(pf2.get());
 }
+
+HWTEST_F_L0(JSPandaFileManagerTest, CheckFilePath)
+{
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const char *fileName = "__JSPandaFileManagerTest3.abc";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
+    pfManager->AddJSPandaFile(pf);
+    bool result = pfManager->CheckFilePath(thread, fileName);
+    EXPECT_TRUE(result);
+    pfManager->RemoveJSPandaFile(pf.get());
+}
 }  // namespace panda::test

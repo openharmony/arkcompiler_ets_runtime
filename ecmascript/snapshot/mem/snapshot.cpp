@@ -18,6 +18,7 @@
 #include <cerrno>
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jobs/micro_job_queue.h"

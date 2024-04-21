@@ -34,7 +34,7 @@
 #include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript::kungfu {
-bool TypedBytecodeLowering::RunTypedBytecodeLowering()
+void TypedBytecodeLowering::RunTypedBytecodeLowering()
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
@@ -43,18 +43,6 @@ bool TypedBytecodeLowering::RunTypedBytecodeLowering()
         auto op = acc_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
             Lower(gate);
-            allJSBcCount_++;
-        }
-    }
-
-    bool success = true;
-    double typeHitRate = 0.0;
-    auto allTypedOpCount = allJSBcCount_ - allNonTypedOpCount_;
-    if (allTypedOpCount != 0) {
-        typeHitRate = static_cast<double>(hitTypedOpCount_) / static_cast<double>(allTypedOpCount);
-        auto typeThreshold = const_cast<CompilationEnv*>(compilationEnv_)->GetJSOptions().GetTypeThreshold();
-        if (typeHitRate <= typeThreshold) {
-            success = false;
         }
     }
 
@@ -70,10 +58,6 @@ bool TypedBytecodeLowering::RunTypedBytecodeLowering()
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << " =========================== End typeHitRate: "
-                           << std::to_string(typeHitRate)
-                           << " ===========================" << "\033[0m";
         for (auto a : bytecodeMap_) {
             if (bytecodeHitTimeMap_.find(a.first) != bytecodeHitTimeMap_.end()) {
                 double rate = static_cast<double>(bytecodeHitTimeMap_[a.first]) / static_cast<double>(a.second);
@@ -91,8 +75,6 @@ bool TypedBytecodeLowering::RunTypedBytecodeLowering()
             }
         }
     }
-
-    return success;
 }
 
 void TypedBytecodeLowering::ParseOptBytecodeRange()
@@ -828,6 +810,15 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitin
             return true;
         }
     }
+
+    EcmaString *sizeString = EcmaString::Cast(compilationEnv_->GlobalConstants()->GetSizeString().GetTaggedObject());
+    if (propString == sizeString) {
+        if (tacc.IsBuiltinsMap()) {
+            LowerTypedLdMapSize(tacc);
+            return true;
+        }
+    }
+
     // (2) other functions
     return false;
 }
@@ -951,6 +942,18 @@ void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBulitinObjTypeInf
         builder_.EcmaStringCheck(str);
     }
     GateRef result = builder_.LoadStringLength(str);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+}
+
+void TypedBytecodeLowering::LowerTypedLdMapSize(const LoadBulitinObjTypeInfoAccessor &tacc)
+{
+    GateRef gate = tacc.GetGate();
+    GateRef jsMap = tacc.GetReceiver();
+    AddProfiling(gate);
+    if (!Uncheck()) {
+        builder_.EcmaMapCheck(jsMap);
+    }
+    GateRef result = builder_.LoadMapSize(jsMap);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
@@ -1304,9 +1307,41 @@ void TypedBytecodeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
+bool TryLowerNewNumber(CircuitBuilder *builder, GateAccessor acc, GateRef gate)
+{
+    auto loadBuiltin = acc.GetValueIn(gate, 0);
+    if ((acc.GetOpCode(loadBuiltin) == OpCode::LOAD_BUILTIN_OBJECT) &&
+            (acc.GetIndex(loadBuiltin) == static_cast<size_t>(BuiltinType::BT_NUMBER))) {
+        auto arg = builder->ToTaggedIntPtr(builder->Int32(0));
+        if (acc.GetNumValueIn(gate) != 1) {
+            ASSERT(acc.GetNumValueIn(gate) == 2U);
+            arg = acc.GetValueIn(gate, 1);
+        }
+
+        auto currentLabel = builder->GetCurrentEnvironment()->GetCurrentLabel();
+        auto currentControl = currentLabel->GetControl();
+        auto currentDepend = currentLabel->GetDepend();
+        GateRef frameState = acc.FindNearestFrameState(gate);
+        GateRef newNumber = acc.GetCircuit()->NewGate(acc.GetCircuit()->NewNumber(),
+            MachineType::I64,
+            {currentControl, currentDepend, loadBuiltin, arg, frameState},
+            GateType::TaggedPointer());
+
+        currentLabel->SetControl(newNumber);
+        currentLabel->SetDepend(newNumber);
+
+        acc.ReplaceHirAndDeleteIfException(gate, builder->GetStateDepend(), newNumber);
+        return true;
+    }
+    return false;
+}
+
 void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 {
     if (TryLowerNewBuiltinConstructor(gate)) {
+        return;
+    }
+    if (TryLowerNewNumber(&builder_, acc_, gate)) {
         return;
     }
     NewObjRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
@@ -1366,7 +1401,7 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
 void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 {
     SuperCallTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
-    if (!tacc.IsClassTypeKind() && !tacc.IsValidCallMethodId()) {
+    if (!tacc.IsValidCallMethodId()) {
         return;
     }
     AddProfiling(gate);

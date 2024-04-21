@@ -64,6 +64,9 @@ public:
     static int ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
         [[maybe_unused]] const CString &bundleName, const CString &moduleName, const CString &entry,
         bool isSingletonPattern);
+
+    static bool IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unused]] const CString &bundleName,
+        const CString &moduleName, const CString &entry);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H

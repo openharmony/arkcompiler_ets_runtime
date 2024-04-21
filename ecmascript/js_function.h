@@ -220,10 +220,10 @@ public:
         GetClass()->SetClassConstructor(flag);
     }
 
-    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
-        void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
-    void SetSFunctionExtraInfo(
-        JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize = 0);
+    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
+                              void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
+    void SetSFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
+                               void *data, size_t nativeBindingsize = 0);
 
     JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;

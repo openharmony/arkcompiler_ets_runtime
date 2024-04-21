@@ -78,7 +78,6 @@ struct AlignedPointer;
 }
 }  // namespace ecmascript
 
-using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
 using EcmaVM = ecmascript::EcmaVM;
 using EcmaContext = ecmascript::EcmaContext;

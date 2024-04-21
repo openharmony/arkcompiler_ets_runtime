@@ -26,7 +26,6 @@
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/jit/jit.h"
 #include "jsnapi_expo.h"
 
@@ -135,10 +134,6 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
                 pipeline.RunPass<PGOTypeInferPass>();
             }
             {
-                Jit::JitLockHolder lock(compilationEnv_, "TSClassAnalysisPass");
-                pipeline.RunPass<TSClassAnalysisPass>();
-            }
-            {
                 Jit::JitLockHolder lock(compilationEnv_, "TSInlineLoweringPass");
                 pipeline.RunPass<TSInlineLoweringPass>();
             }
@@ -217,8 +212,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
 {
     [[maybe_unused]] EcmaHandleScope handleScope(compilationEnv_->GetJSThread());
 
-    BytecodeInfoCollector collector(compilationEnv_, jsPandaFile, profilerDecoder_,
-                                    maxAotMethodSize_, passOptions_->EnableCollectLiteralInfo());
+    BytecodeInfoCollector collector(compilationEnv_, jsPandaFile, profilerDecoder_, maxAotMethodSize_);
     // Checking released/debuggable pandafile uses method literals, which are initialized in BytecodeInfoCollector,
     // should after it.
     if (!IsReleasedPandaFile(jsPandaFile)) {

@@ -22,7 +22,6 @@
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk_containers.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeLowering {
@@ -51,6 +50,7 @@ private:
     void VisitIndexCheck(GateRef gate);
     void VisitLoadArrayLength(GateRef gate);
     void VisitLoadStringLength(GateRef gate);
+    void VisitLoadMapSize(GateRef gate);
     void VisitLoadElement(GateRef gate);
     void VisitLoadProperty(GateRef gate);
     void VisitLoadPropertyOnProto(GateRef gate);

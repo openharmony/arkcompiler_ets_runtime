@@ -17,6 +17,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/code_sign.h"
 #include "ecmascript/platform/directory.h"

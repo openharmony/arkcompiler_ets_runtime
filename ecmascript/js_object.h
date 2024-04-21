@@ -384,7 +384,7 @@ public:
 
     void* GetNativePointerField(int32_t index) const;
     void SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-                               const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0,
+                               const NativePointerCallback &callBack, void *data, size_t nativeBindingsize = 0,
                                Concurrent isConcurrent = Concurrent::NO);
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(const JSThread *thread, int32_t count);

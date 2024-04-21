@@ -30,12 +30,13 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/weak_vector.h"
 
 namespace panda::ecmascript {
+using ProfileType = pgo::ProfileType;
+
 JSHandle<TransitionsDictionary> TransitionsDictionary::PutIfAbsent(const JSThread *thread,
                                                                    const JSHandle<TransitionsDictionary> &dictionary,
                                                                    const JSHandle<JSTaggedValue> &key,
@@ -336,11 +337,6 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     obj->SynchronizedSetClass(thread, *newJsHClass);
     // Because we currently only supports Fast ElementsKind
     TryRestoreElementsKind(thread, newJsHClass, obj);
-
-    // Maintaining subtyping is no longer required when transition succeeds.
-    if (jshclass->HasTSSubtyping()) {
-        SubtypingOperator::TryMaintainTSSubtyping(thread, jshclass, newJsHClass, key);
-    }
 }
 
 void JSHClass::TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
@@ -920,8 +916,7 @@ JSHandle<ProtoChangeDetails> JSHClass::GetProtoChangeDetails(const JSThread *thr
     return GetProtoChangeDetails(thread, jshclass);
 }
 
-void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                JSTaggedValue addedKey)
+void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT(jshclass->IsPrototype() || jshclass->HasTSSubtyping());
@@ -932,12 +927,6 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
     }
 
     if (jshclass->HasTSSubtyping()) {
-        if (addedKey.IsString()) {
-            JSHandle<JSTaggedValue> key(thread, addedKey);
-            if (SubtypingOperator::TryMaintainTSSubtypingOnPrototype(thread, jshclass, key)) {
-                return;
-            }
-        }
         jshclass->InitTSInheritInfo(thread);
     }
 }
@@ -946,7 +935,7 @@ void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClas
                                   JSTaggedValue addedKey)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    MarkProtoChanged(thread, jshclass, addedKey);
+    MarkProtoChanged(thread, jshclass);
     JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
     if (!protoDetailsValue.IsProtoChangeDetails()) {
         return;

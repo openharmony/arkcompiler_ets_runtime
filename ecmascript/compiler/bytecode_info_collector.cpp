@@ -15,12 +15,9 @@
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
 
-#include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
-#include "ecmascript/ts_types/ts_type_parser.h"
 #include "libpandafile/code_data_accessor.h"
 
 namespace panda::ecmascript::kungfu {
@@ -32,51 +29,25 @@ static T *InitializeMemory(T *mem, Args... args)
 
 BytecodeInfoCollector::BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *jsPandaFile,
                                              PGOProfilerDecoder &pfDecoder,
-                                             size_t maxAotMethodSize, bool enableCollectLiteralInfo)
+                                             size_t maxAotMethodSize)
     : compilationEnv_(env),
       jsPandaFile_(jsPandaFile),
       bytecodeInfo_(maxAotMethodSize),
       pfDecoder_(pfDecoder),
-      snapshotCPData_(new SnapshotConstantPoolData(env->GetEcmaVM(), jsPandaFile, &pfDecoder)),
-      enableCollectLiteralInfo_(enableCollectLiteralInfo)
+      snapshotCPData_(new SnapshotConstantPoolData(env->GetEcmaVM(), jsPandaFile, &pfDecoder))
 {
-    compilationEnv_->GetTSManager()->SetBytecodeInfoCollector(this);
     ProcessClasses();
-    ProcessEnvs();
 }
 
 BytecodeInfoCollector::BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *jsPandaFile,
-                                             PGOProfilerDecoder &pfDecoder, bool enableCollectLiteralInfo)
+                                             PGOProfilerDecoder &pfDecoder)
     : compilationEnv_(env),
       jsPandaFile_(jsPandaFile),
       bytecodeInfo_(1),
       pfDecoder_(pfDecoder),
-      snapshotCPData_(nullptr), // jit no need
-      enableCollectLiteralInfo_(enableCollectLiteralInfo)
+      snapshotCPData_(nullptr) // jit no need
 {
     ProcessMethod();
-    ProcessEnvs();
-}
-
-BytecodeInfoCollector::~BytecodeInfoCollector()
-{
-    if (envManager_ != nullptr) {
-        delete envManager_;
-        envManager_ = nullptr;
-    }
-
-    if (compilationEnv_->IsAotCompiler()) {
-        auto tsManager = compilationEnv_->GetTSManager();
-        tsManager->PrintTypeInfo(jsPandaFile_);
-        tsManager->SetBytecodeInfoCollector(nullptr);
-    }
-}
-
-void BytecodeInfoCollector::ProcessEnvs()
-{
-    if (envManager_ == nullptr) {
-        envManager_ = new LexEnvManager(bytecodeInfo_);
-    }
 }
 
 void BytecodeInfoCollector::ProcessClasses()
@@ -105,7 +76,6 @@ void BytecodeInfoCollector::ProcessClasses()
             &methodIndexes, &classConstructIndexes] (panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
             methodIndexes.emplace_back(methodId);
-            CollectFunctionTypeId(methodId);
 
             // Generate all constpool
             compilationEnv_->FindOrCreateConstPool(jsPandaFile_, methodId);
@@ -134,14 +104,9 @@ void BytecodeInfoCollector::ProcessClasses()
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             auto it = processedMethod.find(methodOffset);
             if (it == processedMethod.end()) {
-                std::vector<std::string> classNameVec;
-                CollectMethodPcsFromBC(codeSize, insns, methodLiteral, classNameVec,
+                CollectMethodPcsFromBC(codeSize, insns, methodLiteral,
                     recordName, methodOffset, classConstructIndexes);
                 processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
-                // collect className and literal offset for type infer
-                if (EnableCollectLiteralInfo()) {
-                    CollectClassLiteralInfo(methodLiteral, classNameVec);
-                }
             }
 
             SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
@@ -179,7 +144,6 @@ void BytecodeInfoCollector::ProcessMethod()
     const CString recordName = jsPandaFile_->GetRecordNameWithBundlePack(methodIdx);
     recordNames.emplace_back(recordName);
     auto methodId = mda.GetMethodId();
-    CollectFunctionTypeId(methodId);
 
     ASSERT(jsPandaFile_->IsNewVersion());
 
@@ -192,12 +156,10 @@ void BytecodeInfoCollector::ProcessMethod()
 
     std::map<uint32_t, std::pair<size_t, uint32_t>> processedMethod;
     std::vector<panda_file::File::EntityId> classConstructIndexes;
-    std::vector<std::string> classNameVec;
 
-    CollectMethodPcsFromBC(codeSize, insns, methodLiteral, classNameVec,
+    CollectMethodPcsFromBC(codeSize, insns, methodLiteral,
         recordName, methodOffset, classConstructIndexes);
     processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
-
     SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
     // class Construct need to use new target, can not fastcall
     if (methodLiteral->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
@@ -206,90 +168,9 @@ void BytecodeInfoCollector::ProcessMethod()
     }
 }
 
-void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,
-                                                    const std::vector<std::string> &classNameVec)
-{
-    std::vector<uint32_t> classOffsetVec;
-    IterateLiteral(method, classOffsetVec);
-
-    if (classOffsetVec.size() == classNameVec.size()) {
-        for (uint32_t i = 0; i < classOffsetVec.size(); i++) {
-            compilationEnv_->GetTSManager()->AddElementToClassNameMap(
-                jsPandaFile_, classOffsetVec[i], classNameVec[i]);
-        }
-    }
-}
-
-void BytecodeInfoCollector::CollectFunctionTypeId(panda_file::File::EntityId fieldId)
-{
-    uint32_t offset = fieldId.GetOffset();
-    TypeAnnotationExtractor annoExtractor(jsPandaFile_, offset);
-    uint32_t typeId = annoExtractor.GetMethodTypeOffset();
-    if (typeId != 0) {
-        bytecodeInfo_.SetFunctionTypeIDAndMethodOffset(typeId, offset);
-    }
-    if (annoExtractor.IsNamespace()) {
-        MarkMethodNamespace(offset);
-    }
-}
-
-void BytecodeInfoCollector::CollectInnerFuncType(const MethodLiteral *method, uint32_t innerMethodId, int32_t bcIndex)
-{
-    auto &methodList = bytecodeInfo_.GetMethodList();
-    auto methodId = method->GetMethodId().GetOffset();
-    auto methodIter = methodList.find(methodId);
-    if (methodIter == methodList.end()) {
-        return;
-    }
-    TypeAnnotationExtractor annoExtractor(jsPandaFile_, innerMethodId);
-    uint32_t innerFuncType = annoExtractor.GetMethodTypeOffset();
-    if (innerFuncType != 0) {
-        methodIter->second.AddBcToTypeId(bcIndex, innerFuncType);
-    }
-}
-
-void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,
-                                           std::vector<uint32_t> &classOffsetVector)
-{
-    panda_file::File::EntityId fieldId = method->GetMethodId();
-    uint32_t defineMethodOffset = fieldId.GetOffset();
-    TypeAnnotationExtractor annoExtractor(jsPandaFile_, defineMethodOffset);
-    std::map<int32_t, uint32_t> offsetTypeMap;
-    annoExtractor.EnumerateInstsAndTypes(
-        [this, &offsetTypeMap, defineMethodOffset](const int32_t bcOffset, const uint32_t typeOffset) {
-            if (classDefBCIndexes_.find(bcOffset) != classDefBCIndexes_.end() ||
-                classDefBCIndexes_.find(bcOffset - 1) != classDefBCIndexes_.end()) { // for getter setter
-                bytecodeInfo_.SetClassTypeOffsetAndDefMethod(typeOffset, defineMethodOffset);
-            }
-            if (bcOffset != TypeRecorder::METHOD_ANNOTATION_THIS_TYPE_OFFSET &&
-                TSTypeParser::IsUserDefinedType(typeOffset)) {
-                offsetTypeMap.insert(std::make_pair(bcOffset, typeOffset));
-            }
-        });
-
-    for (auto item : offsetTypeMap) {
-        uint32_t typeOffset = item.second;
-        StoreClassTypeOffset(typeOffset, classOffsetVector);
-    }
-
-    classDefBCIndexes_.clear();
-}
-
-void BytecodeInfoCollector::StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector)
-{
-    TypeLiteralExtractor typeLiteralExtractor(jsPandaFile_, typeOffset);
-    if (typeLiteralExtractor.GetTypeKind() != TSTypeKind::CLASS) {
-        return;
-    }
-
-    if (classOffsetVector.empty() || typeOffset != classOffsetVector.back()) {
-        classOffsetVector.emplace_back(typeOffset);
-    }
-}
-
 void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
-    MethodLiteral *method, std::vector<std::string> &classNameVec, const CString &recordName,
-    uint32_t methodOffset, std::vector<panda_file::File::EntityId> &classConstructIndexes)
+    MethodLiteral *method, const CString &recordName, uint32_t methodOffset,
+    std::vector<panda_file::File::EntityId> &classConstructIndexes)
 {
     auto bcIns = BytecodeInst(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
@@ -304,7 +185,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         bool fastCallFlag = true;
-        CollectMethodInfoFromBC(bcIns, method, classNameVec, bcIndex, classConstructIndexes, &fastCallFlag);
+        CollectMethodInfoFromBC(bcIns, method, bcIndex, classConstructIndexes, &fastCallFlag);
         if (!fastCallFlag) {
             canFastCall = false;
         }
@@ -338,8 +219,6 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
 {
     auto processedMethodPcInfoIndex = processedMethodInfo.first;
     auto processedMethodOffset = processedMethodInfo.second;
-    uint32_t numOfLexVars = 0;
-    LexicalEnvStatus status = LexicalEnvStatus::VIRTUAL_LEXENV;
     auto &methodList = bytecodeInfo_.GetMethodList();
     std::set<uint32_t> indexSet{};
     // Methods with the same instructions in abc files have the same static information. Since
@@ -348,8 +227,6 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
     auto processedIter = methodList.find(processedMethodOffset);
     if (processedIter != methodList.end()) {
         const MethodInfo &processedMethod = processedIter->second;
-        numOfLexVars = processedMethod.GetNumOfLexVars();
-        status = processedMethod.GetLexEnvStatus();
         indexSet = processedMethod.GetImportIndexes();
     }
 
@@ -357,14 +234,12 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
     if (iter != methodList.end()) {
         MethodInfo &methodInfo = iter->second;
         methodInfo.SetMethodPcInfoIndex(processedMethodPcInfoIndex);
-        methodInfo.SetNumOfLexVars(numOfLexVars);
-        methodInfo.SetLexEnvStatus(status);
         // if these methods have the same bytecode, their import indexs must be the same.
         methodInfo.CopyImportIndex(indexSet);
         return;
     }
-    MethodInfo info(GetMethodInfoID(), processedMethodPcInfoIndex, LexEnv::DEFAULT_ROOT,
-        MethodInfo::DEFAULT_OUTMETHOD_OFFSET, numOfLexVars, status);
+    MethodInfo info(GetMethodInfoID(), processedMethodPcInfoIndex,
+        MethodInfo::DEFAULT_OUTMETHOD_OFFSET);
     info.CopyImportIndex(indexSet);
     methodList.emplace(methodOffset, info);
 }
@@ -388,7 +263,7 @@ void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t inne
         methodInfo.AddInnerMethod(innerMethodOffset, isConstructor);
     } else {
         methodInfoId = GetMethodInfoID();
-        MethodInfo info(methodInfoId, 0, LexEnv::DEFAULT_ROOT);
+        MethodInfo info(methodInfoId, 0);
         methodList.emplace(methodId, info);
         methodList.at(methodId).AddInnerMethod(innerMethodOffset, isConstructor);
     }
@@ -403,20 +278,6 @@ void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t inne
     methodList.emplace(innerMethodOffset, innerInfo);
 }
 
-void BytecodeInfoCollector::MarkMethodNamespace(const uint32_t methodOffset)
-{
-    auto &methodList = bytecodeInfo_.GetMethodList();
-    auto iter = methodList.find(methodOffset);
-    if (iter != methodList.end()) {
-        MethodInfo &methodInfo = iter->second;
-        methodInfo.MarkMethodNamespace();
-        return;
-    }
-    MethodInfo info(GetMethodInfoID(), 0, LexEnv::DEFAULT_ROOT, MethodInfo::DEFAULT_OUTMETHOD_OFFSET,
-        0, LexicalEnvStatus::VIRTUAL_LEXENV, true);
-    methodList.emplace(methodOffset, info);
-}
-
 void BytecodeInfoCollector::CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index)
 {
     std::vector<uint32_t> methodOffsets;
@@ -424,22 +285,6 @@ void BytecodeInfoCollector::CollectInnerMethodsFromLiteral(const MethodLiteral *
     for (auto methodOffset : methodOffsets) {
         CollectInnerMethods(method, methodOffset);
     }
-}
-
-void BytecodeInfoCollector::NewLexEnvWithSize(const MethodLiteral *method, uint64_t numOfLexVars)
-{
-    auto &methodList = bytecodeInfo_.GetMethodList();
-    auto methodOffset = method->GetMethodId().GetOffset();
-    auto iter = methodList.find(methodOffset);
-    if (iter != methodList.end()) {
-        MethodInfo &methodInfo = iter->second;
-        methodInfo.SetNumOfLexVars(numOfLexVars);
-        methodInfo.SetLexEnvStatus(LexicalEnvStatus::REALITY_LEXENV);
-        return;
-    }
-    MethodInfo info(GetMethodInfoID(), 0, LexEnv::DEFAULT_ROOT, MethodInfo::DEFAULT_OUTMETHOD_OFFSET,
-        numOfLexVars, LexicalEnvStatus::REALITY_LEXENV);
-    methodList.emplace(methodOffset, info);
 }
 
 void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(const MethodLiteral *method,
@@ -452,9 +297,8 @@ void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(const MethodLitera
     }
 }
 
-void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &bcIns,
-    const MethodLiteral *method, std::vector<std::string> &classNameVec, int32_t bcIndex,
-    std::vector<panda_file::File::EntityId> &classConstructIndexes, bool *canFastCall)
+void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
+    int32_t bcIndex, std::vector<panda_file::File::EntityId> &classConstructIndexes, bool *canFastCall)
 {
     if (!(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
         BytecodeInstruction::HasId(BytecodeInstruction::GetFormat(bcIns.GetOpcode()), 0))) {
@@ -466,7 +310,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                 methodId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
                 CollectInnerMethods(method, methodId);
-                CollectInnerFuncType(method, methodId, bcIndex);
                 break;
             }
             case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM8_ID16_IMM8:
@@ -480,7 +323,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                 auto entityId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
                 classConstructIndexes.emplace_back(entityId);
-                classNameVec.emplace_back(GetClassName(entityId));
                 classDefBCIndexes_.insert(bcIndex);
                 methodId = entityId.GetOffset();
                 CollectInnerMethods(method, methodId, true);
@@ -493,7 +335,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                 auto entityId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
                 classConstructIndexes.emplace_back(entityId);
-                classNameVec.emplace_back(GetClassName(entityId));
                 classDefBCIndexes_.insert(bcIndex);
                 methodId = entityId.GetOffset();
                 CollectInnerMethods(method, methodId, true);
@@ -524,26 +365,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             case BytecodeInstruction::Opcode::DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16: {
                 auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
                 CollectInnerMethodsFromLiteral(method, imm);
-                break;
-            }
-            case BytecodeInstruction::Opcode::NEWLEXENV_IMM8: {
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::IMM8>();
-                NewLexEnvWithSize(method, imm);
-                break;
-            }
-            case BytecodeInstruction::Opcode::NEWLEXENVWITHNAME_IMM8_ID16: {
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::IMM8_ID16>();
-                NewLexEnvWithSize(method, imm);
-                break;
-            }
-            case BytecodeInstruction::Opcode::WIDE_NEWLEXENV_PREF_IMM16: {
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
-                NewLexEnvWithSize(method, imm);
-                break;
-            }
-            case BytecodeInstruction::Opcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16: {
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16_ID16>();
-                NewLexEnvWithSize(method, imm);
                 break;
             }
             case EcmaOpcode::RESUMEGENERATOR:
@@ -616,7 +437,7 @@ void BytecodeInfoCollector::CollectImportIndexs(uint32_t methodOffset, uint32_t 
         methodInfo.AddImportIndex(index);
         return;
     }
-    MethodInfo info(GetMethodInfoID(), 0, LexEnv::DEFAULT_ROOT);
+    MethodInfo info(GetMethodInfoID(), 0);
     info.AddImportIndex(index);
     methodList.emplace(methodOffset, info);
 }
@@ -653,40 +474,7 @@ void BytecodeInfoCollector::CollectExportIndexs(const CString &recordName, uint3
         exportName = localName;
     }
 
-    JSHandle<EcmaString> exportNameStr(thread, EcmaString::Cast(exportName->GetTaggedObject()));
-    // In order to reduce redundant compilation, when a export element satisfies one of the following conditions,
-    // it will be added to the ExportRecordInfo of this record.
-    // 1) its name is not recorded in exportTypeTable, or
-    // 2) its type is classType or any.
-    if (!CheckExportNameAndClassType(recordName, exportNameStr)) {
-        bytecodeInfo_.AddExportIndexToRecord(recordName, index);
-    }
-}
-
-bool BytecodeInfoCollector::CheckExportNameAndClassType(const CString &recordName,
-                                                        const JSHandle<EcmaString> &exportStr)
-{
-    ASSERT(compilationEnv_->IsAotCompiler());
-    auto tsManager = compilationEnv_->GetTSManager();
-    JSHandle<TaggedArray> exportTypeTable = tsManager->GetExportTableFromLiteral(jsPandaFile_, recordName);
-    uint32_t length = exportTypeTable->GetLength();
-    for (uint32_t i = 0; i < length; i = i + 2) { // 2: skip a pair of key and value
-        EcmaString *valueString = EcmaString::Cast(exportTypeTable->Get(i).GetTaggedObject());
-        if (!EcmaStringAccessor::StringsAreEqual(*exportStr, valueString)) {
-            continue;
-        }
-        uint32_t typeId = static_cast<uint32_t>(exportTypeTable->Get(i + 1).GetInt());
-        if (TSTypeParser::IsUserDefinedType(typeId)) {
-            TypeLiteralExtractor typeExtractor(jsPandaFile_, typeId);
-            if (typeExtractor.GetTypeKind() == TSTypeKind::CLASS) {
-                return false;
-            }
-        }
-        if (typeId != 0) {
-            return true;
-        }
-    }
-    return false;
+    bytecodeInfo_.AddExportIndexToRecord(recordName, index);
 }
 
 void BytecodeInfoCollector::CollectRecordReferenceREL()
@@ -777,46 +565,5 @@ void BytecodeInfoCollector::RearrangeInnerMethods()
         MethodInfo &methodInfo = it.second;
         methodInfo.RearrangeInnerMethods();
     }
-}
-
-LexEnvManager::LexEnvManager(BCInfo &bcInfo)
-    : lexEnvs_(bcInfo.GetMethodList().size())
-{
-    const auto &methodList = bcInfo.GetMethodList();
-    for (const auto &it : methodList) {
-        const MethodInfo &methodInfo = it.second;
-        lexEnvs_[methodInfo.GetMethodInfoIndex()].Inilialize(methodInfo.GetOutMethodId(),
-                                                             methodInfo.GetNumOfLexVars(),
-                                                             methodInfo.GetLexEnvStatus());
-    }
-}
-
-void LexEnvManager::SetLexEnvElementType(uint32_t methodId, uint32_t level, uint32_t slot, const GateType &type)
-{
-    uint32_t offset = GetTargetLexEnv(methodId, level);
-    lexEnvs_[offset].SetLexVarType(slot, type);
-}
-
-GateType LexEnvManager::GetLexEnvElementType(uint32_t methodId, uint32_t level, uint32_t slot) const
-{
-    uint32_t offset = GetTargetLexEnv(methodId, level);
-    return lexEnvs_[offset].GetLexVarType(slot);
-}
-
-uint32_t LexEnvManager::GetTargetLexEnv(uint32_t methodId, uint32_t level) const
-{
-    auto offset = methodId;
-    auto status = GetLexEnvStatus(offset);
-    while (!HasDefaultRoot(offset) && ((level > 0) || (status != LexicalEnvStatus::REALITY_LEXENV))) {
-        offset = GetOutMethodId(offset);
-        if (HasDefaultRoot(offset)) {
-            break;
-        }
-        if (status == LexicalEnvStatus::REALITY_LEXENV && level != 0) {
-            --level;
-        }
-        status = GetLexEnvStatus(offset);
-    }
-    return offset;
 }
 }  // namespace panda::ecmascript::kungfu

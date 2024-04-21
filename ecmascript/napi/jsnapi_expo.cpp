@@ -1153,13 +1153,13 @@ Local<BufferRef> BufferRef::New(const EcmaVM *vm, int32_t length)
 }
 
 Local<BufferRef> BufferRef::New(
-    const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter, void *data)
+    const EcmaVM *vm, void *buffer, int32_t length, const NativePointerCallback &deleter, void *data)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSArrayBuffer> arrayBuffer =
-        factory->NewJSArrayBuffer(buffer, length, reinterpret_cast<ecmascript::DeleteEntryPoint>(deleter), data);
+        factory->NewJSArrayBuffer(buffer, length, reinterpret_cast<ecmascript::NativePointerCallback>(deleter), data);
 
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current =
@@ -1740,6 +1740,23 @@ bool ObjectRef::Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value)
     if (!obj->IsHeapObject()) {
         return JSTaggedValue::SetProperty(thread, obj, keyValue, JSHandle<JSTaggedValue>(thread, valueValue));
     }
+    JSTaggedValue res = ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(thread, obj.GetTaggedValue(),
+                                                                                    keyValue.GetTaggedValue(),
+                                                                                    valueValue);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    if (!res.IsHole()) {
+        return !res.IsException();
+    }
+    if (!JSNApi::KeyIsNumber(utf8)) {
+        res = ObjectFastOperator::SetPropertyByName(thread, obj.GetTaggedValue(), keyValue.GetTaggedValue(),
+                                                    valueValue);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        if (!res.IsHole()) {
+            return !res.IsException();
+        }
+        return JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(thread, obj.GetTaggedValue()), keyValue,
+                                          JSHandle<JSTaggedValue>(thread, valueValue), true);
+    }
     return ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(),
                                                       keyValue.GetTaggedValue(),
                                                       valueValue);
@@ -2138,13 +2155,13 @@ Local<ArrayBufferRef> ArrayBufferRef::New(const EcmaVM *vm, int32_t length)
 }
 
 Local<ArrayBufferRef> ArrayBufferRef::New(
-    const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter, void *data)
+    const EcmaVM *vm, void *buffer, int32_t length, const NativePointerCallback &deleter, void *data)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSArrayBuffer> arrayBuffer =
-        factory->NewJSArrayBuffer(buffer, length, reinterpret_cast<ecmascript::DeleteEntryPoint>(deleter), data);
+        factory->NewJSArrayBuffer(buffer, length, reinterpret_cast<ecmascript::NativePointerCallback>(deleter), data);
     return JSNApiHelper::ToLocal<ArrayBufferRef>(JSHandle<JSTaggedValue>(arrayBuffer));
 }
 
@@ -2258,7 +2275,7 @@ Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
 
 // ----------------------------------- FunctionRef --------------------------------------
 Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+    NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -2271,7 +2288,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
 }
 
 Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, FunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+    NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
@@ -2284,7 +2301,7 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, FunctionCallback nativ
 }
 
 Local<FunctionRef> FunctionRef::New(EcmaVM *vm, InternalFunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+    NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -2298,7 +2315,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, InternalFunctionCallback nativeF
 
 Local<FunctionRef> FunctionRef::NewSendable(EcmaVM *vm,
                                             InternalFunctionCallback nativeFunc,
-                                            Deleter deleter,
+                                            NativePointerCallback deleter,
                                             void *data,
                                             bool callNapi,
                                             size_t nativeBindingsize)
@@ -2314,7 +2331,7 @@ Local<FunctionRef> FunctionRef::NewSendable(EcmaVM *vm,
 }
 
 Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, InternalFunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+    NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
@@ -2346,7 +2363,7 @@ static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callN
 }
 
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+    NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -2364,7 +2381,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
 }
 
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+    NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -2383,7 +2400,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCal
 
 Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
                                                          InternalFunctionCallback nativeFunc,
-                                                         Deleter deleter,
+                                                         NativePointerCallback deleter,
                                                          void *data,
                                                          Local<StringRef> name,
                                                          SendablePropertiesInfos &infos,
@@ -2670,14 +2687,13 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
     return method->IsNativeWithCallField();
 }
 
-void FunctionRef::SetData(const EcmaVM *vm, void *data, Deleter deleter, bool callNapi)
+void FunctionRef::SetData(const EcmaVM *vm, void *data, NativePointerCallback deleter, [[maybe_unused]] bool callNapi)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> function(funcValue);
     function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
-    function->SetCallNapi(callNapi);
 }
 
 void* FunctionRef::GetData(const EcmaVM *vm)
@@ -2686,9 +2702,6 @@ void* FunctionRef::GetData(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> function(funcValue);
-    if (!function->IsCallNapi()) {
-        return nullptr;
-    }
     JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
     if (!extraInfoValue.IsNativePointer()) {
         return nullptr;
@@ -2977,7 +2990,6 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         return false;
     }
     transFunc->SetFunctionExtraInfo(thread, nullptr, nullptr, taskInfo);
-    transFunc->SetCallNapi(false);
     thread->SetTaskInfo(reinterpret_cast<uintptr_t>(taskInfo));
     return true;
 }
@@ -3031,12 +3043,14 @@ void JSNApi::AllowCrossThreadExecution(EcmaVM *vm)
 
 void* JSNApi::GetEnv(EcmaVM *vm)
 {
-    return vm->GetEnv();
+    JSThread *thread = vm->GetJSThread();
+    return thread->GetEnv();
 }
 
 void JSNApi::SetEnv(EcmaVM *vm, void *env)
 {
-    vm->SetEnv(env);
+    JSThread *thread = vm->GetJSThread();
+    thread->SetEnv(env);
 }
 
 void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
@@ -3691,6 +3705,19 @@ void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb
     vm->SetDeviceDisconnectCallback(cb);
 }
 
+bool JSNApi::KeyIsNumber(const char* utf8)
+{
+    const char *ptr = utf8;
+    for (char c = *ptr; c; c = *++ptr) {
+        if (c >= '0' && c <= '9') {
+            continue;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool JSNApi::IsAotCrash()
 {
     std::string realOutPath;
@@ -3818,6 +3845,16 @@ int JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundl
         LOG_ECMA(ERROR) << "Execute with singleton-pattern flag failed with bundle name is'" << bundleName
                         << "' and module name is '" << moduleName << "', entry is'" << ohmurl << "'" << std::endl;
     }
+    return result;
+}
+
+bool JSNApi::IsExecuteModuleInAbcFile(EcmaVM *vm, const std::string &bundleName,
+    const std::string &moduleName, const std::string &ohmurl)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope scope(thread);
+    bool result = ecmascript::JSPandaFileExecutor::IsExecuteModuleInAbcFile(thread, bundleName.c_str(),
+        moduleName.c_str(), ohmurl.c_str());
     return result;
 }
 
@@ -4208,10 +4245,27 @@ Local<JSValueRef> JSNApi::NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativ
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(ret.GetValue()));
     }
-    JSTaggedValue ret = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(),
-                                                                   keyValue.GetTaggedValue());
+
+    // FastPath - Try find key entry in cache directly.
+    JSTaggedValue res = ObjectFastOperator::TryGetPropertyByNameThroughCacheAtLocal(thread, obj.GetTaggedValue(),
+                                                                                    keyValue.GetTaggedValue());
+    if (!res.IsHole()) {
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
+    }
+    if (!KeyIsNumber(utf8Key)) {
+        res = ObjectFastOperator::GetPropertyByName(thread, obj.GetTaggedValue(), keyValue.GetTaggedValue());
+        if (res.IsHole()) {
+            res = JSTaggedValue::GetProperty(thread, obj, keyValue).GetValue().GetTaggedValue();
+            RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+            return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
+        }
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
+    }
+    res = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(), keyValue.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
-    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, ret)));
+    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
 }
 
 Local<JSValueRef> JSNApi::CreateLocal(const EcmaVM *vm, panda::JSValueRef src)

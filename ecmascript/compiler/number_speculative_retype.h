@@ -23,7 +23,6 @@
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk_containers.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRetype {
@@ -99,11 +98,13 @@ private:
     template <bool IS_NAN>
     GateRef VisitNumberOrGlobalBuiltin(GateRef gate);
     GateRef VisitNumberIsInteger(GateRef gate);
+    GateRef VisitBigIntAsIntN(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadArrayLength(GateRef gate);
     GateRef VisitLoadStringLength(GateRef gate);
+    GateRef VisitLoadMapSize(GateRef gate);
     GateRef VisitLoadElement(GateRef gate);
     GateRef VisitStoreElement(GateRef gate);
     GateRef VisitStoreProperty(GateRef gate);
@@ -125,6 +126,7 @@ private:
     GateRef VisitMonoCallGetterOnProto(GateRef gate);
     GateRef VisitMonoStoreProperty(GateRef gate);
     GateRef VisitDateGetTime(GateRef gate);
+    GateRef VisitDateNow(GateRef gate);
 
     void ConvertForNumberBinaryOp(GateRef gate);
     void ConvertForNumberCompareOp(GateRef gate);

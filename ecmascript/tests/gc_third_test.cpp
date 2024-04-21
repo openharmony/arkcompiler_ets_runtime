@@ -203,7 +203,7 @@ HWTEST_F_L0(GCTest, CallbackTask)
             void *externalPointer = malloc(10);
             [[maybe_unused]] JSHandle<JSNativePointer> nativePointer
                 = factory->NewJSNativePointer(externalPointer,
-                                              [](void* pointer, [[maybe_unused]] void* data) {
+                                              [](void *env, void* pointer, [[maybe_unused]] void* data) {
                                                   if (pointer != nullptr) {
                                                       free(pointer);
                                                   }

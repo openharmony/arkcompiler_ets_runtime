@@ -20,7 +20,6 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_fields.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/ts_types/ts_type_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 ParamType TypeInfoAccessor::PGOSampleTypeToParamType() const
@@ -326,7 +325,8 @@ bool CallThisTypeInfoAccessor::CanOptimizeAsFastCall()
         return false;
     }
     if (!profileType->IsNone()) {
-        if (profileType->IsProfileTypeNone() || op != OpCode::LOAD_PROPERTY) {
+        if (profileType->IsProfileTypeNone() ||
+            (op != OpCode::LOAD_PROPERTY && op != OpCode::MONO_LOAD_PROPERTY_ON_PROTO)) {
             return false;
         }
         return true;
@@ -394,21 +394,6 @@ InlineTypeInfoAccessor::InlineTypeInfoAccessor(
     if (IsCallAccessor()) {
         plr_ = GetAccessorPlr();
     }
-}
-
-GlobalTSTypeRef InlineTypeInfoAccessor::GetAccessorFuncGT() const
-{
-    GateType receiverType = acc_.GetGateType(receiver_);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    GlobalTSTypeRef classInstanceGT = receiverType.GetGTRef();
-    GlobalTSTypeRef classGT = tsManager_->GetClassType(classInstanceGT);
-    TSTypeAccessor tsTypeAcc(tsManager_, classGT);
-    GateRef constData = acc_.GetValueIn(gate_, 1);
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto methodOffset = acc_.TryGetMethodOffset(gate_);
-    auto prop = compilationEnv_->GetStringFromConstantPool(methodOffset, propIndex);
-    GlobalTSTypeRef funcGT = tsTypeAcc.GetAccessorGT(prop, IsCallSetter());
-    return funcGT;
 }
 
 PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const

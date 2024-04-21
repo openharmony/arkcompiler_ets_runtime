@@ -19,6 +19,7 @@
 #include "ecmascript/byte_array.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef BuiltinsTypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)
@@ -2288,5 +2289,45 @@ void BuiltinsTypedArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, G
     LoopEnd(&loopHead);
     Bind(&loopExit);
     Jump(exit);
+}
+
+void BuiltinsTypedArrayStubBuilder::Entries(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    BuildArrayIterator(glue, thisValue, numArgs, result, exit, slowPath, IterationKind::KEY_AND_VALUE);
+}
+
+void BuiltinsTypedArrayStubBuilder::Keys(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    BuildArrayIterator(glue, thisValue, numArgs, result, exit, slowPath, IterationKind::KEY);
+}
+
+void BuiltinsTypedArrayStubBuilder::Values(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    BuildArrayIterator(glue, thisValue, numArgs, result, exit, slowPath, IterationKind::VALUE);
+}
+
+void BuiltinsTypedArrayStubBuilder::BuildArrayIterator(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath, IterationKind iteratorKind)
+{
+    auto env = GetEnvironment();
+
+    Label thisExists(env);
+    Label isEcmaObject(env);
+    Label isTypedArray(env);
+
+    BRANCH(BoolOr(TaggedIsHole(thisValue), TaggedIsUndefinedOrNull(thisValue)), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
+    Bind(&isEcmaObject);
+    BRANCH(IsTypedArray(thisValue), &isTypedArray, slowPath);
+    Bind(&isTypedArray);
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetGlue(glue);
+    GateRef kind = Int32(static_cast<int32_t>(iteratorKind));
+    newBuilder.CreateJSTypedArrayIterator(result, exit, thisValue, kind);
 }
 }  // namespace panda::ecmascript::kungfu

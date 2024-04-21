@@ -122,13 +122,13 @@ public:
 
     icu::Locale *GetIcuLocale() const;
     static void SetIcuLocale(JSThread *thread, JSHandle<JSDateTimeFormat> obj,
-        const icu::Locale &icuLocale, const DeleteEntryPoint &callback);
-    static void FreeIcuLocale(void *pointer, void *data);
+        const icu::Locale &icuLocale, const NativePointerCallback &callback);
+    static void FreeIcuLocale(void *env, void *pointer, void *data);
 
     icu::SimpleDateFormat *GetIcuSimpleDateFormat() const;
     static void SetIcuSimpleDateFormat(JSThread *thread, JSHandle<JSDateTimeFormat> obj,
-        const icu::SimpleDateFormat &icuSimpleDateTimeFormat, const DeleteEntryPoint &callback);
-    static void FreeSimpleDateFormat(void *pointer, void *data);
+        const icu::SimpleDateFormat &icuSimpleDateTimeFormat, const NativePointerCallback &callback);
+    static void FreeSimpleDateFormat(void *env, void *pointer, void *data);
     static icu::SimpleDateFormat *GetCachedIcuSimpleDateFormat(JSThread *thread,
                                                                const JSHandle<JSTaggedValue> &locales,
                                                                IcuFormatterType type);

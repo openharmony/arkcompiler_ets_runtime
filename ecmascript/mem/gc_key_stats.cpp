@@ -57,20 +57,20 @@ void GCKeyStats::AddGCStatsToKey()
 
     AddRecordDataStats(RecordKeyData::GC_TOTAL_MEM_USED,
         SizeToIntKB(gcStats_->GetRecordData(RecordData::END_OBJ_SIZE)));
-    AddRecordDataStats(RecordKeyData::GC_TOTAL_MEM_COMMITED,
+    AddRecordDataStats(RecordKeyData::GC_TOTAL_MEM_COMMITTED,
         SizeToIntKB(gcStats_->GetRecordData(RecordData::END_COMMIT_SIZE)));
     AddRecordDataStats(RecordKeyData::GC_ACTIVE_MEM_USED,
         SizeToIntKB(gcStats_->GetRecordData(RecordData::YOUNG_ALIVE_SIZE)));
-    AddRecordDataStats(RecordKeyData::GC_ACTIVE_MEM_COMMITED,
+    AddRecordDataStats(RecordKeyData::GC_ACTIVE_MEM_COMMITTED,
         SizeToIntKB(gcStats_->GetRecordData(RecordData::YOUNG_COMMIT_SIZE)));
     AddRecordDataStats(RecordKeyData::GC_OLD_MEM_USED,
         SizeToIntKB(gcStats_->GetRecordData(RecordData::OLD_ALIVE_SIZE)));
-    AddRecordDataStats(RecordKeyData::GC_OLD_MEM_COMMITED,
+    AddRecordDataStats(RecordKeyData::GC_OLD_MEM_COMMITTED,
         SizeToIntKB(gcStats_->GetRecordData(RecordData::OLD_COMMIT_SIZE)));
 
     AddRecordDataStats(RecordKeyData::GC_HUGE_MEM_USED,
         SizeToIntKB(heap_->GetHugeObjectSpace()->GetHeapObjectSize()));
-    AddRecordDataStats(RecordKeyData::GC_HUGE_MEM_COMMITED,
+    AddRecordDataStats(RecordKeyData::GC_HUGE_MEM_COMMITTED,
         SizeToIntKB(heap_->GetHugeObjectSpace()->GetCommittedSize()));
 
     AddRecordKeyDuration(RecordKeyDuration::GC_TOTAL_TIME,
@@ -102,13 +102,13 @@ void GCKeyStats::SendSysEvent() const
         "GC_EVACUTE_TIME", static_cast<int>(GetRecordKeyDuration(RecordKeyDuration::GC_EVACUTE_TIME)),
         "GC_LONG_TIME", recordCount_,
         "GC_TOTAL_MEM_USED", GetRecordDataStats(RecordKeyData::GC_TOTAL_MEM_USED),
-        "GC_TOTAL_MEM_COMMITED", GetRecordDataStats(RecordKeyData::GC_TOTAL_MEM_COMMITED),
+        "GC_TOTAL_MEM_COMMITTED", GetRecordDataStats(RecordKeyData::GC_TOTAL_MEM_COMMITTED),
         "GC_ACTIVE_MEM_USED", GetRecordDataStats(RecordKeyData::GC_ACTIVE_MEM_USED),
-        "GC_ACTIVE_MEM_COMMITED", GetRecordDataStats(RecordKeyData::GC_ACTIVE_MEM_COMMITED),
+        "GC_ACTIVE_MEM_COMMITTED", GetRecordDataStats(RecordKeyData::GC_ACTIVE_MEM_COMMITTED),
         "GC_OLD_MEM_USED", GetRecordDataStats(RecordKeyData::GC_OLD_MEM_USED),
-        "GC_OLD_MEM_COMMITED", GetRecordDataStats(RecordKeyData::GC_OLD_MEM_COMMITED),
+        "GC_OLD_MEM_COMMITTED", GetRecordDataStats(RecordKeyData::GC_OLD_MEM_COMMITTED),
         "GC_HUGE_MEM_USED", GetRecordDataStats(RecordKeyData::GC_HUGE_MEM_USED),
-        "GC_HUGE_MEM_COMMITED", GetRecordDataStats(RecordKeyData::GC_HUGE_MEM_COMMITED));
+        "GC_HUGE_MEM_COMMITTED", GetRecordDataStats(RecordKeyData::GC_HUGE_MEM_COMMITTED));
     if (ret != 0) {
         LOG_GC(INFO) << "GCKeyStats HiSysEventWrite Failed! ret = " << ret;
     }

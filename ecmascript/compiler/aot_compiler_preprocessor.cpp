@@ -26,7 +26,7 @@ constexpr int32_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
 }  // namespace
 using PGOProfilerManager = pgo::PGOProfilerManager;
 
-CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions)
+CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
 {
     triple_ = runtimeOptions.GetTargetTriple();
     if (runtimeOptions.GetAOTOutputFile().empty()) {
@@ -51,14 +51,11 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
     isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
     isEnableOptString_ = runtimeOptions.IsEnableOptString();
-    isEnableTypeInfer_ = isEnableTypeLowering_ ||
-        vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
     isEnableOptTrackField_ = runtimeOptions.IsEnableOptTrackField();
     isEnableOptLoopPeeling_ = runtimeOptions.IsEnableOptLoopPeeling();
     isEnableOptLoopInvariantCodeMotion_ = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
     isEnableOptConstantFolding_ = runtimeOptions.IsEnableOptConstantFolding();
-    isEnableCollectLiteralInfo_ = false;
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
@@ -166,14 +163,6 @@ void AotCompilerPreprocessor::AOTInitialize()
     CommonStubCSigns::Initialize();
     BuiltinsStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->Initialize();
-}
-
-void AotCompilerPreprocessor::SetShouldCollectLiteralInfo(CompilationOptions &cOptions, const CompilerLog *log)
-{
-    TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
-    cOptions.isEnableCollectLiteralInfo_ = cOptions.isEnableTypeInfer_ &&
-        (profilerDecoder_.IsLoaded() || tsManager->AssertTypes() || log->OutputType());
 }
 
 uint32_t AotCompilerPreprocessor::GenerateAbcFileInfos()
@@ -250,8 +239,8 @@ void AotCompilerPreprocessor::RecordArrayElement(const CompilationOptions &cOpti
         JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
         PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
         ptManager->SetCurCompilationFile(jsPandaFile);
-        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
-                                        cOptions.isEnableCollectLiteralInfo_);
+        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_,
+            cOptions.maxAotMethodSize_);
         BCInfo &bytecodeInfo = collector.GetBytecodeInfo();
         const PGOBCInfo *bcInfo = collector.GetPGOBCInfo();
         auto &methodList = bytecodeInfo.GetMethodList();
@@ -284,8 +273,8 @@ void AotCompilerPreprocessor::GeneratePGOTypes(const CompilationOptions &cOption
     PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
     for (const AbcFileInfo &fileInfo : fileInfos_) {
         JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
-        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
-                                        cOptions.isEnableCollectLiteralInfo_);
+        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_,
+            cOptions.maxAotMethodSize_);
         PGOTypeParser parser(profilerDecoder_, ptManager);
         parser.CreatePGOType(collector);
     }
@@ -366,8 +355,8 @@ void AotCompilerPreprocessor::GenerateMethodMap(CompilationOptions &cOptions)
     jsPandaFileManager->EnumerateNonVirtualJSPandaFiles(
         [this, &cOptions] (std::shared_ptr<JSPandaFile> jsPandaFilePtr) {
         JSPandaFile *jsPandaFile = jsPandaFilePtr.get();
-        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
-                                        cOptions.isEnableCollectLiteralInfo_);
+        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_,
+            cOptions.maxAotMethodSize_);
         BCInfo &bytecodeInfo = collector.GetBytecodeInfo();
         const auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
         auto &methodList = bytecodeInfo.GetMethodList();

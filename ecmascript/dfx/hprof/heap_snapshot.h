@@ -405,7 +405,7 @@ public:
           captureNumericValue_(captureNumericValue), trackAllocations_(trackAllocations),
           entryIdMap_(entryIdMap), chunk_(chunk) {}
     ~HeapSnapshot();
-    bool BuildUp();
+    bool BuildUp(bool isSimplify = false);
     bool Verify();
 
     void PrepareSnapshot();
@@ -497,13 +497,14 @@ public:
     }
 
 private:
-    void FillNodes(bool isInFinish = false);
-    Node *GenerateNode(JSTaggedValue entry, size_t size = 0, bool isInFinish = false);
+    void FillNodes(bool isInFinish = false, bool isSimplify = false);
+    Node *GenerateNode(JSTaggedValue entry, size_t size = 0,
+                       bool isInFinish = false, bool isSimplify = false);
     Node *GeneratePrivateStringNode(size_t size);
     Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     Node *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     Node *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
-    void FillEdges();
+    void FillEdges(bool isSimplify = false);
     void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
     CString ParseFunctionName(TaggedObject *obj);
     const CString ParseObjectName(TaggedObject *obj);

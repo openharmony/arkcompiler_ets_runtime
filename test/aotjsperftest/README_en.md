@@ -43,7 +43,6 @@ unzip v_8-linux64-rel-12.0.267.zip -d v_8
 	"full_x86_64":{
 		"ETS_RUNTIME_PATH": "out/rk3568/c_lang_x64/arkcompiler/ets_runtime/",
 		"ICU_PATH": "out/rk3568/c_lang_x64/thirdparty/icu/",
-		"BUILTINS_DTS":"out/rk3568/c_lang_x64/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc",
 		"ZLIB_PATH": "out/rk3568/c_lang_x64/thirdparty/zlib/", 
 		"LIB_PATH": "prebuilts/c_lang/ohos/linux-x86_64/ll_vm/lib/",
 		"ES2ABC": "out/rk3568/c_lang_x64/arkcompiler/ets_frontend/es2abc"
@@ -51,7 +50,6 @@ unzip v_8-linux64-rel-12.0.267.zip -d v_8
 	"independent_x86_64": {
 		"ETS_RUNTIME_PATH": "out/x64.release/arkcompiler/ets_runtime",
 		"ICU_PATH": "out/x64.release/thirdparty/icu/",
-		"BUILTINS_DTS":"out/x64.release/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc",
 		"ZLIB_PATH": "", # you can let this value be empty,but dont delete this key
 		"LIB_PATH": "", # you can let this value be empty,but dont delete this key
 		"ES2ABC": "out/x64.release/arkcompiler/ets_frontend/es2abc"

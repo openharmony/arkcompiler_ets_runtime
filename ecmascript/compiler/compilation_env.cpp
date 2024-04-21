@@ -15,12 +15,11 @@
 #include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
 namespace panda::ecmascript {
 CompilationEnv::CompilationEnv(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()),
-    tsManager_(nullptr), ptManager_(nullptr) { }
+    ptManager_(nullptr) { }
 
 NativeAreaAllocator *CompilationEnv::GetNativeAreaAllocator() const
 {

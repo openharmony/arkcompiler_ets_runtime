@@ -116,6 +116,35 @@ std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thre
 }
 
 template<ObjectFastOperator::Status status>
+JSTaggedValue ObjectFastOperator::TryGetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
+                                                                          JSTaggedValue key)
+{
+    auto *hclass = receiver.GetTaggedObject()->GetClass();
+    if (LIKELY(!hclass->IsDictionaryMode())) {
+        ASSERT(!TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject())->IsDictionaryMode());
+
+        int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+        if (entry != -1) {
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+            PropertyAttributes attr(layoutInfo->GetAttr(entry));
+            ASSERT(static_cast<int>(attr.GetOffset()) == entry);
+            auto value = JSObject::Cast(receiver)->GetProperty(hclass, attr);
+            if (UNLIKELY(attr.IsAccessor())) {
+                if (GetInternal(status)) {
+                    return value;
+                }
+                return CallGetter(thread, receiver, receiver, value);
+            }
+            ASSERT(!value.IsAccessor());
+            if (!value.IsHole()) {
+                return value;
+            }
+        }
+    }
+    return JSTaggedValue::Hole();
+}
+
+template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
                                                     JSTaggedValue key)
 {
@@ -184,6 +213,54 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
     } while (holder.IsHeapObject());
     // not found
     return JSTaggedValue::Undefined();
+}
+
+template<ObjectFastOperator::Status status>
+JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
+                                                                          JSTaggedValue key, JSTaggedValue value)
+{
+    auto *hclass = receiver.GetTaggedObject()->GetClass();
+    if (LIKELY(!hclass->IsDictionaryMode())) {
+        ASSERT(!TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject())->IsDictionaryMode());
+        int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+        if (entry != -1) {
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+            PropertyAttributes attr(layoutInfo->GetAttr(entry));
+            ASSERT(static_cast<int>(attr.GetOffset()) == entry);
+            if (UNLIKELY(attr.IsAccessor())) {
+                if (DefineSemantics(status)) {
+                    return JSTaggedValue::Hole();
+                }
+                auto accessor = JSObject::Cast(receiver)->GetProperty(hclass, attr);
+                if (ShouldCallSetter(receiver, receiver, accessor, attr)) {
+                    return CallSetter(thread, receiver, value, accessor);
+                }
+            }
+            if (UNLIKELY(!attr.IsWritable())) {
+                if (DefineSemantics(status)) {
+                    return JSTaggedValue::Hole();
+                }
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
+                                            JSTaggedValue::Exception());
+            }
+            if (hclass->IsTS()) {
+                auto attrVal = JSObject::Cast(receiver)->GetProperty(hclass, attr);
+                if (attrVal.IsHole()) {
+                    return JSTaggedValue::Hole();
+                }
+            }
+            if (receiver.IsJSShared()) {
+                if (!ClassHelper::MatchFieldType(attr.GetSharedFieldType(), value)) {
+                    THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
+                                                JSTaggedValue::Exception());
+                }
+            }
+            JSObject::Cast(receiver)->SetProperty(thread, hclass, attr, value);
+            return JSTaggedValue::Undefined();
+        }
+    }
+    return JSTaggedValue::Hole();
 }
 
 template<ObjectFastOperator::Status status>

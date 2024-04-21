@@ -135,7 +135,7 @@ void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
 
 void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] DumpFormat dumpFormat, [[maybe_unused]] bool isVmMode,
                                     [[maybe_unused]] bool isPrivate, [[maybe_unused]] bool captureNumericValue,
-                                    [[maybe_unused]] bool isFullGC)
+                                    [[maybe_unused]] bool isFullGC, [[maybe_unused]] bool isSimplify)
 {
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     // Write in faultlog for heap leak.
@@ -145,12 +145,13 @@ void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] DumpFormat dumpFormat, [[ma
         return;
     }
     FileDescriptorStream stream(fd);
-    DumpHeapSnapshot(dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, isFullGC);
+    DumpHeapSnapshot(dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, isFullGC, isSimplify);
 #endif
 }
 
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
-                                    bool isVmMode, bool isPrivate, bool captureNumericValue, bool isFullGC)
+                                    bool isVmMode, bool isPrivate, bool captureNumericValue,
+                                    bool isFullGC, bool isSimplify)
 {
     int32_t heapCount = 0;
     HeapSnapshot *snapshot = nullptr;
@@ -169,7 +170,7 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
             }
         }
         snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate, captureNumericValue,
-                                    false, isFullGC);
+                                    false, isFullGC, isSimplify);
         ASSERT(snapshot != nullptr);
     }
     entryIdMap_->UpdateEntryIdMap(snapshot);
@@ -328,7 +329,8 @@ void HeapProfiler::ForceSharedGC()
 }
 
 HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate,
-                                             bool captureNumericValue, bool traceAllocation, bool isFullGC)
+                                             bool captureNumericValue, bool traceAllocation, bool isFullGC,
+                                             bool isSimplify)
 {
     LOG_ECMA(INFO) << "HeapProfiler::MakeHeapSnapshot";
     if (isFullGC) {
@@ -344,7 +346,7 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMod
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
             }
-            snapshot->BuildUp();
+            snapshot->BuildUp(isSimplify);
             return snapshot;
         }
         case SampleType::REAL_TIME: {

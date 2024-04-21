@@ -1101,4 +1101,31 @@ int32_t TypedArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedV
     }
     return +0;
 }
+
+bool TypedArrayHelper::IsNativeArrayIterator(JSThread *thread,
+    const JSHandle<JSTaggedValue> &obj, JSHandle<JSTaggedValue> &iterMethod)
+{
+    if (iterMethod->IsUndefined() || (!obj->IsTypedArray() && !obj->IsArray(thread))) {
+        return false;
+    }
+
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    if (!JSTaggedValue::SameValue(iterMethod, env->GetTypedArrayProtoValuesFunction()) &&
+        !JSTaggedValue::SameValue(iterMethod, env->GetArrayProtoValuesFunction())) {
+        return false;
+    }
+
+    JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, obj, iterMethod);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    JSHandle<JSTaggedValue> nextKey = thread->GlobalConstants()->GetHandledNextString();
+    JSHandle<JSTaggedValue> iterNext = JSObject::GetMethod(thread, iterator, nextKey);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    Method *nextMethod = nullptr;
+    if (iterNext->IsJSFunction()) {
+        nextMethod = Method::Cast(
+            JSHandle<JSFunction>::Cast(iterNext)->GetMethod().GetTaggedObject());
+    }
+    // Array and TypedArray use the same JSArrayIterator.
+    return nextMethod->GetNativePointer() == reinterpret_cast<void*>(JSArrayIterator::Next);
+}
 }  // namespace panda::ecmascript::base

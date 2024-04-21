@@ -94,6 +94,8 @@ public:
     static int32_t SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
                                const JSHandle<JSTaggedValue> &buffer, const JSHandle<JSTaggedValue> &firstValue,
                                const JSHandle<JSTaggedValue> &secondValue);
+    static bool IsNativeArrayIterator(JSThread *thread,
+        const JSHandle<JSTaggedValue> &obj, JSHandle<JSTaggedValue> &iterMethod);
 
     #define DEFINE_GET_ONHEAP_HCLASS_FROM_TYPE(Type)                                                          \
         inline static JSHandle<JSHClass> GetOnHeapHclass##Type(JSThread *thread, JSHClass* objHclass);
