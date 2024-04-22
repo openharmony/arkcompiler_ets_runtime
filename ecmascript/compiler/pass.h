@@ -41,6 +41,7 @@
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/post_schedule.h"
+#include "ecmascript/compiler/precompile_checker.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/string_builder_optimizer.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
@@ -261,6 +262,21 @@ public:
 
 private:
     T1* data_;
+};
+
+class PreCompileCheckPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("PreCompileCheckPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
+        PreCompileChecker preCompileChecker(data, data->GetCircuit(), data->GetMethodName(), enableLog);
+        if (!preCompileChecker.Run()) {
+            data->AbortCompilation();
+            return false;
+        }
+        return true;
+    }
 };
 
 class PGOTypeInferPass {

@@ -166,6 +166,7 @@ libark_jsoptimizer_sources = [
   "operations_stub_builder.cpp",
   "pass_manager.cpp",
   "post_schedule.cpp",
+  "precompile_checker.cpp",
   "profiler_stub_builder.cpp",
   "range_analysis.cpp",
   "range_guard.cpp",
