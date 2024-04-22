@@ -184,7 +184,6 @@ void EcmaVM::PostFork()
 
     bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
     bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
-    options_.SetEnableAPPJIT(true);
     if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
         Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
         options_.SetEnableAPPJIT(true);
@@ -288,17 +287,18 @@ void EcmaVM::EnableJit()
     if (!IsEnablePGOProfiler() && pgoProfiler_ != nullptr) {
         // only jit enable pgo, disable aot pgo dump
         options_.SetEnableProfileDump(false);
+        Jit::GetInstance()->SetProfileNeedDump(false);
         // enable pgo profile
         options_.SetEnablePGOProfiler(true);
-        pgoProfiler_->Reset(true);
-        thread_->SetPGOProfilerEnable(true);
-        thread_->CheckOrSwitchPGOStubs();
+        ResetPGOProfiler();
     }
     if (pgoProfiler_ != nullptr) {
         pgoProfiler_->InitJITProfiler();
     }
     bool isApp = Jit::GetInstance()->IsAppJit();
     options_.SetEnableAPPJIT(isApp);
+    bool profileNeedDump = Jit::GetInstance()->IsProfileNeedDump();
+    options_.SetEnableProfileDump(profileNeedDump);
 
     GetJSThread()->SwitchJitProfileStubs();
 #ifdef JIT_SWITCH_COMPILE_MODE
