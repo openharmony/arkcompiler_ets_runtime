@@ -959,7 +959,8 @@ Expr LMIRBuilder::Select(Type *type, Expr cond, Expr ifTrue, Expr ifFalse)
 
 Expr LMIRBuilder::Trunc(Type *fromType, Type *toType, Expr opnd)
 {
-    if (fromType->GetPrimType() == toType->GetPrimType() && (fromType->GetPrimType() == PTY_f64 || fromType->GetPrimType() == PTY_f32)) {
+    if (fromType->GetPrimType() == toType->GetPrimType() &&
+        (fromType->GetPrimType() == PTY_f64 || fromType->GetPrimType() == PTY_f32)) {
         return Expr(mirBuilder.CreateExprTypeCvt(OP_trunc, *toType, *fromType, opnd.GetNode()), toType);
     }
     return Expr(mirBuilder.CreateExprTypeCvt(OP_cvt, toType->GetPrimType(), fromType->GetPrimType(), *opnd.GetNode()),

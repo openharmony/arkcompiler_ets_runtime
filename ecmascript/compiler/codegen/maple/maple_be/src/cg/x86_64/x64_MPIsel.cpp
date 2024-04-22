@@ -1510,7 +1510,8 @@ Operand *X64MPIsel::SelectCclz(IntrinsicopNode &node, Operand &opnd0, const Base
         cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(origPrimType), -1);
     RegOperand &tmp1 = SelectCopy2Reg(imm, origPrimType);
     RegOperand &tmp2 =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(origPrimType), cgFunc->GetRegTyFromPrimTy(origPrimType));
+        cgFunc->GetOpndBuilder()->CreateVReg(
+            GetPrimTypeBitSize(origPrimType), cgFunc->GetRegTyFromPrimTy(origPrimType));
     MOperator mopBsr = x64::MOP_bsrl_r_r;
     Insn &bsrInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopBsr, X64CG::kMd[mopBsr]);
     bsrInsn.AddOpndChain(opnd).AddOpndChain(tmp2);
@@ -1529,7 +1530,8 @@ Operand *X64MPIsel::SelectCclz(IntrinsicopNode &node, Operand &opnd0, const Base
     ImmOperand &imm2 =
         cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(origPrimType), k32BitSize - 1);
     RegOperand &tmp3 =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(origPrimType), cgFunc->GetRegTyFromPrimTy(origPrimType));
+        cgFunc->GetOpndBuilder()->CreateVReg(
+            GetPrimTypeBitSize(origPrimType), cgFunc->GetRegTyFromPrimTy(origPrimType));
     SelectAdd(tmp3, imm2, tmp2, origPrimType);
     PrimType retType = node.GetPrimType();
     RegOperand &destReg =
