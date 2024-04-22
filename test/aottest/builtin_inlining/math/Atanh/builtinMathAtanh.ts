@@ -23,32 +23,40 @@ let len:number = 1;
 
 // Check without params
 len = Math.atanh();
+//aot: [trace] aot inline builtin: Math.atanh, caller function name:func_main_0@builtinMathAtanh
 print(len); //: NaN
 
 len = Math.atanh(NaN);
+//aot: [trace] aot inline builtin: Math.atanh, caller function name:func_main_0@builtinMathAtanh
 print(len); //: NaN
 
 // Check with single param
 len = Math.atanh(0);
+//aot: [trace] aot inline builtin: Math.atanh, caller function name:func_main_0@builtinMathAtanh
 print(len); //: 0
 
 // Check with single param
 len = Math.atanh(0.5);
+//aot: [trace] aot inline builtin: Math.atanh, caller function name:func_main_0@builtinMathAtanh
 print(len); //: 0.5493061443340548
 
 // Check with single param
 len = Math.atanh(-1);
+//aot: [trace] aot inline builtin: Math.atanh, caller function name:func_main_0@builtinMathAtanh
 print(len); //: -Infinity
 
 // Check with single param
 len = Math.atanh(1);
+//aot: [trace] aot inline builtin: Math.atanh, caller function name:func_main_0@builtinMathAtanh
 print(len); //: Infinity
 
 // Check with single param
 len = Math.atanh(10);
+//aot: [trace] aot inline builtin: Math.atanh, caller function name:func_main_0@builtinMathAtanh
 print(len); //: NaN
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_atanh = Math.atanh
 Math.atanh = replace
 len = Math.atanh(111);
@@ -57,5 +65,4 @@ print(len); //: 111
 // Call standart builtin with non-number param
 Math.atanh = true_atanh
 len = Math.atanh("abc"); // deopt
-//aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

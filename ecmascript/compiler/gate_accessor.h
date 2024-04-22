@@ -398,21 +398,17 @@ public:
     void SetElementsKind(GateRef gate, ElementsKind kind);
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     bool TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const;
-    GateType GetReceiverType(GateRef gate) const;
-    GateType GetHolderType(GateRef gate) const;
-    GateType GetNewHolderType(GateRef gate) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
     MemoryType GetMemoryType(GateRef gate) const;
     uint32_t GetHClassIndex(GateRef gate) const;
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
     TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
-    PGOTypeRef GetTypedBinaryType(GateRef gate) const;
-    bool HasPrimitiveNumberType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
     bool HasStringType(GateRef gate) const;
     GlobalTSTypeRef GetFuncGT(GateRef gate) const;
     GateType GetParamGateType(GateRef gate) const;
+    ParamType GetParamType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
     TypedBinaryAccessor GetTypedBinaryAccessor(GateRef gate) const;
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
@@ -543,8 +539,6 @@ public:
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     void ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement);
     void ReplaceGate(GateRef gate, GateRef replacement);
-    GateType GetLeftType(GateRef gate) const;
-    GateType GetRightType(GateRef gate) const;
     uint32_t GetFirstValue(GateRef gate) const;
     uint32_t GetSecondValue(GateRef gate) const;
     GateRef GetGlueFromArgList() const;
@@ -616,6 +610,9 @@ public:
     bool IsCreateArray(GateRef gate) const;
     void SetStoreNoBarrier(GateRef gate, bool isNoBarrier);
     bool IsNoBarrier(GateRef gate) const;
+
+    TypedBinOp GetRevCompareOpForTypedBinOp(TypedBinOp op);
+    TypedBinOp GetSwapCompareOpForTypedBinOp(TypedBinOp op);
 
 private:
     const GateMetaData *GetMetaData(GateRef gate) const;

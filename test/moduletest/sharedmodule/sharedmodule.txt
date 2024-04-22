@@ -1,0 +1,3 @@
+sharedmodule.ts;sharedmodule;esm;sharedmodule.ts;xxsharedmodulexx
+func.ts;func;esm;func.ts;xxfuncxx
+string.ts;string;esm;string.ts;xxstringxx

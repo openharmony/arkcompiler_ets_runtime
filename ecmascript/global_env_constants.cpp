@@ -80,9 +80,8 @@
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_node.h"
-#include "ecmascript/ts_types/ts_type.h"
+#include "ecmascript/vtable.h"
 
 namespace panda::ecmascript {
 void GlobalEnvConstants::Init(JSThread *thread)
@@ -97,8 +96,8 @@ void GlobalEnvConstants::Init(JSThread *thread)
         }
     } else {
         InitSharedRootsClasses(factory);
-        InitSharedStrings(factory);
         InitSharedMiscellanious(thread, factory);
+        InitSharedStrings(factory);
     }
     // 2. Init non-shareds.
     InitMiscellanious(thread, factory);
@@ -231,26 +230,6 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
     SetConstant(ConstantIndex::CLASS_INFO_EXTRACTOR_HCLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ClassInfoExtractor::SIZE,
                                         JSType::CLASS_INFO_EXTRACTOR));
-    SetConstant(ConstantIndex::TS_OBJECT_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSObjectType::SIZE, JSType::TS_OBJECT_TYPE));
-    SetConstant(ConstantIndex::TS_CLASS_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSClassType::SIZE, JSType::TS_CLASS_TYPE));
-    SetConstant(ConstantIndex::TS_UNION_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSUnionType::SIZE, JSType::TS_UNION_TYPE));
-    SetConstant(ConstantIndex::TS_INTERFACE_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSInterfaceType::SIZE, JSType::TS_INTERFACE_TYPE));
-    SetConstant(ConstantIndex::TS_CLASS_INSTANCE_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSClassInstanceType::SIZE,
-                                        JSType::TS_CLASS_INSTANCE_TYPE));
-    SetConstant(ConstantIndex::TS_FUNCTION_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSFunctionType::SIZE, JSType::TS_FUNCTION_TYPE));
-    SetConstant(ConstantIndex::TS_ARRAY_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSArrayType::SIZE, JSType::TS_ARRAY_TYPE));
-    SetConstant(ConstantIndex::TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSIteratorInstanceType::SIZE,
-                                        JSType::TS_ITERATOR_INSTANCE_TYPE));
-    SetConstant(ConstantIndex::TS_NAMESPACE_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSNamespaceType::SIZE, JSType::TS_NAMESPACE_TYPE));
     SetConstant(ConstantIndex::CELL_RECORD_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, CellRecord::SIZE, JSType::CELL_RECORD));
     SetConstant(ConstantIndex::METHOD_CLASS_INDEX,
@@ -261,6 +240,9 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, RBTreeNode::SIZE, JSType::RB_TREENODE));
     SetConstant(ConstantIndex::CLASS_LITERAL_HCLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ClassLiteral::SIZE, JSType::CLASS_LITERAL));
+    SetConstant(ConstantIndex::RESOLVED_RECORD_INEDX_BINDING_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ResolvedRecordIndexBinding::SIZE,
+        JSType::RESOLVEDRECORDINDEXBINDING_RECORD));
     SetConstant(ConstantIndex::RESOLVED_RECORD_BINDING_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ResolvedRecordBinding::SIZE, JSType::RESOLVEDRECORDBINDING_RECORD));
 }
@@ -295,10 +277,39 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->CreateSLayoutInfo(0));
 }
 
-void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
+void GlobalEnvConstants::InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory *factory)
 {
-    JSHClass *hClass = JSHClass::Cast(GetHClassClass().GetTaggedObject());
+    SetConstant(ConstantIndex::JS_API_LINKED_LIST_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPILinkedListIterator::SIZE, JSType::JS_API_LINKED_LIST_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_LIST_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIListIterator::SIZE, JSType::JS_API_LIST_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_PLAIN_ARRAY_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIPlainArrayIterator::SIZE, JSType::JS_API_PLAIN_ARRAY_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_QUEUE_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIQueueIterator::SIZE, JSType::JS_API_QUEUE_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_STACK_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIStackIterator::SIZE, JSType::JS_API_STACK_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_VECTOR_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIVectorIterator::SIZE, JSType::JS_API_VECTOR_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_HASH_MAP_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIHashMapIterator::SIZE, JSType::JS_API_HASHMAP_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_HASH_SET_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIHashSetIterator::SIZE, JSType::JS_API_HASHSET_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_TREE_MAP_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPITreeMapIterator::SIZE, JSType::JS_API_TREEMAP_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_TREE_SET_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPITreeSetIterator::SIZE, JSType::JS_API_TREESET_ITERATOR));
+    SetConstant(ConstantIndex::OBJECT_HCLASS_INDEX, factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
+    SetConstant(ConstantIndex::CLASS_PROTOTYPE_HCLASS_INDEX,
+                factory->CreateDefaultClassPrototypeHClass(hClass));
+    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
+                factory->CreateDefaultClassConstructorHClass(hClass));
+    SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
+}
 
+void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory)
+{
     SetConstant(ConstantIndex::JS_REALM_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSRealm::SIZE, JSType::JS_REALM));
     SetConstant(ConstantIndex::JS_REGEXP_ITERATOR_CLASS_INDEX,
@@ -327,33 +338,14 @@ void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
     SetConstant(ConstantIndex::JS_API_LIGHTWEIGHTSET_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPILightWeightSetIterator::SIZE,
                 JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_LINKED_LIST_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPILinkedListIterator::SIZE, JSType::JS_API_LINKED_LIST_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_LIST_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIListIterator::SIZE, JSType::JS_API_LIST_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_PLAIN_ARRAY_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIPlainArrayIterator::SIZE, JSType::JS_API_PLAIN_ARRAY_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_QUEUE_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIQueueIterator::SIZE, JSType::JS_API_QUEUE_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_STACK_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIStackIterator::SIZE, JSType::JS_API_STACK_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_VECTOR_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIVectorIterator::SIZE, JSType::JS_API_VECTOR_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_HASH_MAP_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIHashMapIterator::SIZE, JSType::JS_API_HASHMAP_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_HASH_SET_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPIHashSetIterator::SIZE, JSType::JS_API_HASHSET_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_TREE_MAP_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPITreeMapIterator::SIZE, JSType::JS_API_TREEMAP_ITERATOR));
-    SetConstant(ConstantIndex::JS_API_TREE_SET_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSAPITreeSetIterator::SIZE, JSType::JS_API_TREESET_ITERATOR));
-    SetConstant(ConstantIndex::OBJECT_HCLASS_INDEX, factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
-    SetConstant(ConstantIndex::CLASS_PROTOTYPE_HCLASS_INDEX,
-                factory->CreateDefaultClassPrototypeHClass(hClass));
-    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
-                factory->CreateDefaultClassConstructorHClass(hClass));
-    SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
+}
+
+void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
+{
+    JSHClass *hClass = JSHClass::Cast(GetHClassClass().GetTaggedObject());
+
+    InitRootsClassesPartOne(hClass, factory);
+    InitRootsClassesPartTwo(hClass, factory);
     // JS_PROXY_CALLABLE_CLASS_INDEX
     JSHClass *jsProxyCallableClass = *factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY);
     jsProxyCallableClass->SetCallable(true);
@@ -370,7 +362,7 @@ void GlobalEnvConstants::InitMiscellanious(JSThread *thread, ObjectFactory *fact
     SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
     SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
-                WeakVector::Create(thread, SubtypingOperator::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
+                WeakVector::Create(thread, VTable::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
 
     // non ECMA standard jsapi containers iterators, init to Undefined first
     InitJSAPIContainers();

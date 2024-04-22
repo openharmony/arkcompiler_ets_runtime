@@ -21,12 +21,6 @@
 #include <ctime>
 
 namespace panda::ecmascript {
-inline void FatalIfError(const char *f, int rc)
-{
-    if (rc != 0) {
-        LOG_ECMA(FATAL)<< f << " failed: " << rc;
-    }
-}
 
 Mutex::Mutex(bool is_init) : mutex_()
 {
@@ -37,20 +31,20 @@ Mutex::Mutex(bool is_init) : mutex_()
 
 Mutex::~Mutex()
 {
-    int rc = pthread_mutex_destroy(&mutex_);
-    FatalIfError("pthread_mutex_destroy", rc);
+    [[maybe_unused]]int rc = pthread_mutex_destroy(&mutex_);
+    FATAL_IF_ERROR("pthread_mutex_destroy", rc);
 }
 
 void Mutex::Init(pthread_mutexattr_t *attrs)
 {
-    int rc = pthread_mutex_init(&mutex_, attrs);
-    FatalIfError("pthread_mutex_init", rc);
+    [[maybe_unused]]int rc = pthread_mutex_init(&mutex_, attrs);
+    FATAL_IF_ERROR("pthread_mutex_init", rc);
 }
 
 void Mutex::Lock()
 {
-    int rc = pthread_mutex_lock(&mutex_);
-    FatalIfError("pthread_mutex_lock", rc);
+    [[maybe_unused]]int rc = pthread_mutex_lock(&mutex_);
+    FATAL_IF_ERROR("pthread_mutex_lock", rc);
 }
 
 bool Mutex::TryLock()
@@ -60,15 +54,15 @@ bool Mutex::TryLock()
         return false;
     }
 
-    FatalIfError("pthread_mutex_trylock", rc);
+    FATAL_IF_ERROR("pthread_mutex_trylock", rc);
 
     return true;
 }
 
 void Mutex::Unlock()
 {
-    int rc = pthread_mutex_unlock(&mutex_);
-    FatalIfError("pthread_mutex_unlock", rc);
+    [[maybe_unused]]int rc = pthread_mutex_unlock(&mutex_);
+    FATAL_IF_ERROR("pthread_mutex_unlock", rc);
 }
 
 RecursiveMutex::RecursiveMutex() : Mutex(false)
@@ -81,26 +75,26 @@ RecursiveMutex::RecursiveMutex() : Mutex(false)
 
 RWLock::RWLock() : rwlock_()
 {
-    int rc = pthread_rwlock_init(&rwlock_, nullptr);
-    FatalIfError("pthread_rwlock_init", rc);
+    [[maybe_unused]]int rc = pthread_rwlock_init(&rwlock_, nullptr);
+    FATAL_IF_ERROR("pthread_rwlock_init", rc);
 }
 
 RWLock::~RWLock()
 {
-    int rc = pthread_rwlock_destroy(&rwlock_);
-    FatalIfError("pthread_rwlock_destroy", rc);
+    [[maybe_unused]]int rc = pthread_rwlock_destroy(&rwlock_);
+    FATAL_IF_ERROR("pthread_rwlock_destroy", rc);
 }
 
 void RWLock::ReadLock()
 {
-    int rc = pthread_rwlock_rdlock(&rwlock_);
-    FatalIfError("pthread_rwlock_rdlock", rc);
+    [[maybe_unused]]int rc = pthread_rwlock_rdlock(&rwlock_);
+    FATAL_IF_ERROR("pthread_rwlock_rdlock", rc);
 }
 
 void RWLock::WriteLock()
 {
-    int rc = pthread_rwlock_wrlock(&rwlock_);
-    FatalIfError("pthread_rwlock_wrlock", rc);
+    [[maybe_unused]]int rc = pthread_rwlock_wrlock(&rwlock_);
+    FATAL_IF_ERROR("pthread_rwlock_wrlock", rc);
 }
 
 bool RWLock::TryReadLock()
@@ -110,7 +104,7 @@ bool RWLock::TryReadLock()
         return false;
     }
 
-    FatalIfError("pthread_rwlock_tryrdlock", rc);
+    FATAL_IF_ERROR("pthread_rwlock_tryrdlock", rc);
 
     return true;
 }
@@ -122,45 +116,45 @@ bool RWLock::TryWriteLock()
         return false;
     }
 
-    FatalIfError("pthread_rwlock_trywrlock", rc);
+    FATAL_IF_ERROR("pthread_rwlock_trywrlock", rc);
 
     return true;
 }
 
 void RWLock::Unlock()
 {
-    int rc = pthread_rwlock_unlock(&rwlock_);
-    FatalIfError("pthread_rwlock_unlock", rc);
+    [[maybe_unused]]int rc = pthread_rwlock_unlock(&rwlock_);
+    FATAL_IF_ERROR("pthread_rwlock_unlock", rc);
 }
 
 ConditionVariable::ConditionVariable() : cond_()
 {
-    int rc = pthread_cond_init(&cond_, nullptr);
-    FatalIfError("pthread_cond_init", rc);
+    [[maybe_unused]]int rc = pthread_cond_init(&cond_, nullptr);
+    FATAL_IF_ERROR("pthread_cond_init", rc);
 }
 
 ConditionVariable::~ConditionVariable()
 {
-    int rc = pthread_cond_destroy(&cond_);
-    FatalIfError("pthread_cond_destroy", rc);
+    [[maybe_unused]]int rc = pthread_cond_destroy(&cond_);
+    FATAL_IF_ERROR("pthread_cond_destroy", rc);
 }
 
 void ConditionVariable::Signal()
 {
-    int rc = pthread_cond_signal(&cond_);
-    FatalIfError("pthread_cond_signal", rc);
+    [[maybe_unused]]int rc = pthread_cond_signal(&cond_);
+    FATAL_IF_ERROR("pthread_cond_signal", rc);
 }
 
 void ConditionVariable::SignalAll()
 {
-    int rc = pthread_cond_broadcast(&cond_);
-    FatalIfError("pthread_cond_broadcast", rc);
+    [[maybe_unused]]int rc = pthread_cond_broadcast(&cond_);
+    FATAL_IF_ERROR("pthread_cond_broadcast", rc);
 }
 
 void ConditionVariable::Wait(Mutex *mutex)
 {
-    int rc = pthread_cond_wait(&cond_, &mutex->mutex_);
-    FatalIfError("pthread_cond_wait", rc);
+    [[maybe_unused]]int rc = pthread_cond_wait(&cond_, &mutex->mutex_);
+    FATAL_IF_ERROR("pthread_cond_wait", rc);
 }
 
 struct timespec ConvertTime(uint64_t ms, uint64_t ns, bool is_absolute)
@@ -193,7 +187,7 @@ bool ConditionVariable::TimedWait(Mutex *mutex, uint64_t ms, uint64_t ns, bool i
             return true;
         }
     }
-    FatalIfError("pthread_cond_timedwait", rc);
+    FATAL_IF_ERROR("pthread_cond_timedwait", rc);
     return false;
 }
 }  // namespace panda::ecmascript

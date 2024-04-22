@@ -660,7 +660,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     ASSERT(thread->IsInManagedState());
     INTERPRETER_TRACE(thread, Execute);
     // check stack overflow before re-enter interpreter
-    STACK_LIMIT_CHECK(thread, thread->GetException());
+    STACK_LIMIT_CHECK(thread, JSTaggedValue::Exception());
     if (thread->IsAsmInterpreter()) {
         return InterpreterAssembly::Execute(info);
     }
@@ -4300,7 +4300,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
                 newSp[index++] = ToUintPtr(thread);
-                newSp[index++] = numArgs + 2; // +1 for this
+                newSp[index++] = numArgs + 2; // 2: +1 for this
                 // func
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = ctor.GetRawData();
@@ -5067,6 +5067,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SET_ACC(obj->GetResumeResult());
         } else {
             JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+            uintptr_t taskInfo = obj->GetTaskInfo();
+            thread->SetTaskInfo(taskInfo);
+            obj->SetTaskInfo(0);
             SET_ACC(obj->GetResumeResult());
         }
         DISPATCH(RESUMEGENERATOR);
@@ -7663,7 +7666,7 @@ JSTaggedValue EcmaInterpreter::GetConstantPool(JSTaggedType *sp)
 JSTaggedValue EcmaInterpreter::GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp)
 {
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
-    return thread->GetCurrentEcmaContext()->FindUnsharedConstpool(state->constpool);
+    return thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(state->constpool);
 }
 
 bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset)

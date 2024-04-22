@@ -14,8 +14,6 @@
  */
 
 declare function print(arg:any):string;
-declare function assert_unreachable():void;
-declare function assert_equal(a: Object, b: Object):void;
 
 function* values() {
     yield 1;
@@ -27,7 +25,6 @@ function* values() {
   for (var x of iterator) {
     try {
       throw new Error();
-      assert_unreachable();
     } catch (err) {
     } finally {
       i++;
@@ -39,4 +36,4 @@ function* values() {
     print('This code is unreachable (following `try` statement).');
   }
   
-  assert_equal(i, 2);
+  print(i);

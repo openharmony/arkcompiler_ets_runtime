@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_COMPILER_FRAME_STATE_H
 #define ECMASCRIPT_COMPILER_FRAME_STATE_H
 
-#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/base/bit_set.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate.h"
@@ -115,7 +114,7 @@ public:
     void AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
     void UpdateFrameValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId,
         GateRef gate);
-    void UpdateMoveValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId);
+    void UpdateMoveValues(const BytecodeInfo &bytecodeInfo);
     void UpdateStateDepend(GateRef state, GateRef depend);
     FrameLiveOut *GetOrOCreateBCEndLiveOut(uint32_t bcIndex);
     FrameLiveOut *GetOrOCreateBBLiveOut(size_t bbIndex);
@@ -132,7 +131,7 @@ public:
     void AdvanceToNextBB(const BytecodeRegion &bb, bool isOsrLoopExit = false);
     void InitEntryBB(const BytecodeRegion &bb);
 
-    const ChunkDeque<size_t>& GetRpoList() const
+    ChunkDeque<size_t>& GetRpoList()
     {
         return rpoList_;
     }
@@ -159,6 +158,8 @@ public:
         ASSERT(bbIndex < bbFrameContext_.size());
         return bbFrameContext_[bbIndex] != nullptr;
     }
+
+    FrameContext *GetOrOCreateMergedContext(uint32_t bbIndex);
 
 private:
     static constexpr size_t FIXED_ARGS = 2; // ac & env
@@ -221,8 +222,7 @@ private:
         return bbFrameContext_[bbIndex];
     }
 
-    FrameContext *GetOrOCreateMergedContext(uint32_t bbIndex);
-    void FillBcInputs(const BytecodeInfo &bytecodeInfo, uint32_t bcIndex, GateRef gate);
+    void FillBcInputs(const BytecodeInfo &bytecodeInfo, GateRef gate);
     void DumpLiveState();
     size_t GetNumOfStatePreds(const BytecodeRegion &bb);
     GateRef MergeValue(const BytecodeRegion &bb,
@@ -254,8 +254,6 @@ private:
     FrameContext *GetCachedContext();
 
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
-    TSManager *tsManager_ {nullptr};
-    const TypeRecorder *typeRecorder_ {nullptr};
     const PGOTypeRecorder *pgoTypeRecorder_ {nullptr};
     FrameLiveOut *liveOutResult_ {nullptr};
     FrameLiveOut *currentBBliveOut_ {nullptr};

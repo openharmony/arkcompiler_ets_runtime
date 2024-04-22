@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/ts_hcr_opt_pass.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -41,8 +42,10 @@ GateRef TSHCROptPass::VisitStringBinOp(GateRef gate)
 {
     TypedBinOp op = acc_.GetTypedBinaryOp(gate);
     switch (op) {
-        case TypedBinOp::TYPED_EQ:
+        case TypedBinOp::TYPED_EQ: {
+            Jit::JitLockHolder lock(compilationEnv_, "VisitStringEqual");
             return VisitStringEqual(gate);
+        }
         default:
             return Circuit::NullGate();
     }
@@ -79,10 +82,9 @@ GateRef TSHCROptPass::ConvertStringEqualToConst(GateRef left, GateRef right)
 
     auto leftMethodOffset = acc_.TryGetMethodOffset(left);
     auto rightMethodOffset = acc_.TryGetMethodOffset(right);
-    JSHandle<EcmaString> leftStr(thread_, GetStringFromCP(leftMethodOffset, leftId));
-    JSHandle<EcmaString> rightStr(thread_, GetStringFromCP(rightMethodOffset, rightId));
-    bool isEqual = EcmaStringAccessor::StringsAreEqual(thread_->GetEcmaVM(), leftStr, rightStr);
-    if (isEqual) {
+    JSTaggedValue leftStr = GetStringFromConstantPool(leftMethodOffset, leftId);
+    JSTaggedValue rightStr = GetStringFromConstantPool(rightMethodOffset, rightId);
+    if (leftStr == rightStr) {
         return builder_.Boolean(true);
     }
     return builder_.Boolean(false);
@@ -93,7 +95,7 @@ bool TSHCROptPass::IsSingleCharString(GateRef gate)
     if (acc_.IsConstString(gate)) {
         uint32_t strId = acc_.GetStringIdFromLdaStrGate(gate);
         auto methodOffset = acc_.TryGetMethodOffset(gate);
-        JSTaggedValue str = GetStringFromCP(methodOffset, strId);
+        JSTaggedValue str = GetStringFromConstantPool(methodOffset, strId);
         return EcmaStringAccessor(str).GetLength() == 1;
     }
     return acc_.IsSingleCharGate(gate);
@@ -117,7 +119,7 @@ GateRef TSHCROptPass::ConvertConstSingleCharToInt32(GateRef gate)
     ASSERT(acc_.IsConstString(gate));
     uint32_t strId = acc_.GetStringIdFromLdaStrGate(gate);
     auto methodOffset = acc_.TryGetMethodOffset(gate);
-    JSTaggedValue str = tsManager_->GetStringFromConstantPool(methodOffset, strId);
+    JSTaggedValue str = GetStringFromConstantPool(methodOffset, strId);
     ASSERT(EcmaStringAccessor(str).GetLength() == 1);
     uint16_t strToInt = EcmaStringAccessor(str).Get(0);
     return builder_.Int32(strToInt);
@@ -131,8 +133,7 @@ GateRef TSHCROptPass::ConvertToSingleCharComparison(GateRef left, GateRef right)
     } else if (acc_.IsConstString(right)) {
         right = ConvertConstSingleCharToInt32(right);
     }
-    return builder_.TypedBinaryOp<TypedBinOp::TYPED_EQ>(left, right, GateType::IntType(),
-                                                        GateType::IntType(), GateType::BooleanType(),
-                                                        PGOTypeRef::NoneType());
+    // change string binary operator to int binary operator
+    return builder_.TypedBinaryOp<TypedBinOp::TYPED_EQ>(left, right, ParamType::IntType());
 }
 }  // namespace panda::ecmascript::kungfu

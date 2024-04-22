@@ -23,7 +23,7 @@
 #include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
-class Taskpool {
+class PUBLIC_API Taskpool {
 public:
     PUBLIC_API static Taskpool *GetCurrentTaskpool();
 
@@ -38,7 +38,9 @@ public:
     NO_COPY_SEMANTIC(Taskpool);
     NO_MOVE_SEMANTIC(Taskpool);
 
-    void Initialize(int threadNum = DEFAULT_TASKPOOL_THREAD_NUM);
+    void Initialize(int threadNum = DEFAULT_TASKPOOL_THREAD_NUM,
+        std::function<void(os::thread::native_handle_type)> prologueHook = nullptr,
+        const std::function<void(os::thread::native_handle_type)> epilogueHook = nullptr);
     void Destroy(int32_t id);
 
     void PostTask(std::unique_ptr<Task> task) const
@@ -66,8 +68,10 @@ public:
         runner_->SetQosPriority(isForeground);
     }
 
+    void ForEachTask(const std::function<void(Task*)> &f);
+
 private:
-    uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const;
+    virtual uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const;
 
     std::unique_ptr<Runner> runner_;
     volatile int isInitialized_ = 0;

@@ -94,6 +94,7 @@ JSTaggedValue FrameIterator::GetFunction() const
         case FrameType::OPTIMIZED_ENTRY_FRAME:
         case FrameType::ASM_BRIDGE_FRAME:
         case FrameType::LEAVE_FRAME:
+        case FrameType::BASELINE_BUILTIN_FRAME:
         case FrameType::LEAVE_FRAME_WITH_ARGV:
         case FrameType::INTERPRETER_ENTRY_FRAME:
         case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
@@ -109,9 +110,42 @@ JSTaggedValue FrameIterator::GetFunction() const
     }
 }
 
+AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr) const
+{
+    // get CallSiteInfo with jsfunction for jit compiled function
+    FrameType type = GetFrameType();
+    if (type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME ||
+        type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+        auto frame = GetFrame<OptimizedJSFunctionFrame>();
+        JSTaggedValue func = frame->GetFunction();
+        if (!func.IsHeapObject()) {
+            return {};
+        }
+        MarkWord markWord(func.GetTaggedObject());
+        TaggedObject *f = markWord.IsForwardingAddress() ? markWord.ToForwardingAddress() : func.GetTaggedObject();
+        if (!f->GetClass()->IsJSFunction()) {
+            return {};
+        }
+        JSFunction *jsfunc = JSFunction::Cast(f);
+        // machineCode non move
+        JSTaggedValue machineCode = jsfunc->GetMachineCode();
+        if (machineCode.IsMachineCodeObject() &&
+            MachineCode::Cast(machineCode.GetTaggedObject())->IsInText(retAddr)) {
+            return MachineCode::Cast(machineCode.GetTaggedObject())->CalCallSiteInfo(retAddr);
+        }
+    }
+    return {};
+}
+
 AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
-    return const_cast<JSThread *>(thread_)->GetCurrentEcmaContext()->CalCallSiteInfo(retAddr);
+    auto callSiteInfo = const_cast<JSThread *>(thread_)->GetCurrentEcmaContext()->CalCallSiteInfo(retAddr);
+    if (std::get<1>(callSiteInfo) != nullptr) { // 1 : stackMapAddr
+        return callSiteInfo;
+    }
+    // try get jit code
+    callSiteInfo = TryCalCallSiteInfoFromMachineCode(retAddr);
+    return callSiteInfo;
 }
 
 template <GCVisitedFlag GCVisit>
@@ -136,6 +170,16 @@ void FrameIterator::Advance()
             if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = 0;
                 optimizedCallSiteSp_ = 0;
+            }
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
+        case FrameType::BASELINE_BUILTIN_FRAME: {
+            auto frame = GetFrame<BaselineBuiltinFrame>();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
             }
             current_ = frame->GetPrevFrameFp();
             break;
@@ -357,6 +401,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
             return frame->GetCallSiteSp();
         }
         case FrameType::OPTIMIZED_FRAME:
+        case FrameType::BASELINE_BUILTIN_FRAME:
         case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             ASSERT(thread_ != nullptr);
@@ -488,6 +533,19 @@ ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
     const RootVisitor &visitor,
     [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
     const RootBaseAndDerivedVisitor &derivedVisitor) const
+{
+    bool ret = it.IteratorStackMap(visitor, derivedVisitor);
+    if (!ret) {
+#ifndef NDEBUG
+        LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
+#endif
+    }
+}
+
+ARK_INLINE void BaselineBuiltinFrame::GCIterate([[maybe_unused]]const FrameIterator &it,
+    [[maybe_unused]]const RootVisitor &visitor,
+    [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
+    [[maybe_unused]]const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {

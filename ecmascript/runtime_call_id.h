@@ -345,6 +345,23 @@ namespace panda::ecmascript {
     V(SharedArrayBuffer, IsView)              \
     V(SharedArrayBuffer, Species)             \
     V(SharedArrayBuffer, GetByteLength)       \
+    V(SendableArrayBuffer, Constructor)       \
+    V(SendableArrayBuffer, Slice)             \
+    V(SendableArrayBuffer, Species)           \
+    V(SendableArrayBuffer, GetByteLength)     \
+    V(SendableArrayBuffer, GetValueFromBuffer)  \
+    V(SendableArrayBuffer, SetValueInBuffer)  \
+    V(SendableArrayBuffer, CloneArrayBuffer)  \
+    V(SendableArrayBuffer, AllocateSendableArrayBuffer) \
+    V(BuiltinsJsonValue, JSONObjectConstructor) \
+    V(BuiltinsJsonValue, JSONArrayConstructor)  \
+    V(BuiltinsJsonValue, JSONTrueConstructor)   \
+    V(BuiltinsJsonValue, JSONFalseConstructor)  \
+    V(BuiltinsJsonValue, JSONNullConstructor)   \
+    V(BuiltinsJsonValue, JSONNumberConstructor) \
+    V(BuiltinsJsonValue, JSONStringConstructor) \
+    V(BuiltinsJsonValue, Get)                   \
+    V(SendableArrayBuffer, IsView)            \
     V(AsyncFromSyncIterator, Next)            \
     V(AsyncFromSyncIterator, Throw)           \
     V(AsyncFromSyncIterator, Return)          \
@@ -872,6 +889,50 @@ namespace panda::ecmascript {
     V(TypedArray, ToStringTag)                \
     V(TypedArray, At)                         \
     V(TypedArray, ToReversed)                 \
+    V(SharedTypedArray, BaseConstructor)              \
+    V(SharedTypedArray, Int8ArrayConstructor)         \
+    V(SharedTypedArray, Uint8ArrayConstructor)        \
+    V(SharedTypedArray, Uint8ClampedArrayConstructor) \
+    V(SharedTypedArray, Int16ArrayConstructor)        \
+    V(SharedTypedArray, Uint16ArrayConstructor)       \
+    V(SharedTypedArray, Int32ArrayConstructor)        \
+    V(SharedTypedArray, Uint32ArrayConstructor)       \
+    V(SharedTypedArray, Float32ArrayConstructor)      \
+    V(SharedTypedArray, Float64ArrayConstructor)      \
+    V(SharedTypedArray, BigInt64ArrayConstructor)     \
+    V(SharedTypedArray, BigUint64ArrayConstructor)    \
+    V(SharedTypedArray, Fill)                 \
+    V(SharedTypedArray, Find)                 \
+    V(SharedTypedArray, FindIndex)            \
+    V(SharedTypedArray, IndexOf)              \
+    V(SharedTypedArray, Reduce)               \
+    V(SharedTypedArray, Reverse)              \
+    V(SharedTypedArray, Some)                 \
+    V(SharedTypedArray, ToLocaleString)       \
+    V(SharedTypedArray, ToString)             \
+    V(SharedTypedArray, Includes)             \
+    V(SharedTypedArray, From)                 \
+    V(SharedTypedArray, Of)                   \
+    V(SharedTypedArray, Species)              \
+    V(SharedTypedArray, GetBuffer)            \
+    V(SharedTypedArray, GetByteLength)        \
+    V(SharedTypedArray, GetByteOffset)        \
+    V(SharedTypedArray, GetLength)            \
+    V(SharedTypedArray, CopyWithin)           \
+    V(SharedTypedArray, Entries)              \
+    V(SharedTypedArray, Every)                \
+    V(SharedTypedArray, Filter)               \
+    V(SharedTypedArray, ForEach)              \
+    V(SharedTypedArray, Join)                 \
+    V(SharedTypedArray, Keys)                 \
+    V(SharedTypedArray, Map)                  \
+    V(SharedTypedArray, Set)                  \
+    V(SharedTypedArray, Slice)                \
+    V(SharedTypedArray, Sort)                 \
+    V(SharedTypedArray, Subarray)             \
+    V(SharedTypedArray, Values)               \
+    V(SharedTypedArray, ToStringTag)          \
+    V(SharedTypedArray, At)                   \
     V(WeakMap, Constructor)                   \
     V(WeakMap, Delete)                        \
     V(WeakMap, Get)                           \

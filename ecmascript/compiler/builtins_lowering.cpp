@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/compiler/builtins_lowering.h"
-
 #include "ecmascript/global_env.h"
 
 namespace panda::ecmascript::kungfu {
@@ -25,29 +24,29 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
     auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
     auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
-        case BUILTINS_STUB_ID(LocaleCompare):
+        case BUILTINS_STUB_ID(StringLocaleCompare):
             LowerTypedLocaleCompare(gate);
             break;
-        case BUILTINS_STUB_ID(SORT):
+        case BUILTINS_STUB_ID(ArraySort):
             LowerTypedArraySort(gate);
             break;
-        case BUILTINS_STUB_ID(STRINGIFY):
+        case BUILTINS_STUB_ID(JsonStringify):
             LowerTypedStringify(gate);
             break;
-        case BUILTINS_STUB_ID(MAP_PROTO_ITERATOR):
-        case BUILTINS_STUB_ID(SET_PROTO_ITERATOR):
-        case BUILTINS_STUB_ID(STRING_PROTO_ITERATOR):
-        case BUILTINS_STUB_ID(ARRAY_PROTO_ITERATOR):
-        case BUILTINS_STUB_ID(TYPED_ARRAY_PROTO_ITERATOR):
+        case BUILTINS_STUB_ID(MapProtoIterator):
+        case BUILTINS_STUB_ID(SetProtoIterator):
+        case BUILTINS_STUB_ID(StringProtoIterator):
+        case BUILTINS_STUB_ID(ArrayProtoIterator):
+        case BUILTINS_STUB_ID(TypeArrayProtoIterator):
             LowerBuiltinIterator(gate, id);
             break;
-        case BUILTINS_STUB_ID(MAP_ITERATOR_PROTO_NEXT):
-        case BUILTINS_STUB_ID(SET_ITERATOR_PROTO_NEXT):
-        case BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT):
-        case BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT):
+        case BUILTINS_STUB_ID(MapIteratorProtoNext):
+        case BUILTINS_STUB_ID(SetIteratorProtoNext):
+        case BUILTINS_STUB_ID(StringIteratorProtoNext):
+        case BUILTINS_STUB_ID(ArrayIteratorProtoNext):
             LowerIteratorNext(gate, id);
             break;
-        case BUILTINS_STUB_ID(ITERATOR_PROTO_RETURN):
+        case BUILTINS_STUB_ID(IteratorProtoReturn):
             LowerIteratorReturn(gate, id);
             break;
         case BUILTINS_STUB_ID(NumberConstructor):
@@ -188,11 +187,11 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
     GateRef idGate = acc_.GetValueIn(gate, 1);
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
-        case BuiltinsStubCSigns::ID::MAP_PROTO_ITERATOR:
-        case BuiltinsStubCSigns::ID::SET_PROTO_ITERATOR:
-        case BuiltinsStubCSigns::ID::STRING_PROTO_ITERATOR:
-        case BuiltinsStubCSigns::ID::ARRAY_PROTO_ITERATOR:
-        case BuiltinsStubCSigns::ID::TYPED_ARRAY_PROTO_ITERATOR: {
+        case BuiltinsStubCSigns::ID::MapProtoIterator:
+        case BuiltinsStubCSigns::ID::SetProtoIterator:
+        case BuiltinsStubCSigns::ID::StringProtoIterator:
+        case BuiltinsStubCSigns::ID::ArrayProtoIterator:
+        case BuiltinsStubCSigns::ID::TypeArrayProtoIterator: {
             return LowerCallTargetCheckWithDetector(gate, id);
         }
         case BuiltinsStubCSigns::ID::NumberConstructor: {
@@ -223,29 +222,29 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithGlobalEnv(GateRef gate, Builtin
 GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, BuiltinsStubCSigns::ID id)
 {
     JSType expectType = JSType::INVALID;
-    uint8_t detectorIndex = 0;
+    uint16_t detectorIndex = 0;
     switch (id) {
-        case BuiltinsStubCSigns::ID::MAP_PROTO_ITERATOR: {
+        case BuiltinsStubCSigns::ID::MapProtoIterator: {
             expectType = JSType::JS_MAP;
             detectorIndex = GlobalEnv::MAP_ITERATOR_DETECTOR_INDEX;
             break;
         }
-        case BuiltinsStubCSigns::ID::SET_PROTO_ITERATOR: {
+        case BuiltinsStubCSigns::ID::SetProtoIterator: {
             expectType = JSType::JS_SET;
             detectorIndex = GlobalEnv::SET_ITERATOR_DETECTOR_INDEX;
             break;
         }
-        case BuiltinsStubCSigns::ID::STRING_PROTO_ITERATOR: {
+        case BuiltinsStubCSigns::ID::StringProtoIterator: {
             expectType = JSType::STRING_FIRST;
             detectorIndex = GlobalEnv::STRING_ITERATOR_DETECTOR_INDEX;
             break;
         }
-        case BuiltinsStubCSigns::ID::ARRAY_PROTO_ITERATOR: {
+        case BuiltinsStubCSigns::ID::ArrayProtoIterator: {
             expectType = JSType::JS_ARRAY;
             detectorIndex = GlobalEnv::ARRAY_ITERATOR_DETECTOR_INDEX;
             break;
         }
-        case BuiltinsStubCSigns::ID::TYPED_ARRAY_PROTO_ITERATOR: {
+        case BuiltinsStubCSigns::ID::TypeArrayProtoIterator: {
             expectType = JSType::JS_TYPED_ARRAY_FIRST;
             detectorIndex = GlobalEnv::TYPED_ARRAY_ITERATOR_DETECTOR_INDEX;
             break;
@@ -273,20 +272,23 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         return funcCheck;
     }
     switch (id) {
-        case BuiltinsStubCSigns::ID::LocaleCompare:
-        case BuiltinsStubCSigns::ID::SORT:
-        case BuiltinsStubCSigns::ID::STRINGIFY:
-        case BuiltinsStubCSigns::ID::MAP_PROTO_ITERATOR:
-        case BuiltinsStubCSigns::ID::SET_PROTO_ITERATOR:
-        case BuiltinsStubCSigns::ID::STRING_PROTO_ITERATOR:
-        case BuiltinsStubCSigns::ID::ARRAY_PROTO_ITERATOR:
-        case BuiltinsStubCSigns::ID::TYPED_ARRAY_PROTO_ITERATOR:
-        case BuiltinsStubCSigns::ID::MAP_ITERATOR_PROTO_NEXT:
-        case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
-        case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
-        case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
-        case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
+        case BuiltinsStubCSigns::ID::StringLocaleCompare:
+        case BuiltinsStubCSigns::ID::ArraySort:
+        case BuiltinsStubCSigns::ID::JsonStringify:
+        case BuiltinsStubCSigns::ID::MapProtoIterator:
+        case BuiltinsStubCSigns::ID::SetProtoIterator:
+        case BuiltinsStubCSigns::ID::StringProtoIterator:
+        case BuiltinsStubCSigns::ID::ArrayProtoIterator:
+        case BuiltinsStubCSigns::ID::TypeArrayProtoIterator:
+        case BuiltinsStubCSigns::ID::MapIteratorProtoNext:
+        case BuiltinsStubCSigns::ID::SetIteratorProtoNext:
+        case BuiltinsStubCSigns::ID::StringIteratorProtoNext:
+        case BuiltinsStubCSigns::ID::ArrayIteratorProtoNext:
+        case BuiltinsStubCSigns::ID::IteratorProtoReturn:
         case BuiltinsStubCSigns::ID::NumberConstructor:
+        case BuiltinsStubCSigns::ID::TypedArrayEntries:
+        case BuiltinsStubCSigns::ID::TypedArrayKeys:
+        case BuiltinsStubCSigns::ID::TypedArrayValues:
             // Don't need check para
             return funcCheck;
         default: {
@@ -312,23 +314,23 @@ void BuiltinLowering::LowerBuiltinIterator(GateRef gate, BuiltinsStubCSigns::ID 
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     switch (id) {
-        case BUILTINS_STUB_ID(MAP_PROTO_ITERATOR): {
+        case BUILTINS_STUB_ID(MapProtoIterator): {
             result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateJSMapIterator, { glue, obj });
             break;
         }
-        case BUILTINS_STUB_ID(SET_PROTO_ITERATOR): {
+        case BUILTINS_STUB_ID(SetProtoIterator): {
             result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateJSSetIterator, { glue, obj });
             break;
         }
-        case BUILTINS_STUB_ID(STRING_PROTO_ITERATOR): {
+        case BUILTINS_STUB_ID(StringProtoIterator): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(CreateStringIterator), { obj }, true);
             break;
         }
-        case BUILTINS_STUB_ID(ARRAY_PROTO_ITERATOR): {
+        case BUILTINS_STUB_ID(ArrayProtoIterator): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(NewJSArrayIterator), { obj }, true);
             break;
         }
-        case BUILTINS_STUB_ID(TYPED_ARRAY_PROTO_ITERATOR): {
+        case BUILTINS_STUB_ID(TypeArrayProtoIterator): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(NewJSTypedArrayIterator), { obj }, true);
             break;
         }
@@ -344,19 +346,19 @@ void BuiltinLowering::LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id)
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     switch (id) {
-        case BUILTINS_STUB_ID(MAP_ITERATOR_PROTO_NEXT): {
+        case BUILTINS_STUB_ID(MapIteratorProtoNext): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(MapIteratorNext), { thisObj }, true);
             break;
         }
-        case BUILTINS_STUB_ID(SET_ITERATOR_PROTO_NEXT): {
+        case BUILTINS_STUB_ID(SetIteratorProtoNext): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(SetIteratorNext), { thisObj }, true);
             break;
         }
-        case BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT): {
+        case BUILTINS_STUB_ID(StringIteratorProtoNext): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(StringIteratorNext), { thisObj }, true);
             break;
         }
-        case BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT): {
+        case BUILTINS_STUB_ID(ArrayIteratorProtoNext): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(ArrayIteratorNext), { thisObj }, true);
             break;
         }
@@ -372,7 +374,7 @@ void BuiltinLowering::LowerIteratorReturn(GateRef gate, BuiltinsStubCSigns::ID i
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     switch (id) {
-        case BUILTINS_STUB_ID(ITERATOR_PROTO_RETURN): {
+        case BUILTINS_STUB_ID(IteratorProtoReturn): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(IteratorReturn), { thisObj }, true);
             break;
         }

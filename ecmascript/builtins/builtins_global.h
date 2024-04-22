@@ -168,6 +168,11 @@ private:
     static void PrintValue(int64_t value, int64_t tag);
     static JSTaggedValue Encode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet);
     static JSTaggedValue Decode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet);
+    static JSTaggedValue UTF16EncodeCodePoint(JSThread *thread, judgURIFunc IsInURISet,
+                                              const std::vector<uint8_t> &oct, const JSHandle<EcmaString> &str,
+                                              uint32_t &start, int32_t &k, std::u16string &sStr);
+    static JSTaggedValue DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
+                                               judgURIFunc IsInURISet, int32_t strLen, std::u16string &sStr);
     static bool IsUnescapedURI(uint16_t ch);
     static bool IsInUnescapedURISet(uint16_t ch);
     static bool IsInReservedURISet(uint16_t ch);

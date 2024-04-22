@@ -29,6 +29,7 @@
 #include "ecmascript/property_detector-inl.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "ecmascript/linked_hash_table.h"
 #include "builtins_typedarray.h"
 #include "ecmascript/jit/jit.h"
 
@@ -203,6 +204,7 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     ASSERT(info);
     const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap())->CollectGarbage(
         TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
+    SharedHeap::GetInstance()->CollectGarbage(info->GetThread(), TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER);
     return JSTaggedValue::True();
 }
 
@@ -247,6 +249,15 @@ JSTaggedValue BuiltinsArkTools::CheckCircularImport(EcmaRuntimeCallInfo *info)
     LOG_ECMA(INFO) << "checkCircularImport begin with: "<< string;
     SourceTextModule::CheckCircularImportTool(thread, string, referenceList, printOtherCircular);
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::HashCode(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> key = GetCallArg(info, 0);
+    return JSTaggedValue(LinkedHash::Hash(thread, key.GetTaggedValue()));
 }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -1130,5 +1141,60 @@ JSTaggedValue BuiltinsArkTools::ClearFunctionFeedback([[maybe_unused]] EcmaRunti
 {
     LOG_ECMA(DEBUG) << "Enter ClearFunctionFeedback()";
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+
+    auto jit = Jit::GetInstance();
+    if (!jit->IsEnableFastJit() || !jit->IsEnableBaselineJit()) {
+        return JSTaggedValue::False();
+    }
+    if (jsFunction->GetMachineCode() == JSTaggedValue::Undefined()) {
+        return JSTaggedValue::False();
+    }
+    while (jsFunction->GetMachineCode() == JSTaggedValue::Hole()) {
+        // just spin check
+        thread->CheckSafepoint();
+    }
+    return JSTaggedValue::True();
 }
 }  // namespace panda::ecmascript::builtins

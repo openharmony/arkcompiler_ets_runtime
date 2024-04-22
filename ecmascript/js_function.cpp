@@ -21,11 +21,13 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
@@ -98,6 +100,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetBaselineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
@@ -563,10 +566,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
 // [[Construct]]
 JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
 {
-    if (info == nullptr) {
-        return JSTaggedValue::Exception();
-    }
-
+    ASSERT(info != nullptr);
     JSThread *thread = info->GetThread();
     JSHandle<JSFunction> func(info->GetFunction());
     JSHandle<JSTaggedValue> newTarget(info->GetNewTarget());
@@ -601,16 +601,17 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     if (resultValue.IsECMAObject()) {
         return resultValue;
     }
-
     if (func->IsBase()) {
         return obj.GetTaggedValue();
     }
-
     // derived ctor(sub class) return the obj which created by base ctor(parent class)
     if (func->IsDerivedConstructor()) {
+        if (!resultValue.IsECMAObject() && !resultValue.IsUndefined()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread,
+                "derived class constructor must return an object or undefined", JSTaggedValue::Exception());
+        }
         return resultValue;
     }
-
     if (!resultValue.IsUndefined()) {
         RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "function is non-constructor", JSTaggedValue::Exception());
@@ -894,7 +895,7 @@ bool JSFunction::NameSetter(JSThread *thread, const JSHandle<JSObject> &self, co
     return true;
 }
 
-void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
+void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
                                       void *data, size_t nativeBindingsize, Concurrent isConcurrent)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
@@ -937,7 +938,7 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const 
 }
 
 void JSFunction::SetSFunctionExtraInfo(
-    JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize)
+    JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter, void *data, size_t nativeBindingsize)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     EcmaVM *vm = thread->GetEcmaVM();
@@ -1052,7 +1053,12 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
-    this->SetModule(thread, moduleRecord);
+    if (this->GetClass()->IsJSSharedFunction()) {
+        JSHandle<JSTaggedValue> sendableClassRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
+        this->SetModule(thread, sendableClassRecord);
+    } else {
+        this->SetModule(thread, moduleRecord);
+    }
 }
 
 void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)

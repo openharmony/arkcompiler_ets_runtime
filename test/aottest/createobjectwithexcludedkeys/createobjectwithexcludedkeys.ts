@@ -14,11 +14,10 @@
  */
 
 // CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8
-declare function assert_equal(a: Object, b: Object):void;
 const v0 = {value : 'value', age: 23, name: 'name'};
 const {value, age, ...v1} = v0;
-assert_equal(value, 'value');
-assert_equal(age, 23);
-assert_equal(v1.value, undefined);
-assert_equal(v1.age, undefined);
-assert_equal(v1.name, 'name');
+print(value);
+print(age);
+print(v1.value);
+print(v1.age);
+print(v1.name);

@@ -28,6 +28,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/tagged_dictionary.h"
@@ -57,28 +58,8 @@ JSTaggedValue ModuleManager::GetCurrentModule()
     return module;
 }
 
-JSHandle<JSTaggedValue> ModuleManager::GenerateFuncModule(const JSPandaFile *jsPandaFile,
-                                                          const CString &entryPoint, ClassKind classKind)
-{
-    CString recordName = jsPandaFile->GetRecordName(entryPoint);
-    JSRecordInfo recordInfo;
-    jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
-    if (jsPandaFile->IsModule(recordInfo)) {
-        JSHandle<JSTaggedValue> module(HostGetImportedModule(recordName));
-        if (classKind == ClassKind::NON_SENDABLE) {
-            return module;
-        } else {
-            // [[todo::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
-            // Clone isolate module at shared-heap to mark sendable class.
-            return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
-        }
-    }
-    return JSHandle<JSTaggedValue>(vm_->GetFactory()->NewFromUtf8(recordName));
-}
-
 JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module)
 {
-    // [[todo::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
     // Clone isolate module at shared-heap to mark sendable class.
     return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
 }
@@ -133,7 +114,8 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
         UNREACHABLE();
     }
-    JSTaggedValue moduleEnvironment = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetEnvironment();
+    JSHandle<SourceTextModule> currentModuleHdl(thread, currentModule);
+    JSTaggedValue moduleEnvironment = currentModuleHdl->GetEnvironment();
     if (moduleEnvironment.IsUndefined()) {
         return thread->GlobalConstants()->GetUndefined();
     }
@@ -142,8 +124,8 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     if (resolvedBinding.IsResolvedIndexBinding()) {
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
         JSTaggedValue resolvedModule = binding->GetModule();
+        JSHandle<SourceTextModule> module(thread, resolvedModule);
         ASSERT(resolvedModule.IsSourceTextModule());
-        SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
 
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
@@ -155,93 +137,28 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
                 resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
             }
         }
-
-        ModuleTypes moduleType = module->GetTypes();
-        if (SourceTextModule::IsNativeModule(moduleType)) {
-            return GetNativeModuleValue(thread, currentModule, resolvedModule, binding);
-        }
-        if (moduleType == ModuleTypes::CJS_MODULE) {
-            return GetCJSModuleValue(thread, currentModule, resolvedModule, binding);
-        }
-        return SourceTextModule::Cast(
-            resolvedModule.GetTaggedObject())->GetModuleValue(thread, binding->GetIndex(), false);
+        return ModuleManagerHelper::GetModuleValue(thread, module, binding->GetIndex());
     }
-    ResolvedBinding *binding = ResolvedBinding::Cast(resolvedBinding.GetTaggedObject());
-    JSTaggedValue resolvedModule = binding->GetModule();
-    SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
-    if (SourceTextModule::IsNativeModule(module->GetTypes())) {
-        return GetNativeModuleValue(thread, currentModule, resolvedModule, binding);
+    if (resolvedBinding.IsResolvedBinding()) {
+        ResolvedBinding *binding = ResolvedBinding::Cast(resolvedBinding.GetTaggedObject());
+        JSTaggedValue resolvedModule = binding->GetModule();
+        JSHandle<SourceTextModule> module(thread, resolvedModule);
+        if (SourceTextModule::IsNativeModule(module->GetTypes())) {
+            return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedModule, binding->GetBindingName());
+        }
+        if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
+            JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
+            return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+        }
     }
-    if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
-        JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(JSTaggedValue(module)));
-        return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+    if (resolvedBinding.IsResolvedRecordIndexBinding()) {
+        return ModuleManagerHelper::GetModuleValueFromIndexBinding(thread, currentModuleHdl, resolvedBinding);
+    }
+    if (resolvedBinding.IsResolvedRecordBinding()) {
+        return ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, currentModuleHdl, resolvedBinding);
     }
     LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding";
     UNREACHABLE();
-}
-
-JSTaggedValue ModuleManager::GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
-    JSTaggedValue resolvedModule, ResolvedBinding *binding)
-{
-    JSHandle<JSTaggedValue> nativeExports = JSHandle<JSTaggedValue>(thread,
-        SourceTextModule::Cast(resolvedModule.GetTaggedObject())->GetModuleValue(thread, 0, false));
-    if (!nativeExports->IsJSObject()) {
-        JSHandle<JSTaggedValue> nativeModuleName(thread, SourceTextModule::GetModuleName(resolvedModule));
-        JSHandle<JSTaggedValue> curModuleName(thread, SourceTextModule::Cast(
-            currentModule.GetTaggedObject())->GetEcmaModuleFilename());
-        LOG_FULL(WARN) << "GetNativeModuleValueByName: currentModule " +
-            ConvertToString(curModuleName.GetTaggedValue()) + ", find requireModule " +
-            ConvertToString(nativeModuleName.GetTaggedValue()) + " failed";
-        return nativeExports.GetTaggedValue();
-    }
-    if (UNLIKELY(JSTaggedValue::SameValue(binding->GetBindingName(),
-        thread->GlobalConstants()->GetHandledDefaultString().GetTaggedValue()))) {
-        return nativeExports.GetTaggedValue();
-    }
-    return JSHandle<JSTaggedValue>(thread, SlowRuntimeStub::LdObjByName(thread,
-                                                                        nativeExports.GetTaggedValue(),
-                                                                        binding->GetBindingName(),
-                                                                        false,
-                                                                        JSTaggedValue::Undefined())).GetTaggedValue();
-}
-
-JSTaggedValue ModuleManager::GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
-    JSTaggedValue resolvedModule, ResolvedIndexBinding *binding)
-{
-    JSHandle<JSTaggedValue> nativeExports = JSHandle<JSTaggedValue>(thread,
-        SourceTextModule::Cast(resolvedModule.GetTaggedObject())->GetModuleValue(thread, 0, false));
-    if (!nativeExports->IsJSObject()) {
-        JSHandle<JSTaggedValue> nativeModuleName(thread, SourceTextModule::GetModuleName(resolvedModule));
-        JSHandle<JSTaggedValue> curModuleName(thread, SourceTextModule::Cast(
-            currentModule.GetTaggedObject())->GetEcmaModuleFilename());
-        LOG_FULL(WARN) << "GetNativeModuleValueByIndex: currentModule " +
-            ConvertToString(curModuleName.GetTaggedValue()) + ", find requireModule " +
-            ConvertToString(nativeModuleName.GetTaggedValue()) + " failed";
-        return nativeExports.GetTaggedValue();
-    }
-    return SourceTextModule::GetValueFromExportObject(thread, nativeExports, binding->GetIndex());
-}
-
-JSTaggedValue ModuleManager::GetCJSModuleValue(JSThread *thread, JSTaggedValue currentModule,
-    JSTaggedValue resolvedModule, ResolvedIndexBinding *binding)
-{
-    JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(resolvedModule));
-    JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
-    // if cjsModule is not JSObject, means cjs uses default exports.
-    if (!cjsExports->IsJSObject()) {
-        if (cjsExports->IsHole()) {
-            ObjectFactory *factory = vm_->GetFactory();
-            JSHandle<JSTaggedValue> curModuleName(thread, SourceTextModule::Cast(
-                currentModule.GetTaggedObject())->GetEcmaModuleFilename());
-            CString errorMsg = "GetCJSModuleValue: currentModule" + ConvertToString(curModuleName.GetTaggedValue()) +
-                                "find requireModule" + ConvertToString(cjsModuleName.GetTaggedValue()) + "failed";
-            JSHandle<JSObject> syntaxError =
-                factory->GetJSError(base::ErrorType::SYNTAX_ERROR, errorMsg.c_str());
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), JSTaggedValue::Exception());
-        }
-        return cjsExports.GetTaggedValue();
-    }
-    return SourceTextModule::GetValueFromExportObject(thread, cjsExports, binding->GetIndex());
 }
 
 void ModuleManager::StoreModuleValue(int32_t index, JSTaggedValue value)
@@ -417,16 +334,6 @@ bool ModuleManager::IsEvaluatedModule(JSTaggedValue referencing)
     return false;
 }
 
-bool ModuleManager::SkipDefaultBundleFile(const CString &moduleFileName) const
-{
-    // relative file path like "../../xxxx" can't be loaded rightly in aot compilation phase
-    const char relativeFilePath[] = "..";
-    // just to skip misunderstanding error log in LoadJSPandaFile when we ignore Module Resolving Failure.
-    return !vm_->EnableReportModuleResolvingFailure() &&
-        (base::StringHelper::StringStartWith(moduleFileName, ModulePathHelper::BUNDLE_INSTALL_PATH) ||
-        base::StringHelper::StringStartWith(moduleFileName, relativeFilePath));
-}
-
 JSHandle<JSTaggedValue> ModuleManager::ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
     const CString &recordName, bool executeFromJob)
 {
@@ -463,8 +370,8 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
 {
     JSThread *thread = vm_->GetJSThread();
 
-    std::shared_ptr<JSPandaFile> jsPandaFile = SkipDefaultBundleFile(moduleFileName) ? nullptr :
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
+    std::shared_ptr<JSPandaFile> jsPandaFile = ModulePathHelper::SkipDefaultBundleFile(thread, moduleFileName) ?
+        nullptr : JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
     if (jsPandaFile == nullptr) {
         // In Aot Module Instantiate, we miss some runtime parameters from framework like bundleName or moduleName
         // which may cause wrong recordName parsing and we also can't load files not in this app hap. But in static
@@ -562,13 +469,13 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
     JSRecordInfo recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
     if (jsPandaFile->IsModule(recordInfo)) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
-    } else if (jsPandaFile->IsJson(recordInfo)) {
-        moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName);
     } else {
         ASSERT(jsPandaFile->IsCjs(recordInfo));
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     }
-    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, executeFromJob);
+    // json file can not be compiled into isolate abc.
+    ASSERT(!jsPandaFile->IsJson(recordInfo));
+    ModuleDeregister::InitForDeregisterModule(moduleRecord, executeFromJob);
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
     JSHandle<JSTaggedValue> referencingHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(moduleFileName));
     resolvedModules_ =
@@ -577,14 +484,15 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
     return moduleRecord;
 }
 
-JSHandle<JSTaggedValue> ModuleManager::ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType)
+JSHandle<JSTaggedValue> ModuleManager::ResolveNativeModule(const CString &moduleRequestName,
+    const CString &baseFileName, ModuleTypes moduleType)
 {
     ObjectFactory *factory = vm_->GetFactory();
     JSThread *thread = vm_->GetJSThread();
 
     JSHandle<JSTaggedValue> referencingModule(factory->NewFromUtf8(moduleRequestName));
     JSHandle<JSTaggedValue> moduleRecord = ModuleDataExtractor::ParseNativeModule(thread,
-        moduleRequestName, moduleType);
+        moduleRequestName, baseFileName, moduleType);
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
     resolvedModules_ = NameDictionary::Put(thread, dict, referencingModule, moduleRecord,
         PropertyAttributes::Default()).GetTaggedValue();
@@ -616,27 +524,34 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
 
     JSHandle<JSTaggedValue> recordNameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recordName));
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordNameHandle);
-    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, executeFromJob);
+    ModuleDeregister::InitForDeregisterModule(moduleRecord, executeFromJob);
     return moduleRecord;
 }
 
-void ModuleManager::AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule)
+void ModuleManager::AddResolveImportedModule(JSHandle<JSTaggedValue> &record, JSHandle<JSTaggedValue> &module)
 {
     JSThread *thread = vm_->GetJSThread();
-    JSHandle<JSTaggedValue> moduleRecord =
-        ModuleDataExtractor::ParseModule(thread, jsPandaFile, referencingModule, referencingModule);
-    AddResolveImportedModule(referencingModule, moduleRecord);
+    JSHandle<NameDictionary> dict(thread, resolvedModules_);
+    resolvedModules_ =
+        NameDictionary::Put(thread, dict, record, module, PropertyAttributes::Default())
+        .GetTaggedValue();
 }
 
 void ModuleManager::AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord)
 {
-    JSThread *thread = vm_->GetJSThread();
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<JSTaggedValue> referencingHandle(factory->NewFromUtf8(referencingModule));
-    JSHandle<NameDictionary> dict(thread, resolvedModules_);
-    resolvedModules_ =
-        NameDictionary::Put(thread, dict, referencingHandle, moduleRecord, PropertyAttributes::Default())
-        .GetTaggedValue();
+    AddResolveImportedModule(referencingHandle, moduleRecord);
+}
+
+void ModuleManager::AddToInstantiatingSModuleList(const CString &record)
+{
+    InstantiatingSModuleList_.push_back(record);
+}
+
+CVector<CString> ModuleManager::GetInstantiatingSModuleList()
+{
+    return InstantiatingSModuleList_;
 }
 
 JSTaggedValue ModuleManager::GetModuleNamespace(int32_t index)
@@ -806,14 +721,14 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<EcmaString> record = factory->NewFromASCII(recordName.c_str());
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    if (IsImportedModuleLoaded(record.GetTaggedValue())) {
+    if (IsEvaluatedModule(record.GetTaggedValue())) {
         JSHandle<SourceTextModule> moduleRecord = HostGetImportedModule(record.GetTaggedValue());
         requiredModule.Update(moduleRecord);
     } else {
         CString requestPath = ConvertToString(record.GetTaggedValue());
         CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
         auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
-        JSHandle<JSTaggedValue> nativeModuleHandle = ResolveNativeModule(requestPath, moduleType);
+        JSHandle<JSTaggedValue> nativeModuleHandle = ResolveNativeModule(requestPath, "", moduleType);
         JSHandle<SourceTextModule> nativeModule =
             JSHandle<SourceTextModule>::Cast(nativeModuleHandle);
         if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleType)) {
@@ -832,7 +747,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteJsonModule(JSThread *thread, const
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<EcmaString> record = factory->NewFromASCII(recordName.c_str());
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    if (IsImportedModuleLoaded(record.GetTaggedValue())) {
+    if (IsEvaluatedModule(record.GetTaggedValue())) {
         JSHandle<SourceTextModule> moduleRecord = HostGetImportedModule(record.GetTaggedValue());
         requiredModule.Update(moduleRecord);
     } else {
@@ -858,7 +773,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteCjsModule(JSThread *thread, const 
     JSHandle<EcmaString> record = factory->NewFromASCII(moduleRecord);
 
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    if (IsImportedModuleLoaded(record.GetTaggedValue())) {
+    if (IsEvaluatedModule(record.GetTaggedValue())) {
         requiredModule.Update(HostGetImportedModule(record.GetTaggedValue()));
     } else {
         JSHandle<SourceTextModule> module =
@@ -888,5 +803,28 @@ JSHandle<JSTaggedValue> ModuleManager::GetModuleNameSpaceFromFile(
     moduleRecord->SetLoadingTypes(ecmascript::LoadingTypes::STABLE_MODULE);
     return ecmascript::SourceTextModule::GetModuleNamespace(
         thread, JSHandle<ecmascript::SourceTextModule>(moduleRecord));
+}
+
+JSHandle<JSTaggedValue> ModuleManager::TryGetImportedModule(JSTaggedValue referencing)
+{
+    NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
+    JSThread *thread = vm_->GetJSThread();
+    int entry = dict->FindEntry(referencing);
+    if (entry == -1) {
+        return thread->GlobalConstants()->GetHandledUndefined();
+    }
+    JSTaggedValue result = dict->GetValue(entry);
+    return JSHandle<JSTaggedValue>(thread, result);
+}
+
+void ModuleManager::RemoveModuleFromCache(JSTaggedValue recordName)
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<NameDictionary> dict(thread, resolvedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(recordName);
+    LOG_ECMA_IF(entry == -1, FATAL) << "Can not get module: " << ConvertToString(recordName) <<
+         ", when try to remove the module";
+
+    resolvedModules_  = NameDictionary::Remove(thread, dict, entry).GetTaggedValue();
 }
 } // namespace panda::ecmascript

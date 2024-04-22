@@ -20,6 +20,7 @@
 #include <atomic>
 #include <deque>
 #include <memory>
+#include <functional>
 
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/platform/mutex.h"
@@ -38,6 +39,7 @@ public:
 
     void Terminate();
     void TerminateTask(int32_t id, TaskType type);
+    void ForEachTask(const std::function<void(Task*)> &f);
 
 private:
     std::deque<std::unique_ptr<Task>> tasks_;

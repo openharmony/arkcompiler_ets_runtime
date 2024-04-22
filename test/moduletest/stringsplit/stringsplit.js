@@ -77,3 +77,7 @@ var a = "12345678910"
 var b = "12345678910"
 var c = a.concat(b);
 c.split("")
+
+// Test split string is sliced string
+var d = a.slice(4)
+d.split("")

@@ -34,43 +34,65 @@ function printclz32(x: any) {
 }
 
 // Check without params
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32()); //: 32
 
 // Check with single int param
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(0)); //: 32
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(1)); //: 31
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(1 << 31)) //: 0
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(1 << 30)) //: 1
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(-5)); //: 0
 
 // 0b11
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(3)); //: 30
 
 // MAX_UINT32 + 3
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(4294967298)); //: 30
 
 // Check with single float param
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(1.9999999999999)); //: 31
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(126.55555555555)); //: 25
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(126.999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999)) //: 25
 
 // Negative arguments
 // -1073741824 (0xC0000000) ->
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32((1 << 30) + (1 << 31))) //: 0
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(-5)) //: 0
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(-126.99999999999999999999999)) //: 0
 
 
 // Corner cases
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(NaN)) //: 32
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(+0.0)) //: 32
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(-0.0)) //: 32
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(Infinity)); //: 32
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(-Infinity)); //: 32
 
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
 printclz32(4); //: 29
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
 //aot: [trace] Check Type: NotNumber1
 printclz32("abc"); //: 32
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
 //aot: [trace] Check Type: NotNumber1
 printclz32("abcd"); //: 32
 
@@ -91,7 +113,9 @@ Math.clz32 = true_clz32
 
 // Check IR correctness inside try-block
 try {
+    //aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
     printclz32(16); //: 27
+    //aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
     //aot: [trace] Check Type: NotNumber1
     printclz32("abc"); //: 32
 } catch (e) {
@@ -99,6 +123,7 @@ try {
 
 let obj = {};
 obj.valueOf = (() => { return 32; })
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 //aot: [trace] Check Type: NotNumber1
 print(Math.clz32(obj)); //: 26
 

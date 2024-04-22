@@ -23,6 +23,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/baseline/baseline_call_signature.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
@@ -30,6 +31,7 @@
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
@@ -248,6 +250,11 @@ inline GateRef StubBuilder::GetAotCodeAddr(GateRef jsFunc)
     return env_->GetBuilder()->GetCodeAddr(jsFunc);
 }
 
+inline GateRef StubBuilder::GetBaselineCodeAddr(GateRef baselineCode)
+{
+    return env_->GetBuilder()->GetBaselineCodeAddr(baselineCode);
+}
+
 inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
     SavePcIfNeeded(glue);
@@ -256,19 +263,14 @@ inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initial
     return result;
 }
 
-inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
-                                               bool isNew, const char* comment)
+inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew)
 {
-    GateRef result = env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew, comment);
-    return result;
+    return env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew);
 }
 
-inline GateRef StubBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args,
-                                                            const char* comment)
+inline GateRef StubBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args)
 {
-    GateRef result = env_->GetBuilder()->CallBuiltinRuntimeWithNewTarget(glue, Gate::InvalidGateRef, args, comment);
-
-    return result;
+    return env_->GetBuilder()->CallBuiltinRuntimeWithNewTarget(glue, Gate::InvalidGateRef, args);
 }
 
 inline void StubBuilder::DebugPrint(GateRef glue, std::initializer_list<GateRef> args)
@@ -295,7 +297,7 @@ void StubBuilder::SavePcIfNeeded(GateRef glue)
 
 void StubBuilder::SaveJumpSizeIfNeeded(GateRef glue, GateRef jumpSize)
 {
-    if (env_->IsAsmInterp()) {
+    if (env_->IsAsmInterp() || env_->IsBaselineBuiltin()) {
         GateRef sp = Argument(static_cast<size_t>(InterpreterHandlerInputs::SP));
         GateRef frame = PtrSub(sp,
             IntPtr(AsmInterpretedFrame::GetSize(GetEnvironment()->IsArch32Bit())));
@@ -313,7 +315,8 @@ void StubBuilder::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
 
 void StubBuilder::SaveHotnessCounterIfNeeded(GateRef glue, GateRef sp, GateRef hotnessCounter, JSCallMode mode)
 {
-    if (env_->IsAsmInterp() && kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
+    if ((env_->IsAsmInterp() || env_->IsBaselineBuiltin())
+         && kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
         ASSERT(hotnessCounter != Circuit::NullGate());
         GateRef frame = PtrSub(sp, IntPtr(AsmInterpretedFrame::GetSize(env_->IsArch32Bit())));
         GateRef function = Load(VariableType::JS_POINTER(), frame,
@@ -609,9 +612,9 @@ inline GateRef StubBuilder::TaggedIsStringIterator(GateRef obj)
     return env_->GetBuilder()->TaggedIsStringIterator(obj);
 }
 
-inline GateRef StubBuilder::TaggedIsShared(GateRef obj)
+inline GateRef StubBuilder::TaggedIsSharedObj(GateRef obj)
 {
-    return env_->GetBuilder()->TaggedIsShared(obj);
+    return env_->GetBuilder()->TaggedIsSharedObj(obj);
 }
 
 inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
@@ -833,6 +836,11 @@ inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
     return env_->GetBuilder()->DoubleToTaggedDoublePtr(x);
 }
 
+inline GateRef StubBuilder::BooleanToTaggedBooleanPtr(GateRef x)
+{
+    return env_->GetBuilder()->BooleanToTaggedBooleanPtr(x);
+}
+
 inline GateRef StubBuilder::TaggedPtrToTaggedDoublePtr(GateRef x)
 {
     return DoubleToTaggedDoublePtr(CastInt64ToFloat64(ChangeTaggedPointerToInt64(x)));
@@ -846,6 +854,11 @@ inline GateRef StubBuilder::TaggedPtrToTaggedIntPtr(GateRef x)
 inline GateRef StubBuilder::CastDoubleToInt64(GateRef x)
 {
     return env_->GetBuilder()->CastDoubleToInt64(x);
+}
+
+inline GateRef StubBuilder::CastFloat32ToInt32(GateRef x)
+{
+    return env_->GetBuilder()->CastFloat32ToInt32(x);
 }
 
 inline GateRef StubBuilder::TaggedTrue()
@@ -877,6 +890,11 @@ inline GateRef StubBuilder::Int8GreaterThanOrEqual(GateRef x, GateRef y)
 inline GateRef StubBuilder::Equal(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Equal(x, y);
+}
+
+inline GateRef StubBuilder::NotEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->NotEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int32Equal(GateRef x, GateRef y)
@@ -994,6 +1012,11 @@ inline GateRef StubBuilder::Int64UnsignedLessThanOrEqual(GateRef x, GateRef y)
     return env_->GetBuilder()->Int64UnsignedLessThanOrEqual(x, y);
 }
 
+inline GateRef StubBuilder::Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int64UnsignedGreaterThanOrEqual(x, y);
+}
+
 inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->IntPtrGreaterThan(x, y);
@@ -1067,6 +1090,12 @@ inline void StubBuilder::SetPropertiesArray(VariableType type, GateRef glue, Gat
 {
     GateRef propertiesOffset = IntPtr(JSObject::PROPERTIES_OFFSET);
     Store(type, glue, object, propertiesOffset, propsArray);
+}
+
+inline GateRef StubBuilder::GetHash(GateRef object)
+{
+    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+    return Load(VariableType::JS_ANY(), object, hashOffset);
 }
 
 inline void StubBuilder::SetHash(GateRef glue, GateRef object, GateRef hash)
@@ -1221,6 +1250,12 @@ inline GateRef StubBuilder::IsSymbol(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SYMBOL)));
 }
 
+inline GateRef StubBuilder::IsDataView(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_DATA_VIEW)));
+}
+
 inline GateRef StubBuilder::IsString(GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSObject), TaggedIsHeapObject(obj));
@@ -1270,7 +1305,7 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
 
 inline GateRef StubBuilder::IsJSShared(GateRef obj)
 {
-    return TaggedIsShared(obj);
+    return TaggedIsSharedObj(obj);
 }
 
 inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
@@ -1289,8 +1324,8 @@ inline GateRef StubBuilder::ObjIsSpecialContainer(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return BoolAnd(
-            Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
-            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_QUEUE))));
+        Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
+        Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_QUEUE))));
 }
 
 inline GateRef StubBuilder::IsJSPrimitiveRef(GateRef obj)
@@ -1900,7 +1935,8 @@ inline void StubBuilder::SetPrototypeToHClass(VariableType type, GateRef glue, G
     Store(type, glue, hClass, offset, proto);
 }
 
-inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef protoChange)
+inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type,
+    GateRef glue, GateRef hClass, GateRef protoChange)
 {
     GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_DETAILS_OFFSET);
     Store(type, glue, hClass, offset, protoChange);
@@ -2317,6 +2353,11 @@ inline GateRef StubBuilder::ChangeUInt32ToFloat64(GateRef x)
 inline GateRef StubBuilder::ChangeFloat64ToInt32(GateRef x)
 {
     return env_->GetBuilder()->ChangeFloat64ToInt32(x);
+}
+
+inline GateRef StubBuilder::TruncDoubleToFloat32(GateRef x)
+{
+    return env_->GetBuilder()->TruncDoubleToFloat32(x);
 }
 
 inline GateRef StubBuilder::ChangeTaggedPointerToInt64(GateRef x)
@@ -3247,6 +3288,37 @@ inline GateRef StubBuilder::GetAccessorHasChanged(GateRef obj)
 inline GateRef StubBuilder::ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length)
 {
     return PtrAdd(IntPtr(ByteArray::DATA_OFFSET), PtrMul(elementSize, length));
+}
+
+inline GateRef StubBuilder::GetViewedArrayBuffer(GateRef dataView)
+{
+    return Load(VariableType::JS_ANY(), dataView,
+                IntPtr(JSDataView::VIEW_ARRAY_BUFFER_OFFSET));
+}
+
+inline GateRef StubBuilder::GetByteOffset(GateRef dataView)
+{
+    return Load(VariableType::INT32(), dataView,
+                IntPtr(JSDataView::BYTE_OFFSET_OFFSET));
+}
+
+inline GateRef StubBuilder::GetByteLength(GateRef dataView)
+{
+    return Load(VariableType::INT32(), dataView,
+                IntPtr(JSDataView::BYTE_LENGTH_OFFSET));
+}
+
+inline GateRef StubBuilder::GetArrayBufferData(GateRef buffer)
+{
+    GateRef offset = IntPtr(JSArrayBuffer::DATA_OFFSET);
+    return Load(VariableType::JS_ANY(), buffer, offset);
+}
+
+inline GateRef StubBuilder::GetLastLeaveFrame(GateRef glue)
+{
+    bool isArch32 = GetEnvironment()->Is32Bit();
+    GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(isArch32));
+    return Load(VariableType::NATIVE_POINTER(), glue, spOffset);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

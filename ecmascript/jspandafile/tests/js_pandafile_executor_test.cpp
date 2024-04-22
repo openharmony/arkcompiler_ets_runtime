@@ -83,12 +83,12 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
     MethodLiteral *method = new MethodLiteral(methodId[0]);
     method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
-    pfManager->AddJSPandaFileVm(instance, pf);
+    pfManager->AddJSPandaFile(pf);
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::Execute(thread, pf.get(), JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
 
-    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
@@ -118,12 +118,12 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     MethodLiteral *method = new MethodLiteral(methodId[0]);
     method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
-    pfManager->AddJSPandaFileVm(instance, pf);
+    pfManager->AddJSPandaFile(pf);
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::ExecuteFromAbcFile(thread, CString(fileName), JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
 
-    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    pfManager->RemoveJSPandaFile(pf.get());
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
     EXPECT_TRUE(foundPf == nullptr);
 }
@@ -155,12 +155,12 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     MethodLiteral *method = new MethodLiteral(methodId[0]);
     method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
-    pfManager->AddJSPandaFileVm(instance, pf);
+    pfManager->AddJSPandaFile(pf);
     Expected<JSTaggedValue, bool> result = JSPandaFileExecutor::ExecuteFromBuffer(
         thread, (void *)data, sizeof(data), JSPandaFile::ENTRY_MAIN_FUNCTION, CString(fileName));
     EXPECT_TRUE(result);
 
-    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    pfManager->RemoveJSPandaFile(pf.get());
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
     EXPECT_TRUE(foundPf == nullptr);
 }

@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/json_helper.h"
+#include "ecmascript/builtins/builtins_json.h"
+#include "ecmascript/js_tagged_value.h"
 #include "jsnapi_helper.h"
 
 #include <array>
@@ -195,6 +198,7 @@ using JSMutableHandle = ecmascript::JSMutableHandle<T>;
 
 using PathHelper = ecmascript::base::PathHelper;
 using ModulePathHelper = ecmascript::ModulePathHelper;
+using TransformType = ecmascript::base::JsonHelper::TransformType;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define TYPED_ARRAY_NEW(Type)                                                                             \
@@ -231,11 +235,11 @@ Local<JSValueRef> JSON::Parse(const EcmaVM *vm, Local<StringRef> string)
     auto ecmaStr = EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject());
     JSHandle<JSTaggedValue> result;
     if (EcmaStringAccessor(ecmaStr).IsUtf8()) {
-        Utf8JsonParser parser(thread);
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
         JSHandle<EcmaString> str(thread, JSNApiHelper::ToJSTaggedValue(*string));
         result = parser.Parse(str);
     } else {
-        Utf16JsonParser parser(thread);
+        Utf16JsonParser parser(thread, TransformType::NORMAL);
         result = parser.Parse(EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject()));
     }
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));

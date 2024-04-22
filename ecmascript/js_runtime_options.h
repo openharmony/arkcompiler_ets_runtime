@@ -48,7 +48,8 @@ enum ArkProperties {
     CPU_PROFILER_COLD_START_WORKER_THREAD = 1 << 16,
     CPU_PROFILER_ANY_TIME_MAIN_THREAD = 1 << 17,
     CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
-    ENABLE_HEAP_VERIFY = 1 << 19
+    ENABLE_HEAP_VERIFY = 1 << 19,
+    ENABLE_MICROJOB_TRACE = 1 << 20
 };
 
 // asm interpreter control parsed option
@@ -92,12 +93,9 @@ enum CommandValues {
     OPTION_COMPILER_LOG_METHODS,
     OPTION_COMPILER_TYPE_THRESHOLD,
     OPTION_ENABLE_RUNTIME_STAT,
-    OPTION_COMPILER_ASSERT_TYPES,
-    OPTION_COMPILER_PRINT_TYPE_INFO,
     OPTION_COMPILER_LOG_SNAPSHOT,
     OPTION_COMPILER_LOG_TIME,
     OPTION_ENABLE_WORKER,
-    OPTION_BUILTINS_DTS,
     OPTION_COMPILER_TRACE_BC,
     OPTION_COMPILER_TRACE_DEOPT,
     OPTION_COMPILER_TRACE_INLINE,
@@ -126,13 +124,13 @@ enum CommandValues {
     OPTION_COMPILER_OPT_INLINING,
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
-    OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
     OPTION_COMPILER_PGO_PROFILER_PATH,
-    OPTION_SPLIT_ONE,
     OPTION_COMPILER_PGO_HOTNESS_THRESHOLD,
     OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL,
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_PRINT_EXECUTE_TIME,
+    OPTION_SPLIT_ONE,
+    OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
     OPTION_COMPILER_SKIP_METHODS,
@@ -165,6 +163,9 @@ enum CommandValues {
     OPTION_COMPILER_OSR_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
+    OPTION_COMPILER_ENABLE_JIT_PGO,
+    OPTION_COMPILER_ENABLE_AOT_PGO,
+    OPTION_COMPILER_ENABLE_PROPFILE_DUMP,
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
     OPTION_COMPILER_OPT_BRANCH_PROFILING,
@@ -172,9 +173,16 @@ enum CommandValues {
     OPTION_COMPILER_METHODS_RANGE,
     OPTION_COMPILER_CODEGEN_OPT,
     OPTION_COMPILER_OPT_BC_RANGE_HELP,
+    OPTION_COMPILER_MEMORY_ANALYSIS,
+    OPTION_COMPILER_CHECK_PGO_VERSION,
     OPTION_COMPILER_OPT_ESCAPE_ANALYSIS,
     OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS,
     OPTION_LAST,
+    OPTION_COMPILER_OPT_INDUCTION_VARIABLE,
+    OPTION_COMPILER_TRACE_INDUCTION_VARIABLE,
+    OPTION_COMPILER_ENABLE_BASELINEJIT,
+    OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -382,6 +390,29 @@ public:
         }
     }
 
+    void SetMemConfigProperty(std::string configProperty)
+    {
+        if (configProperty != "") {
+            std::string key;
+            std::string value;
+            for (char c : configProperty) {
+                if (isdigit(c)) {
+                    value += c;
+                } else {
+                    key += c;
+                }
+            }
+            if (key == "jsHeap") {
+                heapSize_ = stoi(value) * 1_MB;
+            }
+        }
+    }
+
+    size_t GetHeapSize() const
+    {
+        return heapSize_;
+    }
+
     int GetDefaultProperties()
     {
         return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP |
@@ -510,6 +541,11 @@ public:
     bool EnableHeapVerify() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_HEAP_VERIFY) != 0;
+    }
+
+    bool EnableMicroJobTrace() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MICROJOB_TRACE) != 0;
     }
 
     void DisableReportModuleResolvingFailure()
@@ -732,41 +768,6 @@ public:
     bool WasSetStartupTime() const
     {
         return WasOptionSet(OPTION_STARTUP_TIME);
-    }
-
-    bool AssertTypes() const
-    {
-        return assertTypes_;
-    }
-
-    void SetAssertTypes(bool value)
-    {
-        assertTypes_ = value;
-    }
-
-    bool PrintTypeInfo() const
-    {
-        return printTypeInfo_;
-    }
-
-    void SetPrintTypeInfo(bool value)
-    {
-        printTypeInfo_ = value;
-    }
-
-    void SetBuiltinsDTS(const std::string& value)
-    {
-        builtinsDTS_ = panda::os::file::File::GetExtendedFilePath(value);
-    }
-
-    bool WasSetBuiltinsDTS() const
-    {
-        return WasOptionSet(OPTION_BUILTINS_DTS);
-    }
-
-    std::string GetBuiltinsDTS() const
-    {
-        return builtinsDTS_;
     }
 
     void SetTraceBc(bool value)
@@ -1072,12 +1073,12 @@ public:
 
     void SetEnableJIT(bool value)
     {
-        enableJIT_ = value;
+        enableFastJIT_ = value;
     }
 
     bool IsEnableJIT() const
     {
-        return enableJIT_;
+        return enableFastJIT_;
     }
 
     void SetEnableAPPJIT(bool value)
@@ -1130,6 +1131,36 @@ public:
         return forceJitCompileMain_;
     }
 
+    void SetEnableBaselineJIT(bool value)
+    {
+        enableBaselineJIT_ = value;
+    }
+
+    bool IsEnableBaselineJIT() const
+    {
+        return enableBaselineJIT_;
+    }
+
+    void SetBaselineJitHotnessThreshold(uint16_t value)
+    {
+        baselineJitHotnessThreshold_ = value;
+    }
+
+    uint16_t GetBaselineJitHotnessThreshold() const
+    {
+        return baselineJitHotnessThreshold_;
+    }
+
+    void SetForceBaselineCompileMain(bool value)
+    {
+        forceBaselineCompileMain_ = value;
+    }
+
+    bool IsEnableForceBaselineCompileMain()
+    {
+        return forceBaselineCompileMain_;
+    }
+
     void SetEnableNewValueNumbering(bool value)
     {
         enableNewValueNumbering_ = value;
@@ -1180,16 +1211,6 @@ public:
         return enableOptTrackField_;
     }
 
-    void SetEnableGlobalTypeInfer(bool value)
-    {
-        enableGlobalTypeInfer_ = value;
-    }
-
-    bool IsEnableGlobalTypeInfer() const
-    {
-        return enableGlobalTypeInfer_;
-    }
-
     uint32_t GetCompilerModuleMethods() const
     {
         return compilerModuleMethods_;
@@ -1228,6 +1249,21 @@ public:
     bool GetStressDeopt() const
     {
         return stressDeopt_;
+    }
+
+    void SetDeviceState(bool value)
+    {
+        deviceIsScreenOff_ = value;
+    }
+
+    bool GetDeviceState() const
+    {
+        return deviceIsScreenOff_;
+    }
+
+    bool WasSetDeviceState() const
+    {
+        return WasOptionSet(OPTION_COMPILER_DEVICE_STATE);
     }
 
     void SetOptCodeProfiler(bool value)
@@ -1399,8 +1435,6 @@ public:
     {
         return compilerNoCheck_;
     }
-
-    void SetTargetBuiltinsDtsPath();
 
     void SetOptionsForTargetCompilation();
 
@@ -1575,6 +1609,76 @@ public:
         return traceEscapeAnalysis_;
     }
 
+    void SetEnableInductionVariableAnalysis(bool value)
+    {
+        enableInductionVariableAnalysis_ = value;
+    }
+
+    bool IsEnableInductionVariableAnalysis() const
+    {
+        return enableInductionVariableAnalysis_;
+    }
+
+    void SetEnableTraceInductionVariableAnalysis(bool value)
+    {
+        traceInductionVariableAnalysis_ = value;
+    }
+
+    bool GetTraceInductionVariableAnalysis() const
+    {
+        return traceInductionVariableAnalysis_;
+    }
+
+    void SetEnableMemoryAnalysis(bool value)
+    {
+        enableMemoryAnalysis_ = value;
+    }
+
+    bool IsEnableMemoryAnalysis() const
+    {
+        return enableMemoryAnalysis_;
+    }
+
+    void SetCheckPgoVersion(bool value)
+    {
+        checkPgoVersion_ = value;
+    }
+
+    bool IsCheckPgoVersion() const
+    {
+        return checkPgoVersion_;
+    }
+
+    void SetEnableJITPGO(bool value)
+    {
+        enableJITPGO_ = value;
+    }
+
+    bool IsEnableJITPGO() const
+    {
+        return enableJITPGO_;
+    }
+
+    void SetEnableProfileDump(bool value)
+    {
+        enableProfileDump_ = value;
+    }
+
+    bool IsEnableProfileDump() const
+    {
+        return enableProfileDump_;
+    }
+
+    void SetEnableAOTPGO(bool value)
+    {
+        enableAOTPGO_ = value;
+    }
+
+    bool IsEnableAOTPGO() const
+    {
+        return enableAOTPGO_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1616,6 +1720,7 @@ private:
     uint32_t forceSharedGc_ {1};
     int arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
+    size_t heapSize_ = {0};
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
     std::string aotOutputFile_ {""};
@@ -1637,10 +1742,7 @@ private:
     bool compilerLogSnapshot_ {false};
     bool compilerLogTime_ {false};
     bool enableRuntimeStat_ {false};
-    bool assertTypes_ {false};
-    bool printTypeInfo_ {false};
     bool isWorker_ {false};
-    std::string builtinsDTS_ {""};
     bool traceBc_ {false};
     std::string logLevel_ {"error"};
     arg_list_t logDebug_ {{"all"}};
@@ -1665,13 +1767,15 @@ private:
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
-    bool enableJIT_{false};
+    bool enableFastJIT_{false};
     bool enableAPPJIT_{false};
     bool enableOSR_{false};
     uint16_t jitHotnessThreshold_ {2};
     uint16_t osrHotnessThreshold_ {2};
     bool forceJitCompileMain_{false};
-    bool enableGlobalTypeInfer_ {false};
+    bool enableBaselineJIT_{false};
+    uint16_t baselineJitHotnessThreshold_{1};
+    bool forceBaselineCompileMain_ {false};
     bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
     uint64_t wasSetPartOne_ {0};
@@ -1679,6 +1783,9 @@ private:
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
+    bool enableJITPGO_ {true};
+    bool enableAOTPGO_ {true};
+    bool enableProfileDump_ {true};
     bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
@@ -1686,6 +1793,7 @@ private:
     bool traceDeopt_ {false};
     uint8_t deoptThreshold_ {10};
     bool stressDeopt_ {false};
+    bool deviceIsScreenOff_ {true};
     bool optCodeProfiler_ {false};
     bool startGlobalLeakCheck_ {false};
     bool verifyVTable_ {false};
@@ -1719,6 +1827,10 @@ private:
     arg_list_t compileCodegenOption_ {{""}};
     bool enableEscapeAnalysis_ {false};
     bool traceEscapeAnalysis_ {false};
+    bool enableInductionVariableAnalysis_ {false};
+    bool traceInductionVariableAnalysis_ {false};
+    bool enableMemoryAnalysis_ {true};
+    bool checkPgoVersion_ {false};
 };
 }  // namespace panda::ecmascript
 

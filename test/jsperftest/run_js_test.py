@@ -25,13 +25,15 @@ import os
 import shutil
 import stat
 import subprocess
-from typing import Union
+import sys
+from typing import Union, List, Tuple
 from collections import namedtuple
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
 
 
 def get_logger(logger_name, log_file_path, level=logging.INFO):
+    """Create logger for this script"""
     formatter = logging.Formatter(fmt='[%(asctime)s]  [%(levelname)s]   %(message)s',
                                   datefmt='%Y-%m-%d  %H:%M:%S')
 
@@ -81,10 +83,18 @@ class Constants:
     VER_PLATFORM = "full_x86_64"
     ES2ABC_PATH = ""
     ARK_JS_VM_PATH = ""
+    ETS_RUNTIME = ""
+    LD_LIBRARY_PATH = ""
+    HDC_PATH: str = "hdc"
+    DEVICE_WORKDIR: str = "/data/local/tmp/jsperftest"
+    LIBS_LIST: List[str] = []
+    STUB_AN: str = ""
+    TASKSET_MASK: str = ""
     CaseTestDataType = namedtuple('test', ['exec_status', 'exec_time'])
 
 
 def get_js_file_class_api_scenes(js_file_path):
+    """Get all cases for one benchmark file"""
     scenes = []
     with open(js_file_path, 'r') as f:
         for line in f:
@@ -222,7 +232,57 @@ def append_row_data(report_file, case_test_data):
     wb.save(report_file)
     return Constants.RET_OK
 
-def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, iterations, report_file):
+
+def get_ark_js_cmd(abc_file: str) -> List[str]:
+    """Get command for ark js vm"""
+    cmd: List[str] = []
+    if Constants.VER_PLATFORM.find("arm64") != -1:
+        cmd = [Constants.HDC_PATH, "shell"]
+        run_cmd = f"LD_LIBRARY_PATH={Constants.LD_LIBRARY_PATH}"
+        if len(Constants.TASKSET_MASK) != 0:
+            run_cmd += f" taskset -a {Constants.TASKSET_MASK}"
+        run_cmd += " " + os.path.join(Constants.DEVICE_WORKDIR, "ark_js_vm")
+        run_cmd += " --stub-file " + os.path.join(Constants.DEVICE_WORKDIR, "lib", "stub.an")
+        run_cmd += " --icu-data-path " + os.path.join(Constants.DEVICE_WORKDIR, "data")
+        run_cmd += " " + abc_file
+        cmd.append(run_cmd)
+    else:
+        cmd = [Constants.ARK_JS_VM_PATH,
+               "--log-level=info",
+               "--enable-runtime-stat=true",
+               "--stub-file", Constants.STUB_AN,
+               "--icu-data-path", ICU_DATA_PATH,
+               abc_file]
+        if len(Constants.TASKSET_MASK) != 0:
+            cmd = ["taskset", "-a", Constants.TASKSET_MASK] + cmd
+    return cmd
+
+
+def prepare_for_ark_run(class_name: str, api_name: str) -> Tuple[str, str]:
+    """Prepare workspace for benchmark"""
+    fangzhou_test_path = os.path.join(Constants.TMP_PATH, "fangzhou_test")  # for abc file
+    if os.path.exists(fangzhou_test_path):
+        shutil.rmtree(fangzhou_test_path)
+    os.makedirs(fangzhou_test_path)
+    class_folder_path = os.path.join(fangzhou_test_path, class_name)
+    if not os.path.exists(class_folder_path):
+        os.makedirs(class_folder_path)
+    return (os.path.join(Constants.CUR_PATH, api_name + ".abc"),
+            os.path.join(class_folder_path, api_name + ".log"))
+
+
+def run_es2panda(abc_file: str, js_file: str) -> int:
+    """Run es2panda for one benchmark file"""
+    cmd = [Constants.ES2ABC_PATH, "--output", abc_file,  js_file]
+    logger.info("run cmd: %s", cmd)
+    ret = subprocess.run(cmd, check=False)
+    if ret.returncode != 0:
+        logger.error("ret = %s, %s generate abc file failed. cmd: %s", str(ret), js_file, cmd)
+    return ret.returncode
+
+
+def run_js_case_via_ark(js_file_path, class_name, api_name, iterations, report_file):
+    """Run js perf benchmark via ark js vm"""
     composite_scenes = get_js_file_class_api_scenes(js_file_path)
     case_test_data = {}
     execute_status = Constants.FAIL
@@ -232,29 +292,20 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, iterati
         case_test_data[composite_scene] = Constants.CaseTestDataType(execute_status, execute_time)
 
     js_file_name = class_name + '/' + api_name + '.js'
-    fangzhou_test_path = os.path.join(Constants.TMP_PATH, "fangzhou_test")  # for abc file
-    if os.path.exists(fangzhou_test_path):
-        shutil.rmtree(fangzhou_test_path)
-    os.makedirs(fangzhou_test_path)
+    cur_abc_file, api_log_path = prepare_for_ark_run(class_name, api_name)
+    using_abc_file = cur_abc_file
 
-    class_folder_path = os.path.join(fangzhou_test_path, class_name)
-    if not os.path.exists(class_folder_path):
-        os.makedirs(class_folder_path)
-    cur_abc_file = os.path.join(Constants.CUR_PATH, api_name + ".abc")
-    api_log_path = os.path.join(class_folder_path, api_name + ".log")
-
-    cmd = [Constants.ES2ABC_PATH, "--output", cur_abc_file,  js_file_path]
-
-    logger.info("run cmd: %s", cmd)
-    ret = subprocess.run(cmd)
-    if ret.returncode != 0:
-        logger.error("ret = %s, %s generate abc file failed. cmd: %s", str(ret), js_file_name, cmd)
+    ret = run_es2panda(cur_abc_file, js_file_path)
+    if ret != 0:
         append_row_data(report_file, case_test_data)
         return case_test_data
+    if Constants.VER_PLATFORM.find("arm64") != -1:
+        using_abc_file = os.path.join(Constants.DEVICE_WORKDIR, os.path.basename(cur_abc_file))
+        if hdc_send(cur_abc_file, using_abc_file) != 0:
+            append_row_data(report_file, case_test_data)
+            return case_test_data
     # execute abc
-    ark_js_vm_path = Constants.ARK_JS_VM_PATH
-    cmd = [ark_js_vm_path, "--log-level=info", "--enable-runtime-stat=true", "--icu-data-path",
-           ICU_DATA_PATH, cur_abc_file]
+    cmd = get_ark_js_cmd(using_abc_file)
 
     logger.info("run cmd: %s", cmd)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
@@ -302,7 +353,7 @@ def run_via_ark(jspath, report_file, iterations):
             api_name = results[-1].split(".")[0]
             js_case_name = '/'.join([class_name, results[-1]])
             logger.info("begin to execute %s.", js_case_name)
-            test_data = run_js_case_via_ark(BINARY_PATH, file_path, class_name, api_name, iterations, report_file)
+            test_data = run_js_case_via_ark(file_path, class_name, api_name, iterations, report_file)
             for _, key in enumerate(test_data.keys()):
                 Constants.TODAY_EXCUTE_INFO[key] = test_data.get(key)
             logger.info("finish executing %s. executing info: %s.", js_case_name, Constants.TODAY_EXCUTE_INFO)
@@ -434,7 +485,7 @@ def process_args(args: argparse.Namespace) -> argparse.Namespace:
         args.output_folder_path = os.getcwd()
     if not os.path.isabs(args.output_folder_path):
         args.output_folder_path = os.path.abspath(args.output_folder_path)
-    if not os.path.exists(args.d_8_binary_path):
+    if args.ver_platform.find("arm64") == -1 and not os.path.exists(args.d_8_binary_path):
         logger.error("parameter --d_8_binary_path is not exist. Please check it! d 8  binary path: %s",
                      args.d_8_binary_path)
         raise RuntimeError("error bad  parameters  --d_8_binary_path: {}".format(args.d_8_binary_path))
@@ -447,48 +498,42 @@ def process_args(args: argparse.Namespace) -> argparse.Namespace:
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--binarypath",
-        "-bp",
-        required=True,
+        "--binarypath", "-bp", required=True,
         help="path of binary folder. refer to harmony root folder path",
     )
     parser.add_argument(
-        "--jspath",
-        "-p",
-        required=True,
+        "--jspath", "-p", required=True,
         help="path of js scripts, support folder and file",
     )
     parser.add_argument(
-        "--deterioration_boundary_value",
-        "-d",
-        default=0.05,
+        "--deterioration_boundary_value", "-d", default=0.05,
         help="deterioration boundary value, default 0.05",
     )
     parser.add_argument(
-        "--output_folder_path",
-        "-o",
-        default=None,
+        "--output_folder_path", "-o", default=None,
         help="output folder for executing js cases, default current folder",
     )
     parser.add_argument(
-        "--d_8_binary_path",
-        "-v",
-        default=None,
+        "--d_8_binary_path", "-v", default=None,
         help="v 8 engine d 8 binary path",
     )
     parser.add_argument(
-        "--ver_platform",
-        "-e",
-        default="full_x86_64",
+        "--ver_platform", "-e", default="full_x86_64",
         help="Code repository version and platform",
     )
     parser.add_argument(
-        "--iterations",
-        "-n",
-        default=1,
-        type=int,
+        "--iterations", "-n", default=1, type=int,
         help="Number of benchmark launches"
     )
+    parser.add_argument(
+        "--hdc", default="hdc", type=str,
+        help="path to hdc"
+    )
+    parser.add_argument(
+        "--taskset", "-t", default="", type=str,
+        help="Use taskset mask for affinity on specific CPUs"
+    )
+    parser.add_argument("--config", "-c", required=True, type=str, help="config json-file")
     return process_args(parser.parse_args())
 
 
@@ -595,7 +640,23 @@ def update_data_by_log(data: dict, log_path: str, js_name: str) -> dict:
                 data[key_str] += float(exec_time)
     return data
 
+
+def get_v_8_cmd(parameter: str, js_file_path: str) -> List[str]:
+    """Get command for v 8"""
+    cmd: List[str] = []
+    if Constants.VER_PLATFORM.find("arm64") != -1:
+        cmd = [Constants.HDC_PATH, "shell"]
+    if len(Constants.TASKSET_MASK) != 0:
+        cmd += ["taskset", "-a", Constants.TASKSET_MASK]
+    if len(parameter) == 0:
+        cmd += [Constants.V_8_ENGINED_PATH, js_file_path]
+    else:
+        cmd += [Constants.V_8_ENGINED_PATH, parameter, js_file_path]
+    return cmd
+
+
 def run_v_8_single_js_case(js_file_path, cmd_para, js_case_name, iterations: int):
+    """Run single js case for v 8 based with parameters"""
     v_8_exec_time_dict = {}
     scenes = get_js_file_class_api_scenes(js_file_path)
 
@@ -603,11 +664,19 @@ def run_v_8_single_js_case(js_file_path, cmd_para, js_case_name, iterations: int
 
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     modes = stat.S_IWUSR | stat.S_IRUSR
+    used_js_file = js_file_path
 
-    if len(cmd_para) == 0:
-        cmd = [Constants.V_8_ENGINED_PATH, js_file_path]
-    else:
-        cmd = [Constants.V_8_ENGINED_PATH, cmd_para, js_file_path]
+    if Constants.VER_PLATFORM.find("arm64") != -1:
+        js_file_path_device = os.path.join(Constants.DEVICE_WORKDIR,
+                                           os.path.basename(js_case_name + '.js'))
+        used_js_file = js_file_path_device
+        if hdc_send(js_file_path, js_file_path_device) != 0:
+            for elem in enumerate(scenes):
+                v_8_exec_time_dict[elem] = 0
+            logger.error("Couldn't send file %s to device", js_file_path)
+            return v_8_exec_time_dict
+
+    cmd = get_v_8_cmd(cmd_para, used_js_file)
     logger.info("run cmd:%s", cmd)
     data = {}
     for _ in range(iterations):
@@ -705,30 +774,79 @@ def get_v_8_jitless_excute_times(jspath, v_8_based_report_file_path, iterations)
 
     return Constants.RET_OK
 
+def hdc_send(source: str, destination: str) -> int:
+    """Run hdc send command"""
+    hdc_cmd: List[str] = [Constants.HDC_PATH, "file", "send"]
+    hdc_cmd += [source, destination]
+    logger.info("run cmd: %s", hdc_cmd)
+    return subprocess.run(hdc_cmd, check=False).returncode
 
-def get_config():
-    config_json_path = os.path.join(Constants.CUR_PATH, "config.json")
-    with open(config_json_path, 'r', encoding='UTF-8') as f:
+
+def hdc_run(cmd: List[str]) -> int:
+    """Run command on device via hdc shell"""
+    hdc_cmd = [Constants.HDC_PATH, "shell"] + cmd
+    return subprocess.run(hdc_cmd).returncode
+
+def prepare_device():
+    """Preapare device workdir for js perf testing"""
+    if hdc_send(Constants.ARK_JS_VM_PATH, Constants.DEVICE_WORKDIR) != 0:
+        logger.error("Couldn't send ark_js_vm to device")
+        sys.exit(1)
+    hdc_run(["chmod", "u+x", os.path.join(Constants.DEVICE_WORKDIR, "ark_js_vm")])
+    arkjsvm_lib = os.path.join(Constants.ETS_RUNTIME, "libark_jsruntime.so")
+    if hdc_send(arkjsvm_lib, os.path.join(Constants.DEVICE_WORKDIR, "lib")) != 0:
+        logger.error("Couldn't send libark_jsruntime.so to device")
+        sys.exit(1)
+    if hdc_send(ICU_DATA_PATH, Constants.DEVICE_WORKDIR) != 0:
+        logger.error("Couldn't send icu data to device")
+        sys.exit(1)
+    thirdparty_path = os.path.join(Constants.DEVICE_WORKDIR, "thirdparty")
+    for lib in Constants.LIBS_LIST:
+        if not os.path.isdir(lib):
+            logger.error("Couldn't find lib from config %s", lib)
+            sys.exit(1)
+        if hdc_send(lib, thirdparty_path) != 0:
+            logger.error("Couldn't send %s lib to device", lib)
+            sys.exit(1)
+    if hdc_send(Constants.STUB_AN, os.path.join(Constants.DEVICE_WORKDIR, "lib")) != 0:
+        logger.error("Couldn't send %s file to device", Constants.STUB_AN)
+        sys.exit(1)
+
+
+def get_config(parameters: argparse.Namespace):
+    """Get config from arguments and json file"""
+    Constants.V_8_ENGINED_PATH = parameters.d_8_binary_path
+    Constants.VER_PLATFORM = parameters.ver_platform
+    Constants.HDC_PATH = parameters.hdc
+    Constants.TASKSET_MASK = parameters.taskset
+    with open(parameters.config, 'r', encoding='UTF-8') as f:
         json_data = json.load(f)
 
     Constants.ES2ABC_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ES2ABC"])
-    Constants.ARK_JS_VM_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ETS_RUNTIME_PATH"],
-                                            "ark_js_vm")
-    ETS_RUNTIME_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ETS_RUNTIME_PATH"])
-    ICU_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ICU_PATH"])
-    ZLIB_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ZLIB_PATH"])
-    LIB_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["LIB_PATH"])
-    old_ld_library_path = os.environ.get('LD_LIBRARY_PATH', '')
-    os.environ['LD_LIBRARY_PATH'] = f'{ETS_RUNTIME_PATH}:' + f'{ICU_PATH}:' + f'{ZLIB_PATH}:' + f'{LIB_PATH}:'\
-                                    + old_ld_library_path
+    Constants.ETS_RUNTIME = os.path.join(BINARY_PATH,
+                                    json_data[Constants.VER_PLATFORM]["ETS_RUNTIME_PATH"])
+    Constants.ARK_JS_VM_PATH = os.path.join(Constants.ETS_RUNTIME, "ark_js_vm")
+    Constants.STUB_AN = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["STUB_AN"])
+    libs = json_data[Constants.VER_PLATFORM]["LIBS_LIST"]
+    for lib in libs:
+        Constants.LIBS_LIST.append(os.path.normpath(os.path.join(BINARY_PATH, lib)))
+    if Constants.VER_PLATFORM.find("x86_64") != -1:
+        old_ld_library_path = os.environ.get('LD_LIBRARY_PATH', '')
+        Constants.LD_LIBRARY_PATH = Constants.ETS_RUNTIME + ":"
+        if len(Constants.LIBS_LIST) != 0:
+            Constants.LD_LIBRARY_PATH += ":".join(Constants.LIBS_LIST)
+        if len(old_ld_library_path) != 0:
+            Constants.LD_LIBRARY_PATH += f":{old_ld_library_path}"
+        os.environ['LD_LIBRARY_PATH'] = Constants.LD_LIBRARY_PATH
+    elif Constants.VER_PLATFORM.find("arm64") != -1:
+        Constants.LD_LIBRARY_PATH = os.path.join(Constants.DEVICE_WORKDIR, "lib")
+        for lib in Constants.LIBS_LIST:
+            lib = os.path.normpath(lib)
+            Constants.LD_LIBRARY_PATH += ":" +\
+                os.path.join(Constants.DEVICE_WORKDIR, "thirdparty", os.path.basename(lib))
 
 
 if __name__ == "__main__":
-    """
-        command format: python3  run_js_test.py  -bp /home/out -p /home/arkjs-perf-test/js-perf-test -o output_path
-            -v d_8_binary_path -e ver_platform
-        notes: all paths must be absolute path
-    """
     LOG_PATH = os.path.join(Constants.TMP_PATH, "test.log")
     if os.path.exists(LOG_PATH):
         os.remove(LOG_PATH)
@@ -739,11 +857,14 @@ if __name__ == "__main__":
 
     DETERIORATION_BOUNDARY_VALUE = paras.deterioration_boundary_value
     BINARY_PATH = paras.binarypath
-    ICU_DATA_PATH = os.path.join(BINARY_PATH, "third_party/icu/ohos_icu4j/data/")
+    ICU_DATA_PATH = os.path.join(BINARY_PATH, "third_party/icu/ohos_icu4j/data")
     OUTPUT_PATH = Constants.CUR_PATH
-    Constants.V_8_ENGINED_PATH = paras.d_8_binary_path
-    Constants.VER_PLATFORM = paras.ver_platform
-    get_config()
+    get_config(paras)
+    if not os.path.exists(Constants.ARK_JS_VM_PATH):
+        logger.error("%s does not exist", Constants.ARK_JS_VM_PATH)
+        sys.exit(1)
+    if Constants.VER_PLATFORM.find("arm64") != -1:
+        prepare_device()
 
     if paras.output_folder_path is not None:
         OUTPUT_PATH = paras.output_folder_path

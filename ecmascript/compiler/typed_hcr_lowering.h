@@ -20,6 +20,8 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
+#include "ecmascript/compiler/type_info_accessors.h"
+#include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
 // TypeHCRLowering Process
@@ -99,17 +101,17 @@ namespace panda::ecmascript::kungfu {
 class TypedHCRLowering : public PassVisitor {
 public:
     TypedHCRLowering(Circuit* circuit,
-                    RPOVisitor* visitor,
-                    CompilationConfig* cmpCfg,
-                    TSManager* tsManager,
-                    Chunk* chunk,
-                    bool enableLoweringBuiltin)
+                     CompilationEnv *env,
+                     RPOVisitor* visitor,
+                     CompilationConfig* cmpCfg,
+                     Chunk* chunk,
+                     bool enableLoweringBuiltin)
         : PassVisitor(circuit, chunk, visitor),
           circuit_(circuit),
+          compilationEnv_(env),
           acc_(circuit),
           builder_(circuit, cmpCfg),
           dependEntry_(circuit->GetDependRoot()),
-          tsManager_(tsManager),
           enableLoweringBuiltin_(enableLoweringBuiltin)
     {
         if (cmpCfg != nullptr) {
@@ -126,7 +128,7 @@ private:
     void LowerType(GateRef gate);
     void LowerPrimitiveTypeCheck(GateRef gate);
     void LowerTypeConvert(GateRef gate);
-    void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
+    void LowerPrimitiveToNumber(GateRef dst, GateRef src, ParamType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);
     void LowerNumberCheck(GateRef gate);
@@ -138,9 +140,11 @@ private:
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerEcmaStringCheck(GateRef gate);
+    void LowerEcmaMapCheck(GateRef gate);
     void LowerFlattenTreeStringCheck(GateRef gate, GateRef glue);
     void LowerLoadTypedArrayLength(GateRef gate);
     void LowerStringLength(GateRef gate);
+    void LowerMapSize(GateRef gate);
     void LowerLoadProperty(GateRef gate);
     void LowerCallGetter(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate);
@@ -189,7 +193,7 @@ private:
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate);
-    void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &typedArrayRootHclassIndex,
+    void SetDeoptTypeInfo(JSType jstype, DeoptType &type, size_t &typedArrayRootHclassIndex,
         size_t &typedArrayRootHclassOnHeapIndex);
     void LowerLookupHolder(GateRef gate);
     void LowerLoadGetter(GateRef gate);
@@ -225,6 +229,8 @@ private:
 
     GateRef CallAccessor(GateRef glue, GateRef gate, GateRef function, GateRef receiver, AccessorMode mode,
                          GateRef value = Circuit::NullGate());
+    void BuiltinInstanceHClassCheck(Environment *env, GateRef gate);
+    void BuiltinPrototypeHClassCheck(Environment *env, GateRef gate);
     void ReplaceHirWithPendingException(GateRef hirGate, GateRef glue, GateRef state, GateRef depend, GateRef value);
 
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
@@ -264,10 +270,10 @@ private:
     }
 
     Circuit *circuit_;
+    CompilationEnv *compilationEnv_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_;
-    [[maybe_unused]] TSManager *tsManager_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     bool typedOpProfiling_ {false};
 };

@@ -159,7 +159,6 @@ public:
 
     static JSHandle<ConstantPool> CreateSharedConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                                        panda_file::File::EntityId id,
-                                                       int32_t unsharedConstpoolIndex = 0,
                                                        int32_t cpId = 0)
     {
         const panda_file::File::IndexHeader *mainIndex = jsPandaFile->GetPandaFile()->GetIndexHeader(id);
@@ -174,7 +173,7 @@ public:
 
         constpool->SetJSPandaFile(jsPandaFile);
         constpool->SetIndexHeader(mainIndex);
-        constpool->SetUnsharedConstpoolIndex(JSTaggedValue(unsharedConstpoolIndex));
+        constpool->SetUnsharedConstpoolIndex(JSTaggedValue(0));
         constpool->SetSharedConstpoolId(JSTaggedValue(cpId));
 
         return constpool;
@@ -192,7 +191,7 @@ public:
     }
 
     static JSHandle<ConstantPool> CreateSharedConstPoolForAOT(
-        EcmaVM *vm, JSHandle<ConstantPool> constpool, int32_t unsharedConstpoolIndex = 0, int32_t cpId = 0)
+        EcmaVM *vm, JSHandle<ConstantPool> constpool, int32_t cpId = 0)
     {
         JSHandle<ConstantPool> sconstpool(vm->GetJSThread(), JSTaggedValue::Hole());
         uint32_t capacity = constpool->GetConstpoolSize();
@@ -222,7 +221,7 @@ public:
         sconstpool->SetConstantIndexInfo(array.GetTaggedValue());
         sconstpool->SetJSPandaFile(constpool->GetJSPandaFile());
         sconstpool->SetIndexHeader(constpool->GetIndexHeader());
-        sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(unsharedConstpoolIndex));
+        sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(0));
         sconstpool->SetSharedConstpoolId(JSTaggedValue(cpId));
         return sconstpool;
     }
@@ -241,7 +240,7 @@ public:
 
     static bool CheckUnsharedConstpool(JSTaggedValue constpool)
     {
-        int32_t index = ConstantPool::Cast(constpool.GetTaggedObject())->GetUnsharedConstpoolIndex().GetInt();
+        int32_t index = ConstantPool::Cast(constpool.GetTaggedObject())->GetUnsharedConstpoolIndex();
         if (index == CONSTPOOL_TYPE_FLAG) {
             return true;
         }
@@ -253,9 +252,9 @@ public:
         Barriers::SetPrimitive(GetData(), GetUnsharedConstpoolIndexOffset(), index);
     }
 
-    inline JSTaggedValue GetUnsharedConstpoolIndex() const
+    inline int32_t GetUnsharedConstpoolIndex() const
     {
-        return Barriers::GetValue<JSTaggedValue>(GetData(), GetUnsharedConstpoolIndexOffset());
+        return Barriers::GetValue<JSTaggedValue>(GetData(), GetUnsharedConstpoolIndexOffset()).GetInt();
     }
 
     inline void SetSharedConstpoolId(const JSTaggedValue index)
@@ -366,6 +365,11 @@ public:
         Barriers::SetPrimitive(GetData(), GetAotHClassInfoOffset(), info.GetRawData());
     }
 
+    inline void SetAotHClassInfoWithBarrier(JSThread *thread, JSTaggedValue info)
+    {
+        Set(thread, (GetLength() - AOT_HCLASS_INFO_INDEX), info);
+    }
+
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
         Set(thread, index, value);
@@ -419,7 +423,7 @@ public:
         }
 
         if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
-            JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
+            JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool);
             taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
             return taggedPool->Get(index);
         }
@@ -559,7 +563,11 @@ public:
                 case ConstPoolType::ARRAY_LITERAL: {
                     // literal fetching from AOT ArrayInfos
                     JSMutableHandle<TaggedArray> literal(thread, JSTaggedValue::Undefined());
+                    #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+                    ElementsKind dataKind = ElementsKind::GENERIC;
+                    #else
                     ElementsKind dataKind = ElementsKind::NONE;
+                    #endif
                     bool loadedFromAOT = constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag,
                                                                                 entryIndexes, literal, &dataKind);
                     if (!loadedFromAOT) {
@@ -617,6 +625,20 @@ public:
         return false;
     }
 
+    template <ConstPoolType type>
+    static JSTaggedValue GetLiteralFromCache(JSTaggedValue constpool, uint32_t index, [[maybe_unused]] CString entry)
+    {
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        auto val = taggedPool->GetObjectFromCache(index);
+        JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
+
+        bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
+        if (isLoadedAOT && val.IsAOTLiteralInfo()) {
+            val = JSTaggedValue::Hole();
+        }
+        return val.IsHole() ? JSTaggedValue::Undefined() : val;
+    }
+
     static panda_file::File::EntityId GetIdFromCache(JSTaggedValue constpool, uint32_t index)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
@@ -632,13 +654,31 @@ public:
         return GetLiteralFromCache<type>(thread, constpool, index, entry);
     }
 
+    static JSTaggedValue PUBLIC_API GetStringFromCacheForJit(JSThread *thread, JSTaggedValue constpool, uint32_t index)
+    {
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        auto val = taggedPool->Get(index);
+        if (val.IsHole()) {
+            JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
+            panda_file::File::EntityId id = taggedPool->GetEntityId(index);
+            auto foundStr = jsPandaFile->GetStringData(id);
+
+            EcmaVM *vm = thread->GetEcmaVM();
+            ObjectFactory *factory = vm->GetFactory();
+            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::SHARED_OLD_SPACE,
+                jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
+            val = JSTaggedValue(string);
+        }
+        return val;
+    }
+
     static JSTaggedValue PUBLIC_API GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         auto val = taggedPool->Get(index);
         if (val.IsHole()) {
             if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
-                JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
+                JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool);
                 taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
                 return taggedPool->Get(index);
             }

@@ -229,6 +229,9 @@ GateRef EarlyElimination::UpdateDependChain(GateRef gate, DependInfoNode* depend
 
 DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* dependInfo)
 {
+    if (!enableMemoryAnalysis_) {
+        return new (chunk_) DependInfoNode(chunk_);
+    }
     auto op = acc_.GetOpCode(gate);
     switch (op) {
         case OpCode::STORE_PROPERTY:
@@ -349,20 +352,14 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             break;
         }
         case OpCode::TYPED_ARRAY_CHECK: {
-            if (acc_.GetTypedArrayMetaDateAccessor(lhs).GetType() !=
-                acc_.GetTypedArrayMetaDateAccessor(rhs).GetType()) {
+            if (acc_.GetTypedArrayMetaDateAccessor(lhs).GetParamType() !=
+                acc_.GetTypedArrayMetaDateAccessor(rhs).GetParamType()) {
                 return false;
             }
             break;
         }
         case OpCode::TYPE_OF_CHECK: {
-            if (acc_.GetParamGateType(lhs) != acc_.GetParamGateType(rhs)) {
-                return false;
-            }
-            break;
-        }
-        case OpCode::OBJECT_TYPE_CHECK: {
-            if (acc_.GetObjectTypeAccessor(lhs).GetType() != acc_.GetObjectTypeAccessor(rhs).GetType()) {
+            if (acc_.GetParamType(lhs) != acc_.GetParamType(rhs)) {
                 return false;
             }
             break;

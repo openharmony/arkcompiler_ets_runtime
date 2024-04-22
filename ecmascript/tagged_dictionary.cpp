@@ -86,6 +86,19 @@ void NameDictionary::GetAllKeys(const JSThread *thread, int offset, TaggedArray 
     }
 }
 
+void NameDictionary::UpdateAllAttributesToNoWitable(const JSThread *thread)
+{
+    int size = Size();
+    for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key = GetKey(hashIndex);
+        if (!key.IsUndefined() && !key.IsHole()) {
+            PropertyAttributes attr = GetAttributes(hashIndex);
+            attr.SetWritable(false);
+            SetAttributes(thread, hashIndex, attr);
+        }
+    }
+}
+
 void NameDictionary::GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArrayEffectivelength,
                                         TaggedArray *keyArray, uint32_t filter) const
 {

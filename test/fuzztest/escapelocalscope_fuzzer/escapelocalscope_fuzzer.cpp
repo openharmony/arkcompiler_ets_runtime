@@ -36,7 +36,7 @@ void EscapeLocalScopeFuzzTest(const uint8_t *data, size_t size)
         return;
     }
     FunctionCallback nativeFunc = FuncRefNewCFCallbackForTest;
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     FunctionRef::NewClassFunction(vm, nativeFunc, deleter, (void *)(data + size));
     JSNApi::DestroyJSVM(vm);
 }

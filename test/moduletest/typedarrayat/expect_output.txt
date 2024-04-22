@@ -22,3 +22,7 @@ Uint8Array test success !!!
 Uint8ClampedArray test success !!!
 BigInt64Array test success !!!
 BigUint64Array test success !!!
+0,0,0,0,0,0,0,0,0,0,0
+1,1,1,1,1,1,1,1,1,1,1
+513,513,513,513,513,513,513,513,513,513,513
+65536,65536,65536,65536,65536,65536,65536,65536,65536,65536,65536

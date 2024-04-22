@@ -110,7 +110,8 @@ bool ArrayHelper::ElementIsStrictEqualTo(JSThread *thread, const JSHandle<JSTagg
                                          const JSHandle<JSTaggedValue> &keyHandle,
                                          const JSHandle<JSTaggedValue> &target)
 {
-    bool exists = thisObjVal->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, keyHandle);
+    bool exists = thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray() ||
+        JSTaggedValue::HasProperty(thread, thisObjVal, keyHandle);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (thread->HasPendingException() || !exists) {
         return false;
@@ -254,7 +255,7 @@ int64_t ArrayHelper::GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &
     if (thisHandle->IsJSSharedArray()) {
         return JSSharedArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
     }
-    if (thisHandle->IsTypedArray()) {
+    if (thisHandle->IsTypedArray() || thisHandle->IsSharedTypedArray()) {
         return JSHandle<JSTypedArray>::Cast(thisHandle)->GetArrayLength();
     }
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
@@ -286,7 +287,7 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
                                             const JSHandle<JSTaggedValue> &mapperFunctionHandle,
                                             const JSHandle<JSTaggedValue> &thisArg)
 {
-    if (thread->DoAsmStackOverflowCheck()) {
+    if (thread->DoStackLimitCheck()) {
         return JSTaggedValue::Exception();
     }
     // 1. Assert: Type(target) is Object.

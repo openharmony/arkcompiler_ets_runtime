@@ -23,42 +23,53 @@ let res:number = 0;
 
 // Check without params
 res = Math.log();
+//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
 print(res); //: NaN
 
 // Check with single param
 res = Math.log(-0);
+//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
 print(res); //: -Infinity
 
 res = Math.log(+0);
+//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
 print(res); //: -Infinity
 
 res = Math.log(-123);
+//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
 print(res); //: NaN
 
 res = Math.log(Math.E);
+//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
 print(res); //: 1
 
 // Check with 2 params
 res = Math.log(Math.E, Math.E);
+//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
 print(res); //: 1
 
 // Check with 3 params
 res = Math.log(Math.E, Math.E, Math.E);
+//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
 print(res); //: 1
 
 // Check with 4 params
 res = Math.log(Math.E, Math.E, Math.E, Math.E);
+//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
 print(res); //: 1
 
 // Check with 5 params
 res = Math.log(Math.E, Math.E, Math.E, Math.E, Math.E);
+//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
 print(res); //: 1
 
 try {
+    //aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
     print(Math.log(Math.E)); //: 1
 } catch(e) {}
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_log = Math.log
 Math.log = replace
 res = Math.log(111);
@@ -66,6 +77,5 @@ print(res); //: 111
 
 // Call standart builtin with non-number param
 Math.log = true_log
-//aot: [trace] Check Type: NotNumber1
 res = Math.log("-0"); // deopt
 print(res); //: -Infinity

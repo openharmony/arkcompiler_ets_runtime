@@ -58,7 +58,8 @@ public:
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
     bool IsEvaluatedModule(JSTaggedValue referencing);
 
-    JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType);
+    JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, const CString &baseFileName,
+        ModuleTypes moduleType);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const CString &referencingModule,
         bool executeFromJob = false);
@@ -80,17 +81,11 @@ public:
         JSThread *thread, std::string &recordNameStr, std::string &baseFileName);
 
     JSTaggedValue GetCurrentModule();
-    JSHandle<JSTaggedValue> GenerateFuncModule(const JSPandaFile *jsPandaFile, const CString &entryPoint,
-                                               ClassKind classKind = ClassKind::NON_SENDABLE);
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
-    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
-        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
-    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
-        JSTaggedValue resolvedModule, ResolvedBinding *binding);
-    JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue currentModule,
-        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
-    void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
+    void AddResolveImportedModule(JSHandle<JSTaggedValue> &record, JSHandle<JSTaggedValue> &module);
     void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
+
+    JSHandle<JSTaggedValue> TryGetImportedModule(JSTaggedValue referencing);
     void Iterate(const RootVisitor &v);
 
     bool GetExecuteMode() const
@@ -115,7 +110,6 @@ private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
 
-    bool SkipDefaultBundleFile(const CString &moduleFileName) const;
     JSHandle<JSTaggedValue> ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
         const CString &recordName, bool executeFromJob = false);
     JSHandle<JSTaggedValue> CreateEmptyModule();
@@ -131,11 +125,18 @@ private:
 
     JSHandle<JSTaggedValue> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile,
         bool executeFromJob = false);
+
     JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
         const CString &recordName, bool executeFromJob = false);
 
     JSHandle<JSTaggedValue> CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
         const CString &recordName, bool executeFromJob = false);
+
+    void AddToInstantiatingSModuleList(const CString &record);
+
+    CVector<CString> GetInstantiatingSModuleList();
+
+    void RemoveModuleFromCache(JSTaggedValue recordName);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 
@@ -145,10 +146,12 @@ private:
     JSTaggedValue resolvedModules_ {JSTaggedValue::Hole()};
     JSTaggedValue cachedEmptyModule_ {JSTaggedValue::Hole()};
     bool isExecuteBuffer_ {false};
+    CVector<CString> InstantiatingSModuleList_;
 
     friend class EcmaVM;
     friend class PatchLoader;
     friend class ModuleDeregister;
+    friend class SharedModuleManager;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_JS_MODULE_MANAGER_H

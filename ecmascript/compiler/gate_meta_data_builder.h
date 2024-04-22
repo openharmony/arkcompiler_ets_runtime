@@ -146,16 +146,6 @@ public:
         return new (chunk_) JSBytecodeMetaData(valuesIn, methodId, opcode, pcOffset, bcIndex, flags);
     }
 
-    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOTypeRef type)
-    {
-        return new (chunk_) TypedBinaryMetaData(value, binOp, type);
-    }
-
-    const GateMetaData* TypedCallTargetCheckOp(uint32_t numIns, uint64_t value, TypedCallTargetCheckOp checkOp)
-    {
-        return new (chunk_) TypedCallTargetCheckMetaData(numIns, value, checkOp);
-    }
-
     const GateMetaData* Nop()
     {
         return &cachedNop_;

@@ -34,6 +34,12 @@ public:
         return helper;
     }
 
+    static std::shared_ptr<EnableAotListHelper> GetJitInstance()
+    {
+        static auto helper = std::make_shared<EnableAotListHelper>(JIT_ENABLE_LIST_NAME, "");
+        return helper;
+    }
+
     explicit EnableAotListHelper(const std::string &enableListName, const std::string &disableListName)
     {
         ReadEnableAotList(enableListName);
@@ -54,6 +60,11 @@ public:
             return true;
         }
         return IsEnableList(bundleName + ":" + moduleName);
+    }
+
+    bool IsEnableJit(const std::string &candidate)
+    {
+        return jitEnableList_.find(candidate) != jitEnableList_.end();
     }
 
     bool IsDisableBlackList(const std::string &candidate)
@@ -79,10 +90,16 @@ public:
         disableList_.insert(entry);
     }
 
+    void AddJitEnableListEntry(const std::string &entry)
+    {
+        jitEnableList_.insert(entry);
+    }
+
     void Clear()
     {
         disableList_.clear();
         enableList_.clear();
+        jitEnableList_.clear();
     }
 
 private:
@@ -129,12 +146,17 @@ private:
             if (aotListName == DISABLE_LIST_NAME) {
                 AddDisableListEntry(appName);
             }
+            if (aotListName == JIT_ENABLE_LIST_NAME) {
+                AddJitEnableListEntry(appName);
+            }
         }
     }
     std::set<std::string> enableList_ {};
     std::set<std::string> disableList_ {};
-    static const std::string ENABLE_LIST_NAME;
-    static const std::string DISABLE_LIST_NAME;
+    std::set<std::string> jitEnableList_ {};
+    PUBLIC_API static const std::string ENABLE_LIST_NAME;
+    PUBLIC_API static const std::string DISABLE_LIST_NAME;
+    PUBLIC_API static const std::string JIT_ENABLE_LIST_NAME;
 };
 }  // namespace panda::ecmascript::ohos
 #endif  // ECMASCRIPT_OHOS_ENABLE_AOT_LIST_HELPER_H

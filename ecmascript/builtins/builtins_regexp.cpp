@@ -1082,7 +1082,11 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
         }
     }
     // 14. Let accumulatedResult be the empty String value.
-    JSMutableHandle<EcmaString> accumulatedResult(thread, factory->GetEmptyString());
+    bool isUtf8 = EcmaStringAccessor(srcString).IsUtf8();
+    uint32_t resultStrLength = 0;
+    uint32_t resultArrayLength = (resultsIndex + 1) * 2;
+    JSHandle<TaggedArray> resultArray = factory->NewTaggedArray(resultArrayLength);
+    std::vector<uint64_t> resultLengthArray(resultArrayLength);
     // 15. Let nextSourcePosition be 0.
     uint32_t nextSourcePosition = 0;
     JSMutableHandle<JSTaggedValue> getMatchString(thread, JSTaggedValue::Undefined());
@@ -1106,7 +1110,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
         // b. ReturnIfAbrupt(nCaptures).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // c. Let nCaptures be max(nCaptures − 1, 0).
-        ncaptures = std::max<uint32_t>((ncaptures - 1), 0);
+        ncaptures = (ncaptures == 0) ? 0 : ncaptures - 1;
         // d. Let matched be ToString(Get(result, "0")).
         JSTaggedValue value = ObjectFastOperator::GetPropertyByIndex(thread, resultValues.GetTaggedValue(), 0);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1214,39 +1218,49 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
             // ii. Let accumulatedResult be the String formed by concatenating the code units of the current value
             // of accumulatedResult with the substring of S consisting of the code units from nextSourcePosition
             // (inclusive) up to position (exclusive) and with the code units of replacement.
-            auto substr = EcmaStringAccessor::FastSubString(thread->GetEcmaVM(),
-                JSHandle<EcmaString>::Cast(inputStr), nextSourcePosition, position - nextSourcePosition);
-            accumulatedResult.Update(JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(),
-                accumulatedResult, JSHandle<EcmaString>(thread, substr))));
-            accumulatedResult.Update(JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(),
-                accumulatedResult, replacementString)));
+            // store undefined in resultArray
+            resultArray->Set(thread, REPLACE_RESULT_VAL * i, JSTaggedValue::Undefined());
+            uint64_t bits = 0;
+            bits |= ReplaceLengthField::Encode(position - nextSourcePosition);
+            bits |= ReplacePositionField::Encode(nextSourcePosition);
+            // store position and length bits in resultLengthArray
+            resultLengthArray[REPLACE_RESULT_VAL * i] = bits;
+            resultStrLength += (position - nextSourcePosition);
+            // store replacement string in resultArray
+            resultArray->Set(thread, REPLACE_RESULT_VAL * i + 1, replacementString.GetTaggedValue());
+            uint32_t replacementLength = EcmaStringAccessor(replacementString).GetLength();
+            // store length of replacement string in resultLengthArray
+            resultLengthArray[REPLACE_RESULT_VAL * i + 1] = static_cast<uint64_t>(replacementLength);
+            resultStrLength += replacementLength;
+            isUtf8 &= EcmaStringAccessor(replacementString).IsUtf8();
             // iii. Let nextSourcePosition be position + matchLength.
             nextSourcePosition = position + matchLength;
         }
     }
+
     // 17. If nextSourcePosition ≥ lengthS, return accumulatedResult.
-    if (nextSourcePosition >= length) {
-        if (useCache) {
-            RegExpExecResultCache::AddResultInCache(thread, cacheTable, thisObj, string,
-                                                    JSHandle<JSTaggedValue>(accumulatedResult),
-                                                    RegExpExecResultCache::REPLACE_TYPE, 0, nextIndexHandle->GetInt(),
-                                                    inputReplaceValue.GetTaggedValue());
-        }
-        return accumulatedResult.GetTaggedValue();
+    if (nextSourcePosition < length) {
+        // store undefined in resultArray
+        resultArray->Set(thread, REPLACE_RESULT_VAL * resultsIndex, JSTaggedValue::Undefined());
+        uint64_t bits = 0;
+        bits |= ReplaceLengthField::Encode(length - nextSourcePosition);
+        bits |= ReplacePositionField::Encode(nextSourcePosition);
+        // store position and length bits in resultLengthArray
+        resultLengthArray[REPLACE_RESULT_VAL * resultsIndex] = bits;
+        resultStrLength += (length - nextSourcePosition);
     }
+
+    JSHandle<EcmaString> result =
+        CreateStringFromResultArray(thread, resultArray, resultLengthArray, srcString, resultStrLength, isUtf8);
     // 18. Return the String formed by concatenating the code units of accumulatedResult with the substring of S
     // consisting of the code units from nextSourcePosition (inclusive) up through the final code unit of S(inclusive).
-    auto substr = EcmaStringAccessor::FastSubString(thread->GetEcmaVM(),
-        JSHandle<EcmaString>::Cast(inputStr), nextSourcePosition, length - nextSourcePosition);
-    accumulatedResult.Update(JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(),
-        accumulatedResult, JSHandle<EcmaString>(thread, substr))));
     if (useCache) {
         RegExpExecResultCache::AddResultInCache(thread, cacheTable, thisObj, string,
-                                                JSHandle<JSTaggedValue>(accumulatedResult),
+                                                JSHandle<JSTaggedValue>(result),
                                                 RegExpExecResultCache::REPLACE_TYPE, 0, nextIndexHandle->GetInt(),
                                                 inputReplaceValue.GetTaggedValue());
     }
-    return accumulatedResult.GetTaggedValue();
+    return result.GetTaggedValue();
 }
 
 // 21.2.5.9
@@ -1879,7 +1893,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
                                                 const JSHandle<JSTaggedValue> inputStr,
                                                 bool isFastPath, bool useCache, bool isIntermediateResult)
 {
-    ASSERT(JSObject::IsRegExp(thread, regexp));
+    ASSERT(regexp->IsJSRegExp());
     ASSERT(inputStr->IsString());
     BUILTINS_API_TRACE(thread, RegExp, RegExpBuiltinExec);
     uint32_t lastIndex = static_cast<uint32_t>(GetLastIndex(thread, regexp, isFastPath));
@@ -2773,5 +2787,50 @@ JSTaggedValue BuiltinsRegExp::GetExecResultGroups(JSThread *thread, const JSHand
         thread, execResults.GetTaggedValue(), groupKey.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return groups;
+}
+
+JSHandle<EcmaString> BuiltinsRegExp::CreateStringFromResultArray(JSThread *thread,
+    const JSHandle<TaggedArray> resultArray, const std::vector<uint64_t> &resultLengthArray,
+    JSHandle<EcmaString> srcString, uint32_t resultStrLength, bool isUtf8)
+{
+    JSHandle<EcmaString> result = JSHandle<EcmaString>(thread,
+        EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), resultStrLength, isUtf8));
+    FlatStringInfo resultInfo = FlatStringInfo(*result, 0, resultStrLength);
+    FlatStringInfo flatStrInfo = EcmaStringAccessor::FlattenAllString(thread->GetEcmaVM(), srcString);
+    if (EcmaStringAccessor(srcString).IsTreeString()) { // use flattenedString as srcString
+        srcString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
+    }
+    uint32_t nextPos = 0;
+    uint32_t resultArrayLength = resultArray->GetLength();
+    for (int i = 0; i < static_cast<int>(resultArrayLength); i++) {
+        JSTaggedValue substrValue = resultArray->Get(thread, i);
+        if (substrValue.IsHole()) {
+            continue;
+        }
+        resultInfo.SetStartIndex(nextPos);
+        if (substrValue.IsUndefined()) {
+            uint64_t bits = resultLengthArray[i];
+            uint32_t subLength = ReplaceLengthField::Decode(bits);
+            uint32_t subPosition = ReplacePositionField::Decode(bits);
+            if (isUtf8) {
+                EcmaStringAccessor::WriteToFlatWithPos<uint8_t>(*srcString, resultInfo.GetDataUtf8Writable(),
+                                                                subLength, subPosition);
+            } else {
+                EcmaStringAccessor::WriteToFlatWithPos<uint16_t>(*srcString, resultInfo.GetDataUtf16Writable(),
+                                                                 subLength, subPosition);
+            }
+            nextPos += subLength;
+        } else {
+            EcmaString *replacementStr = EcmaString::Cast(substrValue.GetTaggedObject());
+            uint32_t replaceLength = static_cast<uint32_t>(resultLengthArray[i]);
+            if (isUtf8) {
+                EcmaStringAccessor::WriteToFlat(replacementStr, resultInfo.GetDataUtf8Writable(), replaceLength);
+            } else {
+                EcmaStringAccessor::WriteToFlat(replacementStr, resultInfo.GetDataUtf16Writable(), replaceLength);
+            }
+            nextPos += replaceLength;
+        }
+    }
+    return result;
 }
 }  // namespace panda::ecmascript::builtins

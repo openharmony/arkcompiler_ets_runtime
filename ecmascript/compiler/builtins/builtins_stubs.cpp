@@ -18,6 +18,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
+#include "ecmascript/compiler/builtins/builtins_dataview_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_number_stub_builder.h"
@@ -31,7 +32,9 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/stub_builder.h"
+#include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/variable_type.h"
+#include "ecmascript/js_dataview.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/linked_hash_table.h"
@@ -55,6 +58,22 @@ void name##StubBuilder::GenerateCircuit()                                       
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
                                             GateRef newTarget, GateRef thisValue, GateRef numArgs)
 #else
+#ifndef NDEBUG
+#define DECLARE_BUILTINS(name)                                                                      \
+void name##StubBuilder::GenerateCircuit()                                                           \
+{                                                                                                   \
+    GateRef glue = PtrArgument(static_cast<size_t>(BuiltinsArgs::GLUE));                            \
+    GateRef nativeCode = PtrArgument(static_cast<size_t>(BuiltinsArgs::NATIVECODE));                \
+    GateRef func = TaggedArgument(static_cast<size_t>(BuiltinsArgs::FUNC));                         \
+    GateRef newTarget = TaggedArgument(static_cast<size_t>(BuiltinsArgs::NEWTARGET));               \
+    GateRef thisValue = TaggedArgument(static_cast<size_t>(BuiltinsArgs::THISVALUE));               \
+    GateRef numArgs = PtrArgument(static_cast<size_t>(BuiltinsArgs::NUMARGS));                      \
+    CallRuntime(glue, RTSTUB_ID(ForceGC), {});                                                      \
+    GenerateCircuitImpl(glue, nativeCode, func, newTarget, thisValue, numArgs);                     \
+}                                                                                                   \
+void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
+                                            GateRef newTarget, GateRef thisValue, GateRef numArgs)
+#else
 #define DECLARE_BUILTINS(name)                                                                      \
 void name##StubBuilder::GenerateCircuit()                                                           \
 {                                                                                                   \
@@ -69,9 +88,14 @@ void name##StubBuilder::GenerateCircuit()                                       
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
                                             GateRef newTarget, GateRef thisValue, GateRef numArgs)
 #endif
+#endif
 
-GateRef BuiltinsStubBuilder::GetArg(GateRef numArgs, GateRef index)
+GateRef BuiltinsStubBuilder::GetArgFromArgv(GateRef index, GateRef numArgs, bool needCheck)
 {
+    if (!needCheck) {
+        GateRef argv = GetArgv();
+        return Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(JSTaggedValue::TaggedTypeSize())));
+    }
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
@@ -92,7 +116,7 @@ GateRef BuiltinsStubBuilder::GetArg(GateRef numArgs, GateRef index)
 }
 
 GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue,
-                                          GateRef numArgs, GateRef func, GateRef newTarget, const char* comment)
+                                          GateRef numArgs, GateRef func, GateRef newTarget)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -110,7 +134,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
     Bind(&callThis0);
     {
         auto args = { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue };
-        result = CallBuiltinRuntime(glue, args, false, comment);
+        result = CallBuiltinRuntime(glue, args, false);
         Jump(&exit);
     }
     Bind(&notcallThis0);
@@ -120,7 +144,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
         {
             GateRef arg0 = GetCallArg0(numArgs);
             auto args = { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0 };
-            result = CallBuiltinRuntime(glue, args, false, comment);
+            result = CallBuiltinRuntime(glue, args, false);
             Jump(&exit);
         }
         Bind(&notcallThis1);
@@ -131,7 +155,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
                 GateRef arg0 = GetCallArg0(numArgs);
                 GateRef arg1 = GetCallArg1(numArgs);
                 auto args = { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1 };
-                result = CallBuiltinRuntime(glue, args, false, comment);
+                result = CallBuiltinRuntime(glue, args, false);
                 Jump(&exit);
             }
             Bind(&callThis3);
@@ -140,7 +164,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
                 GateRef arg1 = GetCallArg1(numArgs);
                 GateRef arg2 = GetCallArg2(numArgs);
                 auto args = { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1, arg2 };
-                result = CallBuiltinRuntime(glue, args, false, comment);
+                result = CallBuiltinRuntime(glue, args, false);
                 Jump(&exit);
             }
         }
@@ -163,8 +187,7 @@ DECLARE_BUILTINS(type##method)                                                  
     builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
         Jump(&exit);                                                                                \
     }                                                                                               \
     Bind(&exit);                                                                                    \
@@ -183,8 +206,7 @@ DECLARE_BUILTINS(type##method)                                                  
     builder.method(&res, &exit, &slowPath);                                                         \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
         Jump(&exit);                                                                                \
     }                                                                                               \
     Bind(&exit);                                                                                    \
@@ -203,8 +225,27 @@ DECLARE_BUILTINS(type##method)                                                  
     builder.method(&res, &exit, &slowPath);                                                         \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
+}
+
+// map and set stub function
+#define DECLARE_BUILTINS_DATAVIEW_STUB_BUILDER(method, type, numType, function, retDefaultValue)    \
+DECLARE_BUILTINS(type##method)                                                                      \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, VariableType::JS_ANY(), retDefaultValue);                                      \
+    Label slowPath(env);                                                                            \
+    Label exit(env);                                                                                \
+    BuiltinsDataViewStubBuilder builder(this);                                                      \
+    builder.function<DataViewType::numType>(glue, thisValue, numArgs, &res, &exit, &slowPath);      \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
         auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
         Jump(&exit);                                                                                \
     }                                                                                               \
     Bind(&exit);                                                                                    \
@@ -212,10 +253,33 @@ DECLARE_BUILTINS(type##method)                                                  
 }
 
 BUILTINS_METHOD_STUB_LIST(DECLARE_BUILTINS_STUB_BUILDER, DECLARE_BUILTINS_STUB_BUILDER1,
-                          DECLARE_BUILTINS_COLLECTION_STUB_BUILDER)
+                          DECLARE_BUILTINS_COLLECTION_STUB_BUILDER, DECLARE_BUILTINS_DATAVIEW_STUB_BUILDER)
 #undef DECLARE_BUILTINS_STUB_BUILDER
 #undef DECLARE_BUILTINS_STUB_BUILDER1
 #undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
+#undef DECLARE_BUILTINS_DATAVIEW_STUB_BUILDER
+
+DECLARE_BUILTINS(ArkToolsHashCode)
+{
+    (void) nativeCode;
+    (void) func;
+    (void) newTarget;
+    (void) thisValue;
+    auto env = GetEnvironment();
+    GateRef key = GetCallArg0(numArgs);
+
+    Label irHash(env);
+    Label rtHash(env);
+    BRANCH(IntPtrEqual(numArgs, IntPtr(1)), &irHash, &rtHash);
+    Bind(&irHash);
+    {
+        HashStubBuilder hashBuilder(this, glue);
+        GateRef hash = hashBuilder.GetHash(key);
+        Return(env->GetBuilder()->Int32ToTaggedPtr(hash));
+    }
+    Bind(&rtHash);
+    Return(CallRuntime(glue, RTSTUB_ID(GetLinkedHash), { key }));
+}
 
 // aot and builtins public stub function
 #define DECLARE_AOT_AND_BUILTINS_STUB_BUILDER(stubName, method, type, initValue)                    \
@@ -229,18 +293,17 @@ DECLARE_BUILTINS(stubName)                                                      
     builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(stubName));                        \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
         Jump(&exit);                                                                                \
     }                                                                                               \
     Bind(&exit);                                                                                    \
     Return(*res);                                                                                   \
 }
 
-#define AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)                                                   \
-    V(LocaleCompare,              LocaleCompare,      String, Undefined())                          \
-    V(STRING_ITERATOR_PROTO_NEXT, StringIteratorNext, String, Undefined())                          \
-    V(SORT,                       Sort,               Array,  Undefined())
+#define AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)                                                 \
+    V(StringLocaleCompare,              LocaleCompare,      String, Undefined())                  \
+    V(StringIteratorProtoNext,  StringIteratorNext, String, Undefined())                          \
+    V(ArraySort,           Sort,               Array,  Undefined())
 
 AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(DECLARE_AOT_AND_BUILTINS_STUB_BUILDER)
 #undef AOT_AND_BUILTINS_STUB_LIST
@@ -258,8 +321,7 @@ DECLARE_BUILTINS(type##funcName)                                                
     containersBuilder.method(glue, thisValue, numArgs, &res, &exit, &slowPath, ContainersType::methodType);     \
     Bind(&slowPath);                                                                                            \
     {                                                                                                           \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##funcName));                              \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());                \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                              \
         Jump(&exit);                                                                                            \
     }                                                                                                           \
     Bind(&exit);                                                                                                \
@@ -278,10 +340,9 @@ DECLARE_BUILTINS(BooleanConstructor)
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
     Label slowPath1(env);
-    Label slowPath2(env);
     Label exit(env);
 
-    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
     Bind(&newTargetIsHeapObject);
     BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
@@ -289,7 +350,7 @@ DECLARE_BUILTINS(BooleanConstructor)
         Label intialHClassIsHClass(env);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
+        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
             NewObjectStubBuilder newBuilder(this);
@@ -299,32 +360,24 @@ DECLARE_BUILTINS(BooleanConstructor)
             Bind(&afterNew);
             {
                 GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
-                GateRef value = GetArg(numArgs, IntPtr(0));
+                GateRef value = GetArgFromArgv(IntPtr(0), numArgs, true);
                 Store(VariableType::INT64(), glue, *res, valueOffset, FastToBoolean(value));
                 Jump(&exit);
             }
         }
-        Bind(&slowPath2);
+        Bind(&slowPath1);
         {
-            auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(BooleanConstructor));
             GateRef argv = GetArgv();
             auto args = { glue, nativeCode, func, thisValue, numArgs, argv, newTarget };
-            res = CallBuiltinRuntimeWithNewTarget(glue, args, name.c_str());
+            res = CallBuiltinRuntimeWithNewTarget(glue, args);
             Jump(&exit);
         }
     }
     Bind(&slowPath);
     {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(BooleanConstructor));
         GateRef argv = GetArgv();
         auto args = { glue, nativeCode, func, thisValue, numArgs, argv };
-        res = CallBuiltinRuntime(glue, args, true, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&slowPath1);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(BooleanConstructor));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        res = CallBuiltinRuntime(glue, args, true);
         Jump(&exit);
     }
     Bind(&exit);
@@ -340,10 +393,9 @@ DECLARE_BUILTINS(DateConstructor)
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
     Label slowPath1(env);
-    Label slowPath2(env);
     Label exit(env);
 
-    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
     Bind(&newTargetIsHeapObject);
     BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
@@ -351,7 +403,7 @@ DECLARE_BUILTINS(DateConstructor)
         Label intialHClassIsHClass(env);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
+        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
             Label oneArg(env);
@@ -362,7 +414,7 @@ DECLARE_BUILTINS(DateConstructor)
             Bind(&oneArg);
             {
                 Label valueIsNumber(env);
-                GateRef value = GetArgNCheck(IntPtr(0));
+                GateRef value = GetArgFromArgv(IntPtr(0));
                 BRANCH(TaggedIsNumber(value), &valueIsNumber, &slowPath);
                 Bind(&valueIsNumber);
                 {
@@ -377,9 +429,9 @@ DECLARE_BUILTINS(DateConstructor)
                 Bind(&threeArgs);
                 {
                     Label numberYearMonthDay(env);
-                    GateRef year = GetArgNCheck(IntPtr(0));
-                    GateRef month = GetArgNCheck(IntPtr(1));
-                    GateRef day = GetArgNCheck(IntPtr(2));
+                    GateRef year = GetArgFromArgv(IntPtr(0));
+                    GateRef month = GetArgFromArgv(IntPtr(1));
+                    GateRef day = GetArgFromArgv(IntPtr(2));
                     BRANCH(IsNumberYearMonthDay(year, month, day), &numberYearMonthDay, &slowPath);
                     Bind(&numberYearMonthDay);
                     {
@@ -406,26 +458,18 @@ DECLARE_BUILTINS(DateConstructor)
                 }
             }
         }
-        Bind(&slowPath2);
+        Bind(&slowPath1);
         {
-            auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(DateConstructor));
             GateRef argv = GetArgv();
-            res = CallBuiltinRuntimeWithNewTarget(glue, { glue, nativeCode, func, thisValue, numArgs, argv, newTarget },
-                name.c_str());
+            res = CallBuiltinRuntimeWithNewTarget(glue,
+                { glue, nativeCode, func, thisValue, numArgs, argv, newTarget });
             Jump(&exit);
         }
     }
     Bind(&slowPath);
     {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(DateConstructor));
         GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&slowPath1);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(DateConstructor));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
         Jump(&exit);
     }
     Bind(&exit);
@@ -447,12 +491,14 @@ DECLARE_BUILTINS(ArrayConstructor)
 DECLARE_BUILTINS(MapConstructor)
 {
     LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue);
-    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs);
+    GateRef arg0 = GetArgFromArgv(IntPtr(0), numArgs, true);
+    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
 
 DECLARE_BUILTINS(SetConstructor)
 {
     LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue);
-    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs);
+    GateRef arg0 = GetArgFromArgv(IntPtr(0), numArgs, true);
+    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
 }  // namespace panda::ecmascript::kungfu

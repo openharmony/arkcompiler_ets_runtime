@@ -29,8 +29,6 @@
 namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
 static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
-static const std::string LIB_ARK_JSRUNTIME_SO_NAME = "libark_jsruntime.so";
-static const std::string LIB_ACE_NAPI_Z_SO_NAME = "libace_napi.z.so";
 static const int MAX_STACK_SIZE = 16;
 static const int LOG_BUF_LEN = 1024;
 
@@ -38,7 +36,7 @@ using UnwBackTraceFunc = int (*)(void**, int);
 
 static std::map<void *, Dl_info> stackInfoCache;
 
-void Backtrace(std::ostringstream &stack, bool enableCache, bool jsStack)
+void Backtrace(std::ostringstream &stack, bool enableCache)
 {
     static UnwBackTraceFunc unwBackTrace = nullptr;
     if (!unwBackTrace) {
@@ -60,10 +58,7 @@ void Backtrace(std::ostringstream &stack, bool enableCache, bool jsStack)
     void *buffer[MAX_STACK_SIZE] = { nullptr };
     int level = unwBackTrace(reinterpret_cast<void**>(&buffer), MAX_STACK_SIZE);
     stack << "=====================Backtrace========================";
-    bool flag = true;
-    int index = 0;
     for (int i = 1; i < level; i++) {
-        index++;
         Dl_info info;
         auto iter = stackInfoCache.find(buffer[i]);
         if (enableCache && iter != stackInfoCache.end()) {
@@ -77,26 +72,12 @@ void Backtrace(std::ostringstream &stack, bool enableCache, bool jsStack)
             }
         }
         const char *file =  info.dli_fname ? info.dli_fname : "";
-        if (jsStack) {
-            std::string str = file;
-            auto splitPos = str.rfind("/");
-            if (splitPos != std::string::npos) {
-                str = str.substr(splitPos + 1);
-            }
-            if ((str.compare(LIB_ARK_JSRUNTIME_SO_NAME) == 0 ||
-                str.compare(LIB_ACE_NAPI_Z_SO_NAME) == 0) && flag) {
-                index--;
-                continue;
-            } else {
-                flag = false;
-            }
-        }
         uint64_t offset = info.dli_fbase ? ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase) : 0;
         char buf[LOG_BUF_LEN] = {0};
         char frameFormatWithMapName[] = "#%02zu pc %016" PRIx64 " %s";
         int ret = 0;
         ret = static_cast<int>(snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, frameFormatWithMapName, \
-            index, offset, file));
+            i, offset, file));
         if (ret <= 0) {
             LOG_ECMA(ERROR) << "Backtrace snprintf_s failed";
             return;

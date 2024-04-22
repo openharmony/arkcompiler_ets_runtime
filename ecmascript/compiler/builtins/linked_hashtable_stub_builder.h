@@ -20,10 +20,10 @@
 namespace panda::ecmascript::kungfu {
 
 template<typename LinkedHashTableType, typename LinkedHashTableObject>
-class LinkedHashTableStubBuilder : public BuiltinsStubBuilder {
+class LinkedHashTableStubBuilder : public StubBuilder {
 public:
-    explicit LinkedHashTableStubBuilder(BuiltinsStubBuilder *parent, GateRef glue)
-        : BuiltinsStubBuilder(parent), glue_(glue) {}
+    explicit LinkedHashTableStubBuilder(StubBuilder *parent, GateRef glue)
+        : StubBuilder(parent), glue_(glue) {}
     ~LinkedHashTableStubBuilder() override = default;
     NO_MOVE_SEMANTIC(LinkedHashTableStubBuilder);
     NO_COPY_SEMANTIC(LinkedHashTableStubBuilder);
@@ -31,13 +31,18 @@ public:
 
     GateRef Create(GateRef numberOfElements);
     GateRef Clear(GateRef linkedTable);
-    GateRef ForEach(GateRef thisValue, GateRef linkedTable, GateRef numArgs);
+    GateRef ForEach(GateRef thisValue, GateRef linkedTable, GateRef callbackFnHandle, GateRef thisArg);
     GateRef Insert(GateRef linkedTable, GateRef key, GateRef value);
     GateRef Delete(GateRef linkedTable, GateRef key);
     GateRef Has(GateRef linkedTable, GateRef key);
     GateRef Get(GateRef linkedTable, GateRef key);
 
-    void GenMapSetConstructor(GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs);
+    void GenMapSetConstructor(GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs,
+        GateRef arg0, GateRef argv);
+
+    GateRef GetLinked(GateRef jsThis);
+
+    void SetLinked(GateRef jsThis, GateRef newTable);
 
 private:
     GateRef IsKey(GateRef key)
@@ -56,7 +61,6 @@ private:
         return Int32Add(bucket, Int32(LinkedHashTableType::ELEMENTS_START_INDEX));
     }
 
-    GateRef GetHash(GateRef key);
     GateRef HashObjectIsMatch(GateRef key, GateRef other);
     GateRef FindElement(GateRef linkedTable, GateRef key, GateRef hash);
     GateRef GetKey(GateRef linkedTable, GateRef entry)
@@ -202,6 +206,7 @@ private:
     GateRef ComputeCapacity(GateRef atLeastSpaceFor);
     void RemoveEntry(GateRef linkedTable, GateRef entry);
     void StoreHashTableToNewObject(GateRef newTargetHClass, Variable& returnValue);
+    GateRef GetLinkedOffset();
 
     GateRef glue_;
 };

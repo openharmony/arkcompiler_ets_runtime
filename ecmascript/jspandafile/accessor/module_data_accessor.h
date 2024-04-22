@@ -46,6 +46,7 @@ public:
 
     void EnumerateStarExportEntry(JSThread *thread, const JSHandle<TaggedArray> &requestModuleArray,
                                   JSHandle<SourceTextModule> &moduleRecord);
+    JSHandle<TaggedArray> CreatEntries(JSThread *thread, uint32_t regularImportNum, SharedTypes sharedType);
 
     panda_file::File::EntityId GetModuleDataId() const
     {

@@ -119,6 +119,13 @@ struct Reference;
         JS_SHARED_SET, /*  ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_MAP,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SHARED_MAP, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_OBJECT, /* SHARED_JSON_VALUE_FIRST /////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_STRING, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_NUMBER, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_TRUE,   /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_FALSE,  /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_ARRAY,  /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_JSON_NULL,   /* SHARED_JSON_VALUE_LAST///////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_MAP, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_SET, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_REF, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -165,6 +172,7 @@ struct Reference;
                                                                                                                        \
         JS_ARRAY_BUFFER, /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SHARED_ARRAY_BUFFER, /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SENDABLE_ARRAY_BUFFER, /* //////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE,      /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_DATA_VIEW,    /* /////////////////////////////////////////////////////////////////////////////////////// */ \
         JS_ARGUMENTS, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -201,6 +209,18 @@ struct Reference;
         JS_FLOAT64_ARRAY,       /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_BIGINT64_ARRAY,      /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_BIGUINT64_ARRAY,     /* JS_TYPED_ARRAY_LAST //////////////////////////////////////////////////////////// */ \
+        JS_SHARED_TYPED_ARRAY,  /* JS_SHARED_TYPED_ARRAY_FIRST //////////////////////////////////////////////////// */ \
+        JS_SHARED_INT8_ARRAY,  /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_UINT8_ARRAY, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_UINT8_CLAMPED_ARRAY, /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_INT16_ARRAY,         /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_UINT16_ARRAY,        /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_INT32_ARRAY,         /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_UINT32_ARRAY,        /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_FLOAT32_ARRAY,       /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_FLOAT64_ARRAY,       /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_BIGINT64_ARRAY,      /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_BIGUINT64_ARRAY,     /* JS_SHARED_TYPED_ARRAY_LAST ////////////////////////////////////////////// */ \
         JS_PRIMITIVE_REF, /* number\boolean\string. SPECIAL indexed objects end, DON'T CHANGE HERE ////////-PADDING */ \
         JS_MODULE_NAMESPACE, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_MODULE, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -266,20 +286,12 @@ struct Reference;
         STAR_EXPORTENTRY_RECORD, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVEDBINDING_RECORD, /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVEDINDEXBINDING_RECORD, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
+        RESOLVEDRECORDINDEXBINDING_RECORD, /* /////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVEDRECORDBINDING_RECORD, /* //////////////////////////////////////////////////////////////////-PADDING */ \
         CELL_RECORD,          /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         COMPLETION_RECORD, /* JS_RECORD_LAST ////////////////////////////////////////////////////////////////////// */ \
         MACHINE_CODE_OBJECT,                                                                                           \
         CLASS_INFO_EXTRACTOR, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_ARRAY_TYPE,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_UNION_TYPE,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_FUNCTION_TYPE,  /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_OBJECT_TYPE,  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_CLASS_TYPE,    /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_CLASS_INSTANCE_TYPE,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_INTERFACE_TYPE,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_ITERATOR_INSTANCE_TYPE,    /* //////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_NAMESPACE_TYPE,  /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         VTABLE,                       /* //////////////////////////////////////////////////////////////////-PADDING */ \
         AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -297,6 +309,9 @@ struct Reference;
         JS_ERROR_FIRST = JS_ERROR,      /* ////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ERROR_LAST = JS_TERMINATION_ERROR,    /* ///////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
+        SHARED_JSON_VALUE_FIRST = JS_SHARED_JSON_OBJECT, /* ///////////////////////////////////////////////-PADDING */ \
+        SHARED_JSON_VALUE_LAST = JS_SHARED_JSON_NULL,    /* ///////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
         JS_ITERATOR_FIRST = JS_ITERATOR,      /* //////////////////////////////////////////////////////////-PADDING */ \
         JS_ITERATOR_LAST = JS_STRING_ITERATOR, /* /////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
@@ -306,11 +321,11 @@ struct Reference;
         JS_TYPED_ARRAY_FIRST = JS_TYPED_ARRAY, /* /////////////////////////////////////////////////////////-PADDING */ \
         JS_TYPED_ARRAY_LAST = JS_BIGUINT64_ARRAY, /* //////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
+        JS_SHARED_TYPED_ARRAY_FIRST = JS_SHARED_TYPED_ARRAY, /* ///////////////////////////////////////////-PADDING */ \
+        JS_SHARED_TYPED_ARRAY_LAST = JS_SHARED_BIGUINT64_ARRAY, /* ////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
         MODULE_RECORD_FIRST = MODULE_RECORD, /* ///////////////////////////////////////////////////////////-PADDING */ \
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
-                                                                                                                       \
-        TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_TYPE_LAST = TS_NAMESPACE_TYPE, /* //////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         STRING_FIRST = LINE_STRING, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         STRING_LAST = TREE_STRING  /* /////////////////////////////////////////////////////////////////////-PADDING */
@@ -462,8 +477,7 @@ public:
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
 
-    static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                 JSTaggedValue addedKey = JSTaggedValue::Undefined());
+    static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
@@ -703,6 +717,12 @@ public:
         return (JSType::JS_TYPED_ARRAY_FIRST < jsType && jsType <= JSType::JS_TYPED_ARRAY_LAST);
     }
 
+    inline bool IsSharedTypedArray() const
+    {
+        JSType jsType = GetObjectType();
+        return (JSType::JS_SHARED_TYPED_ARRAY_FIRST < jsType && jsType <= JSType::JS_SHARED_TYPED_ARRAY_LAST);
+    }
+
     inline bool HasOrdinaryGet() const
     {
         return (IsSpecialContainer() || IsModuleNamespace() || IsJSBigInt64Array() || IsJSBigUint64Array());
@@ -766,6 +786,66 @@ public:
     inline bool IsJSBigUint64Array() const
     {
         return GetObjectType() == JSType::JS_BIGUINT64_ARRAY;
+    }
+
+    inline bool IsJSSharedTypedArray() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_TYPED_ARRAY;
+    }
+
+    inline bool IsJSSharedInt8Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_INT8_ARRAY;
+    }
+
+    inline bool IsJSSharedUint8Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_UINT8_ARRAY;
+    }
+
+    inline bool IsJSSharedUint8ClampedArray() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_UINT8_CLAMPED_ARRAY;
+    }
+
+    inline bool IsJSSharedInt16Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_INT16_ARRAY;
+    }
+
+    inline bool IsJSSharedUint16Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_UINT16_ARRAY;
+    }
+
+    inline bool IsJSSharedInt32Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_INT32_ARRAY;
+    }
+
+    inline bool IsJSSharedUint32Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_UINT32_ARRAY;
+    }
+
+    inline bool IsJSSharedFloat32Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_FLOAT32_ARRAY;
+    }
+
+    inline bool IsJSSharedFloat64Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_FLOAT64_ARRAY;
+    }
+
+    inline bool IsJSSharedBigInt64Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_BIGINT64_ARRAY;
+    }
+
+    inline bool IsJSSharedBigUint64Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_BIGUINT64_ARRAY;
     }
 
     inline bool IsJsGlobalEnv() const
@@ -892,6 +972,11 @@ public:
     bool IsJSSharedMap() const
     {
         return GetObjectType() == JSType::JS_SHARED_MAP;
+    }
+
+    bool IsJSSharedJSONValue() const
+    {
+        return GetObjectType() >= JSType::SHARED_JSON_VALUE_FIRST && GetObjectType() <= JSType::SHARED_JSON_VALUE_LAST;
     }
 
     bool IsJSWeakMap() const
@@ -1198,6 +1283,11 @@ public:
     inline bool IsSharedArrayBuffer() const
     {
         return GetObjectType() == JSType::JS_SHARED_ARRAY_BUFFER;
+    }
+
+    inline bool IsSendableArrayBuffer() const
+    {
+        return GetObjectType() == JSType::JS_SENDABLE_ARRAY_BUFFER;
     }
 
     inline bool IsDataView() const
@@ -1525,57 +1615,6 @@ public:
         return GetObjectType() == JSType::MACHINE_CODE_OBJECT;
     }
 
-    inline bool IsTSType() const
-    {
-        JSType jsType = GetObjectType();
-        return jsType >= JSType::TS_TYPE_FIRST && jsType <= JSType::TS_TYPE_LAST;
-    }
-
-    inline bool IsTSObjectType() const
-    {
-        return GetObjectType() == JSType::TS_OBJECT_TYPE;
-    }
-
-    inline bool IsTSClassType() const
-    {
-        return GetObjectType() == JSType::TS_CLASS_TYPE;
-    }
-
-    inline bool IsTSInterfaceType() const
-    {
-        return GetObjectType() == JSType::TS_INTERFACE_TYPE;
-    }
-
-    inline bool IsTSUnionType() const
-    {
-        return GetObjectType() == JSType::TS_UNION_TYPE;
-    }
-
-    inline bool IsTSClassInstanceType() const
-    {
-        return GetObjectType() == JSType::TS_CLASS_INSTANCE_TYPE;
-    }
-
-    inline bool IsTSFunctionType() const
-    {
-        return GetObjectType() == JSType::TS_FUNCTION_TYPE;
-    }
-
-    inline bool IsTSArrayType() const
-    {
-        return GetObjectType() == JSType::TS_ARRAY_TYPE;
-    }
-
-    inline bool IsTSIteratorInstanceType() const
-    {
-        return GetObjectType() == JSType::TS_ITERATOR_INSTANCE_TYPE;
-    }
-
-    inline bool IsTSNamespaceType() const
-    {
-        return GetObjectType() == JSType::TS_NAMESPACE_TYPE;
-    }
-
     inline bool IsAOTLiteralInfo() const
     {
         return GetObjectType() == JSType::AOT_LITERAL_INFO;
@@ -1642,6 +1681,11 @@ public:
         return GetObjectType() == JSType::RESOLVEDINDEXBINDING_RECORD;
     }
 
+    inline bool IsResolvedRecordIndexBinding() const
+    {
+        return GetObjectType() == JSType::RESOLVEDRECORDINDEXBINDING_RECORD;
+    }
+
     inline bool IsResolvedRecordBinding() const
     {
         return GetObjectType() == JSType::RESOLVEDRECORDBINDING_RECORD;
@@ -1660,6 +1704,41 @@ public:
     inline bool IsJSSharedArray() const
     {
         return GetObjectType() == JSType::JS_SHARED_ARRAY;
+    }
+
+    inline bool IsJSSharedJSONFalse() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_FALSE;
+    }
+
+    inline bool IsJSSharedJSONTrue() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_TRUE;
+    }
+
+    inline bool IsJSSharedJSONString() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_STRING;
+    }
+
+    inline bool IsJSSharedJSONNull() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_NULL;
+    }
+
+    inline bool IsJSSharedJSONObject() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_OBJECT;
+    }
+
+    inline bool IsJSSharedJSONNumber() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_NUMBER;
+    }
+
+    inline bool IsJSSharedJSONArray() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_JSON_ARRAY;
     }
 
     inline void SetElementsKind(ElementsKind kind)
@@ -1944,6 +2023,8 @@ private:
                                               const PropertyAttributes &attr);
 
     void InitializeWithDefaultValue(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps);
+
+    bool IsJSTypeShared(JSType type);
 
     inline void Copy(const JSThread *thread, const JSHClass *jshclass);
 

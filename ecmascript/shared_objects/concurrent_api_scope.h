@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_object.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 
 #include "ecmascript/containers/containers_errors.h"
 #include "macros.h"
@@ -142,7 +143,7 @@ private:
     uint32_t desiredModRecord_ {0};
 
     static_assert(std::is_same_v<Container, JSSharedSet> || std::is_same_v<Container, JSSharedMap> ||
-                  std::is_same_v<Container, JSSharedArray>);
+                  std::is_same_v<Container, JSSharedArray> || std::is_same_v<Container, JSSharedTypedArray>);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_API_SCOPE_H

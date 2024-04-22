@@ -28,3 +28,18 @@ try {
 } catch(e) {
   print(e);
 }
+
+function runNearStackLimit(f) { function t() { try { t(); } catch (e) { f(); } }; try { t(); } catch (e) { } }
+let obj = { "name": "tom" };
+let px = new Proxy(obj, {});
+function f() {
+    for (let i = 0; i < 100; i++) { };
+    px.name;
+    const o9 = {
+        [px]() {
+        },
+    };
+    runNearStackLimit(f);
+}
+f();
+print("Exception Test End")

@@ -58,6 +58,7 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
         options2.SetEnableForceGC(false);
         options2.SetForceFullGC(false);
         options2.SetArkProperties(ArkProperties::GC_STATS_PRINT);
+        options2.SetMemConfigProperty("jsHeap500");
         // A non-production gc strategy. Prohibit stw-gc 10 times.
         EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);
 
@@ -72,6 +73,7 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
         EXPECT_TRUE(options1Out.EnableForceGC() != options2Out.EnableForceGC());
         EXPECT_TRUE(options1Out.ForceFullGC() != options2Out.ForceFullGC());
         EXPECT_TRUE(options1Out.GetArkProperties() != options2Out.GetArkProperties());
+        EXPECT_TRUE(options2Out.GetHeapSize() == 500_MB);
 
         JSNApi::DestroyJSVM(ecmaVm2);
     });

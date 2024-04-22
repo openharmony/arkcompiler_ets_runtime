@@ -206,6 +206,9 @@ private:
 
     void InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
+    void InitializeSendableJson(const JSHandle<GlobalEnv> &env,
+                                const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
+
     void InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
 
     void InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
@@ -354,6 +357,7 @@ private:
     void SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                               JSHandle<JSTaggedValue> &value) const;
     void RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const;
+    void RegisterSendableJSONValue(const JSHandle<GlobalEnv> &env) const;
 
     // For SharedObject/SharedFunction
     void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const;
@@ -363,10 +367,39 @@ private:
                            const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSFunction(const JSHandle<GlobalEnv> &env,
                              const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &objFuncClass,
+                                const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
                         const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
                         const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                               const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONTrue(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONFalse(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONNull(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONNumber(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONString(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                               const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSInt8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSUint8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSUint8ClampedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSInt16Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSUint16Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSInt32Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSUint32Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSFloat32Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSFloat64Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSBigInt64Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSBigUint64Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
 
     JSHandle<JSHClass> CreateSObjectFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSObjectPrototypeHClass() const;
@@ -378,6 +411,14 @@ private:
     JSHandle<JSHClass> CreateSMapFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
     JSHandle<JSHClass> CreateSArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSTypedArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSTypedArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSSpecificTypedArrayFuncHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSSpecificTypedArrayInstanceHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSArrayBufferPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSArrayBufferFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSJSONValueFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSJSONValuePrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
 
     void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
                          std::string_view name, int length) const;

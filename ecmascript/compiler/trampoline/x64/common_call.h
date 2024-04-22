@@ -21,6 +21,12 @@
 #include "ecmascript/frames.h"
 
 namespace panda::ecmascript::x64 {
+
+enum class CompilerTierCheck : uint8_t {
+    CHECK_BASELINE_CODE,
+    NOT_CHECK_BASELINE_CODE,
+};
+
 class CommonCall {
 public:
     static constexpr int FRAME_SLOT_SIZE = 8;
@@ -47,8 +53,6 @@ public:
     static void JSFunctionEntry(ExtendedAssembler *assembler);
 
     static void OptimizedCallAndPushUndefined(ExtendedAssembler *assembler);
-
-    static void CallBuiltinTrampoline(ExtendedAssembler *assembler);
 
     static void JSProxyCallInternalWithArgV(ExtendedAssembler *assembler);
 
@@ -86,7 +90,11 @@ private:
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
     static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
-    
+    static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
+    static void CallBuiltinTrampoline(ExtendedAssembler *assembler);
+    static void CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
+                                           Register glue, Register temp);
+
     friend class OptimizedFastCall;
 };
 
@@ -179,21 +187,39 @@ private:
     static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
         Register op);
     static void HasPendingException(ExtendedAssembler *assembler, Register threadRegister);
-    static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
+    static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
+                             Label *stackOverflow, CompilerTierCheck tierCheck);
     static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
     static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
-    static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
+    static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow, CompilerTierCheck tierCheck);
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister,
                              Register callTargetRegister, Register methodRegister, Register accRegister = rInvalid);
     static void CallNativeEntry(ExtendedAssembler *assemblSer);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
     static void PushBuiltinFrame(ExtendedAssembler *assembler, Register glue, FrameType type);
-    static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode);
+    static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode, CompilerTierCheck tierCheck);
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
     static void JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
         Label *fastPathEntry, Label *pushCallThis, Label *stackOverflow);
     friend class OptimizedCall;
+    friend class BaselineCall;
+};
+
+class BaselineCall : public CommonCall {
+public:
+    static void BaselineCallArg0(ExtendedAssembler *assembler);
+    static void BaselineCallArg1(ExtendedAssembler *assembler);
+    static void BaselineCallArgs2(ExtendedAssembler *assembler);
+    static void BaselineCallArgs3(ExtendedAssembler *assembler);
+    static void BaselineCallThisArg0(ExtendedAssembler *assembler);
+    static void BaselineCallThisArg1(ExtendedAssembler *assembler);
+    static void BaselineCallThisArgs2(ExtendedAssembler *assembler);
+    static void BaselineCallThisArgs3(ExtendedAssembler *assembler);
+    static void BaselineCallRange(ExtendedAssembler *assembler);
+    static void BaselineCallNew(ExtendedAssembler *assembler);
+    static void BaselineSuperCall(ExtendedAssembler *assembler);
+    static void BaselineCallThisRange(ExtendedAssembler *assembler);
 };
 
 class JsFunctionArgsConfigFrameScope {

@@ -33,7 +33,7 @@
 namespace panda::ecmascript {
 class Runtime {
 public:
-    static Runtime *GetInstance();
+    PUBLIC_API static Runtime *GetInstance();
 
     static void CreateIfFirstVm(const JSRuntimeOptions &options);
     static void DestroyIfLastVm();
@@ -45,6 +45,11 @@ public:
     void SuspendAll(JSThread *current);
     void ResumeAll(JSThread *current);
     void IterateSerializeRoot(const RootVisitor &v);
+
+    JSThread *GetMainThread() const
+    {
+        return mainThread_;
+    }
 
     MutatorLock *GetMutatorLock()
     {
@@ -101,9 +106,35 @@ public:
         serializeDataIndexVector_.emplace_back(index);
     }
 
+    static bool SharedGCRequest()
+    {
+        LockHolder lock(*vmCreationLock_);
+        destroyCount_++;
+        if (destroyCount_ == WORKER_DESTRUCTION_COUNT || vmCount_ < MIN_GC_TRIGGER_VM_COUNT) {
+            destroyCount_ = 0;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    bool HasCachedConstpool(const JSPandaFile *jsPandaFile);
+    PUBLIC_API JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
+    JSTaggedValue FindConstpoolUnlocked(const JSPandaFile *jsPandaFile, int32_t index);
+    JSHandle<ConstantPool> AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
+                                                JSHandle<ConstantPool> constpool,
+                                                int32_t index = 0);
+    std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
+        const JSPandaFile *jsPandaFile);
+    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
+
+    void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
+
 private:
+    static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
+    static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
     Runtime() = default;
-    ~Runtime() = default;
+    ~Runtime();
     void SuspendAllThreadsImpl(JSThread *current);
     void ResumeAllThreadsImpl(JSThread *current);
 
@@ -120,7 +151,19 @@ private:
         return ++serializeDataIndex_;
     }
 
+    int32_t GetAndIncreaseSharedConstpoolCount()
+    {
+        if (freeSharedConstpoolIndex_.size() > 0) {
+            auto iter = freeSharedConstpoolIndex_.begin();
+            int32_t freeCount = *iter;
+            freeSharedConstpoolIndex_.erase(iter);
+            return freeCount;
+        }
+        return sharedConstpoolCount_++;
+    }
+
     Mutex threadsLock_;
+    ConditionVariable threadSuspendCondVar_;
     Mutex serializeLock_;
     std::list<JSThread*> threads_;
     uint32_t suspendNewCount_ {0};
@@ -138,8 +181,15 @@ private:
     std::unordered_map<uint32_t, std::vector<TaggedObject *>> serializeRootMap_;
     std::vector<uint32_t> serializeDataIndexVector_;
 
+    // Shared constantpool cache
+    Mutex constpoolLock_;
+    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> globalSharedConstpools_ {};
+    int32_t sharedConstpoolCount_ = 0; // shared constpool count.
+    std::set<int32_t> freeSharedConstpoolIndex_ {}; // reuse shared constpool index.
+
     // Runtime instance and VMs creation.
     static int32_t vmCount_;
+    static int32_t destroyCount_;
     static bool firstVmCreated_;
     static Mutex *vmCreationLock_;
     static Runtime *instance_;

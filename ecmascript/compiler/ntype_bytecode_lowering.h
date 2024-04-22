@@ -17,20 +17,16 @@
 #define ECMASCRIPT_COMPILER_NTYPE_BYTECODE_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NTypeBytecodeLowering {
 public:
-    NTypeBytecodeLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager,
+    NTypeBytecodeLowering(Circuit *circuit, PassContext *ctx,
                           bool enableLog, const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
-          tsManager_(tsManager),
           ptManager_(ctx->GetPTManager()),
           jsPandaFile_(ctx->GetJSPandaFile()),
           enableLog_(enableLog),
@@ -39,7 +35,7 @@ public:
           methodName_(name),
           glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit),
-          thread_(ctx->GetEcmaVM()->GetJSThread()) {}
+          compilationEnv_(ctx->GetCompilationEnv()) {}
 
     ~NTypeBytecodeLowering() = default;
 
@@ -89,7 +85,6 @@ private:
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
-    TSManager *tsManager_ {nullptr};
     PGOTypeManager *ptManager_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
     bool enableLog_ {false};
@@ -98,7 +93,7 @@ private:
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NTYPE_BYTECODE_LOWERING_H

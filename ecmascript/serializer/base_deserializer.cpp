@@ -62,14 +62,8 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     while (ReadSingleEncodeData(encodeFlag, resHandle.GetAddress(), 0, true) == 0) { // 0: root object offset
         encodeFlag = data_->ReadUint8(position_);
     }
-    // now new constpool here if newConstPoolInfos_ is not empty
-    for (auto newConstpoolInfo : newConstPoolInfos_) {
-        DeserializeConstPool(newConstpoolInfo);
-        delete newConstpoolInfo;
-    }
-    newConstPoolInfos_.clear();
 
-    // initialize concurrent func here after constpool is set
+    // initialize concurrent func here
     for (auto func : concurrentFunctions_) {
         func->InitializeForConcurrentFunction(thread_);
     }
@@ -92,11 +86,6 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     // recovery gc after serialize
     heap_->SetOnSerializeEvent(false);
 
-    // If is on concurrent mark, mark push root object to stack for mark
-    if (resHandle->IsHeapObject() && thread_->IsConcurrentMarkingOrFinished()) {
-        Barriers::MarkAndPushForDeserialize(thread_, resHandle->GetHeapObject());
-    }
-
     return resHandle;
 }
 
@@ -116,20 +105,6 @@ void BaseDeserializer::DeserializeObjectField(uintptr_t start, uintptr_t end)
         uint8_t encodeFlag = data_->ReadUint8(position_);
         offset += ReadSingleEncodeData(encodeFlag, start, offset);
     }
-}
-
-void BaseDeserializer::DeserializeConstPool(NewConstPoolInfo *info)
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    JSPandaFile *jsPandaFile = info->jsPandaFile_;
-    panda_file::File::EntityId methodId = info->methodId_;
-    ObjectSlot slot = info->GetSlot();
-    EcmaContext *context = thread_->GetCurrentEcmaContext();
-    JSHandle<ConstantPool> constpool = context->CreateConstpoolPair(jsPandaFile, methodId);
-
-    slot.Update(constpool.GetTaggedType());
-    WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(),
-                 constpool.GetTaggedType());
 }
 
 void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingInfo *info)
@@ -178,8 +153,6 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     bool isTransferBuffer = GetAndResetTransferBuffer();
     bool isSharedArrayBuffer = GetAndResetSharedArrayBuffer();
     void *bufferPointer = GetAndResetBufferPointer();
-    ConstantPool *constpool = GetAndResetConstantPool();
-    bool needNewConstPool = GetAndResetNeedNewConstPool();
     // deserialize object here
     uintptr_t addr = DeserializeTaggedObject(space);
 
@@ -190,12 +163,6 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         IncreaseSharedArrayBufferReference(addr);
     } else if (bufferPointer != nullptr) {
         ResetNativePointerBuffer(addr, bufferPointer);
-    } else if (constpool != nullptr) {
-        ResetMethodConstantPool(addr, constpool);
-    } else if (needNewConstPool) {
-        // defer new constpool
-        newConstPoolInfos_.back()->objAddr_ = addr;
-        newConstPoolInfos_.back()->offset_ = Method::CONSTANT_POOL_OFFSET;
     }
     TaggedObject *object = reinterpret_cast<TaggedObject *>(addr);
     if (object->GetClass()->IsJSNativePointer()) {
@@ -206,8 +173,8 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     } else if (object->GetClass()->IsJSFunction()) {
         JSFunction* func = reinterpret_cast<JSFunction *>(object);
         FunctionKind funcKind = func->GetFunctionKind();
-        if (funcKind == FunctionKind::CONCURRENT_FUNCTION) {
-            // defer initialize concurrent function until constpool is set
+        if (funcKind == FunctionKind::CONCURRENT_FUNCTION || object->GetClass()->IsJSSharedFunction()) {
+            // defer initialize concurrent function
             concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
         }
     }
@@ -215,24 +182,6 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     if (!isRoot) {
         WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                                                     static_cast<JSTaggedType>(addr));
-    }
-}
-
-void BaseDeserializer::HandleMethodEncodeFlag()
-{
-    panda_file::File::EntityId methodId = MethodLiteral::GetMethodId(data_->ReadJSTaggedType(position_));
-    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(data_->ReadJSTaggedType(position_));
-    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), methodId);
-    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
-    JSTaggedValue constpool = thread_->GetCurrentEcmaContext()->FindConstpoolWithAOT(jsPandaFile, index);
-    if (constpool.IsHole()) {
-        LOG_ECMA(INFO) << "ValueDeserialize: function deserialize can't find constpool from panda file: "
-            << jsPandaFile;
-        // defer new constpool until deserialize finish
-        needNewConstPool_ = true;
-        newConstPoolInfos_.push_back(new NewConstPoolInfo(jsPandaFile, methodId));
-    } else {
-        constpool_ = reinterpret_cast<ConstantPool *>(constpool.GetTaggedObject());
     }
 }
 
@@ -278,13 +227,6 @@ void BaseDeserializer::ResetNativePointerBuffer(uintptr_t objAddr, void *bufferP
     np->SetExternalPointer(bufferPointer);
     np->SetDeleter(NativeAreaAllocator::FreeBufferFunc);
     np->SetData(thread_->GetEcmaVM()->GetNativeAreaAllocator());
-}
-
-void BaseDeserializer::ResetMethodConstantPool(uintptr_t objAddr, ConstantPool *constpool)
-{
-    ASSERT(JSTaggedValue(static_cast<JSTaggedType>(objAddr)).IsMethod());
-    Method *method = reinterpret_cast<Method *>(objAddr);
-    method->SetConstantPool(thread_, JSTaggedValue(constpool), BarrierMode::SKIP_BARRIER);
 }
 
 size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset, bool isRoot)
@@ -359,11 +301,6 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             bufferPointer_ = nativeAreaAllocator->AllocateBuffer(bufferLength);
             data_->ReadRawData(ToUintPtr(bufferPointer_), bufferLength, position_);
             heap_->IncreaseNativeBindingSize(bufferLength);
-            handledFieldSize = 0;
-            break;
-        }
-        case (uint8_t)EncodeFlag::METHOD: {
-            HandleMethodEncodeFlag();
             handledFieldSize = 0;
             break;
         }
@@ -545,6 +482,42 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetBigInt64ArrayFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_BIGUINT64_ARRAY:
             return env->GetBigUint64ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_INT8_ARRAY:
+            return env->GetSharedInt8ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_UINT8_ARRAY:
+            return env->GetSharedUint8ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+            return env->GetSharedUint8ClampedArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_INT16_ARRAY:
+            return env->GetSharedInt16ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_UINT16_ARRAY:
+            return env->GetSharedUint16ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_INT32_ARRAY:
+            return env->GetSharedInt32ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_UINT32_ARRAY:
+            return env->GetSharedUint32ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_FLOAT32_ARRAY:
+            return env->GetSharedFloat32ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_FLOAT64_ARRAY:
+            return env->GetSharedFloat64ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_BIGINT64_ARRAY:
+            return env->GetSharedBigInt64ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_BIGUINT64_ARRAY:
+            return env->GetSharedBigUint64ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_OBJECT:
+            return env->GetSharedJSONObjectFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_STRING:
+            return env->GetSharedJSONStringFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_NUMBER:
+            return env->GetSharedJSONNumberFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_TRUE:
+            return env->GetSharedJSONTrueFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_FALSE:
+            return env->GetSharedJSONFalseFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_ARRAY:
+            return env->GetSharedJSONArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_NULL:
+            return env->GetSharedJSONNullFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_ARRAY_BUFFER:
             return JSHandle<JSFunction>(env->GetArrayBufferFunction())->GetFunctionPrototype().GetRawData();
         case (uint8_t)JSType::JS_SHARED_ARRAY_BUFFER:

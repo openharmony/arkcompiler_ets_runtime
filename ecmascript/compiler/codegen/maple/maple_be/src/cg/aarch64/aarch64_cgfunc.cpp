@@ -1121,7 +1121,7 @@ RegOperand *AArch64CGFunc::ExtractMemBaseAddr(const MemOperand &memOpnd)
         addInsn.SetComment("new add insn");
         GetCurBB()->AppendInsn(addInsn);
     } else if (mode == MemOperand::kAddrModeBOi) {
-        if (offsetOpnd->GetOffsetValue() != 0) {
+        if ((offsetOpnd != nullptr) && (offsetOpnd->GetOffsetValue() != 0)) {
             MOperator mOp = is64Bits ? MOP_xaddrri12 : MOP_waddrri12;
             GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, resultOpnd, *baseOpnd, *offsetOpnd));
         } else {
@@ -3045,33 +3045,6 @@ Operand *AArch64CGFunc::SelectIntConst(const MIRIntConst &intConst)
                              false);
 }
 
-template <typename T>
-Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, AArch64CGFunc *cgFunc)
-{
-    MIRSymbol *st = func->GetSymTab()->CreateSymbol(kScopeLocal);
-    std::string lblStr(".LB_");
-    MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
-    DEBUG_ASSERT(funcSt != nullptr, "nullptr check");
-    std::string funcName = funcSt->GetName();
-    lblStr += funcName;
-    lblStr += std::to_string(labelIdx);
-    st->SetNameStrIdx(lblStr);
-    st->SetStorageClass(kScPstatic);
-    st->SetSKind(kStConst);
-    st->SetKonst(c);
-    cgFunc->SetLocalSymLabelIndex(*st, labelIdx);
-    PrimType primType = c->GetType().GetPrimType();
-    st->SetTyIdx(TyIdx(primType));
-    uint32 typeBitSize = GetPrimTypeBitSize(primType);
-
-    if ((T::GetPrimType() == PTY_f32 || T::GetPrimType() == PTY_f64)) {
-        return static_cast<Operand *>(&cgFunc->GetOrCreateMemOpnd(*st, 0, typeBitSize));
-    } else {
-        CHECK_FATAL(false, "Unsupported const type");
-    }
-    return nullptr;
-}
-
 Operand *AArch64CGFunc::HandleFmovImm(PrimType stype, int64 val, MIRConst &mirConst, const BaseNode &parent)
 {
     Operand *result;
@@ -3090,12 +3063,6 @@ Operand *AArch64CGFunc::HandleFmovImm(PrimType stype, int64 val, MIRConst &mirCo
         MOperator mopFmov = (is64Bits ? MOP_xdfmovri : MOP_wsfmovri);
         GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mopFmov, *result, *newOpnd0));
     } else {
-        if (is64Bits) {  // For DoubleConst, use ldr .literal
-            uint32 labelIdxTmp = GetLabelIdx();
-            result = SelectLiteral(static_cast<MIRDoubleConst *>(&mirConst), &GetFunction(), labelIdxTmp++, this);
-            SetLabelIdx(labelIdxTmp);
-            return result;
-        }
         Operand *newOpnd0 = &CreateImmOperand(val, GetPrimTypeSize(stype) * kBitsPerByte, false);
         PrimType itype = (stype == PTY_f32) ? PTY_i32 : PTY_i64;
         RegOperand &regOpnd = LoadIntoRegister(*newOpnd0, itype);

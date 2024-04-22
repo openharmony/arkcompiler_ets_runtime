@@ -34,6 +34,7 @@ public:
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
         bool isJson {false};
+        bool isSharedModule {false};
         int jsonStringId {-1};
         CUnorderedSet<const EcmaVM *> vmListOfParsedConstPool;
         int moduleRecordIdx {-1};
@@ -73,6 +74,7 @@ public:
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
+    static constexpr char IS_SHARED_MODULE[] = "isSharedModule";
     static constexpr char HAS_TOP_LEVEL_AWAIT[] = "hasTopLevelAwait";
     static constexpr char PACKAGE_NAME[] = "pkgName@";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
@@ -309,6 +311,11 @@ public:
         return jsRecordInfo.isJson;
     }
 
+    bool IsSharedModule(const JSRecordInfo &jsRecordInfo) const
+    {
+        return jsRecordInfo.isSharedModule;
+    }
+
     bool IsBundlePack() const
     {
         return isBundlePack_;
@@ -431,7 +438,7 @@ public:
     static FunctionKind PUBLIC_API GetFunctionKind(panda_file::FunctionKind funcKind);
     static FunctionKind GetFunctionKind(ConstPoolType type);
 
-    bool IsFirstMergedAbc() const;
+    bool PUBLIC_API IsFirstMergedAbc() const;
     const void *GetBase() const
     {
         return static_cast<const void *>(pf_->GetBase());

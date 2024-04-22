@@ -11,12 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-true
 1
 2
 foo
 bar
-true
 undefined
 bar
 1

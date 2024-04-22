@@ -254,10 +254,6 @@ JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, std::str
     if (sourceMapcb != nullptr && !data.empty()) {
         data = sourceMapcb(data.c_str());
     }
-    auto nativeStackcb = ecmaVm->GetNativeStackCallback();
-    if (nativeStackcb != nullptr && data.empty()) {
-        data = nativeStackcb();
-    }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     return factory->NewFromStdString(data);

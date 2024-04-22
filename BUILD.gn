@@ -103,7 +103,6 @@ group("ark_js_unittest") {
     "ecmascript/serializer/tests:unittest",
     "ecmascript/snapshot/tests:unittest",
     "ecmascript/tests:unittest",
-    "ecmascript/ts_types/tests:unittest",
   ]
   if (is_ohos && is_standard_system) {
     deps += [ "test/fuzztest:fuzztest" ]
@@ -140,7 +139,6 @@ group("ark_unittest") {
     "ecmascript/serializer/tests:host_unittest",
     "ecmascript/snapshot/tests:host_unittest",
     "ecmascript/tests:host_unittest",
-    "ecmascript/ts_types/tests:host_unittest",
   ]
   if (!run_with_asan) {
     if (!(ark_standalone_build && current_os == "ohos")) {
@@ -150,29 +148,6 @@ group("ark_unittest") {
       ]
     }
   }
-}
-
-_builtins_dts_path_ = rebase_path("./ecmascript/ts_types/lib_ark_builtins.d.ts")
-
-_es2abc_builtins_d_abc_path_ =
-    "$target_out_dir/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
-
-es2abc_gen_abc("es2abc_gen_builtins_d_abc") {
-  extra_visibility = [ "*" ]
-
-  # extra_dependencies = _deps_
-  src_js = rebase_path(_builtins_dts_path_)
-  dst_file = rebase_path(_es2abc_builtins_d_abc_path_)
-  extension = "ts"
-  extra_args = [
-    "--module",
-    "--merge-abc",
-    "--type-extractor",
-    "--type-dts-builtin",
-  ]
-
-  in_puts = [ _builtins_dts_path_ ]
-  out_puts = [ _es2abc_builtins_d_abc_path_ ]
 }
 
 group("ark_runtime_host_unittest") {
@@ -205,7 +180,6 @@ group("ark_runtime_host_unittest") {
       #"$js_root/test/moduletest:ark_asm_single_step_test",
       "$js_root/test/deopttest:ark_deopt_test",
       "$js_root/test/moduletest:ark_asm_test",
-      "$js_root/test/typeinfer:ark_typeinfer_test",
     ]
 
     if (is_mac) {
@@ -409,6 +383,10 @@ config("ark_jsruntime_common_config") {
     ldflags += [ "-flto=thin" ]
   }
 
+  if (use_libfuzzer) {
+    defines += [ "FUZZ_TEST" ]
+  }
+
   if (is_debug) {
     cflags_cc += [
       "-O0",
@@ -558,9 +536,11 @@ ecma_source = [
   "ecmascript/base/dtoa_helper.cpp",
   "ecmascript/base/error_helper.cpp",
   "ecmascript/base/fast_json_stringifier.cpp",
+  "ecmascript/base/senable_fast_json_stringifier.cpp",
   "ecmascript/base/json_helper.cpp",
   "ecmascript/base/json_parser.cpp",
   "ecmascript/base/json_stringifier.cpp",
+  "ecmascript/base/senable_json_stringifier.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/path_helper.cpp",
   "ecmascript/base/string_helper.cpp",
@@ -570,6 +550,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_ark_tools.cpp",
   "ecmascript/builtins/builtins_array.cpp",
   "ecmascript/builtins/builtins_shared_array.cpp",
+  "ecmascript/builtins/builtins_sendable_arraybuffer.cpp",
   "ecmascript/builtins/builtins_arraybuffer.cpp",
   "ecmascript/builtins/builtins_async_from_sync_iterator.cpp",
   "ecmascript/builtins/builtins_async_function.cpp",
@@ -606,6 +587,8 @@ ecma_source = [
   "ecmascript/builtins/builtins_shared_object.cpp",
   "ecmascript/builtins/builtins_shared_set.cpp",
   "ecmascript/builtins/builtins_shared_map.cpp",
+  "ecmascript/builtins/builtins_shared_typedarray.cpp",
+  "ecmascript/builtins/builtins_shared_json_value.cpp",
   "ecmascript/builtins/builtins_symbol.cpp",
   "ecmascript/builtins/builtins_typedarray.cpp",
   "ecmascript/builtins/builtins_weak_map.cpp",
@@ -687,13 +670,14 @@ ecma_source = [
   "ecmascript/intl/locale_helper.cpp",
   "ecmascript/jit/jit.cpp",
   "ecmascript/jit/jit_task.cpp",
+  "ecmascript/jit/jit_thread.cpp",
+  "ecmascript/jit/jit_profiler.cpp",
   "ecmascript/jobs/micro_job_queue.cpp",
   "ecmascript/jspandafile/js_pandafile.cpp",
   "ecmascript/jspandafile/js_pandafile_manager.cpp",
   "ecmascript/jspandafile/class_info_extractor.cpp",
   "ecmascript/jspandafile/debug_info_extractor.cpp",
   "ecmascript/jspandafile/literal_data_extractor.cpp",
-  "ecmascript/jspandafile/type_literal_extractor.cpp",
   "ecmascript/jspandafile/accessor/module_data_accessor.cpp",
   "ecmascript/jspandafile/panda_file_translator.cpp",
   "ecmascript/jspandafile/js_pandafile_executor.cpp",
@@ -812,6 +796,7 @@ ecma_source = [
   "ecmascript/module/js_shared_module.cpp",
   "ecmascript/module/js_shared_module_manager.cpp",
   "ecmascript/module/module_data_extractor.cpp",
+  "ecmascript/module/module_manager_helper.cpp",
   "ecmascript/module/module_path_helper.cpp",
   "ecmascript/module/napi_module_loader.cpp",
   "ecmascript/mutator_lock.cpp",
@@ -840,12 +825,13 @@ ecma_source = [
   "ecmascript/shared_objects/js_shared_map_iterator.cpp",
   "ecmascript/shared_objects/js_shared_set.cpp",
   "ecmascript/shared_objects/js_shared_set_iterator.cpp",
+  "ecmascript/shared_objects/js_sendable_arraybuffer.cpp",
   "ecmascript/stackmap/ark_stackmap_builder.cpp",
   "ecmascript/stackmap/ark_stackmap_parser.cpp",
   "ecmascript/stackmap/litecg/litecg_stackmap_type.cpp",
   "ecmascript/stackmap/llvm/llvm_stackmap_parser.cpp",
   "ecmascript/stackmap/llvm/llvm_stackmap_type.cpp",
-  "ecmascript/subtyping_operator.cpp",
+  "ecmascript/sustaining_js_handle.cpp",
   "ecmascript/taskpool/taskpool.cpp",
   "ecmascript/taskpool/runner.cpp",
   "ecmascript/taskpool/task_queue.cpp",
@@ -868,13 +854,6 @@ ecma_source = [
   "ecmascript/waiter_list.cpp",
   "ecmascript/weak_vector.cpp",
   "ecmascript/stubs/runtime_stubs.cpp",
-  "ecmascript/ts_types/ts_type.cpp",
-  "ecmascript/ts_types/ts_type_accessor.cpp",
-  "ecmascript/ts_types/ts_type_table.cpp",
-  "ecmascript/ts_types/ts_manager.cpp",
-  "ecmascript/ts_types/ts_obj_layout_info.cpp",
-  "ecmascript/ts_types/ts_type_parser.cpp",
-  "ecmascript/ts_types/ts_type_table_generator.cpp",
   "ecmascript/stubs/test_runtime_stubs.cpp",
   "ecmascript/builtins/builtins_cjs_module.cpp",
   "ecmascript/builtins/builtins_cjs_require.cpp",
@@ -1087,12 +1066,13 @@ ohos_source_set("libark_jsruntime_test_set") {
         rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an")
   }
   defines += [ "STUB_AN_FILE=\"${stub_an_file_path}\"" ]
-  target_builtins_dts_path =
-      "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
-  defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
   deps = []
-  external_deps = []
+  external_deps = [ "zlib:libz" ]
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
   if (defined(is_arkui_x) && is_arkui_x) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
@@ -1258,12 +1238,19 @@ ohos_shared_library("libark_jsruntime") {
 ohos_shared_library("libark_jsruntime_test") {
   stack_protector_ret = false
   deps = [ ":libark_jsruntime_test_set" ]
-  external_deps = [ "runtime_core:libarkfile_static" ]
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
 
-  if (enable_hilog) {
-    external_deps += [ "hilog:libhilog" ]
+  if (!ark_standalone_build) {
+    public_external_deps = [
+      "runtime_core:libarkfile_static",
+      "zlib:libz",
+    ]
+  } else {
+    external_deps = [
+      "runtime_core:libarkfile_static",
+      "zlib:libz",
+    ]
   }
 
   ldflags = []
@@ -1280,9 +1267,7 @@ ohos_shared_library("libark_jsruntime_test") {
     output_extension = "so"
   }
 
-  # Set the subsystem name
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
+  subsystem_name = "test"
 }
 
 ohos_prebuilt_etc("app_aot_enable_list") {
@@ -1297,6 +1282,15 @@ ohos_prebuilt_etc("app_aot_enable_list") {
 ohos_prebuilt_etc("app_aot_disable_list") {
   relative_install_dir = "ark"
   source = "$js_root/ecmascript/ohos/app_aot_disable_list.conf"
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_prebuilt_etc("app_jit_enable_list") {
+  relative_install_dir = "ark"
+  source = "$js_root/ecmascript/ohos/app_jit_enable_list.conf"
 
   # Set the subsystem name
   part_name = "ets_runtime"

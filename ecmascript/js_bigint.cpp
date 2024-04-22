@@ -67,11 +67,11 @@ CString BigIntHelper::Conversion(const CString &num, uint32_t conversionToRadix,
 
 JSHandle<BigInt> BigInt::GetUint64MaxBigint(JSThread *thread)
 {
-    JSHandle<BigInt> bigint = CreateBigint(thread, 3);
+    JSHandle<BigInt> bigint = CreateBigint(thread, 3); // 3:The number of digits in an object of type BigInt
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0);
-    bigint->SetDigit(2, 1);
+    bigint->SetDigit(2, 1); // 2:The number of digits in an object of type BigInt
     return bigint;
 }
 
@@ -1454,7 +1454,9 @@ JSHandle<BigInt> BigInt::Divide(JSThread *thread, JSHandle<BigInt> x, JSHandle<B
         quotient.Update(DivideAndRemainderWithUint32Divisor(thread, x, y->GetDigit(0), remainder));
     } else {
         ASSERT(y->GetLength() >= 1); // 1 : Entering the current branch length must be greater than 1
-        quotient.Update(DivideAndRemainderWithBigintDivisor(thread, x, y, remainder));
+        JSHandle<BigInt> newBigint = DivideAndRemainderWithBigintDivisor(thread, x, y, remainder);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
+        quotient.Update(newBigint);
     }
     ASSERT(quotient.GetTaggedValue().IsBigInt());
     quotient->SetSign(sign);

@@ -474,6 +474,7 @@ private:
     friend class ImmediateDominatorsGenerator;
     friend class LoopInfoBuilder;
     friend class StateSplitLinearizer;
+    friend class InductionVariableAnalysis;
 };
 };  // namespace panda::ecmascript::kungfu
 

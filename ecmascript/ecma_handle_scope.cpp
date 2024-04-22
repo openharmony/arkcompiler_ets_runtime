@@ -16,6 +16,7 @@
 #include "ecmascript/ecma_handle_scope.h"
 
 #include "ecmascript/ecma_context.h"
+#include "ecmascript/mem/assert_scope.h"
 
 namespace panda::ecmascript {
 EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
@@ -48,6 +49,7 @@ EcmaHandleScope::~EcmaHandleScope()
 
 uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
 {
+    CHECK_NO_HANDLE_ALLOC;
     auto context = thread->GetCurrentEcmaContext();
 #ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     // Each Handle must be managed by HandleScope, otherwise it may cause Handle leakage.

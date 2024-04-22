@@ -25,7 +25,7 @@ public:
     CAST_CHECK(ModuleNamespace, IsModuleNamespace);
 
     static void SetModuleDeregisterProcession(JSThread *thread, const JSHandle<ModuleNamespace> &nameSpace,
-        const DeleteEntryPoint &callback);
+        const NativePointerCallback &callback);
 
     // 9.4.6.11ModuleNamespaceCreate ( module, exports )
     static JSHandle<ModuleNamespace> ModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,

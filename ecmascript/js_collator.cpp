@@ -61,7 +61,7 @@ JSHandle<TaggedArray> JSCollator::GetAvailableLocales(JSThread *thread, bool ena
 
 /* static */
 void JSCollator::SetIcuCollator(JSThread *thread, const JSHandle<JSCollator> &collator,
-    icu::Collator *icuCollator, const DeleteEntryPoint &callback)
+    icu::Collator *icuCollator, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -70,7 +70,7 @@ void JSCollator::SetIcuCollator(JSThread *thread, const JSHandle<JSCollator> &co
     JSTaggedValue data = collator->GetIcuField();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuCollator);
+        native->ResetExternalPointer(thread, icuCollator);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuCollator, callback);
@@ -295,11 +295,9 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     // 28. Set collator.[[IgnorePunctuation]] to ignorePunctuation.
     bool ignorePunctuation = false;
     bool defaultIgnorePunctuation = false;
-    std::string localesString =
-            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
-    transform(localesString.begin(), localesString.end(), localesString.begin(), ::tolower);
     // If the ignorePunctuation is not defined, which in "th" locale that is true but false on other locales.
-    if (localesString == "th") {
+    JSHandle<EcmaString> thKey = factory->NewFromUtf8("th");
+    if (JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>::Cast(thKey), locales)) {
         defaultIgnorePunctuation = true;
     }
     JSLocale::GetOptionOfBool(thread, optionsObject, globalConst->GetHandledIgnorePunctuationString(),

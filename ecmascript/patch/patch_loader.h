@@ -80,7 +80,7 @@ struct PatchInfo {
     // patch replaced recordNames.
     CUnorderedSet<CString> replacedRecordNames;
     // patch replaced methods.
-    CUnorderedMap<EntityId, CString> repalcedPatchMethods;
+    CUnorderedMap<EntityId, CString> replacedPatchMethods;
 };
 
 enum class StageOfHotReload : int32_t {
@@ -129,7 +129,6 @@ private:
 
     static void ClearPatchInfo(JSThread *thread, const CString &patchFileName);
 
-    static void ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo);
     static Method *GetPatchMethod(JSThread *thread,
         const BaseMethodIndex &methodIndex, const JSTaggedValue baseConstpool);
     static void FindAndReplaceClassLiteral(JSThread *thread, const JSPandaFile *baseFile,

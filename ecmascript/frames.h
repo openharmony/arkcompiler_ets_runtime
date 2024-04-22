@@ -133,6 +133,7 @@ enum class FrameType: uintptr_t {
     OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME,
     OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME,
     BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME,
+    BASELINE_BUILTIN_FRAME,
 
     FRAME_TYPE_FIRST = OPTIMIZED_FRAME,
     FRAME_TYPE_LAST = OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME,
@@ -230,6 +231,78 @@ private:
     friend class FrameIterator;
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, OptimizedFrame::SizeArch64);
+
+// * BaselineBuiltinFrame layout as the following:
+//               +--------------------------+ ---------
+//               |       . . . . .          |         ^
+//               |--------------------------|         |
+//               |       returnAddr         |         |
+//               |--------------------------|   BuiltinBuiltinFrame
+//               |       callsiteFp         |         |
+//               |--------------------------|         |
+//               |       frameType          |         v
+//               +--------------------------+ ---------
+//               |        . . . .           |
+//               +--------------------------+
+//
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+struct BaselineBuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
+                                                         base::AlignedPointer,
+                                                         base::AlignedPointer,
+                                                         base::AlignedPointer> {
+public:
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const;
+
+    static size_t GetTypeOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
+    }
+
+    static size_t GetPrevOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
+    }
+
+    static size_t ComputeReservedSize(size_t slotSize)
+    {
+        size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::TypeIndex);
+        return slotSize * slotOffset;
+    }
+
+    FrameType GetType() const
+    {
+        return type;
+    }
+private:
+    enum class Index : size_t {
+        TypeIndex = 0,
+        PrevFpIndex,
+        ReturnAddrIndex,
+        NumOfMembers
+    };
+    static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
+
+    static BaselineBuiltinFrame* GetFrameFromSp(const JSTaggedType *sp)
+    {
+        return reinterpret_cast<BaselineBuiltinFrame *>(reinterpret_cast<uintptr_t>(sp) -
+            MEMBER_OFFSET(BaselineBuiltinFrame, prevFp));
+    }
+    inline JSTaggedType* GetPrevFrameFp()
+    {
+        return prevFp;
+    }
+    uintptr_t GetReturnAddr() const
+    {
+        return returnAddr;
+    }
+
+    alignas(EAS) FrameType type {0};
+    alignas(EAS) JSTaggedType *prevFp {nullptr};
+    alignas(EAS) uintptr_t returnAddr {0};
+    friend class FrameIterator;
+};
+STATIC_ASSERT_EQ_ARCH(sizeof(BaselineBuiltinFrame), BaselineBuiltinFrame::SizeArch32, BaselineBuiltinFrame::SizeArch64);
 
 struct AsmBridgeFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                    base::AlignedPointer,
@@ -1683,6 +1756,8 @@ public:
     void CollectMethodOffsetInfo(std::map<uint32_t, uint32_t> &info) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> TryCalCallSiteInfoFromMachineCode(
+        uintptr_t retAddr) const;
     int GetCallSiteDelta(uintptr_t retAddr) const;
 
     Method *CheckAndGetMethod() const;

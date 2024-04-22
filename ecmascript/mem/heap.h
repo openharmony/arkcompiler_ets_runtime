@@ -132,6 +132,8 @@ public:
 
     virtual GCStats *GetEcmaGCStats() = 0;
 
+    virtual bool ObjectExceedMaxHeapSize() const = 0;
+
     void SetMarkType(MarkType markType)
     {
         markType_ = markType;
@@ -279,6 +281,7 @@ public:
     void WaitClearTaskFinished();
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
+    void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
 
 protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
@@ -327,6 +330,7 @@ public:
 
     void EnableParallelGC(JSRuntimeOptions &option);
     void DisableParallelGC();
+    void AdjustGlobalSpaceAllocLimit();
     class ParallelMarkTask : public Task {
     public:
         ParallelMarkTask(int32_t id, SharedHeap *heap)
@@ -364,14 +368,15 @@ public:
         return true;
     }
 
-    bool NeedStopCollection() override
-    {
-        return onSerializeEvent_;
-    }
+    bool NeedStopCollection() override;
 
-    bool CheckAndTriggerGC(JSThread *thread);
+    bool ObjectExceedMaxHeapSize() const override;
 
-    bool CheckHugeAndTriggerGC(JSThread *thread, size_t size);
+    bool CheckAndTriggerSharedGC(JSThread *thread);
+
+    bool CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size);
+
+    void TryTriggerLocalConcurrentMarking(JSThread *currentThread);
 
     void TryTriggerConcurrentMarking() override
     {
@@ -411,6 +416,8 @@ public:
     {
         return parallelGC_;
     }
+
+    bool MainThreadInSensitiveStatus() const;
 
     SharedOldSpace *GetOldSpace() const
     {
@@ -543,6 +550,7 @@ private:
     void ReclaimRegions();
 
     bool parallelGC_ {true};
+    bool localFullMarkTriggered_ {false};
     GCStats *sGCStats_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
     SharedOldSpace *sOldSpace_ {nullptr};
@@ -553,6 +561,8 @@ private:
     SharedConcurrentSweeper *sSweeper_ {nullptr};
     SharedGC *sharedGC_ {nullptr};
     SharedGCMarker *sharedGCMarker_ {nullptr};
+    size_t growingFactor_ {0};
+    size_t growingStep_ {0};
 };
 
 class Heap : public BaseHeap {
@@ -901,7 +911,7 @@ public:
 
     void HandleExitHighSensitiveEvent();
 
-    bool ObjectExceedMaxHeapSize() const;
+    bool ObjectExceedMaxHeapSize() const override;
 
     bool NeedStopCollection() override;
 
@@ -931,12 +941,12 @@ public:
      */
 
     template<class Callback>
-    void IterateOverObjects(const Callback &cb) const;
+    void IterateOverObjects(const Callback &cb, bool isSimplify = false) const;
 
     size_t VerifyHeapObjects(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     size_t VerifyOldToNewRSet(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     void StatisticHeapObject(TriggerGCType gcType) const;
-    void StatisticHeapDetail() const;
+    void StatisticHeapDetail();
     void PrintHeapInfo(TriggerGCType gcType) const;
 
     bool OldSpaceExceedCapacity(size_t size) const override
@@ -999,6 +1009,8 @@ public:
     void TryTriggerFullMarkByNativeSize();
 
     void TryTriggerFullMarkBySharedSize(size_t size);
+
+    bool TryTriggerFullMarkBySharedLimit();
 
     bool IsMarking() const override
     {
@@ -1084,8 +1096,9 @@ private:
 
     class DeleteCallbackTask : public Task {
     public:
-        DeleteCallbackTask(int32_t id, std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &callbacks)
-            : Task(id)
+        DeleteCallbackTask(JSThread *thread, int32_t id,
+                           std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &callbacks)
+            : Task(id), thread_(thread)
         {
             std::swap(callbacks, nativePointerCallbacks_);
         };
@@ -1096,7 +1109,8 @@ private:
         NO_MOVE_SEMANTIC(DeleteCallbackTask);
 
     private:
-        std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+        std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+        JSThread *thread_ {nullptr};
     };
 
     class RecursionScope {

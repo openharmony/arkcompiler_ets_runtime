@@ -128,7 +128,7 @@ void NativeAreaAllocator::FreeBuffer(void *mem)
     free(mem);
 }
 
-void NativeAreaAllocator::FreeBufferFunc(void *buffer, void *data)
+void NativeAreaAllocator::FreeBufferFunc([[maybe_unused]] void *env, void *buffer, void *data)
 {
     if (buffer == nullptr || data == nullptr) {
         return;

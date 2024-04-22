@@ -44,6 +44,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #include "ecmascript/builtin_entries.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript {
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
@@ -54,6 +55,30 @@ thread_local JSThread *currentThread = nullptr;
 JSThread *JSThread::GetCurrent()
 {
     return currentThread;
+}
+
+// static
+void JSThread::RegisterThread(JSThread *jsThread)
+{
+    Runtime::GetInstance()->RegisterThread(jsThread);
+    // If it is not true, we created a new thread for future fork
+    if (currentThread == nullptr) {
+        currentThread = jsThread;
+        jsThread->UpdateState(ThreadState::NATIVE);
+    }
+}
+
+void JSThread::UnregisterThread(JSThread *jsThread)
+{
+    if (currentThread == jsThread) {
+        jsThread->UpdateState(ThreadState::TERMINATED);
+        currentThread = nullptr;
+    } else {
+        // We have created this JSThread instance but hadn't forked it.
+        ASSERT(jsThread->GetState() == ThreadState::CREATED);
+        jsThread->UpdateState(ThreadState::TERMINATED);
+    }
+    Runtime::GetInstance()->UnregisterThread(jsThread);
 }
 
 // static
@@ -78,12 +103,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
 
-    Runtime::GetInstance()->RegisterThread(jsThread);
-    // If it is not true, we created a new thread for future fork
-    if (currentThread == nullptr) {
-        currentThread = jsThread;
-        jsThread->UpdateState(ThreadState::NATIVE);
-    }
+    RegisterThread(jsThread);
     return jsThread;
 }
 
@@ -115,6 +135,12 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
 }
 
+JSThread::JSThread(EcmaVM *vm, bool isJit) : id_(os::thread::GetCurrentThreadId()), vm_(vm), isJitThread_(isJit)
+{
+    ASSERT(isJit);
+    RegisterThread(this);
+};
+
 JSThread::~JSThread()
 {
     readyForGCIterating_ = false;
@@ -144,15 +170,7 @@ JSThread::~JSThread()
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
     }
-    if (currentThread == this) {
-        UpdateState(ThreadState::TERMINATED);
-        currentThread = nullptr;
-    } else {
-        // We have created this JSThread instance but hadn't forked it.
-        ASSERT(GetState() == ThreadState::CREATED);
-        UpdateState(ThreadState::TERMINATED);
-    }
-    Runtime::GetInstance()->UnregisterThread(this);
+    UnregisterThread(this);
 }
 
 void JSThread::SetException(JSTaggedValue exception)
@@ -217,14 +235,14 @@ void JSThread::InvokeWeakNodeFreeGlobalCallBack()
 
 void JSThread::InvokeSharedNativePointerCallbacks()
 {
-    auto callbacks = vm_->GetSharedNativePointerCallbacks();
+    auto &callbacks = vm_->GetSharedNativePointerCallbacks();
     while (!callbacks.empty()) {
         auto callbackPair = callbacks.back();
         callbacks.pop_back();
         ASSERT(callbackPair.first != nullptr && callbackPair.second.first != nullptr &&
                callbackPair.second.second != nullptr);
         auto callback = callbackPair.first;
-        (*callback)(callbackPair.second.first, callbackPair.second.second);
+        (*callback)(env_, callbackPair.second.first, callbackPair.second.second);
     }
 }
 
@@ -243,6 +261,9 @@ void JSThread::InvokeWeakNodeNativeFinalizeCallback()
         ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
         auto callback = callbackPair.first;
         (*callback)(callbackPair.second);
+    }
+    if (finalizeTaskCallback_ != nullptr) {
+        finalizeTaskCallback_();
     }
     runningNativeFinalizeCallbacks_ = false;
 }
@@ -401,9 +422,9 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     }
 }
 
-void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC)
+void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind)
 {
-    auto callBack = [this, visitor, isSharedGC](WeakNode *node) {
+    auto callBack = [this, visitor, gcKind](WeakNode *node) {
         JSTaggedValue value(node->GetObject());
         if (!value.IsHeapObject()) {
             return;
@@ -422,7 +443,7 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool
             if (!freeGlobalCallBack) {
                 // If no callback, dispose global immediately
                 DisposeGlobalHandle(ToUintPtr(node));
-            } else if (isSharedGC) {
+            } else if (gcKind == GCKind::SHARED_GC) {
                 // For shared GC, free global should defer execute in its own thread
                 weakNodeFreeGlobalCallbacks_.push_back(std::make_pair(freeGlobalCallBack, node->GetReference()));
             } else {
@@ -469,12 +490,6 @@ bool JSThread::DoStackLimitCheck()
         return true;
     }
     return false;
-}
-
-bool JSThread::DoAsmStackOverflowCheck()
-{
-    // check stack overflow because infinite recursion may occur
-    return (IsAsmInterpreter() && DoStackLimitCheck());
 }
 
 uintptr_t *JSThread::ExpandHandleStorage()
@@ -529,6 +544,13 @@ void JSThread::SetInitialBuiltinHClass(
     entry.prototypeHClass = prototypeHClass;
     entry.prototypeOfPrototypeHClass = prototypeOfPrototypeHClass;
     entry.extraHClass = extraHClass;
+}
+
+void JSThread::SetInitialBuiltinGlobalHClass(
+    JSHClass *builtinHClass, GlobalIndex globalIndex)
+{
+    auto &map = ctorHclassEntries_;
+    map[builtinHClass] = globalIndex;
 }
 
 JSHClass *JSThread::GetBuiltinHClass(BuiltinTypeId type) const
@@ -631,6 +653,10 @@ void JSThread::CheckOrSwitchPGOStubs()
 
 void JSThread::SwitchJitProfileStubs()
 {
+    // if jit enable pgo, use pgo stub
+    if (GetEcmaVM()->GetJSOptions().IsEnableJITPGO()) {
+        return;
+    }
     bool isSwitch = false;
     if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
         SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
@@ -680,7 +706,7 @@ bool JSThread::CheckSafepoint()
         interruptMutex_.Unlock();
     }
 
-    if (vm_->IsEnableJit() && HasInstallMachineCode()) {
+    if (HasInstallMachineCode()) {
         vm_->GetJit()->InstallTasks(GetThreadId());
         SetInstallMachineCode(false);
     }
@@ -1066,6 +1092,9 @@ void JSThread::TransferToRunning()
     }
     if (!vm_->GetSharedNativePointerCallbacks().empty()) {
         InvokeSharedNativePointerCallbacks();
+    }
+    if (fullMarkRequest_) {
+        fullMarkRequest_ = const_cast<Heap*>(vm_->GetHeap())->TryTriggerFullMarkBySharedLimit();
     }
 }
 

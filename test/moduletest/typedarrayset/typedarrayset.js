@@ -32,3 +32,20 @@ function testTypeArraySet1(ctor) {
     obj.set(new ctor(6), 2);
     print(obj);
 }
+
+var typedArray1 = new Int32Array([1,1,1,1,1,1,1,1]);
+var typedArrayIn1 = new Uint16Array([2, 2, 2]);
+typedArray1.set(typedArrayIn1, 2);
+print(typedArray1);
+
+var typedArray2 = new Int32Array([1,1,1,1,1,1,1,1]);
+typedArray2.set([2, 2, 2], 2);
+print(typedArray2);
+
+var typedArray3 = new Int32Array([1,1,1,1,1,1,1,1]);
+typedArray3.set([2, , 2], 2);
+print(typedArray3);
+
+var typedArray4 = new Int32Array([1,1,1,1,1,1,1,1]);
+typedArray4.set([2, undefined, 2], 2);
+print(typedArray4);

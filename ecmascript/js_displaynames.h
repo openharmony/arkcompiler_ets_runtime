@@ -55,6 +55,12 @@ enum class FallbackOption : uint8_t {
     EXCEPTION
 };
 
+enum class LanguageDisplayOption : uint8_t {
+    DIALECT = 0x01,
+    STANDARD,
+    EXCEPTION
+};
+
 class JSDisplayNames : public JSObject {
 public:
     CAST_CHECK(JSDisplayNames, IsJSDisplayNames);
@@ -69,21 +75,23 @@ public:
     static constexpr size_t TYPE_BITS = 4;
     static constexpr size_t STYLE_BITS = 3;
     static constexpr size_t FALL_BACK_BITS = 2;
+    static constexpr size_t LANGUAGE_DISPLAY_BITS = 2;
     FIRST_BIT_FIELD(BitField, Type, TypednsOption, TYPE_BITS)
     NEXT_BIT_FIELD(BitField, Style, StyOption, STYLE_BITS, Type)
     NEXT_BIT_FIELD(BitField, Fallback, FallbackOption, FALL_BACK_BITS, Style)
+    NEXT_BIT_FIELD(BitField, LanguageDisplay, LanguageDisplayOption, LANGUAGE_DISPLAY_BITS, Fallback)
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LOCALE_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()
 
     icu::LocaleDisplayNames *GetIcuLocaleDisplayNames() const;
 
-    static void FreeIcuLocaleDisplayNames(void *pointer, [[maybe_unused]] void* hint);
+    static void FreeIcuLocaleDisplayNames(void *env, void *pointer, void* hint);
 
     static JSHandle<TaggedArray> GetAvailableLocales(JSThread *thread);
     
     static void SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<JSDisplayNames> &displayNames,
-                                             icu::LocaleDisplayNames* icuPointer, const DeleteEntryPoint &callback);
+                                         icu::LocaleDisplayNames* icuPointer, const NativePointerCallback &callback);
 
     // 12.1.1  CanonicalCodeForDisplayNames ( type, code )
     static JSHandle<EcmaString> CanonicalCodeForDisplayNames(JSThread *thread,

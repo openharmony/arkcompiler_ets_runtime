@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ecma_string-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -27,8 +28,7 @@ public:
                  PassContext *ctx, bool enableLog, const std::string &name)
         : PassVisitor(circuit, chunk, visitor),
           builder_(circuit, ctx->GetCompilerConfig()),
-          tsManager_(ctx->GetTSManager()),
-          thread_(ctx->GetEcmaVM()->GetJSThread()),
+          compilationEnv_(ctx->GetCompilationEnv()),
           enableLog_(enableLog),
           methodName_(name) {}
 
@@ -47,9 +47,9 @@ private:
         return methodName_;
     }
 
-    JSTaggedValue GetStringFromCP(uint32_t methodOffset, uint32_t cpIdx) const
+    JSTaggedValue GetStringFromConstantPool(uint32_t methodOffset, uint32_t cpIdx) const
     {
-        return tsManager_->GetStringFromConstantPool(methodOffset, cpIdx);
+        return compilationEnv_->GetStringFromConstantPool(methodOffset, cpIdx);
     }
 
     GateRef VisitTypedBinaryOp(GateRef gate);
@@ -63,8 +63,7 @@ private:
     GateRef ConvertToSingleCharComparison(GateRef left, GateRef right);
 
     CircuitBuilder builder_;
-    TSManager *tsManager_ {nullptr};
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
 };

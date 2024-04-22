@@ -42,16 +42,4 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
         heap->GetWorkManager()->Push(MAIN_THREAD_INDEX, heapValue, valueRegion);
     }
 }
-
-// For work deserialize, deserialize root object will be set to another object, however, this object may have been
-// marked by concurrent mark, this may cause deserialize root object miss mark, this is to ensure the deserialize object
-// will been marked
-void Barriers::MarkAndPushForDeserialize(const JSThread *thread, TaggedObject *object)
-{
-    auto heap = thread->GetEcmaVM()->GetHeap();
-    Region *valueRegion = Region::ObjectAddressToRange(object);
-    if ((heap->IsConcurrentFullMark() || valueRegion->InYoungSpace()) && valueRegion->AtomicMark(object)) {
-        heap->GetWorkManager()->Push(MAIN_THREAD_INDEX, object, valueRegion);
-    }
-}
 }  // namespace panda::ecmascript

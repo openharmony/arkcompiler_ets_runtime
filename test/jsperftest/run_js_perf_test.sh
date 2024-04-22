@@ -20,11 +20,23 @@ SCRIPT_NAME="$(basename "$0")"
 declare JS_PERF_RESULT_PATH=""
 declare OPENHARMONY_ROOT_PATH=""
 declare D8_BINARY_PATH="/usr/bin/v8/d8"
+declare D8_DEVICE_DIR=""
+declare CONFIG_PATH
+CONFIG_PATH="$(dirname "${BASH_SOURCE[0]}")"/config.json
 declare VER_PLATFORM="full_x86_64"
 declare -a BENCH_FILTER=()
+declare -a EXCLUDE_BENCHMARKS=()
 declare NO_NEED_DOWNLOAD_BENCHS=false
 declare BENCH_MULTIPLIER=""
+declare HDC_PATH=""
+declare TASKSET_MASK=""
 declare -i ITERATIONS=1
+
+function echo_fatal()
+{
+    echo "Error: $1"
+    exit 1
+}
 
 function init()
 {
@@ -35,17 +47,29 @@ function init()
                 usage
                 exit 0
                 ;;
-            --d8-path)
+            --d8-host-path)
                 shift
                 D8_BINARY_PATH="$1"
+                ;;
+            --d8-device-dir)
+                shift
+                D8_DEVICE_DIR="$1"
                 ;;
             --platform)
                 shift
                 VER_PLATFORM="$1"
                 ;;
+            --config)
+                shift
+                CONFIG_PATH="$1"
+                ;;
             --bench-filter=*)
                 local BENCH_FILTER_STR="${1#*=}"
                 BENCH_FILTER=(${BENCH_FILTER_STR//:/ })
+                ;;
+            --exclude=*)
+                local EXCLUDE_BENCHS_STR="${1#*=}"
+                EXCLUDE_BENCHMARKS=(${EXCLUDE_BENCHS_STR//:/ })
                 ;;
             --no-download-benchs)
                 NO_NEED_DOWNLOAD_BENCHS=true
@@ -58,6 +82,14 @@ function init()
                 shift
                 ITERATIONS=$1
                 ;;
+            --hdc-path)
+                shift
+                HDC_PATH="$1"
+                ;;
+            --taskset)
+                shift
+                TASKSET_MASK="$1"
+                ;;
             *)
                 JS_PERF_RESULT_PATH="$1"
                 OPENHARMONY_ROOT_PATH="$2"
@@ -66,23 +98,65 @@ function init()
         esac
         shift
     done
-    if [[ -z "${OPENHARMONY_ROOT_PATH}" || -z "${JS_PERF_RESULT_PATH}" ]]
+    if [[ "${VER_PLATFORM}" == *arm64* ]]
+    then
+        if [[ -z "${D8_DEVICE_DIR}" ]]
+        then
+            echo_fatal "--d8-device-dir is required for device"
+        fi
+        if [[ ! -d "${D8_DEVICE_DIR}" ]]
+        then
+            echo_fatal "${D8_DEVICE_DIR}: directory with v8 libs for device does not exist"
+        fi
+        if [[ ! -f "${D8_DEVICE_DIR}/d8" ]]
+        then
+            echo_fatal "${D8_DEVICE_DIR}/d8 is required, but does not exist"
+        fi
+        if [[ ! -f "${D8_DEVICE_DIR}/snapshot_blob.bin" ]]
+        then
+            echo_fatal "${D8_DEVICE_DIR}/snapshot_blob.bin is required, but does not exist"
+        fi
+        if [[ ! -f "${D8_DEVICE_DIR}/icudtl.dat" ]]
+        then
+            echo_fatal "${D8_DEVICE_DIR}/icudtl.dat is required, but does not exist"
+        fi
+        if [[ -z "${HDC_PATH}" ]]
+        then
+            if ! command -v hdc
+            then
+                echo_fatal "hdc path was not specified"
+            fi
+            HDC_PATH=$(command -v hdc)
+        elif [[ ! -e "${HDC_PATH}" ]]
+        then
+            echo_fatal "Executable file does not exist: ${HDC_PATH}"
+        else
+            HDC_PATH=$(realpath "${HDC_PATH}")
+        fi
+    elif [[ ! -x "${D8_BINARY_PATH}" ]]
+    then
+        echo_fatal "Executable file does not exist: ${D8_BINARY_PATH}"
+    fi
+    if [[ ! -f "${CONFIG_PATH}" ]]
+    then
+        echo_fatal "Config file does not exist: ${CONFIG_PATH}"
+    fi
+    CONFIG_PATH=$(realpath "${CONFIG_PATH}")
+    if [[ -z "${JS_PERF_RESULT_PATH}" ]]
     then
         usage
-        echo "Invalid input arguments"
-        exit 1
+        echo_fatal "JS_PERF_RESULT_PATH argument is not set"
+    fi
+    if [[ -z "${OPENHARMONY_ROOT_PATH}" ]]
+    then
+        usage
+        echo_fatal "OPENHARMONY_ROOT argument is not set"
     fi
     if [[ ! -d "${OPENHARMONY_ROOT_PATH}" ]]
     then
-        echo "Path to openharmony root dir does not exist: ${OPENHARMONY_ROOT_PATH}"
-        exit 1
+        echo_fatal "Path to openharmony root dir does not exist: ${OPENHARMONY_ROOT_PATH}"
     else
         OPENHARMONY_ROOT_PATH="$(realpath "${OPENHARMONY_ROOT_PATH}")"
-    fi
-    if [[ ! -x "${D8_BINARY_PATH}" ]]
-    then
-        echo "Executable file does not exist: ${D8_BINARY_PATH}"
-        exit 1
     fi
     if [[ ! -d "${JS_PERF_RESULT_PATH}" ]]
     then
@@ -97,8 +171,8 @@ function init()
     mkdir -p "${WORKDIR_PATH}"
     echo "
 OpenHarmony root path: ${OPENHARMONY_ROOT_PATH}
-D8 path: ${D8_BINARY_PATH}
 JS perf results: ${JS_PERF_RESULT_PATH}
+Config: ${CONFIG_PATH}
 Platform: ${VER_PLATFORM}
 "
 }
@@ -154,26 +228,73 @@ function prepare_js_test_files()
             fi
         done
     fi
+    if [[ ${#EXCLUDE_BENCHMARKS[@]} -ne 0 ]]
+    then
+        for bench in "${EXCLUDE_BENCHMARKS[@]}"
+        do
+            if [[ -e "${JS_TEST_PATH}/${bench}" ]]
+            then
+                rm -rf "${JS_TEST_PATH}/${bench}"
+            else
+                echo "No excluding benchmark '${bench}'"
+            fi
+        done
+    fi
+}
+
+function prepare_device()
+{
+    # Check device
+    local -a devices
+    devices=$(${HDC_PATH} list targets)
+    if [[ ${#devices[@]} -eq 1 ]]
+    then
+        if [[ "${devices[0]}" == "[Empty]"* ]]
+        then
+            echo_fatal "No devices"
+        fi
+        echo "Device id: ${devices[0]}"
+    else
+        echo_fatal "Required immidieatly one device"
+    fi
+    # Create workdir
+    local -r WORKDIR_ON_DEVICE="/data/local/tmp/jsperftest"
+    D8_BINARY_PATH="${WORKDIR_ON_DEVICE}/v8/d8"
+    set -x
+    ${HDC_PATH} shell "rm -rf ${WORKDIR_ON_DEVICE}"
+    ${HDC_PATH} shell "mkdir -p ${WORKDIR_ON_DEVICE}/v8 ${WORKDIR_ON_DEVICE}/lib ${WORKDIR_ON_DEVICE}/thirdparty"
+    ${HDC_PATH} file send "${D8_DEVICE_DIR}"/d8 ${D8_BINARY_PATH}
+    ${HDC_PATH} shell chmod u+x "${D8_BINARY_PATH}"
+    ${HDC_PATH} file send "${D8_DEVICE_DIR}"/snapshot_blob.bin ${WORKDIR_ON_DEVICE}/v8
+    ${HDC_PATH} file send "${D8_DEVICE_DIR}"/icudtl.dat ${WORKDIR_ON_DEVICE}/v8
+    set +x
 }
 
 function usage()
 {
     echo "${SCRIPT_NAME} [options] <JS_PERF_RESULT_PATH> <OPENHARMONY_ROOT>
 Options:
-    --d8-path <path>      - path to d8 binary file.
-                            Default: /usr/bin/v8/d8
-    --platform <platform> - used platform. Possible values in config.json.
-                            Default: full_x86_64
-    --multiplier N        - iteration multiplier for js benchmarks
-    --iterations N        - number of benchmark launches and get average
+    --d8-host-path <path>  - path to d8 binary file.
+                             Default: /usr/bin/v8/d8
+    --d8-device-dir <path> - path to dir with d8 for ohos device.
+                             See https://gitee.com/qishui7/ohcompiler-daily/repository/archive/master.zip
+    --hdc-path <hdc_path>  - path to hdc executable file. Use from PATH env variable by default
+    --platform <platform>  - used platform. Possible values in config.json.
+                             Default: full_x86_64
+    --config <config_path> - path to specific json config
+    --taskset mask         - use CPU affinity with mask for benchmark runnings
+    --multiplier N         - iteration multiplier for js benchmarks
+    --iterations N         - number of benchmark launches and get average
     --bench-filter=BenchDir1:BenchDir2:BenchDir3/bench.js:...
-                          - filter for benchmarks: directory or file
-    --no-download-benchs  - no download benchmarks from repository if repo already exists
-    --help, -h            - print help info about script
+                           - filter for benchmarks: directory or file
+    --exclude=BenchDir1:BenchDir2:BenchDir3/bench.js:...
+                           - exclude benchmarks from running: directory or file
+    --no-download-benchs   - no download benchmarks from repository if repo already exists
+    --help, -h             - print help info about script
 
 Positional arguments:
     JS_PERF_RESULT_PATH - directory path to benchmark results
-    OPENHARMONY_ROOT - path to root directory for ark_js_vm and es2panda
+    OPENHARMONY_ROOT    - path to root directory for ark_js_vm and es2panda
 "
 }
 
@@ -189,6 +310,11 @@ main()
     check_pip_component "openpyxl"  || { pip3 install openpyxl; }
     
     [ -f "$cur_path/run_js_test.py" ] || { echo "no run_js_test.py, please check it";return $ret_error;}
+
+    if [[ "${VER_PLATFORM}" == *arm64* ]]
+    then
+        prepare_device
+    fi
    
     prepare_js_test_files || { return $ret_error; }
 
@@ -205,11 +331,14 @@ main()
     local -i benchs_time_start benchs_time benchs_minutes
     benchs_time_start=$(date +%s)
     python3  "${cur_path}"/run_js_test.py \
+                        -c "${CONFIG_PATH}" \
                         -bp "${OPENHARMONY_ROOT_PATH}" \
                         -p "${JS_TEST_PATH}" \
                         -o "${JS_PERF_RESULT_PATH}" \
                         -v "${D8_BINARY_PATH}" \
                         -e "${VER_PLATFORM}" \
+                        --hdc "${HDC_PATH}" \
+                        -t "${TASKSET_MASK}" \
                         -n "${ITERATIONS}"
     benchs_time=$(($(date +%s) - benchs_time_start))
     benchs_minutes=$((benchs_time / 60))

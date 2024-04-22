@@ -17,6 +17,5 @@ host_aot_test_action("fast_call_builtins") {
   deps = []
 
   is_enable_trace_deopt = true
-  is_enable_builtins_dts = true
   is_enable_opt_inlining = true
 }

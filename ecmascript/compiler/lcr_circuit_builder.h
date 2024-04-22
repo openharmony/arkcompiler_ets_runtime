@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_COMPILER_LCR_CIRCUIT_BUILDER_H
 #define ECMASCRIPT_COMPILER_LCR_CIRCUIT_BUILDER_H
 
+#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
 
@@ -72,6 +74,51 @@ GateRef CircuitBuilder::IntPtrLSL(GateRef x, GateRef y)
 {
     auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
     return BinaryArithmetic(circuit_->Lsl(), ptrSize, x, y);
+}
+
+GateRef CircuitBuilder::Int16ToBigEndianInt16(GateRef x)
+{
+    GateRef int16toint32 = ZExtInt16ToInt32(x);
+    GateRef high8bits = Int32LSL(Int32And(int16toint32, Int32(0x00FF)), Int32(8));
+    GateRef low8bits = Int32LSR(Int32And(int16toint32, Int32(0xFF00)), Int32(8));
+    return TruncInt32ToInt16(Int32Add(high8bits, low8bits));
+}
+
+GateRef CircuitBuilder::Int32ToBigEndianInt32(GateRef x)
+{
+    GateRef first8bits = Int32LSL(Int32And(x, Int32(0x000000FF)), Int32(24));
+    GateRef second8bits = Int32LSL(Int32And(x, Int32(0x0000FF00)), Int32(8));
+    GateRef third8bits = Int32LSR(Int32And(x, Int32(0x00FF0000)), Int32(8));
+    GateRef fourth8bits = Int32LSR(Int32And(x, Int32(0xFF000000)), Int32(24));
+    GateRef firstHalf = Int32Add(first8bits, second8bits);
+    GateRef secondHalf = Int32Add(third8bits, fourth8bits);
+    return Int32Add(firstHalf, secondHalf);
+}
+
+GateRef CircuitBuilder::Int64ToBigEndianInt64(GateRef x)
+{
+    GateRef first8bits = Int64LSL(Int64And(x, Int64(0x00000000000000FF)), Int64(56));
+    GateRef second8bits = Int64LSL(Int64And(x, Int64(0x000000000000FF00)), Int64(40));
+    // 0-16bits
+    GateRef first16bits = Int64Add(first8bits, second8bits);
+    GateRef third8bits = Int64LSL(Int64And(x, Int64(0x0000000000FF0000)), Int64(24));
+    GateRef fourth8bits = Int64LSL(Int64And(x, Int64(0x00000000FF000000)), Int64(8));
+    // 16-32bits
+    GateRef second16bits = Int64Add(third8bits, fourth8bits);
+    // 0-32bits
+    GateRef firstHalf = Int64Add(first16bits, second16bits);
+    GateRef fifth8bits = Int64LSR(Int64And(x, Int64(0x000000FF00000000)), Int64(8));
+    GateRef sixth8bits = Int64LSR(Int64And(x, Int64(0x0000FF0000000000)), Int64(24));
+    //32-48bits
+    GateRef third16bits = Int64Add(fifth8bits, sixth8bits);
+    GateRef seventh8bits = Int64LSR(Int64And(x, Int64(0x00FF000000000000)), Int64(40));
+    GateRef eighth8bits = Int64LSR(Int64And(x, Int64(0xFF00000000000000)), Int64(56));
+    //48-64bits
+    GateRef fourth16bits = Int64Add(seventh8bits, eighth8bits);
+    //32-64bits
+    GateRef secondHalf = Int64Add(third16bits, fourth16bits);
+    //0-64bits
+    return Int64Add(firstHalf, secondHalf);
 }
 
 GateRef CircuitBuilder::IntPtrOr(GateRef x, GateRef y)
@@ -201,6 +248,73 @@ GateRef CircuitBuilder::DoubleToInt(GateRef glue, GateRef x, size_t typeBits)
         result = CallNGCRuntime(glue, RTSTUB_ID(DoubleToInt), Circuit::NullGate(), { x, IntPtr(typeBits) },
                                 Circuit::NullGate());
         Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::DoubleCheckINFInRangeInt32(GateRef x)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    Label exit(env_);
+    Label isInfinity(env_);
+    Label positiveInf(env_);
+    Label negativeInf(env_);
+
+    DEFVALUE(result, env_, VariableType::INT32(), DoubleInRangeInt32(x));
+    GateRef Max = Double(INT32_MAX);
+    GateRef Min = Double(INT32_MIN);
+    GateRef pInfinity = Double(base::POSITIVE_INFINITY);
+    Branch(DoubleIsINF(x), &isInfinity, &exit);
+    Bind(&isInfinity);
+    {
+        Branch(DoubleEqual(x, pInfinity), &positiveInf, &negativeInf);
+        Bind(&positiveInf);
+        {
+            result = ChangeFloat64ToInt32(Max);
+            Jump(&exit);
+        }
+        Bind(&negativeInf);
+        {
+            result = ChangeFloat64ToInt32(Min);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::DoubleInRangeInt32(GateRef x)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    Label exit(env_);
+    Label overflow(env_);
+    Label checkUnderflow(env_);
+    Label underflow(env_);
+
+    DEFVALUE(result, env_, VariableType::INT32(), ChangeFloat64ToInt32(x));
+    GateRef Max = Double(INT32_MAX);
+    GateRef Min = Double(INT32_MIN);
+    Branch(DoubleGreaterThan(x, Max), &overflow, &checkUnderflow);
+    Bind(&overflow);
+    {
+        result = ChangeFloat64ToInt32(Max);
+        Jump(&exit);
+    }
+    Bind(&checkUnderflow);
+    {
+        Branch(DoubleLessThan(x, Min), &underflow, &exit);
+        Bind(&underflow);
+        {
+            result = ChangeFloat64ToInt32(Min);
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     auto ret = *result;

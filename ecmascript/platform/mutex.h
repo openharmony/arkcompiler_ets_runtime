@@ -19,7 +19,16 @@
 #include <pthread.h>
 
 #include "ecmascript/common.h"
-
+#ifdef DEBUG
+#define FATAL_IF_ERROR(f, rc)                           \
+    do {                                                \
+        if (rc != 0) {                                  \
+            LOG_ECMA(FATAL)<< f << " failed: " << rc;   \
+        }                                               \
+    } while (false)
+#else
+#define FATAL_IF_ERROR(f, rc) static_cast<void>(0)
+#endif
 namespace panda::ecmascript {
 
 class PUBLIC_API Mutex {
@@ -39,10 +48,6 @@ protected:
 
 private:
     pthread_mutex_t mutex_;
-
-    NO_COPY_SEMANTIC(Mutex);
-    NO_MOVE_SEMANTIC(Mutex);
-
     friend class ConditionVariable;
 };
 
@@ -95,9 +100,6 @@ public:
 
 private:
     pthread_cond_t cond_;
-
-    NO_COPY_SEMANTIC(ConditionVariable);
-    NO_MOVE_SEMANTIC(ConditionVariable);
 };
 
 class LockHolder {

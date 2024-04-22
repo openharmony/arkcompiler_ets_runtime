@@ -19,7 +19,6 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/method.h"
 
 namespace panda::ecmascript::kungfu {
@@ -77,7 +76,6 @@ public:
     {
         return args_.size();
     }
-    void FillArgsGateType(const TypeRecorder *typeRecorder);
     void CollectArgs();
     static size_t GetFixArgsNum()
     {
@@ -105,7 +103,6 @@ private:
     GateRef GetCommonArgGate(const CommonArgIdx arg) const;
     size_t GetFunctionArgIndex(const size_t currentVreg, const bool haveFunc,
                                const bool haveNewTarget, const bool haveThis) const;
-    GateRef GetTypedArgGate(const size_t argIndex) const;
 
     Circuit *circuit_ {nullptr};
     const MethodLiteral *method_ {nullptr};

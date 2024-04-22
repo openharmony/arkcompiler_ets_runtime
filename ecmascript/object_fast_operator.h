@@ -49,9 +49,18 @@ public:
 
     static inline std::pair<JSTaggedValue, bool> HasOwnProperty(JSThread *thread,
                                                                 JSTaggedValue receiver, JSTaggedValue key);
+
+    template<Status status = Status::None>
+    static inline JSTaggedValue TryGetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
+                                                                        JSTaggedValue key);
+
     template<Status status = Status::None>
     static inline JSTaggedValue GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
                                                   JSTaggedValue key);
+
+    template <Status status = Status::None>
+    static inline JSTaggedValue TrySetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
+                                                                        JSTaggedValue key, JSTaggedValue value);
 
     template <Status status = Status::None>
     static inline JSTaggedValue SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,

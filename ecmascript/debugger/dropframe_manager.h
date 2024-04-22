@@ -47,8 +47,13 @@ private:
     void PushPromiseQueueSizeRecord(JSThread *thread);
     void PopPromiseQueueSizeRecord();
 
+    void PushMethodInfo(std::tuple<JSPandaFile*, panda_file::File::EntityId> methodInfo);
+    bool CheckExitMethodInfo(std::tuple<JSPandaFile*, panda_file::File::EntityId> methodInfo);
+    void PopMethodInfo();
+
     std::stack<std::vector<std::tuple<JSHandle<JSTaggedValue>, uint16_t, JSHandle<JSTaggedValue>>>> modifiedLexVar_;
     std::stack<uint32_t> promiseQueueSizeRecord_;
+    std::stack<std::tuple<JSPandaFile*, panda_file::File::EntityId>> methodInfo_;
 };
 }
 

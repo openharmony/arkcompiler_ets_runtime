@@ -35,7 +35,10 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(Ecma
                 "' failed, module name '" + requestPath + "'" + ", from napi load module";
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
         }
-        if (ModulePathHelper::NeedTranstale(requestPath)) {
+        if (vm->IsNormalizedOhmUrlPack()) {
+            ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), abcFilePath, "",
+                requestPath);
+        } else if (ModulePathHelper::NeedTranstale(requestPath)) {
             ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);
         }
     }

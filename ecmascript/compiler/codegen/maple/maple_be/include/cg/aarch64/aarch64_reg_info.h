@@ -122,6 +122,11 @@ public:
         return R17;
     }
 
+    bool IsReservedReg(regno_t regNO) const
+    {
+        return (regNO == R16);
+    }
+
     void Init() override;
     void Fini() override;
     void SaveCalleeSavedReg(MapleSet<regno_t> savedRegs) override;

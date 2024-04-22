@@ -17,11 +17,10 @@
 #define ECMASCRIPT_COMPILER_SLOWPATH_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
 // slowPath Lowering Process
@@ -111,9 +110,9 @@ namespace panda::ecmascript::kungfu {
 class SlowPathLowering {
 public:
     SlowPathLowering(Circuit *circuit, CompilationConfig *cmpCfg,
-                     TSManager *tsManager, const MethodLiteral *methodLiteral,
+                     PassContext *ctx, const MethodLiteral *methodLiteral,
                      bool enableLog, const std::string& name)
-        : tsManager_(tsManager), methodLiteral_(methodLiteral),
+        : compilationEnv_(ctx->GetCompilationEnv()), methodLiteral_(methodLiteral),
           circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
           enableLog_(enableLog), methodName_(name), glue_(acc_.GetGlueFromArgList())
@@ -321,7 +320,7 @@ private:
     void LowerLdStr(GateRef gate);
     void LowerGetConstPool(GateRef gate);
 
-    TSManager *tsManager_ {nullptr};
+    CompilationEnv *compilationEnv_;
     const MethodLiteral *methodLiteral_ {nullptr};
     Circuit *circuit_;
     GateAccessor acc_;

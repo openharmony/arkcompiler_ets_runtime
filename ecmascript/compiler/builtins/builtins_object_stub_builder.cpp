@@ -299,7 +299,7 @@ void BuiltinsObjectStubBuilder::Create(Variable *result, Label *exit, Label *slo
     GateRef proto = GetCallArg0(numArgs_);
     GateRef protoIsNull = TaggedIsNull(proto);
     GateRef protoIsEcmaObj = IsEcmaObject(proto);
-    GateRef protoIsJSShared = TaggedIsShared(proto);
+    GateRef protoIsJSShared = TaggedIsSharedObj(proto);
     BRANCH(BoolOr(BoolAnd(BoolNot(protoIsEcmaObj), BoolNot(protoIsNull)), protoIsJSShared), slowPath, &newObject);
     Bind(&newObject);
     {
@@ -1104,6 +1104,8 @@ GateRef BuiltinsObjectStubBuilder::GetAllEnumKeys(GateRef glue, GateRef obj)
             Bind(&notOnlyOwnKeys);
             {
                 Label numNotZero(env);
+                Label inSharedHeap(env);
+                Label notInSharedHeap(env);
                 BRANCH(Int32GreaterThan(numOfKeys, Int32(0)), &numNotZero, &notHasProps);
                 Bind(&numNotZero);
                 NewObjectStubBuilder newBuilder(this);
@@ -1113,9 +1115,19 @@ GateRef BuiltinsObjectStubBuilder::GetAllEnumKeys(GateRef glue, GateRef obj)
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, keyArray,
                     Int32(EnumCache::ENUM_CACHE_KIND_OFFSET),
                     IntToTaggedInt(Int32(static_cast<int32_t>(EnumCacheKind::ONLY_OWN_KEYS))));
-                SetEnumCacheToHClass(VariableType::JS_ANY(), glue, hclass, keyArray);
-                result = CopyFromEnumCache(glue, keyArray);
-                Jump(&exit);
+                GateRef hclassRegion = ObjectAddressToRange(hclass);
+                BRANCH(InSharedHeap(hclassRegion), &inSharedHeap, &notInSharedHeap);
+                Bind(&inSharedHeap);
+                {
+                    result = CopyFromEnumCache(glue, keyArray);
+                    Jump(&exit);
+                }
+                Bind(&notInSharedHeap);
+                {
+                    SetEnumCacheToHClass(VariableType::JS_ANY(), glue, hclass, keyArray);
+                    result = CopyFromEnumCache(glue, keyArray);
+                    Jump(&exit);
+                }
             }
         }
         Bind(&notHasProps);

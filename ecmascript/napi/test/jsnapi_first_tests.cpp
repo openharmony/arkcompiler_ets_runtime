@@ -484,7 +484,7 @@ HWTEST_F_L0(JSNApiTests, CreateNativeObject)
     size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
     Local<NativePointerRef> nativeInfo = NativePointerRef::New(
         vm_, reinterpret_cast<void *>(info),
-        [](void *data, [[maybe_unused]] void *info) {
+        []([[maybe_unused]] void *env, void *data, [[maybe_unused]] void *info) {
             auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo *>(data);
             delete externalInfo;
         },
@@ -572,7 +572,7 @@ HWTEST_F_L0(JSNApiTests, GetProtoType)
     size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
     Local<NativePointerRef> nativeInfo = NativePointerRef::New(
         vm_, reinterpret_cast<void *>(info),
-        [](void *data, [[maybe_unused]] void *info) {
+        []([[maybe_unused]] void *env, void *data, [[maybe_unused]] void *info) {
             auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo *>(data);
             delete externalInfo;
         },
@@ -718,7 +718,7 @@ HWTEST_F_L0(JSNApiTests, ArrayBufferWithBuffer)
     const int32_t length = 15;
     Data *data = new Data();
     data->length = length;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = []([[maybe_unused]] void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         ASSERT_EQ(currentData->length, 15); // 5 : size of arguments
@@ -1655,7 +1655,7 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFi
 HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
 {
     LocalScope scope(vm_);
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
     bool callNative = true;
     size_t nativeBindingsize = 15;

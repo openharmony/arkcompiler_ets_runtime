@@ -23,28 +23,35 @@ let len:number = 1;
 
 // Check without params
 len = Math.asin();
+//aot: [trace] aot inline builtin: Math.asin, caller function name:func_main_0@builtinMathAsin
 print(len); //: NaN
 
 len = Math.asin(NaN);
+//aot: [trace] aot inline builtin: Math.asin, caller function name:func_main_0@builtinMathAsin
 print(len); //: NaN
 
 // Check with single param, in |x| <= 1
 len = Math.asin(0);
+//aot: [trace] aot inline builtin: Math.asin, caller function name:func_main_0@builtinMathAsin
 print(len); //: 0
 
 // Check with single param, in |x| <= 1
 len = Math.asin(-1); // -PI/2
+//aot: [trace] aot inline builtin: Math.asin, caller function name:func_main_0@builtinMathAsin
 print(len); //: -1.5707963267948966
 
 // Check with single param, in |x| <= 1
 len = Math.asin(1); // PI/2
+//aot: [trace] aot inline builtin: Math.asin, caller function name:func_main_0@builtinMathAsin
 print(len); //: 1.5707963267948966
 
 // Check with single param, in |x| > 1
 len = Math.asin(10);
+//aot: [trace] aot inline builtin: Math.asin, caller function name:func_main_0@builtinMathAsin
 print(len); //: NaN
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_asin = Math.asin
 Math.asin = replace
 len = Math.asin(111);
@@ -53,5 +60,4 @@ print(len); //: 111
 // Call standart builtin with non-number param
 Math.asin = true_asin
 len = Math.asin("NaN"); // deopt
-//aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

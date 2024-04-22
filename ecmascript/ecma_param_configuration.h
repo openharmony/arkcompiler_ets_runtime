@@ -26,6 +26,7 @@ namespace panda::ecmascript {
 static constexpr size_t DEFAULT_HEAP_SIZE = 448_MB;                 // Recommended range: 128-448MB
 static constexpr size_t DEFAULT_WORKER_HEAP_SIZE = 768_MB;          // Recommended range: 128_MB, LargeHeap: 768_MB
 static constexpr size_t DEFAULT_SHARED_HEAP_SIZE = 778_MB;
+static constexpr size_t MAX_HEAP_SIZE = 1024_MB;
 
 class EcmaParamConfiguration {
 public:
@@ -35,7 +36,8 @@ public:
         SHARED_HEAP
     };
 
-    EcmaParamConfiguration(HeapType heapType, size_t poolSize)
+    EcmaParamConfiguration() = default;
+    EcmaParamConfiguration(HeapType heapType, size_t poolSize, size_t heapSize = 1_MB)
     {
         switch (heapType) {
             case HeapType::WORKER_HEAP:
@@ -49,6 +51,9 @@ public:
                     maxHeapSize_ = DEFAULT_HEAP_SIZE;
                 } else {
                     maxHeapSize_ = poolSize; // pool is too small, no memory left for worker
+                }
+                if (heapSize >= DEFAULT_HEAP_SIZE && heapSize <= MAX_HEAP_SIZE) {
+                    maxHeapSize_ = heapSize;
                 }
         }
         Initialize();
@@ -67,6 +72,7 @@ public:
             defaultNonMovableSpaceSize_ = 2_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
+            defaultGlobalAllocLimit_ = 20_MB;
             semiSpaceTriggerConcurrentMark_ = 1_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceOvershootSize_ = 4_MB;
@@ -75,6 +81,8 @@ public:
             minGrowingStep_ = 4_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 8_MB;
+            sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
+            sharedHeapLimitGrowingStep_ = 20_MB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
@@ -82,6 +90,7 @@ public:
             defaultNonMovableSpaceSize_ = 6_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
+            defaultGlobalAllocLimit_ = 20_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceOvershootSize_ = 8_MB;
@@ -90,6 +99,8 @@ public:
             minGrowingStep_ = 8_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 16_MB;
+            sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
+            sharedHeapLimitGrowingStep_ = 40_MB;
         }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
@@ -97,6 +108,7 @@ public:
             defaultNonMovableSpaceSize_ = 64_MB;
             defaultSnapshotSpaceSize_ = 4_MB;
             defaultMachineCodeSpaceSize_ = 8_MB;
+            defaultGlobalAllocLimit_ = 20_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceOvershootSize_ = 8_MB;
@@ -105,6 +117,8 @@ public:
             minGrowingStep_ = 16_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 16_MB;
+            sharedHeapLimitGrowingFactor_ = 4; // 4: growing factor
+            sharedHeapLimitGrowingStep_ = 80_MB;
         }
     }
 
@@ -143,6 +157,11 @@ public:
         return defaultMachineCodeSpaceSize_;
     }
 
+    size_t GetDefaultGlobalAllocLimit() const
+    {
+        return defaultGlobalAllocLimit_;
+    }
+
     size_t GetSemiSpaceTriggerConcurrentMark() const
     {
         return semiSpaceTriggerConcurrentMark_;
@@ -171,6 +190,16 @@ public:
     size_t GetMinGrowingStep() const
     {
         return minGrowingStep_;
+    }
+
+    size_t GetSharedHeapLimitGrowingFactor() const
+    {
+        return sharedHeapLimitGrowingFactor_;
+    }
+
+    size_t GetSharedHeapLimitGrowingStep() const
+    {
+        return sharedHeapLimitGrowingStep_;
     }
 
     uint32_t GetMaxStackSize() const
@@ -207,12 +236,15 @@ private:
     size_t defaultNonMovableSpaceSize_ {0};
     size_t defaultSnapshotSpaceSize_ {0};
     size_t defaultMachineCodeSpaceSize_ {0};
+    size_t defaultGlobalAllocLimit_ {0};
     size_t semiSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceStepOvershootSize_ {0};
     size_t oldSpaceOvershootSize_ {0};
     size_t outOfMemoryOvershootSize_ {0};
     size_t minAllocLimitGrowingStep_ {0};
     size_t minGrowingStep_ {0};
+    size_t sharedHeapLimitGrowingFactor_ {0};
+    size_t sharedHeapLimitGrowingStep_ {0};
     size_t maxJSSerializerSize_ {0};
     uint32_t maxStackSize_ {0};
 };

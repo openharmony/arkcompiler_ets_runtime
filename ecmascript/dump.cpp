@@ -16,6 +16,7 @@
 #include <codecvt>
 #include <iomanip>
 #include <iostream>
+#include <ostream>
 #include <string>
 
 #include "ecmascript/accessor_data.h"
@@ -24,6 +25,8 @@
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -110,11 +113,13 @@
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -122,9 +127,10 @@
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/template_map.h"
 #include "ecmascript/transitions_dictionary.h"
-#include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/js_displaynames.h"
 #include "ecmascript/js_list_format.h"
+#include "js_hclass.h"
+#include "shared_objects/js_shared_json_value.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -257,6 +263,30 @@ CString JSHClass::DumpJSType(JSType type)
             return "BigInt64 Array";
         case JSType::JS_BIGUINT64_ARRAY:
             return "BigUint64 Array";
+        case JSType::JS_SHARED_TYPED_ARRAY:
+            return "Shared Typed Array";
+        case JSType::JS_SHARED_INT8_ARRAY:
+            return "Shared Int8 Array";
+        case JSType::JS_SHARED_UINT8_ARRAY:
+            return "Shared Uint8 Array";
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+            return "Shared Uint8 Clamped Array";
+        case JSType::JS_SHARED_INT16_ARRAY:
+            return "Shared Int16 Array";
+        case JSType::JS_SHARED_UINT16_ARRAY:
+            return "Shared Uint16 Array";
+        case JSType::JS_SHARED_INT32_ARRAY:
+            return "Shared Int32 Array";
+        case JSType::JS_SHARED_UINT32_ARRAY:
+            return "Shared Uint32 Array";
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+            return "Shared Float32 Array";
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+            return "Shared Float64 Array";
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+            return "Shared BigInt64 Array";
+        case JSType::JS_SHARED_BIGUINT64_ARRAY:
+            return "Shared BigUint64 Array";
         case JSType::BYTE_ARRAY:
             return "ByteArray";
         case JSType::JS_ARGUMENTS:
@@ -289,6 +319,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "RegExpIterator";
         case JSType::JS_ARRAY_BUFFER:
             return "ArrayBuffer";
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            return "SendableArrayBuffer";
         case JSType::JS_SHARED_ARRAY_BUFFER:
             return "SharedArrayBuffer";
         case JSType::JS_PROXY_REVOC_FUNCTION:
@@ -403,24 +435,6 @@ CString JSHClass::DumpJSType(JSType type)
             return "ClassInfoExtractor";
         case JSType::JS_API_ARRAY_LIST:
             return "ArrayList";
-        case JSType::TS_OBJECT_TYPE:
-            return "TSObjectType";
-        case JSType::TS_CLASS_TYPE:
-            return "TSClassType";
-        case JSType::TS_INTERFACE_TYPE:
-            return "TSInterfaceType";
-        case JSType::TS_CLASS_INSTANCE_TYPE:
-            return "TSClassInstanceType";
-        case JSType::TS_UNION_TYPE:
-            return "TSUnionType";
-        case JSType::TS_FUNCTION_TYPE:
-            return "TSFunctionType";
-        case JSType::TS_ARRAY_TYPE:
-            return "TSArrayType";
-        case JSType::TS_ITERATOR_INSTANCE_TYPE:
-            return "TSIteratorInstanceType";
-        case JSType::TS_NAMESPACE_TYPE:
-            return "TSNamespaceType";
         case JSType::JS_API_ARRAYLIST_ITERATOR:
             return "JSArraylistIterator";
         case JSType::LINKED_NODE:
@@ -499,6 +513,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ResolvedBindingRecord";
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             return "ResolvedIndexBindingRecord";
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            return "ResolvedRecordIndexBindingRecord";
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             return "ResolvedRecordBindingRecord";
         case JSType::IMPORTENTRY_RECORD:
@@ -507,6 +523,14 @@ CString JSHClass::DumpJSType(JSType type)
             return "LocalExportEntry";
         case JSType::STAR_EXPORTENTRY_RECORD:
             return "StarExportEntry";
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY:
+            return "SharedJSONValue";
         default: {
             CString ret = "unknown type ";
             return ret.append(std::to_string(static_cast<char>(type)));
@@ -868,6 +892,21 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             needDumpHClass = true;
             JSTypedArray::Cast(obj)->Dump(os);
             break;
+        case JSType::JS_SHARED_TYPED_ARRAY:
+        case JSType::JS_SHARED_INT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_SHARED_INT16_ARRAY:
+        case JSType::JS_SHARED_UINT16_ARRAY:
+        case JSType::JS_SHARED_INT32_ARRAY:
+        case JSType::JS_SHARED_UINT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+        case JSType::JS_SHARED_BIGUINT64_ARRAY:
+            needDumpHClass = true;
+            JSSharedTypedArray::Cast(obj)->Dump(os);
+            break;
         case JSType::BIGINT:
             BigInt::Cast(obj)->Dump(os);
             break;
@@ -889,6 +928,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_ARRAY_BUFFER:
             JSArrayBuffer::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            JSSendableArrayBuffer::Cast(obj)->Dump(os);
             break;
         case JSType::JS_SHARED_ARRAY_BUFFER:
             JSArrayBuffer::Cast(obj)->Dump(os);
@@ -1142,33 +1184,6 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
             JSAPILightWeightSetIterator::Cast(obj)->Dump(os);
             break;
-        case JSType::TS_OBJECT_TYPE:
-            TSObjectType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_CLASS_TYPE:
-            TSClassType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_INTERFACE_TYPE:
-            TSInterfaceType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_CLASS_INSTANCE_TYPE:
-            TSClassInstanceType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_UNION_TYPE:
-            TSUnionType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_FUNCTION_TYPE:
-            TSFunctionType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_ARRAY_TYPE:
-            TSArrayType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_ITERATOR_INSTANCE_TYPE:
-            TSIteratorInstanceType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_NAMESPACE_TYPE:
-            TSNamespaceType::Cast(obj)->Dump(os);
-            break;
         case JSType::LINKED_NODE:
             LinkedNode::Cast(obj)->Dump(os);
             break;
@@ -1255,6 +1270,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->Dump(os);
             break;
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            ResolvedRecordIndexBinding::Cast(obj)->Dump(os);
+            break;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->Dump(os);
             break;
@@ -1281,6 +1299,15 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::CLASS_LITERAL:
             ClassLiteral::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY:
+            JSSharedJSONValue::Cast(obj)->Dump(os);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -2555,6 +2582,18 @@ void JSTypedArray::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void JSSharedTypedArray::Dump(std::ostream &os) const
+{
+    os << " - viewed-array-buffer: ";
+    GetViewedArrayBufferOrByteArray().Dump(os);
+    os << " - typed-array-name: ";
+    GetTypedArrayName().Dump(os);
+    os << " - byte-length: " << GetByteLength();
+    os << " - byte-offset: " << GetByteOffset();
+    os << " - array-length: " << GetArrayLength();
+    JSObject::Dump(os);
+}
+
 void ByteArray::Dump(std::ostream &os) const
 {
     os << " - array-length: " << GetArrayLength();
@@ -2870,6 +2909,14 @@ void JSDataView::Dump(std::ostream &os) const
 }
 
 void JSArrayBuffer::Dump(std::ostream &os) const
+{
+    os << " - byte-length: " << GetArrayBufferByteLength();
+    os << " - buffer-data: ";
+    GetArrayBufferData().Dump(os);
+    os << " - Shared: " << GetShared();
+}
+
+void JSSendableArrayBuffer::Dump(std::ostream &os) const
 {
     os << " - byte-length: " << GetArrayBufferByteLength();
     os << " - buffer-data: ";
@@ -3556,274 +3603,6 @@ void ClassInfoExtractor::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void TSObjectType::Dump(std::ostream &os) const
-{
-    os << " - TSObjectType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSObjectType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSObjectType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << "  - ObjLayoutInfo: ";
-    DumpArrayClass(TaggedArray::Cast(GetObjLayoutInfo().GetTaggedObject()), os);
-
-    os << " - Index signature: ";
-    if (GetIndexSigns().IsUndefined()) {
-        os << " no index signature type " << "\n";
-    } else {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
-    }
-}
-
-void TSClassType::Dump(std::ostream &os) const
-{
-    os << " - Dump TSClassType - " << "\n";
-    os << " - TSClassType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSClassType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSClassType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " - ExtensionTypeGT: ";
-    GlobalTSTypeRef extensionGT = GetExtensionGT();
-    if (extensionGT.IsDefault()) {
-        os << " (base class type) ";
-    } else {
-        os << extensionGT.GetType();
-    }
-    os << "\n";
-
-    CString hasLinked = GetHasLinked() ? "true" : "false";
-    os << " - HasLinked: " << hasLinked  << "\n";
-
-    os << " - InstanceType: " << "\n";
-    if (GetInstanceType().IsTSObjectType()) {
-        TSObjectType *instanceType = TSObjectType::Cast(GetInstanceType().GetTaggedObject());
-        instanceType->Dump(os);
-        os << "\n";
-    }
-
-    os << " - ConstructorType: " << "\n";
-    if (GetConstructorType().IsTSObjectType()) {
-        TSObjectType *constructorType = TSObjectType::Cast(GetConstructorType().GetTaggedObject());
-        constructorType->Dump(os);
-        os << "\n";
-    }
-
-    os << " - PrototypeType: " << "\n";
-    if (GetPrototypeType().IsTSObjectType()) {
-        TSObjectType *prototypeType = TSObjectType::Cast(GetPrototypeType().GetTaggedObject());
-        prototypeType->Dump(os);
-        os << "\n";
-    }
-
-    os << " - Index signature: ";
-    if (GetIndexSigns().IsUndefined()) {
-        os << " no index signature type " << "\n";
-    } else {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
-    }
-    os << "\n";
-}
-
-void TSInterfaceType::Dump(std::ostream &os) const
-{
-    os << " - Dump Interface Type - " << "\n";
-    os << " - TSInterfaceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSInterfaceType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSInterfaceType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " - Extends TypeId: " << "\n";
-    if (TaggedArray::Cast(GetExtends().GetTaggedObject())->GetLength() == 0) {
-        os << " (base interface type) "<< "\n";
-    }
-    DumpArrayClass(TaggedArray::Cast(GetExtends().GetTaggedObject()), os);
-
-    os << " - Fields: " << "\n";
-    if (GetFields().IsTSObjectType()) {
-        TSObjectType *fieldsType = TSObjectType::Cast(GetFields().GetTaggedObject());
-        fieldsType->Dump(os);
-        os << "\n";
-    }
-
-    os << " - Index signature: ";
-    if (GetIndexSigns().IsUndefined()) {
-        os << " no index signature type " << "\n";
-    } else {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
-    }
-    os << "\n";
-}
-
-void TSClassInstanceType::Dump(std::ostream &os) const
-{
-    os << " - Dump ClassInstance Type - " << "\n";
-    os << " - TSClassInstanceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSClassInstanceType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSClassInstanceType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-
-    os << " - createClassType GT: ";
-    GlobalTSTypeRef createClassTypeGT = GetClassGT();
-    os << createClassTypeGT.GetType();
-    os << "\n";
-}
-
-void TSUnionType::Dump(std::ostream &os) const
-{
-    os << " - Dump UnionType Type - " << "\n";
-    os << " - TSUnionType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSUnionType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSUnionType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " - TSUnionType TypeId: " << "\n";
-    DumpArrayClass(TaggedArray::Cast(GetComponents().GetTaggedObject()), os);
-}
-
-void TSFunctionType::Dump(std::ostream &os) const
-{
-    os << " - Dump TSFunctionType - " << "\n";
-    os << " - TSFunctionType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSFunctionType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSFunctionType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " - TSFunctionType Name: ";
-    JSTaggedValue name = GetName();
-    if (name.IsString()) {
-        os << ConvertToString(EcmaString::Cast(name.GetTaggedObject()));
-    }
-    os << "\n";
-    os << " - TSFunctionType ParameterTypeIds: " << "\n";
-    DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), os);
-    os << " - TSFunctionType ReturnType: " << GetReturnGT().GetType() << "\n";
-    os << " - TSFunctionType ThisType: " << GetThisGT().GetType() << "\n";
-    TSFunctionType::Visibility visibility = GetVisibility();
-    switch (visibility) {
-        case TSFunctionType::Visibility::PUBLIC:
-            os << " - Visibility: public";
-            break;
-        case TSFunctionType::Visibility::PRIVATE:
-            os << " - Visibility: private";
-            break;
-        case TSFunctionType::Visibility::PROTECTED:
-            os << " - Visibility: protected";
-            break;
-    }
-    os << " | IsStatic: " << std::boolalpha << GetStatic();
-    os << " | IsAsync: " << std::boolalpha << GetAsync();
-    os << " | IsGenerator: " << std::boolalpha << GetGenerator();
-    os << " | IsGetterSetter: " << std::boolalpha << GetIsGetterSetter();
-    os << "\n";
-}
-
-void TSArrayType::Dump(std::ostream &os) const
-{
-    os << " - Dump TSArrayType - " << "\n";
-    os << " - TSArrayType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    os << gt.GetType();
-    os << "\n";
-    os << " - TSArrayType ElementGT: ";
-    os <<  GetElementGT().GetType();
-    os << "\n";
-}
-
-void TSIteratorInstanceType::Dump(std::ostream &os) const
-{
-    os << " - Dump IteratorInstance Type - " << "\n";
-    os << " - TSIteratorInstanceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSIteratorInstanceType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSIteratorInstanceType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-
-    os << " - TSIteratorInstanceType KindGT: ";
-    os << GetKindGT().GetType();
-    os << "\n";
-
-    os << " - TSIteratorInstanceType ElementGT: ";
-    os << GetElementGT().GetType();
-    os << "\n";
-}
-
-void TSNamespaceType::Dump(std::ostream &os) const
-{
-    os << " - Dump Namespace Type - " << "\n";
-    os << " - TSNamespaceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSNamespaceType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSNamespaceType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << "  - Properties: ";
-    DumpArrayClass(TaggedArray::Cast(GetPropertyType().GetTaggedObject()), os);
-}
-
 void SourceTextModule::Dump(std::ostream &os) const
 {
     os << " - Environment: ";
@@ -3958,13 +3737,23 @@ void ResolvedIndexBinding::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void ResolvedRecordBinding::Dump(std::ostream &os) const
+void ResolvedRecordIndexBinding::Dump(std::ostream &os) const
 {
     os << " - Module: ";
     GetModuleRecord().Dump(os);
     os << "\n";
     os << " - Index: ";
     GetIndex();
+    os << "\n";
+}
+
+void ResolvedRecordBinding::Dump(std::ostream &os) const
+{
+    os << " - Module: ";
+    GetModuleRecord().Dump(os);
+    os << "\n";
+    os << " - BindingName: ";
+    GetBindingName().Dump(os);
     os << "\n";
 }
 
@@ -4362,6 +4151,18 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_SHARED_ARRAY_BUFFER:
             JSArrayBuffer::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            JSSendableArrayBuffer::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_ARRAY:
+        case JSType::JS_SHARED_JSON_STRING:
+            JSSharedJSONValue::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_PROXY_REVOC_FUNCTION:
             JSProxyRevocFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -4560,6 +4361,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            ResolvedRecordIndexBinding::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -4618,33 +4422,6 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
                 return;
             case JSType::CLASS_INFO_EXTRACTOR:
                 ClassInfoExtractor::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_OBJECT_TYPE:
-                TSObjectType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_CLASS_TYPE:
-                TSClassType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_INTERFACE_TYPE:
-                TSInterfaceType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_CLASS_INSTANCE_TYPE:
-                TSClassInstanceType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_UNION_TYPE:
-                TSUnionType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_FUNCTION_TYPE:
-                TSFunctionType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_ARRAY_TYPE:
-                TSArrayType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_ITERATOR_INSTANCE_TYPE:
-                TSIteratorInstanceType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_NAMESPACE_TYPE:
-                TSNamespaceType::Cast(obj)->DumpForSnapshot(vec);
                 return;
             case JSType::METHOD:
                 Method::Cast(obj)->DumpForSnapshot(vec);
@@ -4796,6 +4573,20 @@ void LinkedHashMap::DumpForSnapshot(std::vector<Reference> &vec) const
             KeyToStd(str, key);
             vec.emplace_back(str, val);
         }
+    }
+}
+
+void JSSharedJSONValue::Dump(std::ostream &os) const
+{
+    JSObject::Dump(os);
+    auto value = GetValue();
+    os << "wrapped value(Raw): " << std::hex << value.GetRawData() << "\n";
+    if (value.IsJSSharedArray()) {
+        JSSharedArray::Cast(value)->Dump(os);
+    } else if (value.IsJSSharedMap()) {
+        JSSharedMap::Cast(value)->Dump(os);
+    } else {
+        value.DumpTaggedValue(os);
     }
 }
 
@@ -5645,6 +5436,20 @@ void JSArrayBuffer::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSSendableArrayBuffer::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("buffer-data"), GetArrayBufferData());
+    vec.emplace_back(CString("byte-length"), JSTaggedValue(GetArrayBufferByteLength()));
+    vec.emplace_back(CString("shared"), JSTaggedValue(GetShared()));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSharedJSONValue::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("value"), GetValue());
+    JSObject::DumpForSnapshot(vec);
+}
+
 void PromiseReaction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("promise-capability"), GetPromiseCapability());
@@ -6112,79 +5917,6 @@ void ClassInfoExtractor::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
 }
 
-void TSObjectType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("ObjLayoutInfo"), GetObjLayoutInfo());
-    vec.emplace_back(CString("IndexSigns"), GetIndexSigns());
-}
-
-void TSClassType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    // please update the NUM_OF_ITEMS if you change the items below
-    constexpr int16_t NUM_OF_ITEMS = 5;
-    vec.reserve(vec.size() + NUM_OF_ITEMS);
-    vec.emplace_back(CString("InstanceType"), GetInstanceType());
-    vec.emplace_back(CString("ConstructorType"), GetConstructorType());
-    vec.emplace_back(CString("PrototypeType"), GetPrototypeType());
-    vec.emplace_back(CString("ExtensionGT"), JSTaggedValue(GetExtensionGT().GetType()));
-    vec.emplace_back(CString("HasLinked"), JSTaggedValue(GetHasLinked()));
-    vec.emplace_back(CString("Name"), JSTaggedValue(GetName()));
-    if (!GetIndexSigns().IsUndefined()) {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), vec);
-    }
-}
-
-void TSInterfaceType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("Fields"), GetFields());
-    vec.emplace_back(CString("Extends"), GetExtends());
-    DumpArrayClass(TaggedArray::Cast(GetExtends().GetTaggedObject()), vec);
-    if (!GetIndexSigns().IsUndefined()) {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), vec);
-    }
-}
-
-void TSClassInstanceType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("ClassGT"), JSTaggedValue(GetClassGT().GetType()));
-}
-
-void TSUnionType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("ComponentTypes"), GetComponents());
-    DumpArrayClass(TaggedArray::Cast(GetComponents().GetTaggedObject()), vec);
-}
-
-void TSFunctionType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    // please update the NUM_OF_ITEMS if you change the items below
-    constexpr int16_t NUM_OF_ITEMS = 5;
-    vec.reserve(vec.size() + NUM_OF_ITEMS);
-    vec.emplace_back(CString("Name"), GetName());
-    vec.emplace_back(CString("ParameterTypes"), GetParameterTypes());
-    DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), vec);
-    vec.emplace_back(CString("ReturnGT"), JSTaggedValue(GetReturnGT().GetType()));
-    vec.emplace_back(CString("ThisGT"), JSTaggedValue(GetThisGT().GetType()));
-    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
-}
-
-void TSArrayType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("ParameterTypeRef"), JSTaggedValue(GetElementGT().GetType()));
-}
-
-void TSIteratorInstanceType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("kindGT"), JSTaggedValue(GetKindGT().GetType()));
-    vec.emplace_back(CString("elementGT"), JSTaggedValue(GetElementGT().GetType()));
-}
-
-void TSNamespaceType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("PropertyType"), GetPropertyType());
-    DumpArrayClass(TaggedArray::Cast(GetPropertyType().GetTaggedObject()), vec);
-}
-
 void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     // please update the NUM_OF_ITEMS if you change the items below
@@ -6249,10 +5981,16 @@ void ResolvedIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
 }
 
-void ResolvedRecordBinding::DumpForSnapshot(std::vector<Reference> &vec) const
+void ResolvedRecordIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
+}
+
+void ResolvedRecordBinding::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
+    vec.emplace_back(CString("BindingName"), GetBindingName());
 }
 
 void ModuleNamespace::DumpForSnapshot(std::vector<Reference> &vec) const

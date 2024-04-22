@@ -90,7 +90,7 @@ public:
     void Dump() const DUMP_API_ATTR;
 
 private:
-    static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
+    static constexpr uint32_t ASMSTUB_MODULE_NUM = 4;
 
     bool MmapLoad(const std::string &fileName);
     bool Load();

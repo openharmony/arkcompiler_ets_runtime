@@ -519,7 +519,7 @@ bool JSProxy::HasProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
 OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy,
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver)
 {
-    STACK_LIMIT_CHECK(thread, OperationResult(thread, thread->GetException(), PropertyMetaData(false)));
+    STACK_LIMIT_CHECK(thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // step 1 ~ 10 are almost same as GetOwnProperty
     ASSERT(JSTaggedValue::IsPropertyKey(key));
@@ -984,7 +984,7 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
     }
     JSThread *thread = info->GetThread();
     // check stack overflow because infinite recursion may occur
-    if (thread->DoAsmStackOverflowCheck()) {
+    if (thread->DoStackLimitCheck()) {
         return JSTaggedValue::Exception();
     }
 
@@ -1026,9 +1026,15 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
     JSHandle<JSArray> arrHandle = JSArray::CreateArrayFromList(thread, taggedArray);
 
     // step 8 ~ 9 Call(trap, handler, «target, argArray, newTarget »).
-    JSHandle<JSTaggedValue> newTarget(info->GetNewTarget());
+    JSHandle<JSTaggedValue> newTarget(thread, info->GetNewTargetValue());
     const uint32_t argsLength = 3;  // 3: «target, argArray, newTarget »
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+
+    JSTaggedType *currentSp = reinterpret_cast<JSTaggedType *>(info);
+    InterpretedEntryFrame *currentEntryState = InterpretedEntryFrame::GetFrameFromSp(currentSp);
+    JSTaggedType *prevSp =  currentEntryState->base.prev;
+    thread->SetCurrentSPFrame(prevSp);
+
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, method, handler, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1048,7 +1054,7 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
 bool JSProxy::IsArray(JSThread *thread) const
 {
     // check stack overflow because infinite recursion may occur
-    if (thread->DoAsmStackOverflowCheck()) {
+    if (thread->DoStackLimitCheck()) {
         return false;
     }
     if (GetHandler().IsNull()) {

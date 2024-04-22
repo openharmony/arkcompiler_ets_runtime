@@ -92,7 +92,7 @@ std::string ICKindToString(ICKind kind);
  *      |    hight 32bits(jit hotness)   |
  *      +--------------------------------+
  *      |    low 32bits(osr hotness)     |
- *      |    hight 32bits(not in use)    |
+ *      | hight 32bits(baseline hotness) |
  *      +--------------------------------+
  */
 class ProfileTypeInfo : public TaggedArray {
@@ -107,12 +107,14 @@ public:
     static constexpr size_t INITIAL_PEROID_INDEX = 0;
     static constexpr size_t INITIAL_OSR_HOTNESS_THRESHOLD = 0;
     static constexpr size_t INITIAL_OSR_HOTNESS_CNT = 0;
+    static constexpr uint16_t JIT_DISABLE_FLAG = 0xFFFF;
     static constexpr size_t PRE_DUMP_PEROID_INDEX = 1;
     static constexpr size_t DUMP_PEROID_INDEX = 2;
     static constexpr size_t JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 4;  // 4 : 4 byte offset from bitfield
     static constexpr size_t JIT_CNT_OFFSET_FROM_THRESHOLD = 2;  // 2 : 2 byte offset from jit hotness threshold
     static constexpr size_t OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 8;  // 8 : 8 byte offset from bitfield
     static constexpr size_t OSR_CNT_OFFSET_FROM_OSR_THRESHOLD = 2;  // 2 : 2 byte offset from osr hotness threshold
+    static constexpr size_t BASELINEJIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 12; // 12: bytes offset from bitfield
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
@@ -157,6 +159,7 @@ public:
         Barriers::SetPrimitive<JSTaggedType>(GetData(), capacity * JSTaggedValue::TaggedTypeSize(),
                                              JSTaggedValue::Undefined().GetRawData());
         SetPeriodIndex(INITIAL_PEROID_INDEX);
+        SetJitHotnessThreshold(JIT_DISABLE_FLAG);
         SetOsrHotnessThreshold(INITIAL_OSR_HOTNESS_THRESHOLD);
         SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
     }
@@ -189,6 +192,16 @@ public:
     void SetOsrHotnessThreshold(uint16_t count)
     {
         Barriers::SetPrimitive(GetData(), GetOsrHotnessThresholdBitfieldOffset(), count);
+    }
+
+    uint16_t GetBaselineJitHotnessThreshold() const
+    {
+        return Barriers::GetValue<uint16_t>(GetData(), GetBaselineJitHotnessThresholdBitfiledOffset());
+    }
+
+    void SetBaselineJitHotnessThreshold(uint16_t count)
+    {
+        Barriers::SetPrimitive(GetData(), GetBaselineJitHotnessThresholdBitfiledOffset(), count);
     }
 
     uint16_t GetJitHotnessCnt() const
@@ -241,6 +254,12 @@ private:
     inline size_t GetOsrHotnessThresholdBitfieldOffset() const
     {
         return GetBitfieldOffset() + OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD;
+    }
+
+    // baselinejit hotness(16bits)
+    inline size_t GetBaselineJitHotnessThresholdBitfiledOffset() const
+    {
+        return GetBitfieldOffset() + BASELINEJIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD;
     }
 
     inline size_t GetOsrHotnessCntBitfieldOffset() const

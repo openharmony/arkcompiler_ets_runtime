@@ -17,13 +17,10 @@
 #define ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/type_info_accessors.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript::kungfu {
 class CircuitRootScope {
@@ -49,20 +46,20 @@ public:
     TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name,
                      NativeAreaAllocator* nativeAreaAllocator, PassOptions *options, uint32_t methodOffset)
         : circuit_(circuit),
-          thread_(ctx->GetEcmaVM()->GetJSThread()),
+          compilationEnv_(ctx->GetCompilationEnv()),
           acc_(circuit),
           glue_(acc_.GetGlueFromArgList()),
           builder_(circuit, ctx->GetCompilerConfig()),
-          tsManager_(ctx->GetTSManager()),
+          ptManager_(ctx->GetPTManager()),
           ctx_(ctx),
           passOptions_(options),
           enableLog_(enableLog),
           methodName_(name),
-          enableTypeLowering_(ctx->GetEcmaVM()->GetJSOptions().IsEnableTypeLowering()),
-          traceInline_(ctx->GetEcmaVM()->GetJSOptions().GetTraceInline()),
-          maxInlineBytecodesCount_(ctx->GetEcmaVM()->GetJSOptions().GetMaxInlineBytecodes()),
+          enableTypeLowering_(ctx->GetCompilationEnv()->GetJSOptions().IsEnableTypeLowering()),
+          traceInline_(ctx->GetCompilationEnv()->GetJSOptions().GetTraceInline()),
+          maxInlineBytecodesCount_(ctx->GetCompilationEnv()->GetJSOptions().GetMaxInlineBytecodes()),
           nativeAreaAllocator_(nativeAreaAllocator),
-          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
+          noCheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
           chunk_(circuit->chunk()),
           inlinedCallMap_(circuit->chunk()),
           argAcc_(circuit),
@@ -138,14 +135,14 @@ private:
     GateRef GetCallSetterValue(GateRef gate);
     GateRef GetFrameState(InlineTypeInfoAccessor &info);
     void SetInitCallTargetAndConstPoolId(InlineTypeInfoAccessor &info);
-    int32_t GetAccessorConstpoolId(InlineTypeInfoAccessor &info);
+    uint32_t GetAccessorConstpoolId(InlineTypeInfoAccessor &info);
 
     Circuit *circuit_ {nullptr};
-    JSThread *thread_ {nullptr};
+    CompilationEnv *compilationEnv_ {nullptr};
     GateAccessor acc_;
     GateRef glue_;
     CircuitBuilder builder_;
-    TSManager *tsManager_ {nullptr};
+    PGOTypeManager *ptManager_ {nullptr};
     PassContext *ctx_ {nullptr};
     PassOptions *passOptions_ {nullptr};
     bool enableLog_ {false};
@@ -161,7 +158,7 @@ private:
     size_t lastCallId_ {0};
     ArgumentAccessor argAcc_;
     uint32_t initMethodOffset_ {0};
-    int32_t initConstantPoolId_ {0};
+    uint32_t initConstantPoolId_ {0};
     GateRef initCallTarget_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu

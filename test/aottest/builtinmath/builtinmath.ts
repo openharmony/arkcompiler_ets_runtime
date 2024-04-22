@@ -14,125 +14,123 @@
  */
 
 declare function print(arg:any):string;
-declare function assert_true(condition: boolean):void;
-declare function assert_equal(a: Object, b: Object):void;
 function replace(a : number)
 {
     return a;
 }
 let len:number = 1;
 len = 1 / Math.sqrt(len);
-assert_equal(len, 1);
+print(len);
 
 len = 9 / len;
 len = Math.sqrt(len);
-assert_equal(len, 3);
+print(len);
 print(NaN);
 len = Math.sqrt(NaN);
-assert_true(isNaN(len));
+print(len);
 
 len = Math.sqrt(+0); // 0
-assert_equal(len, 0);
+print(len);
 len = Math.sqrt(Number.POSITIVE_INFINITY); // Infinity
-assert_equal(len, Infinity);
+print(len);
 len = Math.sqrt(Number.NEGATIVE_INFINITY); // NaN
-assert_true(isNaN(len));
+print(len);
 len = Math.sqrt(-1); // NaN
-assert_true(isNaN(len));
+print(len);
 function sqrt()
 {
     Math.sqrt = replace;
     len = Math.sqrt(9)
-    assert_equal(len, 9);
+    print(len);
 }
 sqrt()
 
 len = Math.cos(0); // 1
-assert_equal(len, 1);
+print(len);
 len = Math.cos(1); // 0.5....
-assert_equal(len, 0.5403023058681398);
+print(len);
 function cos()
 {
     Math.cos = replace;
     len = Math.cos(1);
-    assert_equal(len, 1);
+    print(len);
 }
 cos()
 
 len = Math.sin(0); // 0
-assert_equal(len, 0);
+print(len);
 len = Math.sin(1); // 0.84
-assert_equal(len, 0.8414709848078965);
+print(len);
 len = Math.sin(Math.PI / 2);
-assert_equal(len, 1);
+print(len);
 function sin()
 {
     Math.sin = replace;
     len = Math.sin(1)
-    assert_equal(len, 1);
+    print(len);
 }
 sin()
 
 len = Math.acos(0.5);// 1.0471975511965979
-assert_equal(len, 1.0471975511965979);
+print(len);
 function acos()
 {
     Math.acos = replace
     len = Math.acos(0.5)
-    assert_equal(len, 0.5);
+    print(len);
 }
 acos()
 
 len = Math.atan(2); // 1.1071487177940904
-assert_equal(len, 1.1071487177940904);
+print(len);
 function atan()
 {
     Math.atan = replace
     len = Math.atan(2)
-    assert_equal(len, 2);
+    print(len);
 }
 atan()
 
 len = Math.abs(Number.NaN);
-assert_true(isNaN(len));
+print(len);
 len = Math.abs(-Number.NaN);
-assert_true(isNaN(len));
+print(len);
 len = Math.abs(Number.NEGATIVE_INFINITY);
-assert_equal(len, Infinity);
+print(len);
 len = Math.abs(Number.POSITIVE_INFINITY);
-assert_equal(len, Infinity);
+print(len);
 len = Math.abs(9.6);
-assert_equal(len, 9.6);
+print(len);
 len = Math.abs(6);
-assert_equal(len, 6);
+print(len);
 len = Math.abs(-9.6);
-assert_equal(len, 9.6);
+print(len);
 len = Math.abs(-6);
-assert_equal(len, 6);
+print(len);
 function abs()
 {
     Math.abs = replace
     len = Math.abs(-9.6)
-    assert_equal(len, -9.6);
+    print(len);
 }
 abs()
 
 len = Math.floor(Number.NaN);
-assert_true(isNaN(len));
+print(len);
 len = Math.floor(-Number.NaN);
-assert_true(isNaN(len));
+print(len);
 len = Math.floor(Number.NEGATIVE_INFINITY);
-assert_equal(len, -Infinity);
+print(len);
 len = Math.floor(Number.POSITIVE_INFINITY);
-assert_equal(len, Infinity);
+print(len);
 len = Math.floor(9.6);
-assert_equal(len, 9);
+print(len);
 len = Math.floor(-9.6);
-assert_equal(len, -10);
+print(len);
 function floor()
 {
     Math.floor = replace
     len = Math.floor(-9.6)
-    assert_equal(len, -9.6);
+    print(len);
 }
 floor()

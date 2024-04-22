@@ -47,7 +47,8 @@ std::pair<JSTaggedValue, size_t> RegExpParserCache::GetCache(EcmaString *pattern
 {
     size_t hash = GetHash(pattern, flags);
     ParserKey &info = info_[hash];
-    if (info.flags_ != flags || !EcmaStringAccessor::StringsAreEqual(info.pattern_, pattern)) {
+    if (info.flags_ != flags || info.pattern_ == nullptr ||
+        !EcmaStringAccessor::StringsAreEqual(info.pattern_, pattern)) {
         return std::pair<JSTaggedValue, size_t>(JSTaggedValue::Hole(), 0);
     }
     groupName = info.newGroupNames_;

@@ -220,37 +220,101 @@
     V(JSTaggedValue, ExportOfScript, DEFAULT_EXPORT_OF_SCRIPT)                                      \
     V(JSTaggedValue, JsonObjectHclassCache, JSON_OBJECT_HCLASS_CACHE)
 
-#define GLOBAL_ENV_SHARED_FIELDS(V)                                                                 \
-    V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                 \
-    V(JSTaggedValue, SObjectFunctionPrototype, SHARED_OBJECT_FUNCTION_PROTOTYPE_INDEX)              \
-    V(JSTaggedValue, SFunctionFunction, SHARED_FUNCTION_FUNCTION_INDEX)                             \
-    V(JSTaggedValue, SFunctionPrototype, SHARED_FUNCTION_PROTOTYPE_INDEX)                           \
-    V(JSTaggedValue, SBuiltininSetFunction, SHARED_BUILTIN_SET_FUNCTION_INDEX)                      \
-    V(JSTaggedValue, SBuiltininMapFunction, SHARED_BUILTIN_MAP_FUNCTION_INDEX)                      \
-    V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                             \
-    V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)               \
-    V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)         \
-    V(JSTaggedValue, SNormalFunctionClass, SHARED_NORMAL_FUNCTION_CLASS)                            \
-    /* DETECTOR SYMBOL BEGIN (Maintain the same order with DETECTOR_SYMBOL_LIST) */                 \
-    V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                           \
-    V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                               \
-    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                         \
-    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)                                           \
-    /* DETECTOR SYMBOL END */                                                                       \
-    V(JSTaggedValue, IsConcatSpreadableSymbol, ISCONCAT_SYMBOL_INDEX)                               \
-    V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                   \
-    V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                              \
-    V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                               \
-    V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                        \
-    V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                             \
-    V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                   \
-    V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                   \
-    V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX)                              \
-    V(JSTaggedValue, HasInstanceSymbol, HASINSTANCE_SYMBOL_INDEX)                                   \
-    V(JSTaggedValue, SharedArrayFunction, SHARED_ARRAY_FUNCTION_INDEX)                              \
-    V(JSTaggedValue, SharedArrayPrototype, SHARED_ARRAY_PROTOTYPE_INDEX)                            \
-    V(JSTaggedValue, SharedMapPrototype,  SHARED_MAP_PROTOTYPE_INDEX)                               \
-    V(JSTaggedValue, SharedSetPrototype, SHARED_SET_PROTOTYPE_INDEX)
+#define GLOBAL_ENV_SHARED_FIELDS(V)                                                                              \
+    V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                              \
+    V(JSTaggedValue, SObjectFunctionPrototype, SHARED_OBJECT_FUNCTION_PROTOTYPE_INDEX)                           \
+    V(JSTaggedValue, SFunctionFunction, SHARED_FUNCTION_FUNCTION_INDEX)                                          \
+    V(JSTaggedValue, SFunctionPrototype, SHARED_FUNCTION_PROTOTYPE_INDEX)                                        \
+    V(JSTaggedValue, SBuiltininArrayBufferFunction, SENDABLE_BUILTIN_ARRAY_BUFFER_FUNCTION_INDEX)                \
+    V(JSTaggedValue, SBuiltininSetFunction, SHARED_BUILTIN_SET_FUNCTION_INDEX)                                   \
+    V(JSTaggedValue, SBuiltininMapFunction, SHARED_BUILTIN_MAP_FUNCTION_INDEX)                                   \
+    V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                                          \
+    V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)                            \
+    V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)                      \
+    V(JSTaggedValue, SNormalFunctionClass, SHARED_NORMAL_FUNCTION_CLASS)                                         \
+    /* DETECTOR SYMBOL BEGIN (Maintain the same order with DETECTOR_SYMBOL_LIST) */                              \
+    V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                                        \
+    V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                                            \
+    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                                      \
+    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)                                                        \
+    /* DETECTOR SYMBOL END */                                                                                    \
+    V(JSTaggedValue, IsConcatSpreadableSymbol, ISCONCAT_SYMBOL_INDEX)                                            \
+    V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                                \
+    V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                                           \
+    V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                                            \
+    V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                                     \
+    V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                                          \
+    V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                                \
+    V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                                \
+    V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX)                                           \
+    V(JSTaggedValue, HasInstanceSymbol, HASINSTANCE_SYMBOL_INDEX)                                                \
+    V(JSTaggedValue, SendableArrayBufferPrototype, SENDABLE_ARRAY_BUFFER_PROTOTYPE_INDEX)                        \
+    V(JSTaggedValue, SharedArrayFunction, SHARED_ARRAY_FUNCTION_INDEX)                                           \
+    V(JSTaggedValue, SharedArrayPrototype, SHARED_ARRAY_PROTOTYPE_INDEX)                                         \
+    V(JSTaggedValue, SharedMapPrototype,  SHARED_MAP_PROTOTYPE_INDEX)                                            \
+    V(JSTaggedValue, SharedSetPrototype, SHARED_SET_PROTOTYPE_INDEX)                                             \
+    V(JSTaggedValue, SharedTypedArrayFunction, SHARED_TYPED_ARRAY_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedTypedArrayPrototype, SHARED_TYPED_ARRAY_PROTOTYPE_INDEX)                              \
+    V(JSTaggedValue, SharedInt8ArrayFunction, SHARED_INT8_ARRAY_FUNCTION_INDEX)                                  \
+    V(JSTaggedValue, SharedUint8ArrayFunction, SHARED_UINT8_ARRAY_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedUint8ClampedArrayFunction, SHARED_UINT8_CLAMPED_ARRAY_FUNCTION_INDEX)                 \
+    V(JSTaggedValue, SharedInt16ArrayFunction, SHARED_INT16_ARRAY_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedUint16ArrayFunction, SHARED_UINT16_ARRAY_FUNCTION_INDEX)                              \
+    V(JSTaggedValue, SharedInt32ArrayFunction, SHARED_INT32_ARRAY_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedUint32ArrayFunction, SHARED_UINT32_ARRAY_FUNCTION_INDEX)                              \
+    V(JSTaggedValue, SharedFloat32ArrayFunction, SHARED_FLOAT32_ARRAY_FUNCTION_INDEX)                            \
+    V(JSTaggedValue, SharedFloat64ArrayFunction, SHARED_FLOAT64_ARRAY_FUNCTION_INDEX)                            \
+    V(JSTaggedValue, SharedBigInt64ArrayFunction, SHARED_BIGINT64_ARRAY_FUNCTION_INDEX)                          \
+    V(JSTaggedValue, SharedBigUint64ArrayFunction, SHARED_BIGUINT64_ARRAY_FUNCTION_INDEX)                        \
+    V(JSTaggedValue, SharedSpecificTypedArrayFunctionClass, SHARED_SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \
+    V(JSTaggedValue, SharedInt8ArrayFunctionPrototype, SHARED_INT8_ARRAY_FUNCTION_PROTOTYPE_INDEX)               \
+    V(JSTaggedValue, SharedUint8ArrayFunctionPrototype, SHARED_UINT8_ARRAY_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedUint8ClampedArrayFunctionPrototype, SHARED_UINT8_CLAMPED_ARRAY_FUNCTION_PROTO_INDEX)  \
+    V(JSTaggedValue, SharedInt16ArrayFunctionPrototype, SHARED_INT16_ARRAY_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedUint16ArrayFunctionPrototype, SHARED_UINT16_ARRAY_FUNCTION_PROTOTYPE_INDEX)           \
+    V(JSTaggedValue, SharedInt32ArrayFunctionPrototype, SHARED_INT32_ARRAY_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedUint32ArrayFunctionPrototype, SHARED_UINT32_ARRAY_FUNCTION_PROTOTYPE_INDEX)           \
+    V(JSTaggedValue, SharedFloat32ArrayFunctionPrototype, SHARED_FLOAT32_ARRAY_FUNCTION_PROTOTYPE_INDEX)         \
+    V(JSTaggedValue, SharedFloat64ArrayFunctionPrototype, SHARED_FLOAT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)         \
+    V(JSTaggedValue, SharedBigInt64ArrayFunctionPrototype, SHARED_BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)       \
+    V(JSTaggedValue, SharedBigUint64ArrayFunctionPrototype, SHARED_BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)     \
+    V(JSTaggedValue, SharedInt8ArrayRootHclass, SHARED_INT8_ARRAY_ROOT_HCLASS_INDEX)                             \
+    V(JSTaggedValue, SharedUint8ArrayRootHclass, SHARED_UINT8_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, SharedUint8ClampedArrayRootHclass, SHARED_UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX)            \
+    V(JSTaggedValue, SharedInt16ArrayRootHclass, SHARED_INT16_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, SharedUint16ArrayRootHclass, SHARED_UINT16_ARRAY_ROOT_HCLASS_INDEX)                         \
+    V(JSTaggedValue, SharedInt32ArrayRootHclass, SHARED_INT32_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, SharedUint32ArrayRootHclass, SHARED_UINT32_ARRAY_ROOT_HCLASS_INDEX)                         \
+    V(JSTaggedValue, SharedFloat32ArrayRootHclass, SHARED_FLOAT32_ARRAY_ROOT_HCLASS_INDEX)                       \
+    V(JSTaggedValue, SharedFloat64ArrayRootHclass, SHARED_FLOAT64_ARRAY_ROOT_HCLASS_INDEX)                       \
+    V(JSTaggedValue, SharedBigInt64ArrayRootHclass, SHARED_BIGINT64_ARRAY_ROOT_HCLASS_INDEX)                     \
+    V(JSTaggedValue, SharedBigUint64ArrayRootHclass, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_INDEX)                   \
+    V(JSTaggedValue, SharedInt8ArrayRootHclassOnHeap, SHARED_INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)               \
+    V(JSTaggedValue, SharedUint8ArrayRootHclassOnHeap, SHARED_UINT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, SharedUint8ClampedArrayRootHclassOnHeap, SHARED_UINT8_CLAMPED_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)  \
+    V(JSTaggedValue, SharedInt16ArrayRootHclassOnHeap, SHARED_INT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, SharedUint16ArrayRootHclassOnHeap, SHARED_UINT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)           \
+    V(JSTaggedValue, SharedInt32ArrayRootHclassOnHeap, SHARED_INT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, SharedUint32ArrayRootHclassOnHeap, SHARED_UINT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)           \
+    V(JSTaggedValue, SharedFloat32ArrayRootHclassOnHeap, SHARED_FLOAT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
+    V(JSTaggedValue, SharedFloat64ArrayRootHclassOnHeap, SHARED_FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
+    V(JSTaggedValue, SharedBigInt64ArrayRootHclassOnHeap, SHARED_BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)       \
+    V(JSTaggedValue, SharedBigUint64ArrayRootHclassOnHeap, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)     \
+    V(JSTaggedValue, SharedJSONObjectFunction, SHARED_JSON_OBJECT_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedJSONTrueFunction, SHARED_JSON_TRUE_FUNCTION_INDEX)                                    \
+    V(JSTaggedValue, SharedJSONFalseFunction, SHARED_JSON_FALSE_FUNCTION_INDEX)                                  \
+    V(JSTaggedValue, SharedJSONNullFunction, SHARED_JSON_NULL_FUNCTION_INDEX)                                    \
+    V(JSTaggedValue, SharedJSONNumberFunction, SHARED_JSON_NUMBER_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedJSONStringFunction, SHARED_JSON_STRING_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedJSONArrayFunction, SHARED_JSON_ARRAY_FUNCTION_INDEX)                                  \
+    V(JSTaggedValue, SharedJSONObjectFunctionPrototype, SHARED_JSON_OBJECT_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedJSONTrueFunctionPrototype, SHARED_JSON_TRUE_FUNCTION_PROTOTYPE_INDEX)                 \
+    V(JSTaggedValue, SharedJSONFalseFunctionPrototype, SHARED_JSON_FALSE_FUNCTION_PROTOTYPE_INDEX)               \
+    V(JSTaggedValue, SharedJSONNullFunctionPrototype, SHARED_JSON_NULL_FUNCTION_PROTOTYPE_INDEX)                 \
+    V(JSTaggedValue, SharedJSONNumberFunctionPrototype, SHARED_JSON_NUMBER_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedJSONStringFunctionPrototype, SHARED_JSON_STRING_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedJSONArrayFunctionPrototype, SHARED_JSON_ARRAY_FUNCTION_PROTOTYPE_INDEX)
+
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \
@@ -259,7 +323,7 @@
 
 namespace panda::ecmascript {
 #define GLOBAL_ENV_FIELD_ENUM_ITEM(Type, Name, INDEX) INDEX,
-    enum class GlobalEnvField: uint8_t {
+    enum class GlobalEnvField: uint16_t {
         GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ENUM_ITEM)
         FINAL_INDEX
     };

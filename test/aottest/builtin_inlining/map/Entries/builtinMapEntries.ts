@@ -109,6 +109,7 @@ print(iter1.next().value); //: undefined
 
 // Check using after inserting / deleting
 let iter2 = myMap.entries();
+//aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapEntries
 myMap.delete(-1);
 myMap.set(2000, 1e-98);
 myMap.set("xyz", -100);

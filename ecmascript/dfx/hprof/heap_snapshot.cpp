@@ -101,10 +101,10 @@ HeapSnapshot::~HeapSnapshot()
     stringTable_ = nullptr;
 }
 
-bool HeapSnapshot::BuildUp()
+bool HeapSnapshot::BuildUp(bool isSimplify)
 {
-    FillNodes(true);
-    FillEdges();
+    FillNodes(true, isSimplify);
+    FillEdges(isSimplify);
     AddSyntheticRoot();
     return Verify();
 }
@@ -278,6 +278,15 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_SHARED_FUNCTION: {
             return GetString("JSSharedFunction");
         }
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY: {
+            return GetString("SharedJSONValue");
+        }
         case JSType::FREE_OBJECT_WITH_ONE_FIELD:
         case JSType::FREE_OBJECT_WITH_NONE_FIELD:
         case JSType::FREE_OBJECT_WITH_TWO_FIELD:
@@ -382,6 +391,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("StringIterator");
         case JSType::JS_ARRAY_BUFFER:
             return GetString("ArrayBuffer");
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            return GetString("SendableArrayBuffer");
         case JSType::JS_SHARED_ARRAY_BUFFER:
             return GetString("SharedArrayBuffer");
         case JSType::JS_PROXY_REVOC_FUNCTION:
@@ -542,6 +553,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("ResolvedBinding");
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             return GetString("ResolvedIndexBinding");
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            return GetString("ResolvedRecordIndexBinding");
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             return GetString("ResolvedRecordBinding");
         case JSType::JS_MODULE_NAMESPACE:
@@ -589,20 +602,6 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
                 return GetString("MachineCode");
             case JSType::CLASS_INFO_EXTRACTOR:
                 return GetString("ClassInfoExtractor");
-            case JSType::TS_OBJECT_TYPE:
-                return GetString("TSObjectType");
-            case JSType::TS_INTERFACE_TYPE:
-                return GetString("TSInterfaceType");
-            case JSType::TS_CLASS_TYPE:
-                return GetString("TSClassType");
-            case JSType::TS_UNION_TYPE:
-                return GetString("TSUnionType");
-            case JSType::TS_CLASS_INSTANCE_TYPE:
-                return GetString("TSClassInstanceType");
-            case JSType::TS_FUNCTION_TYPE:
-                return GetString("TSFunctionType");
-            case JSType::TS_ARRAY_TYPE:
-                return GetString("TSArrayType");
             default:
                 break;
         }
@@ -649,24 +648,18 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
     return nodeType;
 }
 
-void HeapSnapshot::FillNodes(bool isInFinish)
+void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
 {
-    SharedHeap *sHeap = SharedHeap::GetInstance();
-    if (sHeap != nullptr) {
-        sHeap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
-            GenerateNode(JSTaggedValue(obj), 0, isInFinish);
-        });
-    }
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
-        heap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
-            GenerateNode(JSTaggedValue(obj), 0, isInFinish);
-        });
+        heap->IterateOverObjects([this, isInFinish, isSimplify](TaggedObject *obj) {
+            GenerateNode(JSTaggedValue(obj), 0, isInFinish, isSimplify);
+        }, isSimplify);
     }
 }
 
-Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish)
+Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish, bool isSimplify)
 {
     Node *node = nullptr;
     if (entry.IsHeapObject()) {
@@ -723,7 +716,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
                 return existNode;
             }
         }
-    } else {
+    } else if (!isSimplify) {
         CString primitiveName;
         if (entry.IsInt()) {
             if (!captureNumericValue_) {
@@ -1034,7 +1027,7 @@ Node *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bool is
     return node;
 }
 
-void HeapSnapshot::FillEdges()
+void HeapSnapshot::FillEdges(bool isSimplify)
 {
     size_t length = nodes_.size();
     auto iter = nodes_.begin();
@@ -1061,7 +1054,7 @@ void HeapSnapshot::FillEdges()
                 entryTo = entryMap_.FindEntry(Node::NewAddress(to));
             }
             if (entryTo == nullptr) {
-                entryTo = GenerateNode(toValue, 0, true);
+                entryTo = GenerateNode(toValue, 0, true, isSimplify);
             }
             if (entryTo != nullptr) {
                 Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
@@ -1157,7 +1150,7 @@ void HeapSnapshot::AddSyntheticRoot()
     Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
                                         NodeType::SYNTHETIC, 0, 0, 0);
     InsertNodeAt(0, syntheticRoot);
-
+    CUnorderedSet<JSTaggedType> values {};
     int edgeOffset = 0;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ROOT_EDGE_BUILDER_CORE(type, slot)                                                            \
@@ -1167,6 +1160,12 @@ void HeapSnapshot::AddSyntheticRoot()
             TaggedObject *root = value.GetTaggedObject();                                             \
             Node *rootNode = entryMap_.FindEntry(Node::NewAddress(root));                             \
             if (rootNode != nullptr) {                                                                \
+                JSTaggedType valueTo = value.GetRawData();                                            \
+                auto it = values.find(valueTo);                                                       \
+                if (it != values.end()) {                                                             \
+                    return;                                                                           \
+                }                                                                                     \
+                values.insert(valueTo);                                                               \
                 Edge *edge = Edge::NewEdge(chunk_,                                                    \
                     edgeCount_, EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-")); \
                 InsertEdgeAt(edgeOffset, edge);                                                       \
@@ -1176,7 +1175,8 @@ void HeapSnapshot::AddSyntheticRoot()
         }                                                                                             \
     } while (false)
 
-    RootVisitor rootEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type, ObjectSlot slot) {
+    RootVisitor rootEdgeBuilder = [this, syntheticRoot, &edgeOffset, &values](
+        [[maybe_unused]] Root type, ObjectSlot slot) {
         ROOT_EDGE_BUILDER_CORE(type, slot);
     };
     RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
@@ -1184,8 +1184,8 @@ void HeapSnapshot::AddSyntheticRoot()
          [[maybe_unused]] uintptr_t baseOldObject) {
     };
 
-    RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type,
-                                                                               ObjectSlot start, ObjectSlot end) {
+    RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &edgeOffset, &values]([[maybe_unused]] Root type,
+        ObjectSlot start, ObjectSlot end) {
         for (ObjectSlot slot = start; slot < end; slot++) {
             ROOT_EDGE_BUILDER_CORE(type, slot);
         }

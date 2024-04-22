@@ -156,11 +156,10 @@ public:
     GateRef FastCallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
     GateRef CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
     GateRef GetAotCodeAddr(GateRef jsFunc);
+    GateRef GetBaselineCodeAddr(GateRef baselineCode);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
-    GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
-                               bool isNew = false, const char* comment = nullptr);
-    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args,
-                                            const char* comment = nullptr);
+    GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
+    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args);
     void DebugPrint(GateRef thread, std::initializer_list<GateRef> args);
     void FatalPrint(GateRef thread, std::initializer_list<GateRef> args);
     // memory
@@ -251,7 +250,7 @@ public:
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringIterator(GateRef obj);
-    GateRef TaggedIsShared(GateRef obj);
+    GateRef TaggedIsSharedObj(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     GateRef TaggedIsSymbol(GateRef obj);
@@ -274,9 +273,11 @@ public:
     GateRef Int64ToTaggedInt(GateRef x);
     GateRef Int64ToTaggedIntPtr(GateRef x);
     GateRef DoubleToTaggedDoublePtr(GateRef x);
+    GateRef BooleanToTaggedBooleanPtr(GateRef x);
     GateRef TaggedPtrToTaggedDoublePtr(GateRef x);
     GateRef TaggedPtrToTaggedIntPtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
+    GateRef CastFloat32ToInt32(GateRef x);
     GateRef TaggedTrue();
     GateRef TaggedFalse();
     GateRef TaggedUndefined();
@@ -284,6 +285,7 @@ public:
     GateRef Int8Equal(GateRef x, GateRef y);
     GateRef Int8GreaterThanOrEqual(GateRef x, GateRef y);
     GateRef Equal(GateRef x, GateRef y);
+    GateRef NotEqual(GateRef x, GateRef y);
     GateRef Int32Equal(GateRef x, GateRef y);
     GateRef Int32NotEqual(GateRef x, GateRef y);
     GateRef Int64Equal(GateRef x, GateRef y);
@@ -307,6 +309,7 @@ public:
     GateRef Int64LessThanOrEqual(GateRef x, GateRef y);
     GateRef Int64GreaterThanOrEqual(GateRef x, GateRef y);
     GateRef Int64UnsignedLessThanOrEqual(GateRef x, GateRef y);
+    GateRef Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y);
     GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     // cast operation
     GateRef ChangeInt64ToIntPtr(GateRef val);
@@ -322,6 +325,7 @@ public:
     GateRef GetPropertiesArray(GateRef object);
     // SetProperties in js_object.h
     void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray);
+    GateRef GetHash(GateRef object);
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
@@ -346,6 +350,7 @@ public:
     GateRef IsExtensible(GateRef object);
     GateRef TaggedObjectIsEcmaObject(GateRef obj);
     GateRef IsEcmaObject(GateRef obj);
+    GateRef IsDataView(GateRef obj);
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
     GateRef IsLineString(GateRef obj);
@@ -452,6 +457,9 @@ public:
     GateRef GetLayoutFromHClass(GateRef hClass);
     GateRef GetBitFieldFromHClass(GateRef hClass);
     GateRef GetLengthFromString(GateRef value);
+    GateRef CalcHashcodeForInt(GateRef value);
+    void CalcHashcodeForDouble(GateRef value, Variable *res, Label *exit);
+    void CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
     inline GateRef IsIntegerString(GateRef string);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
@@ -588,6 +596,7 @@ public:
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);
     GateRef ChangeFloat64ToInt32(GateRef x);
+    GateRef TruncDoubleToFloat32(GateRef x);
     GateRef DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef value);
     GateRef ToObject(GateRef glue, GateRef obj);
     GateRef DeleteProperty(GateRef glue, GateRef obj, GateRef value);
@@ -712,6 +721,7 @@ public:
     GateRef FastAdd(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastSub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastToBoolean(GateRef value, bool flag = true);
+    GateRef FastToBooleanBaseline(GateRef value, bool flag = true);
 
     // Add SpecialContainer
     GateRef GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType);
@@ -807,6 +817,9 @@ public:
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args,
                            ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
+    GateRef JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
+                                      GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
+                                      ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
@@ -818,7 +831,7 @@ public:
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);
-    void CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, GateRef actualNumArgs,
+    void CallFastBuiltin(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, GateRef actualNumArgs,
                       GateRef callField, GateRef method, Label* notFastBuiltins, Label* exit, Variable* result,
                       std::initializer_list<GateRef> args, JSCallMode mode);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
@@ -841,13 +854,19 @@ public:
     GateRef AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength);
     GateRef IntToEcmaString(GateRef glue, GateRef number);
     GateRef NumberToString(GateRef glue, GateRef number);
+    inline GateRef GetViewedArrayBuffer(GateRef dataView);
+    inline GateRef GetByteOffset(GateRef dataView);
+    inline GateRef GetByteLength(GateRef dataView);
+    inline GateRef GetArrayBufferData(GateRef buffer);
+    GateRef IsDetachedBuffer(GateRef buffer);
     inline GateRef IsMarkerCellValid(GateRef cell);
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
+    GateRef ChangeTaggedPointerToInt64(GateRef x);
+    GateRef GetLastLeaveFrame(GateRef glue);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
-    GateRef ChangeTaggedPointerToInt64(GateRef x);
     template<OpCode Op>
     GateRef FastAddSubAndMul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastIntDiv(GateRef left, GateRef right, Label *bailout, ProfileOperation callback);
@@ -863,6 +882,8 @@ private:
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
     bool IsCallModeSupportPGO(JSCallMode mode);
+    bool IsCallModeSupportCallBuiltin(JSCallMode mode);
+    GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
 
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
