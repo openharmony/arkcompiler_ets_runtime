@@ -565,7 +565,7 @@ JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const 
         }
     } while (p != end);
 
-    if (size == 0) {
+    if (size == 0 || !IsValidHexadecimalString(size, radix, stripPrefix)) {
         return nanResult;
     }
 
@@ -573,6 +573,15 @@ JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const 
         result = -result;
     }
     return BuiltinsBase::GetTaggedDouble(result);
+}
+
+bool NumberHelper::IsValidHexadecimalString(const int size, const int radix, const bool strip)
+{
+    // if the input string `0x  `, size is 1 (strip prefix is true).
+    if (strip && size == 1 && radix == HEXADECIMAL) {
+        return false;
+    }
+    return true;
 }
 
 char NumberHelper::Carry(char current, int radix)
