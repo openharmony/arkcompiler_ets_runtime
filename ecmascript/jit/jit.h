@@ -70,9 +70,19 @@ public:
     // dfx for jit preheat compile
     static void CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction);
 
-    bool IsAppJit()
+    bool IsAppJit() const
     {
         return isApp_;
+    }
+
+    void SetProfileNeedDump(bool isNeed)
+    {
+        isProfileNeedDump_ = isNeed;
+    }
+
+    bool IsProfileNeedDump() const
+    {
+        return isProfileNeedDump_;
     }
     NO_COPY_SEMANTIC(Jit);
     NO_MOVE_SEMANTIC(Jit);
@@ -161,6 +171,7 @@ private:
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };
     bool isApp_ { false };
+    bool isProfileNeedDump_ { true };
 
     std::unordered_map<uint32_t, std::deque<std::shared_ptr<JitTask>>> installJitTasks_;
     Mutex installJitTasksDequeMtx_;
