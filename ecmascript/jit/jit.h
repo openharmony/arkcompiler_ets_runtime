@@ -97,7 +97,10 @@ public:
                 JSThread *thread = env->GetJSThread();
                 ASSERT(thread->IsJitThread());
                 thread_ = static_cast<JitThread*>(thread);
-                thread_->ManagedCodeBegin();
+                if (thread_->GetState() != ThreadState::RUNNING) {
+                    thread_->ManagedCodeBegin();
+                    isInManagedCode_ = true;
+                }
                 thread_->GetHostThread()->GetJitLock()->Lock();
             }
         }
@@ -109,7 +112,10 @@ public:
                 JSThread *thread = env->GetJSThread();
                 ASSERT(thread->IsJitThread());
                 thread_ = static_cast<JitThread*>(thread);
-                thread_->ManagedCodeBegin();
+                if (thread_->GetState() != ThreadState::RUNNING) {
+                    thread_->ManagedCodeBegin();
+                    isInManagedCode_ = true;
+                }
                 thread_->GetHostThread()->GetJitLock()->Lock();
             }
         }
@@ -118,11 +124,14 @@ public:
         {
             if (thread_ != nullptr) {
                 thread_->GetHostThread()->GetJitLock()->Unlock();
-                thread_->ManagedCodeEnd();
+                if (isInManagedCode_) {
+                    thread_->ManagedCodeEnd();
+                }
             }
         }
         JitThread *thread_ {nullptr};
         TimeScope scope_;
+        bool isInManagedCode_{false};
         ALLOW_HEAP_ACCESS
         NO_COPY_SEMANTIC(JitLockHolder);
         NO_MOVE_SEMANTIC(JitLockHolder);
