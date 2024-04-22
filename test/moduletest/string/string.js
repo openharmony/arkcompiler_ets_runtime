@@ -270,18 +270,18 @@ const matchStr = "abcd"
 const offset = 0
 
 class C3{ 
-	constructor(offset) {
+    constructor(offset) {
     let bb = textStr.startsWith(matchStr, offset);
-	print(bb); // true
+    print(bb); // true
     }
 }
 new C3();
 
 const offset1 = 1
 class C4{ 
-	constructor(offset1) {
+    constructor(offset1) {
     let flag = textStr.startsWith(matchStr, offset1);
-	print(flag); // false
+    print(flag); // false
     }
 }
 new C4();
