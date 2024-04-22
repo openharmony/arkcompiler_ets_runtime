@@ -45,7 +45,7 @@ enum class RecordKeyData : uint8_t {
 enum class RecordKeyDuration : uint8_t {
     GC_TOTAL_TIME = 0,
     GC_MARK_TIME,
-    GC_EVACUTE_TIME,
+    GC_EVACUATE_TIME,
     NUM_OF_KEY_DURATION,
     FIRST_DATA = GC_TOTAL_TIME,
 };

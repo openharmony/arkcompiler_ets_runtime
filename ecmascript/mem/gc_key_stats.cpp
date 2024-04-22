@@ -77,7 +77,7 @@ void GCKeyStats::AddGCStatsToKey()
         gcStats_->GetScopeDuration(GCStats::Scope::ScopeId::TotalGC));
     AddRecordKeyDuration(RecordKeyDuration::GC_MARK_TIME,
         gcStats_->GetScopeDuration(GCStats::Scope::ScopeId::Mark));
-    AddRecordKeyDuration(RecordKeyDuration::GC_EVACUTE_TIME,
+    AddRecordKeyDuration(RecordKeyDuration::GC_EVACUATE_TIME,
         gcStats_->GetScopeDuration(GCStats::Scope::ScopeId::Evacuate));
 
     if (CheckLastSendTimeIfSend() && CheckCountIfSend()) {
@@ -99,7 +99,7 @@ void GCKeyStats::SendSysEvent() const
         "GC_TOTAL_COUNT", gcCount_,
         "GC_TOTAL_TIME", static_cast<int>(GetRecordKeyDuration(RecordKeyDuration::GC_TOTAL_TIME)),
         "GC_MARK_TIME", static_cast<int>(GetRecordKeyDuration(RecordKeyDuration::GC_MARK_TIME)),
-        "GC_EVACUTE_TIME", static_cast<int>(GetRecordKeyDuration(RecordKeyDuration::GC_EVACUTE_TIME)),
+        "GC_EVACUATE_TIME", static_cast<int>(GetRecordKeyDuration(RecordKeyDuration::GC_EVACUATE_TIME)),
         "GC_LONG_TIME", recordCount_,
         "GC_TOTAL_MEM_USED", GetRecordDataStats(RecordKeyData::GC_TOTAL_MEM_USED),
         "GC_TOTAL_MEM_COMMITTED", GetRecordDataStats(RecordKeyData::GC_TOTAL_MEM_COMMITTED),
