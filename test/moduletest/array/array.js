@@ -627,3 +627,10 @@ var result_toSorted1 = arr_toSorted1.toSorted();
 print(result_toSorted1);
 var result_toSorted2 = arr_toSorted2.toSorted();
 print(result_toSorted2);
+
+const v0 = [0, 1];
+const mapEd = v0.map(() => {
+  v0["pop"]();
+});
+
+print(new Uint16Array(v0).length)
