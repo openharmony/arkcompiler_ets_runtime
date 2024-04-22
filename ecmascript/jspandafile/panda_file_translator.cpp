@@ -38,7 +38,7 @@ static T *InitializeMemory(T *mem, Args... args)
     return new (mem) T(std::forward<Args>(args)...);
 }
 
-void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName)
+void PandaFileTranslator::TranslateClasses(const JSThread *thread, JSPandaFile *jsPandaFile, const CString &methodName)
 {
     ASSERT(jsPandaFile != nullptr && jsPandaFile->GetMethodLiterals() != nullptr);
     MethodLiteral *methodLiterals = jsPandaFile->GetMethodLiterals();
@@ -54,8 +54,8 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
         panda_file::ClassDataAccessor cda(*pf, classId);
         CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
         bool isUpdateMainMethodIndex = false;
-        cda.EnumerateMethods([jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, &methodName, &recordName,
-                              &isUpdateMainMethodIndex]
+        cda.EnumerateMethods([thread, jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, &methodName,
+                              &recordName, &isUpdateMainMethodIndex]
             (panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
             CString name = reinterpret_cast<const char *>(jsPandaFile->GetStringData(mda.GetNameId()).data);
@@ -74,7 +74,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
 
             MethodLiteral *methodLiteral = methodLiterals + (methodIdx++);
             InitializeMemory(methodLiteral, methodId);
-            methodLiteral->Initialize(jsPandaFile);
+            methodLiteral->Initialize(jsPandaFile, thread);
 
             if (jsPandaFile->IsNewVersion()) {
                 panda_file::IndexAccessor indexAccessor(*pf, methodId);

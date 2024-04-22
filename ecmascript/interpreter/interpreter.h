@@ -37,6 +37,7 @@ class EcmaInterpreter {
 public:
     static const int16_t METHOD_HOTNESS_THRESHOLD = 0x700;
     static const int16_t METHOD_HOTNESS_THRESHOLD_FACTOR = 10;
+    static const int16_t CANCEL_METHOD_HOTNESS_THRESHOLD = 0;
     enum ActualNumArgsOfCall : uint8_t { CALLARG0 = 0, CALLARG1, CALLARGS2, CALLARGS3 };
 
     static inline JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
@@ -75,7 +76,7 @@ public:
     static inline uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
-    static inline int16_t GetHotnessCounter(uint32_t codeSize);
+    static inline int16_t GetHotnessCounter(uint32_t codeSize, bool cancelThreshold);
     static inline JSTaggedType *GetInterpreterFrameEnd(JSThread *thread, JSTaggedType *sp);
 private:
     static inline void InitStackFrameForSP(JSTaggedType *prevSp);

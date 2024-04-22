@@ -2674,9 +2674,11 @@ DECLARE_ASM_HANDLER(HandleReturn)
     BRANCH(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
+        GateRef func = GetFunctionFromFrame(frame);
         GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
-        GateRef isHotForJitCompiling = ProfilerStubBuilder(env).IsHotForJitCompiling(*varProfileTypeInfo, callback);
-        BRANCH(BoolAnd(isProfileDumped, isHotForJitCompiling), &tryContinue, &updateHotness);
+        GateRef isJitCompiled =
+            ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, func, *varProfileTypeInfo, callback);
+        BRANCH(BoolAnd(isProfileDumped, isJitCompiled), &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -2745,9 +2747,11 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     BRANCH(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
+        GateRef func = GetFunctionFromFrame(frame);
         GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
-        GateRef isHotForJitCompiling = ProfilerStubBuilder(env).IsHotForJitCompiling(*varProfileTypeInfo, callback);
-        BRANCH(BoolAnd(isProfileDumped, isHotForJitCompiling), &tryContinue, &updateHotness);
+        GateRef isJitCompiled =
+            ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, func, *varProfileTypeInfo, callback);
+        BRANCH(BoolAnd(isProfileDumped, isJitCompiled), &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {

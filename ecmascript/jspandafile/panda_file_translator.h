@@ -37,7 +37,7 @@ public:
     NO_MOVE_SEMANTIC(PandaFileTranslator);
     static JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                              std::string_view entryPoint);
-    static void TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName);
+    static void TranslateClasses(const JSThread *thread, JSPandaFile *jsPandaFile, const CString &methodName);
 
 private:
     static JSHandle<Program> GenerateProgramInternal(EcmaVM *vm, MethodLiteral *mainMethodLiteral,
