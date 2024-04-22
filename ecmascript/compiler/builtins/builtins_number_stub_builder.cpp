@@ -57,18 +57,17 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
     Label thisCollectionObj(env);
     Label slowPath(env);
     Label slowPath1(env);
-    Label slowPath2(env);
     Label exit(env);
 
     Label hasArg(env);
     Label numberCreate(env);
     Label newTargetIsHeapObject(env);
-    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
     Bind(&newTargetIsHeapObject);
     BRANCH(Int64GreaterThan(numArgs_, IntPtr(0)), &hasArg, &numberCreate);
     Bind(&hasArg);
     {
-        GateRef value = GetArgNCheck(Int32(0));
+        GateRef value = GetArgFromArgv(Int32(0));
         Label number(env);
         BRANCH(TaggedIsNumber(value), &number, &slowPath);
         Bind(&number);
@@ -91,7 +90,7 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
             Label intialHClassIsHClass(env);
             GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
+            BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath1);
             Bind(&intialHClassIsHClass);
             {
                 NewObjectStubBuilder newBuilder(this);
@@ -105,12 +104,11 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
                     Jump(&exit);
                 }
             }
-            Bind(&slowPath2);
+            Bind(&slowPath1);
             {
-                auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(NumberConstructor));
                 GateRef argv = GetArgv();
                 res = CallBuiltinRuntimeWithNewTarget(glue_,
-                    { glue_, nativeCode, func, thisValue_, numArgs_, argv, newTarget }, name.c_str());
+                    { glue_, nativeCode, func, thisValue_, numArgs_, argv, newTarget });
                 Jump(&exit);
             }
         }
@@ -118,15 +116,8 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
 
     Bind(&slowPath);
     {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(NumberConstructor));
         GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue_, { glue_, nativeCode, func, thisValue_, numArgs_, argv }, true, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&slowPath1);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(NumberConstructor));
-        res = CallSlowPath(nativeCode, glue_, thisValue_, numArgs_, func, newTarget, name.c_str());
+        res = CallBuiltinRuntime(glue_, { glue_, nativeCode, func, thisValue_, numArgs_, argv }, true);
         Jump(&exit);
     }
     Bind(&exit);

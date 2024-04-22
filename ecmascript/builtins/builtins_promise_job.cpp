@@ -167,7 +167,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         }
         // translate requestPath to OhmUrl
         if (vm->IsNormalizedOhmUrlPack()) {
-            ModulePathHelper::TranslateExpressionToNormalized(thread, fileNameStr, recordNameStr, requestPath);
+            ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), fileNameStr, recordNameStr,
+                requestPath);
             LOG_ECMA(DEBUG) << "Exit Translate Normalized OhmUrl for DynamicImport, resultPath: " << requestPath;
         } else if (ModulePathHelper::NeedTranstale(requestPath)) {
             ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);

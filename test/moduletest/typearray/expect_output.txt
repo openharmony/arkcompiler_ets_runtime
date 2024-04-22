@@ -72,6 +72,51 @@ true
 1,2,3,4,8,9,7,8,9
 1,2,3,4,1,2,3,4,5
 1,1,2,3,4,5,6,7,8
+Float64Array test success !!!
+Float32Array test success !!!
+Int32Array test success !!!
+Int16Array test success !!!
+Int8Array test success !!!
+Uint32Array test success !!!
+Uint16Array test success !!!
+Uint8Array test success !!!
+Uint8ClampedArray test success !!!
 true
 false
 true
+5
+undefined
+undefined
+5
+Float64Array test success !!!
+Float32Array test success !!!
+Int32Array test success !!!
+Int16Array test success !!!
+Int8Array test success !!!
+Uint32Array test success !!!
+Uint16Array test success !!!
+Uint8Array test success !!!
+Uint8ClampedArray test success !!!
+Float64Array test success !!!
+Float32Array test success !!!
+Int32Array test success !!!
+Int16Array test success !!!
+Int8Array test success !!!
+Uint32Array test success !!!
+Uint16Array test success !!!
+Uint8Array test success !!!
+Uint8ClampedArray test success !!!
+BigInt64Array test success !!!
+BigUint64Array test success !!!
+-1
+Float64Array test success !!!
+Float32Array test success !!!
+Int32Array test success !!!
+Int16Array test success !!!
+Int8Array test success !!!
+Uint32Array test success !!!
+Uint16Array test success !!!
+Uint8Array test success !!!
+Uint8ClampedArray test success !!!
+BigInt64Array test success !!!
+BigUint64Array test success !!!

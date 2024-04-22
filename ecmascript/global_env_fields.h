@@ -202,7 +202,6 @@
     V(JSTaggedValue, ProxyRevocFunctionClass, PROXY_REVOC_FUNCTION_CLASS)                           \
     V(JSTaggedValue, NativeErrorFunctionClass, NATIVE_ERROR_FUNCTION_CLASS)                         \
     V(JSTaggedValue, SpecificTypedArrayFunctionClass, SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \
-    V(JSTaggedValue, SharedSpecificTypedArrayFunctionClass, SHARED_SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \
     V(JSTaggedValue, ConstructorFunctionClass, CONSTRUCTOR_FUNCTION_CLASS)                          \
     V(JSTaggedValue, NormalFunctionClass, NORMAL_FUNCTION_CLASS)                                    \
     V(JSTaggedValue, JSIntlBoundFunctionClass, JS_INTL_BOUND_FUNCTION_CLASS)                        \
@@ -267,6 +266,7 @@
     V(JSTaggedValue, SharedFloat64ArrayFunction, SHARED_FLOAT64_ARRAY_FUNCTION_INDEX)                            \
     V(JSTaggedValue, SharedBigInt64ArrayFunction, SHARED_BIGINT64_ARRAY_FUNCTION_INDEX)                          \
     V(JSTaggedValue, SharedBigUint64ArrayFunction, SHARED_BIGUINT64_ARRAY_FUNCTION_INDEX)                        \
+    V(JSTaggedValue, SharedSpecificTypedArrayFunctionClass, SHARED_SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \
     V(JSTaggedValue, SharedInt8ArrayFunctionPrototype, SHARED_INT8_ARRAY_FUNCTION_PROTOTYPE_INDEX)               \
     V(JSTaggedValue, SharedUint8ArrayFunctionPrototype, SHARED_UINT8_ARRAY_FUNCTION_PROTOTYPE_INDEX)             \
     V(JSTaggedValue, SharedUint8ClampedArrayFunctionPrototype, SHARED_UINT8_CLAMPED_ARRAY_FUNCTION_PROTO_INDEX)  \
@@ -278,6 +278,43 @@
     V(JSTaggedValue, SharedFloat64ArrayFunctionPrototype, SHARED_FLOAT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)         \
     V(JSTaggedValue, SharedBigInt64ArrayFunctionPrototype, SHARED_BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)       \
     V(JSTaggedValue, SharedBigUint64ArrayFunctionPrototype, SHARED_BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)     \
+    V(JSTaggedValue, SharedInt8ArrayRootHclass, SHARED_INT8_ARRAY_ROOT_HCLASS_INDEX)                             \
+    V(JSTaggedValue, SharedUint8ArrayRootHclass, SHARED_UINT8_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, SharedUint8ClampedArrayRootHclass, SHARED_UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX)            \
+    V(JSTaggedValue, SharedInt16ArrayRootHclass, SHARED_INT16_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, SharedUint16ArrayRootHclass, SHARED_UINT16_ARRAY_ROOT_HCLASS_INDEX)                         \
+    V(JSTaggedValue, SharedInt32ArrayRootHclass, SHARED_INT32_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, SharedUint32ArrayRootHclass, SHARED_UINT32_ARRAY_ROOT_HCLASS_INDEX)                         \
+    V(JSTaggedValue, SharedFloat32ArrayRootHclass, SHARED_FLOAT32_ARRAY_ROOT_HCLASS_INDEX)                       \
+    V(JSTaggedValue, SharedFloat64ArrayRootHclass, SHARED_FLOAT64_ARRAY_ROOT_HCLASS_INDEX)                       \
+    V(JSTaggedValue, SharedBigInt64ArrayRootHclass, SHARED_BIGINT64_ARRAY_ROOT_HCLASS_INDEX)                     \
+    V(JSTaggedValue, SharedBigUint64ArrayRootHclass, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_INDEX)                   \
+    V(JSTaggedValue, SharedInt8ArrayRootHclassOnHeap, SHARED_INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)               \
+    V(JSTaggedValue, SharedUint8ArrayRootHclassOnHeap, SHARED_UINT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, SharedUint8ClampedArrayRootHclassOnHeap, SHARED_UINT8_CLAMPED_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)  \
+    V(JSTaggedValue, SharedInt16ArrayRootHclassOnHeap, SHARED_INT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, SharedUint16ArrayRootHclassOnHeap, SHARED_UINT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)           \
+    V(JSTaggedValue, SharedInt32ArrayRootHclassOnHeap, SHARED_INT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, SharedUint32ArrayRootHclassOnHeap, SHARED_UINT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)           \
+    V(JSTaggedValue, SharedFloat32ArrayRootHclassOnHeap, SHARED_FLOAT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
+    V(JSTaggedValue, SharedFloat64ArrayRootHclassOnHeap, SHARED_FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
+    V(JSTaggedValue, SharedBigInt64ArrayRootHclassOnHeap, SHARED_BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)       \
+    V(JSTaggedValue, SharedBigUint64ArrayRootHclassOnHeap, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)     \
+    V(JSTaggedValue, SharedJSONObjectFunction, SHARED_JSON_OBJECT_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedJSONTrueFunction, SHARED_JSON_TRUE_FUNCTION_INDEX)                                    \
+    V(JSTaggedValue, SharedJSONFalseFunction, SHARED_JSON_FALSE_FUNCTION_INDEX)                                  \
+    V(JSTaggedValue, SharedJSONNullFunction, SHARED_JSON_NULL_FUNCTION_INDEX)                                    \
+    V(JSTaggedValue, SharedJSONNumberFunction, SHARED_JSON_NUMBER_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedJSONStringFunction, SHARED_JSON_STRING_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedJSONArrayFunction, SHARED_JSON_ARRAY_FUNCTION_INDEX)                                  \
+    V(JSTaggedValue, SharedJSONObjectFunctionPrototype, SHARED_JSON_OBJECT_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedJSONTrueFunctionPrototype, SHARED_JSON_TRUE_FUNCTION_PROTOTYPE_INDEX)                 \
+    V(JSTaggedValue, SharedJSONFalseFunctionPrototype, SHARED_JSON_FALSE_FUNCTION_PROTOTYPE_INDEX)               \
+    V(JSTaggedValue, SharedJSONNullFunctionPrototype, SHARED_JSON_NULL_FUNCTION_PROTOTYPE_INDEX)                 \
+    V(JSTaggedValue, SharedJSONNumberFunctionPrototype, SHARED_JSON_NUMBER_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedJSONStringFunctionPrototype, SHARED_JSON_STRING_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedJSONArrayFunctionPrototype, SHARED_JSON_ARRAY_FUNCTION_PROTOTYPE_INDEX)
+
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \

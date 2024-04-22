@@ -15,5 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_moduletest_action("elements_kind") {
   deps = []
-  is_set_elemens_kind = true
+  is_set_elements_kind = true
 }

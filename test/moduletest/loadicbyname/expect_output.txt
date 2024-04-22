@@ -13,3 +13,4 @@
 
 primitiveic load success
 load ic by name test2 success!
+load Number ic by name success!

@@ -111,12 +111,16 @@ namespace panda::ecmascript::kungfu {
     V(MathCeil, MATH_CEIL, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathFloor, MATH_FLOOR, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathImul, MATH_IMUL, GateFlags::NO_WRITE, 1, 1, 2)                                        \
+    V(NewNumber, NEW_NUMBER, GateFlags::CHECKABLE, 1, 1, 2)                                     \
     V(GlobalIsFinite, GLOBAL_IS_FINITE, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(GlobalIsNan, GLOBAL_IS_NAN, GateFlags::NO_WRITE, 1, 1, 1)                                 \
     V(ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW, GateFlags::NO_WRITE, 1, 1, 1)                    \
     V(DataViewGet, DATA_VIEW_GET, GateFlags::NO_WRITE, 1, 1, 5)                                 \
     V(DataViewSet, DATA_VIEW_SET, GateFlags::NO_WRITE, 1, 1, 6)                                 \
     V(MapGet, MAP_GET, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(DateGetTime, DATE_GET_TIME, GateFlags::NO_WRITE, 1, 1, 1)                                 \
+    V(MapHas, MAP_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(SetHas, SET_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \

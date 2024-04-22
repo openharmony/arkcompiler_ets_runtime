@@ -112,6 +112,7 @@ public:
     static constexpr size_t NORMALIZED_BUNDLE_NAME_INDEX = 2;
     static constexpr size_t NORMALIZED_IMPORT_PATH_INDEX = 3;
     static constexpr size_t NORMALIZED_VERSION_INDEX = 4;
+    static constexpr size_t CURRENT_DIREATORY_TAG_LEN = 2;
 
     static constexpr size_t PKGINFO_PACKAGE_NAME_INDEX = 1;
     static constexpr size_t PKGINFO_BUDNLE_NAME_INDEX = 3;
@@ -155,14 +156,16 @@ public:
     static bool IsImportFile(const CString &moduleRequestName);
     static CString RemoveSuffix(const CString &requestName);
     static bool NeedTranstale(const CString &requestName);
+    static bool NeedTranslateToNormalized(const CString &requestName);
     static void TranstaleExpressionInput(const JSPandaFile *jsPandaFile, CString &requestPath);
     static CString GetModuleNameWithBaseFile(const CString &baseFileName);
     static CString TranslateExpressionInputWithEts(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    CString &baseFileName, const CString &requestName);
     static void ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CString &requestPath);
     static CString ReformatPath(CString requestName);
-    static void TranslateExpressionToNormalized(JSThread *thread, [[maybe_unused]] CString &baseFileName,
-                                                CString recordName, CString &requestPath);
+    static void TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                [[maybe_unused]] CString &baseFileName, CString recordName,
+                                                CString &requestPath);
     static CVector<CString> GetPkgContextInfoListElements(JSThread *thread, CString &moduleName,
                                                           CString &packageName);
     static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,

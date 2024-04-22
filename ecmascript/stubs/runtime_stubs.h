@@ -208,6 +208,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetTaggedValueWithElementsKind)     \
     V(TryRestoreElementsKind)             \
     V(RuntimeDump)                        \
+    V(ForceGC)                            \
     V(NoticeThroughChainAndRefreshUser)   \
     V(JumpToCInterpreter)                 \
     V(StGlobalRecord)                     \
@@ -279,6 +280,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(PGODump)                            \
     V(PGOPreDump)                         \
     V(JitCompile)                         \
+    V(CountInterpExecFuncs)               \
     V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \

@@ -21,6 +21,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include "ecmascript/compiler/compilation_env.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -657,10 +658,10 @@ private:
 
 class BytecodeInfoCollector {
 public:
-    BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, PGOProfilerDecoder &pfDecoder,
+    BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *jsPandaFile, PGOProfilerDecoder &pfDecoder,
                           size_t maxAotMethodSize, bool enableCollectLiteralInfo);
 
-    BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, JSHandle<JSFunction> &jsFunction,
+    BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *jsPandaFile,
                           PGOProfilerDecoder &pfDecoder, bool enableCollectLiteralInfo);
 
     ~BytecodeInfoCollector();
@@ -694,7 +695,7 @@ public:
 
     void StoreDataToGlobalData(SnapshotGlobalData &snapshotData)
     {
-        snapshotCPData_.StoreDataToGlobalData(snapshotData, GetSkippedMethodSet());
+        snapshotCPData_->StoreDataToGlobalData(snapshotData, GetSkippedMethodSet());
     }
 
     const std::set<uint32_t>& GetSkippedMethodSet() const
@@ -723,9 +724,9 @@ public:
         return jsPandaFile_;
     }
 
-    EcmaVM *GetVM() const
+    CompilationEnv *GetCompilationEnv() const
     {
-        return vm_;
+        return compilationEnv_;
     }
 
     LexEnvManager* GetEnvManager() const
@@ -763,7 +764,7 @@ private:
 
     const CString GetEntryFunName(const std::string_view &entryPoint) const;
     void ProcessClasses();
-    void ProcessMethod(JSHandle<JSFunction> &jsFunction);
+    void ProcessMethod();
     void RearrangeInnerMethods();
     void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
         MethodLiteral *method, std::vector<std::string> &classNameVec, const CString &recordName,
@@ -793,12 +794,12 @@ private:
     void CollectRecordExportInfo(const CString &recordName);
     void MarkMethodNamespace(const uint32_t methodOffset);
 
-    EcmaVM *vm_;
+    CompilationEnv *compilationEnv_ {nullptr};
     JSPandaFile *jsPandaFile_ {nullptr};
     BCInfo bytecodeInfo_;
     PGOProfilerDecoder &pfDecoder_;
     PGOBCInfo pgoBCInfo_ {};
-    SnapshotConstantPoolData snapshotCPData_;
+    std::unique_ptr<SnapshotConstantPoolData> snapshotCPData_;
     size_t methodInfoIndex_ {0};
     bool enableCollectLiteralInfo_ {false};
     std::set<int32_t> classDefBCIndexes_ {};

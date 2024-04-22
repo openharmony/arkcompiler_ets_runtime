@@ -31,6 +31,7 @@
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/byte_array.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
 
 namespace panda::ecmascript {
 struct MethodLiteral;
@@ -158,6 +159,7 @@ class CjsRequire;
 class CjsExports;
 class ResolvedBinding;
 class ResolvedIndexBinding;
+class ResolvedRecordIndexBinding;
 class ResolvedRecordBinding;
 class BigInt;
 class AsyncGeneratorRequest;
@@ -333,10 +335,20 @@ public:
     JSHandle<job::PendingJob> NewPendingJob(const JSHandle<JSFunction> &func, const JSHandle<TaggedArray> &argv);
 
     JSHandle<JSArray> NewJSArray();
-    JSHandle<JSSharedArray> NewJSSArray();
+    JSHandle<JSSharedArray> PUBLIC_API NewJSSArray();
+    JSHandle<JSSharedMap> PUBLIC_API NewJSSMap();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONArray();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONTrue();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONFalse();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONString();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNumber();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNull();
+    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONObject();
     JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
+    JSHandle<TaggedArray> PUBLIC_API NewSJsonFixedArray(size_t start, size_t length,
+                                                    const std::vector<JSHandle<JSTaggedValue>> &vec);
 
     JSHandle<JSProxy> NewJSProxy(const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &handler);
     JSHandle<JSRealm> NewJSRealm();
@@ -499,6 +511,7 @@ public:
 
     void NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length);
     void NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayBuffer> &array, int32_t length);
+    JSHandle<JSSendableArrayBuffer> NewJSSendableArrayBuffer(int32_t length);
 
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length);
 
@@ -575,6 +588,7 @@ public:
     // ----------------------------------- new string ----------------------------------------
     JSHandle<EcmaString> PUBLIC_API NewFromASCII(std::string_view data);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf8(std::string_view data);
+    JSHandle<EcmaString> NewFromASCIISkippingStringTable(std::string_view data);
     JSHandle<EcmaString> NewFromUtf16(std::u16string_view data);
 
     JSHandle<EcmaString> NewFromStdString(const std::string &data);
@@ -817,10 +831,15 @@ public:
     JSHandle<ResolvedBinding> NewSResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
         const JSHandle<JSTaggedValue> &bindingName);
 
+    JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord();
+
+    JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord(
+        const JSHandle<EcmaString> &moduleRecord, int32_t index);
+
     JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord();
 
-    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord(const JSHandle<EcmaString> &moduleRecord,
-                                                                    int32_t index);
+    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord(
+        const JSHandle<EcmaString> &moduleRecord, const JSHandle<JSTaggedValue> &bindingName);
 
     JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
 
@@ -851,6 +870,7 @@ public:
     JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<Method> CloneMethodTemporaryForJIT(JSHandle<Method> method);
 
 private:
     friend class GlobalEnv;

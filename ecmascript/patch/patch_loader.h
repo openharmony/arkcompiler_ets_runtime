@@ -80,7 +80,7 @@ struct PatchInfo {
     // patch replaced recordNames.
     CUnorderedSet<CString> replacedRecordNames;
     // patch replaced methods.
-    CUnorderedMap<EntityId, CString> repalcedPatchMethods;
+    CUnorderedMap<EntityId, CString> replacedPatchMethods;
 };
 
 enum class StageOfHotReload : int32_t {

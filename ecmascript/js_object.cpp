@@ -189,7 +189,6 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
     ASSERT(!jshclass->GetLayout().IsNull());
     ASSERT(!jshclass->IsJSShared());
     JSHandle<LayoutInfo> layoutInfoHandle(thread, jshclass->GetLayout());
-    ASSERT(layoutInfoHandle->GetLength() != 0);
     JSMutableHandle<NameDictionary> dict(
         thread, NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(propNumber)));
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
@@ -578,7 +577,9 @@ JSHandle<TaggedArray> JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
                 ->GetAllEnumKeys(thread, end, EnumCache::ENUM_CACHE_HEADER_SIZE, keyArray, keys, obj);
             JSObject::SetEnumCacheKind(thread, *keyArray, EnumCacheKind::ONLY_OWN_KEYS);
-            jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
+            if (!JSTaggedValue(jsHclass).IsInSharedHeap()) {
+                jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
+            }
             JSHandle<TaggedArray> newkeyArray = factory->CopyFromEnumCache(keyArray);
             return newkeyArray;
         }
@@ -1855,6 +1856,36 @@ bool JSObject::SetIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
             }
         }
+    }
+    return true;
+}
+
+bool JSObject::FreezeSharedObject(JSThread *thread, const JSHandle<JSObject> &obj)
+{
+    ASSERT_PRINT(JSHandle<JSTaggedValue>(obj)->IsJSSharedObject() || JSHandle<JSTaggedValue>(obj)->IsJSSharedFunction(),
+                 "Obj is not a valid shared object");
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // It is not extensible for shared object.
+    if (obj->IsExtensible()) {
+        return false;
+    }
+    JSHandle<JSHClass> hclass(thread, obj->GetClass());
+    auto newClass = JSHClass::Clone(thread, hclass);
+    if (!hclass->IsDictionaryMode()) {
+        uint32_t propNumber = hclass->NumberOfProps();
+        JSHandle<LayoutInfo> layoutInfo(thread, hclass->GetLayout());
+        JSHandle<LayoutInfo> newLayoutInfo = factory->CreateSLayoutInfo(propNumber);
+        for (uint32_t i = 0; i < propNumber; i++) {
+            JSTaggedValue key = layoutInfo->GetKey(i);
+            PropertyAttributes attr = layoutInfo->GetAttr(i);
+            attr.SetWritable(false);
+            newLayoutInfo->AddKey(thread, i, key, attr);
+        }
+        newClass->SetLayout(thread, newLayoutInfo);
+        obj->SynchronizedSetClass(thread, *newClass);
+    } else {
+        auto dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
+        dict->UpdateAllAttributesToNoWitable(thread);
     }
     return true;
 }

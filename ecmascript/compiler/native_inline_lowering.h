@@ -37,9 +37,9 @@ public:
           tsManager_(ctx->GetTSManager()),
           enableLog_(enableLog),
           methodName_(name),
-          nocheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
-          traceInline_(ctx->GetEcmaVM()->GetJSOptions().GetTraceInline()),
-          thread_(ctx->GetEcmaVM()->GetJSThread()) {}
+          nocheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
+          traceInline_(ctx->GetCompilationEnv()->GetJSOptions().GetTraceInline()),
+          compilationEnv_(ctx->GetCompilationEnv()) {}
     ~NativeInlineLowering() = default;
     void RunNativeInlineLowering();
 
@@ -68,6 +68,7 @@ private:
     void TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id);
     void InlineStubBuiltin(GateRef gate, size_t builtinArgc, size_t realArgc, BuiltinsStubCSigns::ID id,
         const GateMetaData* op, bool skipThis);
+    void TryInlineDateGetTime(GateRef gate, size_t argc, bool skipThis);
 
     void AddTraceLogs(GateRef gate, BuiltinsStubCSigns::ID id);
 
@@ -101,7 +102,7 @@ private:
     std::string methodName_;
     bool nocheck_;
     bool traceInline_;
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
 };
 }
 #endif // ECMASCRIPT_COMPILER_BUILTIN_INLINE_H

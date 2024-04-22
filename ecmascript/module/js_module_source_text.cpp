@@ -31,6 +31,7 @@
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/platform/file.h"
@@ -791,7 +792,6 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
     JSHandle<TaggedArray> arr = factory->NewTaggedArray(importEntriesLen);
     // 7. Let envRec be env's EnvironmentRecord.
     JSHandle<TaggedArray> envRec = arr;
-    module->SetEnvironment(thread, envRec);
     // 8. For each ImportEntry Record in in module.[[ImportEntries]], do
     auto globalConstants = thread->GlobalConstants();
     JSMutableHandle<ImportEntry> in(thread, globalConstants->GetUndefined());
@@ -820,6 +820,8 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
         if (JSTaggedValue::SameValue(importName, starString)) {
             // need refactor
+            envRec = JSSharedModule::CloneEnvForSModule(thread, module, envRec);
+            module->SetEnvironment(thread, envRec);
             return;
         }
         // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
@@ -1398,19 +1400,17 @@ void SourceTextModule::AddStarExportEntry(JSThread *thread, const JSHandle<Sourc
 JSTaggedValue SourceTextModule::GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedBinding> &binding)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     ResolvedBinding *resolvedBinding = ResolvedBinding::Cast(binding.GetTaggedValue().GetTaggedObject());
-    return moduleManager->GetNativeModuleValue(thread, JSTaggedValue::Undefined(),
-                                               resolvedBinding->GetModule(), resolvedBinding);
+    return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedBinding->GetModule(),
+                                                     resolvedBinding->GetBindingName());
 }
 
 JSTaggedValue SourceTextModule::GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedIndexBinding> &binding)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     ResolvedIndexBinding *resolvedBinding = ResolvedIndexBinding::Cast(binding.GetTaggedValue().GetTaggedObject());
-    return moduleManager->GetNativeModuleValue(thread, JSTaggedValue::Undefined(),
-                                               resolvedBinding->GetModule(), resolvedBinding);
+    return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedBinding->GetModule(),
+                                                     resolvedBinding->GetIndex());
 }
 
 JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, int32_t index, bool isThrow)

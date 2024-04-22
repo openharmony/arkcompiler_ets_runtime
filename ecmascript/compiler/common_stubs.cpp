@@ -1148,10 +1148,31 @@ void JSMapGetStubBuilder::GenerateCircuit()
     GateRef obj = TaggedArgument(1);
     GateRef key = TaggedArgument(2U);
 
-    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue);
-    GateRef linkedTable = linkedHashTableStubBuilder.GetLinked(obj);
-    GateRef result = linkedHashTableStubBuilder.Get(linkedTable, key);
-    Return(result);
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Get(linkedTable, key));
+}
+
+void JSMapHasStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Has(linkedTable, key));
+}
+
+void JSSetHasStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Has(linkedTable, key));
 }
 
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];

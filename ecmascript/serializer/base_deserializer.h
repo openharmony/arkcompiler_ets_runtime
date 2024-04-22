@@ -22,31 +22,6 @@
 namespace panda::ecmascript {
 class Heap;
 class JSThread;
-struct NewConstPoolInfo {
-    JSPandaFile *jsPandaFile_ {nullptr};
-    panda_file::File::EntityId methodId_;
-    uintptr_t objAddr_ {0U};
-    size_t offset_ {0U};
-
-    NewConstPoolInfo(JSPandaFile *jsPandaFile, panda_file::File::EntityId methodId)
-        : jsPandaFile_(jsPandaFile), methodId_(methodId) {}
-
-    uintptr_t GetObjAddr() const
-    {
-        return objAddr_;
-    }
-
-    size_t GetFieldOffset() const
-    {
-        return offset_;
-    }
-
-    ObjectSlot GetSlot() const
-    {
-        return ObjectSlot(objAddr_ + offset_);
-    }
-};
-
 struct NativeBindingInfo {
     AttachFunc af_ {nullptr};
     void *bufferPointer_ {nullptr};
@@ -123,7 +98,6 @@ public:
 private:
     JSHandle<JSTaggedValue> DeserializeJSTaggedValue();
     uintptr_t DeserializeTaggedObject(SerializedObjectSpace space);
-    void DeserializeConstPool(NewConstPoolInfo *info);
     void DeserializeNativeBindingObject(NativeBindingInfo *info);
     void DeserializeJSError(JSErrorInfo *info);
     uintptr_t RelocateObjectAddr(SerializedObjectSpace space, size_t objSize);
@@ -131,12 +105,10 @@ private:
     void DeserializeObjectField(uintptr_t start, uintptr_t end);
     size_t ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset, bool isRoot = false);
     void HandleNewObjectEncodeFlag(SerializedObjectSpace space, uintptr_t objAddr, size_t fieldOffset, bool isRoot);
-    void HandleMethodEncodeFlag();
 
     void TransferArrayBufferAttach(uintptr_t objAddr);
     void IncreaseSharedArrayBufferReference(uintptr_t objAddr);
     void ResetNativePointerBuffer(uintptr_t objAddr, void *bufferPointer);
-    void ResetMethodConstantPool(uintptr_t objAddr, ConstantPool *constpool);
 
     void AllocateToDifferentSpaces();
     void AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex);
@@ -174,15 +146,6 @@ private:
         return isSharedArrayBuffer;
     }
 
-    bool GetAndResetNeedNewConstPool()
-    {
-        bool needNewConstPool = needNewConstPool_;
-        if (needNewConstPool_) {
-            needNewConstPool_ = false;
-        }
-        return needNewConstPool;
-    }
-
     bool GetAndResetIsErrorMsg()
     {
         bool isErrorMsg = isErrorMsg_;
@@ -207,16 +170,6 @@ private:
             void *buffer = bufferPointer_;
             bufferPointer_ = nullptr;
             return buffer;
-        }
-        return nullptr;
-    }
-
-    ConstantPool *GetAndResetConstantPool()
-    {
-        if (constpool_) {
-            ConstantPool *constpool = constpool_;
-            constpool_ = nullptr;
-            return constpool;
         }
         return nullptr;
     }
@@ -250,10 +203,7 @@ private:
     bool isSharedArrayBuffer_ {false};
     bool isErrorMsg_ {false};
     void *bufferPointer_ {nullptr};
-    ConstantPool *constpool_ {nullptr};
-    bool needNewConstPool_ {false};
     bool functionInShared_ {false};
-    CVector<NewConstPoolInfo *> newConstPoolInfos_;
     CVector<NativeBindingInfo *> nativeBindingInfos_;
     CVector<JSErrorInfo *> jsErrorInfos_;
     CVector<JSFunction *> concurrentFunctions_;

@@ -100,7 +100,7 @@ bool PGOProfilerManager::MergeApFiles(uint32_t checksum, PGOProfilerDecoder &mer
         isFirstFile = false;
     }
     if (isFirstFile) {
-        LOG_ECMA(ERROR) << "No input file processed. Input files: " << inFiles;
+        LOG_ECMA(ERROR) << "No file pass verify ,No input file processed. Input files: " << inFiles;
         return false;
     }
     return true;

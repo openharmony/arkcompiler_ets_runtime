@@ -108,15 +108,8 @@ JitCompilerTask *JitCompilerTask::CreateJitCompilerTask(JitTask *jitTask)
 
 bool JitCompilerTask::Compile()
 {
-    TSManager *tsm = new (std::nothrow) TSManager(vm_);
-    if (tsm == nullptr) {
-        return false;
-    }
-    vm_->GetJSThread()->GetCurrentEcmaContext()->SetTSManager(tsm);
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->Initialize();
-
     JitCompiler *jitCompiler = JitCompiler::GetInstance();
-    auto jitPassManager = new (std::nothrow) JitPassManager(vm_,
+    auto jitPassManager = new (std::nothrow) JitPassManager(jitCompilationEnv_.get(),
                                                             jitCompiler->GetJitOptions().triple_,
                                                             jitCompiler->GetJitOptions().optLevel_,
                                                             jitCompiler->GetJitOptions().relocMode_,
@@ -129,13 +122,21 @@ bool JitCompilerTask::Compile()
     }
     passManager_.reset(jitPassManager);
     auto aotFileGenerator = new (std::nothrow) AOTFileGenerator(&jitCompiler->GetCompilerLog(),
-        &jitCompiler->GetLogList(),
-        vm_, jitCompiler->GetJitOptions().triple_, vm_->GetJSOptions().IsCompilerEnableLiteCG());
+        &jitCompiler->GetLogList(), jitCompilationEnv_.get(),
+        jitCompiler->GetJitOptions().triple_, jitCompilationEnv_->GetJSOptions().IsCompilerEnableLiteCG());
     if (aotFileGenerator == nullptr) {
         return false;
     }
     jitCodeGenerator_.reset(aotFileGenerator);
-    return passManager_->Compile(jsFunction_, *jitCodeGenerator_, offset_);
+    return passManager_->Compile(profileTypeInfo_, *jitCodeGenerator_, offset_);
+}
+
+void JitCompilerTask::ReleaseJitPassManager()
+{
+    // release passManager before jitCompilerTask release,
+    // in future release JitCompilerTask when compile finish
+    JitPassManager *passManager = passManager_.release();
+    delete passManager;
 }
 
 bool JitCompilerTask::Finalize(JitTask *jitTask)
@@ -146,6 +147,7 @@ bool JitCompilerTask::Finalize(JitTask *jitTask)
     jitCodeGenerator_->JitCreateLitecgModule();
     passManager_->RunCg();
     jitCodeGenerator_->GetMemoryCodeInfos(jitTask->GetMachineCodeDesc());
+    ReleaseJitPassManager();
     return true;
 }
 

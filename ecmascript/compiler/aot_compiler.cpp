@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/compiler/aot_compilation_env.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
@@ -48,6 +49,22 @@ void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bo
     }
 }
 } // namespace
+
+std::pair<bool, int> CheckVersion(JSRuntimeOptions &runtimeOptions, bool result)
+{
+    if (runtimeOptions.IsCheckPgoVersion()) {
+        if (result) {
+            return std::pair(true, 0);
+        } else {
+            LOG_COMPILER(ERROR) << "CheckVersion ap and abc do not match";
+            return std::pair(true, 1);
+        }
+    }
+    if (!result) {
+        return std::pair(true, 1);
+    }
+    return std::pair(false, 0);
+}
 
 int Main(const int argc, const char **argv)
 {
@@ -94,6 +111,7 @@ int Main(const int argc, const char **argv)
     }
 
     {
+        AOTCompilationEnv aotCompilationEnv(vm);
         ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         LocalScope scope(vm);
         arg_list_t pandaFileNames {};
@@ -117,8 +135,12 @@ int Main(const int argc, const char **argv)
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
         cPreprocessor.SetShouldCollectLiteralInfo(cOptions, &log);
-        if (!cPreprocessor.GenerateAbcFileInfos()) {
-            return 1;
+        uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
+        // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
+        // need support muilt abc
+        auto result = CheckVersion(runtimeOptions, cPreprocessor.HandleMergedPgoFile(checksum));
+        if (result.first) {
+            return result.second;
         }
         cPreprocessor.GeneratePGOTypes(cOptions);
         cPreprocessor.SnapshotInitialize();
@@ -150,7 +172,7 @@ int Main(const int argc, const char **argv)
                 .EnableInductionVariableAnalysis(cOptions.isEnableInductionVariableAnalysis_)
                 .Build();
 
-        PassManager passManager(vm,
+        PassManager passManager(&aotCompilationEnv,
                                 cOptions.triple_,
                                 cOptions.optLevel_,
                                 cOptions.relocMode_,
@@ -165,7 +187,15 @@ int Main(const int argc, const char **argv)
                                 cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
-        AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_, isEnableLiteCG);
+        if (cPreprocessor.GetMainPkgArgs()) {
+            std::string bundleName = cPreprocessor.GetMainPkgArgs()->GetBundleName();
+            if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+                isEnableLiteCG = true;
+            }
+        }
+        vm->GetJSOptions().SetCompilerEnableLiteCG(isEnableLiteCG);
+
+        AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);
 
         CompileValidFiles(passManager, generator, ret, fileInfos);
         std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();

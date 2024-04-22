@@ -169,3 +169,20 @@
         print("res:", res1 !== res2)
     }
 }
+
+{
+    var x = [];
+    x[42949672964] = 1; // insert string to EcmaStringTable in ObjectOperator::HandleKey.
+    print(x["42949672964"]);
+
+    var x = [];
+    x[12345.6789] = 2; // insert string to EcmaStringTable in ObjectOperator::HandleKey.
+    print(x["12345.6789"]);
+
+    let obj = {
+        "123456234": "value 123456",
+    }
+    let key = "123456234";
+    print(obj[key]);
+
+}

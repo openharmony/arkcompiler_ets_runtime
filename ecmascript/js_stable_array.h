@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JS_STABLE_ARRAY_H
 #define ECMASCRIPT_JS_STABLE_ARRAY_H
 
+#include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_hclass.h"
@@ -64,6 +65,7 @@ public:
                                  int64_t &lower, uint32_t len);
     static JSTaggedValue Concat(JSThread *thread, JSHandle<JSObject> newArrayHandle,
                                 JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &n);
+    template<base::TypedArrayKind typedArrayKind = base::TypedArrayKind::NON_SHARED>
     static JSTaggedValue FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &target,
                                                        DataViewType targetType, uint64_t targetOffset,
                                                        uint32_t srcLength, JSHandle<JSObject> &obj);

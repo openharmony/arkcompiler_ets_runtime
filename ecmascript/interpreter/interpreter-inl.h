@@ -5067,6 +5067,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SET_ACC(obj->GetResumeResult());
         } else {
             JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+            uintptr_t taskInfo = obj->GetTaskInfo();
+            thread->SetTaskInfo(taskInfo);
+            obj->SetTaskInfo(0);
             SET_ACC(obj->GetResumeResult());
         }
         DISPATCH(RESUMEGENERATOR);

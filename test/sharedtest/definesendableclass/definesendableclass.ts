@@ -2170,6 +2170,14 @@ function testStaticDict() {
     StaticDict.a1020;
 }
 
+function testKeys() {
+    Object.keys(Parent);
+    Object.keys(StaticDict);
+    for (const property in Parent) {
+        print(property)
+    }
+}
+
 let parent = new Parent;
 let child = new Child;
 let childToDict = new ChildToDict;
@@ -2181,3 +2189,4 @@ testChildToDict(childToDict);
 testChildExtendsDict(childExtendsDict);
 testICChecking(childToDict);
 testStaticDict();
+testKeys();

@@ -81,6 +81,13 @@ public:
         SetVariadicArgs(flags);
     }
 
+    CallSignature(std::string name, int flags, ArgumentsOrder order, VariableType returnType,
+                  std::initializer_list<VariableType> params)
+        : CallSignature(std::move(name), flags, params.size(), order, returnType)
+    {
+        paramsType_ = std::make_unique<std::vector<VariableType>>(params);
+    }
+
     CallSignature() = default;
 
     ~CallSignature() = default;
@@ -505,6 +512,8 @@ private:
     V(CreateJSSetIterator)                      \
     V(CreateJSMapIterator)                      \
     V(JSMapGet)                                 \
+    V(JSMapHas)                                 \
+    V(JSSetHas)                                 \
     V(JSHClassFindProtoTransitions)             \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \

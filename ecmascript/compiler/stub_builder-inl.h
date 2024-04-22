@@ -257,19 +257,14 @@ inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initial
     return result;
 }
 
-inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
-                                               bool isNew, const char* comment)
+inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew)
 {
-    GateRef result = env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew, comment);
-    return result;
+    return env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew);
 }
 
-inline GateRef StubBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args,
-                                                            const char* comment)
+inline GateRef StubBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args)
 {
-    GateRef result = env_->GetBuilder()->CallBuiltinRuntimeWithNewTarget(glue, Gate::InvalidGateRef, args, comment);
-
-    return result;
+    return env_->GetBuilder()->CallBuiltinRuntimeWithNewTarget(glue, Gate::InvalidGateRef, args);
 }
 
 inline void StubBuilder::DebugPrint(GateRef glue, std::initializer_list<GateRef> args)
@@ -834,6 +829,11 @@ inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
     return env_->GetBuilder()->DoubleToTaggedDoublePtr(x);
 }
 
+inline GateRef StubBuilder::BooleanToTaggedBooleanPtr(GateRef x)
+{
+    return env_->GetBuilder()->BooleanToTaggedBooleanPtr(x);
+}
+
 inline GateRef StubBuilder::TaggedPtrToTaggedDoublePtr(GateRef x)
 {
     return DoubleToTaggedDoublePtr(CastInt64ToFloat64(ChangeTaggedPointerToInt64(x)));
@@ -998,6 +998,11 @@ inline GateRef StubBuilder::Int64GreaterThanOrEqual(GateRef x, GateRef y)
 inline GateRef StubBuilder::Int64UnsignedLessThanOrEqual(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int64UnsignedLessThanOrEqual(x, y);
+}
+
+inline GateRef StubBuilder::Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int64UnsignedGreaterThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)

@@ -69,3 +69,6 @@ print(JSON.stringify(JSON.parse(strData6)))
 
 let strData7 = '{"a": "{\\"name\\": \\"张三\\"}"}'
 print(JSON.stringify(JSON.parse(strData7)))
+
+let strData8 = '{"1\\u0000":"name"}'
+print(JSON.stringify(JSON.parse(strData8)))

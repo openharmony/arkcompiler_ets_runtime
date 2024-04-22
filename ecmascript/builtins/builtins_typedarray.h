@@ -84,9 +84,9 @@
     /* %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] ) */                    \
     V("filter",         Filter,         1, TypedArrayFilter)                            \
     /* %TypedArray%.prototype.find ( predicate [ , thisArg ] ) */                       \
-    V("find",           Find,           1, INVALID)                                     \
+    V("find",           Find,           1, TypedArrayFind)                              \
     /* %TypedArray%.prototype.findIndex ( predicate [ , thisArg ] ) */                  \
-    V("findIndex",      FindIndex,      1, INVALID)                                     \
+    V("findIndex",      FindIndex,      1, TypedArrayFindIndex)                         \
     /* %TypedArray%.prototype.findLast ( predicate [ , thisArg ] ) */                   \
     V("findLast",       FindLast,       1, INVALID)                                     \
     /* %TypedArray%.prototype.findLastIndex ( predicate [ , thisArg ] ) */              \
@@ -96,13 +96,13 @@
     /* %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] ) */             \
     V("includes",       Includes,       1, TypedArrayIncludes)                          \
     /* %TypedArray%.prototype.indexOf ( searchElement [ , fromIndex ] ) */              \
-    V("indexOf",        IndexOf,        1, INVALID)                                     \
+    V("indexOf",        IndexOf,        1, TypedArrayIndexOf)                           \
     /* %TypedArray%.prototype.join ( separator ) */                                     \
     V("join",           Join,           1, INVALID)                                     \
     /* %TypedArray%.prototype.keys ( ) */                                               \
     V("keys",           Keys,           0, INVALID)                                     \
     /* %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */          \
-    V("lastIndexOf",    LastIndexOf,    1, INVALID)                                     \
+    V("lastIndexOf",    LastIndexOf,    1, TypedArrayLastIndexOf)                       \
     /* %TypedArray%.prototype.map ( callbackfn [ , thisArg ] ) */                       \
     V("map",            Map,            1, INVALID)                                     \
     /* %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] ) */               \
@@ -110,7 +110,7 @@
     /* %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] ) */          \
     V("reduceRight",    ReduceRight,    1, TypedArrayReduceRight)                       \
     /* %TypedArray%.prototype.reverse ( ) */                                            \
-    V("reverse",        Reverse,        0, INVALID)                                     \
+    V("reverse",        Reverse,        0, TypedArrayReverse)                           \
     /* %TypedArray%.prototype.set ( source [ , offset ] ) */                            \
     V("set",            Set,            1, TypedArraySet)                               \
     /* %TypedArray%.prototype.slice ( start, end ) */                                   \
@@ -118,7 +118,7 @@
     /* %TypedArray%.prototype.some ( callbackfn [ , thisArg ] ) */                      \
     V("some",           Some,           1, TypedArraySome)                              \
     /* %TypedArray%.prototype.sort ( comparefn ) */                                     \
-    V("sort",           Sort,           1, INVALID)                                     \
+    V("sort",           Sort,           1, TypedArraySort)                              \
     /* %TypedArray%.prototype.subarray ( begin, end ) */                                \
     V("subarray",       Subarray,       2, TypedArraySubArray)                          \
     /* %TypedArray%.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */       \
@@ -130,7 +130,7 @@
     /* %TypedArray%.prototype.values ( ) */                                             \
     V("values",         Values,         0, INVALID)                                     \
     /* %TypedArray%.prototype.with ( index, value ) */                                  \
-    V("with",           With,           2, INVALID)
+    V("with",           With,           2, TypedArrayWith)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsTypedArray : public base::BuiltinsBase {

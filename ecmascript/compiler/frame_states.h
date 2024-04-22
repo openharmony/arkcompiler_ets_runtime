@@ -131,7 +131,7 @@ public:
     void AdvanceToNextBB(const BytecodeRegion &bb, bool isOsrLoopExit = false);
     void InitEntryBB(const BytecodeRegion &bb);
 
-    const ChunkDeque<size_t>& GetRpoList() const
+    ChunkDeque<size_t>& GetRpoList()
     {
         return rpoList_;
     }
@@ -158,6 +158,8 @@ public:
         ASSERT(bbIndex < bbFrameContext_.size());
         return bbFrameContext_[bbIndex] != nullptr;
     }
+
+    FrameContext *GetOrOCreateMergedContext(uint32_t bbIndex);
 
 private:
     static constexpr size_t FIXED_ARGS = 2; // ac & env
@@ -220,7 +222,6 @@ private:
         return bbFrameContext_[bbIndex];
     }
 
-    FrameContext *GetOrOCreateMergedContext(uint32_t bbIndex);
     void FillBcInputs(const BytecodeInfo &bytecodeInfo, GateRef gate);
     void DumpLiveState();
     size_t GetNumOfStatePreds(const BytecodeRegion &bb);

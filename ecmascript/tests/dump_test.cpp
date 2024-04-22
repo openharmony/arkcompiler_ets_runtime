@@ -115,6 +115,7 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -221,6 +222,14 @@ static JSHandle<JSSet> NewJSSet(JSThread *thread, ObjectFactory *factory, JSHand
     JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread));
     jsSet->SetLinkedSet(thread, linkedSet);
     return jsSet;
+}
+
+static JSHandle<JSSharedJSONValue> NewJSJSONValue(ObjectFactory *factory,
+                                                  JSHandle<JSTaggedValue> proto)
+{
+    JSHandle<JSHClass> jsonValueHClass =
+        factory->NewEcmaHClass(JSSharedJSONValue::SIZE, JSType::JS_SHARED_JSON_OBJECT, proto);
+    return JSHandle<JSSharedJSONValue>::Cast(factory->NewJSObjectWithInit(jsonValueHClass));
 }
 
 static JSHandle<JSSharedSet> NewJSSharedSet(JSThread *thread, ObjectFactory *factory)
@@ -479,6 +488,18 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSObject::SIZE, 2U);
                 JSHandle<JSObject> jsObj = NewJSObject(thread, factory, globalEnv);
                 DUMP_FOR_HANDLE(jsObj);
+                break;
+            }
+            case JSType::JS_SHARED_JSON_OBJECT:
+            case JSType::JS_SHARED_JSON_NULL:
+            case JSType::JS_SHARED_JSON_TRUE:
+            case JSType::JS_SHARED_JSON_FALSE:
+            case JSType::JS_SHARED_JSON_NUMBER:
+            case JSType::JS_SHARED_JSON_STRING:
+            case JSType::JS_SHARED_JSON_ARRAY: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedJSONValue::SIZE, 1U);
+                JSHandle<JSSharedJSONValue> jsSharedJsonValue = NewJSJSONValue(factory, proto);
+                DUMP_FOR_HANDLE(jsSharedJsonValue);
                 break;
             }
             case JSType::JS_REALM: {
@@ -846,7 +867,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_GENERATOR_OBJECT: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSGeneratorObject::SIZE, 3U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSGeneratorObject::SIZE, 4U);
                 NEW_OBJECT_AND_DUMP(JSGeneratorObject, JS_GENERATOR_OBJECT);
                 break;
             }
@@ -1471,6 +1492,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(Record::SIZE, ResolvedIndexBinding::SIZE, 2U);
                 JSHandle<ResolvedIndexBinding> resolvedBinding = factory->NewResolvedIndexBindingRecord();
                 DUMP_FOR_HANDLE(resolvedBinding);
+                break;
+            }
+            case JSType::RESOLVEDRECORDINDEXBINDING_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordIndexBinding::SIZE, 2U);
+                JSHandle<ResolvedRecordIndexBinding> recordBinding = factory->NewSResolvedRecordIndexBindingRecord();
+                DUMP_FOR_HANDLE(recordBinding);
                 break;
             }
             case JSType::RESOLVEDRECORDBINDING_RECORD: {

@@ -30,31 +30,31 @@ static T *InitializeMemory(T *mem, Args... args)
     return new (mem) T(std::forward<Args>(args)...);
 }
 
-BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, PGOProfilerDecoder &pfDecoder,
+BytecodeInfoCollector::BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *jsPandaFile,
+                                             PGOProfilerDecoder &pfDecoder,
                                              size_t maxAotMethodSize, bool enableCollectLiteralInfo)
-    : vm_(vm),
+    : compilationEnv_(env),
       jsPandaFile_(jsPandaFile),
       bytecodeInfo_(maxAotMethodSize),
       pfDecoder_(pfDecoder),
-      snapshotCPData_(vm, jsPandaFile, &pfDecoder),
+      snapshotCPData_(new SnapshotConstantPoolData(env->GetEcmaVM(), jsPandaFile, &pfDecoder)),
       enableCollectLiteralInfo_(enableCollectLiteralInfo)
 {
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(this);
+    compilationEnv_->GetTSManager()->SetBytecodeInfoCollector(this);
     ProcessClasses();
     ProcessEnvs();
 }
 
-BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, JSHandle<JSFunction> &jsFunction,
+BytecodeInfoCollector::BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *jsPandaFile,
                                              PGOProfilerDecoder &pfDecoder, bool enableCollectLiteralInfo)
-    : vm_(vm),
+    : compilationEnv_(env),
       jsPandaFile_(jsPandaFile),
       bytecodeInfo_(1),
       pfDecoder_(pfDecoder),
-      snapshotCPData_(vm, jsPandaFile, &pfDecoder),
+      snapshotCPData_(nullptr), // jit no need
       enableCollectLiteralInfo_(enableCollectLiteralInfo)
 {
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(this);
-    ProcessMethod(jsFunction);
+    ProcessMethod();
     ProcessEnvs();
 }
 
@@ -64,9 +64,12 @@ BytecodeInfoCollector::~BytecodeInfoCollector()
         delete envManager_;
         envManager_ = nullptr;
     }
-    auto tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
-    tsManager->PrintTypeInfo(jsPandaFile_);
-    tsManager->SetBytecodeInfoCollector(nullptr);
+
+    if (compilationEnv_->IsAotCompiler()) {
+        auto tsManager = compilationEnv_->GetTSManager();
+        tsManager->PrintTypeInfo(jsPandaFile_);
+        tsManager->SetBytecodeInfoCollector(nullptr);
+    }
 }
 
 void BytecodeInfoCollector::ProcessEnvs()
@@ -105,7 +108,7 @@ void BytecodeInfoCollector::ProcessClasses()
             CollectFunctionTypeId(methodId);
 
             // Generate all constpool
-            vm_->GetJSThread()->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile_, methodId);
+            compilationEnv_->FindOrCreateConstPool(jsPandaFile_, methodId);
 
             auto methodOffset = methodId.GetOffset();
             CString name = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(mda.GetNameId()).data);
@@ -164,33 +167,23 @@ void BytecodeInfoCollector::ProcessClasses()
                        << methodIdx;
 }
 
-void BytecodeInfoCollector::ProcessMethod(JSHandle<JSFunction> &jsFunction)
+void BytecodeInfoCollector::ProcessMethod()
 {
     auto &recordNames = bytecodeInfo_.GetRecordNames();
     auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
+    MethodLiteral *methodLiteral = compilationEnv_->GetMethodLiteral();
 
-    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
-    panda_file::File::EntityId methodIdx = method->GetMethodId();
+    panda_file::File::EntityId methodIdx = methodLiteral->GetMethodId();
     panda_file::MethodDataAccessor mda(*pf, methodIdx);
     const CString recordName = jsPandaFile_->GetRecordNameWithBundlePack(methodIdx);
     recordNames.emplace_back(recordName);
     auto methodId = mda.GetMethodId();
     CollectFunctionTypeId(methodId);
 
-    // Generate all constpool
-    [[maybe_unused]] JSTaggedValue constpool =
-        vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile_, methodId);
-    ASSERT(!constpool.IsHole());
-
-    auto methodOffset = methodId.GetOffset();
-    CString name = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(mda.GetNameId()).data);
-    if (JSPandaFile::IsEntryOrPatch(name)) {
-    }
-
-    MethodLiteral *methodLiteral = method->GetMethodLiteral();
     ASSERT(jsPandaFile_->IsNewVersion());
 
+    auto methodOffset = methodId.GetOffset();
     auto codeId = mda.GetCodeId();
     ASSERT(codeId.has_value());
     panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
@@ -204,20 +197,13 @@ void BytecodeInfoCollector::ProcessMethod(JSHandle<JSFunction> &jsFunction)
     CollectMethodPcsFromBC(codeSize, insns, methodLiteral, classNameVec,
         recordName, methodOffset, classConstructIndexes);
     processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
-    // collect className and literal offset for type infer
-    if (EnableCollectLiteralInfo()) {
-        CollectClassLiteralInfo(methodLiteral, classNameVec);
-    }
 
     SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
     // class Construct need to use new target, can not fastcall
-    if (method->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
+    if (methodLiteral->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
         methodLiteral->SetIsFastCall(false);
         bytecodeInfo_.ModifyMethodOffsetToCanFastCall(methodIdx.GetOffset(), false);
     }
-    // Collect import(infer-needed) and export relationship among all records.
-    CollectRecordReferenceREL();
-    RearrangeInnerMethods();
 }
 
 void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,
@@ -228,7 +214,7 @@ void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,
 
     if (classOffsetVec.size() == classNameVec.size()) {
         for (uint32_t i = 0; i < classOffsetVec.size(); i++) {
-            vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AddElementToClassNameMap(
+            compilationEnv_->GetTSManager()->AddElementToClassNameMap(
                 jsPandaFile_, classOffsetVec[i], classNameVec[i]);
         }
     }
@@ -322,8 +308,12 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
         if (!fastCallFlag) {
             canFastCall = false;
         }
-        CollectModuleInfoFromBC(bcIns, method, recordName);
-        snapshotCPData_.Record(bcIns, bcIndex, recordName, method);
+        if (compilationEnv_->IsAotCompiler()) {
+            CollectModuleInfoFromBC(bcIns, method, recordName);
+        }
+        if (snapshotCPData_ != nullptr) {
+            snapshotCPData_->Record(bcIns, bcIndex, recordName, method);
+        }
         pgoBCInfo_.Record(bcIns, bcIndex, recordName, method);
         if (noGC && !bytecodes_.GetBytecodeMetaData(curPc).IsNoGC()) {
             noGC = false;
@@ -633,10 +623,11 @@ void BytecodeInfoCollector::CollectImportIndexs(uint32_t methodOffset, uint32_t 
 
 void BytecodeInfoCollector::CollectExportIndexs(const CString &recordName, uint32_t index)
 {
-    JSThread *thread = vm_->GetJSThread();
+    ASSERT(compilationEnv_->IsAotCompiler());
+    JSThread *thread = compilationEnv_->GetJSThread();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     CString exportLocalName = "*default*";
-    ObjectFactory *objFactory = vm_->GetFactory();
+    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
     if (currentModule->GetLocalExportEntries().IsUndefined()) {
@@ -675,7 +666,8 @@ void BytecodeInfoCollector::CollectExportIndexs(const CString &recordName, uint3
 bool BytecodeInfoCollector::CheckExportNameAndClassType(const CString &recordName,
                                                         const JSHandle<EcmaString> &exportStr)
 {
-    auto tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
+    ASSERT(compilationEnv_->IsAotCompiler());
+    auto tsManager = compilationEnv_->GetTSManager();
     JSHandle<TaggedArray> exportTypeTable = tsManager->GetExportTableFromLiteral(jsPandaFile_, recordName);
     uint32_t length = exportTypeTable->GetLength();
     for (uint32_t i = 0; i < length; i = i + 2) { // 2: skip a pair of key and value
@@ -717,7 +709,8 @@ void BytecodeInfoCollector::CollectRecordReferenceREL()
  */
 void BytecodeInfoCollector::CollectRecordImportInfo(const CString &recordName)
 {
-    auto thread = vm_->GetJSThread();
+    ASSERT(compilationEnv_->IsAotCompiler());
+    auto thread = compilationEnv_->GetJSThread();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
@@ -747,7 +740,8 @@ void BytecodeInfoCollector::CollectRecordImportInfo(const CString &recordName)
 // For type infer under retranmission (export * from "xxx"), we collect the star export records in this function.
 void BytecodeInfoCollector::CollectRecordExportInfo(const CString &recordName)
 {
-    auto thread = vm_->GetJSThread();
+    ASSERT(compilationEnv_->IsAotCompiler());
+    auto thread = compilationEnv_->GetJSThread();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);

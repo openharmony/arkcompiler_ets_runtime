@@ -67,8 +67,6 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE);
         PGOProfilerManager::GetInstance()->Initialize(options.GetPGOProfilerPath(),
                                                       options.GetPGOHotnessThreshold());
-        bool isEnableJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
-        Jit::GetInstance()->SetEnableOrDisable(options, isEnableJit);
         ASSERT(instance_ == nullptr);
         instance_ = new Runtime();
         firstVmCreated_ = true;
@@ -82,6 +80,8 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
         if (++vmCount_ == 1) {
             ThreadManagedScope managedScope(vm->GetAssociatedJSThread());
             PreInitialization(vm);
+            bool isEnableJit = vm->GetJSOptions().IsEnableJIT() && vm->GetJSOptions().GetEnableAsmInterpreter();
+            Jit::GetInstance()->SetEnableOrDisable(vm->GetJSOptions(), isEnableJit);
             vm->Initialize();
             PostInitialization(vm);
         }

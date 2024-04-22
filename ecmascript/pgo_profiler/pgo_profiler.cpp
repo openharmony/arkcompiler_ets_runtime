@@ -23,6 +23,7 @@
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -171,7 +172,11 @@ void PGOProfiler::UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHC
         return;
     }
     newHClass->SetParent(vm_->GetJSThread(), JSTaggedValue::Undefined());
-    InsertProfileTypeSafe(JSTaggedType(newHClass), JSTaggedType(newHClass), rootProfileType);
+    if (jitProfiler_ != nullptr) {
+        jitProfiler_->UpdateRootProfileType(oldHClass, newHClass);
+    } else {
+        InsertProfileTypeSafe(JSTaggedType(newHClass), JSTaggedType(newHClass), rootProfileType);
+    }
 }
 
 void PGOProfiler::UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind)
@@ -247,9 +252,10 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
 
 void PGOProfiler::PGODump(JSTaggedType func)
 {
-    if (!isEnable_) {
+    if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
+
     auto funcValue = JSTaggedValue(func);
     if (!funcValue.IsJSFunction()) {
         return;
@@ -328,9 +334,10 @@ void PGOProfiler::WaitPGODumpFinish()
 
 void PGOProfiler::PGOPreDump(JSTaggedType func)
 {
-    if (!isEnable_) {
+    if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
+
     auto funcValue = JSTaggedValue(func);
     if (!funcValue.IsJSFunction()) {
         return;
@@ -384,7 +391,7 @@ void PGOProfiler::UpdateExtraProfileTypeInfo(ApEntityId abcId,
 
 void PGOProfiler::HandlePGOPreDump()
 {
-    if (!isEnable_) {
+    if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
     DISALLOW_GARBAGE_COLLECTION;
@@ -419,7 +426,7 @@ void PGOProfiler::HandlePGOPreDump()
 
 void PGOProfiler::HandlePGODump(bool force)
 {
-    if (!isEnable_) {
+    if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
     DISALLOW_GARBAGE_COLLECTION;
@@ -1085,7 +1092,12 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
         auto protoOrHClass = ctorFunction->GetProtoOrHClass();
         if (protoOrHClass.IsJSHClass()) {
             auto hclass = JSHClass::Cast(protoOrHClass.GetTaggedObject());
-            InsertProfileTypeSafe(JSTaggedType(hclass), JSTaggedType(hclass), localType.GetProfileType());
+            auto result = InsertProfileTypeSafe(JSTaggedType(hclass), JSTaggedType(hclass), localType.GetProfileType());
+            if (!result) {
+                LOG_COMPILER(INFO)
+                    << "DumpDefineClass InsertFail, May already exist , Method Name "
+                    << Method::Cast(ctorFunction->GetMethod())->GetMethodName();
+            }
             recordInfos_->AddRootLayout(JSTaggedType(hclass), localType.GetProfileType());
             protoOrHClass = hclass->GetProto();
         }
@@ -1544,21 +1556,24 @@ void PGOProfiler::AddBuiltinsInfo(
     }
 }
 
-void PGOProfiler::InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType)
+bool PGOProfiler::InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType)
 {
     if (!isEnable_) {
-        return;
+        return false;
     }
-
+    if (jitProfiler_ != nullptr) {
+        jitProfiler_->InsertProfileType(root, child, traceType, traceType);
+    }
     auto iter = tracedProfiles_.find(root);
     if (iter != tracedProfiles_.end()) {
         auto generator = iter->second;
-        generator->InsertProfileType(child, traceType);
+        return generator->InsertProfileType(child, traceType);
     } else {
         LockHolder lock(tracedProfilesMutex_);
         auto generator = vm_->GetNativeAreaAllocator()->New<PGOTypeGenerator>();
         generator->InsertProfileType(child, traceType);
         tracedProfiles_.emplace(root, generator);
+        return true;
     }
 }
 
@@ -1594,7 +1609,8 @@ ProfileType PGOProfiler::GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedT
     if (rootType.IsNone()) {
         return ProfileType::PROFILE_TYPE_NONE;
     }
-    return generator->GenerateProfileType(rootType, child);
+    bool generateNewType = false;
+    return generator->GenerateProfileType(rootType, child, generateNewType);
 }
 
 void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
@@ -1616,6 +1632,9 @@ void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
         auto generator = iter->second;
         generator->ProcessReferences(visitor);
         ++iter;
+    }
+    if (jitProfiler_ != nullptr) {
+        jitProfiler_->ProcessReferences(visitor);
     }
     preDumpWorkList_.Iterate([this, &visitor](WorkNode *node) {
         auto object = reinterpret_cast<TaggedObject *>(node->GetValue());
@@ -1853,4 +1872,10 @@ JSTaggedValue PGOProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSH
     }
     return JSTaggedValue::Undefined();
 }
+void PGOProfiler::InitJITProfiler()
+{
+    jitProfiler_ = new JITProfiler(vm_);
+    jitProfiler_->InitJITProfiler();
+}
+
 } // namespace panda::ecmascript::pgo

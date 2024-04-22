@@ -28,10 +28,13 @@
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/share_opcodes.h"
 #include "ecmascript/compiler/variable_type.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
+#include "ecmascript/js_date.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/message_string.h"
 #include "macros.h"
 
@@ -164,6 +167,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_IMUL:
             LowerMathImul(gate);
             break;
+        case OpCode::NEW_NUMBER:
+            LowerNewNumber(gate);
+            break;
         case OpCode::GLOBAL_IS_FINITE:
             LowerGlobalIsFinite(gate);
             break;
@@ -193,6 +199,15 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::MAP_GET:
             LowerToCommonStub(gate, CommonStubCSigns::JSMapGet);
+            break;
+        case OpCode::DATE_GET_TIME:
+            LowerDateGetTime(gate);
+            break;
+        case OpCode::MAP_HAS:
+            LowerToCommonStub(gate, CommonStubCSigns::JSMapHas);
+            break;
+        case OpCode::SET_HAS:
+            LowerToCommonStub(gate, CommonStubCSigns::JSSetHas);
             break;
         default:
             break;
@@ -878,6 +893,79 @@ void TypedNativeInlineLowering::LowerMathSqrt(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
+
+GateRef AllocateNewNumber(EcmaVM *vm, CircuitBuilder *builder, GateAccessor acc, GateRef protoOrHclass, GateRef result)
+{
+    JSHandle<JSFunction> numberFunctionCT(vm->GetGlobalEnv()->GetNumberFunction());
+    JSTaggedValue protoOrHClassCT = numberFunctionCT->GetProtoOrHClass();
+    JSHClass *numberHClassCT = JSHClass::Cast(protoOrHClassCT.GetTaggedObject());
+    size_t objectSize = numberHClassCT->GetObjectSize();
+
+    GateRef size = builder->IntPtr(objectSize);
+
+    GateRef emptyArray = builder->GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    builder->StartAllocate();
+    GateRef object = builder->HeapAlloc(acc.GetGlueFromArgList(), size, GateType::TaggedValue(),
+                                        RegionSpaceFlag::IN_YOUNG_SPACE);
+    // Initialization:
+    builder->StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, protoOrHclass,
+                              MemoryOrder::NeedBarrierAndAtomic());
+    builder->StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
+                              builder->Int64(JSTaggedValue(0).GetRawData()));
+    builder->StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray,
+                              MemoryOrder::NoBarrier());
+    builder->StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::ELEMENTS_OFFSET, emptyArray,
+                              MemoryOrder::NoBarrier());
+    builder->StoreConstOffset(VariableType::JS_ANY(), object, JSPrimitiveRef::VALUE_OFFSET, result);
+    auto offset = JSPrimitiveRef::VALUE_OFFSET + JSTaggedValue::TaggedTypeSize();
+    // Initialize inlined properties:
+    for (; offset < objectSize; offset += JSTaggedValue::TaggedTypeSize()) {
+        builder->StoreConstOffset(VariableType::INT64(), object, offset, builder->Undefined());
+    }
+    return builder->FinishAllocate(object);
+}
+
+void TypedNativeInlineLowering::LowerNewNumber(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    
+    GateRef numberFunction = acc_.GetValueIn(gate, 0);
+    GateRef param = acc_.GetValueIn(gate, 1);
+
+    GateRef globalEnvNumberFunction = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), builder_.GetGlobalEnv(),
+                                                                 GlobalEnv::NUMBER_FUNCTION_INDEX);
+    auto builtinIsNumber = builder_.Equal(numberFunction, globalEnvNumberFunction);
+    builder_.DeoptCheck(builtinIsNumber, FindFrameState(gate), DeoptType::NEWBUILTINCTORFAIL1);
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(),
+             builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(builder_.Int32(0))));
+    Label exit(&env);
+    Label isNumber(&env);
+    Label notNumber(&env);
+    BRANCH_CIR(builder_.TaggedIsNumber(param), &isNumber, &notNumber);
+    builder_.Bind(&isNumber);
+    {
+        result = param;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notNumber);
+    {
+        builder_.DeoptCheck(builder_.TaggedIsString(param), FindFrameState(gate), DeoptType::NOTSTRING1);
+        auto isIntString = builder_.IsIntegerString(param);
+        builder_.DeoptCheck(isIntString, FindFrameState(gate), DeoptType::NOTINT1);
+        result = builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(builder_.GetRawHashFromString(param)));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+
+    auto protoOrHclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), numberFunction,
+                                                  JSFunction::PROTO_OR_DYNCLASS_OFFSET);
+
+    GateRef ret = AllocateNewNumber(vm_, &builder_, acc_, protoOrHclass, *result);
+    
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
 void TypedNativeInlineLowering::LowerArrayBufferIsView(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1513,6 +1601,15 @@ void TypedNativeInlineLowering::LowerToBuiltinStub(GateRef gate, BuiltinsStubCSi
     GateRef target = builder_.IntPtr(id * ptrSize);
     GateRef ret = builder_.Call(cs, glue, target, builder_.GetDepend(), args, Circuit::NullGate());
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
+}
+
+void TypedNativeInlineLowering::LowerDateGetTime(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef dateValueOffset = builder_.IntPtr(JSDate::TIME_VALUE_OFFSET);
+    GateRef result = builder_.Load(VariableType::JS_ANY(), obj, dateValueOffset);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 }

@@ -41,7 +41,7 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
     return JSHandle<JSTaggedValue>(sModule);
 }
 
-JSHandle<JSTaggedValue> SendableClassModule::CloneRecordBinding(JSThread *thread, JSTaggedValue indexBinding)
+JSHandle<JSTaggedValue> SendableClassModule::CloneRecordIndexBinding(JSThread *thread, JSTaggedValue indexBinding)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(indexBinding.GetTaggedObject());
@@ -53,7 +53,23 @@ JSHandle<JSTaggedValue> SendableClassModule::CloneRecordBinding(JSThread *thread
 
     JSHandle<EcmaString> record(thread, SourceTextModule::GetModuleName(resolvedModule.GetTaggedValue()));
     int32_t index = binding->GetIndex();
-    return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordBindingRecord(record, index));
+    return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordIndexBindingRecord(record, index));
+}
+
+JSHandle<JSTaggedValue> SendableClassModule::CloneRecordNameBinding(JSThread *thread, JSTaggedValue binding)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ResolvedBinding *resolvedBinding = ResolvedBinding::Cast(binding.GetTaggedObject());
+    JSHandle<SourceTextModule> resolvedModule(thread, resolvedBinding->GetModule());
+    if (SourceTextModule::IsSharedModule((resolvedModule))) {
+        JSHandle<JSTaggedValue> bindingName(thread, resolvedBinding->GetBindingName());
+        return JSHandle<JSTaggedValue>::Cast(
+            factory->NewSResolvedBindingRecord(resolvedModule, bindingName));
+    }
+
+    JSHandle<EcmaString> record(thread, SourceTextModule::GetModuleName(resolvedModule.GetTaggedValue()));
+    JSHandle<JSTaggedValue> bindingName(thread, resolvedBinding->GetBindingName());
+    return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordBindingRecord(record, bindingName));
 }
 
 JSHandle<TaggedArray> SendableClassModule::CloneModuleEnvironment(JSThread *thread,
@@ -71,14 +87,18 @@ JSHandle<TaggedArray> SendableClassModule::CloneModuleEnvironment(JSThread *thre
         if (key.IsRecord()) {
             JSType type = key.GetTaggedObject()->GetClass()->GetObjectType();
             switch (type) {
-                case JSType::RESOLVEDBINDING_RECORD:
-                    LOG_FULL(ERROR) << "recordBinding appears in shared-module";
-                    break;
-                case JSType::RESOLVEDINDEXBINDING_RECORD: {
-                    JSHandle<JSTaggedValue> recordBinding = SendableClassModule::CloneRecordBinding(thread, key);
+                case JSType::RESOLVEDBINDING_RECORD: {
+                    JSHandle<JSTaggedValue> recordBinding = SendableClassModule::CloneRecordNameBinding(thread, key);
                     sendableEnvironment->Set(thread, idx, recordBinding);
                     break;
                 }
+                case JSType::RESOLVEDINDEXBINDING_RECORD: {
+                    JSHandle<JSTaggedValue> recordBinding = SendableClassModule::CloneRecordIndexBinding(thread, key);
+                    sendableEnvironment->Set(thread, idx, recordBinding);
+                    break;
+                }
+                case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+                    break;
                 case JSType::RESOLVEDRECORDBINDING_RECORD:
                     break;
                 default:

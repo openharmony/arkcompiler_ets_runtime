@@ -59,6 +59,7 @@ public:
                                   const PropertyAttributes &metaData);
     void PUBLIC_API UpdateValue(const JSThread *thread, int entry, const JSTaggedValue &value);
     void UpdateAttributes(int entry, const PropertyAttributes &metaData);
+    void UpdateAllAttributesToNoWitable(const JSThread *thread);
     void ClearEntry(const JSThread *thread, int entry);
     void GetAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray) const;
     void GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArrayEffectivelength,

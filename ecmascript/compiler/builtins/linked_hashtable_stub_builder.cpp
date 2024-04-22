@@ -579,26 +579,10 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     auto env = GetEnvironment();
     Label cfgEntry(env);
     env->SubCfgEntry(&cfgEntry);
-    Label exit(env);
-    Label nonEmpty(env);
-    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
-    GateRef size = GetNumberOfElements(linkedTable);
-    BRANCH(Int32Equal(size, Int32(0)), &exit, &nonEmpty);
-    Bind(&nonEmpty);
     HashStubBuilder hashBuilder(this, glue_);
     GateRef hash = hashBuilder.GetHash(key);
-
     GateRef entry = FindElement(linkedTable, key, hash);
-    Label findEntry(env);
-    BRANCH(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
-    Bind(&findEntry);
-    {
-        res = TaggedTrue();
-        Jump(&exit);
-    }
-
-    Bind(&exit);
-    auto ret = *res;
+    GateRef ret = Int32NotEqual(entry, Int32(-1));
     env->SubCfgExit();
     return ret;
 }
@@ -682,14 +666,8 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     Jump(&exit);
 
     Bind(&slowPath);
-    std::string name;
-    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
-        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(MapConstructor));
-    } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
-        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(SetConstructor));
-    }
     returnValue = CallBuiltinRuntimeWithNewTarget(glue_, {glue_, nativeCode, func, thisValue,
-        numArgs, argv, newTarget}, name.c_str());
+        numArgs, argv, newTarget});
     Jump(&exit);
 
     Bind(&exit);

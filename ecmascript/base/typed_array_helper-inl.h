@@ -17,6 +17,7 @@
 #define ECMASCRIPT_BASE_TYPED_ARRAY_HELPER_INL_H
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
+#include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/base/error_type.h"
@@ -49,6 +50,7 @@ JSHandle<JSHClass> TypedArrayHelper::GetOnHeapHclass##Type(JSThread *thread, JSH
 }
 
 TYPED_ARRAY_TYPES(GET_ONHEAP_HCLASS_FROM_TYPE)
+SHARED_TYPED_ARRAY_TYPES(GET_ONHEAP_HCLASS_FROM_TYPE)
 #undef GET_ONHEAP_HCLASS_FROM_TYPE
 
 #define GET_NOT_ONHEAP_HCLASS_FROM_TYPE(Type)                                                          \
@@ -65,7 +67,17 @@ JSHandle<JSHClass> TypedArrayHelper::GetNotOnHeapHclass##Type(JSThread *thread, 
 }
 
 TYPED_ARRAY_TYPES(GET_NOT_ONHEAP_HCLASS_FROM_TYPE)
+SHARED_TYPED_ARRAY_TYPES(GET_NOT_ONHEAP_HCLASS_FROM_TYPE)
 #undef GET_NOT_ONHEAP_HCLASS_FROM_TYPE
+
+template<>
+struct base::BuiltinsArrayBufferType<TypedArrayKind::SHARED> {
+    using Type = builtins::BuiltinsSendableArrayBuffer;
+};
+template<>
+struct base::BuiltinsArrayBufferType<TypedArrayKind::NON_SHARED> {
+    using Type = builtins::BuiltinsArrayBuffer;
+};
 
 DataViewType TypedArrayHelper::GetType(const JSHandle<JSTypedArray> &obj)
 {
@@ -349,6 +361,38 @@ JSHandle<JSHClass> TypedArrayHelper::GetOnHeapHclassFromType(
     return TypedArrayHelper::GetOnHeapHclassBigUint64Array(thread, objHclass);
 }
 
+JSHandle<JSHClass> TypedArrayHelper::GetSharedOnHeapHclassFromType(
+    JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType)
+{
+    JSHClass* objHclass = JSHandle<TaggedObject>(obj)->GetClass();
+    ASSERT_PRINT(!objHclass->IsOnHeapFromBitField(), "must be not on heap");
+    switch (arrayType) {
+        case DataViewType::INT8:
+            return TypedArrayHelper::GetOnHeapHclassSharedInt8Array(thread, objHclass);
+        case DataViewType::UINT8:
+            return TypedArrayHelper::GetOnHeapHclassSharedUint8Array(thread, objHclass);
+        case DataViewType::UINT8_CLAMPED:
+            return TypedArrayHelper::GetOnHeapHclassSharedUint8ClampedArray(thread, objHclass);
+        case DataViewType::INT16:
+            return TypedArrayHelper::GetOnHeapHclassSharedInt16Array(thread, objHclass);
+        case DataViewType::UINT16:
+            return TypedArrayHelper::GetOnHeapHclassSharedUint16Array(thread, objHclass);
+        case DataViewType::INT32:
+            return TypedArrayHelper::GetOnHeapHclassSharedInt32Array(thread, objHclass);
+        case DataViewType::UINT32:
+            return TypedArrayHelper::GetOnHeapHclassSharedUint32Array(thread, objHclass);
+        case DataViewType::FLOAT32:
+            return TypedArrayHelper::GetOnHeapHclassSharedFloat32Array(thread, objHclass);
+        case DataViewType::FLOAT64:
+            return TypedArrayHelper::GetOnHeapHclassSharedFloat64Array(thread, objHclass);
+        case DataViewType::BIGINT64:
+            return TypedArrayHelper::GetOnHeapHclassSharedBigInt64Array(thread, objHclass);
+        default:
+            break;
+    }
+    return TypedArrayHelper::GetOnHeapHclassSharedBigUint64Array(thread, objHclass);
+}
+
 JSHandle<JSHClass> TypedArrayHelper::GetNotOnHeapHclassFromType(
     JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType)
 {
@@ -368,7 +412,7 @@ JSHandle<JSHClass> TypedArrayHelper::GetNotOnHeapHclassFromType(
         case DataViewType::INT32:
             return TypedArrayHelper::GetNotOnHeapHclassInt32Array(thread, objHclass);
         case DataViewType::UINT32:
-            return TypedArrayHelper::GetOnHeapHclassUint32Array(thread, objHclass);
+            return TypedArrayHelper::GetNotOnHeapHclassUint32Array(thread, objHclass);
         case DataViewType::FLOAT32:
             return TypedArrayHelper::GetNotOnHeapHclassFloat32Array(thread, objHclass);
         case DataViewType::FLOAT64:
@@ -379,6 +423,38 @@ JSHandle<JSHClass> TypedArrayHelper::GetNotOnHeapHclassFromType(
             break;
     }
     return TypedArrayHelper::GetNotOnHeapHclassBigUint64Array(thread, objHclass);
+}
+
+JSHandle<JSHClass> TypedArrayHelper::GetSharedNotOnHeapHclassFromType(
+    JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType)
+{
+    JSHClass* objHclass = JSHandle<TaggedObject>(obj)->GetClass();
+    ASSERT_PRINT(objHclass->IsOnHeapFromBitField(), "must be on heap");
+    switch (arrayType) {
+        case DataViewType::INT8:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedInt8Array(thread, objHclass);
+        case DataViewType::UINT8:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedUint8Array(thread, objHclass);
+        case DataViewType::UINT8_CLAMPED:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedUint8ClampedArray(thread, objHclass);
+        case DataViewType::INT16:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedInt16Array(thread, objHclass);
+        case DataViewType::UINT16:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedUint16Array(thread, objHclass);
+        case DataViewType::INT32:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedInt32Array(thread, objHclass);
+        case DataViewType::UINT32:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedUint32Array(thread, objHclass);
+        case DataViewType::FLOAT32:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedFloat32Array(thread, objHclass);
+        case DataViewType::FLOAT64:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedFloat64Array(thread, objHclass);
+        case DataViewType::BIGINT64:
+            return TypedArrayHelper::GetNotOnHeapHclassSharedBigInt64Array(thread, objHclass);
+        default:
+            break;
+    }
+    return TypedArrayHelper::GetNotOnHeapHclassSharedBigUint64Array(thread, objHclass);
 }
 
 uint32_t TypedArrayHelper::GetSizeFromType(const DataViewType arrayType)

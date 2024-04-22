@@ -128,6 +128,8 @@ public:
     };
 
     explicit JSThread(EcmaVM *vm);
+    // only used in jit thread
+    explicit JSThread(EcmaVM *vm, bool isJit);
 
     PUBLIC_API ~JSThread();
 
@@ -262,6 +264,11 @@ public:
     const GlobalEnvConstants *GlobalConstants() const
     {
         return glueData_.globalConst_;
+    }
+
+    void SetGlobalConstants(const GlobalEnvConstants *constants)
+    {
+        glueData_.globalConst_ = const_cast<GlobalEnvConstants*>(constants);
     }
 
     const BuiltinEntries GetBuiltinEntries() const
@@ -841,6 +848,16 @@ public:
         glueData_.randomStatePtr_ = reinterpret_cast<uintptr_t>(ptr);
     }
 
+    void SetTaskInfo(uintptr_t taskInfo)
+    {
+        glueData_.taskInfo_ = taskInfo;
+    }
+    
+    uintptr_t GetTaskInfo() const
+    {
+        return glueData_.taskInfo_;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -872,6 +889,7 @@ public:
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
                                                  base::AlignedBool,
+                                                 base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedUint32> {
@@ -909,6 +927,7 @@ public:
             unsharedConstpoolsIndex,
             RandomStatePtrIndex,
             stateAndFlagsIndex,
+            TaskInfoIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1099,6 +1118,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::RandomStatePtrIndex)>(isArch32);
         }
 
+        static size_t GetTaskInfoOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::TaskInfoIndex)>(isArch32);
+        }
+        
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1132,6 +1156,7 @@ public:
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
         alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
+        alignas(EAS) uintptr_t taskInfo_ {0};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1202,7 +1227,7 @@ public:
         uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
         return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
     }
-    void UpdateState(ThreadState newState);
+    void PUBLIC_API UpdateState(ThreadState newState);
     void SuspendThread(bool internalSuspend);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
@@ -1217,6 +1242,30 @@ public:
     void SetWeakFinalizeTaskCallback(const WeakFinalizeTaskCallback &callback)
     {
         finalizeTaskCallback_ = callback;
+    }
+
+    static void RegisterThread(JSThread *jsThread);
+
+    static void UnregisterThread(JSThread *jsThread);
+
+    bool IsJitThread() const
+    {
+        return isJitThread_;
+    }
+
+    RecursiveMutex *GetJitLock()
+    {
+        return &jitMutex_;
+    }
+
+    void SetMachineCodeLowMemory(bool isLow)
+    {
+        machineCodeLowMemory_ = isLow;
+    }
+
+    bool IsMachineCodeLowMemory()
+    {
+        return machineCodeLowMemory_;
     }
 private:
     NO_COPY_SEMANTIC(JSThread);
@@ -1318,6 +1367,9 @@ private:
     int32_t suspendCount_ {0};
     ConditionVariable suspendCondVar_;
 
+    bool isJitThread_ {false};
+    RecursiveMutex jitMutex_;
+    bool machineCodeLowMemory_ {false};
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
 #endif
@@ -1325,6 +1377,7 @@ private:
     friend class GlobalHandleCollection;
     friend class EcmaVM;
     friend class EcmaContext;
+    friend class JitVM;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_THREAD_H

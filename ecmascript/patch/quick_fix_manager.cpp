@@ -201,6 +201,10 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
         return JSTaggedValue::Hole();
     }
 
+    if (!HasQueryQuickFixInfoFunc()) {
+        return JSTaggedValue::Hole();
+    }
+
     // Generate patch constpool.
     CString patchFileName = patchInfo.patchFileName;
     std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName);

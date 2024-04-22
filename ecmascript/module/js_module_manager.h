@@ -82,12 +82,6 @@ public:
 
     JSTaggedValue GetCurrentModule();
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
-    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
-        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
-    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
-        JSTaggedValue resolvedModule, ResolvedBinding *binding);
-    JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue currentModule,
-        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
     void AddResolveImportedModule(JSHandle<JSTaggedValue> &record, JSHandle<JSTaggedValue> &module);
     void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
 

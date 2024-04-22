@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/jit/jit_thread.h"
 
 namespace panda::ecmascript {
 class JitTask;
@@ -32,9 +33,9 @@ class Jit {
 public:
     Jit() {}
     ~Jit();
-    static Jit *GetInstance();
+    static PUBLIC_API Jit *GetInstance();
     void SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnable);
-    bool IsEnable();
+    bool PUBLIC_API IsEnable();
     void Initialize();
 
     static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
@@ -49,22 +50,94 @@ public:
 
     void DeleteJitCompile(void *compiler);
 
-    void RequestInstallCode(JitTask *jitTask);
+    void RequestInstallCode(std::shared_ptr<JitTask> jitTask);
     void InstallTasks(uint32_t threadId);
+    void ClearTask(const std::function<bool(Task *task)> &checkClear);
+    void ClearTask(EcmaContext *ecmaContext);
+    void ClearTaskWithVm(EcmaVM *vm);
+    void Destroy();
+    void CheckMechineCodeSpaceMemory(JSThread *thread, int remainSize);
 
-    JitTask *GetAsyncCompileTask();
-    void AddAsyncCompileTask(JitTask *jitTask);
-    void RemoveAsyncCompileTask(JitTask *jitTask);
+    // dfx for jit preheat compile
+    static void CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction);
 
     NO_COPY_SEMANTIC(Jit);
     NO_MOVE_SEMANTIC(Jit);
 
-    class Scope : public ClockScope {
+    class TimeScope : public ClockScope {
     public:
-        Scope(CString message) : message_(message) {}
-        ~Scope();
+        explicit TimeScope(CString message, bool outPutLog = true) : message_(message), outPutLog_(outPutLog) {}
+        explicit TimeScope() : message_(""), outPutLog_(false) {}
+        PUBLIC_API ~TimeScope();
     private:
         CString message_;
+        bool outPutLog_;
+    };
+
+    class JitLockHolder {
+    public:
+        explicit JitLockHolder(const CompilationEnv *env) : thread_(nullptr), scope_()
+        {
+            if (env->IsJitCompiler()) {
+                JSThread *thread = env->GetJSThread();
+                ASSERT(thread->IsJitThread());
+                thread_ = static_cast<JitThread*>(thread);
+                thread_->ManagedCodeBegin();
+                thread_->GetHostThread()->GetJitLock()->Lock();
+            }
+        }
+
+        explicit JitLockHolder(const CompilationEnv *env, CString message) : thread_(nullptr),
+            scope_("Jit Compile Pass: " + message + ", Time:", false)
+        {
+            if (env->IsJitCompiler()) {
+                JSThread *thread = env->GetJSThread();
+                ASSERT(thread->IsJitThread());
+                thread_ = static_cast<JitThread*>(thread);
+                thread_->ManagedCodeBegin();
+                thread_->GetHostThread()->GetJitLock()->Lock();
+            }
+        }
+
+        ~JitLockHolder()
+        {
+            if (thread_ != nullptr) {
+                thread_->GetHostThread()->GetJitLock()->Unlock();
+                thread_->ManagedCodeEnd();
+            }
+        }
+        JitThread *thread_ {nullptr};
+        TimeScope scope_;
+        ALLOW_HEAP_ACCESS
+        NO_COPY_SEMANTIC(JitLockHolder);
+        NO_MOVE_SEMANTIC(JitLockHolder);
+    };
+
+    class JitGCLockHolder {
+    public:
+        explicit JitGCLockHolder(JSThread *thread) : thread_(thread)
+        {
+            ASSERT(!thread->IsJitThread());
+            if (Jit::GetInstance()->IsEnable()) {
+                thread_->GetJitLock()->Lock();
+                locked_ = true;
+            }
+        }
+
+        ~JitGCLockHolder()
+        {
+            if (locked_) {
+                thread_->GetJitLock()->Unlock();
+                locked_ = false;
+            }
+        }
+
+    private:
+        JSThread *thread_;
+        bool locked_ { false };
+
+        NO_COPY_SEMANTIC(JitGCLockHolder);
+        NO_MOVE_SEMANTIC(JitGCLockHolder);
     };
 
 private:
@@ -72,10 +145,10 @@ private:
     bool initialized_ { false };
     bool jitEnable_ { false };
 
-    std::unordered_map<uint32_t, std::deque<JitTask*>> installJitTasks_;
-    static std::deque<JitTask*> asyncCompileJitTasks_;
+    std::unordered_map<uint32_t, std::deque<std::shared_ptr<JitTask>>> installJitTasks_;
     Mutex installJitTasksDequeMtx_;
-    static Mutex asyncCompileJitTasksMtx_;
+    Mutex setEnableLock_;
+    static constexpr int MIN_CODE_SPACE_SIZE = 1_KB;
 
     static void (*initJitCompiler_)(JSRuntimeOptions);
     static bool(*jitCompile_)(void*, JitTask*);
