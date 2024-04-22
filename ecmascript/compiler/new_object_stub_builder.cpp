@@ -1170,6 +1170,7 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
     Label callRuntime(env);
     Label checkJSObject(env);
     Label newObject(env);
+    Label isJSObject(env);
 
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     auto protoOrHclass = Load(VariableType::JS_ANY(), ctor,
@@ -1179,8 +1180,12 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
     BRANCH(IsJSHClass(protoOrHclass), &checkJSObject, &callRuntime);
     Bind(&checkJSObject);
     auto objectType = GetObjectType(protoOrHclass);
-    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
-        &newObject, &callRuntime);
+    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))), &isJSObject, &callRuntime);
+    Bind(&isJSObject);
+    {
+        auto funcProto = GetPrototypeFromHClass(protoOrHclass);
+        BRANCH(IsEcmaObject(funcProto), &newObject, &callRuntime);
+    }
     Bind(&newObject);
     {
         SetParameters(glue, 0);
