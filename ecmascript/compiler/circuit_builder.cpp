@@ -777,19 +777,28 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Label exit(env_);
     Label cacheMiss(env_);
     Label cache(env_);
+    Label unshareCpHit(env_);
+    Label unshareCpMiss(env_);
 
     // HirGate Can not be a nullGate in Aot
     if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate == Circuit::NullGate()) {
         hirGate = index;
     }
     // Call runtime to create unshared constpool when current context's cache is hole in multi-thread.
-    DEFVALUE(cacheValue, env_, VariableType::JS_ANY(), Undefined());
+    DEFVALUE(cacheValue, env_, VariableType::JS_ANY(), Hole());
     if (type == ConstPoolType::ARRAY_LITERAL || type == ConstPoolType::OBJECT_LITERAL) {
         GateRef unsharedConstPool = GetUnsharedConstpoolFromGlue(glue, constPool);
-        cacheValue = GetValueFromTaggedArray(unsharedConstPool, index);
+        BRANCH_CIR2(TaggedIsNotHole(unsharedConstPool), &unshareCpHit, &unshareCpMiss);
+        Bind(&unshareCpHit);
+        {
+            cacheValue = GetValueFromTaggedArray(unsharedConstPool, index);
+            Jump(&unshareCpMiss);
+        }
     } else {
         cacheValue = GetValueFromTaggedArray(constPool, index);
+        Jump(&unshareCpMiss);
     }
+    Bind(&unshareCpMiss);
     DEFVALUE(result, env_, VariableType::JS_ANY(), *cacheValue);
     BRANCH_CIR2(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
