@@ -632,5 +632,4 @@ const v0 = [0, 1];
 const mapEd = v0.map(() => {
   v0["pop"]();
 });
-
-print(new Uint16Array(v0).length)
+print(new Uint16Array(v0).length);
