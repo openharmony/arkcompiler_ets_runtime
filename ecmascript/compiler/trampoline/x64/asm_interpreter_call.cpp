@@ -244,7 +244,7 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
                                 << "This frame has been modified, and the offset CppToAsmInterp should be updated too.";
         }
     }
-    __ Leaq(Operand(rsp, 3 * FRAME_SLOT_SIZE), rbp);  // 24: skip frame type, prevSp and pc
+    __ Leaq(Operand(rsp, 3 * FRAME_SLOT_SIZE), rbp);  // 3: 24 means skip frame type, prevSp and pc
 }
 
 void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)
@@ -854,7 +854,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         __ Pushq(JSTaggedValue::Undefined().GetRawData());
     }
     __ Pushq(func);
-    // 40: skip frame type, numArgs, func, newTarget and this
+    // 5: 40 means skip frame type, numArgs, func, newTarget and this
     __ Leaq(Operand(rsp, numArgs, Times8, 5 * FRAME_SLOT_SIZE), rbp);
     __ Movq(rsp, stackArgs);
 
@@ -913,19 +913,19 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
 
     __ PushAlignBytes();
     __ Push(function);
-    // 24: skip thread & argc & returnAddr
+    // 3: 24 means skip thread & argc & returnAddr
     __ Subq(3 * FRAME_SLOT_SIZE, rsp);
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_ENTRY_FRAME);
     __ Movq(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode); // get native pointer
     __ Movq(argv, r11);
-    // 16: skip numArgs & thread
+    // 2: 16 means skip numArgs & thread
     __ Subq(2 * FRAME_SLOT_SIZE, r11);
     // EcmaRuntimeCallInfo
     __ Movq(r11, rdi);
 
     CallNativeInternal(assembler, nativeCode);
 
-    // 40: skip function
+    // 5: 40 means skip function
     __ Addq(5 * FRAME_SLOT_SIZE, rsp);
     __ Ret();
 }
@@ -970,7 +970,7 @@ void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assemb
 
     __ Movq(Operand(rsp, FRAME_SLOT_SIZE), glue); // 8: glue
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME);
-    __ Leaq(Operand(rbp, 2 * FRAME_SLOT_SIZE), rdi); // 16: skip argc & thread
+    __ Leaq(Operand(rbp, 2 * FRAME_SLOT_SIZE), rdi); // 2: skip argc & thread
     __ PushAlignBytes();
     CallNativeInternal(assembler, nativeCode);
     __ Ret();

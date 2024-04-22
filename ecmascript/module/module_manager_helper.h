@@ -24,7 +24,7 @@ class ModuleManagerHelper {
 public:
     static JSTaggedValue PUBLIC_API GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, int index);
 
-    static JSTaggedValue GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, 
+    static JSTaggedValue GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module,
                                         JSTaggedValue bindingName);
 
     static JSTaggedValue PUBLIC_API GetNativeModuleValue(JSThread *thread, JSTaggedValue resolvedModule,

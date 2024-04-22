@@ -82,6 +82,7 @@ void TypedBytecodeLowering::ParseOptBytecodeRange()
     std::vector<std::string> splitStrs = base::StringHelper::SplitString(optBCRange_, ",");
     for (const auto &optBCRange : splitStrs) {
         std::vector<std::string> splitRange = base::StringHelper::SplitString(optBCRange, ":");
+        // 2:Used to determine whether the size of the split string array splitRange is as expected.
         if (splitRange.size() == 2) {
             std::vector<int32_t> range;
             std::string start = splitRange[0];
@@ -580,7 +581,6 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
     AddProfiling(gate);
     GateRef frameState = Circuit::NullGate();
     auto opcode = acc_.GetByteCodeOpcode(gate);
-
     // The framestate of Call and Accessor related instructions directives is placed on IR. Using the depend edge to
     // climb up and find the nearest framestate for other instructions
     if (opcode == EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8 ||
@@ -595,7 +595,6 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
     } else {
         UNREACHABLE();
     }
-
     if (tacc.IsMono()) {
         GateRef receiver = tacc.GetReceiver();
         builder_.ObjectTypeCheck(true, receiver,
@@ -623,7 +622,6 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
         DeleteConstDataIfNoUser(tacc.GetKey());
         return;
     }
-
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), tacc.GetReceiver(),
                                                TaggedObject::HCLASS_OFFSET);
     for (size_t i = 0; i < typeCount; ++i) {
@@ -724,7 +722,6 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             builder_.Bind(&fails[i]);
         }
     }
-
     builder_.Bind(&exit);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
     DeleteConstDataIfNoUser(tacc.GetKey());

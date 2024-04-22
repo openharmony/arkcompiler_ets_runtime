@@ -1909,7 +1909,7 @@ void SlowPathLowering::LowerCopyDataProperties(GateRef gate)
 void SlowPathLowering::LowerCreateObjectWithExcludedKeys(GateRef gate)
 {
     const int id = RTSTUB_ID(OptCreateObjectWithExcludedKeys);
-    // 3: number of value inputs
+    // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) >= 2);
     size_t numIn = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args;

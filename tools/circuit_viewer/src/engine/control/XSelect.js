@@ -121,7 +121,9 @@ class XSelect {
     let isIn = this.isTouchIn(x, y);
     switch (msg) {
       case 1:
-        if (!isIn) break;
+        if (!isIn) {
+          break;
+        }
         if (!this.open_) {
           this.open_ = true;
           break;

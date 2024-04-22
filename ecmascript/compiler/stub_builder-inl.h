@@ -1324,8 +1324,8 @@ inline GateRef StubBuilder::ObjIsSpecialContainer(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return BoolAnd(
-            Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
-            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_QUEUE))));
+        Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
+        Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_QUEUE))));
 }
 
 inline GateRef StubBuilder::IsJSPrimitiveRef(GateRef obj)
@@ -1935,7 +1935,8 @@ inline void StubBuilder::SetPrototypeToHClass(VariableType type, GateRef glue, G
     Store(type, glue, hClass, offset, proto);
 }
 
-inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef protoChange)
+inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type,
+    GateRef glue, GateRef hClass, GateRef protoChange)
 {
     GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_DETAILS_OFFSET);
     Store(type, glue, hClass, offset, protoChange);

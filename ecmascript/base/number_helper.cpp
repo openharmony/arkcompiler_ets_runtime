@@ -407,7 +407,7 @@ JSTaggedValue NumberHelper::DoubleToExponential(JSThread *thread, double number,
     }
     CString result = ss.str();
     size_t found = result.find_last_of('e');
-    if (found != CString::npos && found < result.size() - 2 && result[found + 2] == '0') {
+    if (found != CString::npos && found < result.size() - 2 && result[found + 2] == '0') { // 2:offset of e
         result.erase(found + 2, 1); // 2:offset of e
     }
     if (digit < 0) {
@@ -1150,7 +1150,7 @@ int NumberHelper::GetMinmumDigits(double d, int *decimalPoint, char *buf)
     int MinDigits = 1;
     int MaxDigits = DOUBLE_MAX_PRECISION;
     while (MinDigits < MaxDigits) {
-        digits = (MinDigits + MaxDigits) / 2;
+        digits = (MinDigits + MaxDigits) / 2; // 2 :  Divide by 2
         GetBase(d, digits, decimalPoint, buf, bufTmp, sizeof(bufTmp));
         if (strtod(bufTmp, NULL) == d) {
             // no need to keep the trailing zeros
