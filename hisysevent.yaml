@@ -31,3 +31,13 @@ ARK_STATS_GC:
   GC_OLD_MEM_COMMITTED: {type: INT32, desc: Total memory committed by the old generation after GC in the statistical period}
   GC_HUGE_MEM_USED: {type: INT32, desc: Total memory used by the Huge segment after GC in this measurement period}
   GC_HUGE_MEM_COMMITTED: {type: INT32, desc: Total committed memory of the Huge segment after GC in this measurement period}
+
+ARK_COMPILER_LOG:
+  __BASE: {type: STATISTIC, level: MINOR, desc: ARKTSRUNTIME AOT COMPILER KEY STATS, preserve: true}
+  BUNDLE_NAME: {type: STRING, desc: application bundle name}
+  PGO_FILE_PATH: {type: STRING, desc: application pgo file path}
+  AOT_FILE_PATH: {type: STRING, desc: application aot file path}
+  COMPILER_TIME: {type: FLOAT, desc: compiler total time}
+  IS_LITECG: {type: BOOL, desc: codegen type is litecg}
+  COMPILER_METHOD_COUNT: {type: UINT32, desc: compiler method count}
+  PGO_FILE_LEGAL: {type: BOOL, desc: pgo file is legal}

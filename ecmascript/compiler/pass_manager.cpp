@@ -203,7 +203,8 @@ JitPassManager::~JitPassManager()
     }
 }
 
-bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen)
+bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen,
+    AotCompilerStats &compilerStats)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(compilationEnv_->GetJSThread());
 
@@ -311,6 +312,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<CGIRGenPass>();
     });
 
+    compilerStats.SetCompilerMethodCount(cmpDriver.GetCompilerMethodCount());
     LOG_COMPILER(INFO) << collector.GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
     return true;

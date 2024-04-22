@@ -155,6 +155,11 @@ public:
         panda_file::File::EntityId resolvedMethodId(resolvedMethod);
         UpdateCompileQueue(recordName, resolvedMethodId);
     }
+
+    uint32_t GetCompilerMethodCount() const
+    {
+        return compiledMethodCnt_;
+    }
 protected:
     // add maxMethodsInModule_ functions in a module and when a module is
     // full(maxMethodsInModule_ functions have been put into) or the module is the last module,
