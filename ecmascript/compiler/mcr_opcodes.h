@@ -29,6 +29,9 @@ namespace panda::ecmascript::kungfu {
     V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
     V(IsUndefinedOrHoleCheck, IS_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                    \
     V(IsNotUndefinedOrHoleCheck, IS_NOT_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
+    V(IsEcmaObjectCheck, IS_ECMA_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                               \
+    V(IsDataViewCheck, IS_DATA_VIEW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                   \
+    V(IsTaggedBooleanCheck, IS_TAGGED_BOOLEAN_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                         \
     V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                              \
     V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                                \
     V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)
@@ -38,6 +41,7 @@ namespace panda::ecmascript::kungfu {
     V(COWArrayCheck, COW_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                            \
     V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)          \
     V(EcmaStringCheck, ECMA_STRING_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
+    V(EcmaMapCheck, ECMA_MAP_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
     V(FinishAllocate, FINISH_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 1)                           \
     V(FlattenTreeStringCheck, FLATTEN_TREE_STRING_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
     V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
@@ -48,6 +52,7 @@ namespace panda::ecmascript::kungfu {
     V(LoadSetter, LOAD_SETTER, GateFlags::NO_WRITE, 0, 1, 2)                                   \
     V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                         \
     V(LoadStringLength, LOAD_STRING_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                       \
+    V(LoadMapSize, LOAD_MAP_SIZE, GateFlags::NO_WRITE, 1, 1, 1)                                 \
     V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                             \
     V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3)         \
     V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)             \
@@ -57,10 +62,17 @@ namespace panda::ecmascript::kungfu {
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                   \
     V(MonoLoadPropertyOnProto, MONO_LOAD_PROPERTY_ON_PROTO, GateFlags::CHECKABLE, 1, 1, 4)      \
     V(StringFromSingleCharCode, STRING_FROM_SINGLE_CHAR_CODE, GateFlags::NO_WRITE, 1, 1, 1)     \
+    V(TypedArrayEntries, TYPED_ARRAY_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                     \
+    V(TypedArrayKeys, TYPED_ARRAY_KEYS, GateFlags::NO_WRITE, 1, 1, 1)                           \
+    V(TypedArrayValues, TYPED_ARRAY_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                       \
     V(MigrateFromRawValueToHeapValues, MIGRATE_FROM_RAWVALUE_TO_HEAPVALUES, GateFlags::NONE_FLAG, 1, 1, 3)   \
     V(MigrateFromHeapValueToRawValue, MIGRATE_FROM_HEAPVALUE_TO_RAWVALUE, GateFlags::NONE_FLAG, 1, 1, 3)     \
     V(MigrateFromHoleIntToHoleNumber, MIGRATE_FROM_HOLEINT_TO_HOLENUMBER, GateFlags::NONE_FLAG, 1, 1, 1)     \
     V(MigrateFromHoleNumberToHoleInt, MIGRATE_FROM_HOLENUMBER_TO_HOLEINT, GateFlags::NONE_FLAG, 1, 1, 1)     \
+    V(NumberIsFinite, NUMBER_IS_FINITE, GateFlags::NO_WRITE, 1, 1, 1)                           \
+    V(NumberIsInteger, NUMBER_IS_INTEGER, GateFlags::NO_WRITE, 1, 1, 1)                         \
+    V(NumberIsNaN, NUMBER_IS_NAN, GateFlags::NO_WRITE, 1, 1, 1)                                 \
+    V(NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER, GateFlags::NO_WRITE, 1, 1, 1)                 \
     V(MathAcos, MATH_ACOS, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathAcosh, MATH_ACOSH, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathAsin, MATH_ASIN, GateFlags::NO_WRITE, 1, 1, 1)                                        \
@@ -104,8 +116,21 @@ namespace panda::ecmascript::kungfu {
     V(MathCeil, MATH_CEIL, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathFloor, MATH_FLOOR, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathImul, MATH_IMUL, GateFlags::NO_WRITE, 1, 1, 2)                                        \
+    V(NewNumber, NEW_NUMBER, GateFlags::CHECKABLE, 1, 1, 2)                                     \
     V(GlobalIsFinite, GLOBAL_IS_FINITE, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(GlobalIsNan, GLOBAL_IS_NAN, GateFlags::NO_WRITE, 1, 1, 1)                                 \
+    V(ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW, GateFlags::NO_WRITE, 1, 1, 1)                    \
+    V(DataViewGet, DATA_VIEW_GET, GateFlags::NO_WRITE, 1, 1, 5)                                 \
+    V(DataViewSet, DATA_VIEW_SET, GateFlags::NO_WRITE, 1, 1, 6)                                 \
+    V(BigIntAsIntN, BIGINT_ASINTN, GateFlags::NO_WRITE, 1, 1, 3)                                \
+    V(BigIntAsUintN, BIGINT_ASUINTN, GateFlags::NO_WRITE, 1, 1, 3)                              \
+    V(MapGet, MAP_GET, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(DateGetTime, DATE_GET_TIME, GateFlags::NO_WRITE, 1, 1, 1)                                 \
+    V(MapHas, MAP_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(SetHas, SET_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(MapDelete, MAP_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
+    V(SetDelete, SET_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
+    V(DateNow, DATE_NOW, GateFlags::NONE_FLAG, 1, 1, 0)                                         \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \
@@ -149,6 +174,7 @@ namespace panda::ecmascript::kungfu {
     V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
     V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                   \
     V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)         \
+    V(TypedBinaryOp, TYPED_BINARY_OP, GateFlags::NO_WRITE, 1, 1, 2)                         \
     V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                          \
     V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)              \
     V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                            \
@@ -156,22 +182,21 @@ namespace panda::ecmascript::kungfu {
     V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                     \
     V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)   \
     V(TypeOfCheck, TYPE_OF_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                           \
-    V(TypeOf, TYPE_OF, GateFlags::NO_WRITE, 1, 1, 0)
+    V(TypeOf, TYPE_OF, GateFlags::NO_WRITE, 1, 1, 0)                                       \
+    V(TypedCallTargetCheckOp, TYPED_CALLTARGETCHECK_OP, GateFlags::CHECKABLE, 1, 1, 2 )
+
+// NOTICE-PGO: wx typedcalltargetcheckop can adopt different number of valueIn
 
 #define MCR_GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     MCR_GATE_META_DATA_LIST_WITH_VALUE(V)                     \
     MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(V)
 
-#define MCR_GATE_OPCODE_LIST(V)     \
-    V(TYPED_BINARY_OP)              \
-    V(TYPED_CALLTARGETCHECK_OP)
-
-}
-
 #define MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                 \
     V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, value) \
-    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)  
+    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)
 
 #define MCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)
+}
+
 #endif  // ECMASCRIPT_COMPILER_MCR_OPCODE_H

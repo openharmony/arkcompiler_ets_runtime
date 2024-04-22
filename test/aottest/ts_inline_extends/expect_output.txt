@@ -12,4 +12,5 @@
 # limitations under the License.
 
 [trace] aot inline function name: foo@ts_inline_extends caller function name: func_main_0@ts_inline_extends
+[trace] aot inline function name: #17593704525790474017#run@ts_inline_extends caller function name: foo@ts_inline_extends
 B.run

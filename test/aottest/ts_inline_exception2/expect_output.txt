@@ -11,12 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-TypeError: CallObj is NonCallable
-    at foo1 (maybe inlined). depth: 4
-    at foo2 (maybe inlined). depth: 3
-    at foo3 (maybe inlined). depth: 2
-    at foo4 (maybe inlined). depth: 1
-    at foo5 (maybe inlined). depth: 0
-    at foo6 (hidden:41:41)
+TypeError: is not callable
+    at foo1 (hidden:25:25)
+    at unknown (maybe inlined). depth: 3
+    at unknown (maybe inlined). depth: 2
+    at unknown (maybe inlined). depth: 1
+    at unknown (maybe inlined). depth: 0
+    at foo6 (hidden:40:40)
     at func_main_0 (hidden:42:1)
 

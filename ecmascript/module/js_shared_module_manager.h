@@ -20,10 +20,16 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
+struct StateVisit {
+    Mutex mutex;
+    ConditionVariable cv;
+};
 class SharedModuleManager {
 public:
     static SharedModuleManager *GetInstance();
@@ -33,9 +39,37 @@ public:
         resolvedSharedModules_ = NameDictionary::CreateInSharedHeap(vm->GetJSThread(),
             DEAULT_DICTIONART_CAPACITY).GetTaggedValue();
     }
-    JSTaggedValue GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc) const;
+
+    void Destroy()
+    {
+        resolvedSharedModules_ = JSTaggedValue::Hole();
+    }
+
+    JSTaggedValue GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
+
     JSTaggedValue GetSendableModuleValueImpl(JSThread *thread, int32_t index, JSTaggedValue currentModule) const;
 
+    void Iterate(const RootVisitor &v);
+
+    JSHandle<JSTaggedValue> ResolveImportedModule(JSThread *thread, const CString &referencingModule,
+                                                  bool executeFromJob);
+
+    JSHandle<JSTaggedValue> ResolveImportedModuleWithMerge(JSThread *thread, const CString &fileName,
+                                                           const CString &recordName, bool executeFromJob);
+
+    StateVisit &findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module);
+
+    bool SearchInSModuleManager(JSThread *thread, const CString &recordName);
+
+    void InsertInSModuleManager(JSThread *thread, JSHandle<JSTaggedValue> requireModule,
+        JSHandle<SourceTextModule> &moduleRecord);
+
+    void TransferSModule(JSThread *thread);
+
+    bool IsInstaniatedSModule(JSThread *thread, const JSHandle<SourceTextModule> &module);
+
+    JSHandle<JSTaggedValue> GenerateFuncModule(JSThread *thread, const JSPandaFile *jsPandaFile,
+        const CString &entryPoint, ClassKind classKind = ClassKind::NON_SENDABLE);
 private:
     SharedModuleManager() = default;
     ~SharedModuleManager() = default;
@@ -45,12 +79,26 @@ private:
     JSHandle<SourceTextModule> GetImportedSModule(JSThread *thread, JSTaggedValue referencing);
     JSTaggedValue GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, int index) const;
 
+    JSHandle<JSTaggedValue> ResolveSharedImportedModule(JSThread *thread, const CString &referencingModule,
+        const JSPandaFile *jsPandaFile, JSRecordInfo recordInfo);
+
+    JSHandle<JSTaggedValue> ResolveSharedImportedModuleWithMerge(JSThread *thread, const CString &fileName,
+        const CString &recordName, const JSPandaFile *jsPandaFile, JSRecordInfo recordInfo);
+
+    bool SearchInSModuleManagerUnsafe(JSThread *thread, const CString &recordName);
+
+    JSHandle<SourceTextModule> GetSModuleUnsafe(JSThread *thread, const CString &recordName);
+
+    JSHandle<SourceTextModule> GetSModule(JSThread *thread, const CString &recordName);
+
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
-
     JSTaggedValue resolvedSharedModules_ {JSTaggedValue::Hole()};
+    CMap<CString, StateVisit> sharedModuleMutex_;
+    Mutex mutex_;
 
-    friend class EcmaVM;
-    friend class PatchLoader;
+    friend class SourceTextModule;
+    friend class EcmaContext;
+    friend class ModuleManager;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_JS_SHARED_MODULE_MANAGER_H

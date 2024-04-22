@@ -31,6 +31,43 @@ const v50 = v46.call(v34);
 print(v50);
 }
 
+let msg = [];
+let msg_cnt = 0;
+function runNearStackLimit(f) {
+    function t() {
+        try {
+            t();
+        } catch (e) {
+            msg[msg_cnt++] = e.message;
+            f();
+        }
+    };
+    t();
+}
+let idx = 0;
+let obj = {};
+function f() {
+    idx++;
+    if (idx == 1) {
+        idx = idx11;
+        // 0 in idx
+    }
+}
+let funcs = [f];
+for (let i = 1; i < 2; i++) {
+    funcs[i] = function () {
+        funcs[i - 1]();
+    }
+}
+
+for(let i=0;i<funcs.length;i++){
+    print("********************************")
+    msg_cnt = 0;
+    idx=0;
+    runNearStackLimit(funcs[i])
+    print(msg[msg_cnt-1]);
+}
+
 // Be sure to put this case at the end because this case will change prototype of error constructor
 try {
     0();

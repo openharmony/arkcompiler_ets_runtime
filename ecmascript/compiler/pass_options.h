@@ -23,7 +23,6 @@ namespace panda::ecmascript::kungfu {
     V(EarlyElimination, true)                                                    \
     V(LaterElimination, true)                                                    \
     V(ValueNumbering, false)                                                     \
-    V(TypeInfer, false)                                                          \
     V(OptInlining, false)                                                        \
     V(OptNoGCCall, false)                                                        \
     V(OptPGOType, false)                                                         \
@@ -39,7 +38,8 @@ namespace panda::ecmascript::kungfu {
     V(LoweringBuiltin, false)                                                    \
     V(FastModule, false)                                                         \
     V(OptBranchProfiling, true)                                                  \
-    V(EscapeAnalysis, false)
+    V(EscapeAnalysis, false)                                                     \
+    V(InductionVariableAnalysis, false)
 
 #define OPTION_BUILDER(NAME, DEFAULT)                                            \
     Builder &Enable##NAME(bool value) {                                          \

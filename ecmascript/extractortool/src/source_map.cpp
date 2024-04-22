@@ -27,11 +27,7 @@ namespace panda {
 namespace ecmascript {
 namespace {
 constexpr char SOURCES[] = "sources";
-constexpr char NAMES[] = "names";
 constexpr char MAPPINGS[] = "mappings";
-constexpr char FILE[] = "file";
-constexpr char SOURCE_CONTENT[] = "sourceContent";
-constexpr char SOURCE_ROOT[] = "sourceRoot";
 constexpr char DELIMITER_COMMA = ',';
 constexpr char DELIMITER_SEMICOLON = ';';
 constexpr char DOUBLE_SLASH = '\\';
@@ -41,8 +37,6 @@ constexpr int32_t INDEX_TWO = 2;
 constexpr int32_t INDEX_THREE = 3;
 constexpr int32_t INDEX_FOUR = 4;
 constexpr int32_t ANS_MAP_SIZE = 5;
-constexpr int32_t NUM_TWENTY = 20;
-constexpr int32_t NUM_TWENTYSIX = 26;
 constexpr int32_t DIGIT_NUM = 64;
 const std::string MEGER_SOURCE_MAP_PATH = "ets/sourceMaps.map";
 } // namespace
@@ -103,21 +97,14 @@ uint32_t Base64CharToInt(char charCode)
 };
 
 #if defined(PANDA_TARGET_OHOS)
-void SourceMap::Init(const std::string& url, const std::string& hapPath)
+void SourceMap::Init(const std::string& hapPath)
 {
     std::string sourceMapData;
     if (ReadSourceMapData(hapPath, sourceMapData)) {
-        SplitSourceMap(url, sourceMapData);
+        SplitSourceMap(sourceMapData);
     }
 }
 #endif
-
-void SourceMap::Init(uint8_t *data, size_t dataSize, const std::string& url)
-{
-    std::string content;
-    content.assign(data, data + dataSize);
-    SplitSourceMap(url, content);
-}
 
 void SourceMap::Init(uint8_t *data, size_t dataSize)
 {
@@ -132,64 +119,16 @@ void SourceMap::SplitSourceMap(const std::string& sourceMapData)
     size_t urlRight = 0;
     size_t leftBracket = 0;
     size_t rightBracket = 0;
-    std::string value;
     while ((leftBracket = sourceMapData.find(": {", rightBracket)) != std::string::npos) {
         urlLeft = leftBracket;
         urlRight = sourceMapData.find("  \"", rightBracket) + INDEX_THREE;
-        std::string key = sourceMapData.substr(urlRight, urlLeft - urlRight - INDEX_ONE);
+        if (urlRight == std::string::npos) {
+            continue;
+        }
+        std::string url = sourceMapData.substr(urlRight, urlLeft - urlRight - INDEX_ONE);
         rightBracket = sourceMapData.find("},", leftBracket);
-        value = sourceMapData.substr(leftBracket, rightBracket);
-        std::size_t sources = value.find("\"sources\": [");
-        if (sources == std::string::npos) {
-            continue;
-        }
-        std::size_t names = value.find("],", sources);
-        if (names == std::string::npos) {
-            continue;
-        }
-        // Intercept the sourcemap file path as the key
-        std::string filePath = value.substr(sources + NUM_TWENTY, names - sources - NUM_TWENTYSIX);
-        std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
-        modularMap->url_ = filePath;
-        ExtractSourceMapData(value, modularMap);
-        sourceMaps_.emplace(key, modularMap);
-    }
-}
-
-void SourceMap::SplitSourceMap(const std::string& url, const std::string& sourceMapData)
-{
-    auto iter = sourceMaps_.find(url);
-    if (iter != sourceMaps_.end()) {
-        return;
-    }
-    size_t urlLeft = 0;
-    size_t urlRight = 0;
-    size_t leftBracket = 0;
-    size_t rightBracket = 0;
-    std::string value;
-    while ((leftBracket = sourceMapData.find(": {", rightBracket)) != std::string::npos) {
-        urlLeft = leftBracket;
-        urlRight = sourceMapData.find("  \"", rightBracket) + INDEX_THREE;
-        std::string key = sourceMapData.substr(urlRight, urlLeft - urlRight - INDEX_ONE);
-        rightBracket = sourceMapData.find("},", leftBracket);
-        value = sourceMapData.substr(leftBracket, rightBracket);
-        std::size_t sources = value.find("\"sources\": [");
-        if (sources == std::string::npos) {
-            continue;
-        }
-        std::size_t names = value.find("],", sources);
-        if (names == std::string::npos) {
-            continue;
-        }
-        // Intercept the sourcemap file path as the key
-        std::string filePath = value.substr(sources + NUM_TWENTY, names - sources - NUM_TWENTYSIX);
-        if (key == url) {
-            std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
-            modularMap->url_ = filePath;
-            ExtractSourceMapData(value, modularMap);
-            sourceMaps_.emplace(key, modularMap);
-            return;
-        }
+        std::string value = sourceMapData.substr(leftBracket, rightBracket);
+        sourceMapsData_.emplace(url, value);
     }
 }
 
@@ -200,20 +139,12 @@ void SourceMap::ExtractSourceMapData(const std::string& sourceMapData, std::shar
 
     std::string mark = "";
     for (auto sourceKeyInfo : sourceKey) {
-        if (sourceKeyInfo == SOURCES || sourceKeyInfo == NAMES ||
-            sourceKeyInfo == MAPPINGS || sourceKeyInfo == FILE ||
-            sourceKeyInfo == SOURCE_CONTENT ||  sourceKeyInfo == SOURCE_ROOT) {
+        if (sourceKeyInfo == SOURCES || sourceKeyInfo == MAPPINGS) {
             mark = sourceKeyInfo;
         } else if (mark == SOURCES) {
             curMapData->sources_.push_back(sourceKeyInfo);
-        } else if (mark == NAMES) {
-            curMapData->names_.push_back(sourceKeyInfo);
         } else if (mark == MAPPINGS) {
             curMapData->mappings_.push_back(sourceKeyInfo);
-        } else if (mark == FILE) {
-            curMapData->files_.push_back(sourceKeyInfo);
-        } else {
-            continue;
         }
     }
 
@@ -415,11 +346,20 @@ bool SourceMap::VlqRevCode(const std::string& vStr, std::vector<int32_t>& ans)
 
 bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column)
 {
-    auto iter = sourceMaps_.find(url);
-    if (iter != sourceMaps_.end()) {
-        return GetLineAndColumnNumbers(line, column, *(iter->second));
-    } else if (url.rfind(".js") != std::string::npos) {
+    if (url.rfind(".js") != std::string::npos) {
         return true;
+    }
+    auto iterData = sourceMaps_.find(url);
+    if (iterData != sourceMaps_.end()) {
+        return GetLineAndColumnNumbers(line, column, *(iterData->second));
+    }
+    auto iter = sourceMapsData_.find(url);
+    if (iter != sourceMapsData_.end()) {
+        std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
+        ExtractSourceMapData(iter->second, modularMap);
+        url = modularMap->sources_[0];
+        sourceMaps_.emplace(url, modularMap);
+        return GetLineAndColumnNumbers(line, column, *(modularMap));
     }
     return false;
 }

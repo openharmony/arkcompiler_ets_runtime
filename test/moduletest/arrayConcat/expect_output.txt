@@ -22,3 +22,4 @@ length
 1, undefined, 3, 4, 5
 1, 2, 3, undefined, 5
 0
+proxy defineproperty success!

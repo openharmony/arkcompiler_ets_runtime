@@ -76,6 +76,18 @@ private:
                                 CVector<std::pair<CString, int>> &strCache, uint32_t &cacheIndex);
     bool AppendJsonString(bool hasContent);
     bool DefaultSerializeKeys(const JSHandle<JSObject> &obj, bool hasContent);
+    bool SerializeKeysFromCache(const JSHandle<JSObject> &obj, JSTaggedValue enumCache,
+                                const JSHandle<TaggedArray> &propertiesArr, bool hasContent);
+    bool SerializeKeysFromLayout(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jsHclass,
+                                 const JSHandle<TaggedArray> &propertiesArr, bool hasContent);
+    bool SerializeKeysFromGlobalDictionary(const JSHandle<JSObject> &obj,
+                                           const JSHandle<TaggedArray> &propertiesArr,
+                                           bool hasContent);
+    bool SerializeKeysFromNameDictionary(const JSHandle<JSObject> &obj,
+                                         const JSHandle<TaggedArray> &propertiesArr,
+                                         bool hasContent);
+    bool SerializeKeyValue(const JSHandle<JSObject> &obj, JSTaggedValue key,
+                           const JSHandle<TaggedArray> &propertiesArr, bool hasContent);
     bool DefaultSerializeElements(const JSHandle<JSObject> &obj, bool hasContent);
     bool DefaultSerializeObject(const JSTaggedValue &object, uint32_t numOfKeys, uint32_t numOfElements);
 

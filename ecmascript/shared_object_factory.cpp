@@ -31,11 +31,14 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/shared_objects/js_shared_map.h" 
+#include "ecmascript/linked_hash_table.h"
 
 // class Object;
 namespace panda::ecmascript {
 void ObjectFactory::NewSObjectHook() const
 {
+    CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
     static std::atomic<uint32_t> count = 0;
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
@@ -108,8 +111,27 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(uint32_t size, uint32_t inlined
         prototype->GetTaggedObject()->GetClass()->SetIsPrototype(true);
     }
     hclass->SetProto(thread_, prototype.GetTaggedValue());
-    hclass->SetExtensible(false);
     hclass->SetNumberOfProps(inlinedProps);
+    hclass->SetExtensible(false);
+    return hclass;
+}
+
+JSHandle<JSHClass> ObjectFactory::NewSEcmaHClassDictMode(uint32_t size, uint32_t inlinedProps, JSType type,
+                                                         const JSHandle<JSTaggedValue> &prototype)
+{
+    NewSObjectHook();
+    uint32_t classSize = JSHClass::SIZE;
+    auto *newClass = static_cast<JSHClass *>(sHeap_->AllocateNonMovableOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
+    newClass->Initialize(thread_, size, type, inlinedProps, thread_->GlobalConstants()->GetHandledEmptySLayoutInfo());
+    JSHandle<JSHClass> hclass(thread_, newClass);
+    if (prototype->IsJSObject()) {
+        prototype->GetTaggedObject()->GetClass()->SetIsPrototype(true);
+    }
+    hclass->SetProto(thread_, prototype.GetTaggedValue());
+    hclass->SetNumberOfProps(0);
+    hclass->SetIsDictionaryMode(true);
+    hclass->SetExtensible(false);
     return hclass;
 }
 
@@ -275,6 +297,147 @@ JSHandle<TaggedArray> ObjectFactory::SharedEmptyArray() const
     return JSHandle<TaggedArray>(thread_->GlobalConstants()->GetHandledEmptyArray());
 }
 
+JSHandle<TaggedArray> ObjectFactory::NewSJsonFixedArray(size_t start, size_t length,
+                                                        const std::vector<JSHandle<JSTaggedValue>> &vec)
+{
+    if (length == 0) {
+        return SharedEmptyArray();
+    }
+
+    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, MemSpaceType::SHARED_OLD_SPACE);
+    array->SetExtraLength(0);
+    for (size_t i = 0; i < length; i++) {
+        array->Set(thread_, i, vec[start + i]);
+    }
+    return array;
+}
+
+JSHandle<TaggedArray> ObjectFactory::CopySArray(const JSHandle<TaggedArray> &old, uint32_t oldLength,
+                                                uint32_t newLength, JSTaggedValue initVal, ElementsKind kind)
+{
+    if (newLength == 0) {
+        return SharedEmptyArray();
+    }
+    if (newLength > oldLength) {
+        return ExtendSArray(old, newLength, initVal, kind);
+    }
+
+    NewObjectHook();
+    // Shared-array does not support Mutantarray yet.
+    ASSERT(!old->GetClass()->IsMutantTaggedArray());
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
+    JSHandle<TaggedArray> newArray(thread_, header);
+    newArray->SetLength(newLength);
+    newArray->SetExtraLength(old->GetExtraLength());
+
+    for (uint32_t i = 0; i < newLength; i++) {
+        newArray->Set(thread_, i, old->Get(i));
+    }
+
+    return newArray;
+}
+
+JSHandle<TaggedArray> ObjectFactory::ExtendSArray(const JSHandle<TaggedArray> &old, uint32_t length,
+                                                  JSTaggedValue initVal, [[maybe_unused]] ElementsKind kind)
+{
+    ASSERT(length > old->GetLength());
+    NewObjectHook();
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    JSHClass *arrayClass = nullptr;
+    // Shared-array does not support Mutantarray yet.
+    ASSERT(!old->GetClass()->IsMutantTaggedArray());
+    arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
+    JSHandle<TaggedArray> newArray(thread_, header);
+    newArray->SetLength(length);
+    newArray->SetExtraLength(old->GetExtraLength());
+
+    uint32_t oldLength = old->GetLength();
+    for (uint32_t i = 0; i < oldLength; i++) {
+        newArray->Set(thread_, i, old->Get(i));
+    }
+    for (uint32_t i = oldLength; i < length; i++) {
+        newArray->Set(thread_, i, initVal);
+    }
+    return newArray;
+}
+
+JSHandle<JSSharedArray> ObjectFactory::NewJSSArray()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedArrayFunction());
+    return JSHandle<JSSharedArray>(NewJSObjectByConstructor(function));
+}
+
+JSHandle<JSSharedMap> ObjectFactory::NewJSSMap()
+{
+    auto globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<JSTaggedValue> proto = globalEnv->GetSharedMapPrototype();
+    auto emptySLayout = thread_->GlobalConstants()->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> mapClass = factory->NewSEcmaHClass(JSSharedMap::SIZE, 0,
+        JSType::JS_SHARED_MAP, proto, emptySLayout);
+    JSHandle<JSSharedMap> jsMap = JSHandle<JSSharedMap>::Cast(factory->NewSharedOldSpaceJSObjectWithInit(mapClass));
+    JSHandle<LinkedHashMap> linkedMap(
+        LinkedHashMap::Create(thread_, LinkedHashSet::MIN_CAPACITY, MemSpaceKind::SHARED));
+    jsMap->SetLinkedMap(thread_, linkedMap);
+    jsMap->SetModRecord(0);
+    return jsMap;
+}
+
+JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONArray()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedJSONArrayFunction());
+    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
+}
+
+JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONTrue()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedJSONTrueFunction());
+    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
+}
+
+JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONFalse()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedJSONFalseFunction());
+    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
+}
+
+JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONString()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedJSONStringFunction());
+    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
+}
+
+JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONNumber()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedJSONNumberFunction());
+    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
+}
+
+JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONNull()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedJSONNullFunction());
+    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
+}
+
+JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONObject()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedJSONObjectFunction());
+    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewSTaggedArrayWithoutInit(uint32_t length)
 {
     NewSObjectHook();
@@ -340,7 +503,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewSEmptyMutantArray()
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPointer,
-                                                             const DeleteEntryPoint &callBack,
+                                                             const NativePointerCallback &callBack,
                                                              void *data,
                                                              bool nonMovable,
                                                              size_t nativeBindingsize,
@@ -526,7 +689,7 @@ JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbolWithChar(std::string_view desc
     return NewSPublicSymbol(JSHandle<JSTaggedValue>(string));
 }
 
-JSHandle<SourceTextModule> ObjectFactory::NewSModule()
+JSHandle<SourceTextModule> ObjectFactory::NewSSourceTextModule()
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
@@ -558,6 +721,57 @@ JSHandle<SourceTextModule> ObjectFactory::NewSModule()
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
     obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    return obj;
+}
+
+JSHandle<ImportEntry> ObjectFactory::NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+                                                     const JSHandle<JSTaggedValue> &importName,
+                                                     const JSHandle<JSTaggedValue> &localName)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetImportEntryClass().GetTaggedObject()));
+    JSHandle<ImportEntry> obj(thread_, header);
+    obj->SetModuleRequest(thread_, moduleRequest);
+    obj->SetImportName(thread_, importName);
+    obj->SetLocalName(thread_, localName);
+    return obj;
+}
+
+JSHandle<LocalExportEntry> ObjectFactory::NewSLocalExportEntry(const JSHandle<JSTaggedValue> &exportName,
+    const JSHandle<JSTaggedValue> &localName, const uint32_t index)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetLocalExportEntryClass().GetTaggedObject()));
+    JSHandle<LocalExportEntry> obj(thread_, header);
+    obj->SetExportName(thread_, exportName);
+    obj->SetLocalName(thread_, localName);
+    obj->SetLocalIndex(index);
+    return obj;
+}
+
+JSHandle<IndirectExportEntry> ObjectFactory::NewSIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
+                                                                     const JSHandle<JSTaggedValue> &moduleRequest,
+                                                                     const JSHandle<JSTaggedValue> &importName)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetIndirectExportEntryClass().GetTaggedObject()));
+    JSHandle<IndirectExportEntry> obj(thread_, header);
+    obj->SetExportName(thread_, exportName);
+    obj->SetModuleRequest(thread_, moduleRequest);
+    obj->SetImportName(thread_, importName);
+    return obj;
+}
+
+JSHandle<StarExportEntry> ObjectFactory::NewSStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetStarExportEntryClass().GetTaggedObject()));
+    JSHandle<StarExportEntry> obj(thread_, header);
+    obj->SetModuleRequest(thread_, moduleRequest);
     return obj;
 }
 
@@ -601,23 +815,43 @@ JSHandle<ResolvedBinding> ObjectFactory::NewSResolvedBindingRecord(const JSHandl
     return obj;
 }
 
-JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord()
+JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord()
 {
     JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
     JSHandle<EcmaString> ecmaModule(undefinedValue);
     int32_t index = 0;
-    return NewSResolvedRecordBindingRecord(ecmaModule, index);
+    return NewSResolvedRecordIndexBindingRecord(ecmaModule, index);
+}
+
+JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord(
+    const JSHandle<EcmaString> &moduleRecord, int32_t index)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordIndexBindingClass().GetTaggedObject()));
+    JSHandle<ResolvedRecordIndexBinding> obj(thread_, header);
+    obj->SetModuleRecord(thread_, moduleRecord);
+    obj->SetIndex(index);
+    return obj;
+}
+
+JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord()
+{
+    JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
+    JSHandle<EcmaString> ecmaModule(undefinedValue);
+    JSHandle<JSTaggedValue> bindingName(undefinedValue);
+    return NewSResolvedRecordBindingRecord(ecmaModule, bindingName);
 }
 
 JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord(
-    const JSHandle<EcmaString> &moduleRecord, int32_t index)
+    const JSHandle<EcmaString> &moduleRecord, const JSHandle<JSTaggedValue> &bindingName)
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordBindingClass().GetTaggedObject()));
     JSHandle<ResolvedRecordBinding> obj(thread_, header);
     obj->SetModuleRecord(thread_, moduleRecord);
-    obj->SetIndex(index);
+    obj->SetBindingName(thread_, bindingName);
     return obj;
 }
 

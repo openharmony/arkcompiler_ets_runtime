@@ -72,3 +72,18 @@ async function generate() {
     print(str);
 }
 generate();
+
+
+class C0 {
+    constructor(a2, a3, a4) {
+        async function* f5(a6, a7, a8, a9) {
+        }
+        f5(this, a4, a2, C0).next();
+        new C0();
+    }
+}
+try {
+    new C0(C0, C0, C0);
+} catch (e) {
+    print(e);
+}

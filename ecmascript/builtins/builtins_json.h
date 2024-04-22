@@ -17,11 +17,27 @@
 #define ECMASCRIPT_BUILTINS_BUILTINS_JSON_H
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript::builtins {
 
 class BuiltinsJson : public base::BuiltinsBase {
+public:
+    using TransformType = base::JsonHelper::TransformType;
+    static JSTaggedValue Parse(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Stringify(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ParseWithTransformType(EcmaRuntimeCallInfo *argv, TransformType transformType);
+    static JSTaggedValue StringifyWithTransformType(EcmaRuntimeCallInfo *argv, TransformType transformType);
+private:
+    static JSTaggedValue ParseWithTransformType(const EcmaVM *vm, JSHandle<JSTaggedValue> &msg,
+                                                JSHandle<JSTaggedValue> &reviverVal, TransformType transformType);
+};
+
+class BuiltinsSendableJson : public base::BuiltinsBase {
 public:
     static JSTaggedValue Parse(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Stringify(EcmaRuntimeCallInfo *argv);

@@ -148,15 +148,15 @@ HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
     std::unique_ptr<const File> patchPF = pandasm::AsmEmitter::Emit(res.Value());
     std::shared_ptr<JSPandaFile> baseFile = pfManager->NewJSPandaFile(basePF.release(), CString(baseFileName));
     std::shared_ptr<JSPandaFile> patchFile = pfManager->NewJSPandaFile(patchPF.release(), CString(patchFileName));
-    pfManager->AddJSPandaFileVm(instance, baseFile);
-    pfManager->AddJSPandaFileVm(instance, patchFile);
+    pfManager->AddJSPandaFile(baseFile);
+    pfManager->AddJSPandaFile(patchFile);
 
     auto result = JSNApi::LoadPatch(instance, patchFileName, (void *)patchData, sizeof(patchData),
                                     baseFileName, (void *)baseData, sizeof(baseData));
     EXPECT_FALSE(result == PatchErrorCode::SUCCESS);
 
-    pfManager->RemoveJSPandaFileVm(instance, baseFile.get());
-    pfManager->RemoveJSPandaFileVm(instance, patchFile.get());
+    pfManager->RemoveJSPandaFile(baseFile.get());
+    pfManager->RemoveJSPandaFile(patchFile.get());
 }
 
 bool QuickFixQueryFunc(
@@ -196,6 +196,6 @@ HWTEST_F_L0(QuickFixTest, HotReload_RegisterQuickFixQueryFunc)
     quickFixManager->LoadPatchIfNeeded(thread, baseFile.get());
 
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    pfManager->RemoveJSPandaFileVm(instance, baseFile.get());
+    pfManager->RemoveJSPandaFile(baseFile.get());
 }
 }  // namespace panda::test

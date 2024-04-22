@@ -73,7 +73,7 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME)));
     // 2 : 2 means pairs
     __ Stp(tmp, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-    __ Add(fp, sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip frame type and tmp
+    __ Add(fp, sp, Immediate(2 * FRAME_SLOT_SIZE));  // 2 : 2 means pairs
     __ Str(fp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 
     // load runtime trampoline address
@@ -275,7 +275,8 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
-        AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT);
+        AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT,
+                                              CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
     }
 }
 
@@ -306,9 +307,7 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
 //  sp ---> |--------------------------|                 |
 //          |       callsiteFp         |                 |
 //          |--------------------------|                 |
-//          |       frameType          |                 |
-//          |--------------------------|                 |
-//          |       align byte         |                 v
+//          |       frameType          |                 v
 //          +--------------------------+ -----------------
 
 void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
@@ -327,6 +326,54 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
     __ Add(Register(X0), sp, Immediate(TRIPLE_SLOT_SIZE));
 
     __ Blr(nativeFuncAddr);
+    __ Mov(temp, Register(FP));
+    __ Ldp(Register(X29), Register(X30), MemoryOperand(temp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ Add(temp, temp, Immediate(FRAME_SLOT_SIZE));
+    __ Mov(sp, temp);
+    __ Ret();
+}
+
+// * uint64_t CallBuiltinConstructorStub(uintptr_t glue, uintptr_t codeAddress, uint32_t argc, ...)
+// * webkit_jscc calling convention call runtime_id's runtime function(c-abi)
+//
+// * Construct Native Leave Frame Layout:
+//          +--------------------------+
+//          |       argv[N-1]          |
+//          +--------------------------+
+//          |      . . . . . .         |
+//          +--------------------------+
+//          |      argv[3]=a0          |
+//          +--------------------------+
+//          |      argv[2]=this        |
+//          +--------------------------+
+//          |   argv[1]=new-target     |
+//          +--------------------------+
+//          |   argv[0]=call-target    |
+//          +--------------------------+ -----------------
+//          |       argc               |                 ^
+//          |--------------------------|                 |
+//          |       thread             |                 |
+//          |--------------------------|                 |
+//          |       returnAddr         |    OptimizedBuiltinLeaveFrame
+//  sp ---> |--------------------------|                 |
+//          |       callsiteFp         |                 |
+//          |--------------------------|                 |
+//          |       frameType          |                 v
+//          +--------------------------+ -----------------
+
+void OptimizedCall::CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
+                                               Register glue, Register temp)
+{
+    Register sp(SP);
+
+    __ Stp(Register(X30), glue, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Mov(temp, Immediate(static_cast<int32_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME)));
+    __ Stp(temp, Register(X29), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Add(temp, sp, Immediate(FRAME_SLOT_SIZE));
+    __ Mov(Register(X29), temp);
+    __ Add(argv, sp, Immediate(OCTUPLE_SLOT_SIZE));
+
+    __ Blr(builtinStub);
     __ Mov(temp, Register(FP));
     __ Ldp(Register(X29), Register(X30), MemoryOperand(temp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
     __ Add(temp, temp, Immediate(FRAME_SLOT_SIZE));
@@ -479,6 +526,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
             {
                 __ Mov(Register(X6), Immediate(JSTaggedValue::VALUE_UNDEFINED));
                 __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));
+                __ Str(Register(X7), MemoryOperand(sp, 0));  // reset arg2's position
                 __ B(&lTailCall);
             }
 
@@ -486,11 +534,14 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
             {
                 __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));
                 __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));  // reset x7
+                __ Str(Register(X7), MemoryOperand(sp, 0));  // reset arg2's position
                 __ B(&lTailCall);
             }
 
             __ Bind(&lCall2);
             {
+                __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));
+                __ Str(Register(X7), MemoryOperand(sp, 0));  // reset arg2's position
                 __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));
                 __ B(&lTailCall);
             }
@@ -507,15 +558,17 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
                 __ Blr(builtinStub);
                 __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE));
             }
-            PopOptimizedFrame(assembler);
+            PopAsmBridgeFrame(assembler);
             __ Ret();
             __ Bind(&lTailCall);
             {
                 __ Br(builtinStub);
             }
         } else {
-            __ Add(Register(X6), sp, Immediate(QUADRUPLE_SLOT_SIZE));  // get argV
-            __ Br(builtinStub);
+            Register argv(X6);
+            TempRegister2Scope scope2(assembler);
+            Register temp = __ TempRegister2();
+            CallBuiltinConstructorStub(assembler, builtinStub, argv, glue, temp);
         }
     }
 
@@ -908,7 +961,7 @@ void OptimizedCall::PushAsmBridgeFrame(ExtendedAssembler *assembler)
     __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
 }
 
-void OptimizedCall::PopOptimizedFrame(ExtendedAssembler *assembler)
+void OptimizedCall::PopAsmBridgeFrame(ExtendedAssembler *assembler)
 {
     TempRegister2Scope temp2Scope(assembler);
     Register sp(SP);

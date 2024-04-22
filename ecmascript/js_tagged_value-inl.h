@@ -903,6 +903,10 @@ inline bool JSTaggedValue::IsArray(JSThread *thread) const
         return true;
     }
 
+    if (jsHclass->IsJSSharedArray()) {
+        return true;
+    }
+
     if (jsHclass->IsJSProxy()) {
         return JSProxy::Cast(GetTaggedObject())->IsArray(thread);
     }
@@ -927,6 +931,41 @@ inline bool JSTaggedValue::IsJSArray() const
 inline bool JSTaggedValue::IsJSSharedArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedArray();
+}
+
+inline bool JSTaggedValue::IsJSSharedJSONFalse() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONFalse();
+}
+
+inline bool JSTaggedValue::IsJSSharedJSONTrue() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONTrue();
+}
+
+inline bool JSTaggedValue::IsJSSharedJSONString() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONString();
+}
+
+inline bool JSTaggedValue::IsJSSharedJSONNull() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONNull();
+}
+
+inline bool JSTaggedValue::IsJSSharedJSONObject() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONObject();
+}
+
+inline bool JSTaggedValue::IsJSSharedJSONNumber() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONNumber();
+}
+
+inline bool JSTaggedValue::IsJSSharedJSONArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONArray();
 }
 
 inline bool JSTaggedValue::IsStableJSArray(JSThread *thread) const
@@ -1012,6 +1051,71 @@ inline bool JSTaggedValue::IsJSBigUint64Array() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSBigUint64Array();
 }
 
+inline bool JSTaggedValue::IsSharedTypedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsSharedTypedArray();
+}
+
+inline bool JSTaggedValue::IsJSSharedTypedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedTypedArray();
+}
+
+inline bool JSTaggedValue::IsJSSharedInt8Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedInt8Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedUint8Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedUint8Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedUint8ClampedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedUint8ClampedArray();
+}
+
+inline bool JSTaggedValue::IsJSSharedInt16Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedInt16Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedUint16Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedUint16Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedInt32Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedInt32Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedUint32Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedUint32Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedFloat32Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedFloat32Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedFloat64Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedFloat64Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedBigInt64Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedBigInt64Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedBigUint64Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedBigUint64Array();
+}
+
 inline bool JSTaggedValue::IsJSMap() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSMap();
@@ -1020,6 +1124,11 @@ inline bool JSTaggedValue::IsJSMap() const
 inline bool JSTaggedValue::IsJSSharedMap() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedMap();
+}
+
+inline bool JSTaggedValue::IsJSSharedJSONValue() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONValue();
 }
 
 inline bool JSTaggedValue::IsJSWeakMap() const
@@ -1357,6 +1466,11 @@ inline bool JSTaggedValue::IsSharedArrayBuffer() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsSharedArrayBuffer();
 }
 
+inline bool JSTaggedValue::IsSendableArrayBuffer() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsSendableArrayBuffer();
+}
+
 inline bool JSTaggedValue::IsDataView() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsDataView();
@@ -1379,7 +1493,7 @@ inline bool JSTaggedValue::IsSpecialKeysObject() const
 
 inline bool JSTaggedValue::IsSlowKeysObject() const
 {
-    return IsJSGlobalObject() || IsJSProxy() || IsSpecialKeysObject();
+    return IsJSGlobalObject() || IsJSProxy() || IsSpecialKeysObject() || IsInSharedHeap();
 }
 
 inline bool JSTaggedValue::IsRegularObject() const
@@ -1397,36 +1511,6 @@ inline bool JSTaggedValue::IsClassInfoExtractor() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsClassInfoExtractor();
 }
 
-inline bool JSTaggedValue::IsTSType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSType();
-}
-
-inline bool JSTaggedValue::IsTSObjectType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSObjectType();
-}
-
-inline bool JSTaggedValue::IsTSClassType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSClassType();
-}
-
-inline bool JSTaggedValue::IsTSInterfaceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSInterfaceType();
-}
-
-inline bool JSTaggedValue::IsTSUnionType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSUnionType();
-}
-
-inline bool JSTaggedValue::IsTSClassInstanceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSClassInstanceType();
-}
-
 inline bool JSTaggedValue::IsCjsExports() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCjsExports();
@@ -1440,26 +1524,6 @@ inline bool JSTaggedValue::IsCjsModule() const
 inline bool JSTaggedValue::IsCjsRequire() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCjsRequire();
-}
-
-inline bool JSTaggedValue::IsTSFunctionType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSFunctionType();
-}
-
-inline bool JSTaggedValue::IsTSArrayType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSArrayType();
-}
-
-inline bool JSTaggedValue::IsTSIteratorInstanceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSIteratorInstanceType();
-}
-
-inline bool JSTaggedValue::IsTSNamespaceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSNamespaceType();
 }
 
 inline bool JSTaggedValue::IsModuleRecord() const
@@ -1500,6 +1564,11 @@ inline bool JSTaggedValue::IsResolvedBinding() const
 inline bool JSTaggedValue::IsResolvedIndexBinding() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsResolvedIndexBinding();
+}
+
+inline bool JSTaggedValue::IsResolvedRecordIndexBinding() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsResolvedRecordIndexBinding();
 }
 
 inline bool JSTaggedValue::IsResolvedRecordBinding() const

@@ -70,15 +70,13 @@ public:
     ~SourceMap() = default;
 
 #if defined(PANDA_TARGET_OHOS)
-    void Init(const std::string& url, const std::string& hapPath);
+    void Init(const std::string& hapPath);
 #endif
-    void Init(uint8_t *data, size_t dataSize, const std::string& url);
     void Init(uint8_t *data, size_t dataSize);
     bool TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column);
     static void ExtractStackInfo(const std::string& stackStr, std::vector<std::string>& res);
     
 private:
-    void SplitSourceMap(const std::string& url, const std::string& sourceMapData);
     void SplitSourceMap(const std::string& sourceMapData);
     void ExtractSourceMapData(const std::string& sourceMapData, std::shared_ptr<SourceMapData>& curMapData);
     void ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo);
@@ -90,7 +88,9 @@ private:
 #if defined(PANDA_TARGET_OHOS)
     bool ReadSourceMapData(const std::string& hapPath, std::string& content);
 #endif
+
 private:
+    std::unordered_map<std::string, std::string> sourceMapsData_;
     std::unordered_map<std::string, std::shared_ptr<SourceMapData>> sourceMaps_;
 };
 } // namespace panda

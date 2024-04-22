@@ -101,11 +101,9 @@ bool LiveAnalysis::GenerateLiveIn(BB &bb)
 
 SparseDataInfo *LiveAnalysis::GenerateLiveInByDefUse(SparseDataInfo &liveOut, SparseDataInfo &use, SparseDataInfo &def)
 {
-    const uint32 maxRegCount =
-        cgFunc->GetSSAvRegCount() > cgFunc->GetMaxVReg() ? cgFunc->GetSSAvRegCount() : cgFunc->GetMaxVReg();
-    SparseDataInfo *liveIn = memPool->New<SparseDataInfo>(maxRegCount, alloc);
-    liveIn = &use;
-    SparseDataInfo *tmpLiveOut = memPool->New<SparseDataInfo>(liveOut, alloc);
+    SparseDataInfo *liveIn = &use;
+    LocalMapleAllocator allocator(cgFunc->GetStackMemPool());
+    SparseDataInfo *tmpLiveOut = memPool->New<SparseDataInfo>(liveOut, allocator);
     if (!liveOut.NoneBit()) {
         tmpLiveOut->Difference(def);
         liveIn->OrBits(*tmpLiveOut);

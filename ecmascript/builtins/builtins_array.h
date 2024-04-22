@@ -59,7 +59,7 @@
     /* Array.prototype.flat ( [ depth ] ) */                                \
     V("flat",           Flat,             0, INVALID)                       \
     /* Array.prototype.flatMap ( mapperFunction [ , thisArg ] ) */          \
-    V("flatMap",        FlatMap,          1, INVALID)                       \
+    V("flatMap",        FlatMap,          1, ArrayFlatMap)                  \
     /* Array.prototype.forEach ( callbackfn [ , thisArg ] ) */              \
     V("forEach",        ForEach,          1, ArrayForEach)                  \
     /* Array.prototype.includes ( searchElement [ , fromIndex ] ) */        \
@@ -91,17 +91,17 @@
     /* Array.prototype.some ( callbackfn [ , thisArg ] ) */                 \
     V("some",           Some,             1, ArraySome)                     \
     /* Array.prototype.sort ( comparefn ) */                                \
-    V("sort",           Sort,             1, SORT)                          \
+    V("sort",           Sort,             1, ArraySort)                          \
     /* Array.prototype.splice ( start, deleteCount, ...items ) */           \
     V("splice",         Splice,           2, ArraySplice)                   \
     /* Array.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */  \
     V("toLocaleString", ToLocaleString,   0, INVALID)                       \
     /* Array.prototype.toReversed ( ) */                                    \
-    V("toReversed",     ToReversed,       0, INVALID)                       \
+    V("toReversed",     ToReversed,       0, ArrayToReversed)               \
     /* Array.prototype.toSorted ( comparefn ) */                            \
-    V("toSorted",       ToSorted,         1, INVALID)                       \
+    V("toSorted",       ToSorted,         1, ArrayToSorted)                 \
     /* Array.prototype.toSpliced ( start, skipCount, ...items ) */          \
-    V("toSpliced",      ToSpliced,        2, INVALID)                       \
+    V("toSpliced",      ToSpliced,        2, ArrayToSpliced)                \
     /* Array.prototype.toString ( ) */                                      \
     V("toString",       ToString,         0, INVALID)                       \
     /* Array.prototype.unshift ( ...items ) */                              \
@@ -109,7 +109,7 @@
     /* Array.prototype.values ( ) */                                        \
     V("values",         Values,           0, ArrayValues)                   \
     /* Array.prototype.with ( index, value ) */                             \
-    V("with",           With,             2, INVALID)
+    V("with",           With,             2, ArrayWith)
 
 namespace panda::ecmascript::builtins {
 static constexpr uint8_t INDEX_TWO = 2;

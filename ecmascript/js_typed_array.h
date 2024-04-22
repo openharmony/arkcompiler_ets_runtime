@@ -28,12 +28,14 @@ public:
     static JSTypedArray *Cast(TaggedObject *object)
     {
     #if ECMASCRIPT_ENABLE_CAST_CHECK
-        if (!(JSTaggedValue(object).IsTypedArray() || JSTaggedValue(object).IsJSTypedArray())) {
+        if (!(JSTaggedValue(object).IsTypedArray() || JSTaggedValue(object).IsJSTypedArray() ||
+              JSTaggedValue(object).IsSharedTypedArray() || JSTaggedValue(object).IsJSSharedTypedArray())) {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     #else
-        ASSERT(JSTaggedValue(object).IsTypedArray() || JSTaggedValue(object).IsJSTypedArray());
+        ASSERT(JSTaggedValue(object).IsTypedArray() || JSTaggedValue(object).IsJSTypedArray() ||
+               JSTaggedValue(object).IsSharedTypedArray() || JSTaggedValue(object).IsJSSharedTypedArray());
     #endif
         return static_cast<JSTypedArray *>(object);
     }
@@ -98,14 +100,7 @@ public:
     // only use in TypeArray fast set property
     static JSTaggedNumber NonEcmaObjectToNumber(JSThread *thread, const JSTaggedValue tagged);
     static JSTaggedValue GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray);
-    static inline JSTaggedValue FastGetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray)
-    {
-        JSTaggedValue arrBuf = typedArray->GetViewedArrayBufferOrByteArray();
-        if (arrBuf.IsArrayBuffer() || arrBuf.IsSharedArrayBuffer()) {
-            return arrBuf;
-        }
-        return GetOffHeapBuffer(thread, typedArray);
-    }
+    static JSTaggedValue GetSharedOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray);
     static bool FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedValue> &typedArray,
                                    const JSHandle<JSTaggedValue> &value, uint32_t start, uint32_t end);
     static constexpr size_t VIEWED_ARRAY_BUFFER_OFFSET = JSObject::SIZE;

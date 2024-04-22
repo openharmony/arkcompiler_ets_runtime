@@ -12,6 +12,9 @@
 # limitations under the License.
 
 I'm propString
+I'm propString
+I'm simple sendable's propString
+I'm simple sendable's propString
 I'm simple sendable's propString
 Start testUpdateInstancePropsToNull
 Success update propString to null with stobjbyname
@@ -20,6 +23,11 @@ Fail to update propNumber to null with stobjbyname. err: TypeError: Cannot set s
 Fail to update propBool to null with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
 Fail to update propBigInt1 to null with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
 Fail to update propBigInt2 to null with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Success update propStringOrNull to null with stobjbyname
+Success update propNumberOrNull to null with stobjbyname
+Success update propBoolOrNull to null with stobjbyname
+Success update propBigIntOrNull to null with stobjbyname
+Success update propSenableOrNull to null with stobjbyname
 Start testUpdateInstancePropsToUndefined
 Fail to update propString to undefined with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
 Fail to update subClassPropSendable to undefined with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
@@ -27,6 +35,11 @@ Fail to update propNumber to undefined with stobjbyname. err: TypeError: Cannot 
 Fail to update propBool to undefined with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
 Fail to update propBigInt1 to undefined with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
 Fail to update propBigInt2 to undefined with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Success update propStringOrUndefined to undefined with stobjbyname
+Success update propNumberOrUndefined to undefined with stobjbyname
+Success update propBoolOrUndefined to undefined with stobjbyname
+Success update propBigIntOrUndefined to undefined with stobjbyname
+Success update propSenableOrUndefined to undefined with stobjbyname
 Success update subClassPropString with defineProperties
 Success update propNumber with defineProperty
 Fail to update subClassPropString with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
@@ -65,7 +78,8 @@ Fail to call Object.setPrototypeOf. err: TypeError: Cannot set proto with sendab
 Start testObjectAttributesAndExtensible
 Fail to update propNumber to configurable with defineProperty. err: TypeError: Cannot define property
 isFrozen: false
-Fail to call Object.freeze. err: TypeError: Cannot update sendable object's attributes
+Success to call Object.freeze
+isFrozen: true
 isSealed: true
 Success to call Object.seal in sealed state
 isExtensible: false
@@ -93,3 +107,17 @@ I'm simple sendable's propString
 [IC] Fail to update subClassPropSendable with mismatch type. err: TypeError: Cannot set sendable property with mismatched type, loopIndex: 1000
 [IC] Fail to modify constructor's property with mismatch type. err: TypeError: Cannot set sendable property with mismatched type, loopIndex: 1000
 [IC] Fail to set prop through accessor with matched type. err: TypeError: Cannot set sendable property with mismatched type
+Start testSetMismatchedType
+Fail to update propStringOrUndefined to number with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Fail to update propNumberOrUndefined to string with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Fail to update propBoolOrUndefined to number with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Fail to update propBigIntOrUndefined to string with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Fail to update propSenableOrUndefined to number with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Start testSharedObjectFreeze
+isFrozen: false
+isFrozen: true
+Fail to set properties after frozen. err: TypeError: Cannot assign to read only property
+Start testSharedFunctionFreeze
+isFrozen: false
+isFrozen: true
+Fail to set properties after frozen. err: TypeError: Cannot assign to read only property

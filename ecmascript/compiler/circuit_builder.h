@@ -19,25 +19,27 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/lcr_gate_meta_data.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_location.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
-#include "ecmascript/compiler/pgo_type/pgo_type_location.h"
-#include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/tagged_array.h"
-#include <cstdint>
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
 #define DEFVALUE(varname, cirBuilder, type, val) \
         Variable varname(cirBuilder, type, cirBuilder->NextVariableId(), val)
 
+class BuiltinsTypedArrayStubBuilder;
 class BuiltinsStringStubBuilder;
 class CompilationConfig;
 class Environment;
@@ -106,6 +108,7 @@ class PostSchedule;
     V(CastDoubleToInt64, Bitcast, MachineType::I64)                    \
     V(CastInt64ToFloat64, Bitcast, MachineType::F64)                   \
     V(CastInt32ToFloat32, Bitcast, MachineType::F32)                   \
+    V(CastFloat32ToInt32, Bitcast, MachineType::I32)                   \
     V(SExtInt32ToInt64, Sext, MachineType::I64)                        \
     V(SExtInt1ToInt64, Sext, MachineType::I64)                         \
     V(SExtInt1ToInt32, Sext, MachineType::I32)                         \
@@ -171,7 +174,8 @@ class PostSchedule;
     V(Int64LessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SLE))            \
     V(Int64GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \
     V(Int64GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))         \
-    V(Int64UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))
+    V(Int64UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))    \
+    V(Int64UnsignedGreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::UGE))
 
 class CircuitBuilder {
 public:
@@ -198,6 +202,7 @@ public:
     GateRef GetElementsArray(GateRef object);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
+    GateRef IsTypedArray(GateRef array);
     GateRef GetSuperConstructor(GateRef ctor);
     GateRef Merge(const std::vector<GateRef> &inList);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -218,6 +223,7 @@ public:
     GateRef IsJsCOWArray(GateRef obj);
     GateRef IsCOWArray(GateRef objectType);
     GateRef IsTaggedArray(GateRef object);
+    GateRef CheckJSType(GateRef object, JSType jsType);
     GateRef IsMutantTaggedArray(GateRef objectType);
     GateRef SwitchCase(GateRef switchBranch, int64_t value);
     GateRef Int8(int8_t val);
@@ -275,6 +281,7 @@ public:
     GateRef GetUnsharedConstpoolIndex(GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef arrayAddr, GateRef index);
     GateRef GetCodeAddr(GateRef jsFunc);
+    GateRef GetBaselineCodeAddr(GateRef baselineCode);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
     GateRef GetFunctionLexicalEnv(GateRef function);
@@ -418,10 +425,8 @@ public:
                           GateRef hirGate);
     GateRef CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                      const char* comment = nullptr);
-    GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
-                               bool isNew = false, const char* comment = nullptr);
-    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
-                                            const char* comment = nullptr);
+    GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew = false);
+    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args);
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
                  const std::vector<GateRef> &args, GateRef hirGate, const char* comment = nullptr);
     GateRef NoLabelCallRuntime(GateRef glue, GateRef depend, size_t index, std::vector<GateRef> &args, GateRef hirGate);
@@ -492,36 +497,37 @@ public:
     GateRef ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
     GateRef EcmaStringCheck(GateRef gate);
+    GateRef EcmaMapCheck(GateRef gate);
     GateRef FlattenTreeStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
-    GateRef TypedArrayCheck(GateRef gate, GateType type, TypedArrayMetaDateAccessor::Mode mode,
+    GateRef TypedArrayCheck(GateRef gate, ParamType paramType, TypedArrayMetaDateAccessor::Mode mode,
                             OnHeapMode onHeap = OnHeapMode::NONE);
-    GateRef LoadTypedArrayLength(GateRef gate, GateType type, OnHeapMode onHeap = OnHeapMode::NONE);
+    GateRef LoadTypedArrayLength(GateRef gate, ParamType paramType, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
     GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind,
                                         bool isPrototypeOfPrototype);
     GateRef OrdinaryHasInstanceCheck(GateRef target, GateRef jsFunc, std::vector<GateRef> &expectedHCIndexes);
     GateRef IndexCheck(GateRef gate, GateRef index);
-    GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex,
+    GateRef ObjectTypeCheck(bool isHeapObject, GateRef gate, GateRef hclassIndex,
                             GateRef frameState = Gate::InvalidGateRef);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment = nullptr);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
                             const char* comment = nullptr);
-    GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
+    GateRef JSCallTargetFromDefineFuncCheck(GateRef func, GateRef gate);
     template<TypedCallTargetCheckOp Op>
-    GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
+    GateRef JSCallTargetTypeCheck(GateRef func, GateRef methodIndex, GateRef gate);
     template<TypedCallTargetCheckOp Op>
-    GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate);
+    GateRef JSCallThisTargetTypeCheck(GateRef func, GateRef gate);
     template<TypedCallTargetCheckOp Op>
-    inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
-    GateRef TypeOfCheck(GateRef gate, GateType type);
-    GateRef TypedTypeOf(GateType type);
+    inline GateRef JSNoGCCallThisTargetTypeCheck(GateRef func, GateRef methodId, GateRef gate);
+    GateRef TypeOfCheck(GateRef gate, ParamType paramType);
+    GateRef TypedTypeOf(ParamType paramType);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList, bool isSideEffect);
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args,
                                     BuiltinsStubCSigns::ID id, bool isSideEffect);
-    GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
+    GateRef TypeConvert(MachineType type, ParamType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef Int32CheckRightIsZero(GateRef right);
     GateRef RemainderIsNegativeZero(GateRef left, GateRef right);
     GateRef Float64CheckRightIsZero(GateRef right);
@@ -530,6 +536,9 @@ public:
     GateRef LexVarIsHoleCheck(GateRef value);
     GateRef IsUndefinedOrHoleCheck(GateRef value);
     GateRef IsNotUndefinedOrHoleCheck(GateRef value);
+    GateRef IsEcmaObjectCheck(GateRef obj);
+    GateRef IsDataViewCheck(GateRef obj);
+    GateRef IsTaggedBooleanCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
     GateRef Int32DivWithCheck(GateRef left, GateRef right);
     GateType GetGateTypeOfValueType(ValueType type);
@@ -538,20 +547,18 @@ public:
     GateRef InsertTypedArrayCheck(GateType type, GateRef array);
     GateRef ArrayConstructorCheck(GateRef gate);
     GateRef ObjectConstructorCheck(GateRef gate);
-    GateRef InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
-                                GateType gateType, PGOTypeRef pgoType, TypedBinOp op);
+    GateRef InsertTypedBinaryop(GateRef left, GateRef right, TypedBinOp op);
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
-    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, GateType typeVal,
+    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, ParamType paramType,
                                const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
     GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
     template<TypedBinOp Op>
-    inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType,
-                                 PGOTypeRef pgoType);
+    inline GateRef TypedBinaryOp(GateRef x, GateRef y, ParamType paramType);
     template<TypedUnOp Op>
-    inline GateRef TypedUnaryOp(GateRef x, GateType xType, GateType gateType);
+    inline GateRef TypedUnaryOp(GateRef x, ParamType paramType);
     template<TypedJumpOp Op>
-    inline GateRef TypedConditionJump(GateRef x, GateType xType, uint32_t weight);
+    inline GateRef TypedConditionJump(GateRef x, ParamType paramType, uint32_t weight);
     GateRef Convert(GateRef gate, ValueType src, ValueType dst);
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
@@ -600,7 +607,7 @@ public:
     GateRef StartAllocate();
     GateRef FinishAllocate(GateRef value);
 
-    inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
+    inline GateRef PrimitiveToNumber(GateRef x, ParamType paramType);
     inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
     inline GateRef GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index);
     inline GateRef GetValueFromJSArrayWithElementsKind(VariableType type, GateRef array, GateRef index);
@@ -610,6 +617,7 @@ public:
     GateRef LoadArrayLength(GateRef array);
     inline GateRef LoadFromTaggedArray(GateRef array, size_t index);
     GateRef LoadStringLength(GateRef string);
+    GateRef LoadMapSize(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
         MemoryOrder order = MemoryOrder::Default());
     GateRef LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index);
@@ -642,6 +650,7 @@ public:
     GateRef TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn);
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);
+    GateRef BuildBigIntAsIntN(const GateMetaData* op, std::vector<GateRef> &&args);
 
     // bit operation
     inline GateRef TaggedIsInt(GateRef x);
@@ -679,7 +688,7 @@ public:
     inline GateRef TaggedIsBigInt(GateRef obj);
     inline GateRef TaggedIsString(GateRef obj);
     inline GateRef TaggedIsStringIterator(GateRef obj);
-    inline GateRef TaggedIsShared(GateRef obj);
+    inline GateRef TaggedIsSharedObj(GateRef obj);
     inline GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef TaggedIsSymbol(GateRef obj);
     inline GateRef TaggedIsProtoChangeMarker(GateRef obj);
@@ -692,6 +701,9 @@ public:
     inline GateRef TaggedObjectIsShared(GateRef obj);
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
+    inline GateRef TaggedObjectIsByteArray(GateRef obj);
+    inline GateRef TaggedObjectIsMap(GateRef obj);
+    inline GateRef TaggedObjectIsDataView(GateRef obj);
     inline GateRef IsSpecialHole(GateRef x);
     inline GateRef IsNotSpecialHole(GateRef x);
     inline GateRef TaggedTrue();
@@ -713,6 +725,8 @@ public:
     GateRef NumberToString(GateRef number);
     GateRef TaggedPointerToInt64(GateRef x);
     GateRef GetLengthFromString(GateRef value);
+    GateRef Rotl(GateRef word, uint32_t shift);
+    GateRef CalcHashcodeForInt(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
     GateRef TryGetHashcodeFromString(GateRef string);
     GateRef IsIntegerString(GateRef string);
@@ -726,6 +740,19 @@ public:
         GateRef charSize, VariableType type);
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
+    GateRef NumberIsNaN(GateRef gate);
+    GateRef NumberIsFinite(GateRef gate);
+    GateRef NumberIsInteger(GateRef gate);
+    GateRef NumberIsSafeInteger(GateRef gate);
+    GateRef ArrayBufferIsView(GateRef gate);
+    GateRef DataViewGet(
+        GateRef thisobj, GateRef index, GateRef dataViewCallID, GateRef isLittleEndian, GateRef frameState);
+    GateRef DataViewSet(GateRef thisobj,
+                        GateRef index,
+                        GateRef value,
+                        GateRef dataViewCallID,
+                        GateRef isLittleEndian,
+                        GateRef frameState);
     GateRef ToNumber(GateRef gate, GateRef value, GateRef glue);
     GateRef IsASCIICharacter(GateRef gate);
 
@@ -776,6 +803,9 @@ public:
         MemoryOrder order = MemoryOrder::Default());
 
     // cast operation
+    inline GateRef Int16ToBigEndianInt16(GateRef x);
+    inline GateRef Int32ToBigEndianInt32(GateRef x);
+    inline GateRef Int64ToBigEndianInt64(GateRef x);
     inline GateRef GetInt64OfTInt(GateRef x);
     inline GateRef GetInt32OfTInt(GateRef x);
     inline GateRef TaggedCastToIntPtr(GateRef x);
@@ -785,6 +815,8 @@ public:
     inline GateRef GetDoubleOfTNumber(GateRef x);
     inline GateRef DoubleToInt(GateRef x, Label *exit);
     inline GateRef DoubleToInt(GateRef glue, GateRef x, size_t typeBits);
+    inline GateRef DoubleCheckINFInRangeInt32(GateRef x);
+    inline GateRef DoubleInRangeInt32(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     inline GateRef Int32ToTaggedInt(GateRef x);
@@ -803,12 +835,14 @@ public:
     inline GateRef DoubleIsINF(GateRef x);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
 
-    // Unary / BinaryOp
-    GateRef BuildMathBuiltinOp(const GateMetaData* op, std::vector<GateRef> args);
+    // Opcode with control and depend inputs from label and value inputs args
+    GateRef BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOpWithOverflow(GateRef x, GateRef y);
+
+    GateRef BuildTypedArrayIterator(GateRef gate, const GateMetaData* op);
 
 #define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                                        \
     inline GateRef NAME(GateRef x, GateRef y, GateType type = GateType::Empty(), const char* comment = nullptr)  \
@@ -860,6 +894,7 @@ private:
     CompilationConfig *cmpCfg_ {nullptr};
     friend StubBuilder;
     friend BuiltinsStringStubBuilder;
+    friend BuiltinsTypedArrayStubBuilder;
     friend TypedBytecodeLowering;
     friend NTypeBytecodeLowering;
     friend PGOHCRLowering;

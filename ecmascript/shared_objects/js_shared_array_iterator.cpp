@@ -24,6 +24,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
@@ -35,28 +36,36 @@ JSTaggedValue JSSharedArrayIterator::Next(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1.Let O be the this value.
     JSHandle<JSTaggedValue> thisObj(BuiltinsBase::GetThis(argv));
-    return NextInternal(thread, thisObj);
-}
 
-JSTaggedValue JSSharedArrayIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedValue> thisObj)
-{
     // 2.If Type(O) is not Object, throw a TypeError exception.
     // 3.If O does not have all of the internal slots of an TaggedArray Iterator Instance (22.1.5.3), throw a TypeError
     // exception.
     if (!thisObj->IsJSSharedArrayIterator()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an array iterator", JSTaggedValue::Exception());
     }
-    JSHandle<JSSharedArrayIterator> iter(thisObj);
+
     // 4.Let a be O.[[IteratedArrayLike]].
+    JSHandle<JSSharedArrayIterator> iter(thisObj);
     JSHandle<JSTaggedValue> array(thread, iter->GetIteratedArray());
-    JSHandle<JSSharedArray> iteratedArray(thread, iter->GetIteratedArray());
-    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, *iteratedArray);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-    JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
-    // 5.If a is undefined, return CreateIterResultObject(undefined, true).
-    if (array->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+    if (array->IsJSSharedArray()) {
+        JSHandle<JSSharedArray> iteratedArray(thread, iter->GetIteratedArray());
+        [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, *iteratedArray);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+        return NextInternal(thread, iter, array);
+    } else if (array->IsSharedTypedArray())  {
+        JSHandle<JSSharedTypedArray> iteratedArray(thread, iter->GetIteratedArray());
+        [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, *iteratedArray);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+        return NextInternal(thread, iter, array);
     }
+    // 5.If a is undefined, return CreateIterResultObject(undefined, true).
+    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+}
+
+JSTaggedValue JSSharedArrayIterator::NextInternal(JSThread *thread, JSHandle<JSSharedArrayIterator> &iter,
+    JSHandle<JSTaggedValue> &array)
+{
     // 6.Let index be O.[[ArrayLikeNextIndex]].
     uint32_t index = iter->GetNextIndex();
     // 7.Let itemKind be O.[[ArrayLikeIterationKind]].
@@ -65,12 +74,10 @@ JSTaggedValue JSSharedArrayIterator::NextInternal(JSThread *thread, JSHandle<JST
     uint32_t length;
     // 8. If a has a [[TypedArrayName]] internal slot, then
     //   a. Let len be the value of O’s [[ArrayLength]] internal slot.
-    if (array->IsTypedArray()) {
-        length = JSHandle<JSTypedArray>::Cast(array)->GetArrayLength();
-    } else if (array->IsJSArray()) {
-        length = JSHandle<JSArray>(array)->GetArrayLength();
-    } else if (array->IsJSSharedArray()) {
+    if (array->IsJSSharedArray()) {
         length = JSHandle<JSSharedArray>(array)->GetArrayLength();
+    } else if (array->IsSharedTypedArray()) {
+        length = JSHandle<JSSharedTypedArray>::Cast(array)->GetArrayLength();
     } else {
         // 9.Else
         JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
@@ -79,6 +86,7 @@ JSTaggedValue JSSharedArrayIterator::NextInternal(JSThread *thread, JSHandle<JST
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
+    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
     // 10.If index ≥ len, then
     if (index >= length) {
         // Set O.[[IteratedArrayLike]] to undefined.

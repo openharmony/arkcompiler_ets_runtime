@@ -16,9 +16,12 @@
 #ifndef ECMASCRIPT_COMPILER_TYPED_NATIVE_INLINE_LOWERING_H
 #define ECMASCRIPT_COMPILER_TYPED_NATIVE_INLINE_LOWERING_H
 
+#include <cstdint>
+#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
-
+#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/variable_type.h"
 namespace panda::ecmascript::kungfu {
 class TypedNativeInlineLowering : public PassVisitor {
 public:
@@ -31,10 +34,15 @@ public:
           circuit_(circuit),
           acc_(circuit),
           builder_(circuit, cmpCfg),
-          isLiteCG_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG()) {}
+          vm_(ctx->GetCompilationEnv()->GetEcmaVM()),
+          isLiteCG_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerEnableLiteCG()) {}
     ~TypedNativeInlineLowering() = default;
     GateRef VisitGate(GateRef gate) override;
 private:
+    enum class DataViewProtoFunc : uint8_t { GET = 0, SET = 1 };
+
+    enum ElmentSize : uint32_t { BITS_8 = 1, BITS_16 = 2, BITS_32 = 4, BITS_64 = 8 };
+
     void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId);
     void LowerMathAtan2(GateRef gate);
     void LowerTrunc(GateRef gate);
@@ -51,9 +59,27 @@ private:
     void LowerClz32Float64(GateRef gate);
     void LowerClz32Int32(GateRef gate);
     void LowerMathSqrt(GateRef gate);
+    void LowerNewNumber(GateRef gate);
+    template <bool IS_UNSIGNED>
+    void LowerBigIntAsIntN(GateRef gate);
     GateRef BuildRounding(GateRef gate, GateRef value, OpCode op);
     void LowerTaggedRounding(GateRef gate);
     void LowerDoubleRounding(GateRef gate);
+    void LowerArrayBufferIsView(GateRef gate);
+    void LowerDataViewProtoFunc(GateRef gate, DataViewProtoFunc proto);
+    void LowerNumberIsFinite(GateRef gate);
+    void LowerNumberIsInteger(GateRef gate);
+    void LowerNumberIsNaN(GateRef gate);
+    void LowerNumberIsSafeInteger(GateRef gate);
+    void LowerDateGetTime(GateRef gate);
+    GateRef BuiltinIdToSize(GateRef ID);
+    GateRef GetValueFromBuffer(GateRef bufferIndex, GateRef dataPointer, GateRef isLittleEndian, GateRef builtinId);
+    GateRef SetValueInBuffer(GateRef bufferIndex,
+                             GateRef value,
+                             GateRef dataPointer,
+                             GateRef isLittleEndian,
+                             GateRef builtinId,
+                             GateRef glue);
 
     GateRef BuildIntAbs(GateRef value);
     GateRef BuildDoubleAbs(GateRef value);
@@ -83,16 +109,24 @@ private:
     void LowerMathImul(GateRef gate);
     void LowerGlobalIsFinite(GateRef gate);
     void LowerGlobalIsNan(GateRef gate);
+    void LowerGeneralWithoutArgs(GateRef gate, RuntimeStubCSigns::ID stubId);
+    GateRef AllocateTypedArrayIterator(GateRef glue, GateRef self,
+                                       GateRef iteratorHClass, IterationKind iterationKind);
+    void LowerTypedArrayIterator(GateRef gate, CommonStubCSigns::ID index, IterationKind iterationKind);
 
     GateRef LowerGlobalDoubleIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsNan(GateRef value);
+
+    void LowerToCommonStub(GateRef gate, CommonStubCSigns::ID id);
+    void LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id);
 
     GateRef FindFrameState(GateRef gate);
 private:
     Circuit* circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
+    EcmaVM *vm_ {nullptr};
     bool isLiteCG_ {false};
 };
 }

@@ -383,6 +383,11 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
                 frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor, type);
                 break;
             }
+            case FrameType::BASELINE_BUILTIN_FRAME: {
+                auto frame = it.GetFrame<BaselineBuiltinFrame>();
+                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
+                break;
+            }
             case FrameType::ASM_INTERPRETER_FRAME:
             case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
                 auto frame = it.GetFrame<AsmInterpretedFrame>();

@@ -18,6 +18,7 @@
 
 #include <cerrno>
 
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/number_helper.h"
@@ -30,6 +31,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
@@ -68,11 +70,15 @@ struct JsonContinuation {
 template<typename T>
 class JsonParser {
 protected:
+    using TransformType = base::JsonHelper::TransformType;
     using Text = const T *;
     using ContType = JsonContinuation::ContinuationType;
     // Instantiation of the class is prohibited
     JsonParser() = default;
-    explicit JsonParser(JSThread *thread) : thread_(thread) {}
+    JsonParser(JSThread *thread, TransformType transformType)
+        : thread_(thread), transformType_(transformType)
+    {
+    }
     ~JsonParser() = default;
     NO_COPY_SEMANTIC(JsonParser);
     NO_MOVE_SEMANTIC(JsonParser);
@@ -125,6 +131,13 @@ protected:
         return *current_ == '}';
     }
 
+    JSHandle<JSTaggedValue> GetSJsonPrototype()
+    {
+        JSHandle<JSFunction> sObjFunction(thread_->GetEcmaVM()->GetGlobalEnv()->GetSObjectFunction());
+        JSHandle<JSTaggedValue> jsonPrototype = JSHandle<JSTaggedValue>(thread_, sObjFunction->GetFunctionPrototype());
+        return jsonPrototype;
+    }
+
     JSTaggedValue ParseJSONText()
     {
         JSHandle<JSTaggedValue> parseValue;
@@ -142,7 +155,17 @@ protected:
                 switch (token) {
                     case Tokens::OBJECT:
                         if (EmptyObjectCheck()) {
-                            parseValue = JSHandle<JSTaggedValue>(factory_->NewJSObject(initialJSObjectClass_));
+                            if (transformType_ == TransformType::SENDABLE) {
+                                JSHandle<JSHClass> sHclass;
+                                JSHandle<JSTaggedValue> sJsonPrototype = GetSJsonPrototype();
+                                JSHandle<LayoutInfo> sLayout = factory_->CreateSLayoutInfo(0);
+                                sHclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, 0, JSType::JS_SHARED_OBJECT,
+                                                                   JSHandle<JSTaggedValue>(sJsonPrototype),
+                                                                   JSHandle<JSTaggedValue>(sLayout));
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewSharedOldSpaceJSObject(sHclass));
+                            } else {
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewJSObject(initialJSObjectClass_));
+                            }
                             GetNextNonSpaceChar();
                             break;
                         }
@@ -165,7 +188,11 @@ protected:
                         continue;
                     case Tokens::ARRAY:
                         if (EmptyArrayCheck()) {
-                            parseValue = JSHandle<JSTaggedValue>(factory_->NewJSArray(0, initialJSArrayClass_));
+                            if (transformType_ == TransformType::SENDABLE) {
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewJSSArray());
+                            } else {
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewJSArray(0, initialJSArrayClass_));
+                            }
                             GetNextNonSpaceChar();
                             break;
                         }
@@ -216,7 +243,11 @@ protected:
                             Advance();
                             break;
                         }
-                        parseValue = CreateJsonArray(continuation, elementsList);
+                        if (transformType_ == TransformType::SENDABLE) {
+                            parseValue = CreateSJsonArray(continuation, elementsList);
+                        } else {
+                            parseValue = CreateJsonArray(continuation, elementsList);
+                        }
                         if (*current_ != ']') {
                             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON",
                                                           JSTaggedValue::Exception());
@@ -246,8 +277,11 @@ protected:
                             Advance();
                             break;
                         }
-
-                        parseValue = CreateJsonObject(continuation, propertyList);
+                        if (UNLIKELY(transformType_ == TransformType::SENDABLE)) {
+                            parseValue = CreateSJsonObject(continuation, propertyList);
+                        } else {
+                            parseValue = CreateJsonObject(continuation, propertyList);
+                        }
                         if (UNLIKELY(*current_ != '}')) {
                             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
                                                           JSTaggedValue::Exception());
@@ -276,6 +310,19 @@ protected:
         return JSHandle<JSTaggedValue>(array);
     }
 
+    JSHandle<JSTaggedValue> CreateSJsonArray([[maybe_unused]] JsonContinuation continuation,
+                                             [[maybe_unused]] std::vector<JSHandle<JSTaggedValue>> &elementsList)
+    {
+        size_t start = continuation.index_;
+        size_t size = elementsList.size() - start;
+        JSHandle<JSSharedArray> array = factory_->NewJSSArray();
+        array->SetArrayLength(thread_, size);
+        JSHandle<TaggedArray> elements = factory_->NewSJsonFixedArray(start, size, elementsList);
+        JSHandle<JSObject> obj(array);
+        obj->SetElements(thread_, elements);
+        return JSHandle<JSTaggedValue>(array);
+    }
+
     JSHandle<JSTaggedValue> CreateJsonObject(JsonContinuation continuation,
                                              std::vector<JSHandle<JSTaggedValue>> &propertyList)
     {
@@ -296,13 +343,68 @@ protected:
         return obj;
     }
 
+    JSHandle<JSTaggedValue> CreateSJsonObject(JsonContinuation continuation,
+                                              std::vector<JSHandle<JSTaggedValue>> &propertyList)
+    {
+        size_t start = continuation.index_;
+        size_t size = propertyList.size() - start;
+        uint32_t fieldNum = size / 2; // 2: key-value pair
+        JSHandle<JSHClass> hclass;
+        JSHandle<LayoutInfo> layout;
+        JSHandle<JSTaggedValue> jsonPrototype = GetSJsonPrototype();
+        if (fieldNum == 0) {
+            layout = factory_->CreateSLayoutInfo(fieldNum);
+            hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
+                                              JSHandle<JSTaggedValue>(jsonPrototype), JSHandle<JSTaggedValue>(layout));
+            JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObject(hclass);
+            return JSHandle<JSTaggedValue>(obj);
+        } else if (LIKELY(fieldNum <= JSSharedObject::MAX_INLINE)) {
+            layout = factory_->CreateSLayoutInfo(fieldNum);
+            JSHandle<TaggedArray> propertyArray = factory_->NewSTaggedArray(size);
+            for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
+                JSHandle<JSTaggedValue> keyHandle = propertyList[start + i];
+                propertyArray->Set(thread_, i, keyHandle);
+                propertyArray->Set(thread_, i + 1, JSTaggedValue(int(FieldType::NONE)));
+            }
+            hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
+                                              JSHandle<JSTaggedValue>(jsonPrototype), JSHandle<JSTaggedValue>(layout));
+            SendableClassDefiner::AddFieldTypeToHClass(thread_, propertyArray, size, layout, hclass);
+            JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObject(hclass);
+            uint32_t index = 0;
+            for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
+                obj->SetPropertyInlinedProps(thread_, index++, propertyList[start + i + 1].GetTaggedValue());
+            }
+            return JSHandle<JSTaggedValue>(obj);
+        }
+        // build in dict mode
+        JSMutableHandle<NameDictionary> dict(
+            thread_, NameDictionary::CreateInSharedHeap(thread_, NameDictionary::ComputeHashTableSize(fieldNum)));
+        JSMutableHandle<JSTaggedValue> propKey(thread_, JSTaggedValue::Undefined());
+        JSMutableHandle<JSTaggedValue> propValue(thread_, JSTaggedValue::Undefined());
+        // create dict and set key value
+        for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
+            PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+            propKey.Update(propertyList[start + i]);
+            propValue.Update(propertyList[start + i + 1]);
+            JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(thread_, dict, propKey,
+                                                                           propValue, attributes);
+            dict.Update(newDict);
+        }
+        hclass = factory_->NewSEcmaHClassDictMode(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
+                                                  JSHandle<JSTaggedValue>(jsonPrototype));
+        JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObject(hclass);
+        obj->SetProperties(thread_, dict);
+        return JSHandle<JSTaggedValue>(obj);
+    }
+
     JSTaggedValue SetPropertyByValue(const JSHandle<JSTaggedValue> &receiver, const JSHandle<JSTaggedValue> &key,
                                      const JSHandle<JSTaggedValue> &value)
     {
         ASSERT(key->IsString());
         auto newKey = key.GetTaggedValue();
         auto stringAccessor = EcmaStringAccessor(newKey);
-        if (!stringAccessor.IsLineString() || IsNumberCharacter(*stringAccessor.GetDataUtf8())) {
+        if (!stringAccessor.IsLineString() || (stringAccessor.IsUtf8() &&
+            IsNumberCharacter(*stringAccessor.GetDataUtf8()))) {
             uint32_t index = 0;
             if (stringAccessor.ToElementIndex(&index)) {
                 return ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>(thread_,
@@ -783,6 +885,7 @@ protected:
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     GlobalEnv *env_ {nullptr};
+    TransformType transformType_ {TransformType::NORMAL};
     JSHandle<JSHClass> initialJSArrayClass_;
     JSHandle<JSHClass> initialJSObjectClass_;
 };
@@ -790,7 +893,7 @@ protected:
 class Utf8JsonParser : public JsonParser<uint8_t> {
 public:
     Utf8JsonParser() = default;
-    explicit Utf8JsonParser(JSThread *thread) : JsonParser(thread) {}
+    Utf8JsonParser(JSThread *thread, TransformType transformType) : JsonParser(thread, transformType) {}
     ~Utf8JsonParser() = default;
     NO_COPY_SEMANTIC(Utf8JsonParser);
     NO_MOVE_SEMANTIC(Utf8JsonParser);
@@ -915,7 +1018,7 @@ private:
 class Utf16JsonParser : public JsonParser<uint16_t> {
 public:
     Utf16JsonParser() = default;
-    explicit Utf16JsonParser(JSThread *thread) : JsonParser(thread) {}
+    Utf16JsonParser(JSThread *thread, TransformType transformType) : JsonParser(thread, transformType) {}
     ~Utf16JsonParser() = default;
     NO_COPY_SEMANTIC(Utf16JsonParser);
     NO_MOVE_SEMANTIC(Utf16JsonParser);
@@ -1027,12 +1130,14 @@ private:
 
 class Internalize {
 public:
+    using TransformType = base::JsonHelper::TransformType;
     static JSHandle<JSTaggedValue> InternalizeJsonProperty(JSThread *thread, const JSHandle<JSObject> &holder,
                                                            const JSHandle<JSTaggedValue> &name,
-                                                           const JSHandle<JSTaggedValue> &receiver);
+                                                           const JSHandle<JSTaggedValue> &receiver,
+                                                           TransformType transformType);
 private:
     static bool RecurseAndApply(JSThread *thread, const JSHandle<JSObject> &holder, const JSHandle<JSTaggedValue> &name,
-                                const JSHandle<JSTaggedValue> &receiver);
+                                const JSHandle<JSTaggedValue> &receiver, TransformType transformType);
 };
 }  // namespace panda::ecmascript::base
 

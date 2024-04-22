@@ -23,10 +23,35 @@ class SendableClassModule {
 public:
     static JSHandle<JSTaggedValue> GenerateSendableFuncModule(JSThread *thread, const JSHandle<JSTaggedValue> &module);
 
+    static void CloneEnvOfSModule(JSThread *thread, JSHandle<SourceTextModule> &module,
+                                  JSHandle<TaggedArray> &envRec);
+
+    static JSHandle<TaggedArray> CloneModuleEnvironment(JSThread *thread,
+                                                        const JSHandle<JSTaggedValue> &moduleEnvironment);
+
 private:
-    static JSHandle<JSTaggedValue> CloneRecordBinding(JSThread *thread, JSTaggedValue indexBinding);
-    static JSHandle<JSTaggedValue> CloneModuleEnvironment(JSThread *thread,
-                                                          const JSHandle<JSTaggedValue> &moduleEnvironment);
+    static JSHandle<JSTaggedValue> CloneRecordIndexBinding(JSThread *thread, JSTaggedValue indexBinding);
+
+    static JSHandle<JSTaggedValue> CloneRecordNameBinding(JSThread *thread, JSTaggedValue binding);
+};
+
+class JSSharedModule {
+public:
+    static JSHandle<TaggedArray> CloneEnvForSModule(JSThread *thread, const JSHandle<SourceTextModule> &module,
+        JSHandle<TaggedArray> &envRec);
+};
+
+class ResolvedRecordIndexBinding final : public Record {
+public:
+    CAST_CHECK(ResolvedRecordIndexBinding, IsResolvedRecordIndexBinding);
+
+    static constexpr size_t MODULE_RECORD_INDEX_OFFSET = Record::SIZE;
+    ACCESSORS(ModuleRecord, MODULE_RECORD_INDEX_OFFSET, INDEX_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(Index, int32_t, INDEX_OFFSET, END_OFFSET);
+    DEFINE_ALIGN_SIZE(END_OFFSET);
+
+    DECL_DUMP()
+    DECL_VISIT_OBJECT(MODULE_RECORD_INDEX_OFFSET, INDEX_OFFSET)
 };
 
 class ResolvedRecordBinding final : public Record {
@@ -34,12 +59,18 @@ public:
     CAST_CHECK(ResolvedRecordBinding, IsResolvedRecordBinding);
 
     static constexpr size_t MODULE_RECORD_OFFSET = Record::SIZE;
-    ACCESSORS(ModuleRecord, MODULE_RECORD_OFFSET, INDEX_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(Index, int32_t, INDEX_OFFSET, END_OFFSET);
-    DEFINE_ALIGN_SIZE(END_OFFSET);
+    ACCESSORS(ModuleRecord, MODULE_RECORD_OFFSET, BINDING_NAME_OFFSET);
+    ACCESSORS(BindingName, BINDING_NAME_OFFSET, SIZE);
 
     DECL_DUMP()
-    DECL_VISIT_OBJECT(MODULE_RECORD_OFFSET, INDEX_OFFSET)
+    DECL_VISIT_OBJECT(MODULE_RECORD_OFFSET, SIZE)
 };
+
+class SharedModuleHelper {
+public:
+    static JSHandle<JSTaggedValue> ParseSharedModule(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                     const CString &descriptor, const CString &moduleFilename);
+};
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_SHARED_MODULE_H

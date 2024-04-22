@@ -20,6 +20,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
@@ -29,12 +30,13 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/weak_vector.h"
 
 namespace panda::ecmascript {
+using ProfileType = pgo::ProfileType;
+
 JSHandle<TransitionsDictionary> TransitionsDictionary::PutIfAbsent(const JSThread *thread,
                                                                    const JSHandle<TransitionsDictionary> &dictionary,
                                                                    const JSHandle<JSTaggedValue> &key,
@@ -162,6 +164,48 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetVTable(thread, JSTaggedValue::Undefined());
 }
 
+bool JSHClass::IsJSTypeShared(JSType type)
+{
+    bool isShared = false;
+    switch (type) {
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION:
+        case JSType::JS_SHARED_SET:
+        case JSType::JS_SHARED_MAP:
+        case JSType::JS_SHARED_ARRAY:
+        case JSType::JS_SHARED_TYPED_ARRAY:
+        case JSType::JS_SHARED_INT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_SHARED_INT16_ARRAY:
+        case JSType::JS_SHARED_UINT16_ARRAY:
+        case JSType::JS_SHARED_INT32_ARRAY:
+        case JSType::JS_SHARED_UINT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+        case JSType::JS_SHARED_BIGUINT64_ARRAY:
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+        case JSType::BIGINT:
+        case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
+        case JSType::SLICED_STRING:
+        case JSType::TREE_STRING:
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY:
+            isShared = true;
+            break;
+        default:
+            break;
+    }
+    return isShared;
+}
+
 // class JSHClass
 void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
 {
@@ -180,21 +224,8 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
     if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
         SetLayout(thread, layout);
     }
-    switch (type) {
-        case JSType::JS_SHARED_OBJECT:
-        case JSType::JS_SHARED_FUNCTION:
-        case JSType::JS_SHARED_SET:
-        case JSType::JS_SHARED_MAP:
-        case JSType::JS_SHARED_ARRAY:
-        case JSType::BIGINT:
-        case JSType::LINE_STRING:
-        case JSType::CONSTANT_STRING:
-        case JSType::SLICED_STRING:
-        case JSType::TREE_STRING:
-            SetIsJSShared(true);
-            break;
-        default:
-            break;
+    if (IsJSTypeShared(type)) {
+        SetIsJSShared(true);
     }
 }
 
@@ -220,7 +251,12 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     JSType type = jshclass->GetObjectType();
     uint32_t size = jshclass->GetInlinedPropsStartSize();
     uint32_t numInlinedProps = withoutInlinedProperties ? 0 : jshclass->GetInlinedProperties() + incInlinedProperties;
-    JSHandle<JSHClass> newJsHClass = thread->GetEcmaVM()->GetFactory()->NewEcmaHClass(size, type, numInlinedProps);
+    JSHandle<JSHClass> newJsHClass;
+    if (jshclass.GetTaggedValue().IsInSharedHeap()) {
+        newJsHClass = thread->GetEcmaVM()->GetFactory()->NewSEcmaHClass(size, type, numInlinedProps);
+    } else {
+        newJsHClass = thread->GetEcmaVM()->GetFactory()->NewEcmaHClass(size, type, numInlinedProps);
+    }
     // Copy all
     newJsHClass->Copy(thread, *jshclass);
     newJsHClass->SetTransitions(thread, JSTaggedValue::Undefined());
@@ -301,11 +337,6 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     obj->SynchronizedSetClass(thread, *newJsHClass);
     // Because we currently only supports Fast ElementsKind
     TryRestoreElementsKind(thread, newJsHClass, obj);
-
-    // Maintaining subtyping is no longer required when transition succeeds.
-    if (jshclass->HasTSSubtyping()) {
-        SubtypingOperator::TryMaintainTSSubtyping(thread, jshclass, newJsHClass, key);
-    }
 }
 
 void JSHClass::TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
@@ -885,8 +916,7 @@ JSHandle<ProtoChangeDetails> JSHClass::GetProtoChangeDetails(const JSThread *thr
     return GetProtoChangeDetails(thread, jshclass);
 }
 
-void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                JSTaggedValue addedKey)
+void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT(jshclass->IsPrototype() || jshclass->HasTSSubtyping());
@@ -897,12 +927,6 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
     }
 
     if (jshclass->HasTSSubtyping()) {
-        if (addedKey.IsString()) {
-            JSHandle<JSTaggedValue> key(thread, addedKey);
-            if (SubtypingOperator::TryMaintainTSSubtypingOnPrototype(thread, jshclass, key)) {
-                return;
-            }
-        }
         jshclass->InitTSInheritInfo(thread);
     }
 }
@@ -911,7 +935,7 @@ void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClas
                                   JSTaggedValue addedKey)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    MarkProtoChanged(thread, jshclass, addedKey);
+    MarkProtoChanged(thread, jshclass);
     JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
     if (!protoDetailsValue.IsProtoChangeDetails()) {
         return;
@@ -1026,7 +1050,6 @@ PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread,
 PropertyLookupResult JSHClass::LookupPropertyInPGOHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    ASSERT(hclass->IsTS());
 
     PropertyLookupResult result;
     if (hclass->IsDictionaryMode()) {

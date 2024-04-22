@@ -782,11 +782,8 @@ std::string Gate::GateTypeStr(GateType gateType) const
     if (strMap.count(gateType) > 0) {
         name = strMap.at(gateType);
     }
-    GlobalTSTypeRef r = gateType.GetGTRef();
-    uint32_t m = r.GetModuleId();
-    uint32_t l = r.GetLocalId();
-    return name + std::string("-GT(M=") + std::to_string(m) +
-           std::string(", L=") + std::to_string(l) + std::string(")");
+    uint32_t r = gateType.GetType();
+    return name + std::string("-gateType(") + std::to_string(r) + std::string(")");
 }
 
 void Gate::Print(std::string additionOp, bool inListPreview, size_t highlightIdx) const
@@ -934,7 +931,8 @@ void Gate::PrintWithBytecode() const
             break;
         }
         case OpCode::TYPED_BINARY_OP: {
-            bytecodeStr = GetTypedBinaryMetaData()->Str();
+            auto typedOp = TypedBinaryAccessor(GetOneParameterMetaData()->GetValue()).GetTypedBinOp();
+            bytecodeStr = GateMetaData::Str(typedOp);
             break;
         }
         case OpCode::TYPED_UNARY_OP: {
@@ -958,7 +956,8 @@ void Gate::PrintWithBytecode() const
             break;
         }
         case OpCode::TYPED_CALLTARGETCHECK_OP: {
-            auto typedOp = GetTypedCallTargetCheckMetaData()->GetTypedCallTargetCheckOp();
+            TypedCallTargetCheckAccessor accessor(GetOneParameterMetaData()->GetValue());
+            auto typedOp = accessor.GetCallTargetCheckOp();
             bytecodeStr = GateMetaData::Str(typedOp);
             break;
         }

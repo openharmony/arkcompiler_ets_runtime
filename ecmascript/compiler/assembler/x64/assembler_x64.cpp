@@ -1325,7 +1325,7 @@ void AssemblerX64::Int3()
 
 void AssemblerX64::Movzwq(const Operand &src, Register dst)
 {
-    EmitRexPrefixW(dst);
+    EmitRexPrefix(dst, src);
     EmitU8(0x0F);
     EmitU8(0xB7);
     EmitOperand(dst, src);

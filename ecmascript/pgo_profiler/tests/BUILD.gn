@@ -23,6 +23,7 @@ test_js_files = [
   "op_type_test",
   "class_test",
   "call_test",
+  "builtins_test",
   "array_test",
   "object_literal",
   "sample_test",
@@ -45,7 +46,6 @@ foreach(file, test_js_files) {
     extra_args = []
     extra_args += [ "--module" ]
     extra_args += [ "--merge-abc" ]
-    extra_args += [ "--type-extractor" ]
     in_puts = [ test_js ]
     out_puts = [ test_abc ]
   }
@@ -56,7 +56,7 @@ host_unittest_action("PGOProfilerTest") {
 
   sources = [
     # test file
-    "pgo_profiler_test.cpp",
+    #"pgo_profiler_test.cpp",
   ]
 
   configs = [

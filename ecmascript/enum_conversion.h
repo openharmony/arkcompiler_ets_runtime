@@ -23,11 +23,31 @@
 namespace panda::ecmascript {
 inline constexpr std::optional<GlobalEnvField> ToGlobelEnvPrototypeField(BuiltinTypeId type)
 {
-    // case BuiltinTypeId::INT8_ARRAY ...
-    if (IsTypedArrayType(type)) {
-        return GlobalEnvField::TYPED_ARRAY_PROTOTYPE_INDEX;
-    }
     switch (type) {
+        case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
+            return GlobalEnvField::UINT8_CLAMPED_ARRAY_FUNCTION_PROTO_INDEX;
+        case BuiltinTypeId::UINT8_ARRAY:
+            return GlobalEnvField::UINT8_ARRAY_FUNCTION_PROTOTYPE_INDEX;
+        case BuiltinTypeId::TYPED_ARRAY:
+            return GlobalEnvField::TYPED_ARRAY_PROTOTYPE_INDEX;
+        case BuiltinTypeId::INT8_ARRAY:
+            return GlobalEnvField::INT8_ARRAY_FUNCTION_PROTOTYPE_INDEX;
+        case BuiltinTypeId::UINT16_ARRAY:
+            return GlobalEnvField::UINT16_ARRAY_FUNCTION_PROTOTYPE_INDEX;
+        case BuiltinTypeId::UINT32_ARRAY:
+            return GlobalEnvField::UINT32_ARRAY_FUNCTION_PROTOTYPE_INDEX;
+        case BuiltinTypeId::INT16_ARRAY:
+            return GlobalEnvField::INT16_ARRAY_FUNCTION_PROTOTYPE_INDEX;
+        case BuiltinTypeId::INT32_ARRAY:
+            return GlobalEnvField::INT32_ARRAY_FUNCTION_PROTOTYPE_INDEX;
+        case BuiltinTypeId::FLOAT32_ARRAY:
+            return GlobalEnvField::FLOAT32_ARRAY_FUNCTION_PROTOTYPE_INDEX;
+        case BuiltinTypeId::FLOAT64_ARRAY:
+            return GlobalEnvField::FLOAT64_ARRAY_FUNCTION_PROTOTYPE_INDEX;
+        case BuiltinTypeId::BIGINT64_ARRAY:
+            return GlobalEnvField::BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX;
+        case BuiltinTypeId::BIGUINT64_ARRAY:
+            return GlobalEnvField::BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX;
         case BuiltinTypeId::ARRAY:
             return GlobalEnvField::ARRAY_PROTOTYPE_INDEX;
         case BuiltinTypeId::DATA_VIEW:

@@ -26,3 +26,6 @@ true
 true
 proxy1: 456
 proxy2: 123,456
+NaN
+NaN
+NaN0

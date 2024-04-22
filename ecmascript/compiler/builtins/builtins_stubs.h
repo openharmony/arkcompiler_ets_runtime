@@ -130,17 +130,10 @@ public:
         return PtrArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
     }
 
-    // not check whether index is valid, if not sure, invoke GetArg
-    inline GateRef GetArgNCheck(GateRef index)
-    {
-        GateRef argv = GetArgv();
-        return Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(JSTaggedValue::TaggedTypeSize())));
-    }
-
-    GateRef GetArg(GateRef numArgs, GateRef index);
+    GateRef GetArgFromArgv(GateRef index, GateRef numArgs = Gate::InvalidGateRef, bool needCheck = false);
 
     GateRef CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue, GateRef numArgs, GateRef func,
-                         GateRef newTarget, const char* comment = nullptr);
+                         GateRef newTarget);
 
     inline GateRef IsNumberYearMonthDay(GateRef year, GateRef month, GateRef day)
     {
@@ -179,7 +172,7 @@ public:
         void GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func, GateRef newTarget, \
                                  GateRef thisValue, GateRef numArgs);                               \
     };
-    BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS, DECLARE_BUILTINS_STUB_CLASS_DYN)
+    BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS, DECLARE_BUILTINS_STUB_CLASS_DYN, DECLARE_BUILTINS_STUB_CLASS)
 #undef DECLARE_BUILTINS_STUB_CLASS_DYN
 #undef DECLARE_BUILTINS_STUB_CLASS
 }  // namespace panda::ecmascript::kungfu

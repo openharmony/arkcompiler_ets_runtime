@@ -77,6 +77,9 @@ void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method, JS
 {
     std::set<std::pair<uint16_t, uint16_t>> modifiedLexVarPos;
     NewLexModifyRecordLevel();
+    const JSPandaFile* methodJsPandaFile = method->GetJSPandaFile();
+    panda_file::File::EntityId methodId = method->GetMethodId();
+    PushMethodInfo(std::make_tuple(const_cast<JSPandaFile *>(methodJsPandaFile), methodId));
     if (envHandle.GetTaggedValue().IsUndefinedOrNull()) {
         return;
     }
@@ -119,6 +122,12 @@ void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method, JS
 
 void DropframeManager::MethodExit(JSThread *thread, [[maybe_unused]] JSHandle<Method> method)
 {
+    const JSPandaFile* methodJsPandaFile = method->GetJSPandaFile();
+    panda_file::File::EntityId methodId = method->GetMethodId();
+    if (!CheckExitMethodInfo(std::make_tuple(const_cast<JSPandaFile *>(methodJsPandaFile), methodId))) {
+        return;
+    }
+    PopMethodInfo();
     MergeLexModifyRecordOfTopFrame(thread);
     PopPromiseQueueSizeRecord();
 }
@@ -136,6 +145,7 @@ void DropframeManager::DropLastFrame(JSThread *thread)
         ASSERT(slot < LexicalEnv::Cast(env.GetTaggedObject())->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH);
         LexicalEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, valueHandle.GetTaggedValue());
     }
+    PopMethodInfo();
     RemoveLexModifyRecordOfTopFrame(thread);
     PopPromiseQueueSizeRecord();
 
@@ -262,6 +272,31 @@ void DropframeManager::PopPromiseQueueSizeRecord()
 {
     if (!promiseQueueSizeRecord_.empty()) {
         promiseQueueSizeRecord_.pop();
+    }
+}
+
+void DropframeManager::PushMethodInfo(std::tuple<JSPandaFile*,
+    panda_file::File::EntityId> methodInfo)
+{
+    methodInfo_.push(methodInfo);
+}
+
+bool DropframeManager::CheckExitMethodInfo(std::tuple<JSPandaFile*,
+    panda_file::File::EntityId> methodInfo)
+{
+    if (methodInfo_.empty()) {
+        return false;
+    }
+    if (methodInfo == methodInfo_.top()) {
+        return true;
+    }
+    return false;
+}
+
+void DropframeManager::PopMethodInfo()
+{
+    if (!methodInfo_.empty()) {
+        methodInfo_.pop();
     }
 }
 }

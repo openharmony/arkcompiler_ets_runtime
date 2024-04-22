@@ -108,7 +108,7 @@ icu::Locale *JSDateTimeFormat::GetIcuLocale() const
 
 /* static */
 void JSDateTimeFormat::SetIcuLocale(JSThread *thread, JSHandle<JSDateTimeFormat> obj,
-    const icu::Locale &icuLocale, const DeleteEntryPoint &callback)
+    const icu::Locale &icuLocale, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -117,14 +117,14 @@ void JSDateTimeFormat::SetIcuLocale(JSThread *thread, JSHandle<JSDateTimeFormat>
     JSTaggedValue data = obj->GetLocaleIcu();
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuPointer);
+        native->ResetExternalPointer(thread, icuPointer);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuPointer, callback, ecmaVm);
     obj->SetLocaleIcu(thread, pointer.GetTaggedValue());
 }
 
-void JSDateTimeFormat::FreeIcuLocale(void *pointer, void *data)
+void JSDateTimeFormat::FreeIcuLocale([[maybe_unused]] void *env, void *pointer, void *data)
 {
     if (pointer == nullptr) {
         return;
@@ -145,7 +145,7 @@ icu::SimpleDateFormat *JSDateTimeFormat::GetIcuSimpleDateFormat() const
 
 /* static */
 void JSDateTimeFormat::SetIcuSimpleDateFormat(JSThread *thread, JSHandle<JSDateTimeFormat> obj,
-    const icu::SimpleDateFormat &icuSimpleDateTimeFormat, const DeleteEntryPoint &callback)
+    const icu::SimpleDateFormat &icuSimpleDateTimeFormat, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -155,7 +155,7 @@ void JSDateTimeFormat::SetIcuSimpleDateFormat(JSThread *thread, JSHandle<JSDateT
     JSTaggedValue data = obj->GetSimpleDateTimeFormatIcu();
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuPointer);
+        native->ResetExternalPointer(thread, icuPointer);
         return;
     }
     // According to the observed native memory, we give an approximate native binding value.
@@ -165,7 +165,7 @@ void JSDateTimeFormat::SetIcuSimpleDateFormat(JSThread *thread, JSHandle<JSDateT
     obj->SetSimpleDateTimeFormatIcu(thread, pointer.GetTaggedValue());
 }
 
-void JSDateTimeFormat::FreeSimpleDateFormat(void *pointer, void *data)
+void JSDateTimeFormat::FreeSimpleDateFormat([[maybe_unused]] void *env, void *pointer, void *data)
 {
     if (pointer == nullptr) {
         return;
@@ -580,14 +580,22 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
 
     HourCycleOption dtfHourCycle = HourCycleOption::UNDEFINED;
 
-    // If dateTimeFormat.[[Hour]] is defined, then
-    if (isHourDefined) {
-        // e. Set dateTimeFormat.[[HourCycle]] to hc.
+    if (timeStyle != DateTimeStyleOption::UNDEFINED) {
+        // Set dateTimeFormat.[[HourCycle]] to hc.
         dtfHourCycle = hc;
-    } else {
-        // 37. Else,
-        //     a. Set dateTimeFormat.[[HourCycle]] to undefined.
-        dtfHourCycle = HourCycleOption::UNDEFINED;
+    }
+
+    if (dateStyle == DateTimeStyleOption::UNDEFINED
+        && timeStyle == DateTimeStyleOption::UNDEFINED) {
+        // If dateTimeFormat.[[Hour]] is defined, then
+        if (isHourDefined) {
+            // e. Set dateTimeFormat.[[HourCycle]] to hc.
+            dtfHourCycle = hc;
+        } else {
+            // 37. Else,
+            //     a. Set dateTimeFormat.[[HourCycle]] to undefined.
+            dtfHourCycle = HourCycleOption::UNDEFINED;
+        }
     }
 
     // Set dateTimeFormat.[[hourCycle]].
@@ -1235,7 +1243,7 @@ JSHandle<JSArray> JSDateTimeFormat::ConstructFDateIntervalToJSArray(JSThread *th
     int32_t preEndPos = 0;
     // 2: number of elements
     std::array<int32_t, 2> begin {};
-    std::array<int32_t, 2> end {};
+    std::array<int32_t, 2> end {}; // 2: number of elements
     begin[0] = begin[1] = end[0] = end[1] = 0;
     std::vector<CommonDateFormatPart> parts;
 

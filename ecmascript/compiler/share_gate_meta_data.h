@@ -29,6 +29,7 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
+using ProfileType = pgo::ProfileType;
 using GateRef = int32_t;
 using PGOTypeRef = pgo::PGOTypeRef;
 using PGODefineOpType = pgo::PGODefineOpType;
@@ -76,6 +77,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(InconsistentHClass9,             INCONSISTENTHCLASS9)           \
     V(InconsistentHClass10,            INCONSISTENTHCLASS10)          \
     V(InconsistentHClass11,            INCONSISTENTHCLASS11)          \
+    V(InconsistentHClass12,            INCONSISTENTHCLASS12)          \
     V(NotEcmaObject1,                  NOTECMAOBJECT1)                \
     V(NotNewObj1,                      NOTNEWOBJ1)                    \
     V(NotNewObj2,                      NOTNEWOBJ2)                    \
@@ -113,7 +115,16 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(IsUndefinedOrHole,               ISUNDEFINEDORHOLE)             \
     V(IsNotUndefinedOrHole,            ISNOTUNDEFINEDORHOLE)          \
     V(BuiltinInliningTypeGuard,        BUILTIN_INLINING_TYPE_GUARD)   \
+    V(RangeError,                      RANGE_ERROR)                   \
+    V(NotBigInt,                       NOT_BIG_INT)                   \
     V(OsrLoopExit,                     OSRLOOPEXIT)                   \
+    V(IsNotMap,                        ISNOTMAP)                      \
+    V(IsNotEcmaObject,                 ISNOTECMAOBJECT)               \
+    V(IsNotDataView,                   ISNOTDATAVIEW)                 \
+    V(IsNotTaggedBoolean,              ISNOTTAGGEDBOOLEAN)            \
+    V(IndexLessZeroOrInfinity,         INDEXLESSZEROORINFINITY)       \
+    V(ArrayBufferIsDetached,           ARRAYBUFFERISDETACHED)         \
+    V(TotalSizeOverflow,               TOTALSIZEOVERFLOW)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,
@@ -459,15 +470,15 @@ public:
 
     GateType GetGateType() const
     {
-        return type_;
+        return GateType(type_);
     }
 
-    static uint64_t ToValue(GateType type)
+    ParamType GetParamType() const
     {
-        return static_cast<uint64_t>(type.Value());
+        return ParamType(type_);
     }
 private:
-    GateType type_;
+    uint32_t type_;
 };
 
 class ValuePairTypeAccessor {
@@ -506,15 +517,15 @@ private:
     uint64_t bitField_;
 };
 
-class GatePairTypeAccessor {
+class TypeConvertAccessor {
 public:
     // type bits shift
     static constexpr int OPRAND_TYPE_BITS = 32;
-    explicit GatePairTypeAccessor(uint64_t value) : bitField_(value) {}
+    explicit TypeConvertAccessor(uint64_t value) : bitField_(value) {}
 
-    GateType GetLeftType() const
+    ParamType GetLeftType() const
     {
-        return GateType(LeftBits::Get(bitField_));
+        return ParamType(LeftBits::Get(bitField_));
     }
 
     GateType GetRightType() const
@@ -522,7 +533,7 @@ public:
         return GateType(RightBits::Get(bitField_));
     }
 
-    static uint64_t ToValue(GateType leftType, GateType rightType)
+    static uint64_t ToValue(ParamType leftType, GateType rightType)
     {
         return LeftBits::Encode(leftType.Value()) | RightBits::Encode(rightType.Value());
     }
@@ -663,18 +674,12 @@ private:
 
 class ObjectTypeAccessor {
 public:
-    static constexpr int TYPE_BITS_SIZE = 32;
     static constexpr int IS_HEAP_OBJECT_BIT_SIZE = 1;
 
     explicit ObjectTypeAccessor(uint64_t value) : bitField_(value) {}
-    explicit ObjectTypeAccessor(GateType type, bool isHeapObject = false)
+    explicit ObjectTypeAccessor(bool isHeapObject = false)
     {
-        bitField_ = TypeBits::Encode(type.Value()) | IsHeapObjectBit::Encode(isHeapObject);
-    }
-
-    GateType GetType() const
-    {
-        return GateType(TypeBits::Get(bitField_));
+        bitField_ = IsHeapObjectBit::Encode(isHeapObject);
     }
 
     bool IsHeapObject() const
@@ -688,8 +693,7 @@ public:
     }
 
 private:
-    using TypeBits = panda::BitField<uint32_t, 0, TYPE_BITS_SIZE>;
-    using IsHeapObjectBit = TypeBits::NextField<bool, IS_HEAP_OBJECT_BIT_SIZE>;
+    using IsHeapObjectBit = panda::BitField<bool, 0, IS_HEAP_OBJECT_BIT_SIZE>;
 
     uint64_t bitField_;
 };
@@ -746,18 +750,14 @@ public:
     };
 
     static constexpr int TYPE_BITS_SIZE = 32;
-    static constexpr int MODE_BITS_SIZE = 8;
-    static constexpr int ON_HEAP_MODE_BITS_SIZE = 8;
+    static constexpr int MODE_BITS_SIZE = 2;
+    static constexpr int ON_HEAP_MODE_BITS_SIZE = 2;
 
     explicit TypedArrayMetaDateAccessor(uint64_t value) : bitField_(value) {}
-    explicit TypedArrayMetaDateAccessor(GateType type, Mode mode, OnHeapMode onHeap)
-    {
-        bitField_ = TypeBits::Encode(type.Value()) | ModeBits::Encode(mode) | OnHeapModeBits::Encode(onHeap);
-    }
 
-    GateType GetType() const
+    ParamType GetParamType() const
     {
-        return GateType(TypeBits::Get(bitField_));
+        return ParamType(TypeBits::Get(bitField_));
     }
 
     OnHeapMode GetOnHeapMode() const
@@ -770,9 +770,9 @@ public:
         return ModeBits::Get(bitField_) == Mode::ACCESS_ELEMENT;
     }
 
-    uint64_t ToValue() const
+    static uint64_t ToValue(ParamType paramType, Mode mode, OnHeapMode onHeap)
     {
-        return bitField_;
+        return TypeBits::Encode(paramType.Value()) | ModeBits::Encode(mode) | OnHeapModeBits::Encode(onHeap);
     }
 
 private:

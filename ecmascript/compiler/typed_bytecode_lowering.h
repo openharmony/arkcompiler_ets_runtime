@@ -18,10 +18,10 @@
 
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/object_access_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/compiler/type_info_accessors.h"
@@ -38,12 +38,13 @@ public:
                          const std::string& name,
                          bool enableLoweringBuiltin,
                          const CString& recordName,
+                         const CallMethodFlagMap* callMethodFlagMap,
+                         PGOProfilerDecoder *decoder,
                          const std::string optBCRange)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
-          tsManager_(ctx->GetTSManager()),
           chunk_(chunk),
           enableLog_(enableLog),
           enableTypeLog_(enableTypeLog),
@@ -54,17 +55,19 @@ public:
           glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit),
           pgoTypeLog_(circuit),
-          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
-          thread_(ctx->GetEcmaVM()->GetJSThread()),
+          noCheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
+          compilationEnv_(ctx->GetCompilationEnv()),
           enableLoweringBuiltin_(enableLoweringBuiltin),
           recordName_(recordName),
+          callMethodFlagMap_(callMethodFlagMap),
+          decoder_(decoder),
           optBCRange_(optBCRange)
     {
     }
 
     ~TypedBytecodeLowering() = default;
 
-    bool RunTypedBytecodeLowering();
+    void RunTypedBytecodeLowering();
 
 private:
     bool IsLogEnabled() const
@@ -99,7 +102,7 @@ private:
 
     void Lower(GateRef gate);
     template<TypedBinOp Op>
-    void LowerTypedBinOp(GateRef gate, bool convertNumberType = true);
+    void LowerTypedBinOp(GateRef gate);
     template<TypedUnOp Op>
     void LowerTypedUnOp(GateRef gate);
     template<TypedBinOp Op>
@@ -116,14 +119,14 @@ private:
     GateRef BuildNamedPropertyAccess(GateRef hir, GateRef receiver, GateRef holder, PropertyLookupResult plr);
     GateRef BuildNamedPropertyAccess(GateRef hir, GateRef receiver, GateRef holder,
                                      GateRef value, PropertyLookupResult plr, uint32_t receiverHClassIndex = 0);
-    using AccessMode = PGOObjectAccessHelper::AccessMode;
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate);
     bool TryLowerTypedLdObjByNameForBuiltinsId(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
-    bool TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
-    bool TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc, ConstantIndex globalsId);
+    bool TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc);
+    bool TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc, GlobalIndex globalsId);
     void LowerTypedLdArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdTypedArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdStringLength(const LoadBulitinObjTypeInfoAccessor &tacc);
+    void LowerTypedLdMapSize(const LoadBulitinObjTypeInfoAccessor &tacc);
     bool TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
 
     void LowerTypedLdObjByIndex(GateRef gate);
@@ -197,9 +200,9 @@ private:
     void AddHitBytecodeCount();
 
     template<TypedBinOp Op>
-    void SpeculateStrings(GateRef gate);
+    void SpeculateStrings(const BinOpTypeInfoAccessor& tacc);
     template<TypedBinOp Op>
-    void SpeculateNumbers(GateRef gate);
+    void SpeculateNumbers(const BinOpTypeInfoAccessor& tacc);
     template<TypedUnOp Op>
     void SpeculateNumber(const UnOpTypeInfoAccessor& tacc);
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);
@@ -211,6 +214,9 @@ private:
     bool CheckIsInOptBCIgnoreRange(int32_t index, EcmaOpcode ecmaOpcode);
     int32_t GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode);
     void ParseOptBytecodeRange();
+
+    const JSPandaFile* GetCalleePandaFile(GateRef gate);
+
     void AddProfiling(GateRef gate);
 
     bool Uncheck() const
@@ -222,7 +228,6 @@ private:
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_ {Gate::InvalidGateRef};
-    TSManager *tsManager_ {nullptr};
     Chunk *chunk_ {nullptr};
     bool enableLog_ {false};
     bool enableTypeLog_ {false};
@@ -240,9 +245,11 @@ private:
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
     bool noCheck_ {false};
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     const CString &recordName_;
+    const CallMethodFlagMap *callMethodFlagMap_;
+    PGOProfilerDecoder *decoder_ {nullptr};
     std::string optBCRange_;
     std::vector<std::vector<int32_t>> optBCRangeList_;
 };

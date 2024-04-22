@@ -42,6 +42,8 @@ using ecmascript::kungfu::PGOTypeRef;
 using ecmascript::kungfu::PGOSampleType;
 using ecmascript::kungfu::TypedBinOp;
 using ecmascript::kungfu::TypedCallTargetCheckOp;
+using ecmascript::kungfu::ParamType;
+using ecmascript::kungfu::TypedCallTargetCheckAccessor;
 
 HWTEST_F_L0(MetaDataEqualTests, StringMetaDataEqualTest)
 {
@@ -194,31 +196,37 @@ HWTEST_F_L0(MetaDataEqualTests, MCRMetaDataEqualTest)
 
     // TypedCallTargetCheckMetaData
     auto callGate3 =
-        circuit.NewGate(circuit.TypedCallTargetCheckOp(0, 0, TypedCallTargetCheckOp::JSCALLTHIS_FAST), MachineType::I64,
-                        {Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate()}, GateType::AnyType());
+        circuit.NewGate(circuit.TypedCallTargetCheckOp(
+            TypedCallTargetCheckAccessor::ToValue(TypedCallTargetCheckOp::JSCALLTHIS_FAST)), MachineType::I64,
+            {Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate()},
+            GateType::AnyType());
     auto callGate4 =
-        circuit.NewGate(circuit.TypedCallTargetCheckOp(0, 0, TypedCallTargetCheckOp::JSCALLTHIS_FAST), MachineType::I64,
-                        {Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate()}, GateType::AnyType());
+        circuit.NewGate(circuit.TypedCallTargetCheckOp(
+            TypedCallTargetCheckAccessor::ToValue(TypedCallTargetCheckOp::JSCALLTHIS_FAST)), MachineType::I64,
+            {Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate()},
+            GateType::AnyType());
 
     EXPECT_TRUE(acc.MetaDataValueEqu(callGate3, callGate4));
     EXPECT_TRUE(acc.MetaDataValueEqu(callGate4, callGate3));
 
     // TypedBinaryMetaData
-    PGOSampleType type5 = PGOSampleType::CreateProfileType(0, 1);
+    uint64_t valueForType5 = ecmascript::kungfu::TypedBinaryAccessor::ToValue(ParamType::IntType(),
+                                                                              TypedBinOp::TYPED_ADD);
     auto callGate5 = circuit.NewGate(
-        circuit.TypedBinaryOp(0, TypedBinOp::TYPED_ADD, PGOTypeRef(static_cast<const PGOSampleType *>(&type5))),
+        circuit.TypedBinaryOp(valueForType5),
         MachineType::I64, { Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate() },
         GateType::AnyType());
 
     // TypedBinaryMetaData
-    PGOSampleType type6 = PGOSampleType::CreateProfileType(0, 1);
+    uint64_t valueForType6 = ecmascript::kungfu::TypedBinaryAccessor::ToValue(ParamType::IntType(),
+                                                                              TypedBinOp::TYPED_ADD);
     auto callGate6 = circuit.NewGate(
-        circuit.TypedBinaryOp(0, TypedBinOp::TYPED_ADD, PGOTypeRef(static_cast<const PGOSampleType *>(&type6))),
+        circuit.TypedBinaryOp(valueForType6),
         MachineType::I64, { Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate() },
         GateType::AnyType());
 
-    EXPECT_FALSE(acc.MetaDataValueEqu(callGate5, callGate6));
-    EXPECT_FALSE(acc.MetaDataValueEqu(callGate6, callGate5));
+    EXPECT_TRUE(acc.MetaDataValueEqu(callGate5, callGate6));
+    EXPECT_TRUE(acc.MetaDataValueEqu(callGate6, callGate5));
 }
 
 

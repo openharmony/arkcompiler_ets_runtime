@@ -22,16 +22,17 @@
 #include "ecmascript/compiler/lcr_circuit_builder.h"
 #include "ecmascript/compiler/mcr_circuit_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/proto_change_details.h"
+#include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
-#include "ecmascript/js_array_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -207,6 +208,14 @@ GateRef CircuitBuilder::GetLengthOfTaggedArray(GateRef array)
 GateRef CircuitBuilder::GetLengthOfJSTypedArray(GateRef array)
 {
     return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+}
+
+GateRef CircuitBuilder::IsTypedArray(GateRef array)
+{
+    GateRef hclass = LoadHClass(array);
+    GateRef type = GetObjectType(hclass);
+    return BoolAnd(Int32GreaterThan(type, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), type));
 }
 
 void CircuitBuilder::Jump(Label *label)
@@ -738,6 +747,28 @@ GateRef CircuitBuilder::IsEcmaObject(GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::CheckJSType(GateRef object, JSType jsType)
+{
+    Label entryPass(env_);
+    SubCfgEntry(&entryPass);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    Label heapObj(env_);
+    Label exit(env_);
+    GateRef isHeapObject = TaggedIsHeapObject(object);
+    BRANCH_CIR2(isHeapObject, &heapObj, &exit);
+    Bind(&heapObj);
+    {
+        GateRef objectType = GetObjectType(LoadHClass(object));
+        GateRef checkType = Int32Equal(objectType, Int32(static_cast<int32_t>(jsType)));
+        result = LogicAnd(isHeapObject, checkType);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module,
                                                GateRef index, ConstPoolType type)
 {
@@ -751,8 +782,15 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate == Circuit::NullGate()) {
         hirGate = index;
     }
-    auto cacheValue = GetValueFromTaggedArray(constPool, index);
-    DEFVALUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    // Call runtime to create unshared constpool when current context's cache is hole in multi-thread.
+    DEFVALUE(cacheValue, env_, VariableType::JS_ANY(), Undefined());
+    if (type == ConstPoolType::ARRAY_LITERAL || type == ConstPoolType::OBJECT_LITERAL) {
+        GateRef unsharedConstPool = GetUnsharedConstpoolFromGlue(glue, constPool);
+        cacheValue = GetValueFromTaggedArray(unsharedConstPool, index);
+    } else {
+        cacheValue = GetValueFromTaggedArray(constPool, index);
+    }
+    DEFVALUE(result, env_, VariableType::JS_ANY(), *cacheValue);
     BRANCH_CIR2(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {
@@ -849,6 +887,12 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef jsFunc)
 {
     auto codeAddOffset = IntPtr(JSFunction::CODE_ENTRY_OFFSET);
     return Load(VariableType::NATIVE_POINTER(), jsFunc, codeAddOffset);
+}
+
+GateRef CircuitBuilder::GetBaselineCodeAddr(GateRef baselineCode)
+{
+    auto codeAddrOffset = IntPtr(MachineCode::FUNCADDR_OFFSET);
+    return Load(VariableType::NATIVE_POINTER(), baselineCode, codeAddrOffset);
 }
 
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)

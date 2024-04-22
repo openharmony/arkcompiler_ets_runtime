@@ -14,11 +14,13 @@
  */
 
 #include "ecmascript/base/json_parser.h"
+#include "ecmascript/base/json_helper.h"
 
 namespace panda::ecmascript::base {
 JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, const JSHandle<JSObject> &holder,
                                                              const JSHandle<JSTaggedValue> &name,
-                                                             const JSHandle<JSTaggedValue> &receiver)
+                                                             const JSHandle<JSTaggedValue> &receiver,
+                                                             TransformType transformType)
 {
     JSHandle<JSTaggedValue> objHandle(holder);
     JSHandle<JSTaggedValue> val = JSTaggedValue::GetProperty(thread, objHandle, name).GetValue();
@@ -41,7 +43,7 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
                 keyUnknow.Update(JSTaggedValue(i));
                 keyName.Update(JSTaggedValue::ToString(thread, keyUnknow).GetTaggedValue());
                 RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-                RecurseAndApply(thread, obj, keyName, receiver);
+                RecurseAndApply(thread, obj, keyName, receiver, transformType);
             }
         } else {
             // Let keys be ? EnumerableOwnPropertyNames(val, key).
@@ -51,7 +53,7 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
             JSMutableHandle<JSTaggedValue> keyName(thread, JSTaggedValue::Undefined());
             for (uint32_t i = 0; i < namesLength; i++) {
                 keyName.Update(ownerNames->Get(i));
-                RecurseAndApply(thread, obj, keyName, receiver);
+                RecurseAndApply(thread, obj, keyName, receiver, transformType);
             }
         }
     }
@@ -68,15 +70,17 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
 }
 
 bool Internalize::RecurseAndApply(JSThread *thread, const JSHandle<JSObject> &holder,
-                                  const JSHandle<JSTaggedValue> &name, const JSHandle<JSTaggedValue> &receiver)
+                                  const JSHandle<JSTaggedValue> &name, const JSHandle<JSTaggedValue> &receiver,
+                                  TransformType transformType)
 {
     STACK_LIMIT_CHECK(thread, false);
-    JSHandle<JSTaggedValue> value = InternalizeJsonProperty(thread, holder, name, receiver);
+    JSHandle<JSTaggedValue> value = InternalizeJsonProperty(thread, holder, name, receiver, transformType);
     bool changeResult = false;
 
     // If newElement is undefined, then Perform ? val.[[Delete]](P).
     if (value->IsUndefined()) {
-        changeResult = JSObject::DeleteProperty(thread, holder, name);
+        SCheckMode sCheckMode = transformType == TransformType::SENDABLE ? SCheckMode::SKIP : SCheckMode::CHECK;
+        changeResult = JSObject::DeleteProperty(thread, holder, name, sCheckMode);
     } else {
         // Perform ? CreateDataProperty(val, P, newElement)
         changeResult = JSObject::CreateDataProperty(thread, holder, name, value);

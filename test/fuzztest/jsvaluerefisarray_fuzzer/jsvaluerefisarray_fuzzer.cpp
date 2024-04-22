@@ -30,7 +30,7 @@ void IsInt8ArrayFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     Local<JSValueRef> typedArray = Int8ArrayRef::New(vm, arrayBuffer, 0, (int32_t)size);
     typedArray->IsInt8Array();
@@ -46,7 +46,7 @@ void IsUint8ArrayFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     Local<JSValueRef> typedArray = Uint8ArrayRef::New(vm, arrayBuffer, 0, (int32_t)size);
     typedArray->IsUint8Array();
@@ -62,7 +62,7 @@ void IsUint8ClampedArrayFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     Local<JSValueRef> typedArray = Uint8ClampedArrayRef::New(vm, arrayBuffer, 0, (int32_t)size);
     typedArray->IsUint8ClampedArray();
@@ -78,7 +78,7 @@ void IsInt16ArrayFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     int32_t length = size / sizeof(int16_t);
     Local<JSValueRef> typedArray = Int16ArrayRef::New(vm, arrayBuffer, 0, length);
@@ -95,7 +95,7 @@ void IsUint16ArrayFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     int32_t length = size / sizeof(uint16_t);
     Local<JSValueRef> typedArray = Uint16ArrayRef::New(vm, arrayBuffer, 0, length);

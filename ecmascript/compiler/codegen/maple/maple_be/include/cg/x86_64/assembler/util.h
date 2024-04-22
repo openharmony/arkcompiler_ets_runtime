@@ -68,11 +68,12 @@ inline bool Is64Bits(uint64 val)
     return val >= ~uint64(0x7FFFFFFFFFFFFFFFU) || val <= 0x7FFFFFFFFFFFFFFFU;
 }
 
-inline int64 CalculateLabelSymIdx(int64 funcUniqueId, int64 labelIdx)
+inline int64 CalculateLabelSymIdx(uint32 funcUniqueId, uint32 labelIdx)
 {
-    /* 16: make sure stIdx is large enough to be unique */
-    const int kLeftShiftBits = 16;
-    return ((funcUniqueId << kLeftShiftBits) + labelIdx) * (-1); /* -1: BBLabel's stIdx is negative */
+    /* 32: make sure stIdx is large enough to be unique */
+    const int kLeftShiftBits = 32;
+    /* -1: BBLabel's stIdx is negative */
+    return static_cast<int64>((static_cast<uint64>(funcUniqueId) << kLeftShiftBits) + labelIdx) * (-1);
 }
 
 inline int64 CalculateStrLabelSymIdx(uint64 size, int64 labelIdx, size_t strTableSize = 0)

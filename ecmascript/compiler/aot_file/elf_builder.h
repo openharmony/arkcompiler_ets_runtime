@@ -74,7 +74,7 @@ private:
     void RemoveNotNeedSection();
     void FixSymtab(llvm::ELF::Elf64_Shdr* shdr);
 
-    static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
+    static constexpr uint32_t ASMSTUB_MODULE_NUM = 4;
     static constexpr uint32_t ShStrTableModuleDesIndex = 0;
     static constexpr uint32_t FullSecIndex = 0;
 

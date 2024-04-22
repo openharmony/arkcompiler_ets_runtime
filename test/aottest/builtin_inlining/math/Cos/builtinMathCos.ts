@@ -23,33 +23,41 @@ let len:number = 1;
 
 // Check without params
 len = Math.cos();
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: NaN
 
 // Check with single param
 len = Math.cos(0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 // Check with single not zero param
 len = Math.cos(Math.PI / 2);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 6.123233995736766e-17
 
 // Check with 2 params
 len = Math.cos(0, 0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 // Check with 3 params
 len = Math.cos(0, 0, 0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 // Check with 4 params
 len = Math.cos(0, 0, 0, 0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 // Check with 5 params
 len = Math.cos(0, 0, 0, 0, 0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 try {
+    //aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
     print(Math.cos(0)) //: 1
 } catch(e) {}
 
@@ -57,44 +65,52 @@ try {
 let true_cos = Math.cos
 
 len = true_cos();
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: NaN
 
 // Check with single param
 len = true_cos(0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 // Check with single not zero param
 len = true_cos(Math.PI / 2);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 6.123233995736766e-17
 
 // Check with 2 params
 len = true_cos(0, 0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 // Check with 3 params
 len = true_cos(0, 0, 0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 // Check with 4 params
 len = true_cos(0, 0, 0, 0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 // Check with 5 params
 len = true_cos(0, 0, 0, 0, 0);
+//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
 print(len); //: 1
 
 try {
+    //aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
     print(true_cos(0)) //: 1
 } catch(e) {}
 
 Math.cos = replace
+//aot: [trace] Check Type: NotJSCallTarget4
 len = Math.cos(111);
 print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.cos = true_cos
 
-//aot: [trace] Check Type: NotNumber1
 len = Math.cos("0");
 print(len); //: 1
 

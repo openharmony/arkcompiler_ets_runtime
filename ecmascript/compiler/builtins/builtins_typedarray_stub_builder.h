@@ -35,9 +35,9 @@ public:
     GateRef StoreTypedArrayElement(GateRef glue, GateRef array, GateRef index, GateRef value, GateRef jsType);
     GateRef CheckTypedArrayIndexInRange(GateRef array, GateRef index);
     GateRef GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
-    GateRef IsDetachedBuffer(GateRef buffer);
     GateRef GetDataPointFromBuffer(GateRef arrBuf);
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
+    void DoSort(GateRef glue, GateRef receiver, Variable *result, Label *exit, Label *slowPath);
 
 #define DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(method, ...)           \
     void method(GateRef glue, GateRef numArgs, GateRef end, Variable *result, Label *exit, Label *slowPath);
@@ -62,12 +62,6 @@ BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER)
         return Load(VariableType::INT32(), array, offset);
     }
 
-    GateRef GetArrayBufferData(GateRef buffer)
-    {
-        GateRef offset = IntPtr(JSArrayBuffer::DATA_OFFSET);
-        return Load(VariableType::JS_ANY(), buffer, offset);
-    }
-
     GateRef GetArrayBufferByteLength(GateRef buffer)
     {
         GateRef offset = IntPtr(JSArrayBuffer::BYTE_LENGTH_OFFSET);
@@ -77,8 +71,16 @@ BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER)
     GateRef GetExternalPointer(GateRef buffer)
     {
         GateRef offset = IntPtr(JSNativePointer::POINTER_OFFSET);
-        return Load(VariableType::JS_ANY(), buffer, offset);
+        return Load(VariableType::NATIVE_POINTER(), buffer, offset);
     }
+private:
+    GateRef ChangeByteArrayTaggedPointerToInt64(GateRef x)
+    {
+        return GetEnvironment()->GetBuilder()->ChangeTaggedPointerToInt64(x);
+    }
+private:
+    void BuildArrayIterator(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable *result, Label *exit, Label *slowPath, IterationKind iteratorKind);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_TYPEDARRAY_STUB_BUILDER_H

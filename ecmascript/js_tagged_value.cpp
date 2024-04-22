@@ -42,6 +42,7 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/module/js_module_namespace.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/symbol_table.h"
@@ -660,7 +661,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
     if (obj->IsJSProxy()) {
         return JSProxy::GetProperty(thread, JSHandle<JSProxy>(obj), key);
     }
-    if (obj->IsTypedArray()) {
+    if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         return JSTypedArray::GetProperty(thread, obj, key);
     }
     if (obj->IsModuleNamespace()) {
@@ -689,7 +690,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
         return JSProxy::GetProperty(thread, JSHandle<JSProxy>(obj), keyHandle);
     }
 
-    if (obj->IsTypedArray()) {
+    if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         return JSTypedArray::GetProperty(thread, obj, key);
     }
 
@@ -717,7 +718,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
     if (obj->IsJSProxy()) {
         return JSProxy::GetProperty(thread, JSHandle<JSProxy>(obj), key, receiver);
     }
-    if (obj->IsTypedArray()) {
+    if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         return JSTypedArray::GetProperty(thread, obj, key, receiver);
     }
 
@@ -743,7 +744,7 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     bool success = false;
     if (obj->IsJSProxy()) {
         success = JSProxy::SetProperty(thread, JSHandle<JSProxy>(obj), key, value, mayThrow);
-    } else if (obj->IsTypedArray()) {
+    } else if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         success = JSTypedArray::SetProperty(thread, obj, key, value, mayThrow);
     } else if (obj->IsModuleNamespace()) {
         success = ModuleNamespace::SetProperty(thread, mayThrow);
@@ -771,7 +772,7 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     if (obj->IsJSProxy()) {
         JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
         success = JSProxy::SetProperty(thread, JSHandle<JSProxy>(obj), keyHandle, value, mayThrow);
-    } else if (obj->IsTypedArray()) {
+    } else if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
         success = JSTypedArray::SetProperty(thread, obj, keyHandle, value, mayThrow);
     } else if (obj->IsModuleNamespace()) {
@@ -803,7 +804,7 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     bool success = false;
     if (obj->IsJSProxy()) {
         success = JSProxy::SetProperty(thread, JSHandle<JSProxy>(obj), key, value, receiver, mayThrow);
-    } else if (obj->IsTypedArray()) {
+    } else if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         success = JSTypedArray::SetProperty(thread, obj, key, value, receiver, mayThrow);
     } else if (obj->IsModuleNamespace()) {
         success = ModuleNamespace::SetProperty(thread, mayThrow);
@@ -887,6 +888,10 @@ bool JSTaggedValue::DefineOwnProperty(JSThread *thread, const JSHandle<JSTaggedV
         return JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
     }
 
+    if (obj->IsJSSharedArray()) {
+        return JSSharedArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
+    }
+
     if (obj->IsJSProxy()) {
         return JSProxy::DefineOwnProperty(thread, JSHandle<JSProxy>(obj), key, desc);
     }
@@ -912,7 +917,7 @@ bool JSTaggedValue::GetOwnProperty(JSThread *thread, const JSHandle<JSTaggedValu
     if (obj->IsJSProxy()) {
         return JSProxy::GetOwnProperty(thread, JSHandle<JSProxy>(obj), key, desc);
     }
-    if (obj->IsTypedArray()) {
+    if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         return JSTypedArray::GetOwnProperty(thread, obj, key, desc);
     }
     if (obj->IsModuleNamespace()) {
@@ -983,7 +988,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnPropertyKeys(JSThread *thread, const 
     if (obj->IsJSProxy()) {
         return JSProxy::OwnPropertyKeys(thread, JSHandle<JSProxy>(obj));
     }
-    if (obj->IsTypedArray()) {
+    if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         return JSTypedArray::OwnPropertyKeys(thread, obj);
     }
     if (obj->IsSpecialContainer()) {
@@ -1001,7 +1006,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetAllPropertyKeys(JSThread *thread,
     if (obj->IsJSProxy()) {
         return JSProxy::GetAllPropertyKeys(thread, JSHandle<JSProxy>(obj), filter);
     }
-    if (obj->IsTypedArray()) {
+    if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         LOG_ECMA(WARN) << "GetAllPropertyKeys do not support TypedArray yet";
         return thread->GetEcmaVM()->GetFactory()->EmptyArray();
     }
@@ -1019,7 +1024,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetAllPropertyKeys(JSThread *thread,
 JSHandle<TaggedArray> JSTaggedValue::GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     ASSERT(!obj->IsJSProxy());
-    if (obj->IsTypedArray()) {
+    if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         return JSTypedArray::OwnEnumPropertyKeys(thread, obj);
     }
     if (obj->IsSpecialContainer()) {
@@ -1038,7 +1043,7 @@ bool JSTaggedValue::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     if (obj->IsJSProxy()) {
         return JSProxy::HasProperty(thread, JSHandle<JSProxy>(obj), key);
     }
-    if (obj->IsTypedArray()) {
+    if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         return JSTypedArray::HasProperty(thread, obj, key);
     }
     if (obj->IsModuleNamespace()) {
@@ -1056,7 +1061,7 @@ bool JSTaggedValue::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
         JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
         return JSProxy::HasProperty(thread, JSHandle<JSProxy>(obj), keyHandle);
     }
-    if (obj->IsTypedArray()) {
+    if (obj->IsTypedArray() || obj->IsSharedTypedArray()) {
         JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
         return JSTypedArray::HasProperty(thread, obj, keyHandle);
     }

@@ -17,6 +17,7 @@
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {
 ModuleDataAccessor::ModuleDataAccessor(const JSPandaFile *pandaFile, EntityId moduleDataId)
@@ -37,6 +38,20 @@ ModuleDataAccessor::ModuleDataAccessor(const JSPandaFile *pandaFile, EntityId mo
     entryDataSp_ = moduleSp;
 }
 
+JSHandle<TaggedArray> ModuleDataAccessor::CreatEntries(JSThread *thread, uint32_t regularImportNum,
+                                                       SharedTypes sharedType)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> regularImportEntries;
+    if (sharedType == SharedTypes::SHARED_MODULE) {
+        regularImportEntries = factory->NewSTaggedArray(regularImportNum, JSTaggedValue::Hole(),
+            MemSpaceType::SHARED_OLD_SPACE);
+    } else {
+        regularImportEntries = factory->NewTaggedArray(regularImportNum);
+    }
+    return regularImportEntries;
+}
+
 void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
                                               const JSHandle<TaggedArray> &requestModuleArray,
                                               JSHandle<SourceTextModule> &moduleRecord)
@@ -45,9 +60,10 @@ void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
     auto globalConstants = thread->GlobalConstants();
     size_t requestArraySize = requestModuleArray->GetLength();
     auto sp = entryDataSp_;
-
+    SharedTypes sharedType = moduleRecord->GetSharedType();
     auto regularImportNum = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
-    JSHandle<TaggedArray> regularImportEntries = factory->NewTaggedArray(regularImportNum);
+    JSHandle<TaggedArray> regularImportEntries = CreatEntries(thread, regularImportNum, sharedType);
+
     JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> localName(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
@@ -65,7 +81,8 @@ void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
         if (requestArraySize != 0) {
             moduleRequest.Update(requestModuleArray->Get(moduleRequestIdx));
         }
-        JSHandle<ImportEntry> importEntry = factory->NewImportEntry(moduleRequest, importName, localName);
+        JSHandle<ImportEntry> importEntry = factory->NewImportEntry(moduleRequest, importName, localName,
+                                                                    sharedType);
         regularImportEntries->Set(thread, idx, importEntry);
     }
 
@@ -75,8 +92,15 @@ void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
         entryDataSp_ = sp;
         return;
     }
-    JSHandle<TaggedArray> importEntries = TaggedArray::SetCapacity(thread, regularImportEntries, totalSize);
+    JSHandle<TaggedArray> importEntries;
+    if (sharedType == SharedTypes::SHARED_MODULE) {
+        importEntries = JSSharedArray::SetCapacity(thread, regularImportEntries, totalSize);
+    } else {
+        importEntries = TaggedArray::SetCapacity(thread, regularImportEntries, totalSize);
+    }
+
     importName.Update(globalConstants->GetHandledStarString());
+
     for (size_t idx = regularImportNum; idx < totalSize; idx++) {
         auto localNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto moduleRequestIdx = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint16_t)>(&sp));
@@ -86,7 +110,8 @@ void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
         if (requestArraySize != 0) {
             moduleRequest.Update(requestModuleArray->Get(moduleRequestIdx));
         }
-        JSHandle<ImportEntry> importEntry = factory->NewImportEntry(moduleRequest, importName, localName);
+        JSHandle<ImportEntry> importEntry = factory->NewImportEntry(moduleRequest, importName, localName,
+                                                                    sharedType);
         importEntries->Set(thread, idx, importEntry);
     }
     entryDataSp_ = sp;
@@ -97,16 +122,16 @@ void ModuleDataAccessor::EnumerateLocalExportEntry(JSThread *thread, JSHandle<So
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto sp = entryDataSp_;
-
     auto localExportNum = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
     if (localExportNum == 0) {
         entryDataSp_ = sp;
         return;
     }
-    JSHandle<TaggedArray> localExportEntries = factory->NewTaggedArray(localExportNum);
+    SharedTypes sharedType = moduleRecord->GetSharedType();
+    JSHandle<TaggedArray> localExportEntries = CreatEntries(thread, localExportNum, sharedType);
+
     uint32_t localIndex = -1;
     JSMutableHandle<JSTaggedValue> distinctLocalName(thread, JSTaggedValue::Undefined());
-
     for (size_t idx = 0; idx < localExportNum; idx++) {
         auto localNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto exportNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
@@ -120,7 +145,8 @@ void ModuleDataAccessor::EnumerateLocalExportEntry(JSThread *thread, JSHandle<So
             distinctLocalName.Update(localName);
             localIndex++;
         }
-        JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(exportName, localName, localIndex);
+        JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(exportName, localName, localIndex,
+                                                                                   sharedType);
         localExportEntries->Set(thread, idx, localExportEntry);
     }
     entryDataSp_ = sp;
@@ -140,9 +166,10 @@ void ModuleDataAccessor::EnumerateIndirectExportEntry(JSThread *thread, const JS
         entryDataSp_ = sp;
         return;
     }
-    JSHandle<TaggedArray> indirectExportEntries = factory->NewTaggedArray(indirectExportNum);
+
+    SharedTypes sharedType = moduleRecord->GetSharedType();
+    JSHandle<TaggedArray> indirectExportEntries = CreatEntries(thread, indirectExportNum, sharedType);
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
-    JSHandle<IndirectExportEntry> indirectExportEntry = factory->NewIndirectExportEntry();
     for (size_t idx = 0; idx < indirectExportNum; idx++) {
         auto exportNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto importNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
@@ -156,7 +183,8 @@ void ModuleDataAccessor::EnumerateIndirectExportEntry(JSThread *thread, const JS
         if (requestArraySize != 0) {
             moduleRequest.Update(requestModuleArray->Get(moduleRequestIdx));
         }
-        indirectExportEntry = factory->NewIndirectExportEntry(exportName, moduleRequest, importName);
+        JSHandle<IndirectExportEntry> indirectExportEntry = factory->NewIndirectExportEntry(exportName,
+            moduleRequest, importName, sharedType);
         indirectExportEntries->Set(thread, idx, indirectExportEntry);
     }
     entryDataSp_ = sp;
@@ -176,16 +204,17 @@ void ModuleDataAccessor::EnumerateStarExportEntry(JSThread *thread, const JSHand
         entryDataSp_ = sp;
         return;
     }
-    JSHandle<TaggedArray> starExportEntries = factory->NewTaggedArray(starExportNum);
+
+    SharedTypes sharedType = moduleRecord->GetSharedType();
+    JSHandle<TaggedArray> starExportEntries = CreatEntries(thread, starExportNum, sharedType);
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
-    JSHandle<StarExportEntry> starExportEntry = factory->NewStarExportEntry();
     for (size_t idx = 0; idx < starExportNum; idx++) {
         auto moduleRequestIdx = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint16_t)>(&sp));
         if (requestArraySize != 0) {
             moduleRequest.Update(requestModuleArray->Get(moduleRequestIdx));
         }
 
-        starExportEntry = factory->NewStarExportEntry(moduleRequest);
+        JSHandle<StarExportEntry> starExportEntry = factory->NewStarExportEntry(moduleRequest, sharedType);
         starExportEntries->Set(thread, idx, starExportEntry.GetTaggedValue());
     }
     entryDataSp_ = sp;

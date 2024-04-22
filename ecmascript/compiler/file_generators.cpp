@@ -17,6 +17,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/code_sign.h"
 #include "ecmascript/platform/directory.h"
@@ -435,11 +436,10 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
                                     [[maybe_unused]] LOptions option, bool logDebug, [[maybe_unused]] bool isJit)
 {
 #ifdef COMPILE_MAPLE
-    std::ifstream infile;
-    infile.open("/data/local/ark-cache/litecg.use");
-    if (useLiteCG_ || infile.good()) {
-        LMIRModule *irModule = new LMIRModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple, isJit);
-        LiteCGAssembler *ass = new LiteCGAssembler(*irModule, vm_->GetJSOptions().GetCompilerCodegenOptions());
+    if (useLiteCG_) {
+        LMIRModule *irModule = new LMIRModule(compilationEnv_->GetNativeAreaAllocator(), name, logDebug, triple, isJit);
+        LiteCGAssembler *ass = new LiteCGAssembler(*irModule,
+            compilationEnv_->GetJSOptions().GetCompilerCodegenOptions());
         modulePackage_.emplace_back(Module(irModule, ass));
         if (stackMapInfo_ == nullptr) {
             stackMapInfo_ = new LiteCGStackMapInfo();
@@ -447,7 +447,7 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
         return &modulePackage_.back();
     }
 #endif
-    LLVMModule *m = new LLVMModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
+    LLVMModule *m = new LLVMModule(compilationEnv_->GetNativeAreaAllocator(), name, logDebug, triple);
     LLVMAssembler *ass = new LLVMAssembler(m, option);
     modulePackage_.emplace_back(Module(m, ass));
     if (stackMapInfo_ == nullptr) {
@@ -460,13 +460,23 @@ Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::
                                      LOptions option, bool logDebug, StubFileKind kind)
 {
     LLVMModule* m = new LLVMModule(allocator, name, logDebug, triple);
-    if (kind == StubFileKind::BC) {
-        m->SetUpForBytecodeHandlerStubs();
-    } else if (kind == StubFileKind::COM) {
-        m->SetUpForCommonStubs();
-    } else {
-        ASSERT(kind == StubFileKind::BUILTIN);
-        m->SetUpForBuiltinsStubs();
+    switch (kind) {
+        case StubFileKind::BC:
+            m->SetUpForBytecodeHandlerStubs();
+            break;
+        case StubFileKind::COM:
+            m->SetUpForCommonStubs();
+            break;
+        case StubFileKind::BUILTIN:
+            m->SetUpForBuiltinsStubs();
+            break;
+        case StubFileKind::BASELINE:
+            m->SetUpForBaselineStubs();
+            break;
+        default:
+            LOG_ECMA(FATAL) << "unsupported stub file kind";
+            UNREACHABLE();
+            break;
     }
     LLVMAssembler* ass = new LLVMAssembler(m, option);
     modulePackage_.emplace_back(Module(m, ass));
@@ -502,7 +512,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     Module *latestModule = GetLatestModule();
 #ifdef COMPILE_MAPLE
     static uint32_t lastModulePC = 0;
-    if (useLiteCG_ && vm_->IsEnableJit()) {
+    if (useLiteCG_ && compilationEnv_->IsJitCompiler()) {
         lastModulePC = 0;
     }
     if (latestModule->GetModule()->GetModuleKind() != MODULE_LLVM) {
@@ -516,7 +526,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     uint32_t latestModuleIdx = GetModuleVecSize() - 1;
     {
         TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));
-        bool fastCompileMode = vm_->GetJSOptions().GetFastAOTCompileMode();
+        bool fastCompileMode = compilationEnv_->GetJSOptions().GetFastAOTCompileMode();
         latestModule->RunAssembler(*(log_), fastCompileMode);
     }
     {
@@ -593,9 +603,8 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
     panda::ecmascript::CodeSignatureForAOTFile(filename, appSignature);
 }
 
-void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc)
+void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
 {
-    ASSERT(machineCodeDesc != nullptr);
     if (aotInfo_.GetTotalCodeSize() == 0) {
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
         return;
@@ -622,20 +631,21 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc)
     std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
         moduleSectionDes.GetMergedRODataAddrAndSize(textAddr);
 
-    machineCodeDesc->rodataAddrBeforeText = rodataAddrBeforeText;
-    machineCodeDesc->rodataSizeBeforeText = rodataSizeBeforeText;
-    machineCodeDesc->rodataAddrAfterText = rodataAddrAfterText;
-    machineCodeDesc->rodataSizeAfterText = rodataSizeAfterText;
+    machineCodeDesc.rodataAddrBeforeText = rodataAddrBeforeText;
+    machineCodeDesc.rodataSizeBeforeText = rodataSizeBeforeText;
+    machineCodeDesc.rodataAddrAfterText = rodataAddrAfterText;
+    machineCodeDesc.rodataSizeAfterText = rodataSizeAfterText;
 
     uint64_t stackMapPtr = reinterpret_cast<uint64_t>(moduleSectionDes.GetArkStackMapSharePtr().get());
     size_t stackMapSize = moduleSectionDes.GetArkStackMapSize();
 
-    machineCodeDesc->codeAddr = textAddr;
-    machineCodeDesc->codeSize = textSize;
-    machineCodeDesc->funcEntryDesAddr = funcEntryAddr;
-    machineCodeDesc->funcEntryDesSize = funcEntrySize;
-    machineCodeDesc->stackMapAddr = stackMapPtr;
-    machineCodeDesc->stackMapSize = stackMapSize;
+    machineCodeDesc.codeAddr = textAddr;
+    machineCodeDesc.codeSize = textSize;
+    machineCodeDesc.funcEntryDesAddr = funcEntryAddr;
+    machineCodeDesc.funcEntryDesSize = funcEntrySize;
+    machineCodeDesc.stackMapAddr = stackMapPtr;
+    machineCodeDesc.stackMapSize = stackMapSize;
+    machineCodeDesc.codeType = MachineCodeType::FAST_JIT_CODE;
 }
 
 void AOTFileGenerator::JitCreateLitecgModule()
@@ -657,10 +667,10 @@ bool AOTFileGenerator::isAArch64() const
 void AOTFileGenerator::SaveSnapshotFile()
 {
     TimeScope timescope("LLVMCodeGenPass-AI", const_cast<CompilerLog *>(log_));
-    Snapshot snapshot(vm_);
-    const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
+    Snapshot snapshot(compilationEnv_->GetEcmaVM());
+    const CString snapshotPath(compilationEnv_->GetJSOptions().GetAOTOutputFile().c_str());
     const auto &methodToEntryIndexMap = aotInfo_.GetMethodToEntryIndexMap();
-    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
     ptManager->GetAOTSnapshot().ResolveSnapshotData(methodToEntryIndexMap);
 
     CString aiPath = snapshotPath + AOTFileManager::FILE_EXTENSION_AI;

@@ -24,8 +24,7 @@ namespace panda::ecmascript {
 static const int MAX_STACK_SIZE = 256;
 static const int FRAMES_LEN = 16;
 
-void Backtrace(std::ostringstream &stack, [[maybe_unused]] bool enableCache,
-               [[maybe_unused]] bool jsStack)
+void Backtrace(std::ostringstream &stack, [[maybe_unused]] bool enableCache)
 {
     void *buffer[MAX_STACK_SIZE];
     char **stackList = nullptr;

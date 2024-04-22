@@ -337,3 +337,17 @@ try {
 } catch(e) {
     print(e.name);
 }
+
+const v3 = new Proxy([123], {});
+class C4{
+  constructor(a6, a7, a8) {
+    try {
+      new C4();
+    } catch (e) {
+        
+    }
+    new Set(v3);
+  }
+}
+new C4();
+print("recursive stack overflow")

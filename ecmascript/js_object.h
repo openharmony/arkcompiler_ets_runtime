@@ -258,6 +258,7 @@ class PropertyMetaData {
 public:
     using IsFoundField = BitField<bool, 0, 1>;
     using IsInlinedPropsField = IsFoundField::NextFlag;
+    // 3: The bit field that represents the "Representation" of the property
     using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;
     using OffsetField = RepresentationField::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
 
@@ -384,7 +385,7 @@ public:
 
     void* GetNativePointerField(int32_t index) const;
     void SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-                               const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0,
+                               const NativePointerCallback &callBack, void *data, size_t nativeBindingsize = 0,
                                Concurrent isConcurrent = Concurrent::NO);
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(const JSThread *thread, int32_t count);
@@ -435,7 +436,7 @@ public:
                                    const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                   const JSHandle<JSTaggedValue> &value);
+                                   const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateMethodProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
@@ -445,7 +446,8 @@ public:
                                           SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                          const JSHandle<JSTaggedValue> &value);
+                                          const JSHandle<JSTaggedValue> &value,
+                                          SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static JSHandle<TaggedArray> PUBLIC_API EnumerableOwnNames(JSThread *thread, const JSHandle<JSObject> &obj);
 
@@ -459,6 +461,8 @@ public:
     static JSHandle<GlobalEnv> GetFunctionRealm(JSThread *thread, const JSHandle<JSTaggedValue> &object);
 
     static bool SetIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj, IntegrityLevel level);
+
+    static bool FreezeSharedObject(JSThread *thread, const JSHandle<JSObject> &obj);
 
     static bool TestIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj, IntegrityLevel level);
 
@@ -500,14 +504,15 @@ public:
                                   const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                  const PropertyDescriptor &desc);
+                                  const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                           const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
                                           SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                          const PropertyDescriptor &desc);
+                                          const PropertyDescriptor &desc,
+                                          SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool IsCompatiblePropertyDescriptor(bool extensible, const PropertyDescriptor &desc,
                                                const PropertyDescriptor &current);
@@ -552,7 +557,8 @@ public:
     static bool HasProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index);
 
     // 9.1.10 [[Delete]]
-    static bool DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key);
+    static bool DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
+                               SCheckMode sCheckMode = SCheckMode::CHECK);
 
     // [[OwnPropertyKeys]]
     static JSHandle<TaggedArray> GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj);

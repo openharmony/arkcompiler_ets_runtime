@@ -12,11 +12,11 @@
 # limitations under the License.
 
 ReferenceError: c is not defined
-    at foo1 (maybe inlined). depth: 0
-    at foo2 (hidden:27:27)
-    at foo3 (hidden:31:31)
+    at foo1 (hidden:24:24)
+    at unknown (maybe inlined). depth: 0
+    at foo3 (hidden:30:1)
     at foo4 (hidden:34:34)
-    at foo5 (maybe inlined). depth: 0
+    at unknown (maybe inlined). depth: 0
     at foo6 (hidden:41:41)
     at func_main_0 (hidden:42:1)
 

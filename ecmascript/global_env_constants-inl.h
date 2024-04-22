@@ -76,10 +76,11 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
     SHARED_GLOBAL_ENV_CONSTANT_STRING(DECL_GET_IMPL_STRING)       // NOLINT(readability-const-return-type)
     SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_IMPL_WITH_TYPE)  // NOLINT(readability-const-return-type)
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE);  // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)        // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE)      // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_IMPL_WITH_TYPE)     // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CACHES(DECL_GET_IMPL_WITH_TYPE)                // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)            // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE)          // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_INLINED_BUILTINS(DECL_GET_IMPL_WITH_TYPE)          // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_IMPL_WITH_TYPE)         // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CACHES(DECL_GET_IMPL_WITH_TYPE)                    // NOLINT(readability-const-return-type)
 #undef DECL_GET_IMPL_WITH_TYPE
 #undef DECL_GET_IMPL_STRING
 #undef DECL_GET_IMPL_COMMON

@@ -36,33 +36,47 @@ function printCbrt(x: any) {
 let res:number = 1;
 
 // Check without params
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt()); //: NaN
 
 // Check with single param
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(-0.027)); //: -0.29999999999999993
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(0.125)); //: 0.49999999999999994
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(1)); //: 1
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(8)); //: 2
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(2146689000)); //: 1290.0000000000002
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(1_0000_0000_0000)); //: 10000
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(-1_0000_0000_0000)); //: -10000
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(10e80)); //: 1.0000000000000002e+27
 
 // Check with three param
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(64, 4, 6)); //: 4
 
 // If n is NaN, +0.0f or -0.0f, return n
 res = Math.cbrt(+0.0);
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(res); //: 0
 print("1/x: " + 1.0/res); //: 1/x: Infinity
 
 res = Math.cbrt(-0.0);
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(res); //: 0
 print("1/x: " + 1.0/res); //: 1/x: -Infinity
 
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
 print(Math.cbrt(NaN)); //: NaN
 
 // Replace standard builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_cbrt = Math.cbrt;
 Math.cbrt = replace;
 
@@ -70,12 +84,15 @@ Math.cbrt = replace;
 print(Math.cbrt(0.001)); //: 0.001
 Math.cbrt = true_cbrt;
 
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:doCbrt@builtinMathCbrt
 //aot: [trace] Check Type: NotNumber1
 printCbrt("abcd"); //: NaN
 
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:doCbrt@builtinMathCbrt
 //aot: [trace] Check Type: NotNumber1
 printCbrt("-125"); //: -5
 
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:doCbrt@builtinMathCbrt
 //aot: [trace] Check Type: NotNumber1
 printCbrt("abcdef"); //: NaN
 
@@ -96,7 +113,9 @@ Math.cbrt = true_cbrt;
 
 // Check IR correctness inside try-block
 try {
+    //aot: [trace] aot inline builtin: Math.cbrt, caller function name:doCbrt@builtinMathCbrt
     printCbrt(10); //: 2.1544346900318834
+    //aot: [trace] aot inline builtin: Math.cbrt, caller function name:doCbrt@builtinMathCbrt
     //aot: [trace] Check Type: NotNumber1
     printCbrt("abc"); //: NaN
 } catch (e) {
@@ -104,7 +123,6 @@ try {
 
 let obj = {};
 obj.valueOf = (() => { return -64; })
-//aot: [trace] Check Type: NotNumber1
 print(Math.cbrt(obj)); //: -4
 
 function Throwing() {

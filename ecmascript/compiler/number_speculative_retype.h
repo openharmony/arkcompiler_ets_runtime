@@ -23,7 +23,6 @@
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk_containers.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRetype {
@@ -66,8 +65,8 @@ private:
         return state_ == State::Convert;
     }
 
-    GateRef SetOutputType(GateRef gate, PGOSampleType type);
     GateRef SetOutputType(GateRef gate, GateType type);
+    GateRef SetOutputType(GateRef gate, ParamType type);
     GateRef SetOutputType(GateRef gate, Representation rep);
     GateRef SetOutputType(GateRef gate, TypeInfo type);
     TypeInfo GetNumberTypeInfo(GateRef gate);
@@ -97,18 +96,23 @@ private:
     GateRef VisitMathTrunc(GateRef gate);
     GateRef VisitMathImul(GateRef gate);
     template <bool IS_NAN>
-    GateRef VisitGlobalBuiltin(GateRef gate);
+    GateRef VisitNumberOrGlobalBuiltin(GateRef gate);
+    GateRef VisitNumberIsInteger(GateRef gate);
+    GateRef VisitBigIntAsIntN(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadArrayLength(GateRef gate);
     GateRef VisitLoadStringLength(GateRef gate);
+    GateRef VisitLoadMapSize(GateRef gate);
     GateRef VisitLoadElement(GateRef gate);
     GateRef VisitStoreElement(GateRef gate);
     GateRef VisitStoreProperty(GateRef gate);
     GateRef VisitLoadProperty(GateRef gate);
-    GateRef VisitNumberRelated(GateRef gate);
-    GateRef VisitOthers(GateRef gate);
+    GateRef VisitNumberRelated(GateRef gate, ParamType paramType);
+    GateRef VisitDataViewGet(GateRef gate);
+    GateRef VisitDataViewSet(GateRef gate);
+    GateRef VisitOthers(GateRef gate, GateType outputType = GateType::AnyType());
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);
     GateRef VisitIsTrueOrFalse(GateRef gate);
@@ -121,25 +125,33 @@ private:
     GateRef VisitMonoLoadPropertyOnProto(GateRef gate);
     GateRef VisitMonoCallGetterOnProto(GateRef gate);
     GateRef VisitMonoStoreProperty(GateRef gate);
+    GateRef VisitDateGetTime(GateRef gate);
+    GateRef VisitDateNow(GateRef gate);
 
-    void ConvertForBinaryOp(GateRef gate);
-    void ConvertForCompareOp(GateRef gate);
+    void ConvertForNumberBinaryOp(GateRef gate);
+    void ConvertForNumberCompareOp(GateRef gate);
+    void ConvertForNumberShiftAndLogicalOperator(GateRef gate);
+
     void ConvertForIntOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForShiftAndLogicalOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType);
 
-    TypeInfo GetNumberInputTypeInfo(GateRef gate);
+    TypeInfo GetNumberInputTypeInfo(GateRef gate, bool skipTagged = false);
     void SetNewInputForMathImul(GateRef gate, int idx, Label *exit);
     double GetDoubleValueFromConst(GateRef gate);
 
     GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE,
                                    OpType type = OpType::NORMAL);
+    GateRef CheckBoundAndConvertToInt32(GateRef gate,
+                                        ConvertSupport support = ConvertSupport::ENABLE,
+                                        OpType type = OpType::NORMAL);
     GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType,
                                     ConvertToNumber convert = ConvertToNumber::BOOL_ONLY);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType, ConvertToNumber convert);
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);
     GateRef TryConvertConstant(GateRef gate, bool needInt32);
+    GateRef TryConvertConstantToInt32(GateRef gate);
     GateRef ConvertTaggedToNJSValue(GateRef gate, TypeInfo output);
     TypeInfo GetOuputForPhi(GateRef gate, bool ignoreConstant);
 

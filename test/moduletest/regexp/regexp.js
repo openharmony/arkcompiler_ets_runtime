@@ -572,8 +572,30 @@ print(myExp.toString());
   print(replace_result === cached_reuslt);
   print(re4.lastIndex);
 }
+
+const regex = /(?:)+/;
+const str10 = "abcabcabc";
+const matches = regex.test(str10);
+print(matches);
+const matches1 = regex.exec(str10);
+print(matches1);
+
 try {
   let matchReg = new RegExp("@【哈哈】*^o^*|@小米（kk）",'g');
 } catch (error) {
   print(error)
+}
+
+let e = /./;
+e.exec = function() {
+    return [];
+}
+"".replace(e, "");
+delete e.exec;
+
+{
+  const v0 = /qeu(?<a>.)\k<a>(x)(x)(x)\1*xyz{93}/ugysd;
+  const v4 = typeof Date === "string";
+  v0[Symbol.match] = v4;
+  print(v0["exec"]());
 }

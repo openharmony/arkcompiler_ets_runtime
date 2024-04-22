@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/ir_module.h"
+#include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/stackmap/cg_stackmap.h"
 #include "ecmascript/mem/machine_code.h"
 
@@ -177,9 +178,9 @@ protected:
 
 class AOTFileGenerator : public FileGenerator {
 public:
-    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList, EcmaVM* vm, const std::string &triple,
-                     bool useLiteCG = false)
-        : FileGenerator(log, logList), vm_(vm), cfg_(triple), useLiteCG_(useLiteCG) {}
+    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList, CompilationEnv *env,
+                     const std::string &triple, bool useLiteCG = false)
+        : FileGenerator(log, logList), compilationEnv_(env), cfg_(triple), useLiteCG_(useLiteCG) {}
 
     ~AOTFileGenerator() override = default;
 
@@ -210,7 +211,7 @@ public:
         curCompileFileName_ = fileName.c_str();
     }
 
-    void GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc);
+    void GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc);
     void JitCreateLitecgModule();
     bool isAArch64() const;
 
@@ -222,7 +223,7 @@ private:
 
     AnFileInfo aotInfo_;
     CGStackMapInfo *stackMapInfo_ = nullptr;
-    EcmaVM* vm_;
+    CompilationEnv *compilationEnv_ {nullptr};
     CompilationConfig cfg_;
     std::string curCompileFileName_;
     // MethodID->EntryIndex
@@ -233,7 +234,8 @@ private:
 enum class StubFileKind {
     BC,
     COM,
-    BUILTIN
+    BUILTIN,
+    BASELINE
 };
 
 class StubFileGenerator : public FileGenerator {

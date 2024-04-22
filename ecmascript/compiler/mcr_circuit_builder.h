@@ -88,6 +88,24 @@ GateRef CircuitBuilder::TaggedObjectIsEcmaObject(GateRef obj)
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST))));
 }
 
+GateRef CircuitBuilder::TaggedObjectIsByteArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::BYTE_ARRAY)));
+}
+
+GateRef CircuitBuilder::TaggedObjectIsMap(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_MAP)));
+}
+
+GateRef CircuitBuilder::TaggedObjectIsDataView(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_DATA_VIEW)));
+}
+
 GateRef CircuitBuilder::IsSpecialSlicedString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -169,7 +187,7 @@ GateRef CircuitBuilder::TaggedIsStringIterator(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsShared(GateRef obj)
+GateRef CircuitBuilder::TaggedIsSharedObj(GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -571,29 +589,28 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vect
 }
 
 template<TypedBinOp Op>
-GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType,
-    PGOTypeRef pgoType)
+GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, ParamType paramType)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    uint64_t operandTypes = GatePairTypeAccessor::ToValue(xType, yType);
-    auto numberBinaryOp = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, Op, pgoType),
-        MachineType::I64, {currentControl, currentDepend, x, y}, gateType);
+    uint64_t value = TypedBinaryAccessor::ToValue(paramType, Op);
+    auto numberBinaryOp = GetCircuit()->NewGate(circuit_->TypedBinaryOp(value),
+        MachineType::I64, {currentControl, currentDepend, x, y}, GateType::AnyType());
     currentLabel->SetControl(numberBinaryOp);
     currentLabel->SetDepend(numberBinaryOp);
     return numberBinaryOp;
 }
 
 template<TypedCallTargetCheckOp Op>
-GateRef CircuitBuilder::JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate)
+GateRef CircuitBuilder::JSNoGCCallThisTargetTypeCheck(GateRef func, GateRef methodId, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.GetFrameState(gate);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(CircuitBuilder::GATE_TWO_VALUESIN,
-        static_cast<size_t>(type.Value()), Op), MachineType::I1,
+    uint64_t value = TypedCallTargetCheckAccessor::ToValue(Op);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(value), MachineType::I1,
         {currentControl, currentDepend, func, methodId, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -601,14 +618,14 @@ GateRef CircuitBuilder::JSNoGCCallThisTargetTypeCheck(GateType type, GateRef fun
 }
 
 template<TypedCallTargetCheckOp Op>
-GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate)
+GateRef CircuitBuilder::JSCallTargetTypeCheck(GateRef func, GateRef methodIndex, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.GetFrameState(gate);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(CircuitBuilder::GATE_TWO_VALUESIN,
-        static_cast<size_t>(type.Value()), Op), MachineType::I1,
+    uint64_t value = TypedCallTargetCheckAccessor::ToValue(Op);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(value), MachineType::I1,
         {currentControl, currentDepend, func, methodIndex, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -616,41 +633,42 @@ GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateR
 }
 
 template<TypedCallTargetCheckOp Op>
-GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate)
+GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateRef func, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.GetFrameState(gate);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(1, static_cast<size_t>(type.Value()), Op),
-        MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
+    uint64_t value = TypedCallTargetCheckAccessor::ToValue(Op);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(value), MachineType::I1,
+        {currentControl, currentDepend, func, IntPtr(INVALID_INDEX), frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
 template<TypedUnOp Op>
-GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateType)
+GateRef CircuitBuilder::TypedUnaryOp(GateRef x, ParamType paramType)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    uint64_t value = TypedUnaryAccessor::ToValue(xType, Op);
+    uint64_t value = TypedUnaryAccessor::ToValue(paramType, Op);
     auto numberUnaryOp = GetCircuit()->NewGate(circuit_->TypedUnaryOp(value),
-        MachineType::I64, {currentControl, currentDepend, x}, gateType);
+        MachineType::I64, {currentControl, currentDepend, x}, GateType::AnyType());
     currentLabel->SetControl(numberUnaryOp);
     currentLabel->SetDepend(numberUnaryOp);
     return numberUnaryOp;
 }
 
 template<TypedJumpOp Op>
-GateRef CircuitBuilder::TypedConditionJump(GateRef x, GateType xType, uint32_t weight)
+GateRef CircuitBuilder::TypedConditionJump(GateRef x, ParamType paramType, uint32_t weight)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto machineType = MachineType::NOVALUE;
-    auto jumpOp = TypedConditionJump(machineType, Op, weight, xType, {currentControl, currentDepend, x});
+    auto jumpOp = TypedConditionJump(machineType, Op, weight, paramType, {currentControl, currentDepend, x});
     currentLabel->SetControl(jumpOp);
     currentLabel->SetDepend(jumpOp);
     return jumpOp;
@@ -684,12 +702,13 @@ GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef va
     return ret;
 }
 
-GateRef CircuitBuilder::PrimitiveToNumber(GateRef x, VariableType type)
+GateRef CircuitBuilder::PrimitiveToNumber(GateRef x, ParamType paramType)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto numberconvert = TypeConvert(MachineType::I64, type.GetGateType(), GateType::NumberType(),
+
+    auto numberconvert = TypeConvert(MachineType::I64, paramType, GateType::NumberType(),
                                      {currentControl, currentDepend, x});
     currentLabel->SetControl(numberconvert);
     currentLabel->SetDepend(numberconvert);

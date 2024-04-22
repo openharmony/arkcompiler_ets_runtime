@@ -18,6 +18,7 @@
 
 #include <cstdint>
 
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/visitor.h"
 #include "libpandabase/macros.h"
 
@@ -84,15 +85,6 @@ class ObjectFactory;
     V(JSTaggedValue, ResolvedIndexBindingClass, RESOLVED_INDEX_BINDING_CLASS_INDEX, ecma_roots_class)                 \
     V(JSTaggedValue, MachineCodeClass, MACHINE_CODE_CLASS_INDEX, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassInfoExtractorHClass, CLASS_INFO_EXTRACTOR_HCLASS_INDEX, ecma_roots_class)                   \
-    V(JSTaggedValue, TSObjectTypeClass, TS_OBJECT_TYPE_CLASS_INDEX, ecma_roots_class)                                 \
-    V(JSTaggedValue, TSClassTypeClass, TS_CLASS_TYPE_CLASS_INDEX, ecma_roots_class)                                   \
-    V(JSTaggedValue, TSUnionTypeClass, TS_UNION_TYPE_CLASS_INDEX, ecma_roots_class)                                   \
-    V(JSTaggedValue, TSInterfaceTypeClass, TS_INTERFACE_TYPE_CLASS_INDEX, ecma_roots_class)                           \
-    V(JSTaggedValue, TSClassInstanceTypeClass, TS_CLASS_INSTANCE_TYPE_CLASS_INDEX, ecma_roots_class)                  \
-    V(JSTaggedValue, TSFunctionTypeClass, TS_FUNCTION_TYPE_CLASS_INDEX, ecma_roots_class)                             \
-    V(JSTaggedValue, TSArrayTypeClass, TS_ARRAY_TYPE_CLASS_INDEX, ecma_roots_class)                                   \
-    V(JSTaggedValue, TSIteratorInstanceTypeClass, TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX, ecma_roots_class)            \
-    V(JSTaggedValue, TSNamespaceTypeClass, TS_NAMESPACE_TYPE_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, AOTLiteralInfoClass, AOT_LITERAL_INFO_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, MethodClass, METHOD_CLASS_INDEX, ecma_roots_class)                                               \
@@ -100,6 +92,7 @@ class ObjectFactory;
     V(JSTaggedValue, RBTreeNode, RB_TREENODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
+    V(JSTaggedValue, ResolvedRecordIndexBindingClass, RESOLVED_RECORD_INEDX_BINDING_CLASS_INDEX, ecma_roots_class)    \
     V(JSTaggedValue, ResolvedRecordBindingClass, RESOLVED_RECORD_BINDING_CLASS_INDEX, ecma_roots_class)               \
 
 #define GLOBAL_ENV_CONSTANT_CLASS(V)                                                                                  \
@@ -132,6 +125,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)                     \
     V(JSTaggedValue, JSAPIAsyncIteratorFuncHClass, JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
+    V(JSTaggedValue, JSMapClass, JS_MAP_HCLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
@@ -153,56 +147,93 @@ class ObjectFactory;
     V(JSTaggedValue, EmptyLayoutInfo, EMPTY_LAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)              \
     V(JSTaggedValue, DefaultSupers, DEFAULT_SUPERS_INDEX, ecma_roots_special)                          \
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
-    V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathAcos, MATH_ACOS_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathAcosh, MATH_ACOSH_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathAsin, MATH_ASIN_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathAsinh, MATH_ASINH_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathAtan, MATH_ATAN_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathAtan2, MATH_ATAN2_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathAtanh, MATH_ATANH_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathCos, MATH_COS_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathCosh, MATH_COSH_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathSign, MATH_SIGN_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathSin, MATH_SIN_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathSinh, MATH_SINH_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathTan, MATH_TAN_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathTanh, MATH_TANH_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathTrunc, MATH_TRUNC_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathLog, MATH_LOG_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathLog2, MATH_LOG2_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathLog10, MATH_LOG10_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathLog1p, MATH_LOG1P_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathExp, MATH_EXP_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathExpm1, MATH_EXPM1_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathClz32, MATH_CLZ32_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathAbs, MATH_ABS_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathPow, MATH_POW_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathCbrt, MATH_CBRT_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathMin, MATH_MIN_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathMax, MATH_MAX_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathRound, MATH_ROUND_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathFRound, MATH_FROUND_INDEX, ecma_roots_special)                                \
-    V(JSTaggedValue, MathCeil, MATH_CEIL_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathFloor, MATH_FLOOR_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, MathImul, MATH_IMUL_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX, ecma_roots_special)                       \
-    V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_special)                             \
-    V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_special)         \
-    V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_special)                 \
-    V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_special)         \
-    V(JSTaggedValue, MapIteratorProtoNext, MAP_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)          \
-    V(JSTaggedValue, SetIteratorProtoNext, SET_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)          \
-    V(JSTaggedValue, StringIteratorProtoNext, STRING_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)    \
-    V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)      \
-    V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX, ecma_roots_special)             \
-    V(JSTaggedValue, StringFromCharCode, STRING_FROM_CHAR_CODE_INDEX, ecma_roots_special)
+    V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special)
+
+// Use for builtins inlining
+#define GLOBAL_ENV_INLINED_BUILTINS(V)                                                                  \
+    V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathAcos, MATH_ACOS_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathAcosh, MATH_ACOSH_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathAsin, MATH_ASIN_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathAsinh, MATH_ASINH_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathAtan, MATH_ATAN_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathAtan2, MATH_ATAN2_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathAtanh, MATH_ATANH_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathCos, MATH_COS_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MathCosh, MATH_COSH_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathSign, MATH_SIGN_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathSin, MATH_SIN_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MathSinh, MATH_SINH_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathTan, MATH_TAN_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MathTanh, MATH_TANH_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathTrunc, MATH_TRUNC_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathLog, MATH_LOG_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MathLog2, MATH_LOG2_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathLog10, MATH_LOG10_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathLog1p, MATH_LOG1P_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathExp, MATH_EXP_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MathExpm1, MATH_EXPM1_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathClz32, MATH_CLZ32_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathAbs, MATH_ABS_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MathPow, MATH_POW_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MathCbrt, MATH_CBRT_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathMin, MATH_MIN_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MathMax, MATH_MAX_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MathRound, MATH_ROUND_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathFRound, MATH_FROUND_INDEX, ecma_roots_builtins)                                \
+    V(JSTaggedValue, MathCeil, MATH_CEIL_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, MathFloor, MATH_FLOOR_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MathImul, MATH_IMUL_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, BigIntAsIntN, BIGINT_AS_INTN_INDEX, ecma_roots_builtins)                           \
+    V(JSTaggedValue, BigIntAsUintN, BIGINT_AS_UINTN_INDEX, ecma_roots_builtins)                         \
+    V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX, ecma_roots_builtins)                       \
+    V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_builtins)                             \
+    V(JSTaggedValue, MapGet, MAP_GET_INDEX, ecma_roots_builtins)                                        \
+    V(JSTaggedValue, MapHas, MAP_HAS_INDEX, ecma_roots_builtins)                                        \
+    V(JSTaggedValue, SetHas, SET_HAS_INDEX, ecma_roots_builtins)                                        \
+    V(JSTaggedValue, MapDelete, MAP_DELETE_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, SetDelete, SET_DELETE_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_builtins)         \
+    V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_builtins)                 \
+    V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_builtins)         \
+    V(JSTaggedValue, MapIteratorProtoNext, MAP_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)          \
+    V(JSTaggedValue, SetIteratorProtoNext, SET_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)          \
+    V(JSTaggedValue, StringIteratorProtoNext, STRING_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)    \
+    V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)      \
+    V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX, ecma_roots_builtins)             \
+    V(JSTaggedValue, StringFromCharCode, STRING_FROM_CHAR_CODE_INDEX, ecma_roots_builtins)              \
+    V(JSTaggedValue, TypedArrayEntries, TYPED_ARRAY_ENTRIES_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, TypedArrayKeys, TYPED_ARRAY_KEYS_INDEX, ecma_roots_special)                        \
+    V(JSTaggedValue, TypedArrayValues, TYPED_ARRAY_VALUES_INDEX, ecma_roots_special)                    \
+    V(JSTaggedValue, ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW_INDEX, ecma_roots_builtins)                \
+    V(JSTaggedValue, DataViewGetFloat32, DATA_VIEW_GET_FLOAT32_INDEX, ecma_roots_builtins)              \
+    V(JSTaggedValue, DataViewGetFloat64, DATA_VIEW_GET_FLOAT64_INDEX, ecma_roots_builtins)              \
+    V(JSTaggedValue, DataViewGetInt8, DATA_VIEW_GET_INT8_INDEX, ecma_roots_builtins)                    \
+    V(JSTaggedValue, DataViewGetInt16, DATA_VIEW_GET_INT16_INDEX, ecma_roots_builtins)                  \
+    V(JSTaggedValue, DataViewGetInt32, DATA_VIEW_GET_INT32_INDEX, ecma_roots_builtins)                  \
+    V(JSTaggedValue, DataViewGetUint16, DATA_VIEW_GET_UINT16_INDEX, ecma_roots_builtins)                \
+    V(JSTaggedValue, DataViewGetUint32, DATA_VIEW_GET_UINT32_INDEX, ecma_roots_builtins)                \
+    V(JSTaggedValue, DataViewGetUint8, DATA_VIEW_GET_UINT8_INDEX, ecma_roots_builtins)                  \
+    V(JSTaggedValue, DataViewSetFloat32, DATA_VIEW_SET_FLOAT32_INDEX, ecma_roots_builtins)              \
+    V(JSTaggedValue, DataViewSetFloat64, DATA_VIEW_SET_FLOAT64_INDEX, ecma_roots_builtins)              \
+    V(JSTaggedValue, DataViewSetInt8, DATA_VIEW_SET_INT8_INDEX, ecma_roots_builtins)                    \
+    V(JSTaggedValue, DataViewSetInt16, DATA_VIEW_SET_INT16_INDEX, ecma_roots_builtins)                  \
+    V(JSTaggedValue, DataViewSetInt32, DATA_VIEW_SET_INT32_INDEX, ecma_roots_builtins)                  \
+    V(JSTaggedValue, DataViewSetUint8, DATA_VIEW_SET_UINT8_INDEX, ecma_roots_builtins)                  \
+    V(JSTaggedValue, DataViewSetUint16, DATA_VIEW_SET_UINT16_INDEX, ecma_roots_builtins)                \
+    V(JSTaggedValue, DataViewSetUint32, DATA_VIEW_SET_UINT32_INDEX, ecma_roots_builtins)                \
+    V(JSTaggedValue, DateGetTime, DATE_GET_TIME_INDEX, ecma_roots_special)                              \
+    V(JSTaggedValue, DateNow, DATE_NOW_INDEX, ecma_roots_special)                                       \
+    V(JSTaggedValue, NumberIsNaN, NUMBER_IS_NAN_INDEX, ecma_roots_builtins)                             \
+    V(JSTaggedValue, NumberIsFinite, NUMBER_IS_FINITE_INDEX, ecma_roots_builtins)                       \
+    V(JSTaggedValue, NumberIsInteger, NUMBER_IS_INTEGER_INDEX, ecma_roots_builtins)                     \
+    V(JSTaggedValue, NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER_INDEX, ecma_roots_builtins)
 
 // All of type JSTaggedValue
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \
     V(ConstructorString,              CONSTRUCTOR_STRING_INDEX,              "constructor")                 \
     V(PrototypeString,                PROTOTYPE_STRING_INDEX,                "prototype")                   \
+    V(SizeString,                     SIZE_STRING_INDEX,                     "size")                        \
     V(LengthString,                   LENGTH_STRING_INDEX,                   "length")                      \
     V(ValueString,                    VALUE_STRING_INDEX,                    "value")                       \
     V(SetString,                      SET_STRING_INDEX,                      "set")                         \
@@ -269,6 +300,17 @@ class ObjectFactory;
     V(Float64ArrayString,             FLOAT64_ARRAY_STRING_INDEX,            "Float64Array")                \
     V(BigInt64ArrayString,            BIGINT64_ARRAY_STRING_INDEX,           "BigInt64Array")               \
     V(BigUint64ArrayString,           BIGUINT64_ARRAY_STRING_INDEX,          "BigUint64Array")              \
+    V(SharedInt8ArrayString,          SHARED_INT8_ARRAY_STRING_INDEX,        "SharedInt8Array")             \
+    V(SharedUint8ArrayString,         SHARED_UINT8_ARRAY_STRING_INDEX,       "SharedUint8Array")            \
+    V(SharedUint8ClampedArrayString,  SHARED_UINT8_CLAMPED_ARRAY_STRING_INDEX, "SharedUint8ClampedArray")   \
+    V(SharedInt16ArrayString,         SHARED_INT16_ARRAY_STRING_INDEX,       "SharedInt16Array")            \
+    V(SharedUint16ArrayString,        SHARED_UINT16_ARRAY_STRING_INDEX,      "SharedUint16Array")           \
+    V(SharedInt32ArrayString,         SHARED_INT32_ARRAY_STRING_INDEX,       "SharedInt32Array")            \
+    V(SharedUint32ArrayString,        SHARED_UINT32_ARRAY_STRING_INDEX,      "SharedUint32Array")           \
+    V(SharedFloat32ArrayString,       SHARED_FLOAT32_ARRAY_STRING_INDEX,     "SharedFloat32Array")          \
+    V(SharedFloat64ArrayString,       SHARED_FLOAT64_ARRAY_STRING_INDEX,     "SharedFloat64Array")          \
+    V(SharedBigInt64ArrayString,      SHARED_BIGINT64_ARRAY_STRING_INDEX,    "SharedBigInt64Array")         \
+    V(SharedBigUint64ArrayString,     SHARED_BIGUINT64_ARRAY_STRING_INDEX,   "SharedBigUint64Array")        \
     V(AsyncFunctionString,            ASYNC_FUNCTION_STRING_INDEX,           "AsyncFunction")               \
     V(PromiseResolveString,           PROMISE_RESOLVE_STRING_INDEX,          "resolve")                     \
     V(IdString,                       ID_STRING_INDEX,                       "id")                          \
@@ -567,6 +609,7 @@ enum class ConstantIndex : size_t {
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CLASS(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
+    GLOBAL_ENV_INLINED_BUILTINS(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CONSTANT(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CACHES(INDEX_FILTER_WITH_TYPE)
 #undef INDEX_FILTER_STRING
@@ -634,6 +677,7 @@ public:
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
+    GLOBAL_ENV_INLINED_BUILTINS(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CACHES(DECL_GET_WITH_TYPE)
 #undef DECL_GET_STRING
@@ -705,6 +749,8 @@ private:
     void InitSharedRootsClasses(ObjectFactory *factory);
     void InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory);
     void InitRootsClasses(ObjectFactory *factory);
+    void InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory *factory);
+    void InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory);
     void InitMiscellanious(JSThread *thread, ObjectFactory *factory);
     void InitGlobalCaches();
     void InitJSAPIContainers();

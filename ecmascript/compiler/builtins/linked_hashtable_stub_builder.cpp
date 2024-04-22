@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
+#include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/js_set.h"
@@ -72,7 +73,8 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Reh
             }
             Bind(&notWeak);
 
-            GateRef hash = GetHash(*key);
+            HashStubBuilder hashBuilder(this, glue_);
+            GateRef hash = hashBuilder.GetHash(*key);
             GateRef bucket = HashToBucket(newTable, hash);
             InsertNewEntry(newTable, bucket, *desEntry);
             GateRef desIndex = EntryToIndex(newTable, *desEntry);
@@ -215,45 +217,6 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
             res = True();
             Jump(&exit);
         }
-    }
-    Bind(&exit);
-    auto ret = *res;
-    env->SubCfgExit();
-    return ret;
-}
-
-template <typename LinkedHashTableType, typename LinkedHashTableObject>
-GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GetHash(GateRef key)
-{
-    auto env = GetEnvironment();
-    Label entryLabel(env);
-    Label exit(env);
-    env->SubCfgEntry(&entryLabel);
-    DEFVARIABLE(res, VariableType::INT32(), Int32(0));
-
-    Label symbolKey(env);
-    Label stringCheck(env);
-    BRANCH(TaggedIsSymbol(key), &symbolKey, &stringCheck);
-    Bind(&symbolKey);
-    {
-        res = Load(VariableType::INT32(), key, IntPtr(JSSymbol::HASHFIELD_OFFSET));
-        Jump(&exit);
-    }
-    Bind(&stringCheck);
-    Label stringKey(env);
-    Label slowGetHash(env);
-    BRANCH(TaggedIsString(key), &stringKey, &slowGetHash);
-    Bind(&stringKey);
-    {
-        res = GetHashcodeFromString(glue_, key);
-        Jump(&exit);
-    }
-    Bind(&slowGetHash);
-    {
-        // GetHash();
-        GateRef hash = CallRuntime(glue_, RTSTUB_ID(GetLinkedHash), { key });
-        res = GetInt32OfTInt(hash);
-        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *res;
@@ -438,17 +401,13 @@ template GateRef LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>:
 
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
 GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::ForEach(GateRef thisValue,
-    GateRef srcLinkedTable, GateRef numArgs)
+    GateRef srcLinkedTable, GateRef callbackFnHandle, GateRef thisArg)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-
-    // caller checked callbackFnHandle callable
-    GateRef callbackFnHandle = GetCallArg0(numArgs);
-    GateRef thisArg = GetCallArg1(numArgs);
     DEFVARIABLE(linkedTable, VariableType::JS_ANY(), srcLinkedTable);
 
     GateRef numberOfElements = GetNumberOfElements(*linkedTable);
@@ -530,9 +489,9 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
 }
 
 template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::ForEach(GateRef thisValue,
-    GateRef linkedTable, GateRef numArgs);
+    GateRef linkedTable, GateRef callbackFnHandle, GateRef thisArg);
 template GateRef LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::ForEach(GateRef thisValue,
-    GateRef linkedTable, GateRef numArgs);
+    GateRef linkedTable, GateRef callbackFnHandle, GateRef thisArg);
 
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
 GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Insert(
@@ -543,7 +502,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), linkedTable);
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     Label notFind(env);
@@ -588,15 +548,16 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Label cfgEntry(env);
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
-    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
-    GateRef hash = GetHash(key);
+    DEFVARIABLE(res, VariableType::BOOL(), False());
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     BRANCH(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
     Bind(&findEntry);
     {
         RemoveEntry(linkedTable, entry);
-        res = TaggedTrue();
+        res = True();
         Jump(&exit);
     }
 
@@ -618,24 +579,10 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     auto env = GetEnvironment();
     Label cfgEntry(env);
     env->SubCfgEntry(&cfgEntry);
-    Label exit(env);
-    Label nonEmpty(env);
-    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
-    GateRef size = GetNumberOfElements(linkedTable);
-    BRANCH(Int32Equal(size, Int32(0)), &exit, &nonEmpty);
-    Bind(&nonEmpty);
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
-    Label findEntry(env);
-    BRANCH(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
-    Bind(&findEntry);
-    {
-        res = TaggedTrue();
-        Jump(&exit);
-    }
-
-    Bind(&exit);
-    auto ret = *res;
+    GateRef ret = Int32NotEqual(entry, Int32(-1));
     env->SubCfgExit();
     return ret;
 }
@@ -669,7 +616,7 @@ template void LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::St
 
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
 void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GenMapSetConstructor(
-    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs)
+    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs, GateRef arg0, GateRef argv)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(returnValue, VariableType::JS_ANY(), Undefined());
@@ -706,7 +653,7 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
 
     Bind(&fastGetHClass);
     Label isUndefinedOrNull(env);
-    BRANCH(TaggedIsUndefinedOrNull(GetCallArg0(numArgs)), &isUndefinedOrNull, &slowPath);
+    BRANCH(TaggedIsUndefinedOrNull(arg0), &isUndefinedOrNull, &slowPath);
 
     Bind(&isUndefinedOrNull);
     StoreHashTableToNewObject(newTargetHClass, returnValue);
@@ -719,14 +666,8 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     Jump(&exit);
 
     Bind(&slowPath);
-    std::string name;
-    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
-        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(MapConstructor));
-    } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
-        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(SetConstructor));
-    }
     returnValue = CallBuiltinRuntimeWithNewTarget(glue_, {glue_, nativeCode, func, thisValue,
-        numArgs, GetArgv(), newTarget}, name.c_str());
+        numArgs, argv, newTarget});
     Jump(&exit);
 
     Bind(&exit);
@@ -734,9 +675,35 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
 }
 
 template void LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::GenMapSetConstructor(
-    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs);
+    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs,
+    GateRef arg0, GateRef argv);
 template void LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::GenMapSetConstructor(
-    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs);
+    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs,
+    GateRef arg0, GateRef argv);
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GetLinked(GateRef jsThis)
+{
+    GateRef linkedTableOffset = GetLinkedOffset();
+    return Load(VariableType::JS_ANY(), jsThis, linkedTableOffset);
+}
+
+template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::GetLinked(
+    GateRef jsThis);
+template GateRef LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::GetLinked(
+    GateRef jsThis);
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::SetLinked(GateRef jsThis, GateRef newTable)
+{
+    GateRef linkedTableOffset = GetLinkedOffset();
+    Store(VariableType::JS_ANY(), glue_, jsThis, linkedTableOffset, newTable);
+}
+
+template void LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::SetLinked(
+    GateRef jsThis, GateRef newTable);
+template void LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::SetLinked(
+    GateRef jsThis, GateRef newTable);
 
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
 GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Get(
@@ -747,7 +714,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
@@ -765,4 +733,21 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
 
 template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Get(
     GateRef linkedTable, GateRef key);
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GetLinkedOffset()
+{
+    int32_t linkedTableOffset = 0;
+    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
+        linkedTableOffset = JSMap::LINKED_MAP_OFFSET;
+    } else {
+        static_assert(std::is_same_v<LinkedHashTableType, LinkedHashSet>);
+        linkedTableOffset = JSSet::LINKED_SET_OFFSET;
+    }
+    return IntPtr(linkedTableOffset);
+}
+
+template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::GetLinkedOffset();
+template GateRef LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::GetLinkedOffset();
+
 }  // namespace panda::ecmascript::kungfu

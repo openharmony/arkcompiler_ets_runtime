@@ -22,6 +22,7 @@
 
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/global_index.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
@@ -56,16 +57,17 @@ public:
     };
 
     static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
+    static constexpr uint32_t HUGE_ABC_ID = 500;
 
-    static const ProfileType PROFILE_TYPE_NONE;
+    static PUBLIC_API const ProfileType PROFILE_TYPE_NONE;
 
-    static constexpr uint32_t ID_BITFIELD_NUM = 32;
-    static constexpr uint32_t ABC_ID_BITFIELD_NUM = 20;
-    static constexpr uint32_t KIND_BITFIELD_NUM = 11;
+    static constexpr uint32_t ID_BITFIELD_NUM = 32;  // 0-31
+    static constexpr uint32_t ABC_ID_BITFIELD_NUM = 10; // 32-41
+    static constexpr uint32_t KIND_BITFIELD_NUM = 8;  // 42 - 49
     using IdBits = BitField<uint32_t, 0, ID_BITFIELD_NUM>;
     using AbcIdBits = IdBits::NextField<uint32_t, ABC_ID_BITFIELD_NUM>;
     using KindBits = AbcIdBits::NextField<Kind, KIND_BITFIELD_NUM>;
-    using IsRootBits = KindBits::NextFlag;
+    using IsRootBits = KindBits::NextFlag;  // 50
 
     class BuiltinsId {
     public:
@@ -194,9 +196,9 @@ public:
         return ProfileType(abcId, id, Kind::BuiltinsId);
     }
 
-    static ProfileType CreateGlobals(ApEntityId abcId, ConstantIndex constantIndex)
+    static ProfileType CreateGlobals(ApEntityId abcId, GlobalIndex globalsId)
     {
-        auto id = static_cast<uint32_t>(constantIndex);
+        auto id = globalsId.GetGlobalIndex();
         return ProfileType(abcId, id, Kind::GlobalsId);
     }
 
@@ -279,6 +281,10 @@ public:
 
     void UpdateAbcId(ApEntityId abcId)
     {
+        if (abcId > HUGE_ABC_ID) {
+            // only for debug purpose, do not merge to release version
+            LOG_ECMA(FATAL) << "huge abcId: " << abcId;
+        }
         type_ = AbcIdBits::Update(type_, abcId);
     }
 
@@ -340,10 +346,10 @@ public:
         return builtinsId.GetBuiltinsId();
     }
 
-    ConstantIndex GetGlobalsId() const
+    GlobalIndex GetGlobalsId() const
     {
         ASSERT(IsGlobalsType());
-        auto globalsId = static_cast<ConstantIndex>(GetId());
+        auto globalsId = GlobalIndex(GetId());
         return globalsId;
     }
 
@@ -359,6 +365,15 @@ public:
         ASSERT(IsBuiltinsArray());
         auto builtinsArrayId = BuiltinsArrayId(GetId());
         return builtinsArrayId.GetTransitionElementsKind();
+    }
+
+    bool IsBuiltinsMap() const
+    {
+        if (IsBuiltinsType()) {
+            JSType type = GetBuiltinsType();
+            return type == JSType::JS_MAP;
+        }
+        return false;
     }
 
     bool IsBuiltinsString() const

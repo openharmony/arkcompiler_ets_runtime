@@ -49,7 +49,8 @@
     V("printTypedOpProfilerAndReset",   PrintTypedOpProfilerAndReset,   1, INVALID)       \
     V("isOnHeap",                       IsOnHeap,                       1, INVALID)       \
     V("checkDeoptStatus",               CheckDeoptStatus,               2, INVALID)       \
-    V("checkCircularImport",            CheckCircularImport,            2, INVALID)
+    V("checkCircularImport",            CheckCircularImport,            2, INVALID)       \
+    V("hashCode",                       HashCode,                       1, ArkToolsHashCode)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
     V("prepareFunctionForOptimization",            PrepareFunctionForOptimization,            1, INVALID)     \
@@ -120,6 +121,11 @@
     V("isBeingInterpreted",                        IsBeingInterpreted,                        0, INVALID)     \
     V("clearFunctionFeedback",                     ClearFunctionFeedback,                     1, INVALID)
 
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)                                                             \
+    V("jitCompileSync",                            JitCompileSync,                            1, INVALID)     \
+    V("jitCompileAsync",                           JitCompileAsync,                           1, INVALID)     \
+    V("waitJitCompileFinish",                      WaitJitCompileFinish,                      1, INVALID)
+
 
 #ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
@@ -132,7 +138,8 @@
 #define BUILTIN_ARK_TOOLS_FUNCTIONS(V)                  \
     BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)               \
     BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)          \
-    BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)
+    BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)              \
+    BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsArkTools : public base::BuiltinsBase {
@@ -169,6 +176,8 @@ public:
     static JSTaggedValue RemoveAOTFlag(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue CheckCircularImport(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HashCode(EcmaRuntimeCallInfo *info);
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     static JSTaggedValue StartCpuProfiler(EcmaRuntimeCallInfo *info);
@@ -338,6 +347,10 @@ public:
     static JSTaggedValue IsBeingInterpreted(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue ClearFunctionFeedback(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue JitCompileSync(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue JitCompileAsync(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue WaitJitCompileFinish(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {

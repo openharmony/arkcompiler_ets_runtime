@@ -82,10 +82,10 @@ void X64Standardize::StdzCvtOp(Insn &insn, CGFunc &cgFunc)
         case abstract::MOP_zext_rr_64_32:
             destSize = k32BitSize;
             break;
-        case abstract::MOP_cvt_fr_u32:
+        case abstract::MOP_cvt_f32_u32:
             srcSize = k64BitSize;
             break;
-        case abstract::MOP_cvt_rf_u32:
+        case abstract::MOP_cvt_u32_f32:
             destSize = k64BitSize;
             break;
         default:

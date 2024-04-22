@@ -35,48 +35,55 @@ function printCeil(x: any) {
 }
 
 // Check without params
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:func_main_0@builtinMathCeil
 print(Math.ceil());             //: NaN
-
-// Check with non-number param
-print(Math.ceil("string"));     //aot: [trace] Check Type: NotNumber1
-                                //: NaN
-print(Math.ceil(null));         //: 0
-print(Math.ceil(undefined));    //: NaN
-print(Math.ceil(false));        //: 0
-print(Math.ceil(true));         //: 1
-print(Math.ceil(new Object));   //: NaN
-print(Math.ceil("1.3333"));     //: 2
 
 // Replace standart builtin
 let backup = Math.ceil
+//aot: [trace] Check Type: NotCallTarget1
 Math.ceil = replace
-print(Math.ceil(111));          //: 111
+printCeil(111);          //: 111
 Math.ceil = backup
 
 // Check with NaN param
-print(Math.ceil(NaN));          //: NaN
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(NaN);          //: NaN
 
 // Check with infinity param
-print(Math.ceil(-Infinity));    //: -Infinity
-print(Math.ceil(+Infinity));    //: Infinity
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(-Infinity);    //: -Infinity
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(+Infinity);    //: Infinity
 
 // Check with zero param
-print(Math.ceil(-0.0));         //: 0
-print(Math.ceil(0.0));          //: 0
-print(Math.ceil(+0.0));         //: 0
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(-0.0);         //: 0
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(0.0);          //: 0
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(+0.0);         //: 0
 
 // Check with integer param
-print(Math.ceil(-1.0));         //: -1
-print(Math.ceil(+1.0));         //: 1
-print(Math.ceil(-12.0));        //: -12
-print(Math.ceil(+12.0));        //: 12
-print(Math.ceil(-123.0));       //: -123
-print(Math.ceil(+123.0));       //: 123
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(-1.0);         //: -1
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(+1.0);         //: 1
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(-12.0);        //: -12
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(+12.0);        //: 12
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(-123.0);       //: -123
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(+123.0);       //: 123
 
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
 printCeil(1.5);                 //: 2
 // Call standard builtin with non-number param
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
 printCeil("abc");               //aot: [trace] Check Type: NotNumber1
                                 //: NaN
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
 printCeil("1.5");               //aot: [trace] Check Type: NotNumber1
                                 //: 2
 
@@ -94,9 +101,38 @@ printCeil("abc");               //aot: [trace] Check Type: NotCallTarget1
 Math.ceil = backup
 
 // Check with fractional param
-print(Math.ceil(-1.25));        //: -1
-print(Math.ceil(+1.25));        //: 2
-print(Math.ceil(-1.50));        //: -1
-print(Math.ceil(+1.50));        //: 2
-print(Math.ceil(-1.75));        //: -1
-print(Math.ceil(+1.75));        //: 2
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(-1.25);        //: -1
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(+1.25);        //: 2
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(-1.50);        //: -1
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(+1.50);        //: 2
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(-1.75);        //: -1
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(+1.75);        //: 2
+
+// Check with non-number param
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil("string");     //aot: [trace] Check Type: NotNumber1
+                         //: NaN
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(null);         //aot: [trace] Check Type: NotNumber1
+                         //: 0
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(undefined);    //aot: [trace] Check Type: NotNumber1
+                         //: NaN
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(false);        //aot: [trace] Check Type: NotNumber1
+                         //: 0
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(true);         //aot: [trace] Check Type: NotNumber1
+                         //: 1
+//aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
+printCeil(new Object);   //aot: [trace] Check Type: NotNumber1
+                         //: NaN
+//aot: [trace] Check Type: NotJSFastCallTarget1
+printCeil("1.3333");
+                         //: 2

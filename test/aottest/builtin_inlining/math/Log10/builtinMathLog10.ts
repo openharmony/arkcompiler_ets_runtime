@@ -23,42 +23,53 @@ let res:number = 0;
 
 // Check without params
 res = Math.log10();
+//aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
 print(res); //: NaN
 
 // Check with single param
 res = Math.log10(-0);
+//aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
 print(res); //: -Infinity
 
 res = Math.log10(+0);
+//aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
 print(res); //: -Infinity
 
 res = Math.log10(-123);
+//aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
 print(res); //: NaN
 
 res = Math.log10(10);
+//aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
 print(res); //: 1
 
 // Check with 2 params
 res = Math.log10(10, 10);
+//aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
 print(res); //: 1
 
 // Check with 3 params
 res = Math.log10(10, 10, 10);
+//aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
 print(res); //: 1
 
 // Check with 4 params
 res = Math.log10(10, 10, 10, 10);
+//aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
 print(res); //: 1
 
 // Check with 5 params
 res = Math.log10(10, 10, 10, 10, 10);
+//aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
 print(res); //: 1
 
 try {
+    //aot: [trace] aot inline builtin: Math.log10, caller function name:func_main_0@builtinMathLog10
     print(Math.log10(10)); //: 1
 } catch(e) {}
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_log10 = Math.log10
 Math.log10 = replace
 res = Math.log10(111);
@@ -66,6 +77,5 @@ print(res); //: 111
 
 // Call standart builtin with non-number param
 Math.log10 = true_log10
-//aot: [trace] Check Type: NotNumber1
 res = Math.log10("-0"); // deopt
 print(res); //: -Infinity

@@ -135,12 +135,13 @@ void BuiltinsCollectionStubBuilder<CollectionType>::ForEach(Variable *result, La
 
     GateRef linkedTable = GetLinked();
     GateRef res = Circuit::NullGate();
+    GateRef thisArg = GetCallArg1(numArgs_);
     if constexpr (std::is_same_v<CollectionType, JSMap>) {
         LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_);
-        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, numArgs_);
+        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, callbackFnHandle, thisArg);
     } else {
         LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
-        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, numArgs_);
+        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, callbackFnHandle, thisArg);
     }
 
     Label exception(env);
@@ -218,7 +219,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Delete(Variable *result, Lab
         LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
         res = linkedHashTableStubBuilder.Delete(linkedTable, key);
     }
-    *result = res;
+    *result = BooleanToTaggedBooleanPtr(res);
     Jump(exit);
 }
 
@@ -244,7 +245,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Has(Variable *result, Label 
         LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
         res = linkedHashTableStubBuilder.Has(linkedTable, key);
     }
-    *result = res;
+    *result = BooleanToTaggedBooleanPtr(res);
     Jump(exit);
 }
 

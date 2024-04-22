@@ -23,35 +23,41 @@ let len:number = 1;
 
 // Check without params
 len = Math.acosh();
+//aot: [trace] aot inline builtin: Math.acosh, caller function name:func_main_0@builtinMathAcosh
 print(len); //: NaN
 
 len = Math.acosh(NaN);
+//aot: [trace] aot inline builtin: Math.acosh, caller function name:func_main_0@builtinMathAcosh
 print(len); //: NaN
 
 // Check with single param, in x < 1
 len = Math.acosh(0);
+//aot: [trace] aot inline builtin: Math.acosh, caller function name:func_main_0@builtinMathAcosh
 print(len); //: NaN
 
 // Check with single param, in x < 1
 len = Math.acosh(-1);
+//aot: [trace] aot inline builtin: Math.acosh, caller function name:func_main_0@builtinMathAcosh
 print(len); //: NaN
 
 // Check with single param, in x >= 1
 len = Math.acosh(1);
+//aot: [trace] aot inline builtin: Math.acosh, caller function name:func_main_0@builtinMathAcosh
 print(len); //: 0
 
 // Check with single param, in x >= 1
 len = Math.acosh(10);
+//aot: [trace] aot inline builtin: Math.acosh, caller function name:func_main_0@builtinMathAcosh
 print(len); //: 2.993222846126381
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_acosh = Math.acosh
 Math.acosh = replace
 len = Math.acosh(111);
 print(len); //: 111
 
-// Call standart builtin with non-number param
+// Call standart builtin with non-number 
 Math.acosh = true_acosh
 len = Math.acosh("NaN"); // deopt
-//aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

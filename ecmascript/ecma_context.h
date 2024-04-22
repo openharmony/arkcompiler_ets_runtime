@@ -49,6 +49,8 @@ class JSPromise;
 class RegExpExecResultCache;
 class EcmaHandleScope;
 class GlobalIndexMap;
+class SustainingJSHandleList;
+class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
 
 template<typename T>
@@ -59,7 +61,6 @@ class JSPromise;
 class JSTaggedValue;
 class EcmaVM;
 class ModuleManager;
-class TSManager;
 class AOTFileManager;
 class QuickFixManager;
 class OptCodeProfiler;
@@ -90,7 +91,6 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              PromiseRejectionEvent operation,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
-using IcuDeleteEntry = void(*)(void *pointer, void *data);
 class EcmaContext {
 public:
     static EcmaContext *CreateAndInitialize(JSThread *thread);
@@ -133,17 +133,10 @@ public:
         return moduleManager_;
     }
 
-    TSManager *GetTSManager() const
-    {
-        return tsManager_;
-    }
-
     kungfu::PGOTypeManager *GetPTManager() const
     {
         return ptManager_;
     }
-
-    void PUBLIC_API SetTSManager(TSManager *set);
 
     ARK_INLINE JSThread *GetJSThread() const
     {
@@ -254,19 +247,25 @@ public:
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
     void EnableUserUncaughtErrorHandler();
 
-    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
+    JSHandle<ConstantPool> AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
+                                                JSHandle<ConstantPool> constpool,
+                                                int32_t index = 0);
 
     void UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index = 0);
 
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
 
+    void SetUnsharedConstpool(JSHandle<ConstantPool> sharedConstpool, JSTaggedValue unsharedConstpool);
+    void SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue unsharedConstpool);
+
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
     // For new version instruction.
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSHandle<ConstantPool> CreateConstpoolPair(JSPandaFile *jsPandaFile, EntityId methodId);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
-    void EraseUnsharedConstpool(JSTaggedValue sharedConstpool);
+    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
 
@@ -276,8 +275,6 @@ public:
 
     void HandleUncaughtException(JSTaggedValue exception);
     void HandleUncaughtException();
-    void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
-    void ProcessReferences(const WeakRootVisitor &visitor);
     JSHandle<GlobalEnv> GetGlobalEnv() const;
     bool GlobalEnvIsHole()
     {
@@ -306,7 +303,7 @@ public:
 
     // For icu objects cache
     void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
-                                IcuDeleteEntry deleteEntry = nullptr)
+                                NativePointerCallback deleteEntry = nullptr)
     {
         EcmaContext::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
         icuObjCache_[static_cast<int>(type)] = icuFormatter;
@@ -321,13 +318,13 @@ public:
         return nullptr;
     }
 
-    void ClearIcuCache()
+    void ClearIcuCache(JSThread *thread)
     {
         for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); i++) {
             auto &icuFormatter = icuObjCache_[i];
-            IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
+            NativePointerCallback deleteEntry = icuFormatter.deleteEntry;
             if (deleteEntry != nullptr) {
-                deleteEntry(icuFormatter.icuObj, vm_);
+                deleteEntry(thread->GetEnv(), icuFormatter.icuObj, vm_);
             }
             icuFormatter = EcmaContext::IcuFormatter{};
         }
@@ -502,34 +499,10 @@ public:
         return isAotEntry_;
     }
 
-    void InsertFreeUnsharedConstpoolCount(JSTaggedValue sharedConstpool);
-    void SetUnsharedConstpool(int32_t unsharedConstpoolIndex, JSTaggedValue constpool)
-    {
-        ASSERT(0 <= unsharedConstpoolIndex && unsharedConstpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
-        unsharedConstpools_->data()[unsharedConstpoolIndex] = constpool;
-    }
-
-    int32_t GetAndIncreaseUnsharedConstpoolCount()
-    {
-        std::lock_guard<std::mutex> guard(unsharedConstpoolCountMutex_);
-        if (freeUnsharedConstpoolCount_.size() > 0) {
-            auto iter = freeUnsharedConstpoolCount_.begin();
-            int32_t freeCount = *iter;
-            freeUnsharedConstpoolCount_.erase(iter);
-            return freeCount;
-        }
-        return unsharedConstpoolCount_++;
-    }
-
-    void CheckUnsharedConstpoolArrayLimit(int32_t count)
-    {
-        if (count >= UNSHARED_CONSTANTPOOL_COUNT) {
-            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity, count :" << count;
-            UNREACHABLE();
-        }
-    }
-
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+
+    void AddSustainingJSHandle(SustainingJSHandle*);
+    void RemoveSustainingJSHandle(SustainingJSHandle*);
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
@@ -544,6 +517,15 @@ private:
         std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob);
     bool LoadAOTFiles(const std::string &aotFileName);
     void RelocateConstantString(const JSPandaFile *jsPandaFile);
+
+    void CheckUnsharedConstpoolArrayLimit(int32_t index)
+    {
+        if (index >= UNSHARED_CONSTANTPOOL_COUNT) {
+            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity, index :" << index;
+            UNREACHABLE();
+        }
+    }
+
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
 
@@ -570,12 +552,8 @@ private:
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
     // todo(lijiamin) Consider expanding capacity.
-    static constexpr int32_t UNSHARED_CONSTANTPOOL_COUNT = 10240;
-    std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> *unsharedConstpools_ = nullptr;
-    static int32_t unsharedConstpoolCount_; // unshared constpool index.
+    std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> unsharedConstpools_ {};
     static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
-    static CUnorderedSet<int32_t> freeUnsharedConstpoolCount_; // reuse unshared Constpool Count.
-    static std::mutex unsharedConstpoolCountMutex_;
 
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};
@@ -583,7 +561,6 @@ private:
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
-    TSManager *tsManager_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ {nullptr};
     AOTFileManager *aotFileManager_ {nullptr};
 
@@ -606,10 +583,10 @@ private:
     struct IcuFormatter {
         std::string locale;
         void *icuObj {nullptr};
-        IcuDeleteEntry deleteEntry {nullptr};
+        NativePointerCallback deleteEntry {nullptr};
 
         IcuFormatter() = default;
-        IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
+        IcuFormatter(const std::string &locale, void *icuObj, NativePointerCallback deleteEntry = nullptr)
             : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
     IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
@@ -638,6 +615,9 @@ private:
     static constexpr uint32_t STRINGIFY_CACHE_SIZE = 64;
     std::array<CVector<std::pair<CString, int>>, STRINGIFY_CACHE_SIZE> stringifyCache_ {};
     bool isAotEntry_ { false };
+
+    // SustainingJSHandleList for jit compile hold ref
+    SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

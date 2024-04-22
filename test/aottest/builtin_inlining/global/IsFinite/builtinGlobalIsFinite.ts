@@ -33,61 +33,93 @@ function printIsFinite(x: any) {
     }
 }
 // Check with single int param
-print(isFinite(0)); // true
-print(isFinite(3)); // true
-print(isFinite(-5)); // true
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(0)); //: true
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(3)); //: true
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(-5)); //: true
 
 // Check with single float param
-print(isFinite(-1.5)); // true
-print(isFinite(1.5)); // true
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(-1.5)); //: true
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(1.5)); //: true
 
 // Check with special float params
-print(isFinite(Infinity)); // false
-print(isFinite(-Infinity)); // false
-print(isFinite(NaN)); // false
-print(isFinite(Math.exp(800))); // false
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(Infinity)); //: false
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(-Infinity)); //: false
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(NaN)); //: false
+//aot: [trace] aot inline builtin: Math.exp, caller function name:func_main_0@builtinGlobalIsFinite
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(Math.exp(800))); //: false
 
 // Check with 2 params
-print(isFinite(3, Infinity)); // true
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(3, Infinity)); //: true
 
 // Check with 3 params
-print(isFinite(-3, NaN, Infinity)); // true
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+print(isFinite(-3, NaN, Infinity)); //: true
 
 
 // Replace standard builtin
 let true_is_finite = isFinite
 isFinite = replace
-print(isFinite(NaN)); // NaN
+print(isFinite(NaN)); //: NaN
 isFinite = true_is_finite
 
 
-printIsFinite(-3);    // true
-printIsFinite("abc"); // false
-printIsFinite("abc"); // false
+//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+printIsFinite(-3);    //: true
+//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] Check Type: NotNumber1
+printIsFinite("abc"); //: false
+//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] Check Type: NotNumber1
+printIsFinite("abc"); //: false
 
-printIsFinite(-12); // true
+//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+printIsFinite(-12); //: true
 // Call standard builtin with non-number param
-printIsFinite("abc"); // false
-printIsFinite("-12"); // true
+//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] Check Type: NotNumber1
+printIsFinite("abc"); //: false
+//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] Check Type: NotNumber1
+printIsFinite("-12"); //: true
 
 if (ArkTools.isAOTCompiled(doIsFinite)) {
     // Replace standard builtin after call to standard builtin was profiled
     isFinite = replace
 }
-printIsFinite(-12); // true; or -12, deopt
-printIsFinite("abc"); // false; or abc, deopt
+printIsFinite(-12);   //pgo: true
+                      //aot: [trace] Check Type: NotCallTarget1
+                      //aot: -12
+printIsFinite("abc"); //pgo: false
+                      //aot: [trace] Check Type: NotCallTarget1
+                      //aot: abc
+
 isFinite = true_is_finite
 
 // Check IR correctness inside try-block
 try {
-    printIsFinite(-12); // true
-    printIsFinite("abc"); // false
+    //aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+    printIsFinite(-12); //: true
+    //aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+    //aot: [trace] Check Type: NotNumber1
+    printIsFinite("abc"); //: false
 } catch (e) {
 }
 
 let obj = {};
 obj.valueOf = (() => { return -23; })
-print(isFinite(obj)); // true
+//aot: [trace] aot inline builtin: isFinite, caller function name:func_main_0@builtinGlobalIsFinite
+//aot: [trace] Check Type: NotNumber1
+print(isFinite(obj)); //: true
 
 function Throwing() {
     this.value = -14;
@@ -101,11 +133,11 @@ Throwing.prototype.valueOf = function() {
 let throwingObj = new Throwing();
 
 try {
-    print(isFinite(throwingObj)); // true
+    print(isFinite(throwingObj)); //: true
     throwingObj.value = 10;
-    print(isFinite(throwingObj)); // exception
+    print(isFinite(throwingObj)); //: Error: already positive
 } catch(e) {
     print(e);
 } finally {
-    print(isFinite(obj)); // false
+    print(isFinite(obj)); //: true
 }

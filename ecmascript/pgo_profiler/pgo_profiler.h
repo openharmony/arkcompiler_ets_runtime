@@ -21,6 +21,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/global_index.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
@@ -37,7 +38,8 @@
 namespace panda::ecmascript {
 class ProfileTypeInfo;
 class JSFunction;
-
+class GlobalIndex;
+class JITProfiler;
 namespace pgo {
 class PGORecordDetailInfos;
 
@@ -64,11 +66,15 @@ public:
                                 ProfileType::Kind kind = ProfileType::Kind::ClassId);
     void UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHClass);
 
+    void InitJITProfiler();
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
     {
         saveTimestamp_ = timestamp;
     }
-
+    JITProfiler *GetJITProfile()
+    {
+        return jitProfiler_;
+    }
     void PGOPreDump(JSTaggedType func);
     void PGODump(JSTaggedType func);
 
@@ -148,11 +154,11 @@ private:
     void UpdateLayout(JSHClass *hclass);
     void UpdateTranstionLayout(JSHClass *parent, JSHClass *child);
     bool AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
-        JSHClass *hold, JSHClass *holdTra);
+        JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod);
     void UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info);
 
     bool AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
-                       JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);
+                       JSHClass *receiver, JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
     void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
     void AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CString &recordName, EntityId methodId,
         int32_t bcOffset, JSHClass *receiver);
@@ -162,12 +168,12 @@ private:
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,
-                               int32_t bcOffset, ConstantIndex globalId);
+                               int32_t bcOffset, GlobalIndex globalId);
 
     ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);
     ProfileType GetProfileTypeSafe(JSTaggedType root, JSTaggedType child);
     ProfileType GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedType child);
-    void InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType);
+    bool InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType);
 
     class WorkNode;
     void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString& recordName, EntityId methodId, WorkNode* current);
@@ -439,14 +445,15 @@ private:
         WorkNode *first_ { nullptr };
         WorkNode *last_ { nullptr };
     };
-
-    static ApEntityId GetMethodAbcId(JSFunction *jsFunction);
+public:
+    static ApEntityId PUBLIC_API GetMethodAbcId(JSFunction *jsFunction);
+    static ApEntityId PUBLIC_API GetMethodAbcId(JSTaggedValue jsMethod);
+    void Reset(bool isEnable);
+private:
     ProfileType GetRecordProfileType(JSFunction *jsFunction, const CString &recordName);
     ProfileType GetRecordProfileType(ApEntityId abcId, const CString &recordName);
     ProfileType GetRecordProfileType(const std::shared_ptr<JSPandaFile> &pf, ApEntityId abcId,
                                      const CString &recordName);
-
-    void Reset(bool isEnable);
 
     bool IsSkippableObjectType(ProfileType type)
     {
@@ -471,6 +478,7 @@ private:
     CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     CUnorderedSet<uint32_t> skipCtorMethodId_;
+    JITProfiler *jitProfiler_ {nullptr};
     friend class PGOProfilerManager;
 };
 } // namespace pgo

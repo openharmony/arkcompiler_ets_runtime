@@ -55,50 +55,72 @@ let obj = {
 };
 
 // Check without params
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1()); //: NaN
 
 // Check with single param
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
+//aot: [trace] aot inline function name: printZero@builtinMathExpm1 caller function name: func_main_0@builtinMathExpm1
 printZero(Math.expm1(0)); //: 0
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
+//aot: [trace] aot inline function name: printZero@builtinMathExpm1 caller function name: func_main_0@builtinMathExpm1
 printZero("1/x: " + 1 / Math.expm1(-0)); //: 1/x: -Infinity
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(1)); //: 1.718281828459045
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(-100)); //: -1
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(100)); //: 2.6881171418161356e+43
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(10e-10)); //: 1.0000000005000001e-9
 
 // Check with special float params
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(-Infinity)); //: -1
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(Infinity)); //: Infinity
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(NaN)); //: NaN
 
 // Check with 2 params
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(1, 1)); //: 1.718281828459045
 
 // Check with 3 params
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(1, 1, 1)); //: 1.718281828459045
 
 // Check with 4 params
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(1, 1, 1, 1)); //: 1.718281828459045
 
 // Check with 5 params
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(1, 1, 1, 1, 1)); //: 1.718281828459045
 
 try {
+    //aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
     print(Math.expm1(1)); //: 1.718281828459045
 } catch(e) {}
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let trueExpm1 = Math.expm1
 Math.expm1 = replace
 print(Math.expm1(111)); //: 111
 Math.expm1 = trueExpm1
 
-print(Math.expm1(1)); //: 1.718281828459045
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
+printExpm1(1); //: 1.718281828459045
 
 // Call standart builtin with non-number param
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
 //aot: [trace] Check Type: NotNumber1
 printExpm1("1"); //: 1.718281828459045
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
 //aot: [trace] Check Type: NotNumber1
 printExpm1("NaN"); //: NaN
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
 //aot: [trace] Check Type: NotNumber1
 printExpm1("abc"); //: NaN
 
@@ -127,18 +149,25 @@ Math.expm1 = trueExpm1
 
 // Check IR correctness inside try-block
 try {
-    print(Math.expm1(1)); //: 1.718281828459045
-    print(Math.expm1(1, 2)); //: 1.718281828459045
+    //aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
+    printExpm1(1); //: 1.718281828459045
+    //aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
     printExpm1(1, 2); //: 1.718281828459045
+    //aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
+    printExpm1(1, 2); //: 1.718281828459045
+    //aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
     //aot: [trace] Check Type: NotNumber1
     printExpm1("abc", 3e3); //: NaN
 } catch (e) {
 }
 
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
 //aot: [trace] Check Type: NotNumber1
 //: obj.valueOf
 printExpm1(obj); //: -0.9999999998973812
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
 //aot: [trace] Check Type: NotNumber1
 printExpm1(doubleObj); //: 13.879731724872837
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
 //aot: [trace] Check Type: NotNumber1
 printExpm1(nanObj); //: NaN

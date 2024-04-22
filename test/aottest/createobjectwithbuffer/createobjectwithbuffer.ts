@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(str:any):string;
 let obj:{a:number, b:string}={
     a:1,
     b:"str",
 }
-assert_equal(obj.a, 1);
-assert_equal(obj.b, "str");
+print(obj.a);
+print(obj.b);
 
 class A {
     data: {
@@ -35,7 +35,7 @@ class A {
         elapsed = 11.1;
 
         this.data.elapsed += elapsed;
-        assert_equal(this.data.elapsed, 11.1);
+        print(this.data.elapsed)
     }
 }
 

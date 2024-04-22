@@ -17,7 +17,8 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/graph_editor.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/mem/assert_scope.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;
@@ -338,21 +339,6 @@ bool GateAccessor::TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const
     }
 }
 
-GateType GateAccessor::GetReceiverType([[maybe_unused]]GateRef gate) const
-{
-    return GateType::Empty();
-}
-
-GateType GateAccessor::GetHolderType([[maybe_unused]]GateRef gate) const
-{
-    return GateType::Empty();
-}
-
-GateType GateAccessor::GetNewHolderType([[maybe_unused]]GateRef gate) const
-{
-    return GateType::Empty();
-}
-
 TypedLoadOp GateAccessor::GetTypedLoadOp(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_ELEMENT);
@@ -370,8 +356,8 @@ TypedStoreOp GateAccessor::GetTypedStoreOp(GateRef gate) const
 TypedCallTargetCheckOp GateAccessor::GetTypedCallTargetCheckOp(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetTypedCallTargetCheckMetaData()->GetTypedCallTargetCheckOp();
+    TypedCallTargetCheckAccessor accessor(TryGetValue(gate));
+    return accessor.GetCallTargetCheckOp();
 }
 
 MemoryType GateAccessor::GetMemoryType(GateRef gate) const
@@ -392,52 +378,26 @@ uint32_t GateAccessor::GetHClassIndex(GateRef gate) const
 TypedBinOp GateAccessor::GetTypedBinaryOp(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetTypedBinaryMetaData()->GetTypedBinaryOp();
-}
-
-PGOTypeRef GateAccessor::GetTypedBinaryType(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetTypedBinaryMetaData()->GetType();
+    TypedBinaryAccessor accessor(TryGetValue(gate));
+    return accessor.GetTypedBinOp();
 }
 
 bool GateAccessor::HasNumberType(GateRef gate) const
 {
-    auto sampleType = GetTypedBinaryType(gate).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        return true;
-    }
-    if (sampleType->IsNone()) {
-        GateType leftType = GetLeftType(gate);
-        GateType rightType = GetRightType(gate);
-        if (leftType.IsNumberType() && rightType.IsNumberType()) {
-            return true;
-        }
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::TYPED_BINARY_OP) {
+        TypedBinaryAccessor accessor(TryGetValue(gate));
+        return accessor.GetParamType().HasNumberType();
     }
     return false;
 }
 
 bool GateAccessor::HasStringType(GateRef gate) const
 {
-    const PGOSampleType *sampleType = TryGetPGOType(gate).GetPGOSampleType();
-    return sampleType->IsString();
-}
-
-// Include number, undefined, null and boolean type.
-bool GateAccessor::HasPrimitiveNumberType(GateRef gate) const
-{
-    auto sampleType = GetTypedBinaryType(gate).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        return true;
-    }
-    if (sampleType->IsNone()) {
-        GateType leftType = GetLeftType(gate);
-        GateType rightType = GetRightType(gate);
-        if (leftType.IsPrimitiveNumberType() && rightType.IsPrimitiveNumberType()) {
-            return true;
-        }
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::TYPED_BINARY_OP) {
+        TypedBinaryAccessor accessor(TryGetValue(gate));
+        return accessor.GetParamType().IsStringType();
     }
     return false;
 }
@@ -452,15 +412,19 @@ GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 
 GateType GateAccessor::GetParamGateType(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::INDEX_CHECK ||
-           GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
-           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER ||
-           GetOpCode(gate) == OpCode::TYPE_OF_CHECK ||
-           GetOpCode(gate) == OpCode::TYPE_OF);
+    // NOTICE-PGO: consider to delete this function in Part3, only primitive_type_check use,
+    // which is generate in the retype pass
+    ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
+}
+
+ParamType GateAccessor::GetParamType(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetParamType();
 }
 
 bool GateAccessor::IsConvertSupport(GateRef gate) const
@@ -488,25 +452,6 @@ ValueType GateAccessor::GetDstType(GateRef gate) const
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     ValuePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetDstType();
-}
-
-GateType GateAccessor::GetLeftType(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::TYPED_UNARY_OP ||
-           GetOpCode(gate) == OpCode::TYPED_BINARY_OP ||
-           GetOpCode(gate) == OpCode::TYPE_CONVERT);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    GatePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
-    return accessor.GetLeftType();
-}
-
-GateType GateAccessor::GetRightType(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP ||
-           GetOpCode(gate) == OpCode::TYPE_CONVERT);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    GatePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
-    return accessor.GetRightType();
 }
 
 uint32_t GateAccessor::GetFirstValue(GateRef gate) const
@@ -670,9 +615,6 @@ PGOTypeRef GateAccessor::TryGetPGOType(GateRef gate) const
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
         return gatePtr->GetJSBytecodeMetaData()->GetType();
-    }
-    if (op == OpCode::TYPED_BINARY_OP) {
-        return GetTypedBinaryType(gate);
     }
     return PGOTypeRef::NoneType();
 }
@@ -1997,5 +1939,47 @@ uint32_t GateAccessor::GetConstpoolId(GateRef gate) const
     ASSERT(GetOpCode(gate) == OpCode::GET_CONSTPOOL);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetOneParameterMetaData()->GetValue();
+}
+
+TypedBinOp GateAccessor::GetRevCompareOpForTypedBinOp(TypedBinOp op)
+{
+    switch (op) {
+        case TypedBinOp::TYPED_LESS:
+            return TypedBinOp::TYPED_GREATEREQ;
+        case TypedBinOp::TYPED_LESSEQ:
+            return TypedBinOp::TYPED_GREATER;
+        case TypedBinOp::TYPED_GREATER:
+            return TypedBinOp::TYPED_LESSEQ;
+        case TypedBinOp::TYPED_GREATEREQ:
+            return TypedBinOp::TYPED_LESS;
+        case TypedBinOp::TYPED_EQ:
+            return TypedBinOp::TYPED_NOTEQ;
+        case TypedBinOp::TYPED_NOTEQ:
+            return TypedBinOp::TYPED_EQ;
+        default:
+            UNREACHABLE();
+            return op;
+    }
+}
+
+TypedBinOp GateAccessor::GetSwapCompareOpForTypedBinOp(TypedBinOp op)
+{
+    switch (op) {
+        case TypedBinOp::TYPED_LESS:
+            return TypedBinOp::TYPED_GREATER;
+        case TypedBinOp::TYPED_LESSEQ:
+            return TypedBinOp::TYPED_GREATEREQ;
+        case TypedBinOp::TYPED_GREATER:
+            return TypedBinOp::TYPED_LESS;
+        case TypedBinOp::TYPED_GREATEREQ:
+            return TypedBinOp::TYPED_LESSEQ;
+        case TypedBinOp::TYPED_EQ:
+            return TypedBinOp::TYPED_EQ;
+        case TypedBinOp::TYPED_NOTEQ:
+            return TypedBinOp::TYPED_NOTEQ;
+        default:
+            UNREACHABLE();
+            return op;
+    }
 }
 }  // namespace panda::ecmascript::kungfu

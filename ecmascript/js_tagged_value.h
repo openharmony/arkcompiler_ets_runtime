@@ -516,6 +516,19 @@ public:
     bool IsJSFloat64Array() const;
     bool IsJSBigInt64Array() const;
     bool IsJSBigUint64Array() const;
+    bool IsSharedTypedArray() const;
+    bool IsJSSharedTypedArray() const;
+    bool IsJSSharedInt8Array() const;
+    bool IsJSSharedUint8Array() const;
+    bool IsJSSharedUint8ClampedArray() const;
+    bool IsJSSharedInt16Array() const;
+    bool IsJSSharedUint16Array() const;
+    bool IsJSSharedInt32Array() const;
+    bool IsJSSharedUint32Array() const;
+    bool IsJSSharedFloat32Array() const;
+    bool IsJSSharedFloat64Array() const;
+    bool IsJSSharedBigInt64Array() const;
+    bool IsJSSharedBigUint64Array() const;
     bool IsArguments() const;
     bool IsDate() const;
     bool IsBoundFunction() const;
@@ -542,6 +555,7 @@ public:
     bool IsStringIterator() const;
     bool IsArrayBuffer() const;
     bool IsSharedArrayBuffer() const;
+    bool IsSendableArrayBuffer() const;
 
     bool IsJSSetIterator() const;
     bool IsJSSharedSetIterator() const;
@@ -645,16 +659,6 @@ public:
     bool IsRegularObject() const;
     bool IsMachineCodeObject() const;
     bool IsClassInfoExtractor() const;
-    bool IsTSType() const;
-    bool IsTSObjectType() const;
-    bool IsTSClassType() const;
-    bool IsTSUnionType() const;
-    bool IsTSInterfaceType() const;
-    bool IsTSClassInstanceType() const;
-    bool IsTSFunctionType() const;
-    bool IsTSArrayType() const;
-    bool IsTSIteratorInstanceType() const;
-    bool IsTSNamespaceType() const;
 
     bool IsCjsExports() const;
     bool IsCjsModule() const;
@@ -667,12 +671,21 @@ public:
     bool IsStarExportEntry() const;
     bool IsResolvedBinding() const;
     bool IsResolvedIndexBinding() const;
+    bool IsResolvedRecordIndexBinding() const;
     bool IsResolvedRecordBinding() const;
     bool IsModuleNamespace() const;
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;
     bool IsSharedType() const;
+    bool IsJSSharedJSONValue() const;
+    bool IsJSSharedJSONFalse() const;
+    bool IsJSSharedJSONTrue() const;
+    bool IsJSSharedJSONString() const;
+    bool IsJSSharedJSONNull() const;
+    bool IsJSSharedJSONObject() const;
+    bool IsJSSharedJSONNumber() const;
+    bool IsJSSharedJSONArray() const;
 
     bool PUBLIC_API IsInSharedHeap() const;
     bool IsInSharedSweepableSpace() const;

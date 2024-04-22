@@ -35,7 +35,7 @@
 namespace panda::ecmascript {
 
 void JSSegments::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSSegments> &segments,
-                                     icu::BreakIterator* icuBreakIterator, const DeleteEntryPoint &callback)
+                                     icu::BreakIterator* icuBreakIterator, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -44,7 +44,7 @@ void JSSegments::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSSegments
     JSTaggedValue data = segments->GetIcuField();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuBreakIterator);
+        native->ResetExternalPointer(thread, icuBreakIterator);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuBreakIterator, callback);
@@ -52,7 +52,7 @@ void JSSegments::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSSegments
 }
 
 void JSSegments::SetUString(JSThread *thread, const JSHandle<JSSegments> &segments,
-                            icu::UnicodeString* icuUnicodeString, const DeleteEntryPoint &callback)
+                            icu::UnicodeString* icuUnicodeString, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -61,7 +61,7 @@ void JSSegments::SetUString(JSThread *thread, const JSHandle<JSSegments> &segmen
     JSTaggedValue data = segments->GetUnicodeString();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuUnicodeString);
+        native->ResetExternalPointer(thread, icuUnicodeString);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuUnicodeString, callback);

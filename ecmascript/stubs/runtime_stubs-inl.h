@@ -32,6 +32,7 @@
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
+#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
@@ -45,7 +46,6 @@
 #include "ecmascript/runtime.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #include "ecmascript/template_string.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
 using ArrayHelper = base::ArrayHelper;
@@ -887,7 +887,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSMutableHandle<JSTaggedValue> chc(thread, JSTaggedValue::Undefined());
 
     JSHandle<ConstantPool> cp(thread,
-        thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpoolHandle.GetTaggedValue()));
+        thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpoolHandle.GetTaggedValue()));
     JSTaggedValue val = cp->GetObjectFromCache(literalId);
     if (val.IsAOTLiteralInfo()) {
         JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
@@ -900,7 +900,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
+    auto literalLength = arrayHandle->GetLength();
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle, literalLength);
 
     if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
         classLiteral->SetIsAOTUsed(true);
@@ -947,9 +948,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     auto literalLength = arrayHandle->GetLength();
     // fieldTypeId is the last element in literal buffer
     auto fieldTypeId = static_cast<uint32_t>(arrayHandle->Get(literalLength - 1).GetInt());
-    arrayHandle->Trim(thread, literalLength - 1);
+    // Don't trim array, because define class maybe called on muilt-time in the same vm or diferrent vm
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle,
+                                                           literalLength - 1, ClassKind::SENDABLE);
 
     JSHandle<TaggedArray> fieldTypeArray = ConstantPool::GetFieldLiteral(thread, constpoolHandle, fieldTypeId, entry);
     JSHandle<TaggedArray> staticFieldArray = SendableClassDefiner::ExtractStaticFieldTypeArray(thread, fieldTypeArray);
@@ -965,8 +967,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
 
     uint32_t arrayLength = fieldTypeArray->GetLength();
     auto instanceFieldNums = static_cast<uint32_t>(fieldTypeArray->Get(arrayLength - 1).GetInt());
-    fieldTypeArray->Trim(thread, instanceFieldNums * 2); // 2: key-type
-    SendableClassDefiner::DefineSendableInstanceHClass(thread, fieldTypeArray, cls, base);
+    // Don't trim array, because define class maybe called on muilt-time in the same vm or diferrent vm
+    uint32_t instanceLength = instanceFieldNums * 2;  // 2: key and value
+    ASSERT(instanceLength < arrayLength);
+    SendableClassDefiner::DefineSendableInstanceHClass(thread, fieldTypeArray, instanceLength, cls, base);
     return cls.GetTaggedValue();
 }
 
@@ -1182,6 +1186,8 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
     if (genObj->IsGeneratorObject()) {
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
+        // set TaskInfo for TaskPool
+        generatorObjectHandle->SetTaskInfo(thread->GetTaskInfo());
         // save stack, should copy cur_frame, function execute over will free cur_frame
         SaveFrameToContext(thread, genContextHandle);
 
@@ -1471,14 +1477,14 @@ void RuntimeStubs::RuntimeThrowPatternNonCoercible(JSThread *thread)
 {
     JSHandle<EcmaString> msg(thread->GlobalConstants()->GetHandledObjNotCoercibleString());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, false).GetTaggedValue());
 }
 
 void RuntimeStubs::RuntimeThrowDeleteSuperProperty(JSThread *thread)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> info = factory->NewFromASCII("Can not delete super property");
-    JSHandle<JSObject> errorObj = factory->NewJSError(base::ErrorType::REFERENCE_ERROR, info);
+    JSHandle<JSObject> errorObj = factory->NewJSError(base::ErrorType::REFERENCE_ERROR, info,  false);
     THROW_NEW_ERROR_AND_RETURN(thread, errorObj.GetTaggedValue());
 }
 
@@ -1488,7 +1494,8 @@ void RuntimeStubs::RuntimeThrowUndefinedIfHole(JSThread *thread, const JSHandle<
     JSHandle<EcmaString> info = factory->NewFromASCII(" is not initialized");
 
     JSHandle<EcmaString> msg = factory->ConcatFromString(obj, info);
-    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread,
+                               factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, false).GetTaggedValue());
 }
 
 void RuntimeStubs::RuntimeThrowIfNotObject(JSThread *thread)
@@ -1503,7 +1510,7 @@ void RuntimeStubs::RuntimeThrowConstAssignment(JSThread *thread, const JSHandle<
     JSHandle<EcmaString> info = factory->NewFromASCII("Assignment to const variable ");
 
     JSHandle<EcmaString> msg = factory->ConcatFromString(info, value);
-    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, false).GetTaggedValue());
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdGlobalRecord(JSThread *thread, JSTaggedValue key)
@@ -1557,7 +1564,7 @@ JSTaggedValue RuntimeStubs::RuntimeThrowReferenceError(JSThread *thread, const J
     JSHandle<EcmaString> info = factory->NewFromUtf8(desc);
     JSHandle<EcmaString> msg = factory->ConcatFromString(propName, info);
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread,
-                                     factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg).GetTaggedValue(),
+                                     factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, false).GetTaggedValue(),
                                      JSTaggedValue::Exception());
 }
 
@@ -2121,7 +2128,8 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
     JSTaggedValue val = constpoolHandle->GetObjectFromCache(methodId);
     if (val.IsAOTLiteralInfo()) {
-        JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
+        JSTaggedValue unsharedCp =
+            thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
         JSHandle<ConstantPool> unsharedCpHandle(thread, unsharedCp);
         val = unsharedCpHandle->GetObjectFromCache(methodId);
         JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
@@ -2472,6 +2480,20 @@ JSTaggedValue RuntimeStubs::RuntimeLdBigInt(JSThread *thread, const JSHandle<JST
     return JSTaggedValue::ToBigInt(thread, numberBigInt);
 }
 
+JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsIntN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint)
+{
+    auto biginteger = JSHandle<BigInt>(thread, bigint);
+    JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    return BigInt::AsintN(thread, bitness, biginteger);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsUintN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint)
+{
+    auto biginteger = JSHandle<BigInt>(thread, bigint);
+    JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    return BigInt::AsUintN(thread, bitness, biginteger);
+}
+
 JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -2591,6 +2613,8 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
 
     if (genObj->IsGeneratorObject()) {
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
+        // set TaskInfo for TaskPool
+        generatorObjectHandle->SetTaskInfo(thread->GetTaskInfo());
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
             generatorObjectHandle->SetGeneratorState(JSGeneratorState::SUSPENDED_YIELD);
@@ -2651,7 +2675,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructProxy(JSThread *thread, JSHandle<
     if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor: handler is null", JSTaggedValue::Exception());
     }
-    ASSERT(handler->IsJSObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> target(thread, ctor->GetTarget());
 
     // 5.Let trap be GetMethod(handler, "construct").
@@ -3019,7 +3043,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
     }
 
     JSTaggedValue cp = thread->GetCurrentEcmaContext()->
-        FindUnsharedConstpool(handleConstpool.GetTaggedValue());
+        FindOrCreateUnsharedConstpool(handleConstpool.GetTaggedValue());
     JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(
         thread, JSHandle<ConstantPool>(thread, cp), literalId, entry);
 

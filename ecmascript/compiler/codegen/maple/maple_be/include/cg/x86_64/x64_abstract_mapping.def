@@ -113,16 +113,24 @@ DEFINE_MAPPING(abstract::MOP_zext_rr_64_32,     x64::MOP_movl_r_r)
 DEFINE_MAPPING(abstract::MOP_sext_rr_64_32,     x64::MOP_movslq_r_r)
 
 /* Floating CvtOp int2float */
-DEFINE_MAPPING(abstract::MOP_cvt_fr_u64,    x64::MOP_cvtsi2sdq_r)
-DEFINE_MAPPING(abstract::MOP_cvt_fr_u32,    x64::MOP_cvtsi2sdq_r)
-DEFINE_MAPPING(abstract::MOP_cvt_fr_i32,    x64::MOP_cvtsi2sdl_r)
-DEFINE_MAPPING(abstract::MOP_cvt_fr_i64,    x64::MOP_cvtsi2sdq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_f64_u64,    x64::MOP_cvtsi2sdq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_f64_u32,    x64::MOP_cvtsi2sdq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_f32_u64,    x64::MOP_cvtsi2ssq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_f32_u32,    x64::MOP_cvtsi2ssq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_f32_i64,    x64::MOP_cvtsi2ssq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_f32_i32,    x64::MOP_cvtsi2ssl_r)
+DEFINE_MAPPING(abstract::MOP_cvt_f64_i64,    x64::MOP_cvtsi2sdq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_f64_i32,    x64::MOP_cvtsi2sdl_r)
 
 /* Floating CvtOp float2int */
-DEFINE_MAPPING(abstract::MOP_cvt_rf_u32,    x64::MOP_cvttss2siq_r)
-DEFINE_MAPPING(abstract::MOP_cvt_rf_u64,    x64::MOP_cvttsd2siq_r)
-DEFINE_MAPPING(abstract::MOP_cvt_rf_i32,    x64::MOP_cvttss2sil_r)
-DEFINE_MAPPING(abstract::MOP_cvt_rf_i64,    x64::MOP_cvttsd2siq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_u32_f32,    x64::MOP_cvttss2siq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_u64_f64,    x64::MOP_cvttsd2siq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_i32_f32,    x64::MOP_cvttss2sil_r)
+DEFINE_MAPPING(abstract::MOP_cvt_i64_f64,    x64::MOP_cvttsd2siq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_i32_f64,    x64::MOP_cvttsd2sil_r)
+DEFINE_MAPPING(abstract::MOP_cvt_i32_f32,    x64::MOP_cvttss2sil_r)
+DEFINE_MAPPING(abstract::MOP_cvt_u32_f64,    x64::MOP_cvttsd2siq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_u32_f32,    x64::MOP_cvttss2siq_r)
 
 /* Floating CvtOp float2float */
 DEFINE_MAPPING(abstract::MOP_cvt_ff_64_32,   x64::MOP_cvtss2sd_r)

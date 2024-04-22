@@ -23,28 +23,35 @@ let len:number = 1;
 
 // Check without params
 len = Math.acos();
+//aot: [trace] aot inline builtin: Math.acos, caller function name:func_main_0@builtinMathAcos
 print(len); //: NaN
 
 len = Math.acos(NaN);
+//aot: [trace] aot inline builtin: Math.acos, caller function name:func_main_0@builtinMathAcos
 print(len); //: NaN
 
 // Check with single param, in |x| <= 1
 len = Math.acos(0); // PI / 2
+//aot: [trace] aot inline builtin: Math.acos, caller function name:func_main_0@builtinMathAcos
 print(len); //: 1.5707963267948966
 
 // Check with single param, in |x| <= 1
 len = Math.acos(-1); // PI
+//aot: [trace] aot inline builtin: Math.acos, caller function name:func_main_0@builtinMathAcos
 print(len); //: 3.141592653589793
 
 // Check with single param, in |x| <= 1
 len = Math.acos(1);
+//aot: [trace] aot inline builtin: Math.acos, caller function name:func_main_0@builtinMathAcos
 print(len); //: 0
 
 // Check with single param, in |x| > 1
 len = Math.acos(10);
+//aot: [trace] aot inline builtin: Math.acos, caller function name:func_main_0@builtinMathAcos
 print(len); //: NaN
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_acos = Math.acos
 Math.acos = replace
 len = Math.acos(111);
@@ -52,6 +59,5 @@ print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.acos = true_acos
-//aot: [trace] Check Type: NotNumber1
 len = Math.acos("NaN"); // deopt
 print(len); //: NaN

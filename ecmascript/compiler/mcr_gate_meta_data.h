@@ -204,100 +204,15 @@ private:
     bool noGC_;
 };
 
-class TypedCallTargetCheckMetaData : public OneParameterMetaData {
-public:
-    TypedCallTargetCheckMetaData(uint32_t valuesIn, uint64_t value, TypedCallTargetCheckOp checkOp)
-        : OneParameterMetaData(OpCode::TYPED_CALLTARGETCHECK_OP, GateFlags::CHECKABLE, 1, 1, valuesIn, value),
-        checkOp_(checkOp)
-    {
-        SetKind(GateMetaData::Kind::TYPED_CALLTARGETCHECK_OP);
-    }
-
-    bool equal(const GateMetaData &other) const override
-    {
-        if (!OneParameterMetaData::equal(other)) {
-            return false;
-        }
-        auto cast_other =
-            static_cast<const TypedCallTargetCheckMetaData *>(&other);
-        if (checkOp_ == cast_other->checkOp_) {
-            return true;
-        }
-        return false;
-    }
-
-    static const TypedCallTargetCheckMetaData* Cast(const GateMetaData* meta)
-    {
-        meta->AssertKind(GateMetaData::Kind::TYPED_CALLTARGETCHECK_OP);
-        return static_cast<const TypedCallTargetCheckMetaData*>(meta);
-    }
-
-    TypedCallTargetCheckOp GetTypedCallTargetCheckOp() const
-    {
-        return checkOp_;
-    }
-private:
-    TypedCallTargetCheckOp checkOp_;
-};
-
-class TypedBinaryMetaData : public OneParameterMetaData {
-public:
-    TypedBinaryMetaData(uint64_t value, TypedBinOp binOp, PGOTypeRef type)
-        : OneParameterMetaData(OpCode::TYPED_BINARY_OP, GateFlags::NO_WRITE, 1, 1, 2, value), // 2: valuesIn
-        binOp_(binOp), type_(type)
-    {
-        SetKind(GateMetaData::Kind::TYPED_BINARY_OP);
-    }
-
-    bool equal(const GateMetaData &other) const override
-    {
-        if (!OneParameterMetaData::equal(other)) {
-            return false;
-        }
-        auto cast_other = static_cast<const TypedBinaryMetaData *>(&other);
-        if (binOp_ == cast_other->binOp_ && type_ == cast_other->type_) {
-            return true;
-        }
-        return false;
-    }
-
-    static const TypedBinaryMetaData* Cast(const GateMetaData* meta)
-    {
-        meta->AssertKind(GateMetaData::Kind::TYPED_BINARY_OP);
-        return static_cast<const TypedBinaryMetaData*>(meta);
-    }
-
-    TypedBinOp GetTypedBinaryOp() const
-    {
-        return binOp_;
-    }
-
-    PGOTypeRef GetType() const
-    {
-        return type_;
-    }
-
-    std::string Str() const
-    {
-        return GateMetaData::Str(binOp_);
-    }
-
-    static TypedBinOp GetRevCompareOp(TypedBinOp op);
-    static TypedBinOp GetSwapCompareOp(TypedBinOp op);
-private:
-    TypedBinOp binOp_;
-    PGOTypeRef type_;
-};
-
 class TypedUnaryAccessor {
 public:
     // type bits shift
     static constexpr int OPRAND_TYPE_BITS = 32;
     explicit TypedUnaryAccessor(uint64_t value) : bitField_(value) {}
 
-    GateType GetTypeValue() const
+    ParamType GetParamType() const
     {
-        return GateType(TypedValueBits::Get(bitField_));
+        return ParamType(TypedValueBits::Get(bitField_));
     }
 
     TypedUnOp GetTypedUnOp() const
@@ -305,10 +220,9 @@ public:
         return TypedUnOpBits::Get(bitField_);
     }
 
-    static uint64_t ToValue(GateType typeValue, TypedUnOp unaryOp)
+    static uint64_t ToValue(ParamType paramType, TypedUnOp unaryOp)
     {
-        return TypedValueBits::Encode(typeValue.Value())
-            | TypedUnOpBits::Encode(unaryOp);
+        return TypedValueBits::Encode(paramType.Value()) | TypedUnOpBits::Encode(unaryOp);
     }
 
 private:
@@ -323,14 +237,10 @@ public:
     // type bits shift
     static constexpr int OPRAND_TYPE_BITS = 32;
     explicit TypedBinaryAccessor(uint64_t value) : bitField_(value) {}
-    explicit TypedBinaryAccessor(GateType gate, TypedBinOp binOp)
-    {
-        bitField_ = TypedValueBits::Encode(gate.Value()) | TypedBinOpBits::Encode(binOp);
-    }
 
-    GateType GetTypeValue() const
+    ParamType GetParamType() const
     {
-        return GateType(TypedValueBits::Get(bitField_));
+        return ParamType(TypedValueBits::Get(bitField_));
     }
 
     TypedBinOp GetTypedBinOp() const
@@ -338,14 +248,36 @@ public:
         return TypedBinOpBits::Get(bitField_);
     }
 
-    uint64_t ToValue() const
+    static uint64_t ToValue(ParamType operandType, TypedBinOp binOp)
     {
-        return bitField_;
+        return TypedValueBits::Encode(operandType.Value()) | TypedBinOpBits::Encode(binOp);
     }
 
 private:
     using TypedValueBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
     using TypedBinOpBits = TypedValueBits::NextField<TypedBinOp, OPRAND_TYPE_BITS>;
+
+    uint64_t bitField_;
+};
+
+class TypedCallTargetCheckAccessor {
+public:
+    // type bits shift
+    static constexpr int CALLTARGETCHECK_OP_BITS = 32;
+    explicit TypedCallTargetCheckAccessor(uint64_t value) : bitField_(value) {}
+
+    TypedCallTargetCheckOp GetCallTargetCheckOp() const
+    {
+        return CallTargetCheckOpBits::Get(bitField_);
+    }
+
+    static uint64_t ToValue(TypedCallTargetCheckOp op)
+    {
+        return CallTargetCheckOpBits::Encode(op);
+    }
+
+private:
+    using CallTargetCheckOpBits = panda::BitField<TypedCallTargetCheckOp, 0, CALLTARGETCHECK_OP_BITS>;
 
     uint64_t bitField_;
 };
@@ -510,9 +442,9 @@ public:
     static constexpr int JUMP_OP_BITS = 8;
     explicit TypedJumpAccessor(uint64_t value) : bitField_(value) {}
 
-    GateType GetTypeValue() const
+    ParamType GetParamType() const
     {
-        return GateType(TypedValueBits::Get(bitField_));
+        return ParamType(TypedValueBits::Get(bitField_));
     }
 
     TypedJumpOp GetTypedJumpOp() const
@@ -530,9 +462,9 @@ public:
         return FalseWeightBits::Get(bitField_);
     }
 
-    static uint64_t ToValue(GateType typeValue, TypedJumpOp jumpOp, uint32_t weight)
+    static uint64_t ToValue(ParamType paramType, TypedJumpOp jumpOp, uint32_t weight)
     {
-        return TypedValueBits::Encode(typeValue.Value())
+        return TypedValueBits::Encode(paramType.Value())
             | TypedJumpOpBits::Encode(jumpOp)
             | WeightBits::Encode(weight);
     }

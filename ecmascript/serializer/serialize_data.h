@@ -45,7 +45,6 @@ enum class EncodeFlag : uint8_t {
     ARRAY_BUFFER,
     TRANSFER_ARRAY_BUFFER,
     SHARED_ARRAY_BUFFER,
-    METHOD,
     NATIVE_BINDING_OBJECT,
     JS_ERROR,
     JS_REG_EXP,
@@ -345,7 +344,7 @@ public:
     {
         auto manager = JSSharedMemoryManager::GetInstance();
         for (auto iter = sharedArrayBufferSet_.begin(); iter != sharedArrayBufferSet_.end(); iter++) {
-            JSSharedMemoryManager::RemoveSharedMemory(reinterpret_cast<void *>(*iter), manager);
+            JSSharedMemoryManager::RemoveSharedMemory(thread_->GetEnv(), reinterpret_cast<void *>(*iter), manager);
         }
         sharedArrayBufferSet_.clear();
     }

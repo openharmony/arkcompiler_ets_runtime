@@ -125,8 +125,6 @@ class ArkTest():
         self.ohdir = os.path.abspath(f'{self.self_dir}/../../../..')
         self.product = PRODUCT_LIST[TARGET_PRODUCT_MAP['x64']]
         self.builtin = ''
-        if args.builtin:
-            self.builtin = f'{self.ohdir}/arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d'
         self.arm64 = False
         if args.step == 'hap':
             self.arm64 = True
@@ -341,7 +339,7 @@ class ArkTest():
             if self.frontend == self.ts2abc:
                 cmd = f'{self.ts2abc} {self.builtin}.ts -m --merge-abc -q -b'
             elif self.frontend == self.es2abc:
-                cmd = (f'{self.es2abc} --module --merge-abc --extension=ts --type-extractor --type-dts-builtin '
+                cmd = (f'{self.es2abc} --module --merge-abc --extension=ts '
                        f'--output={self.builtin}.abc {self.builtin}.ts')
             print(cmd)
             os.system(cmd)

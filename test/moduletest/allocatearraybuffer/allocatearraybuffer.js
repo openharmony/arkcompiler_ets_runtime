@@ -39,3 +39,19 @@ for (let i = 0; i < v32.length; i++) {
 }
 const v36 = this.Atomics;
 print(v36.and(v32, this, v36));
+
+function f() {
+    let a1 = new ArrayBuffer(1025*1025*1025);
+    let a2 = new ArrayBuffer(1025*1025*1025);
+    let a3 = new ArrayBuffer(1025*1025*1025);
+    let a4 = new ArrayBuffer(1025*1025*1025);
+    try {
+        let arr = new ArrayBuffer(10);
+    } catch (error) {
+        print(error);
+    }
+}
+f();
+ArkTools.forceFullGC();
+f();
+ArkTools.forceFullGC();

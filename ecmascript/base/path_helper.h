@@ -32,6 +32,7 @@ public:
     static constexpr char DOUBLE_POINT_TAG[] = "..";
     static constexpr char DOUBLE_SLASH_TAG[] = "//";
     static constexpr char NAME_SPACE_TAG = '@';
+    static constexpr char NORMALIZED_OHMURL_TAG = '&';
     static constexpr char POINT_STRING_TAG[] = ".";
     static constexpr char POINT_TAG = '.';
     static constexpr char SLASH_TAG = '/';
@@ -50,6 +51,17 @@ public:
             return;
         }
         moduleName.erase(pos, moduleName.size() - pos);
+    }
+
+    /*
+     * Before: moduleName@nameSpace
+     * After:  nameSpace
+     */
+    inline static CString GetHarName(CString &moduleName)
+    {
+        size_t pos = moduleName.find(NAME_SPACE_TAG);
+        ASSERT(pos != CString::npos);
+        return moduleName.substr(pos);
     }
 
     /*

@@ -25,27 +25,27 @@ public:
         : thread_(vm->GetJSThread()), aotSnapshot_(vm) {}
     ~PGOTypeManager() = default;
 
-    static int32_t GetConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
-
     void Iterate(const RootVisitor &v);
 
     // common
-    JSThread* GetJSThread()
+    uint32_t PUBLIC_API GetConstantPoolIDByMethodOffset(const uint32_t methodOffset) const;
+
+    JSTaggedValue PUBLIC_API GetConstantPoolByMethodOffset(const uint32_t methodOffset) const;
+
+    JSTaggedValue PUBLIC_API GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const;
+
+    inline JSThread* GetJSThread()
     {
         return thread_;
     }
 
-    void PUBLIC_API SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
-
-    JSHandle<JSTaggedValue> GetCurConstantPool() const
+    void PUBLIC_API SetCurCompilationFile(const JSPandaFile *jsPandaFile)
     {
-        return JSHandle<JSTaggedValue>(uintptr_t(&curCP_));
+        curJSPandaFile_ = jsPandaFile;
     }
 
     // snapshot
     void PUBLIC_API InitAOTSnapshot(uint32_t compileFilesCount);
-    void GenArrayInfo();
-    void GenConstantIndexInfo();
 
     AOTSnapshot& GetAOTSnapshot()
     {
@@ -69,11 +69,11 @@ public:
     ElementsKind PUBLIC_API GetElementsKindByEntityId(panda_file::File::EntityId id);
 
     // hclass
-    void RecordHClass(ProfileType rootType, ProfileType childType, JSTaggedType hclass);
+    void RecordHClass(ProfileType rootType, ProfileType childType, JSTaggedType hclass, bool update = false);
 
     uint32_t PUBLIC_API GetHClassIndexByProfileType(ProfileTyper type) const;
 
-    JSTaggedValue PUBLIC_API QueryHClass(ProfileType rootType, ProfileType childType) const;
+    JSTaggedValue PUBLIC_API QueryHClass(ProfileType rootType, ProfileType childType) ;
     ElementsKind QueryElementKind(ProfileType rootType);
 
     inline ProfileType GetRootIdByLocation(const PGOTypeLocation &loc)
@@ -103,10 +103,18 @@ public:
     {
         locToElmsKindMap_.emplace(loc, kind);
     }
-
+    inline void ClearHCInfoLocal()
+    {
+        hclassInfoLocal_.clear();
+    }
+public:
+    JSHandle<TaggedArray> GenJITHClassInfo();
+    void GenJITHClassInfoLocal();
 private:
     // snapshot
     void GenHClassInfo();
+    void GenArrayInfo();
+    void GenConstantIndexInfo();
 
     // opt to std::unordered_map
     using TransIdToHClass = std::map<ProfileType, JSTaggedType>;
@@ -123,6 +131,11 @@ private:
     std::map<panda_file::File::EntityId, ElementsKind> idElmsKindMap_ {};
     AOTSnapshot aotSnapshot_;
 
+    // Since there is only one PGOTypeManager instance during compilation,
+    // the currently compiled jspandafile needs to be set to satisfy multi-file compilation.
+    const JSPandaFile *curJSPandaFile_ {nullptr};
+    Mutex mutex_;
+    CVector<JSTaggedValue> hclassInfoLocal_ {};
     // When the passmanager iterates each method, the curCP_ and curCPID_ should be updated,
     // so that subsequent passes (type_infer, ts_hcr_lowering) can obtain the correct constpool.
     JSTaggedValue curCP_ {JSTaggedValue::Hole()};

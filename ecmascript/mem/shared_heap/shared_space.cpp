@@ -34,6 +34,7 @@ SharedSparseSpace::SharedSparseSpace(SharedHeap *heap,
       sHeap_(heap),
       liveObjectSize_(0)
 {
+    triggerLocalFullMarkLimit_ = maximumCapacity * LIVE_OBJECT_SIZE_RATIO;
     allocator_ = new FreeListAllocator(heap);
 }
 
@@ -63,6 +64,8 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
 {
     ASSERT(thread->IsInRunningStateOrProfiling());
     thread->CheckSafepointIfSuspended();
+    // jit thread no heap
+    allowGC = allowGC && (!thread->IsJitThread());
     if (allowGC) {
         auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
         localHeap->TryTriggerFullMarkBySharedSize(size);
@@ -74,7 +77,7 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
     // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
-    if (allowGC && sHeap_->CheckAndTriggerGC(thread)) {
+    if (allowGC && sHeap_->CheckAndTriggerSharedGC(thread)) {
         object = TryAllocate(thread, size);
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
@@ -110,6 +113,7 @@ uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
 {
     RuntimeLockHolder lock(thread, allocateLock_);
     // In order to avoid expand twice by different threads, try allocate first.
+    CheckAndTriggerLocalFullMark(thread);
     auto object = allocator_->Allocate(size);
     if (object == 0 && Expand(thread)) {
         object = allocator_->Allocate(size);
@@ -165,10 +169,28 @@ uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(JSThread *thread, si
     return allocator_->Allocate(size);
 }
 
+void SharedSparseSpace::ReclaimRegions()
+{
+    EnumerateReclaimRegions([this](Region *region) {
+        region->DeleteCrossRegionRSet();
+        region->DeleteOldToNewRSet();
+        region->DeleteLocalToShareRSet();
+        region->DeleteSweepingRSet();
+        region->DestroyFreeObjectSets();
+        heapRegionAllocator_->FreeRegion(region, 0);
+    });
+    reclaimRegionList_.clear();
+}
+
 void SharedSparseSpace::PrepareSweeping()
 {
     liveObjectSize_ = 0;
     EnumerateRegions([this](Region *current) {
+        if (current->AliveObject() == 0) {
+            RemoveRegion(current);
+            reclaimRegionList_.emplace(current);
+            return;
+        }
         IncreaseLiveObjectSize(current->AliveObject());
         current->ResetWasted();
         AddSweepingRegion(current);
@@ -343,6 +365,13 @@ void SharedSparseSpace::InvokeAllocationInspector(Address object, size_t size, s
     allocationCounter_.AdvanceAllocationInspector(alignedSize);
 }
 
+void SharedSparseSpace::CheckAndTriggerLocalFullMark(JSThread *thread)
+{
+    if (liveObjectSize_ >= triggerLocalFullMarkLimit_) {
+        sHeap_->TryTriggerLocalConcurrentMarking(thread);
+    }
+}
+
 SharedNonMovableSpace::SharedNonMovableSpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SharedSparseSpace(heap, MemSpaceType::SHARED_NON_MOVABLE, initialCapacity, maximumCapacity)
 {
@@ -395,6 +424,7 @@ SharedHugeObjectSpace::SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator
                                              size_t initialCapacity, size_t maximumCapacity)
     : Space(heap, heapRegionAllocator, MemSpaceType::SHARED_HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity)
 {
+    triggerLocalFullMarkLimit_ = maximumCapacity * HUGE_OBJECT_SIZE_RATIO;
 }
 
 
@@ -417,8 +447,7 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize)
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     InvokeAllocationInspector(region->GetBegin(), objectSize);
 #endif
-    auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-    localHeap->TryTriggerFullMarkBySharedSize(alignedSize);
+    CheckAndTriggerLocalFullMark(thread, alignedSize);
     return region->GetBegin();
 }
 
@@ -470,5 +499,17 @@ void SharedHugeObjectSpace::InvokeAllocationInspector(Address object, size_t obj
         allocationCounter_.InvokeAllocationInspector(object, objectSize, objectSize);
     }
     allocationCounter_.AdvanceAllocationInspector(objectSize);
+}
+
+void SharedHugeObjectSpace::CheckAndTriggerLocalFullMark(JSThread *thread, size_t size)
+{
+    if (committedSize_ >= triggerLocalFullMarkLimit_) {
+        reinterpret_cast<SharedHeap*>(heap_)->TryTriggerLocalConcurrentMarking(thread);
+    } else {
+        auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+        if (!thread->IsJitThread()) {
+            localHeap->TryTriggerFullMarkBySharedSize(size);
+        }
+    }
 }
 }  // namespace panda::ecmascript

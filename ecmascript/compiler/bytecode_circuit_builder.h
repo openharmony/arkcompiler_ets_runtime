@@ -17,27 +17,21 @@
 #define ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H
 
 #include <algorithm>
-#include <numeric>
 #include <tuple>
 #include <utility>
 #include <vector>
-#include <variant>
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/frame_states.h"
-#include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_recorder.h"
-#include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 
 namespace panda::ecmascript::kungfu {
 struct ExceptionItem {
@@ -177,7 +171,8 @@ struct BytecodeRegion {
     {
     }
 
-    BytecodeIterator &GetBytecodeIterator() {
+    BytecodeIterator &GetBytecodeIterator()
+    {
         return bytecodeIterator_;
     }
 
@@ -216,23 +211,19 @@ public:
     BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
                            const MethodLiteral *methodLiteral,
                            const MethodPcInfo &methodPCInfo,
-                           TSManager *tsManager,
                            Circuit *circuit,
                            Bytecodes *bytecodes,
-                           bool hasTypes,
                            bool enableLog,
                            bool enableTypeLowering,
                            std::string name,
                            const CString &recordName,
                            PGOProfilerDecoder *decoder,
                            bool isInline,
-                           bool enableOptTrackField)
-        : tsManager_(tsManager), circuit_(circuit), graph_(circuit->chunk()), file_(jsPandaFile),
+                           JITProfiler* jitProfiler = nullptr)
+        : circuit_(circuit), graph_(circuit->chunk()), file_(jsPandaFile),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
-          typeRecorder_(jsPandaFile, method_, tsManager, recordName, decoder, methodPCInfo, bytecodes,
-            enableOptTrackField),
           pgoTypeRecorder_(*decoder, jsPandaFile, method_->GetMethodId().GetOffset()),
-          hasTypes_(hasTypes), enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
+          enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, circuit, methodLiteral),
           methodName_(name), recordName_(recordName),
@@ -243,6 +234,9 @@ public:
           isInline_(isInline),
           methodId_(method_->GetMethodId().GetOffset())
     {
+        if (jitProfiler != nullptr) {
+            pgoTypeRecorder_.InitMap(jitProfiler);
+        }
     }
     ~BytecodeCircuitBuilder() = default;
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
@@ -336,11 +330,6 @@ public:
     {
         suspendAndResumeGates_.emplace_back(gate);
     };
-
-    inline bool HasTypes() const
-    {
-        return hasTypes_;
-    }
 
     template <class Callback>
     void EnumerateBlock(BytecodeRegion &bb, const Callback &cb)
@@ -517,16 +506,6 @@ public:
         return bbId == 1;
     }
 
-    TSManager *GetTSManager() const
-    {
-        return tsManager_;
-    }
-
-    const TypeRecorder *GetTypeRecorder() const
-    {
-        return &typeRecorder_;
-    }
-
     const PGOTypeRecorder *GetPGOTypeRecorder() const
     {
         return &pgoTypeRecorder_;
@@ -625,12 +604,12 @@ private:
     void PrintDefsitesInfo(const std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
     void BuildRegionInfo();
     void BuildFrameArgs();
+    void RemoveIfInRpoList(BytecodeRegion *bb);
     BytecodeRegion &RegionAt(size_t i)
     {
         return *graph_[i];
     }
 
-    TSManager *tsManager_;
     Circuit *circuit_;
     std::vector<std::vector<GateRef>> byteCodeToJSGates_;
     std::unordered_map<GateRef, size_t> jsGatesToByteCode_;
@@ -639,10 +618,8 @@ private:
     const MethodLiteral *method_ {nullptr};
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;
-    TypeRecorder typeRecorder_;
     PGOTypeRecorder pgoTypeRecorder_;
     int32_t osrOffset_ {MachineCode::INVALID_OSR_OFFSET};
-    bool hasTypes_ {false};
     bool enableLog_ {false};
     bool enableTypeLowering_ {false};
     std::vector<GateRef> suspendAndResumeGates_ {};

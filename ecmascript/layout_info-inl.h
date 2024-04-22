@@ -109,6 +109,11 @@ inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cl
         return -1;
     }
 
+    // jit compile thread not use cache
+    if (thread->IsJitThread()) {
+        return BinarySearch(key, propertiesNumber);
+    }
+
     PropertiesCache *cache = thread->GetPropertiesCache();
     int index = cache->Get(cls, key);
     if (index == PropertiesCache::NOT_FOUND) {

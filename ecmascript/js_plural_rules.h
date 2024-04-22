@@ -55,16 +55,16 @@ public:
     icu::number::LocalizedNumberFormatter *GetIcuNumberFormatter() const;
 
     static void SetIcuNumberFormatter(JSThread *thread, const JSHandle<JSPluralRules> &pluralRules,
-        const icu::number::LocalizedNumberFormatter &icuNF, const DeleteEntryPoint &callback);
+        const icu::number::LocalizedNumberFormatter &icuNF, const NativePointerCallback &callback);
 
-    static void FreeIcuNumberFormatter(void *pointer, [[maybe_unused]] void* hint = nullptr);
+    static void FreeIcuNumberFormatter(void *env, void *pointer, void* hint = nullptr);
 
     icu::PluralRules *GetIcuPluralRules() const;
 
     static void SetIcuPluralRules(JSThread *thread, const JSHandle<JSPluralRules> &pluralRules,
-        const icu::PluralRules &icuPR, const DeleteEntryPoint &callback);
+        const icu::PluralRules &icuPR, const NativePointerCallback &callback);
 
-    static void FreeIcuPluralRules(void *pointer, [[maybe_unused]] void* hint = nullptr);
+    static void FreeIcuPluralRules(void *env, void *pointer, void* hint = nullptr);
 
     static JSHandle<TaggedArray> BuildLocaleSet(JSThread *thread, const std::set<std::string> &icuAvailableLocales);
 

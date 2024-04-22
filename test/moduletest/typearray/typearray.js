@@ -302,3 +302,277 @@ print(t11[v2]);
 const v3 = String.fromCharCode(564654156456456465465)
 const v5 = new Int16Array(true);
 print(v5["join"](v3));
+
+// Test case for filter()
+let arr;
+var calls = 0;
+function TestTypedArrayFilter(e) {
+    arr = new e([-5, 10, 20, 30, 40, 50, 60.6]);
+}
+
+function TestTypedArrayFilterFunc(element, index, array) {
+    return element >= 10;
+}
+
+TestTypedArrayFilter(Int8Array);
+print(arr.filter(TestTypedArrayFilterFunc));
+print(calls);
+
+Object.defineProperty(Int8Array.prototype, "constructor", {
+    get: function () {
+        calls++;
+    }
+});
+
+TestTypedArrayFilter(Int8Array);
+print(arr.filter(TestTypedArrayFilterFunc));
+print(calls);
+
+// test case for some()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function (ctor, i) {
+if (testTypeArraySome(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArraySome(ctor) {
+    let obj = new ctor([-1, 0, 2, 5, 8]);
+    return obj.some((element, index, array) => element > 5);
+}
+
+// Test case for every()
+let arr1_every = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+function testEvery_true(ele) {
+    return ele > 0;
+}
+function testEvery_false(ele) {
+    return ele > 10;
+}
+print(arr1_every.every(testEvery_true));
+print(arr1_every.every(testEvery_false));
+
+let arr2_every = new Int16Array();
+print(arr2_every.every(testEvery_false));
+let arr3_every = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr3_every.every(testEvery_true));
+
+// Test case for reduce()
+let arr1_reduce = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+function test_Reduce(a, b){
+    return a+b;
+}
+print(arr1_reduce.reduce(test_Reduce));
+print(arr1_reduce.reduce(test_Reduce, 10));
+let arr2_reduce = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr2_reduce.reduce(test_Reduce));
+
+// Test case for reduceRight()
+let arr1_reduceRight = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+function test_ReduceRight(a, b){
+    return a+b;
+}
+print(arr1_reduceRight.reduceRight(test_ReduceRight));
+print(arr1_reduceRight.reduceRight(test_ReduceRight, 10));
+let arr2_reduceRight = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr2_reduceRight.reduceRight(test_ReduceRight));
+
+// Test case for copyWithin()
+let arr1_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr1_copyWithin.copyWithin(-10, 1, 100));
+let arr2_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr2_copyWithin.copyWithin(-3, -100, -1));
+let arr3_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr3_copyWithin.copyWithin(4, 1, 10));
+let arr4_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr4_copyWithin.copyWithin(4, -2));
+let arr5_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr5_copyWithin.copyWithin(4));
+let arr6_copyWithin = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr6_copyWithin.copyWithin(1));
+
+// Test case for findIndex()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayFindIndex(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testFindIndex(element, Last, array) {
+    return element >= 60;
+}
+
+function testTypeArrayFindIndex(ctor) {
+    let obj = new ctor([5, 10, 20, 30, 40, 50, 60])
+    let result = obj.findIndex(testFindIndex);
+    return result != -1;
+}
+
+// Test case for includes()
+let arr1_includes = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr1_includes.includes(5, -100));
+print(arr1_includes.includes(55,-1));
+let arr2_includes = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr2_includes.includes(5));
+
+// Test case for find()
+let arr1_find = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+function testFind_true(ele) {
+    return ele === 5;
+}
+function testFind_false(ele) {
+    return ele > 10;
+}
+print(arr1_find.find(testFind_true));
+print(arr1_find.find(testFind_false));
+
+let arr2_find = new Int16Array();
+print(arr2_find.find(testFind_false));
+let arr3_find = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr3_find.find(testFind_true));
+
+// Test case for indexOf()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayIndexOf(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayIndexOf(ctor) {
+    let obj = new ctor([5, 10, 20, 30, 40, 50, 60])
+    let result = obj.indexOf(60);
+    return result != -1;
+}
+
+// Test case for lastIndexOf()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayLastIndexOf(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayLastIndexOf(ctor) {
+    let obj = new ctor([5, 10, 20, 30, 40, 50, 60]);
+    let result = obj.lastIndexOf(5)
+    return result != -1;
+}
+
+[
+    BigInt64Array,
+    BigUint64Array
+].forEach(function(ctor, i) {
+    if (testTypeArrayLastIndexOf1(ctor) ) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayLastIndexOf1(ctor) {
+    let obj = new ctor([5n, 10n, 20n, 30n, 40n, 50n, 60n]);
+    let result = obj.lastIndexOf(5n)
+    return result != -1;
+}
+
+let lastIndexOfFailed = new Int16Array(5, 10, 20, 30, 40, 50, 60)
+let lastIndexOfFailedResult = lastIndexOfFailed.lastIndexOf('ABC')
+print(lastIndexOfFailedResult);
+
+// Test case for reverse()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayReverse1(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayReverse1(ctor) {
+    let arr1 = new ctor([1, 2, 3, 4, 5]);
+    arr1.reverse();
+    let arr2 = new ctor([5, 4, 3, 2, 1]);
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+}
+
+[
+    BigInt64Array,
+    BigUint64Array
+].forEach(function(ctor, i) {
+    if (testTypeArrayReverse2(ctor) ) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayReverse2(ctor) {
+    let arr1 = new ctor([1n, 2n, 3n, 4n, 5n]);
+    arr1.reverse();
+    let arr2 = new ctor([5n, 4n, 3n, 2n, 1n]);
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+}

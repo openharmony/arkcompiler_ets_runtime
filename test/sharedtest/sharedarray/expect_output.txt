@@ -153,3 +153,41 @@ Start Test testStringForIC
 [IC] String Index access write in range success.
 [IC] String Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
 [IC] String Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+Start Test arrayFrozenTest
+arrayFrozenTest [new] single string. arr: ARK
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+arrayFrozenTest [new]. arr: A,R,K
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+arrayFrozenTest static [from]. arr: A,R,K
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+arrayFrozenTest static [create]. arr: A,A,A
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+Start Test sharedArrayFrozenTest
+sharedArrayFrozenTest [new]. arr: A,R,K
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+Start Test arrayFromSet
+Create from normal set: foo,bar,baz
+Create from shared set: foo,bar,baz
+Start Test arrayFromNormalMap
+Start test arrayFromSharedMap
+create from sharedMap with non-sendable array failed. err: BusinessError: Parameter error.Only accept sendable value., code: 401
+create from sharedMapper.values(): a,b
+create from sharedMapper.values(): 1,2
+Start test arrayFromNotArray
+NotArray called with length undefined
+Create array from notArray failed. err: TypeError: Failed to construct the array., code: undefined

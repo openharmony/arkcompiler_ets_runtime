@@ -68,7 +68,7 @@ public:
         return reinterpret_cast<icu::Collator *>(result);
     }
 
-    static void FreeIcuCollator(void *pointer, [[maybe_unused]] void *hint = nullptr)
+    static void FreeIcuCollator([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void *hint = nullptr)
     {
         if (pointer == nullptr) {
             return;
@@ -78,7 +78,7 @@ public:
     }
 
     static void SetIcuCollator(JSThread *thread, const JSHandle<JSCollator> &collator,
-        icu::Collator *icuCollator, const DeleteEntryPoint &callback);
+        icu::Collator *icuCollator, const NativePointerCallback &callback);
 
     // 11.1.1 InitializeCollator ( collator, locales, options )
     static JSHandle<JSCollator> InitializeCollator(JSThread *thread, const JSHandle<JSCollator> &collator,

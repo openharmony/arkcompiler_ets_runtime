@@ -28,6 +28,11 @@ public:
     static constexpr int ROUTE_SUCCESS = 0;
     static constexpr int ROUTE_INTERNAL_ERROR = 100001;
     static constexpr int ROUTE_URI_ERROR = 100002;
+    
+    std::pair<CString, CString> ParseEntryPointWithUnifiedRules(EcmaVM *vm, const CString &filename,
+                                                                std::string_view entryPoint);
+    static std::pair<CString, CString> ParseAbcEntryPoint(JSThread *thread, const CString &filename,
+                                                          [[maybe_unused]] std::string_view entryPoint);
 
     static Expected<JSTaggedValue, bool> ExecuteFromAbcFile(JSThread *thread, const CString &filename,
                                                             std::string_view entryPoint, bool needUpdate = false,
@@ -59,6 +64,9 @@ public:
     static int ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
         [[maybe_unused]] const CString &bundleName, const CString &moduleName, const CString &entry,
         bool isSingletonPattern);
+
+    static bool IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unused]] const CString &bundleName,
+        const CString &moduleName, const CString &entry);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H

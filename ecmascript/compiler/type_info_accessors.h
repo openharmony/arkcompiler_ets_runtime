@@ -16,99 +16,134 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_INFO_ACCESSORS_H
 #define ECMASCRIPT_COMPILER_TYPE_INFO_ACCESSORS_H
 
+#include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/enum_conversion.h"
-#include "ecmascript/ts_types/ts_manager.h"
+#include "ecmascript/global_index.h"
+#include "ecmascript/jspandafile/program_object.h"
+#include "libpandafile/index_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 class TypeInfoAccessor {
 public:
-    TypeInfoAccessor(const JSThread *thread, Circuit* circuit, GateRef gate)
-        : thread_(thread),
+    TypeInfoAccessor(const CompilationEnv *env, Circuit* circuit, GateRef gate)
+        : compilationEnv_(env),
           acc_(circuit),
           argAcc_(circuit),
           gate_(gate)
     {
-        tsManager_ = thread_->GetCurrentEcmaContext()->GetTSManager();
-        ptManager_ = thread_->GetCurrentEcmaContext()->GetPTManager();
+        pgoType_ = acc_.TryGetPGOType(gate);
+        // NOTICE-PGO: wx delete in part3
+        ptManager_ = compilationEnv_->GetPTManager();
     }
 
-    GateRef GetGate() const
+    inline GateRef GetGate() const
     {
         return gate_;
     }
 
-    PGOTypeRef GetPGOType() const
-    {
-        return acc_.TryGetPGOType(GetGate());
-    }
+    static bool IsTrustedBooleanType(GateAccessor acc, GateRef gate);
 
-    static bool IsTrustedType(GateAccessor acc, GateRef gate);
+    static bool IsTrustedNumberType(GateAccessor acc, GateRef gate);
 
     static bool IsTrustedStringType(
-        const JSThread *thread, Circuit *circuit, Chunk *chunk, GateAccessor acc, GateRef gate);
-
-    static JSTaggedValue GetStringFromConstantPool(const JSThread *thread, uint32_t methodId, uint32_t index);
+        const CompilationEnv *env, Circuit *circuit, Chunk *chunk, GateAccessor acc, GateRef gate);
 
 protected:
-    const JSThread *thread_ {nullptr};
+    ParamType PGOSampleTypeToParamType() const;
+    static ParamType PGOBuiltinTypeToParamType(ProfileType pgoType);
+
+    const CompilationEnv *compilationEnv_ {nullptr};
     GateAccessor acc_;
     ArgumentAccessor argAcc_;
     GateRef gate_;
-    TSManager *tsManager_ {nullptr};
+    PGOTypeRef pgoType_;
+    // NOTICE-PGO: wx delete in part3
     PGOTypeManager *ptManager_ {nullptr};
 };
 
 class BinOpTypeInfoAccessor final : public TypeInfoAccessor {
 public:
-    BinOpTypeInfoAccessor(const JSThread *thread,
+    BinOpTypeInfoAccessor(const CompilationEnv *env,
                           Circuit *circuit,
-                          GateRef gate,
-                          bool convertNumberType = false);
+                          GateRef gate)
+        : TypeInfoAccessor(env, circuit, gate)
+    {
+        left_ = acc_.GetValueIn(gate, 0);   // 0: left
+        right_ = acc_.GetValueIn(gate, 1);  // 1: right
+    }
     NO_COPY_SEMANTIC(BinOpTypeInfoAccessor);
     NO_MOVE_SEMANTIC(BinOpTypeInfoAccessor);
 
-    bool HasNumberType() const;
+    inline GateRef GetLeftGate() const
+    {
+        return left_;
+    }
 
-    bool HasStringType() const;
+    inline GateRef GetReightGate() const
+    {
+        return right_;
+    }
 
-    bool LeftOrRightIsUndefinedOrNullOrHole() const
+    inline bool HasNumberType() const
+    {
+        return pgoType_.HasNumber();
+    }
+
+    inline bool IsStringType() const
+    {
+        return pgoType_.IsString();
+    }
+
+    inline bool LeftOrRightIsUndefinedOrNull() const
     {
         return acc_.IsUndefinedOrNullOrHole(left_) || acc_.IsUndefinedOrNullOrHole(right_);
     }
 
+    inline ParamType GetParamType() const
+    {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return ParamType::AnyType();
+        }
+        return PGOSampleTypeToParamType();
+    }
+
 private:
-    bool convertNumberType_;
     GateRef left_;
     GateRef right_;
 };
 
 class UnOpTypeInfoAccessor : public TypeInfoAccessor {
 public:
-    UnOpTypeInfoAccessor(const JSThread *thread,
+    UnOpTypeInfoAccessor(const CompilationEnv *env,
                          Circuit *circuit,
-                         GateRef gate);
+                         GateRef gate)
+        : TypeInfoAccessor(env, circuit, gate)
+    {
+        value_ = acc_.GetValueIn(gate, 0); // 0: value
+    }
     NO_COPY_SEMANTIC(UnOpTypeInfoAccessor);
     NO_MOVE_SEMANTIC(UnOpTypeInfoAccessor);
 
-    bool ValueIsNumberType() const;
-
-    GateType FetchNumberType() const;
-
-    bool ValueIsPrimitiveNumberType() const
-    {
-        return GetValueGateType().IsPrimitiveNumberType();
-    }
-
-    bool ValueIsBooleanType() const
-    {
-        return GetValueGateType().IsBooleanType();
-    }
-
-    GateRef GetValue() const
+    inline GateRef GetValue() const
     {
         return value_;
+    }
+
+    inline bool HasNumberType() const
+    {
+        return pgoType_.HasNumber();
+    }
+
+    inline bool IsBooleanType() const
+    {
+        return pgoType_.IsBoolean();
+    }
+
+    inline ParamType GetParamType() const
+    {
+        return PGOSampleTypeToParamType();
     }
 
     GateType GetValueGateType() const
@@ -122,10 +157,10 @@ protected:
 
 class ConditionJumpTypeInfoAccessor final : public UnOpTypeInfoAccessor {
 public:
-    ConditionJumpTypeInfoAccessor(const JSThread *thread,
+    ConditionJumpTypeInfoAccessor(const CompilationEnv *env,
                                   Circuit *circuit,
                                   GateRef gate)
-        : UnOpTypeInfoAccessor(thread, circuit, gate) {}
+        : UnOpTypeInfoAccessor(env, circuit, gate) {}
     NO_COPY_SEMANTIC(ConditionJumpTypeInfoAccessor);
     NO_MOVE_SEMANTIC(ConditionJumpTypeInfoAccessor);
 
@@ -137,10 +172,10 @@ public:
 
 class NewObjRangeTypeInfoAccessor final : public UnOpTypeInfoAccessor {
 public:
-    NewObjRangeTypeInfoAccessor(const JSThread *thread,
+    NewObjRangeTypeInfoAccessor(const CompilationEnv *env,
                                 Circuit *circuit,
                                 GateRef gate)
-        : UnOpTypeInfoAccessor(thread, circuit, gate), hclassIndex_(-1) {}
+        : UnOpTypeInfoAccessor(env, circuit, gate), hclassIndex_(-1) {}
     NO_COPY_SEMANTIC(NewObjRangeTypeInfoAccessor);
     NO_MOVE_SEMANTIC(NewObjRangeTypeInfoAccessor);
 
@@ -157,10 +192,10 @@ private:
 
 class NewBuiltinCtorTypeInfoAccessor final : public UnOpTypeInfoAccessor {
 public:
-    NewBuiltinCtorTypeInfoAccessor(const JSThread *thread,
+    NewBuiltinCtorTypeInfoAccessor(const CompilationEnv *env,
                                    Circuit *circuit,
                                    GateRef gate)
-        : UnOpTypeInfoAccessor(thread, circuit, gate) {}
+        : UnOpTypeInfoAccessor(env, circuit, gate) {}
     NO_COPY_SEMANTIC(NewBuiltinCtorTypeInfoAccessor);
     NO_MOVE_SEMANTIC(NewBuiltinCtorTypeInfoAccessor);
 
@@ -169,9 +204,9 @@ public:
         return GetCtorGT().IsBuiltinModule();
     }
 
-    bool IsBuiltinConstructor(BuiltinTypeId type)
+    bool IsBuiltinConstructor([[maybe_unused]] BuiltinTypeId type)
     {
-        return tsManager_->IsBuiltinConstructor(type, GetCtorGT());
+        return false; // NOTICE-PGO:: tsManager_->IsBuiltinConstructor(type, GetCtorGT());
     }
 
 private:
@@ -183,10 +218,10 @@ private:
 
 class TypeOfTypeInfoAccessor final : public UnOpTypeInfoAccessor {
 public:
-    TypeOfTypeInfoAccessor(const JSThread *thread,
+    TypeOfTypeInfoAccessor(const CompilationEnv *env,
                            Circuit *circuit,
                            GateRef gate)
-        : UnOpTypeInfoAccessor(thread, circuit, gate) {}
+        : UnOpTypeInfoAccessor(env, circuit, gate) {}
     NO_COPY_SEMANTIC(TypeOfTypeInfoAccessor);
     NO_MOVE_SEMANTIC(TypeOfTypeInfoAccessor);
 
@@ -195,20 +230,15 @@ public:
 
 class SuperCallTypeInfoAccessor final : public TypeInfoAccessor {
 public:
-    SuperCallTypeInfoAccessor(const JSThread *thread,
+    SuperCallTypeInfoAccessor(const CompilationEnv *env,
                               Circuit *circuit,
                               GateRef gate);
     NO_COPY_SEMANTIC(SuperCallTypeInfoAccessor);
     NO_MOVE_SEMANTIC(SuperCallTypeInfoAccessor);
 
-    bool IsClassTypeKind() const
+    bool IsValidCallMethodId() const
     {
-        return tsManager_->IsClassTypeKind(acc_.GetGateType(ctor_));
-    }
-
-    bool IsFunctionTypeKind() const
-    {
-        return tsManager_->IsFunctionTypeKind(acc_.GetGateType(ctor_));
+        return pgoType_.IsValidCallMethodId();
     }
 
     GateRef GetCtor() const
@@ -222,12 +252,16 @@ private:
 
 class CallTypeInfoAccessor : public TypeInfoAccessor {
 public:
-    CallTypeInfoAccessor(const JSThread *thread,
+    CallTypeInfoAccessor(const CompilationEnv *env,
                          Circuit *circuit,
-                         GateRef gate)
-        : TypeInfoAccessor(thread, circuit, gate),
+                         GateRef gate,
+                         const JSPandaFile *jsPandaFile = nullptr,
+                         const CallMethodFlagMap *callMethodFlagMap = nullptr)
+        : TypeInfoAccessor(env, circuit, gate),
           argc_(0),
-          func_(Circuit::NullGate())
+          func_(Circuit::NullGate()),
+          jsPandaFile_(jsPandaFile),
+          callMethodFlagMap_(callMethodFlagMap)
     {}
 
     size_t GetArgc() const
@@ -245,70 +279,128 @@ public:
         return acc_.GetGateType(func_);
     }
 
-    bool IsFunctionTypeKind() const
+    bool IsValidCallMethodId() const
     {
-        return tsManager_->IsFunctionTypeKind(acc_.GetGateType(func_));
+        return pgoType_.IsValidCallMethodId();
     }
 
     bool IsHotnessFunc() const
     {
-        return tsManager_->IsHotnessFunc(GetFunctionGT());
+        if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
+            return false;
+        }
+        auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+        bool haveProfileType = !profileType->IsNone();
+        if (haveProfileType) {
+            CString fileDesc = jsPandaFile_->GetNormalizedFileDesc();
+            uint32_t methodId = profileType->GetProfileType().GetId();
+            return callMethodFlagMap_->IsAotCompile(fileDesc, methodId);
+        }
+        return false;
     }
 
     uint32_t GetFunctionTypeLength() const
     {
-        return tsManager_->GetFunctionTypeLength(GetFunctionGT());
+        if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
+            return false;
+        }
+        auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+        bool haveProfileType = !profileType->IsNone();
+        if (haveProfileType) {
+            uint32_t methodId = profileType->GetProfileType().GetId();
+            MethodLiteral *targetMethodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
+            return targetMethodLiteral->GetNumArgsWithCallField();
+        }
+        return 0;
     }
 
     bool IsNoGC() const
     {
-        return tsManager_->IsNoGC(GetFunctionGT());
-    }
-
-    bool FastCallFlagIsVaild() const
-    {
-        return tsManager_->FastCallFlagIsVaild(GetFunctionGT());
+        if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
+            return false;
+        }
+        auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+        bool haveProfileType = !profileType->IsNone();
+        if (haveProfileType) {
+            uint32_t methodId = profileType->GetProfileType().GetId();
+            MethodLiteral *targetMethodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
+            return targetMethodLiteral->IsNoGC();
+        }
+        return false;
     }
 
     int GetMethodIndex() const
     {
-        return tsManager_->GetMethodIndex(GetFunctionGT());
+        if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
+            return false;
+        }
+        auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+        bool haveProfileType = !profileType->IsNone();
+        if (haveProfileType) {
+            uint32_t methodId = profileType->GetProfileType().GetId();
+            panda_file::IndexAccessor indexAccessor(*(jsPandaFile_->GetPandaFile()),
+                                            panda_file::File::EntityId(methodId));
+            uint32_t cpId = static_cast<uint32_t>(indexAccessor.GetHeaderIndex());
+            ConstantPool *constpoolHandle =
+                ConstantPool::Cast(compilationEnv_->FindConstpool(jsPandaFile_, cpId).GetTaggedObject());
+            return constpoolHandle->GetMethodIndexByEntityId(panda_file::File::EntityId(methodId));
+        }
+        return 0;
     }
 
     bool MethodOffsetIsVaild() const
     {
-        return tsManager_->MethodOffsetIsVaild(GetFunctionGT());
+        auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+        return !profileType->IsNone();
     }
 
     bool CanFastCall() const
     {
-        return tsManager_->CanFastCall(GetFunctionGT());
+        if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
+            return false;
+        }
+        auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+        bool haveProfileType = !profileType->IsNone();
+        if (haveProfileType) {
+            CString fileDesc = jsPandaFile_->GetNormalizedFileDesc();
+            uint32_t methodId = profileType->GetProfileType().GetId();
+            return callMethodFlagMap_->IsAotCompile(fileDesc, methodId) &&
+                callMethodFlagMap_->IsFastCall(fileDesc, methodId);
+        }
+        return false;
     }
 
     uint32_t GetFuncMethodOffset() const
     {
-        return tsManager_->GetFuncMethodOffset(GetFunctionGT());
+        if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
+            return false;
+        }
+        auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+        bool haveProfileType = !profileType->IsNone();
+        if (haveProfileType) {
+            uint32_t methodId = profileType->GetProfileType().GetId();
+            MethodLiteral *targetMethodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
+            return targetMethodLiteral->GetMethodId().GetOffset();
+        }
+        return 0;
     }
 
-    BuiltinsStubCSigns::ID TryGetPGOBuiltinId() const;
-
-    BuiltinsStubCSigns::ID TryGetBuiltinId(BuiltinTypeId id) const;
+    BuiltinsStubCSigns::ID TryGetPGOBuiltinMethodId() const;
 
 protected:
-    GlobalTSTypeRef GetFunctionGT() const
-    {
-        return acc_.GetGateType(func_).GetGTRef();
-    }
-
     size_t argc_;
     GateRef func_;
+    const JSPandaFile *jsPandaFile_;
+    const CallMethodFlagMap *callMethodFlagMap_;
 };
 
 class GetIteratorTypeInfoAccessor final : public CallTypeInfoAccessor {
 public:
-    GetIteratorTypeInfoAccessor(const JSThread *thread,
+    GetIteratorTypeInfoAccessor(const CompilationEnv *env,
                              Circuit *circuit,
-                             GateRef gate);
+                             GateRef gate,
+                             const JSPandaFile *jsPandaFile = nullptr,
+                             const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(GetIteratorTypeInfoAccessor);
     NO_MOVE_SEMANTIC(GetIteratorTypeInfoAccessor);
 
@@ -320,18 +412,22 @@ public:
 
 class CallArg0TypeInfoAccessor final : public CallTypeInfoAccessor {
 public:
-    CallArg0TypeInfoAccessor(const JSThread *thread,
+    CallArg0TypeInfoAccessor(const CompilationEnv *env,
                              Circuit *circuit,
-                             GateRef gate);
+                             GateRef gate,
+                             const JSPandaFile *jsPandaFile = nullptr,
+                             const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallArg0TypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallArg0TypeInfoAccessor);
 };
 
 class CallArg1TypeInfoAccessor final : public CallTypeInfoAccessor {
 public:
-    CallArg1TypeInfoAccessor(const JSThread *thread,
+    CallArg1TypeInfoAccessor(const CompilationEnv *env,
                              Circuit *circuit,
-                             GateRef gate);
+                             GateRef gate,
+                             const JSPandaFile *jsPandaFile = nullptr,
+                             const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallArg1TypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallArg1TypeInfoAccessor);
 
@@ -351,37 +447,45 @@ private:
 
 class CallArg2TypeInfoAccessor final : public CallTypeInfoAccessor {
 public:
-    CallArg2TypeInfoAccessor(const JSThread *thread,
+    CallArg2TypeInfoAccessor(const CompilationEnv *env,
                              Circuit *circuit,
-                             GateRef gate);
+                             GateRef gate,
+                             const JSPandaFile *jsPandaFile = nullptr,
+                             const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallArg2TypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallArg2TypeInfoAccessor);
 };
 
 class CallArg3TypeInfoAccessor final : public CallTypeInfoAccessor {
 public:
-    CallArg3TypeInfoAccessor(const JSThread *thread,
+    CallArg3TypeInfoAccessor(const CompilationEnv *env,
                              Circuit *circuit,
-                             GateRef gate);
+                             GateRef gate,
+                             const JSPandaFile *jsPandaFile = nullptr,
+                             const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallArg3TypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallArg3TypeInfoAccessor);
 };
 
 class CallRangeTypeInfoAccessor final : public CallTypeInfoAccessor {
 public:
-    CallRangeTypeInfoAccessor(const JSThread *thread,
+    CallRangeTypeInfoAccessor(const CompilationEnv *env,
                               Circuit *circuit,
-                              GateRef gate);
+                              GateRef gate,
+                              const JSPandaFile *jsPandaFile = nullptr,
+                              const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallRangeTypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallRangeTypeInfoAccessor);
 };
 
 class CallThisTypeInfoAccessor : public CallTypeInfoAccessor {
 public:
-    CallThisTypeInfoAccessor(const JSThread *thread,
+    CallThisTypeInfoAccessor(const CompilationEnv *env,
                              Circuit *circuit,
-                             GateRef gate)
-        : CallTypeInfoAccessor(thread, circuit, gate)
+                             GateRef gate,
+                             const JSPandaFile *jsPandaFile = nullptr,
+                             const CallMethodFlagMap *callMethodFlagMap = nullptr)
+        : CallTypeInfoAccessor(env, circuit, gate, jsPandaFile, callMethodFlagMap)
     {
         thisObj_ = acc_.GetValueIn(gate, 0);
     }
@@ -400,18 +504,22 @@ protected:
 
 class CallThis0TypeInfoAccessor final : public CallThisTypeInfoAccessor {
 public:
-    CallThis0TypeInfoAccessor(const JSThread *thread,
+    CallThis0TypeInfoAccessor(const CompilationEnv *env,
                               Circuit *circuit,
-                              GateRef gate);
+                              GateRef gate,
+                              const JSPandaFile *jsPandaFile = nullptr,
+                              const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallThis0TypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallThis0TypeInfoAccessor);
 };
 
 class CallThis1TypeInfoAccessor final : public CallThisTypeInfoAccessor {
 public:
-    CallThis1TypeInfoAccessor(const JSThread *thread,
+    CallThis1TypeInfoAccessor(const CompilationEnv *env,
                               Circuit *circuit,
-                              GateRef gate);
+                              GateRef gate,
+                              const JSPandaFile *jsPandaFile = nullptr,
+                              const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallThis1TypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallThis1TypeInfoAccessor);
 
@@ -431,18 +539,22 @@ private:
 
 class CallThis2TypeInfoAccessor final : public CallThisTypeInfoAccessor {
 public:
-    CallThis2TypeInfoAccessor(const JSThread *thread,
+    CallThis2TypeInfoAccessor(const CompilationEnv *env,
                               Circuit *circuit,
-                              GateRef gate);
+                              GateRef gate,
+                              const JSPandaFile *jsPandaFile = nullptr,
+                              const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallThis2TypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallThis2TypeInfoAccessor);
 };
 
 class CallThis3TypeInfoAccessor final : public CallThisTypeInfoAccessor {
 public:
-    CallThis3TypeInfoAccessor(const JSThread *thread,
+    CallThis3TypeInfoAccessor(const CompilationEnv *env,
                               Circuit *circuit,
-                              GateRef gate);
+                              GateRef gate,
+                              const JSPandaFile *jsPandaFile = nullptr,
+                              const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallThis3TypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallThis3TypeInfoAccessor);
 
@@ -459,9 +571,11 @@ private:
 
 class CallThisRangeTypeInfoAccessor final : public CallThisTypeInfoAccessor {
 public:
-    CallThisRangeTypeInfoAccessor(const JSThread *thread,
+    CallThisRangeTypeInfoAccessor(const CompilationEnv *env,
                               Circuit *circuit,
-                              GateRef gate);
+                              GateRef gate,
+                              const JSPandaFile *jsPandaFile = nullptr,
+                              const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallThisRangeTypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallThisRangeTypeInfoAccessor);
 };
@@ -477,7 +591,7 @@ enum CallKind : uint8_t {
 
 class InlineTypeInfoAccessor final : public TypeInfoAccessor {
 public:
-    InlineTypeInfoAccessor(const JSThread *thread,
+    InlineTypeInfoAccessor(const CompilationEnv *env,
                            Circuit *circuit,
                            GateRef gate,
                            GateRef receiver,
@@ -485,39 +599,30 @@ public:
 
     bool IsEnableNormalInline() const
     {
-        return IsFunctionTypeKind() || IsValidCallMethodId();
+        return IsValidCallMethodId();
     }
 
     bool IsEnableAccessorInline() const
     {
-        if (plr_.IsAccessor() && IsClassInstanceTypeKind()) {
-            GlobalTSTypeRef gt = GetAccessorFuncGT();
-            if (!gt.IsDefault()) {
+        if (plr_.IsAccessor()) {
+            const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+            auto pgoType = pgoTypes->GetObjectInfo(0);
+            if (pgoType.GetAccessorMethod().GetProfileType().IsValidCallMethodId()) {
                 return true;
             }
         }
         return false;
     }
 
-    bool IsFunctionTypeKind() const
-    {
-        return tsManager_->IsFunctionTypeKind(acc_.GetGateType(receiver_));
-    }
-
-    bool IsClassInstanceTypeKind() const
-    {
-        return tsManager_->IsClassInstanceTypeKind(acc_.GetGateType(receiver_));
-    }
-
     bool IsValidCallMethodId() const
     {
-        return GetPGOType().IsValidCallMethodId();
+        return pgoType_.IsValidCallMethodId();
     }
 
     uint32_t GetFuncMethodOffsetFromPGO() const
     {
-        if (GetPGOType().IsValidCallMethodId()) {
-            return GetPGOType().GetCallMethodId();
+        if (IsValidCallMethodId()) {
+            return pgoType_.GetCallMethodId();
         }
         return 0;
     }
@@ -566,16 +671,7 @@ public:
 
     uint32_t GetType() const
     {
-        uint32_t type = 0;
-        if (IsFunctionTypeKind()) {
-            type = GetReceiverGT().Value();
-        }
-        if (type == 0) {
-            if (IsNormalCall() && IsValidCallMethodId()) {
-                type = GetPGOType().GetValue();
-            }
-        }
-        return type;
+        return GetFuncMethodOffsetFromPGO();
     }
 
     PropertyLookupResult GetPlr() const
@@ -585,7 +681,6 @@ public:
 
 private:
     PropertyLookupResult GetAccessorPlr() const;
-    GlobalTSTypeRef GetAccessorFuncGT() const;
 
     GateRef receiver_;
     CallKind kind_ {CallKind::INVALID};
@@ -625,12 +720,12 @@ public:
         STORE
     };
 
-    ObjectAccessTypeInfoAccessor(const JSThread *thread,
+    ObjectAccessTypeInfoAccessor(const CompilationEnv *env,
                                  Circuit *circuit,
                                  GateRef gate,
                                  Chunk *chunk,
                                  AccessMode mode)
-        : TypeInfoAccessor(thread, circuit, gate),
+        : TypeInfoAccessor(env, circuit, gate),
           chunk_(chunk),
           mode_(mode),
           key_(Circuit::NullGate()),
@@ -651,11 +746,6 @@ public:
         return receiver_;
     }
 
-    GateType GetReceiverGateType() const
-    {
-        return tsManager_->TryNarrowUnionType(acc_.GetGateType(receiver_));
-    }
-
 protected:
     Chunk *chunk_;
     AccessMode mode_;
@@ -665,12 +755,12 @@ protected:
 
 class ObjAccByNameTypeInfoAccessor : public ObjectAccessTypeInfoAccessor {
 public:
-    ObjAccByNameTypeInfoAccessor(const JSThread *thread,
+    ObjAccByNameTypeInfoAccessor(const CompilationEnv *env,
                                  Circuit *circuit,
                                  GateRef gate,
                                  Chunk *chunk,
                                  AccessMode mode)
-        : ObjectAccessTypeInfoAccessor(thread, circuit, gate, chunk, mode),
+        : ObjectAccessTypeInfoAccessor(env, circuit, gate, chunk, mode),
           hasIllegalType_(false),
           accessInfos_(chunk),
           checkerInfos_(chunk)
@@ -706,7 +796,7 @@ protected:
 
 class LoadObjByNameTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
-    LoadObjByNameTypeInfoAccessor(const JSThread *thread,
+    LoadObjByNameTypeInfoAccessor(const CompilationEnv *env,
                                   Circuit *circuit,
                                   GateRef gate,
                                   Chunk *chunk);
@@ -744,7 +834,7 @@ private:
 
 class StoreObjByNameTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
-    StoreObjByNameTypeInfoAccessor(const JSThread *thread,
+    StoreObjByNameTypeInfoAccessor(const CompilationEnv *env,
                                    Circuit *circuit,
                                    GateRef gate,
                                    Chunk *chunk);
@@ -797,7 +887,7 @@ private:
 
 class InstanceOfTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
-    InstanceOfTypeInfoAccessor(const JSThread *thread,
+    InstanceOfTypeInfoAccessor(const CompilationEnv *env,
                                   Circuit *circuit,
                                   GateRef gate,
                                   Chunk *chunk);
@@ -839,27 +929,29 @@ private:
 
 class AccBuiltinObjTypeInfoAccessor : public ObjectAccessTypeInfoAccessor {
 public:
-    AccBuiltinObjTypeInfoAccessor(const JSThread *thread,
+    AccBuiltinObjTypeInfoAccessor(const CompilationEnv *env,
                                   Circuit *circuit,
                                   GateRef gate,
                                   Chunk *chunk,
                                   AccessMode mode)
-        : ObjectAccessTypeInfoAccessor(thread, circuit, gate, chunk, mode), types_(chunk_)
+        : ObjectAccessTypeInfoAccessor(env, circuit, gate, chunk, mode), types_(chunk_)
     {}
     NO_COPY_SEMANTIC(AccBuiltinObjTypeInfoAccessor);
     NO_MOVE_SEMANTIC(AccBuiltinObjTypeInfoAccessor);
 
     bool IsMono() const
     {
-        return types_.size() == 1 ||
-               IsAllString();
+        return types_.size() == 1 || IsMonoBuiltins();
     }
-
-    bool IsMonoIgnoreElemKind() const;
 
     size_t GetTypeCount()
     {
         return types_.size();
+    }
+
+    bool IsBuiltinsMap() const
+    {
+        return types_[0].IsBuiltinsMap();
     }
 
     bool IsBuiltinsString() const
@@ -870,6 +962,25 @@ public:
     bool IsBuiltinsArray() const
     {
         return types_[0].IsBuiltinsArray();
+    }
+
+    bool IsBuiltinsTypeArray() const
+    {
+        return types_[0].IsBuiltinsTypeArray();
+    }
+
+    JSType GetBuiltinsJSType() const
+    {
+        if (types_[0].IsBuiltinsType()) {
+            return types_[0].GetBuiltinsType();
+        }
+        return JSType::INVALID;
+    }
+
+    ParamType GetParamType() const
+    {
+        ASSERT(IsMono());
+        return TypeInfoAccessor::PGOBuiltinTypeToParamType(types_[0]);
     }
 
     bool IsPolyBuiltinsArray() const
@@ -909,18 +1020,16 @@ public:
 
     std::optional<BuiltinTypeId> GetBuiltinsTypeId() const
     {
+        if (!IsMono()) {
+            return std::nullopt;
+        }
         auto type = types_[0].GetBuiltinsType();
         return ToBuiltinsTypeId(type);
     }
 
-    std::optional<ConstantIndex> GetGlobalsId() const
+    std::optional<GlobalIndex> GetGlobalsId() const
     {
         return types_[0].GetGlobalsId();
-    }
-
-    bool IsBuiltinInstanceType(BuiltinTypeId type) const
-    {
-        return tsManager_->IsBuiltinInstanceType(type, GetReceiverGateType());
     }
 
     OnHeapMode TryGetHeapMode() const
@@ -933,38 +1042,23 @@ public:
         return static_cast<uint32_t>(acc_.GetConstantValue(GetKey()));
     }
 
-    bool KeyIsNumberType() const
-    {
-        return acc_.GetGateType(key_).IsNumberType();
-    }
-
-    bool IsArrayTypeKind() const
-    {
-        return tsManager_->IsArrayTypeKind(GetReceiverGateType());
-    }
-
     // Default get is elementsKind before possible transition
     ElementsKind TryGetArrayElementsKind() const
     {
-        [[maybe_unused]] bool condition = IsArrayTypeKind() || (IsMonoIgnoreElemKind() && IsBuiltinsArray());
+        [[maybe_unused]] bool condition = (IsMono() && IsBuiltinsArray());
         ASSERT(condition);
         return acc_.TryGetArrayElementsKind(gate_);
     }
 
     ElementsKind TryGetArrayElementsKindAfterTransition() const
     {
-        [[maybe_unused]] bool condition = IsArrayTypeKind() || (IsMonoIgnoreElemKind() && IsBuiltinsArray());
+        [[maybe_unused]] bool condition = (IsMono() && IsBuiltinsArray());
         ASSERT(condition);
         return acc_.TryGetArrayElementsKindAfterTransition(gate_);
     }
 
-    bool IsValidTypedArrayType() const
-    {
-        return tsManager_->IsValidTypedArrayType(GetReceiverGateType());
-    }
-
 protected:
-    bool IsAllString() const;
+    bool IsMonoBuiltins() const;
     void FetchBuiltinsTypes();
     bool CheckDuplicatedBuiltinType(ProfileType newType) const;
 
@@ -973,35 +1067,17 @@ protected:
 
 class LoadBulitinObjTypeInfoAccessor final : public AccBuiltinObjTypeInfoAccessor {
 public:
-    LoadBulitinObjTypeInfoAccessor(const JSThread *thread,
+    LoadBulitinObjTypeInfoAccessor(const CompilationEnv *env,
                                    Circuit *circuit,
                                    GateRef gate,
                                    Chunk *chunk);
     NO_COPY_SEMANTIC(LoadBulitinObjTypeInfoAccessor);
     NO_MOVE_SEMANTIC(LoadBulitinObjTypeInfoAccessor);
-
-    bool IsStringType() const
-    {
-        return GetReceiverGateType().IsStringType();
-    }
-
-    bool IsArrayType() const
-    {
-        GateType temp = GetReceiverGateType();
-        return tsManager_->IsArrayTypeKind(temp) ||
-            tsManager_->IsBuiltinInstanceType(BuiltinTypeId::ARRAY, temp);
-    }
-
-    BuiltinTypeId GetTypedArrayBuiltinId() const
-    {
-        ASSERT(IsValidTypedArrayType());
-        return tsManager_->GetTypedArrayBuiltinId(GetReceiverGateType());
-    }
 };
 
 class StoreBulitinObjTypeInfoAccessor final : public AccBuiltinObjTypeInfoAccessor {
 public:
-    StoreBulitinObjTypeInfoAccessor(const JSThread *thread,
+    StoreBulitinObjTypeInfoAccessor(const CompilationEnv *env,
                                     Circuit *circuit,
                                     GateRef gate,
                                     Chunk *chunk);
@@ -1024,11 +1100,11 @@ private:
 
 class GlobalObjAccTypeInfoAccessor : public ObjectAccessTypeInfoAccessor {
 public:
-    GlobalObjAccTypeInfoAccessor(const JSThread *thread,
+    GlobalObjAccTypeInfoAccessor(const CompilationEnv *env,
                                  Circuit *circuit,
                                  GateRef gate,
                                  AccessMode mode)
-        : ObjectAccessTypeInfoAccessor(thread, circuit, gate, nullptr, mode) {}
+        : ObjectAccessTypeInfoAccessor(env, circuit, gate, nullptr, mode) {}
 
     NO_COPY_SEMANTIC(GlobalObjAccTypeInfoAccessor);
     NO_MOVE_SEMANTIC(GlobalObjAccTypeInfoAccessor);
@@ -1036,10 +1112,10 @@ public:
 
 class LoadGlobalObjByNameTypeInfoAccessor final : public GlobalObjAccTypeInfoAccessor {
 public:
-    LoadGlobalObjByNameTypeInfoAccessor(const JSThread *thread,
+    LoadGlobalObjByNameTypeInfoAccessor(const CompilationEnv *env,
                                         Circuit *circuit,
                                         GateRef gate)
-        : GlobalObjAccTypeInfoAccessor(thread, circuit, gate, AccessMode::LOAD)
+        : GlobalObjAccTypeInfoAccessor(env, circuit, gate, AccessMode::LOAD)
     {
         key_ = acc_.GetValueIn(gate, 1);
     }
@@ -1049,7 +1125,7 @@ public:
 
 class CreateObjWithBufferTypeInfoAccessor : public TypeInfoAccessor {
 public:
-    CreateObjWithBufferTypeInfoAccessor(const JSThread *thread,
+    CreateObjWithBufferTypeInfoAccessor(const CompilationEnv *env,
                                         Circuit *circuit,
                                         GateRef gate,
                                         const CString &recordName);
@@ -1059,10 +1135,7 @@ public:
 
     JSTaggedValue GetHClass() const;
 
-    JSHandle<JSObject> GetObjHandle() const
-    {
-        return objHandle_;
-    }
+    JSTaggedValue GetObject() const;
 
     GateRef GetIndex() const
     {
@@ -1071,8 +1144,13 @@ public:
 
     bool CanOptimize() const
     {
-        TaggedArray *properties = TaggedArray::Cast(objHandle_->GetProperties());
-        TaggedArray *elements = TaggedArray::Cast(objHandle_->GetElements());
+        JSTaggedValue obj = GetObject();
+        if (obj.IsUndefined()) {
+            return false;
+        }
+        JSObject *jsObj = JSObject::Cast(obj);
+        TaggedArray *properties = TaggedArray::Cast(jsObj->GetProperties());
+        TaggedArray *elements = TaggedArray::Cast(jsObj->GetElements());
         return properties->GetLength() == 0 && elements->GetLength() == 0;
     }
 
@@ -1080,7 +1158,6 @@ private:
     void Init();
 
     const CString &recordName_;
-    JSHandle<JSObject> objHandle_;
     GateRef index_;
 };
 }   // panda::ecmascript::kungfu

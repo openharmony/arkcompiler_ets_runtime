@@ -23,8 +23,7 @@
 namespace panda::ecmascript {
 class ModuleDeregister {
 public:
-    static inline void InitForDeregisterModule(JSThread *thread,
-        JSHandle<JSTaggedValue> moduleRecord, bool executeFromJob)
+    static inline void InitForDeregisterModule(JSHandle<JSTaggedValue> moduleRecord, bool executeFromJob)
     {
         if (!executeFromJob) {
             return;
@@ -33,8 +32,6 @@ public:
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         module->SetLoadingTypes(moduleLoadingType);
         module->SetRegisterCounts(1);
-        thread->GetEcmaVM()->PushToDeregisterModuleList(
-            ConvertToString(SourceTextModule::GetModuleName(moduleRecord.GetTaggedValue())));
     }
 
     static inline void ProcessModuleReference(JSThread *thread, const JSHandle<JSTaggedValue> &nameSpVal)
@@ -45,7 +42,7 @@ public:
         moduleRecord->SetNamespace(thread, weakNameSp);
     }
 
-    static void FreeModuleRecord(void *pointer, void *hint);
+    static void FreeModuleRecord(void *env, void *pointer, void *hint);
 
     static void RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module);
 

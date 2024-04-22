@@ -59,8 +59,9 @@ private:
 
 class EarlyElimination : public PassVisitor {
 public:
-    EarlyElimination(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk)
-        : PassVisitor(circuit, chunk, visitor), dependChains_(chunk), renames_(chunk) {}
+    EarlyElimination(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk, bool enableMemoryAnalysis)
+        : PassVisitor(circuit, chunk, visitor), dependChains_(chunk), renames_(chunk),
+          enableMemoryAnalysis_(enableMemoryAnalysis) {}
 
     ~EarlyElimination() = default;
 
@@ -91,6 +92,7 @@ private:
 
     ChunkVector<DependInfoNode*> dependChains_;
     ChunkVector<GateRef> renames_;
+    bool enableMemoryAnalysis_ {true};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_EARLY_ELIMINATION_H

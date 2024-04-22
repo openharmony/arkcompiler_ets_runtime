@@ -37,7 +37,7 @@ void FunctionRefSetNameFuzzTest(const uint8_t *data, size_t size)
         return;
     }
     FunctionCallback nativeFunc = FuncRefConCallbackForTest;
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<FunctionRef> func = FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
     Local<StringRef> name = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
     func->SetName(vm, name);
@@ -54,7 +54,7 @@ void FunctionRefGetNameFuzzTest(const uint8_t *data, size_t size)
         return;
     }
     FunctionCallback nativeFunc = FuncRefConCallbackForTest;
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<FunctionRef> func = FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
     Local<StringRef> name = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
     func->SetName(vm, name);

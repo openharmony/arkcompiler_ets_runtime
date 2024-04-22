@@ -167,7 +167,7 @@ public:
         return reinterpret_cast<icu::Locale *>(result);
     }
 
-    static void FreeIcuLocale(void *pointer, void *data)
+    static void FreeIcuLocale([[maybe_unused]] void *env, void *pointer, void *data)
     {
         if (pointer == nullptr) {
             return;

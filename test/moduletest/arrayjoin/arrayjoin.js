@@ -90,3 +90,16 @@ proxy2.pop();
 proxy2.toString();
 proxy2.push(456);
 print(`proxy2: ${proxy2}`);
+
+const v5 = new Float32Array(1);
+v5[0] = NaN;
+print(v5.join(String.fromCodePoint(0)));
+
+const v6 = new Float32Array(1);
+v6[0] = NaN;
+v6[1] = NaN;
+print(v6.join(String.fromCodePoint(0)));
+
+const v7 = new Float32Array(2);
+v7[0] = NaN;
+print(v7.join(String.fromCodePoint(0)));

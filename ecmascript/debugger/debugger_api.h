@@ -117,7 +117,7 @@ public:
     static void DestroyJSDebugger(JSDebugger *debugger);
     static void RegisterHooks(JSDebugger *debugger, PtHooks *hooks);
     static bool SetBreakpoint(JSDebugger *debugger, const JSPtLocation &location,
-                              Local<FunctionRef> condFuncRef);
+                              Local<FunctionRef> condFuncRef, bool isSmartBreakPoint = false);
     static bool RemoveBreakpoint(JSDebugger *debugger, const JSPtLocation &location);
     static void RemoveAllBreakpoints(JSDebugger *debugger);
     static void HandleUncaughtException(const EcmaVM *ecmaVm, std::string &message);
@@ -132,6 +132,8 @@ public:
 
     static int32_t GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged);
     static void GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className);
+    static void SwitchThreadStateRunningOrNative(const EcmaVM *ecmaVM, ThreadState newState);
+    static bool RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url);
 
     // HotReload
     static std::vector<DebugInfoExtractor *> GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url);

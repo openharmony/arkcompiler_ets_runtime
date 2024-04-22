@@ -47,6 +47,7 @@
 #include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/runtime_lock.h"
+#include "ecmascript/jit/jit.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -68,7 +69,7 @@ SharedHeap* SharedHeap::GetInstance()
     return shareHeap;
 }
 
-bool SharedHeap::CheckAndTriggerGC(JSThread *thread)
+bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
 {
     if ((OldSpaceExceedLimit() || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
         !NeedStopCollection()) {
@@ -78,13 +79,38 @@ bool SharedHeap::CheckAndTriggerGC(JSThread *thread)
     return false;
 }
 
-bool SharedHeap::CheckHugeAndTriggerGC(JSThread *thread, size_t size)
+bool SharedHeap::CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size)
 {
-    if (sHugeObjectSpace_->CommittedSizeExceed(size) && !NeedStopCollection()) {
+    if ((sHugeObjectSpace_->CommittedSizeExceed(size) || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
+        !NeedStopCollection()) {
         CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
         return true;
     }
     return false;
+}
+
+// Shared gc trigger
+void SharedHeap::AdjustGlobalSpaceAllocLimit()
+{
+    globalSpaceAllocLimit_ = std::max(GetHeapObjectSize() * growingFactor_,
+                                      config_.GetDefaultGlobalAllocLimit() * 2); // 2: double
+    globalSpaceAllocLimit_ = std::min(std::min(globalSpaceAllocLimit_, GetCommittedSize() + growingStep_),
+                                      config_.GetMaxHeapSize());
+    LOG_ECMA(INFO) << "Shared gc adjust global space alloc limit to: " << globalSpaceAllocLimit_;
+}
+
+bool SharedHeap::ObjectExceedMaxHeapSize() const
+{
+    return OldSpaceExceedLimit() || sHugeObjectSpace_->CommittedSizeExceed();
+}
+
+bool SharedHeap::MainThreadInSensitiveStatus() const
+{
+    JSThread *mainThread = Runtime::GetInstance()->GetMainThread();
+    if (mainThread == nullptr) {
+        return false;
+    }
+    return const_cast<Heap *>(mainThread->GetEcmaVM()->GetHeap())->InSensitiveStatus();
 }
 
 void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
@@ -101,11 +127,13 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
 
     size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
     size_t oldSpaceCapacity = (maxHeapSize - nonmovableSpaceCapacity - readOnlySpaceCapacity) / 2; // 2: half
-    globalSpaceAllocLimit_ = maxHeapSize;
+    globalSpaceAllocLimit_ = config_.GetDefaultGlobalAllocLimit();
 
     sOldSpace_ = new SharedOldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     sReadOnlySpace_ = new SharedReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
+    growingFactor_ = config_.GetSharedHeapLimitGrowingFactor();
+    growingStep_ = config_.GetSharedHeapLimitGrowingStep();
 }
 
 void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option)
@@ -157,6 +185,7 @@ void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType 
 void SharedHeap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 {
     Prepare();
+    localFullMarkTriggered_ = false;
     GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
     if (UNLIKELY(ShouldVerifyHeap())) {
         // pre gc heap verify
@@ -164,6 +193,10 @@ void SharedHeap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
     }
     sharedGC_->RunPhases();
+    // Record alive object size after shared gc
+    NotifyHeapAliveSizeAfterGC(GetHeapObjectSize());
+    // Adjust shared gc trigger threshold
+    AdjustGlobalSpaceAllocLimit();
     if (UNLIKELY(ShouldVerifyHeap())) {
         // pre gc heap verify
         LOG_ECMA(DEBUG) << "after gc shared heap verify";
@@ -202,6 +235,8 @@ void SharedHeap::Reclaim()
 
 void SharedHeap::ReclaimRegions()
 {
+    sOldSpace_->ReclaimRegions();
+    sNonMovableSpace_->ReclaimRegions();
     sSweeper_->WaitAllTaskFinished();
     EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
@@ -239,6 +274,23 @@ void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
     sSweeper_->ConfigConcurrentSweep(option.EnableConcurrentSweep());
 }
 
+void SharedHeap::TryTriggerLocalConcurrentMarking(JSThread *thread)
+{
+    if (localFullMarkTriggered_) {
+        return;
+    }
+    {
+        SuspendAllScope scope(thread);
+        if (!localFullMarkTriggered_) {
+            localFullMarkTriggered_ = true;
+            Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+                ASSERT(!thread->IsInRunningState());
+                thread->SetFullMarkRequest();
+            });
+        }
+    }
+}
+
 size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
 {
     size_t failCount = 0;
@@ -255,6 +307,18 @@ size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
         sHugeObjectSpace_->IterateOverObjects(verifier);
     }
     return failCount;
+}
+
+bool SharedHeap::NeedStopCollection()
+{
+    if (!MainThreadInSensitiveStatus()) {
+        return false;
+    }
+
+    if (!ObjectExceedMaxHeapSize()) {
+        return true;
+    }
+    return false;
 }
 
 Heap::Heap(EcmaVM *ecmaVm)
@@ -574,6 +638,7 @@ TriggerGCType Heap::SelectGCType() const
 
 void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
+    Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
         ASSERT(thread_->IsInRunningStateOrProfiling());
         RecursionScope recurScope(this);
@@ -737,6 +802,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 #endif
     ASSERT(thread_->IsPropertyCacheCleared());
     ProcessGCListeners();
+
+    if (GetEcmaVM()->IsEnableBaselineJit() || GetEcmaVM()->IsEnableFastJit()) {
+        // check machine code space if enough
+        int remainSize = config_.GetDefaultMachineCodeSpaceSize() - GetMachineCodeSpace()->GetHeapObjectSize();
+        Jit::GetInstance()->CheckMechineCodeSpaceMemory(GetEcmaVM()->GetJSThread(), remainSize);
+    }
 }
 
 void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
@@ -753,6 +824,19 @@ void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string 
     }
     LOG_ECMA_MEM(ERROR) << oss.str().c_str();
     THROW_OOM_ERROR(thread, oss.str().c_str());
+}
+
+void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName)
+{
+    std::ostringstream oss;
+    oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: "
+        << functionName.c_str();
+    LOG_ECMA_MEM(ERROR) << oss.str().c_str();
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::OOM_ERROR, oss.str().c_str());
+    thread->SetException(error.GetTaggedValue());
 }
 
 void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
@@ -972,7 +1056,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
             << " value:" << std::to_string(pid);
     }
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC);
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
@@ -1345,6 +1429,24 @@ void Heap::TryTriggerFullMarkByNativeSize()
     }
 }
 
+bool Heap::TryTriggerFullMarkBySharedLimit()
+{
+    bool keepFullMarkRequest = false;
+    if (concurrentMarker_->IsEnabled()) {
+        if (!CheckCanTriggerConcurrentMarking()) {
+            return keepFullMarkRequest;
+        }
+        markType_ = MarkType::MARK_FULL;
+        if (ConcurrentMarker::TryIncreaseTaskCounts()) {
+            concurrentMarker_->Mark();
+        } else {
+            // need retry full mark request again.
+            keepFullMarkRequest = true;
+        }
+    }
+    return keepFullMarkRequest;
+}
+
 void Heap::TryTriggerFullMarkBySharedSize(size_t size)
 {
     newAllocatedSharedObjectSize_ += size;
@@ -1429,6 +1531,10 @@ void Heap::ChangeGCParams(bool inBackground)
         LOG_GC(INFO) << "app is inBackground";
         if (GetHeapObjectSize() - heapAliveSizeAfterGC_ > BACKGROUND_GROW_LIMIT) {
             CollectGarbage(TriggerGCType::FULL_GC, GCReason::SWITCH_BACKGROUND);
+        }
+        auto sharedHeap = SharedHeap::GetInstance();
+        if (sharedHeap->GetHeapObjectSize() - sharedHeap->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT) {
+            sharedHeap->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::SWITCH_BACKGROUND);
         }
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
             SetMemGrowingType(MemGrowingType::CONSERVATIVE);
@@ -1668,7 +1774,7 @@ void Heap::CleanCallBack()
     auto &callbacks = this->GetEcmaVM()->GetNativePointerCallbacks();
     if (!callbacks.empty()) {
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<DeleteCallbackTask>(this->GetJSThread()->GetThreadId(), callbacks)
+            std::make_unique<DeleteCallbackTask>(thread_, thread_->GetThreadId(), callbacks)
         );
     }
     ASSERT(callbacks.empty());
@@ -1678,7 +1784,7 @@ bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     for (auto iter : nativePointerCallbacks_) {
         if (iter.first != nullptr) {
-            iter.first(iter.second.first, iter.second.second);
+            iter.first(thread_, iter.second.first, iter.second.second);
         }
     }
     return true;
@@ -1774,8 +1880,9 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
 #endif
 }
 
-void Heap::StatisticHeapDetail() const
+void Heap::StatisticHeapDetail()
 {
+    Prepare();
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
     static const int MIN_COUNT_THRESHOLD = 1000;
@@ -1854,7 +1961,8 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
         });
     }
 
-    if (code == nullptr) {
+    if (code == nullptr ||
+        code->GetPayLoadSizeInBytes() == code->GetInstructionsSize()) { // baseline code
         return {};
     }
     return code->CalCallSiteInfo(retAddr);

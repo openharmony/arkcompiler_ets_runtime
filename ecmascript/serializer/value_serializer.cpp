@@ -66,8 +66,26 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         case JSType::JS_SHARED_SET:
         case JSType::JS_SHARED_MAP:
         case JSType::JS_SHARED_ARRAY:
+        case JSType::JS_SHARED_INT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_SHARED_INT16_ARRAY:
+        case JSType::JS_SHARED_UINT16_ARRAY:
+        case JSType::JS_SHARED_INT32_ARRAY:
+        case JSType::JS_SHARED_UINT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+        case JSType::JS_SHARED_BIGUINT64_ARRAY:
         case JSType::JS_SHARED_OBJECT:
-        case JSType::JS_SHARED_FUNCTION: {
+        case JSType::JS_SHARED_FUNCTION:
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_ARRAY:
+        case JSType::JS_SHARED_JSON_NULL: {
             if (serializeSharedEvent_ > 0) {
                 return true;
             }
@@ -167,9 +185,6 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             break;
         case JSType::JS_SHARED_ARRAY_BUFFER:
             SerializeJSSharedArrayBufferPrologue(object);
-            break;
-        case JSType::METHOD:
-            SerializeMethodPrologue(reinterpret_cast<Method *>(object));
             break;
         case JSType::JS_ARRAY: {
             JSArray *array = reinterpret_cast<JSArray *>(object);
@@ -336,19 +351,6 @@ void ValueSerializer::SerializeJSSharedArrayBufferPrologue(TaggedObject *object)
         data_->WriteEncodeFlag(EncodeFlag::SHARED_ARRAY_BUFFER);
         data_->insertSharedArrayBuffer(reinterpret_cast<uintptr_t>(buffer));
     }
-}
-
-void ValueSerializer::SerializeMethodPrologue(Method *method)
-{
-    JSTaggedValue constPoolVal = method->GetConstantPool();
-    if (!constPoolVal.IsHeapObject()) {
-        return;
-    }
-    ConstantPool *constPool = reinterpret_cast<ConstantPool *>(constPoolVal.GetTaggedObject());
-    const JSPandaFile *jsPandaFile = constPool->GetJSPandaFile();
-    data_->WriteEncodeFlag(EncodeFlag::METHOD);
-    data_->WriteJSTaggedType(method->GetLiteralInfo());
-    data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(jsPandaFile));
 }
 
 void ValueSerializer::SerializeJSRegExpPrologue(JSRegExp *jsRegExp)

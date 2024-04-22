@@ -256,7 +256,7 @@ void PGOTypeLogList::CollectGateTypeLogInfo(GateRef gate, bool isBinOp)
         const PGOSampleType *sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
         if (sampleType->IsString()) {
             log_ += " [left type: string, right type: string]";
-        } else if (sampleType->IsNumber()) {
+        } else if (sampleType->HasNumber()) {
             if (sampleType->IsInt()) {
                 log_ += " [left type: int, right type: int]";
             } else {

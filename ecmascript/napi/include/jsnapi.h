@@ -78,7 +78,6 @@ struct AlignedPointer;
 }
 }  // namespace ecmascript
 
-using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
 using EcmaVM = ecmascript::EcmaVM;
 using EcmaContext = ecmascript::EcmaContext;
@@ -195,6 +194,11 @@ public:
         arkBundleName_ = bundleName;
     }
 
+    void SetMemConfigProperty(std::string configProperty)
+    {
+        memConfigProperty_ = configProperty;
+    }
+
     void SetGcThreadNum(size_t num)
     {
         gcThreadNum_ = num;
@@ -258,7 +262,12 @@ public:
 
     void SetEnableJIT(bool value)
     {
-        enableJIT_ = value;
+        enableFastJIT_ = value;
+    }
+
+    void SetEnableBaselineJIT(bool value)
+    {
+        enableBaselineJIT_ = value;
     }
 
 private:
@@ -321,6 +330,11 @@ private:
         return arkBundleName_;
     }
 
+    std::string GetMemConfigProperty() const
+    {
+        return memConfigProperty_;
+    }
+
     size_t GetGcThreadNum() const
     {
         return gcThreadNum_;
@@ -373,7 +387,12 @@ private:
 
     bool GetEnableJIT() const
     {
-        return enableJIT_;
+        return enableFastJIT_;
+    }
+
+    bool GetEnableBaselineJIT() const
+    {
+        return enableBaselineJIT_;
     }
 
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
@@ -385,6 +404,7 @@ private:
     bool enableCpuprofiler_ {false};
     int arkProperties_ {-1};
     std::string arkBundleName_ = {""};
+    std::string memConfigProperty_ = {""};
     size_t gcThreadNum_ {DEFAULT_GC_THREAD_NUM};
     size_t longPauseTime_ {DEFAULT_LONG_PAUSE_TIME};
     bool enableAsmInterpreter_ {true};
@@ -396,7 +416,8 @@ private:
     std::string anDir_ {};
     bool enableProfile_ {false};
     std::string profileDir_ {};
-    bool enableJIT_ {false};
+    bool enableFastJIT_ {false};
+    bool enableBaselineJIT_ {false};
     friend JSNApi;
 };
 

@@ -112,7 +112,7 @@ void JSValueRefIsFunctionValueFuzzTest(const uint8_t *data, size_t size)
         std::cout << "illegal input!";
         return;
     }
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     FunctionCallback nativeFunc = FunCallback;
     Local<FunctionRef> obj(FunctionRef::NewClassFunction(vm, nativeFunc, deleter, (void *)(data + size)));
     (void)obj->IsFunction();

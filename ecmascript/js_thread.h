@@ -19,12 +19,14 @@
 #include <atomic>
 #include <sstream>
 #include <string>
+#include <cstdint>
 
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/global_index.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread_hclass_entries.h"
@@ -37,6 +39,7 @@ namespace panda::ecmascript {
 class EcmaContext;
 class EcmaVM;
 class EcmaHandleScope;
+class GlobalIndex;
 class HeapRegionAllocator;
 class PropertiesCache;
 template<typename T>
@@ -50,6 +53,11 @@ enum class MarkStatus : uint8_t {
     READY_TO_MARK,
     MARKING,
     MARK_FINISHED,
+};
+
+enum class GCKind : uint8_t {
+    LOCAL_GC,
+    SHARED_GC
 };
 
 enum class PGOProfilerStatus : uint8_t {
@@ -121,6 +129,8 @@ public:
     };
 
     explicit JSThread(EcmaVM *vm);
+    // only used in jit thread
+    explicit JSThread(EcmaVM *vm, bool isJit);
 
     PUBLIC_API ~JSThread();
 
@@ -179,8 +189,6 @@ public:
     const JSTaggedType *GetCurrentInterpretedFrame() const;
 
     bool DoStackOverflowCheck(const JSTaggedType *sp);
-
-    bool DoAsmStackOverflowCheck();
 
     bool DoStackLimitCheck();
 
@@ -249,9 +257,19 @@ public:
         glueData_.globalObject_ = globalObject;
     }
 
+    const GlobalEnv *GetGlobalEnv() const
+    {
+        return glueData_.glueGlobalEnv_;
+    }
+
     const GlobalEnvConstants *GlobalConstants() const
     {
         return glueData_.globalConst_;
+    }
+
+    void SetGlobalConstants(const GlobalEnvConstants *constants)
+    {
+        glueData_.globalConst_ = const_cast<GlobalEnvConstants*>(constants);
     }
 
     const BuiltinEntries GetBuiltinEntries() const
@@ -269,6 +287,11 @@ public:
         return arrayHClassIndexMap_;
     }
 
+    const CMap<JSHClass *, GlobalIndex> &GetCtorHclassEntries() const
+    {
+        return ctorHclassEntries_;
+    }
+
     void NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, StableArrayChangeKind changeKind);
 
     bool IsStableArrayElementsGuardiansInvalid() const
@@ -282,6 +305,8 @@ public:
         BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
                             JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr,
                             JSHClass *extraHClass = nullptr);
+
+    void SetInitialBuiltinGlobalHClass(JSHClass *builtinHClass, GlobalIndex globalIndex);
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
 
@@ -345,6 +370,16 @@ public:
         glueData_.bcStubEntries_.Set(id, entry);
     }
 
+    Address GetBaselineStubEntry(uint32_t id) const
+    {
+        return glueData_.baselineStubEntries_.Get(id);
+    }
+
+    void SetBaselineStubEntry(size_t id, Address entry)
+    {
+        glueData_.baselineStubEntries_.Set(id, entry);
+    }
+
     void SetBCDebugStubEntry(size_t id, Address entry)
     {
         glueData_.bcDebuggerStubEntries_.Set(id, entry);
@@ -371,7 +406,7 @@ public:
         return os::thread::GetCurrentThreadId();
     }
 
-    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC = false);
+    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
 
     PUBLIC_API PropertiesCache *GetPropertiesCache() const;
 
@@ -518,9 +553,9 @@ public:
         return enableLazyBuiltins_;
     }
 
-    void SetReadyForGCIterating()
+    void SetReadyForGCIterating(bool flag)
     {
-        readyForGCIterating_ = true;
+        readyForGCIterating_ = flag;
     }
 
     bool ReadyForGCIterating() const
@@ -819,6 +854,21 @@ public:
         return glueData_.propertiesGrowStep_;
     }
 
+    void SetRandomStatePtr(uint64_t *ptr)
+    {
+        glueData_.randomStatePtr_ = reinterpret_cast<uintptr_t>(ptr);
+    }
+
+    void SetTaskInfo(uintptr_t taskInfo)
+    {
+        glueData_.taskInfo_ = taskInfo;
+    }
+    
+    uintptr_t GetTaskInfo() const
+    {
+        return glueData_.taskInfo_;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -834,6 +884,7 @@ public:
                                                  BuiltinStubEntries,
                                                  BuiltinHClassEntries,
                                                  BCDebuggerStubEntries,
+                                                 BaselineStubEntries,
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
@@ -851,6 +902,8 @@ public:
                                                  BuiltinEntries,
                                                  base::AlignedBool,
                                                  base::AlignedPointer,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  base::AlignedUint32> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -867,6 +920,7 @@ public:
             BuiltinsStubEntriesIndex,
             BuiltinHClassEntriesIndex,
             BCDebuggerStubEntriesIndex,
+            BaselineStubEntriesIndex,
             StateBitFieldIndex,
             FrameBaseIndex,
             StackStartIndex,
@@ -884,7 +938,9 @@ public:
             BuiltinEntriesIndex,
             IsTracingIndex,
             unsharedConstpoolsIndex,
+            RandomStatePtrIndex,
             stateAndFlagsIndex,
+            TaskInfoIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -985,6 +1041,11 @@ public:
                    BuiltinHClassEntries::GetPrototypeOfPrototypeHClassOffset(type);
         }
 
+        static size_t GetBuiltinExtraHClassOffset(BuiltinTypeId type, bool isArch32)
+        {
+            return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetExtraHClassOffset(type);
+        }
+
         static size_t GetBCDebuggerStubEntriesOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::BCDebuggerStubEntriesIndex)>(isArch32);
@@ -1065,6 +1126,16 @@ public:
             return GetOffset<static_cast<size_t>(Index::stateAndFlagsIndex)>(isArch32);
         }
 
+        static size_t GetRandomStatePtrOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::RandomStatePtrIndex)>(isArch32);
+        }
+
+        static size_t GetTaskInfoOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::TaskInfoIndex)>(isArch32);
+        }
+        
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1079,6 +1150,7 @@ public:
         alignas(EAS) BuiltinStubEntries builtinStubEntries_;
         alignas(EAS) BuiltinHClassEntries builtinHClassEntries_;
         alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
+        alignas(EAS) BaselineStubEntries baselineStubEntries_;
         alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};
@@ -1096,7 +1168,9 @@ public:
         alignas(EAS) BuiltinEntries builtinEntries_;
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
+        alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
+        alignas(EAS) uintptr_t taskInfo_ {0};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1133,6 +1207,11 @@ public:
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
 
+    void SetFullMarkRequest()
+    {
+        fullMarkRequest_ = true;
+    }
+
     inline bool IsThreadSafe()
     {
         return IsMainThread() || IsSuspended();
@@ -1162,7 +1241,7 @@ public:
         uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
         return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
     }
-    void UpdateState(ThreadState newState);
+    void PUBLIC_API UpdateState(ThreadState newState);
     void SuspendThread(bool internalSuspend);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
@@ -1174,7 +1253,52 @@ public:
     MutatorLock::MutatorLockState GetMutatorLockState() const;
     void SetMutatorLockState(MutatorLock::MutatorLockState newState);
 #endif
+    void SetWeakFinalizeTaskCallback(const WeakFinalizeTaskCallback &callback)
+    {
+        finalizeTaskCallback_ = callback;
+    }
 
+    static void RegisterThread(JSThread *jsThread);
+
+    static void UnregisterThread(JSThread *jsThread);
+
+    bool IsJitThread() const
+    {
+        return isJitThread_;
+    }
+
+    RecursiveMutex *GetJitLock()
+    {
+        return &jitMutex_;
+    }
+
+    void SetMachineCodeLowMemory(bool isLow)
+    {
+        machineCodeLowMemory_ = isLow;
+    }
+
+    bool IsMachineCodeLowMemory()
+    {
+        return machineCodeLowMemory_;
+    }
+
+    uint64_t GetJobId()
+    {
+        if (jobId_ == UINT64_MAX) {
+            jobId_ = 0;
+        }
+        return ++jobId_;
+    }
+
+    void *GetEnv() const
+    {
+        return env_;
+    }
+
+    void SetEnv(void *env)
+    {
+        env_ = env;
+    }
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -1223,6 +1347,7 @@ private:
     GlueData glueData_;
     std::atomic<ThreadId> id_;
     EcmaVM *vm_ {nullptr};
+    void *env_ {nullptr};
     Area *regExpCache_ {nullptr};
 
     // MM: handles, global-handles, and aot-stubs.
@@ -1243,6 +1368,7 @@ private:
          WeakClearCallback nativeFinalizeCallBack)> setWeak_;
     std::function<uintptr_t(uintptr_t nodeAddr)> clearWeak_;
     std::function<bool(uintptr_t addr)> isWeak_;
+    WeakFinalizeTaskCallback finalizeTaskCallback_ {nullptr};
     uint32_t globalNumberCount_ {0};
 
     // Run-time state
@@ -1260,8 +1386,11 @@ private:
     std::string profileName_ {""};
 
     bool finalizationCheckState_ {false};
+    // Shared heap
+    bool fullMarkRequest_ {false};
 
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
+    CMap<JSHClass *, GlobalIndex> ctorHclassEntries_;
 
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};
@@ -1271,6 +1400,12 @@ private:
     int32_t suspendCount_ {0};
     ConditionVariable suspendCondVar_;
 
+    bool isJitThread_ {false};
+    RecursiveMutex jitMutex_;
+    bool machineCodeLowMemory_ {false};
+
+    uint64_t jobId_ {0};
+
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
 #endif
@@ -1278,6 +1413,7 @@ private:
     friend class GlobalHandleCollection;
     friend class EcmaVM;
     friend class EcmaContext;
+    friend class JitVM;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_THREAD_H

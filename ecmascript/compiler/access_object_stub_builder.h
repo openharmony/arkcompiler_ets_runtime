@@ -60,6 +60,7 @@ public:
     GateRef StOwnByNameWithNameSet(GateRef glue, GateRef receiver, GateRef key, GateRef value);
     GateRef StObjByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value);
     GateRef LdObjByIndex(GateRef glue, GateRef receiver, GateRef index);
+
 private:
     GateRef ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info);
     GateRef jsFunc_ { Circuit::NullGate() };

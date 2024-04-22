@@ -597,3 +597,33 @@ var result_unshift1 = arr_unshift1.unshift(1, 2, 3, 4, 5);
 print(result_unshift1);
 var result_unshift2 = arr_unshift2.unshift(1, 2, 3);
 print(result_unshift2);
+
+class C3 {
+    constructor(a5) {
+        try { a5(this, this, ..."895053461", ..."p"); } catch (e) {}
+    }
+    a;
+    valueOf(a9) {
+        const v10 = a9?.[this];
+        -718821.501160539 !== a9;
+        const t6 = "895053461";
+        t6[a9] = "895053461";
+        return v10;
+    }
+}
+const v12 = new C3("p");
+new C3(v12);
+new C3(C3);
+print(new C3(C3));
+
+// Test case for toSorted()
+var arr_toSorted1 = ["Mar", "Jan", "Feb", "Dec"];
+var arr_toSorted2 = new Array();
+arr_toSorted2[0] = "Mar";
+arr_toSorted2[1] = "Jan";
+arr_toSorted2[2] = "Feb";
+arr_toSorted2[3] = "Dec";
+var result_toSorted1 = arr_toSorted1.toSorted();
+print(result_toSorted1);
+var result_toSorted2 = arr_toSorted2.toSorted();
+print(result_toSorted2);

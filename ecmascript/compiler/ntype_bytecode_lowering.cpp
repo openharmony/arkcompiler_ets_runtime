@@ -14,9 +14,11 @@
  */
 
 #include "ecmascript/compiler/ntype_bytecode_lowering.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+
 #include "ecmascript/compiler/type_info_accessors.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -55,8 +57,10 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
             LowerNTypedCreateEmptyArray(gate);
             break;
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-            LowerNTypedCreateArrayWithBuffer(gate);
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
+                Jit::JitLockHolder lock(compilationEnv_, "LowerNTypedCreateArrayWithBuffer");
+                LowerNTypedCreateArrayWithBuffer(gate);
+            }
             break;
         case EcmaOpcode::COPYRESTARGS_IMM8:
         case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
@@ -99,8 +103,10 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
             LowerStModuleVar(gate);
             break;
         case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
-            LowerNTypedStOwnByName(gate);
+        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8: {
+                Jit::JitLockHolder lock(compilationEnv_, "LowerNTypedStOwnByName");
+                LowerNTypedStOwnByName(gate);
+            }
             break;
         default:
             break;
@@ -204,8 +210,8 @@ void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     GateRef index = acc_.GetValueIn(gate, 0);
     uint32_t cpIdx = static_cast<uint32_t>(acc_.GetConstantValue(index));
     auto methodOffset = acc_.TryGetMethodOffset(gate);
-    uint32_t cpId = tsManager_->GetConstantPoolId(methodOffset);
-    JSTaggedValue cp = tsManager_->GetConstantPool(methodOffset);
+    uint32_t cpId = ptManager_->GetConstantPoolIDByMethodOffset(methodOffset);
+    JSTaggedValue cp = compilationEnv_->GetConstantPoolByMethodOffset(methodOffset);
     panda_file::File::EntityId id = ConstantPool::GetIdFromCache(cp, cpIdx);
 
     int elementIndex = ptManager_->GetElementsIndexByEntityId(id);
@@ -301,19 +307,21 @@ void NTypeBytecodeLowering::AddProfiling(GateRef gate)
             current = gate;
         }
 
+        GateRef func = builder_.Undefined();
         if (acc_.HasFrameState(gate)) {
-            GateRef func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-            GateRef bcIndex = builder_.Int32ToTaggedInt(builder_.Int32(acc_.TryGetBcIndex(gate)));
-            EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
-            auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
-            GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
-            GateRef mode =
-                builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::TYPED_PATH)));
-            GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(current),
-                { func, bcIndex, constOpcode, mode }, gate);
-            acc_.SetDep(current, profiling);
-            builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
+            func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
         }
+
+        GateRef bcIndex = builder_.Int32ToTaggedInt(builder_.Int32(acc_.TryGetBcIndex(gate)));
+        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+        auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
+        GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
+        GateRef mode =
+            builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::TYPED_PATH)));
+        GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(current),
+            { func, bcIndex, constOpcode, mode }, gate);
+        acc_.SetDep(current, profiling);
+        builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
     }
 }
 
@@ -348,10 +356,10 @@ void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
     GateRef hclassGate = acc_.GetValueIn(receiver, 2); // 2: hclass offset
     JSTaggedValue taggedHClass(acc_.GetConstantValue(hclassGate));
     GateRef stringId = acc_.GetValueIn(gate, 0);
-    JSTaggedValue key = TypeInfoAccessor::GetStringFromConstantPool(thread_, acc_.TryGetMethodOffset(gate),
-                                                                    acc_.GetConstantValue(stringId));
+    JSTaggedValue key = compilationEnv_->GetStringFromConstantPool(acc_.TryGetMethodOffset(gate),
+                                                                   acc_.GetConstantValue(stringId));
     JSHClass *hclass = JSHClass::Cast(taggedHClass.GetTaggedObject());
-    int entry = JSHClass::FindPropertyEntry(thread_, hclass, key);
+    int entry = JSHClass::FindPropertyEntry(compilationEnv_->GetJSThread(), hclass, key);
     if (entry == -1) {
         return;
     }

@@ -1945,7 +1945,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod2)
     MethodLiteral *methodLiteral = new MethodLiteral(EntityId(methodOffset));
     JSHandle<Method> method = factory->NewSMethod(methodLiteral);
     EXPECT_TRUE(method.GetTaggedValue().IsMethod());
-    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(thread->GetEcmaVM(), pf);
+    JSPandaFileManager::GetInstance()->AddJSPandaFile(pf);
     EXPECT_TRUE(pf != nullptr);
 
     JSHandle<ConstantPool> constPool = factory->NewSConstantPool(4);
@@ -1983,7 +1983,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeAOTMethod)
 
     JSHandle<Method> method = factory->NewSMethod(methodLiteral);
     EXPECT_TRUE(method.GetTaggedValue().IsMethod());
-    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(thread->GetEcmaVM(), pf);
+    JSPandaFileManager::GetInstance()->AddJSPandaFile(pf);
     EXPECT_TRUE(pf != nullptr);
 
     JSHandle<ConstantPool> constPool = factory->NewSConstantPool(4);
