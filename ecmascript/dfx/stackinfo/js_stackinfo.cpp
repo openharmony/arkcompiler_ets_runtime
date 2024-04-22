@@ -151,8 +151,12 @@ uint64_t GetMicrosecondsTimeStamp()
     return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
 }
 
-void BuildCrashInfo()
+void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc)
 {
+    if (JsStackInfo::loader != nullptr && !JsStackInfo::loader->IsEnableAOT() &&
+        JsStackInfo::options != nullptr && !JsStackInfo::options->IsEnableJIT()) {
+        return;
+    }
     std::string realOutPath;
     std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(ohos::AotCrashInfo::GetSandBoxPath());
     if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
@@ -162,7 +166,7 @@ void BuildCrashInfo()
     ohos::AotCrashInfo aotCrashInfo;
     std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
     if (soBuildId == "") {
-        LOG_ECMA(INFO) << "can't get so buildId";
+        LOG_ECMA(ERROR) << "can't get so buildId";
         return;
     }
     realOutPath = realOutPath + "/" + ohos::AotCrashInfo::GetCrashFileName();
@@ -180,7 +184,9 @@ void BuildCrashInfo()
         ifile.close();
     }
     ohos::CrashType type;
-    if (JsStackInfo::loader->IsEnableAOT()) {
+    if (isJsCrash) {
+        type = ohos::CrashType::JS;
+    } else if (pc != 0 && JsStackInfo::loader != nullptr && JsStackInfo::loader->InsideAOT(pc)) {
         type = ohos::CrashType::AOT;
     } else {
         type = ohos::CrashType::OTHERS;
@@ -279,13 +285,15 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
     // 3. do not do much things inside callback, stack size is limited
     // 4. do not use normal log
     if (JsStackInfo::loader == nullptr) {
+        JsStackInfo::BuildCrashInfo(false);
         return;
     }
     if (!JsStackInfo::loader->InsideStub(pc) && !JsStackInfo::loader->InsideAOT(pc)) {
+        JsStackInfo::BuildCrashInfo(false);
         return;
     }
     LOG_ECMA(ERROR) << std::hex << "CrashCallback pc:" << pc << " fp:" << fp;
-    BuildCrashInfo();
+    JsStackInfo::BuildCrashInfo(false, pc);
     FrameIterator frame(reinterpret_cast<JSTaggedType *>(fp));
     bool isBuiltinStub = (frame.GetFrameType() == FrameType::OPTIMIZED_FRAME);
     Method *method = frame.CheckAndGetMethod();
