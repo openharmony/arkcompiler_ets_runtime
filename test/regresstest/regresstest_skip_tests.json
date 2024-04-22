@@ -1647,7 +1647,6 @@
         "intl/general/constructor.js",
         "intl/number-format/format-range-v3.js",
         "intl/number-format/rounding-mode-table-v3.js",
-        "intl/number-format/resolved-options-digits-order.js",
         "intl/number-format/rounding-increment-value-v3.js",
         "intl/number-format/use-grouping-v3.js",
         "intl/number-format/check-numbering-system.js",

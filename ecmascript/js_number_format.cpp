@@ -1028,6 +1028,20 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
         JSHandle<JSTaggedValue> maximumFractionDigits(thread, numberFormat->GetMaximumFractionDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumFractionDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
+
+        // in v3, should contain BOTH significant and fraction digits
+        if (roundingType == RoundingType::COMPACTROUNDING) {
+            // [[MinimumSignificantDigits]]
+            property = globalConst->GetHandledMinimumSignificantDigitsString();
+            JSHandle<JSTaggedValue> minimumSignificantDigits(thread, numberFormat->GetMinimumSignificantDigits());
+            JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumSignificantDigits);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+            // [[MaximumSignificantDigits]]
+            property = globalConst->GetHandledMaximumSignificantDigitsString();
+            JSHandle<JSTaggedValue> maximumSignificantDigits(thread, numberFormat->GetMaximumSignificantDigits());
+            JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumSignificantDigits);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+        }
     }
 
     // [[UseGrouping]]
