@@ -718,7 +718,7 @@ HWTEST_F_L0(JSNApiTests, ArrayBufferWithBuffer)
     const int32_t length = 15;
     Data *data = new Data();
     data->length = length;
-    NativePointerCallback deleter = [](void *env, void *buffer, void *data) -> void {
+    NativePointerCallback deleter = []([[maybe_unused]] void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         ASSERT_EQ(currentData->length, 15); // 5 : size of arguments
