@@ -182,6 +182,7 @@ void EcmaVM::PostFork()
     options_.SetEnableAPPJIT(true);
     if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
         Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
+        options_.SetEnableAPPJIT(true);
         if (isEnableFastJit || isEnableBaselineJit) {
             EnableJit();
         }
@@ -272,9 +273,22 @@ bool EcmaVM::IsEnableBaselineJit() const
 
 void EcmaVM::EnableJit()
 {
+    // check enable aot pgo, if have enable aot pgo, thread installed pgo stubs
+    if (!IsEnablePGOProfiler() && pgoProfiler_ != nullptr) {
+        // only jit enable pgo, disable aot pgo dump
+        options_.SetEnableProfileDump(false);
+        // enable pgo profile
+        options_.SetEnablePGOProfiler(true);
+        pgoProfiler_->Reset(true);
+        thread_->SetPGOProfilerEnable(true);
+        thread_->CheckOrSwitchPGOStubs();
+    }
     if (pgoProfiler_ != nullptr) {
         pgoProfiler_->InitJITProfiler();
     }
+    bool isApp = Jit::GetInstance()->IsAppJit();
+    options_.SetEnableAPPJIT(isApp);
+
     GetJSThread()->SwitchJitProfileStubs();
 #ifdef JIT_SWITCH_COMPILE_MODE
     bool jitEnableLitecg = OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);

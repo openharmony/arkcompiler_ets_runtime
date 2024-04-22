@@ -281,6 +281,7 @@ public:
     void WaitClearTaskFinished();
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
+    void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
 
 protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);

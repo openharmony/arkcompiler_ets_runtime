@@ -113,7 +113,7 @@ public:
 
     EcmaVM();
 
-    virtual ~EcmaVM();
+    ~EcmaVM();
 
     void SetLoop(void *loop)
     {

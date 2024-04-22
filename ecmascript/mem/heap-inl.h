@@ -51,6 +51,15 @@ namespace panda::ecmascript {
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(thread, size));                       \
     }
 
+#define CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, space, message)                              \
+    if (UNLIKELY((object) == nullptr)) {                                                                    \
+        EcmaVM *vm = GetEcmaVM();                                                                           \
+        size_t oomOvershootSize = vm->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();            \
+        (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
+        SetMachineCodeOutOfMemoryError(GetJSThread(), size, message);                                       \
+        (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                               \
+    }
+
 template<class Callback>
 void SharedHeap::EnumerateOldSpaceRegions(const Callback &cb) const
 {
@@ -374,7 +383,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
     auto object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
         reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
         reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
-    CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
+    CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
     object->SetClass(thread_, hclass);
     OnAllocateEvent(GetEcmaVM(), object, size);
     return object;

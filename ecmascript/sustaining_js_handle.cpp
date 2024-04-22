@@ -16,18 +16,15 @@
 #include "ecmascript/sustaining_js_handle.h"
 
 namespace panda::ecmascript {
-void SustainingJSHandle::Init()
+SustainingJSHandle::SustainingJSHandle(EcmaVM *vm) : vm_(vm)
 {
-    EcmaContext *context = vm_->GetJSThread()->GetCurrentEcmaContext();
-    context->AddSustainingJSHandle(this);
+    context_ = vm_->GetJSThread()->GetCurrentEcmaContext();
+    context_->AddSustainingJSHandle(this);
 }
 
 SustainingJSHandle::~SustainingJSHandle()
 {
-    if (!isTerminate_) {
-        EcmaContext *context = vm_->GetJSThread()->GetCurrentEcmaContext();
-        context->RemoveSustainingJSHandle(this);
-    }
+    context_->RemoveSustainingJSHandle(this);
     for (auto block : handleBlocks_) {
         delete block;
     }

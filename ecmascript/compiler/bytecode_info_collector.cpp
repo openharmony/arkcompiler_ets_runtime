@@ -36,6 +36,7 @@ BytecodeInfoCollector::BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *j
       pfDecoder_(pfDecoder),
       snapshotCPData_(new SnapshotConstantPoolData(env->GetEcmaVM(), jsPandaFile, &pfDecoder))
 {
+    ASSERT(env->IsAotCompiler());
     ProcessClasses();
 }
 
@@ -43,10 +44,12 @@ BytecodeInfoCollector::BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *j
                                              PGOProfilerDecoder &pfDecoder)
     : compilationEnv_(env),
       jsPandaFile_(jsPandaFile),
-      bytecodeInfo_(1),
+      // refactor: jit max method size
+      bytecodeInfo_(env->GetJSOptions().GetMaxAotMethodSize()),
       pfDecoder_(pfDecoder),
       snapshotCPData_(nullptr) // jit no need
 {
+    ASSERT(env->IsJitCompiler());
     ProcessMethod();
 }
 

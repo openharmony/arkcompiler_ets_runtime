@@ -37,11 +37,6 @@ Jit *Jit::GetInstance()
 void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit)
 {
     LockHolder holder(setEnableLock_);
-    if (options.IsEnableAPPJIT()) {
-        // temporary for app jit options test.
-        LOG_JIT(DEBUG) << (isEnableFastJit ? "jit is enable" : "jit is disable");
-        return;
-    }
 
     bool needInitialize = false;
     if (!isEnableFastJit) {
@@ -71,6 +66,7 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
             jitEnable = true;
         }
         if (jitEnable) {
+            isApp_ = options.IsEnableAPPJIT();
             initJitCompiler_(options);
             JitTaskpool::GetCurrentTaskpool()->Initialize();
         }
@@ -368,10 +364,10 @@ void Jit::ClearTask(const std::function<bool(Task *task)> &checkClear)
         JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
         if (checkClear(asyncTask)) {
             asyncTask->Terminated();
-        }
-
-        if (asyncTask->IsRunning()) {
-            asyncTask->WaitFinish();
+            if (asyncTask->IsRunning()) {
+                asyncTask->WaitFinish();
+            }
+            asyncTask->ReleaseSustainingJSHandle();
         }
     });
 }

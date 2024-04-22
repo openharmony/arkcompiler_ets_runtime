@@ -43,6 +43,9 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     LOG_JIT(FATAL) << "jit unsupport arch";
     UNREACHABLE();
 #endif
+    // refactor: remove JitCompilationOptions, reuse CompilationOptions
+    bool isApp = runtimeOptions.IsEnableAPPJIT();
+
     optLevel_ = runtimeOptions.GetOptLevel();
     relocMode_ = runtimeOptions.GetRelocMode();
     logOption_ = runtimeOptions.GetCompilerLogOption();
@@ -52,11 +55,11 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
     profilerIn_ = std::string(runtimeOptions.GetPGOProfilerPath());
     isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();
-    isEnableTypeLowering_ = runtimeOptions.IsEnableTypeLowering();
+    isEnableTypeLowering_ = isApp ? false : runtimeOptions.IsEnableTypeLowering();
     isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
-    isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
+    isEnableOptInlining_ = false;
     isEnableOptString_ = runtimeOptions.IsEnableOptString();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
     isEnableOptTrackField_ = runtimeOptions.IsEnableOptTrackField();

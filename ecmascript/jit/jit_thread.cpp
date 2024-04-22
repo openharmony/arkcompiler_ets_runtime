@@ -47,6 +47,12 @@ JitVM *JitVM::Create()
     return vm;
 }
 
+JitVM::~JitVM()
+{
+    // explict invoke ~EcmaVM
+    EcmaVM::~EcmaVM();
+}
+
 void JitVM::Destroy(EcmaVM *compilerVm)
 {
     JitVM *jitVM = static_cast<JitVM*>(compilerVm);

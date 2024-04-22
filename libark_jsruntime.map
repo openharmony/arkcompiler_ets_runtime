@@ -317,9 +317,9 @@
       panda::ecmascript::pgo::PGOMethodInfo::CalcChecksum*;
       panda::ecmascript::pgo::PGOProfiler::ProfileCreateObject*;
       panda::ecmascript::pgo::PGOProfiler::GetMethodAbcId*;
-      panda::ecmascript::pgo::JITProfiler::ProfileBytecode*;
       panda::ecmascript::pgo::PGOProfilerManager::GetInstance*;
       panda::ecmascript::pgo::PGOProfilerManager::MergeApFiles*;
+      panda::ecmascript::JITProfiler::ProfileBytecode*;
       panda::panda_file::ClassDataAccessor::ClassDataAccessor*;
       panda::panda_file::CodeDataAccessor::CatchBlock::CatchBlock*;
       panda::panda_file::CodeDataAccessor::CodeDataAccessor*;

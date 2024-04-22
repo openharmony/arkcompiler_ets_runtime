@@ -212,11 +212,6 @@ public:
         return jitCompileMode_ == JitCompileMode::ASYNC;
     }
 
-    void Terminated()
-    {
-        sustainingJSHandle_->SetTerminated();
-    }
-
     class AsyncTask : public Task {
     public:
         explicit AsyncTask(std::shared_ptr<JitTask>jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }
@@ -243,8 +238,13 @@ public:
         void Terminated()
         {
             Task::Terminated();
-            jitTask_->Terminated();
         }
+
+        void ReleaseSustainingJSHandle()
+        {
+            jitTask_->ReleaseSustainingJSHandle();
+        }
+
     private:
         std::shared_ptr<JitTask> jitTask_ { nullptr };
     };
