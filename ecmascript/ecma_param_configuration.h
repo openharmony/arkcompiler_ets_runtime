@@ -217,6 +217,11 @@ public:
         return DEFAULT_RESERVED_STACK_SIZE;
     }
 
+    static size_t GetAllowedUpperStackDiff()
+    {
+        return ALLOWED_UPPER_STACK_DIFF;
+    }
+
     size_t GetMaxJSSerializerSize() const
     {
         return maxJSSerializerSize_;
@@ -227,6 +232,7 @@ private:
     static constexpr size_t MEDIUM_MEMORY = 128_MB;
     static constexpr size_t HIGH_MEMORY = 256_MB;
     static constexpr size_t DEFAULT_STACK_SIZE = 992_KB;
+    static constexpr size_t ALLOWED_UPPER_STACK_DIFF = 4_KB;
     static constexpr size_t DEFAULT_RESERVED_STACK_SIZE = 16_KB;
 
     size_t maxHeapSize_ {0};
