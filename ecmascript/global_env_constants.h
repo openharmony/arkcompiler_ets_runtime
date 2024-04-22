@@ -356,6 +356,7 @@ class ObjectFactory;
     V(SegmentString,                  SEGMENT_STRING_INDEX,                  "segment")                     \
     V(IsWordLikeString,               ISWORDLIKE_STRING_INDEX,               "isWordLike")                  \
     V(LocaleMatcherString,            LOCALE_MATCHER_STRING_INDEX,           "localeMatcher")               \
+    V(LanguageDisplayString,          LAUGUAGE_DISPLAY_STRING_INDEX,         "languageDisplay")             \
     V(FormatMatcherString,            FORMAT_MATCHER_STRING_INDEX,           "formatMatcher")               \
     V(Hour12String,                   HOUR12_STRING_INDEX,                   "hour12")                      \
     V(H11String,                      H11_STRING_INDEX,                      "h11")                         \
@@ -434,6 +435,7 @@ class ObjectFactory;
     V(CodeString,                     CODE_INDEX,                            "code")                        \
     V(NarrowSymbolString,             NARROW_SYMBOL_INDEX,                   "narrowSymbol")                \
     V(StandardString,                 STANDARD_INDEX,                        "standard")                    \
+    V(DialectString,                  DIALECT_INDEX,                         "dialect")                     \
     V(AccountingString,               ACCOUNTING_INDEX,                      "accounting")                  \
     V(ScientificString,               SCIENTIFIC_INDEX,                      "scientific")                  \
     V(EngineeringString,              ENGINEERING_INDEX,                     "engineering")                 \
@@ -486,7 +488,7 @@ class ObjectFactory;
     V(AmbiguousString,                AMBIGUOUS_INDEX,                       "ambiguous")                   \
     V(ModuleString,                   MODULE_INDEX,                          "Module")                      \
     V(StarString,                     STAR_INDEX,                            "*")                           \
-    V(DateTimeFieldString,            DATETIMEFIELD_INDEX,                   "datetimefield")               \
+    V(DateTimeFieldString,            DATETIMEFIELD_INDEX,                   "dateTimeField")               \
     V(ConjunctionString,              CONJUNCTION_INDEX,                     "conjunction")                 \
     V(NoneString,                     NONE_INDEX,                            "none")                        \
     V(FallbackString,                 FALLBACK_INDEX,                        "fallback")                    \
