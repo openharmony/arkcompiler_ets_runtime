@@ -108,3 +108,39 @@ function testTypeArrayAt2(ctor) {
     }
     return true;
 }
+
+var arr_find = new Uint8Array([10, 20]);
+Object.defineProperty(arr_find, 'length', {value: 1});
+var x = 0;
+print(arr_find.find(function(elt) { x += elt; return false; }) == undefined);
+print(x == 30);
+print(Array.prototype.find.call(arr_find,
+    function(elt) { x += elt; return false; }) == undefined);
+print(x == 40);
+
+var arr_findLast = new Uint8Array([10, 20]);
+Object.defineProperty(arr_findLast, 'length', {value: 1});
+var x = 0;
+print(arr_findLast.findLast(function(elt) { x += elt; return false; }) == undefined);
+print(x == 30);
+print(Array.prototype.findLast.call(arr_findLast,
+    function(elt) { x += elt; return false; }) == undefined);
+print(x == 40);
+
+var arr_findIndex = new Uint8Array([10, 20]);
+Object.defineProperty(arr_findIndex, 'length', {value: 1});
+var x = 0;
+print(arr_findIndex.findIndex(function(elt) { x += elt; return false; }) == -1);
+print(x == 30);
+print(Array.prototype.findIndex.call(arr_findIndex,
+    function(elt) { x += elt; return false; }) == -1);
+print(x == 40);
+
+var arr_findLastIndex = new Uint8Array([10, 20]);
+Object.defineProperty(arr_findLastIndex, 'length', {value: 1});
+var x = 0;
+print(arr_findLastIndex.findLastIndex(function(elt) { x += elt; return false; }) == -1);
+print(x == 30);
+print(Array.prototype.findLastIndex.call(arr_findLastIndex,
+    function(elt) { x += elt; return false; }) == -1);
+print(x == 40);
