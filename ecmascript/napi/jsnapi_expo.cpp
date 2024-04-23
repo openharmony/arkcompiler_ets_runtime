@@ -3187,9 +3187,6 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetEnableAOT(option.GetEnableAOT());
     runtimeOptions.SetEnablePGOProfiler(option.GetEnableProfile());
     runtimeOptions.SetPGOProfilerPath(option.GetProfileDir());
-    // jit
-    runtimeOptions.SetEnableJIT(option.GetEnableJIT());
-    runtimeOptions.SetEnableBaselineJIT(option.GetEnableBaselineJIT());
     // Dfx
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     runtimeOptions.SetEnableArkTools(option.GetEnableArkTools());
