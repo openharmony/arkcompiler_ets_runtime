@@ -3610,7 +3610,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 
     const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
 
-    using StopDebug = void (*)(const std::string &);
+    using StopDebug = void (*)(void *);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StopDebug");
     if (!sym) {
@@ -3618,9 +3618,11 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
         return false;
     }
 
-    reinterpret_cast<StopDebug>(sym.Value())("PandaDebugger");
+    reinterpret_cast<StopDebug>(sym.Value())(vm);
 
     vm->GetJsDebuggerManager()->SetDebugMode(false);
+    int tid = vm->GetTid();
+    JsDebuggerManager::DeleteJsDebuggerManager(tid);
     return true;
 #else
     if (vm == nullptr) {
@@ -3628,7 +3630,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
 
-    OHOS::ArkCompiler::Toolchain::StopDebug(DEBUGGER_NAME);
+    OHOS::ArkCompiler::Toolchain::StopDebug(vm);
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
 #endif // PANDA_TARGET_IOS
