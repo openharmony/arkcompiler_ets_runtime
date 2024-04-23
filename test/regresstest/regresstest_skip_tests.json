@@ -1666,7 +1666,6 @@
         "intl/number-format/unified/compact-display.js",
         "intl/number-format/unified/currency-display.js",
         "intl/duration-format/format-basic-digital.js",
-        "intl/segmenter/getoptionsobject.js",
         "intl/number-format/unified/notation.js"
       ]
     },
