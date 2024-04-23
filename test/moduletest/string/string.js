@@ -294,7 +294,7 @@ const offset = 0
 
 // case offset = 0, match true
 class C3 {
-    constructor(offset) {
+    constructor() {
         let bb = textStr.startsWith(matchStr, offset);
         print(bb); // true
     }
@@ -306,7 +306,7 @@ new C3();
 const offset1 = 1
 
 class C4 {
-    constructor(offset1) {
+    constructor() {
         let flag = textStr.startsWith(matchStr, offset1);
         print(flag); // false
     }
