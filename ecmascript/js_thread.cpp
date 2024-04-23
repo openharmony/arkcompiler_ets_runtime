@@ -683,29 +683,22 @@ void JSThread::TerminateExecution()
 
 bool JSThread::CheckSafepoint()
 {
-    interruptMutex_.Lock();
-    ResetCheckSafePointStatusWithoutLock();
+    ResetCheckSafePointStatus();
 
-    if (HasTerminationRequestWithoutLock()) {
+    if (HasTerminationRequest()) {
         TerminateExecution();
-        SetVMTerminatedWithoutLock(true);
-        SetTerminationRequestWithoutLock(false);
+        SetVMTerminated(true);
+        SetTerminationRequest(false);
     }
 
     if (IsSuspended()) {
-        interruptMutex_.Unlock();
         WaitSuspension();
-        interruptMutex_.Lock();
     }
 
     // vmThreadControl_ 's thread_ is current JSThread's this.
-    if (VMNeedSuspensionWithoutLock()) {
-        interruptMutex_.Unlock();
+    if (VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
-    } else {
-        interruptMutex_.Unlock();
     }
-
     if (HasInstallMachineCode()) {
         vm_->GetJit()->InstallTasks(GetThreadId());
         SetInstallMachineCode(false);
