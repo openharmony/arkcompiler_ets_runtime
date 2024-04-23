@@ -172,6 +172,9 @@ group("ark_runtime_host_unittest") {
   # execution test
   deps += [ "$js_root/test/executiontest:ark_execution_test" ]
 
+  # jit test
+  deps += [ "$js_root/test/jittest:ark_jit_test" ]
+
   # ts aot test and asm test
   if (!run_with_asan) {
     deps += [

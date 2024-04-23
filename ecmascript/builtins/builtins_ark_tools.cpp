@@ -1185,7 +1185,7 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     JSHandle<JSFunction> jsFunction(thisValue);
 
     auto jit = Jit::GetInstance();
-    if (!jit->IsEnableFastJit() || !jit->IsEnableBaselineJit()) {
+    if (!jit->IsEnableFastJit()) {
         return JSTaggedValue::False();
     }
     if (jsFunction->GetMachineCode() == JSTaggedValue::Undefined()) {
