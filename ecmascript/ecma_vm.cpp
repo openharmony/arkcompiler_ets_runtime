@@ -184,10 +184,9 @@ void EcmaVM::PostFork()
 
     bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
     bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
-    options_.SetEnableAPPJIT(true);
     if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
-        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
         options_.SetEnableAPPJIT(true);
+        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
         bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
         if ((!jitEscapeDisable) && JSNApi::IsJitEscape()) {
             isEnableFastJit = false;
