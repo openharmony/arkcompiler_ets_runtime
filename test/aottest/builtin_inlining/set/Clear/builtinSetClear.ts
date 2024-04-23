@@ -65,7 +65,9 @@ print(mySet2.clear(0, undefined)); //: undefined
 print(mySet2.size); //: 0
 
 mySet.add(0);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 mySet.add(12);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 
 // Replace standard builtin
 let true_clear = mySet.clear
@@ -81,7 +83,9 @@ printClear(); //: 2
 
 // Call standard builtin with non-number param
 mySet.add(0);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 mySet.add(12);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 print(mySet.size); //: 2
 //aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
 mySet.clear("abc");
@@ -93,7 +97,9 @@ if (ArkTools.isAOTCompiled(printClear)) {
 }
 
 mySet.add(0);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 mySet.add(12);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 printClear(); //: 2
               //aot: [trace] Check Type: NotCallTarget1
               //pgo: undefined
@@ -108,7 +114,9 @@ mySet.clear();
 // Check IR correctness inside try-block
 try {
     mySet.add(0);
+    //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
     mySet.add(12);
+    //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
     printClear(); //: 2
                   //aot: [trace] aot inline builtin: Set.clear, caller function name:doClear@builtinSetClear
                   //: undefined
@@ -120,7 +128,9 @@ let obj = {};
 obj.valueOf = (() => { return 0; })
 
 mySet.add(0);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 mySet.add(12);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 print(mySet.size); //: 2
 //aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
 print(mySet.clear(obj)); //: undefined
@@ -139,7 +149,9 @@ function Throwing() {
 let throwingObj = new Throwing();
 try {
     mySet.add(0);
+    //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
     mySet.add(12);
+    //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
     print(mySet.size); //: 2
     //aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
     print(mySet.clear(throwingObj)); //: undefined
@@ -148,7 +160,10 @@ try {
     print(e);
 } finally {
     mySet.add(0);
+    //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
     mySet.add(12);
+    //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
+
     print(mySet.size); //: 2
     //aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
     print(mySet.clear(obj)); //: undefined
@@ -158,11 +173,16 @@ try {
 let trueclear = Set.prototype.clear;
 let m = new Set();
 m.add(1);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 m.add(2);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 m.add("ab");
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 m.add("cd");
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 let obj1 = {};
 m.add(obj1);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 
 print(m.size); //: 5
 //aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
@@ -171,6 +191,7 @@ print(m.size); //: 0
 
 print("baseline"); //: baseline
 m.add(20);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 let m2 = new Set([1]);
 let m3 = new Set([1]);
 let m4 = new Set([1]);
@@ -204,8 +225,11 @@ if (ArkTools.isAOTCompiled(printClear2)) {
 
 // Nothing changed
 m.add(20);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 m2.add(20);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 m3.add(20);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 m4.add(20); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
 
 print(m.size); //: 1

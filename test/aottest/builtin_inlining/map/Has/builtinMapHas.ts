@@ -150,7 +150,9 @@ myMap.clear();
 print(myMap.has(2000));
 //aot: [trace] aot inline builtin: Map.has, caller function name:func_main_0@builtinMapHas
 //: false
-print(myMap.has(2000)); //: false
+print(myMap.has(2000));
+//aot: [trace] aot inline builtin: Map.has, caller function name:func_main_0@builtinMapHas
+//: false
 
 function checkObjWithMapProto() {
     let o = {};

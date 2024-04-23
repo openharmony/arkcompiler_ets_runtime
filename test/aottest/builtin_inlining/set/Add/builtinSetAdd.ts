@@ -157,6 +157,7 @@ print(mySet.has(7));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
 //: false
 mySet.clear();
+//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetAdd
 
 let throwingObj = new Throwing();
 try {

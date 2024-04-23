@@ -78,7 +78,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
         auto [argc, skipThis] = optCallInfo.value();
         CallTypeInfoAccessor ctia(compilationEnv_, circuit_, gate);
         BuiltinsStubCSigns::ID id = ctia.TryGetPGOBuiltinMethodId();
-        if (IS_INVALID_ID(id)) {
+        if (IS_INVALID_ID(id) && id != BuiltinsStubCSigns::ID::BigIntConstructor) {
             continue;
         }
         switch (id) {
@@ -777,7 +777,6 @@ void NativeInlineLowering::ReplaceGateWithPendingException(GateRef hirGate, Gate
     StateDepend success(ifFalse, sDepend);
     StateDepend exception(ifTrue, eDepend);
     acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
-
 }
 
 void NativeInlineLowering::TryInlineBigIntConstructor(GateRef gate, size_t argc, bool skipThis)
