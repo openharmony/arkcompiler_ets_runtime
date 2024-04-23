@@ -813,7 +813,7 @@ size_t JSThread::GetAsmStackLimit()
 bool JSThread::IsLegalAsmSp(uintptr_t sp) const
 {
     uint64_t bottom = GetStackLimit() - EcmaParamConfiguration::GetDefaultReservedStackSize();
-    uint64_t top = GetStackStart();
+    uint64_t top = GetStackStart() + EcmaParamConfiguration::GetAllowedUpperStackDiff();
     return (bottom <= sp && sp <= top);
 }
 
