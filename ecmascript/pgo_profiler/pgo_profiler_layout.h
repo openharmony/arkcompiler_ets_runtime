@@ -41,6 +41,7 @@ public:
     using ConfigurableField = EnumerableField::NextFlag;
     using IsAccessorField = ConfigurableField::NextFlag;
     using TrackTypeField = IsAccessorField::NextField<TrackType, PropertyAttributes::TRACK_TYPE_NUM>;
+    using IsSymbol = TrackTypeField::NextFlag;
 
     PGOHandler()
     {
@@ -52,6 +53,13 @@ public:
     {
         SetTrackType(type);
         SetPropertyMeta(meta);
+    }
+
+    PGOHandler(TrackType type, int meta, bool isSymbol)
+    {
+        SetTrackType(type);
+        SetPropertyMeta(meta);
+        SetIsSymbol(isSymbol);
     }
 
     uint32_t GetValue() const
@@ -88,6 +96,16 @@ public:
         attr.SetConfigurable(IsConfigurable());
         attr.SetIsAccessor(IsAccessor());
         return ret;
+    }
+
+    void SetIsSymbol(bool isSymbol)
+    {
+        IsSymbol::Set(isSymbol, &value_);
+    }
+
+    bool GetIsSymbol() const
+    {
+        return IsSymbol::Get(value_);
     }
 
     void SetTrackType(TrackType type)

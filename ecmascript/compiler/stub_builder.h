@@ -671,6 +671,7 @@ public:
         ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
     GateRef GetParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
+    GateRef GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex);
     void SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);

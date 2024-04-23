@@ -17,6 +17,7 @@
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/layout_info-inl.h"
 #include "ecmascript/object_factory.h"
 #include "index_accessor.h"
 
@@ -58,29 +59,90 @@ void PGOTypeManager::InitAOTSnapshot(uint32_t compileFilesCount)
 {
     aotSnapshot_.InitSnapshot(compileFilesCount);
     GenHClassInfo();
+    GenSymbolInfo();
     GenArrayInfo();
     GenConstantIndexInfo();
+}
+
+uint32_t PGOTypeManager::GetSymbolCountFromHClassData()
+{
+    uint32_t count = 0;
+    for (auto& root: hcData_) {
+        for (auto& child: root.second) {
+            JSHClass* hclass = JSHClass::Cast(JSTaggedValue(child.second).GetTaggedObject());
+            if (!hclass->HasTransitions()) {
+                LayoutInfo* layoutInfo = LayoutInfo::GetLayoutInfoFromHClass(hclass);
+                uint32_t len = hclass->NumberOfProps();
+                for (uint32_t i = 0; i < len; i++) {
+                    JSTaggedValue key = layoutInfo->GetKey(i);
+                    if (key.IsSymbol()) {
+                        count++;
+                    }
+                }
+            }
+        }
+    }
+    return count;
+}
+
+void PGOTypeManager::GenSymbolInfo()
+{
+    uint32_t count = GetSymbolCountFromHClassData();
+    ObjectFactory* factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> symbolInfo = factory->NewTaggedArray(count * 2); // 2: symbolId, symbol
+    uint32_t pos = 0;
+
+    for (auto& root: hcData_) {
+        ProfileType rootType = root.first;
+        for (auto& child: root.second) {
+            ProfileType childType = child.first;
+            JSHClass* hclass = JSHClass::Cast(JSTaggedValue(child.second).GetTaggedObject());
+
+            if (!hclass->HasTransitions()) {
+                LayoutInfo* layoutInfo = LayoutInfo::GetLayoutInfoFromHClass(hclass);
+                uint32_t len = hclass->NumberOfProps();
+                for (uint32_t i = 0; i < len; i++) {
+                    JSTaggedValue symbol = layoutInfo->GetKey(i);
+                    if (symbol.IsSymbol()) {
+                        JSSymbol* symbolPtr = JSSymbol::Cast(symbol.GetTaggedObject());
+                        uint64_t symbolId = symbolPtr->GetPrivateId();
+                        uint64_t slotIndex = JSSymbol::GetSlotIndex(symbolId);
+                        ProfileTypeTuple symbolIdKey = std::make_tuple(rootType, childType, slotIndex);
+                        profileTypeToSymbolId_.emplace(symbolIdKey, symbolId);
+                        symbolInfo->Set(thread_, pos++, JSTaggedValue(symbolId));
+                        symbolInfo->Set(thread_, pos++, symbol);
+                    }
+                }
+            }
+        }
+    }
+
+    aotSnapshot_.StoreSymbolInfo(symbolInfo);
 }
 
 void PGOTypeManager::GenHClassInfo()
 {
     uint32_t count = 0;
-    for (auto &data : hcData_) {
-        count += data.second.size();
+
+    for (auto& root: hcData_) {
+        count += root.second.size();
     }
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+
+    ObjectFactory* factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> hclassInfo = factory->NewTaggedArray(count);
     uint32_t pos = 0;
-    for (auto &x : hcData_) {
-        ProfileType rootType = x.first;
-        for (auto &y : x.second) {
-            ProfileType childType = y.first;
-            JSTaggedType hclass = y.second;
+
+    for (auto& root: hcData_) {
+        ProfileType rootType = root.first;
+        for (auto& child: root.second) {
+            ProfileType childType = child.first;
+            JSTaggedType hclass = child.second;
             ProfileTyper key = std::make_pair(rootType, childType);
             profileTyperToHClassIndex_.emplace(key, pos);
             hclassInfo->Set(thread_, pos++, JSTaggedValue(hclass));
         }
     }
+
     aotSnapshot_.StoreHClassInfo(hclassInfo);
 }
 
@@ -220,6 +282,15 @@ uint32_t PGOTypeManager::GetHClassIndexByProfileType(ProfileTyper type) const
         index = iter->second;
     }
     return index;
+}
+
+std::optional<uint64_t> PGOTypeManager::GetSymbolIdByProfileType(ProfileTypeTuple type) const
+{
+    auto iter = profileTypeToSymbolId_.find(type);
+    if (iter != profileTypeToSymbolId_.end()) {
+        return iter->second;
+    }
+    return std::nullopt;
 }
 
 JSTaggedValue PGOTypeManager::QueryHClass(ProfileType rootType, ProfileType childType)

@@ -140,6 +140,34 @@ Method *FrameHandler::GetMethod() const
     return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
 }
 
+const JSPandaFile* FrameHandler::GetJSPandaFile() const
+{
+    auto method = GetMethod();
+    return method->GetJSPandaFile();
+}
+
+std::string FrameHandler::GetFileName() const
+{
+    auto pandaFile = GetJSPandaFile();
+    return pandaFile->GetFileName();
+}
+
+uint32_t FrameHandler::GetAbcId() const
+{
+    std::string abcName = GetFileName();
+    pgo::PGOProfilerManager* pm = pgo::PGOProfilerManager::GetInstance();
+    uint32_t abcId;
+    if (!pm->GetPandaFileId(CString(abcName), abcId) && !abcName.empty()) {
+        LOG_ECMA(ERROR) << "Get method abc id failed. abcName: " << abcName;
+    }
+    return abcId;
+}
+
+uint32_t FrameHandler::GetMethodId() const
+{
+    return GetMethod()->GetMethodId().GetOffset();
+}
+
 Method *FrameHandler::CheckAndGetMethod() const
 {
     ASSERT(IsJSFrame());

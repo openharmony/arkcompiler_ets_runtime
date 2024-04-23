@@ -340,6 +340,51 @@ GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
         Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
 }
 
+GateRef CircuitBuilder::CallPrivateGetter(GateRef hirGate, GateRef receiver, GateRef accessor, const char* comment)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
+
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> args = {currentControl, currentDepend, receiver, accessor};
+    AppendFrameArgs(args, hirGate);
+    auto callGate = GetCircuit()->NewGate(circuit_->CallPrivateGetter(pcOffset),
+                                          MachineType::I64,
+                                          args.size(),
+                                          args.data(),
+                                          GateType::AnyType(),
+                                          comment);
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
+GateRef CircuitBuilder::CallPrivateSetter(
+    GateRef hirGate, GateRef receiver, GateRef accessor, GateRef value, const char* comment)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
+
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> args = {currentControl, currentDepend, receiver, accessor, value};
+    AppendFrameArgs(args, hirGate);
+    auto callGate = GetCircuit()->NewGate(circuit_->CallPrivateSetter(pcOffset),
+                                          MachineType::I64,
+                                          args.size(),
+                                          args.data(),
+                                          GateType::AnyType(),
+                                          comment);
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
 GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,
                                    const char* comment)
 {

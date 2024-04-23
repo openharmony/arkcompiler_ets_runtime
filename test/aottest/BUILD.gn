@@ -225,6 +225,7 @@ group("ark_aot_ts_test") {
     "pgo_track_type",
     "poplexenv",
     "proxy",
+    "privateproperty",
     "resumegenerator",
     "rodata",
     "setobjectwithproto",
