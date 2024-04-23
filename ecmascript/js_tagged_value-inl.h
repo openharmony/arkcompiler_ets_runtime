@@ -903,10 +903,6 @@ inline bool JSTaggedValue::IsArray(JSThread *thread) const
         return true;
     }
 
-    if (jsHclass->IsJSSharedArray()) {
-        return true;
-    }
-
     if (jsHclass->IsJSProxy()) {
         return JSProxy::Cast(GetTaggedObject())->IsArray(thread);
     }
@@ -931,41 +927,6 @@ inline bool JSTaggedValue::IsJSArray() const
 inline bool JSTaggedValue::IsJSSharedArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedArray();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONFalse() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONFalse();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONTrue() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONTrue();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONString() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONString();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONNull() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONNull();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONObject() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONObject();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONNumber() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONNumber();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONArray() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONArray();
 }
 
 inline bool JSTaggedValue::IsStableJSArray(JSThread *thread) const
@@ -1124,11 +1085,6 @@ inline bool JSTaggedValue::IsJSMap() const
 inline bool JSTaggedValue::IsJSSharedMap() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedMap();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONValue() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONValue();
 }
 
 inline bool JSTaggedValue::IsJSWeakMap() const

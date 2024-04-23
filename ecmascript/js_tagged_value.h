@@ -678,14 +678,6 @@ public:
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;
     bool IsSharedType() const;
-    bool IsJSSharedJSONValue() const;
-    bool IsJSSharedJSONFalse() const;
-    bool IsJSSharedJSONTrue() const;
-    bool IsJSSharedJSONString() const;
-    bool IsJSSharedJSONNull() const;
-    bool IsJSSharedJSONObject() const;
-    bool IsJSSharedJSONNumber() const;
-    bool IsJSSharedJSONArray() const;
 
     bool PUBLIC_API IsInSharedHeap() const;
     bool IsInSharedSweepableSpace() const;

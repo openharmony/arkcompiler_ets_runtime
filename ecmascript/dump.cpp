@@ -16,7 +16,6 @@
 #include <codecvt>
 #include <iomanip>
 #include <iostream>
-#include <ostream>
 #include <string>
 
 #include "ecmascript/accessor_data.h"
@@ -25,8 +24,6 @@
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/mem/tagged_object.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -129,8 +126,6 @@
 #include "ecmascript/transitions_dictionary.h"
 #include "ecmascript/js_displaynames.h"
 #include "ecmascript/js_list_format.h"
-#include "js_hclass.h"
-#include "shared_objects/js_shared_json_value.h"
 #include "ecmascript/mem/object_xray.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
@@ -564,14 +559,6 @@ CString JSHClass::DumpJSType(JSType type)
             return "LocalExportEntry";
         case JSType::STAR_EXPORTENTRY_RECORD:
             return "StarExportEntry";
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_STRING:
-        case JSType::JS_SHARED_JSON_ARRAY:
-            return "SharedJSONValue";
         default: {
             CString ret = "unknown type ";
             return ret.append(std::to_string(static_cast<char>(type)));
@@ -1340,15 +1327,6 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::CLASS_LITERAL:
             ClassLiteral::Cast(obj)->Dump(os);
-            break;
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_STRING:
-        case JSType::JS_SHARED_JSON_ARRAY:
-            JSSharedJSONValue::Cast(obj)->Dump(os);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -4210,15 +4188,6 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_SENDABLE_ARRAY_BUFFER:
             JSSendableArrayBuffer::Cast(obj)->DumpForSnapshot(vec);
             break;
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_ARRAY:
-        case JSType::JS_SHARED_JSON_STRING:
-            JSSharedJSONValue::Cast(obj)->DumpForSnapshot(vec);
-            break;
         case JSType::JS_PROXY_REVOC_FUNCTION:
             JSProxyRevocFunction::Cast(obj)->DumpForSnapshot(vec);
             break;
@@ -4628,20 +4597,6 @@ void LinkedHashMap::DumpForSnapshot(std::vector<Reference> &vec) const
             KeyToStd(str, key);
             vec.emplace_back(str, val);
         }
-    }
-}
-
-void JSSharedJSONValue::Dump(std::ostream &os) const
-{
-    JSObject::Dump(os);
-    auto value = GetValue();
-    os << "wrapped value(Raw): " << std::hex << value.GetRawData() << "\n";
-    if (value.IsJSSharedArray()) {
-        JSSharedArray::Cast(value)->Dump(os);
-    } else if (value.IsJSSharedMap()) {
-        JSSharedMap::Cast(value)->Dump(os);
-    } else {
-        value.DumpTaggedValue(os);
     }
 }
 
@@ -5385,12 +5340,6 @@ void JSSendableArrayBuffer::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("buffer-data"), GetArrayBufferData());
     vec.emplace_back(CString("byte-length"), JSTaggedValue(GetArrayBufferByteLength()));
     vec.emplace_back(CString("shared"), JSTaggedValue(GetShared()));
-    JSObject::DumpForSnapshot(vec);
-}
-
-void JSSharedJSONValue::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("value"), GetValue());
     JSObject::DumpForSnapshot(vec);
 }
 

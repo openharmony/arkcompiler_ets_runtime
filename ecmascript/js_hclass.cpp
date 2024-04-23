@@ -20,7 +20,6 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_typed_array.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
@@ -191,13 +190,6 @@ bool JSHClass::IsJSTypeShared(JSType type)
         case JSType::CONSTANT_STRING:
         case JSType::SLICED_STRING:
         case JSType::TREE_STRING:
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_STRING:
-        case JSType::JS_SHARED_JSON_ARRAY:
             isShared = true;
             break;
         default:
