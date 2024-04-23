@@ -41,6 +41,7 @@ namespace panda::ecmascript {
     V(OPCODE_OVERFLOW, "opcode overflow!")                                                   \
     V(INT32_VALUE, "value: %ld")                                                             \
     V(TargetTypeNotObject, "Type of target is not Object")                                   \
+    V(TargetTypeNotTypedArray, "The O is not a TypedArray.")                                 \
     V(CanNotGetNotEcmaObject, "Can not get Prototype on non ECMA Object")                    \
     V(SendableArrayForJson, "Array not supported for SENDABLE_JSON")                         \
     V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")      \
