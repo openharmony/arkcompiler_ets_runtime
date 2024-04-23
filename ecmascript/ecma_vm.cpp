@@ -95,10 +95,6 @@
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/jit_tools.h"
 
-#ifdef JIT_SWITCH_COMPILE_MODE
-#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
-#endif
-
 #ifdef PANDA_TARGET_OHOS
 #include "parameters.h"
 #endif
@@ -301,11 +297,9 @@ void EcmaVM::EnableJit()
     options_.SetEnableAPPJIT(isApp);
 
     GetJSThread()->SwitchJitProfileStubs();
-#ifdef JIT_SWITCH_COMPILE_MODE
-    bool jitEnableLitecg = OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);
+    bool jitEnableLitecg = panda::ecmascript::ohos::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
     LOG_JIT(INFO) << "jit enable litecg: " << jitEnableLitecg;
     options_.SetCompilerEnableLiteCG(jitEnableLitecg);
-#endif
 }
 
 Jit *EcmaVM::GetJit() const
