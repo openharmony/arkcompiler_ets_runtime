@@ -252,6 +252,7 @@
       panda::ecmascript::ObjectFactory::NewSEcmaHClassDictMode*;
       panda::ecmascript::ObjectFactory::GetRawStringFromStringTable*;
       panda::ecmascript::SendableClassDefiner::AddFieldTypeToHClass*;
+      panda::ecmascript::ObjectFactory::NewSMethod*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageSize*;
@@ -319,6 +320,7 @@
       panda::panda_file::FieldDataAccessor::FieldDataAccessor*;
       panda::panda_file::FieldDataAccessor::GetValueInternal*;
       panda::panda_file::MethodDataAccessor::MethodDataAccessor*;
+      panda::ecmascript::JitCompilationEnv::GetMethodFromCache*;
     };
     extern "C" {
       get_ark_js_heap_crash_info;

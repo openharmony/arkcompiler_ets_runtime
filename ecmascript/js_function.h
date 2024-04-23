@@ -206,6 +206,11 @@ public:
             (kind != FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
     }
 
+    inline static bool IsNormalFunctionAndCanSkipWbWhenInitialization(FunctionKind kind)
+    {
+        return kind != FunctionKind::LAST_FUNCTION_KIND;
+    }
+
     inline static bool HasAccessor(FunctionKind kind)
     {
         return kind >= FunctionKind::NORMAL_FUNCTION && kind <= FunctionKind::ASYNC_FUNCTION;

@@ -491,6 +491,8 @@ public:
         return method.GetTaggedValue();
     }
 
+    static JSTaggedValue PUBLIC_API GetMethodFromCache(JSTaggedValue constpool, uint32_t index);
+
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
         uint32_t literal, CString entry, ClassKind kind = ClassKind::NON_SENDABLE)
     {
