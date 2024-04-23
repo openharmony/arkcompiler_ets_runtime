@@ -640,6 +640,7 @@ enum class ConstantIndex : size_t {
     JSAPI_CONTAINERS_BEGIN = ARRAYLIST_FUNCTION_INDEX,
     JSAPI_CONTAINERS_END = LINKED_LIST_ITERATOR_PROTOTYPE_INDEX,
 
+    INVALID = -1,
     // ...
 };
 // clang-format on
