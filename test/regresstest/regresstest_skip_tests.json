@@ -1637,7 +1637,6 @@
         "intl/date-format/timezone.js",
         "intl/date-format/constructor-date-style-order.js",
         "intl/date-format/format-range-to-parts.js",
-        "intl/list-format/getoptionsobject.js",
         "intl/general/smp-identifier.js",
         "intl/general/invalid-locale.js",
         "intl/general/getCanonicalLocales.js",
