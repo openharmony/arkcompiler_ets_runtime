@@ -534,12 +534,15 @@ private:
     V(CreateJSMapIterator)                      \
     V(JSMapGet)                                 \
     V(JSMapHas)                                 \
+    V(JSMapKeys)                                \
+    V(JSMapValues)                              \
     V(JSSetHas)                                 \
     V(JSMapDelete)                              \
     V(JSSetDelete)                              \
     V(CreateJSTypedArrayEntries)                \
     V(CreateJSTypedArrayKeys)                   \
     V(CreateJSTypedArrayValues)                 \
+    V(JSSetEntries)                             \
     V(JSHClassFindProtoTransitions)             \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \

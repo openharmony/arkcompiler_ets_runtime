@@ -334,12 +334,17 @@ public:
             case BuiltinsStubCSigns::ID::StringFromCharCode:
             case BuiltinsStubCSigns::ID::MapGet:
             case BuiltinsStubCSigns::ID::MapHas:
+            case BuiltinsStubCSigns::ID::MapKeys:
+            case BuiltinsStubCSigns::ID::MapValues:
+            case BuiltinsStubCSigns::ID::MapEntries:
             case BuiltinsStubCSigns::ID::SetHas:
             case BuiltinsStubCSigns::ID::MapDelete:
             case BuiltinsStubCSigns::ID::SetDelete:
             case BuiltinsStubCSigns::ID::TypedArrayEntries:
             case BuiltinsStubCSigns::ID::TypedArrayKeys:
             case BuiltinsStubCSigns::ID::TypedArrayValues:
+            case BuiltinsStubCSigns::ID::SetValues:
+            case BuiltinsStubCSigns::ID::SetEntries:
                 return true;
             default:
                 return false;
@@ -460,12 +465,22 @@ public:
                 return ConstantIndex::MAP_GET_INDEX;
             case BuiltinsStubCSigns::ID::MapHas:
                 return ConstantIndex::MAP_HAS_INDEX;
+            case BuiltinsStubCSigns::ID::MapKeys:
+                return ConstantIndex::MAP_KEYS_INDEX;
+            case BuiltinsStubCSigns::ID::MapValues:
+                return ConstantIndex::MAP_VALUES_INDEX;
+            case BuiltinsStubCSigns::ID::MapEntries:
+                return ConstantIndex::MAP_ENTRIES_INDEX;
             case BuiltinsStubCSigns::ID::SetHas:
                 return ConstantIndex::SET_HAS_INDEX;
             case BuiltinsStubCSigns::ID::MapDelete:
                 return ConstantIndex::MAP_DELETE_INDEX;
             case BuiltinsStubCSigns::ID::SetDelete:
                 return ConstantIndex::SET_DELETE_INDEX;
+            case BuiltinsStubCSigns::ID::SetValues:
+                return ConstantIndex::SET_VALUES_INDEX;
+            case BuiltinsStubCSigns::ID::SetEntries:
+                return ConstantIndex::SET_ENTRIES_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
@@ -599,6 +614,11 @@ public:
             {BigIntAsUintN, "BigInt.asUintN"},
             {MapGet, "Map.get"},
             {MapHas, "Map.has"},
+            {MapKeys, "Map.keys"},
+            {MapValues, "Map.values"},
+            {MapEntries, "Map.entries"},
+            {SetValues, "Set.values"},
+            {SetEntries, "Set.entries"},
             {SetHas, "Set.has"},
             {MapDelete, "Map.delete"},
             {SetDelete, "Set.delete"},
