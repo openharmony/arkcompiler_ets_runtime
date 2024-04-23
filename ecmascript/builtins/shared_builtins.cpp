@@ -73,6 +73,7 @@ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) con
     InitializeSharedArray(env, sObjPrototype, sFuncPrototype);
     InitializeSTypedArray(env, sObjPrototype, sFuncPrototype);
     InitializeSArrayBuffer(env, sObjPrototype, sFuncPrototype);
+    InitializeSModuleNamespace(env, sObjIHClass);
     env->SetSObjectFunctionPrototype(thread_, sObjPrototype);
 }
 
@@ -311,6 +312,25 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
 
     env->SetSharedMapPrototype(thread_, mapPrototype);
     env->SetSBuiltininMapFunction(thread_, mapFunction);
+}
+
+void Builtins::InitializeSModuleNamespace(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    // SharedModuleNamespace.prototype
+    JSHandle<JSObject> moduleNamespacePrototype = factory_->NewSharedOldSpaceJSObjectWithInit(sObjIHClass);
+    JSHandle<JSTaggedValue> moduleNamespacePrototypeValue(moduleNamespacePrototype);
+
+    //  SharedModuleNamespace.prototype_or_hclass
+    auto emptySLayout = thread_->GlobalConstants()->GetHandledEmptySLayoutInfo();
+
+    JSHandle<JSHClass> moduleNamespaceHClass = factory_->NewSEcmaHClass(ModuleNamespace::SIZE, 0,
+        JSType::JS_MODULE_NAMESPACE, moduleNamespacePrototypeValue, emptySLayout);
+    moduleNamespaceHClass->SetPrototype(thread_, JSTaggedValue::Null());
+    env->SetSharedModuleNamespaceClass(thread_, moduleNamespaceHClass.GetTaggedValue());
+
+    // SharedmoduleNamespace.prototype [ @@toStringTag ]
+    SetStringTagSymbol(env, moduleNamespacePrototype, "Module");
 }
 
 void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,

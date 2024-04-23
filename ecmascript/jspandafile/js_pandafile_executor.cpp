@@ -117,7 +117,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
             moduleRecord = sharedModuleManager->ResolveImportedModuleWithMerge(thread, name, entry, executeFromJob);
         }
         
-        ASSERT(!SourceTextModule::IsSharedModule(JSHandle<SourceTextModule>(moduleRecord)));
         SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
         if (thread->HasPendingException()) {
             return Unexpected(false);

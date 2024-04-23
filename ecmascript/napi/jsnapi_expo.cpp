@@ -4416,14 +4416,16 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
         }
     }
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<EcmaString> referencingHandle = factory->NewFromUtf8(entry);
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(
+        referencingHandle.GetTaggedValue());
     if (ecmaModule->GetIsNewBcVersion()) {
         int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key);
         JSTaggedValue result = ecmaModule->GetModuleValue(thread, index, false);
         JSHandle<JSTaggedValue> exportObj(thread, result);
         return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
     }
-    ObjectFactory *factory = vm->GetFactory();
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
 
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
@@ -4436,8 +4438,11 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
+    ObjectFactory *factory = vm->GetFactory();
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(file.c_str());
+    JSHandle<EcmaString> referencingHandle = factory->NewFromUtf8(file.c_str());
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(
+        referencingHandle.GetTaggedValue());
 
     if (ecmaModule->GetIsNewBcVersion()) {
         int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key);
@@ -4446,7 +4451,6 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
         return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
     }
 
-    ObjectFactory *factory = vm->GetFactory();
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
     JSHandle<JSTaggedValue> exportObj(thread, result);

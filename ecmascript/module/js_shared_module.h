@@ -39,6 +39,11 @@ class JSSharedModule {
 public:
     static JSHandle<TaggedArray> CloneEnvForSModule(JSThread *thread, const JSHandle<SourceTextModule> &module,
         JSHandle<TaggedArray> &envRec);
+    static JSHandle<ModuleNamespace> SModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,
+                                                            const JSHandle<TaggedArray> &exports);
+private:
+    static JSHandle<JSTaggedValue> CreateSharedSortedExports(JSThread *thread, const JSHandle<TaggedArray> &exports);
+    static JSHandle<TaggedArray> GenerateSharedExports(JSThread *thread, const JSHandle<TaggedArray> &oldExports);
 };
 
 class ResolvedRecordIndexBinding final : public Record {

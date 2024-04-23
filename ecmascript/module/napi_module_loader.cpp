@@ -83,7 +83,7 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
-    if (!moduleManager->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
+    if (!moduleManager->IsLocalModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, abcFilePath.c_str(), entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request from napi load module : " + entryPoint +
                 ", from napi load module";

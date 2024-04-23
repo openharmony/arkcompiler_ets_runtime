@@ -1512,6 +1512,12 @@ inline bool JSTaggedValue::IsStarExportEntry() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsStarExportEntry();
 }
 
+inline bool JSTaggedValue::IsModuleBinding() const
+{
+    return IsResolvedBinding() || IsResolvedIndexBinding() ||
+        IsResolvedRecordIndexBinding() || IsResolvedRecordBinding();
+}
+
 inline bool JSTaggedValue::IsResolvedBinding() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsResolvedBinding();

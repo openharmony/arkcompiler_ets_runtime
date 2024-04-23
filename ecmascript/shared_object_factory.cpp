@@ -657,6 +657,20 @@ JSHandle<SourceTextModule> ObjectFactory::NewSSourceTextModule()
     return obj;
 }
 
+JSHandle<ModuleNamespace> ObjectFactory::NewSModuleNamespace()
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedModuleNamespaceClass());
+    JSHandle<JSObject> obj = NewSharedOldSpaceJSObject(hclass);
+
+    JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
+    moduleNamespace->SetModule(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetExports(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetDeregisterProcession(thread_, JSTaggedValue::Undefined());
+    return moduleNamespace;
+}
+
 JSHandle<ImportEntry> ObjectFactory::NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                                      const JSHandle<JSTaggedValue> &importName,
                                                      const JSHandle<JSTaggedValue> &localName)
