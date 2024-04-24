@@ -39,7 +39,8 @@ namespace panda::ecmascript::kungfu {
     V(FastModule, false)                                                         \
     V(OptBranchProfiling, true)                                                  \
     V(EscapeAnalysis, false)                                                     \
-    V(InductionVariableAnalysis, false)
+    V(InductionVariableAnalysis, false)                                          \
+    V(VerifierPass, true)
 
 #define OPTION_BUILDER(NAME, DEFAULT)                                            \
     Builder &Enable##NAME(bool value) {                                          \

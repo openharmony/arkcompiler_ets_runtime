@@ -85,6 +85,7 @@ struct CompilationOptions {
     bool isEnableOptBranchProfiling_;
     bool isEnableEscapeAnalysis_;
     bool isEnableInductionVariableAnalysis_;
+    bool isEnableVerifierPass_;
     std::map<std::string, std::vector<std::string>> optionSelectMethods_;
     std::map<std::string, std::vector<std::string>> optionSkipMethods_;
 };
