@@ -2114,7 +2114,7 @@ bool AArch64CGFunc::LmbcSmallAggForRet(const BaseNode &bNode, const Operand *src
                 RegOperand &res1 = GetOrCreatePhysicalRegisterOperand(R0, loadSize, kRegTyInt);
                 SelectCopy(res1, pTy, mem, pTy);
             }
-            if (tySize > static_cast<int32>(k8ByteSize)) {
+            if (tySize > k8ByteSize) {
                 int32 newOffset = offset + static_cast<int32>(k8ByteSize);
                 MemOperand &newMem = CreateMemOpnd(regno, newOffset, size * kBitsPerByte);
                 RegOperand &res2 = GetOrCreatePhysicalRegisterOperand(R1, loadSize, kRegTyInt);

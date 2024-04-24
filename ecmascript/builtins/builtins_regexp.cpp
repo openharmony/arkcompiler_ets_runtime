@@ -282,7 +282,7 @@ JSTaggedValue BuiltinsRegExp::RegExpTestFast(JSThread *thread, JSHandle<JSTagged
     JSTaggedValue endIndex = globalTable->GetEndIndex();
     uint32_t newLastIndex = lastIndex;
     if (ifUpdateLastIndex) {
-        newLastIndex = endIndex.GetInt();
+        newLastIndex = static_cast<uint32_t>(endIndex.GetInt());
         SetLastIndex(thread, regexp, endIndex, true);
     }
     if (useCache) {
@@ -1084,7 +1084,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
     // 14. Let accumulatedResult be the empty String value.
     bool isUtf8 = EcmaStringAccessor(srcString).IsUtf8();
     uint32_t resultStrLength = 0;
-    uint32_t resultArrayLength = (resultsIndex + 1) * 2;
+    uint32_t resultArrayLength = (static_cast<uint32_t>(resultsIndex) + 1) * 2;
     JSHandle<TaggedArray> resultArray = factory->NewTaggedArray(resultArrayLength);
     std::vector<uint64_t> resultLengthArray(resultArrayLength);
     // 15. Let nextSourcePosition be 0.
@@ -2029,7 +2029,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
         bool global = GetOringinalFlag(thread, regexp, RegExpParser::FLAG_GLOBAL);
         bool sticky = GetOringinalFlag(thread, regexp, RegExpParser::FLAG_STICKY);
         if (global || sticky) {
-            newLastIndex = globalTable->GetEndIndex().GetInt();
+            newLastIndex = static_cast<uint32_t>(globalTable->GetEndIndex().GetInt());
         }
         RegExpExecResultCache::AddResultInCache(thread, cacheTable, regexp, inputStr,
                                                 JSHandle<JSTaggedValue>(results), RegExpExecResultCache::EXEC_TYPE,

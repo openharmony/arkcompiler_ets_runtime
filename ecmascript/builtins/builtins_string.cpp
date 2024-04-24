@@ -402,7 +402,7 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (posVal.GetNumber() == BuiltinsNumber::POSITIVE_INFINITY) {
-            pos = thisLen;
+            pos = static_cast<int32_t>(thisLen);
         } else {
             pos = posVal.ToInt32();
         }

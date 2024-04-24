@@ -888,7 +888,8 @@ int32 X64CGFunc::GetBaseOffset(const SymbolAlloc &symbolAlloc)
                              memLayout->SizeOfArgsRegisterPassed());
     } else if (sgKind == kMsArgsRegPassed) {
         /* ArgsReg = baseOffset - ReseverdSlot  - ArgsReg */
-        return baseOffset - GetFunction().GetFrameReseverdSlot() - memLayout->SizeOfArgsRegisterPassed();
+        return baseOffset - static_cast<int32_t>(GetFunction().GetFrameReseverdSlot()) -
+            static_cast<int32_t>(memLayout->SizeOfArgsRegisterPassed());
     } else if (sgKind == kMsArgsStkPassed) {
         return baseOffset + sizeofFplr;
     } else {
