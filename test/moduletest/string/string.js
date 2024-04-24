@@ -286,3 +286,30 @@ print(strFromCodePoint);
         print(err);
     }
 }
+
+// startsWith 边界值测试
+const textStr = "abcd"
+const matchStr = "abcd"
+const offset = 0
+
+// case offset = 0, match true
+class C3 {
+    constructor() {
+        let bb = textStr.startsWith(matchStr, offset);
+        print(bb); // true
+    }
+}
+
+new C3();
+
+// case offset = 1, match false
+const offset1 = 1
+
+class C4 {
+    constructor() {
+        let flag = textStr.startsWith(matchStr, offset1);
+        print(flag); // false
+    }
+}
+
+new C4();
