@@ -387,7 +387,6 @@ GateRef StubBuilder::BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key,
         BRANCH(Int32LessThanOrEqual(*low, *high), &next, &exit);
         Bind(&next);
         mid = Int32Add(*low, Int32Div(Int32Sub(*high, *low), Int32(2)));  // 2: half
-        DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(INT32_VALUE)), *mid });
         GateRef midKey = GetSortedKey(layoutInfo, *mid);
         GateRef midHash = GetKeyHashCode(glue, midKey);
         BRANCH(Int32UnsignedGreaterThan(midHash, keyHash), &midGreaterKey, &midnotGreaterKey);
