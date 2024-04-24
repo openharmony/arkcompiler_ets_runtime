@@ -208,6 +208,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::NUMBER_IS_SAFEINTEGER:
             LowerNumberIsSafeInteger(gate);
             break;
+        case OpCode::NUMBER_PARSE_FLOAT:
+            LowerNumberParseFloat(gate);
+            break;
         case OpCode::MAP_GET:
             LowerToCommonStub(gate, CommonStubCSigns::JSMapGet);
             break;
@@ -217,8 +220,20 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MAP_HAS:
             LowerToCommonStub(gate, CommonStubCSigns::JSMapHas);
             break;
+        case OpCode::MAP_KEYS:
+            LowerToCommonStub(gate, CommonStubCSigns::JSMapKeys);
+            break;
+        case OpCode::MAP_VALUES:
+            LowerToCommonStub(gate, CommonStubCSigns::JSMapValues);
+            break;
+        case OpCode::MAP_ENTRIES:
+            LowerToCommonStub(gate, CommonStubCSigns::CreateJSMapIterator);
+            break;
         case OpCode::SET_HAS:
             LowerToCommonStub(gate, CommonStubCSigns::JSSetHas);
+            break;
+        case OpCode::SET_ADD:
+            LowerToCommonStub(gate, CommonStubCSigns::JSSetAdd);
             break;
         case OpCode::DATE_NOW:
             LowerGeneralWithoutArgs(gate, RTSTUB_ID(CallDateNow));
@@ -240,6 +255,27 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::SET_DELETE:
             LowerToCommonStub(gate, CommonStubCSigns::JSSetDelete);
+            break;
+        case OpCode::SET_VALUES:
+            LowerToCommonStub(gate, CommonStubCSigns::CreateJSSetIterator);
+            break;
+        case OpCode::SET_ENTRIES:
+            LowerToCommonStub(gate, CommonStubCSigns::JSSetEntries);
+            break;
+        case OpCode::BIGINT_CONSTRUCTOR:
+            LowerBigIntConstructor(gate);
+            break;
+        case OpCode::BIGINT_CONSTRUCTOR_INT32:
+            LowerBigIntConstructorInt32<true>(gate);
+            break;
+        case OpCode::BIGINT_CONSTRUCTOR_UINT32:
+            LowerBigIntConstructorInt32<false>(gate);
+            break;
+        case OpCode::MAP_CLEAR:
+            LowerToBuiltinStub(gate, BuiltinsStubCSigns::MapClear);
+            break;
+        case OpCode::SET_CLEAR:
+            LowerToBuiltinStub(gate, BuiltinsStubCSigns::SetClear);
             break;
         default:
             break;
@@ -1762,6 +1798,51 @@ void TypedNativeInlineLowering::LowerNumberIsSafeInteger(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
 }
 
+void TypedNativeInlineLowering::LowerNumberParseFloat(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.HoleConstant());
+    Label slowPath(&builder_);
+    Label exit(&builder_);
+
+    Label definedMsg(&builder_);
+    Label undefinedMsg(&builder_);
+    GateRef msg = acc_.GetValueIn(gate, 0);
+    builder_.Branch(builder_.BoolNot(builder_.TaggedIsUndefined(msg)), &definedMsg, &undefinedMsg);
+    builder_.Bind(&definedMsg);
+    {
+        auto frameState = acc_.GetFrameState(gate);
+        builder_.DeoptCheck(builder_.TaggedIsString(msg), frameState, DeoptType::NOTSTRING1);
+        Label isIntegerStr(&builder_);
+        Label notIntegerStr(&builder_);
+        Label exitIntegerStr(&builder_);
+        builder_.Branch(builder_.IsIntegerString(msg), &isIntegerStr, &notIntegerStr);
+        builder_.Bind(&isIntegerStr);
+        {
+            result = builder_.ChangeInt32ToFloat64(builder_.GetRawHashFromString(msg));
+            builder_.Jump(&exitIntegerStr);
+        }
+        builder_.Bind(&notIntegerStr);
+        {
+            GateRef glue = acc_.GetGlueFromArgList();
+            auto taggedDouble = builder_.CallNGCRuntime(glue, RTSTUB_ID(NumberHelperStringToDouble),
+                                                        Gate::InvalidGateRef, { msg }, gate);
+            result = builder_.GetDoubleOfTDouble(taggedDouble);
+            builder_.Jump(&exitIntegerStr);
+        }
+        builder_.Bind(&exitIntegerStr);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&undefinedMsg);
+    {
+        result = builder_.Double(base::NAN_VALUE);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), *result);
+}
+
 void TypedNativeInlineLowering::LowerToCommonStub(GateRef gate, CommonStubCSigns::ID id)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1774,7 +1855,6 @@ void TypedNativeInlineLowering::LowerToCommonStub(GateRef gate, CommonStubCSigns
     GateRef ret = builder_.CallStub(glue, gate, id, args);
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
 }
-
 
 void TypedNativeInlineLowering::LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id)
 {
@@ -1816,4 +1896,45 @@ void TypedNativeInlineLowering::LowerGeneralWithoutArgs(GateRef gate, RuntimeStu
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
+void TypedNativeInlineLowering::LowerBigIntConstructor(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label hasException(&builder_);
+    Label exit(&builder_);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef glue = acc_.GetGlueFromArgList();
+    auto result = builder_.CallRuntime(glue, RTSTUB_ID(BigIntConstructor), Gate::InvalidGateRef, {value}, gate);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+template <bool IS_SIGNED>
+void TypedNativeInlineLowering::LowerBigIntConstructorInt32(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    size_t length = 1;
+    size_t size = AlignUp(BigInt::ComputeSize(length), static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    GateRef sizeGate = builder_.IntPtr(size);
+    GateRef hclass = builder_.GetGlobalConstantValue(ConstantIndex::BIGINT_CLASS_INDEX);
+    GateRef sign = builder_.Int32(0);
+    if constexpr (IS_SIGNED) {
+        sign = builder_.Int32LSR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
+        auto temp = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
+        value = builder_.Int32Sub(builder_.Int32Xor(value, temp), temp);
+    }
+
+    // looks like code from StartAllocate to FinishAllocate must be linear
+    builder_.StartAllocate();
+    GateRef object = builder_.HeapAlloc(acc_.GetGlueFromArgList(), sizeGate, GateType::TaggedValue(),
+                                        RegionSpaceFlag::IN_SHARED_NON_MOVABLE);
+    // initialization
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass,
+                              MemoryOrder::NeedBarrierAndAtomic());
+    builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::LENGTH_OFFSET, builder_.Int32(length));
+    builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::BIT_FIELD_OFFSET, sign);
+    builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::DATA_OFFSET, value);
+    GateRef ret = builder_.FinishAllocate(object);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
 }

@@ -102,6 +102,7 @@ public:
     {
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&data_)));
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&curSnapshotCpArray_)));
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&symbolInfo_)));
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&hclassInfo_)));
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&arrayInfo_)));
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&constantIndexInfo_)));
@@ -168,6 +169,11 @@ public:
         return arrayInfo_;
     }
 
+    JSTaggedValue GetSymbolInfo() const
+    {
+        return symbolInfo_;
+    }
+
     JSTaggedValue GetConstantIndexInfo()
     {
         return constantIndexInfo_;
@@ -181,6 +187,11 @@ public:
     void StoreArrayInfo(JSHandle<TaggedArray> info)
     {
         arrayInfo_ = info.GetTaggedValue();
+    }
+
+    void StoreSymbolInfo(JSHandle<TaggedArray> info)
+    {
+        symbolInfo_ = info.GetTaggedValue();
     }
 
     void StoreConstantIndexInfo(JSHandle<TaggedArray> info)
@@ -201,6 +212,7 @@ private:
     SnapshotReviseInfo reviseInfo_;
     JSTaggedValue hclassInfo_ {JSTaggedValue::Hole()};
     JSTaggedValue arrayInfo_ {JSTaggedValue::Hole()};
+    JSTaggedValue symbolInfo_ {JSTaggedValue::Hole()};
     JSTaggedValue constantIndexInfo_ {JSTaggedValue::Hole()};
 };
 }  // panda::ecmascript::kungfu

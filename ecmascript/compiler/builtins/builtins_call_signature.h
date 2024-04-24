@@ -238,6 +238,7 @@ namespace panda::ecmascript::kungfu {
     V(DateNow)                                      \
     V(GlobalIsFinite)                               \
     V(GlobalIsNan)                                  \
+    V(BigIntConstructor)                            \
     V(ArrayBufferIsView)                            \
     V(BigIntAsIntN)                                 \
     V(BigIntAsUintN)                                \
@@ -334,12 +335,21 @@ public:
             case BuiltinsStubCSigns::ID::StringFromCharCode:
             case BuiltinsStubCSigns::ID::MapGet:
             case BuiltinsStubCSigns::ID::MapHas:
+            case BuiltinsStubCSigns::ID::MapKeys:
+            case BuiltinsStubCSigns::ID::MapValues:
+            case BuiltinsStubCSigns::ID::MapEntries:
             case BuiltinsStubCSigns::ID::SetHas:
             case BuiltinsStubCSigns::ID::MapDelete:
             case BuiltinsStubCSigns::ID::SetDelete:
             case BuiltinsStubCSigns::ID::TypedArrayEntries:
             case BuiltinsStubCSigns::ID::TypedArrayKeys:
             case BuiltinsStubCSigns::ID::TypedArrayValues:
+            case BuiltinsStubCSigns::ID::SetValues:
+            case BuiltinsStubCSigns::ID::SetEntries:
+            case BuiltinsStubCSigns::ID::MapClear:
+            case BuiltinsStubCSigns::ID::SetClear:
+            case BuiltinsStubCSigns::ID::SetAdd:
+            case BuiltinsStubCSigns::ID::NumberParseFloat:
                 return true;
             default:
                 return false;
@@ -460,12 +470,28 @@ public:
                 return ConstantIndex::MAP_GET_INDEX;
             case BuiltinsStubCSigns::ID::MapHas:
                 return ConstantIndex::MAP_HAS_INDEX;
+            case BuiltinsStubCSigns::ID::MapKeys:
+                return ConstantIndex::MAP_KEYS_INDEX;
+            case BuiltinsStubCSigns::ID::MapValues:
+                return ConstantIndex::MAP_VALUES_INDEX;
+            case BuiltinsStubCSigns::ID::MapEntries:
+                return ConstantIndex::MAP_ENTRIES_INDEX;
             case BuiltinsStubCSigns::ID::SetHas:
                 return ConstantIndex::SET_HAS_INDEX;
             case BuiltinsStubCSigns::ID::MapDelete:
                 return ConstantIndex::MAP_DELETE_INDEX;
             case BuiltinsStubCSigns::ID::SetDelete:
                 return ConstantIndex::SET_DELETE_INDEX;
+            case BuiltinsStubCSigns::ID::SetValues:
+                return ConstantIndex::SET_VALUES_INDEX;
+            case BuiltinsStubCSigns::ID::SetEntries:
+                return ConstantIndex::SET_ENTRIES_INDEX;
+            case BuiltinsStubCSigns::ID::MapClear:
+                return ConstantIndex::MAP_CLEAR_INDEX;
+            case BuiltinsStubCSigns::ID::SetClear:
+                return ConstantIndex::SET_CLEAR_INDEX;
+            case BuiltinsStubCSigns::ID::SetAdd:
+                return ConstantIndex::SET_ADD_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
@@ -544,10 +570,18 @@ public:
                 return ConstantIndex::NUMBER_IS_NAN_INDEX;
             case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
                 return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
+            case BuiltinsStubCSigns::ID::NumberParseFloat:
+                return ConstantIndex::NUMBER_PARSE_FLOAT_INDEX;
             default:
-                LOG_COMPILER(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
+                LOG_COMPILER(INFO) << "GetConstantIndex Invalid Id:" << builtinId;
+                return ConstantIndex::INVALID;
         }
+    }
+
+    static bool CheckBuiltinsIdInvalid(ID builtinId)
+    {
+        auto result = kungfu::BuiltinsStubCSigns::GetConstantIndex(builtinId);
+        return result == ConstantIndex::INVALID;
     }
 
     static size_t GetGlobalEnvIndex(ID builtinId);
@@ -599,9 +633,19 @@ public:
             {BigIntAsUintN, "BigInt.asUintN"},
             {MapGet, "Map.get"},
             {MapHas, "Map.has"},
+            {MapKeys, "Map.keys"},
+            {MapValues, "Map.values"},
+            {MapEntries, "Map.entries"},
+            {SetValues, "Set.values"},
+            {SetEntries, "Set.entries"},
             {SetHas, "Set.has"},
             {MapDelete, "Map.delete"},
             {SetDelete, "Set.delete"},
+            {MapClear, "Map.clear"},
+            {SetClear, "Set.clear"},
+            {SetAdd, "Set.add"},
+            {BigIntConstructor, "BigInt"},
+            {NumberParseFloat, "Number.parseFloat"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
@@ -657,6 +701,7 @@ public:
             {"asUintN", BigIntAsUintN},
             {"mapDelete", MapDelete},
             {"setDelete", SetDelete},
+            {"BigInt", BigIntConstructor},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);
@@ -693,6 +738,7 @@ enum class BuiltinsArgs : size_t {
 #define IS_TYPED_BUILTINS_ID_CALL_THIS1(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis1(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS3(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis3(id)
 #define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)
+#define IS_INVALID_ID(id) kungfu::BuiltinsStubCSigns::CheckBuiltinsIdInvalid(id)
 #define GET_TYPED_GLOBAL_ENV_INDEX(id) kungfu::BuiltinsStubCSigns::GetGlobalEnvIndex(id)
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H

@@ -2465,42 +2465,32 @@ DEF_CALL_SIGNATURE(Getnextpropname)
 
 DEF_CALL_SIGNATURE(CreateJSSetIterator)
 {
-    // 2 : 2 input parameters
-    CallSignature signature("CreateJSSetIterator", 0, 2,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = signature;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::NATIVE_POINTER(),  // glue
-        VariableType::JS_ANY(),          // obj
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    UNARY_CALL_SIGNATURE(CreateJSSetIterator)
+}
+
+DEF_CALL_SIGNATURE(JSSetEntries)
+{
+    UNARY_CALL_SIGNATURE(JSSetEntries)
 }
 
 DEF_CALL_SIGNATURE(CreateJSMapIterator)
 {
-    // 2 : 2 input parameters
-    CallSignature signature("CreateJSMapIterator", 0, 2,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = signature;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::NATIVE_POINTER(),  // glue
-        VariableType::JS_ANY(),          // obj
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    UNARY_CALL_SIGNATURE(CreateJSMapIterator)
+}
+
+DEF_CALL_SIGNATURE(JSMapKeys)
+{
+    UNARY_CALL_SIGNATURE(JSMapKeys)
+}
+
+DEF_CALL_SIGNATURE(JSMapValues)
+{
+    UNARY_CALL_SIGNATURE(JSMapValues)
 }
 
 DEF_CALL_SIGNATURE(JSMapGet)
 {
-    *callSign = CallSignature("JSMapGet", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY(),
-        {
-            VariableType::NATIVE_POINTER(),  // glue
-            VariableType::JS_ANY(),          // obj
-            VariableType::JS_ANY(),          // key
-        });
+    BINARY_CALL_SIGNATURE(JSMapGet)
 }
 
 DEF_CALL_SIGNATURE(JSMapHas)
@@ -2536,6 +2526,16 @@ DEF_CALL_SIGNATURE(JSMapDelete)
 DEF_CALL_SIGNATURE(JSSetDelete)
 {
     *callSign = CallSignature("JSSetDelete", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
+DEF_CALL_SIGNATURE(JSSetAdd)
+{
+    *callSign = CallSignature("JSSetAdd", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY(),
         {
             VariableType::NATIVE_POINTER(),  // glue
             VariableType::JS_ANY(),          // obj

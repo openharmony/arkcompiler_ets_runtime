@@ -269,8 +269,8 @@ void LLVMIRBuilder::Build()
                 continue;
             }
             if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
-                LOG_COMPILER(FATAL) << "The gate below need to be translated ";
                 acc_.Print(gate);
+                LOG_COMPILER(FATAL) << "The gate below need to be translated ";
                 UNREACHABLE();
             }
         }

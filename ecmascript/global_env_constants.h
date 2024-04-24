@@ -190,9 +190,17 @@ class ObjectFactory;
     V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, MapGet, MAP_GET_INDEX, ecma_roots_builtins)                                        \
     V(JSTaggedValue, MapHas, MAP_HAS_INDEX, ecma_roots_builtins)                                        \
+    V(JSTaggedValue, MapKeys, MAP_KEYS_INDEX, ecma_roots_builtins)                                      \
+    V(JSTaggedValue, MapValues, MAP_VALUES_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, MapEntries, MAP_ENTRIES_INDEX, ecma_roots_builtins)                                \
     V(JSTaggedValue, SetHas, SET_HAS_INDEX, ecma_roots_builtins)                                        \
     V(JSTaggedValue, MapDelete, MAP_DELETE_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, SetDelete, SET_DELETE_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, SetValues, SET_VALUES_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, SetEntries, SET_ENTRIES_INDEX, ecma_roots_builtins)                                \
+    V(JSTaggedValue, MapClear, MAP_CLEAR_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, SetClear, SET_CLEAR_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, SetAdd, SET_ADD_INDEX, ecma_roots_builtins)                                        \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_builtins)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_builtins)                 \
     V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_builtins)         \
@@ -227,7 +235,8 @@ class ObjectFactory;
     V(JSTaggedValue, NumberIsNaN, NUMBER_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, NumberIsFinite, NUMBER_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, NumberIsInteger, NUMBER_IS_INTEGER_INDEX, ecma_roots_builtins)                     \
-    V(JSTaggedValue, NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER_INDEX, ecma_roots_builtins)
+    V(JSTaggedValue, NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER_INDEX, ecma_roots_builtins)             \
+    V(JSTaggedValue, NumberParseFloat, NUMBER_PARSE_FLOAT_INDEX, ecma_roots_builtins)
 
 // All of type JSTaggedValue
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \
@@ -356,6 +365,7 @@ class ObjectFactory;
     V(SegmentString,                  SEGMENT_STRING_INDEX,                  "segment")                     \
     V(IsWordLikeString,               ISWORDLIKE_STRING_INDEX,               "isWordLike")                  \
     V(LocaleMatcherString,            LOCALE_MATCHER_STRING_INDEX,           "localeMatcher")               \
+    V(LanguageDisplayString,          LAUGUAGE_DISPLAY_STRING_INDEX,         "languageDisplay")             \
     V(FormatMatcherString,            FORMAT_MATCHER_STRING_INDEX,           "formatMatcher")               \
     V(Hour12String,                   HOUR12_STRING_INDEX,                   "hour12")                      \
     V(H11String,                      H11_STRING_INDEX,                      "h11")                         \
@@ -434,6 +444,7 @@ class ObjectFactory;
     V(CodeString,                     CODE_INDEX,                            "code")                        \
     V(NarrowSymbolString,             NARROW_SYMBOL_INDEX,                   "narrowSymbol")                \
     V(StandardString,                 STANDARD_INDEX,                        "standard")                    \
+    V(DialectString,                  DIALECT_INDEX,                         "dialect")                     \
     V(AccountingString,               ACCOUNTING_INDEX,                      "accounting")                  \
     V(ScientificString,               SCIENTIFIC_INDEX,                      "scientific")                  \
     V(EngineeringString,              ENGINEERING_INDEX,                     "engineering")                 \
@@ -486,7 +497,7 @@ class ObjectFactory;
     V(AmbiguousString,                AMBIGUOUS_INDEX,                       "ambiguous")                   \
     V(ModuleString,                   MODULE_INDEX,                          "Module")                      \
     V(StarString,                     STAR_INDEX,                            "*")                           \
-    V(DateTimeFieldString,            DATETIMEFIELD_INDEX,                   "datetimefield")               \
+    V(DateTimeFieldString,            DATETIMEFIELD_INDEX,                   "dateTimeField")               \
     V(ConjunctionString,              CONJUNCTION_INDEX,                     "conjunction")                 \
     V(NoneString,                     NONE_INDEX,                            "none")                        \
     V(FallbackString,                 FALLBACK_INDEX,                        "fallback")                    \
@@ -633,6 +644,7 @@ enum class ConstantIndex : size_t {
     JSAPI_CONTAINERS_BEGIN = ARRAYLIST_FUNCTION_INDEX,
     JSAPI_CONTAINERS_END = LINKED_LIST_ITERATOR_PROTOTYPE_INDEX,
 
+    INVALID = -1,
     // ...
 };
 // clang-format on

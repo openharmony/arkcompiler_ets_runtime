@@ -29,6 +29,8 @@
 #include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/jspandafile/method_literal.h"
 
+#include "ecmascript/compiler/aot_compiler_stats.h"
+
 namespace panda::ecmascript::kungfu {
 class Bytecodes;
 class CompilationConfig;
@@ -140,7 +142,8 @@ public:
             };
 
     virtual ~PassManager() = default;
-    bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator);
+    bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator,
+        AotCompilerStats &compilerStats);
 
 protected:
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;

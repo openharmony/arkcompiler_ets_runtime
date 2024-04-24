@@ -313,6 +313,12 @@ public:
         return stream.str();
     }
 
+    friend std::ostream& operator<<(std::ostream& os, const ProfileType& type)
+    {
+        os << type.GetTypeString();
+        return os;
+    }
+
     void UpdateId(uint32_t id)
     {
         type_ = IdBits::Update(type_, id);

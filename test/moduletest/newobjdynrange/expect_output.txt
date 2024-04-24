@@ -13,3 +13,5 @@
 
 true
 TypeError
+[object Object]
+[object Object]

@@ -398,8 +398,14 @@ public:
     inline GateRef GetMethodId(GateRef func);
     inline GateRef GetBuiltinsId(GateRef func);
     inline GateRef IsAOTLiteralInfo(GateRef x);
+    GateRef GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex);
+    GateRef GetParentEnv(GateRef object);
+    GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
 
     // call operation
+    GateRef CallPrivateGetter(GateRef hirGate, GateRef receiver, GateRef accessor, const char* comment = nullptr);
+    GateRef CallPrivateSetter(
+        GateRef hirGate, GateRef receiver, GateRef accessor, GateRef value, const char* comment = nullptr);
     GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef holder,
         GateRef propertyLookupResult, const char* comment = nullptr);
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,
@@ -694,6 +700,7 @@ public:
     inline GateRef TaggedIsProtoChangeMarker(GateRef obj);
     inline GateRef TaggedObjectIsJSMap(GateRef obj);
     inline GateRef TaggedObjectIsJSSet(GateRef obj);
+    inline GateRef TaggedObjectIsJSDate(GateRef obj);
     inline GateRef TaggedObjectIsTypedArray(GateRef obj);
     inline GateRef TaggedObjectIsJSArray(GateRef obj);
     inline GateRef TaggedGetInt(GateRef x);
@@ -741,6 +748,7 @@ public:
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
     GateRef NumberIsNaN(GateRef gate);
+    GateRef NumberParseFloat(GateRef gate, GateRef frameState);
     GateRef NumberIsFinite(GateRef gate);
     GateRef NumberIsInteger(GateRef gate);
     GateRef NumberIsSafeInteger(GateRef gate);

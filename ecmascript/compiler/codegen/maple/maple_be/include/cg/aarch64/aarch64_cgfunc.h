@@ -868,7 +868,7 @@ private:
 
     enum RelationOperatorOpndPattern : uint8 { kRegReg, kRegImm };
 
-    enum RoundType : uint8 { kCeil, kFloor, kRound };
+    enum RoundType : uint8 { kCeil, kFloor, kRound, kTrunc };
 
     static constexpr int32 kMaxMovkLslEntries = 8;
     using MovkLslOperandArray = std::array<BitShiftOperand, kMaxMovkLslEntries>;

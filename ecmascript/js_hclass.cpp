@@ -1142,7 +1142,30 @@ void JSHClass::CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass
     newHClass->SetVTable(thread, copyVtable);
 }
 
-JSHandle<JSHClass> JSHClass::CreateRootHClass(const JSThread *thread, const HClassLayoutDesc *desc, uint32_t maxNum)
+JSHandle<JSTaggedValue> JSHClass::ParseKeyFromPGOCString(ObjectFactory* factory,
+                                                         const CString& cstring,
+                                                         const PGOHandler& handler)
+{
+    if (handler.GetIsSymbol()) {
+        JSHandle<JSSymbol> symbol;
+        auto str = cstring.substr(0, 6); // `method` length is 6
+        if (str == "method") { // cstring is `method_0ULL` after _ is private id of symbol
+            symbol = factory->NewPublicSymbolWithChar("method");
+            str = cstring.substr(7, cstring.size() - 1); // `method_` length is 7
+            symbol->SetPrivateId(CStringToULL(str));
+        } else { // cstring is private id of symbol
+            symbol = factory->NewJSSymbol();
+            symbol->SetPrivateId(CStringToULL(cstring));
+        }
+        return JSHandle<JSTaggedValue>(symbol);
+    } else {
+        return JSHandle<JSTaggedValue>(factory->NewFromStdString(std::string(cstring)));
+    }
+}
+
+JSHandle<JSHClass> JSHClass::CreateRootHClassFromPGO(const JSThread* thread,
+                                                     const HClassLayoutDesc* desc,
+                                                     uint32_t maxNum)
 {
     auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1153,10 +1176,12 @@ JSHandle<JSHClass> JSHClass::CreateRootHClass(const JSThread *thread, const HCla
     JSHandle<JSHClass> hclass = factory->NewEcmaHClass(size, type, maxNum);
     // Dictionary?
     JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(maxNum, MemSpaceType::SEMI_SPACE, GrowMode::KEEP);
-    rootDesc->IterateProps([thread, factory, &index, hclass, layout] (const pgo::PropertyDesc &propDesc) {
-        JSHandle<EcmaString> key = factory->NewFromStdString(std::string(propDesc.first));
+    rootDesc->IterateProps([thread, factory, &index, hclass, layout](const pgo::PropertyDesc& propDesc) {
+        auto& cstring = propDesc.first;
+        auto& handler = propDesc.second;
+        JSHandle<JSTaggedValue> key = ParseKeyFromPGOCString(factory, cstring, handler);
         PropertyAttributes attributes = PropertyAttributes::Default();
-        if (propDesc.second.SetAttribute(thread, attributes)) {
+        if (handler.SetAttribute(thread, attributes)) {
             hclass->SetIsAllTaggedProp(false);
         }
         attributes.SetIsInlinedProps(true);
@@ -1170,10 +1195,13 @@ JSHandle<JSHClass> JSHClass::CreateRootHClass(const JSThread *thread, const HCla
     return hclass;
 }
 
-JSHandle<JSHClass> JSHClass::CreateChildHClass(
-    const JSThread *thread, const JSHandle<JSHClass> &parent, const HClassLayoutDesc *desc)
+JSHandle<JSHClass> JSHClass::CreateChildHClassFromPGO(const JSThread* thread,
+                                                      const JSHandle<JSHClass>& parent,
+                                                      const HClassLayoutDesc* desc)
 {
     pgo::PropertyDesc propDesc = reinterpret_cast<const pgo::ChildHClassLayoutDesc *>(desc)->GetPropertyDesc();
+    auto& cstring = propDesc.first;
+    auto& handler = propDesc.second;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t numOfProps = parent->NumberOfProps();
 
@@ -1191,23 +1219,23 @@ JSHandle<JSHClass> JSHClass::CreateChildHClass(
                 factory->ExtendLayoutInfo(layoutInfoHandle, offset));
             newJsHClass->SetLayout(thread, layoutInfoHandle);
         }
-        JSHandle<EcmaString> key = factory->NewFromStdString(std::string(propDesc.first));
+        JSHandle<JSTaggedValue> key = ParseKeyFromPGOCString(factory, cstring, handler);
         PropertyAttributes attributes = PropertyAttributes::Default();
-        if (propDesc.second.SetAttribute(thread, attributes)) {
+        if (handler.SetAttribute(thread, attributes)) {
             newJsHClass->SetIsAllTaggedProp(false);
         }
         attributes.SetOffset(offset);
         attributes.SetIsInlinedProps(true);
         layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attributes);
         newJsHClass->IncNumberOfProps();
-        AddTransitions(thread, parent, newJsHClass, JSHandle<JSTaggedValue>(key), attributes);
+        AddTransitions(thread, parent, newJsHClass, key, attributes);
         JSHClass::NotifyHclassChanged(thread, parent, newJsHClass, key.GetTaggedValue());
     }
 
     return newJsHClass;
 }
 
-bool JSHClass::DumpForRootHClass(const JSHClass *hclass, HClassLayoutDesc *desc)
+bool JSHClass::DumpRootHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {
@@ -1217,12 +1245,12 @@ bool JSHClass::DumpForRootHClass(const JSHClass *hclass, HClassLayoutDesc *desc)
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     int element = static_cast<int>(hclass->NumberOfProps());
     for (int i = 0; i < element; i++) {
-        layout->DumpFieldIndex(i, desc);
+        layout->DumpFieldIndexByPGO(i, desc);
     }
     return true;
 }
 
-bool JSHClass::DumpForChildHClass(const JSHClass *hclass, HClassLayoutDesc *desc)
+bool JSHClass::DumpChildHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {
@@ -1233,11 +1261,11 @@ bool JSHClass::DumpForChildHClass(const JSHClass *hclass, HClassLayoutDesc *desc
     }
     uint32_t last = hclass->LastPropIndex();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    layoutInfo->DumpFieldIndex(last, desc);
+    layoutInfo->DumpFieldIndexByPGO(last, desc);
     return true;
 }
 
-bool JSHClass::UpdateChildLayoutDesc(const JSHClass *hclass, HClassLayoutDesc *childDesc)
+bool JSHClass::UpdateChildLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* childDesc)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {
@@ -1248,10 +1276,12 @@ bool JSHClass::UpdateChildLayoutDesc(const JSHClass *hclass, HClassLayoutDesc *c
     }
     uint32_t last = hclass->LastPropIndex();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    return layoutInfo->UpdateFieldIndex(last, childDesc);
+    return layoutInfo->UpdateFieldIndexByPGO(last, childDesc);
 }
 
-bool JSHClass::UpdateRootLayoutDesc(const JSHClass *hclass, const PGOHClassTreeDesc *treeDesc, HClassLayoutDesc *desc)
+bool JSHClass::UpdateRootLayoutDescByPGO(const JSHClass* hclass,
+                                         const PGOHClassTreeDesc* treeDesc,
+                                         HClassLayoutDesc* desc)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {
@@ -1264,7 +1294,7 @@ bool JSHClass::UpdateRootLayoutDesc(const JSHClass *hclass, const PGOHClassTreeD
     ASSERT(element >= rootPropLen);
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     for (int i = 0; i < rootPropLen; i++) {
-        layout->UpdateFieldIndex(i, desc);
+        layout->UpdateFieldIndexByPGO(i, desc);
     }
     auto lastDesc = desc;
     for (int i = rootPropLen; i < element - 1; i++) {
@@ -1276,7 +1306,7 @@ bool JSHClass::UpdateRootLayoutDesc(const JSHClass *hclass, const PGOHClassTreeD
             if (lastDesc == nullptr) {
                 return true;
             }
-            return !layout->UpdateFieldIndex(i, lastDesc);
+            return !layout->UpdateFieldIndexByPGO(i, lastDesc);
         });
     }
     return true;
@@ -1301,7 +1331,10 @@ CString JSHClass::DumpToString(JSTaggedType hclassVal)
             result += static_cast<int32_t>(attr.GetTrackType());
             result += attr.GetPropertyMetaData();
         } else if (key.IsSymbol()) {
-            result += "IsSymbolkey";
+            result += JSSymbol::Cast(key)->GetPrivateId();
+            auto attr = layout->GetAttr(i);
+            result += static_cast<int32_t>(attr.GetTrackType());
+            result += attr.GetPropertyMetaData();
         } else {
             LOG_ECMA(FATAL) << "JSHClass::DumpToString UNREACHABLE";
         }

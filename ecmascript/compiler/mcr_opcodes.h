@@ -73,6 +73,7 @@ namespace panda::ecmascript::kungfu {
     V(NumberIsInteger, NUMBER_IS_INTEGER, GateFlags::NO_WRITE, 1, 1, 1)                         \
     V(NumberIsNaN, NUMBER_IS_NAN, GateFlags::NO_WRITE, 1, 1, 1)                                 \
     V(NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER, GateFlags::NO_WRITE, 1, 1, 1)                 \
+    V(NumberParseFloat, NUMBER_PARSE_FLOAT, GateFlags::CHECKABLE, 1, 1, 1)                      \
     V(MathAcos, MATH_ACOS, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathAcosh, MATH_ACOSH, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathAsin, MATH_ASIN, GateFlags::NO_WRITE, 1, 1, 1)                                        \
@@ -119,6 +120,9 @@ namespace panda::ecmascript::kungfu {
     V(NewNumber, NEW_NUMBER, GateFlags::CHECKABLE, 1, 1, 2)                                     \
     V(GlobalIsFinite, GLOBAL_IS_FINITE, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(GlobalIsNan, GLOBAL_IS_NAN, GateFlags::NO_WRITE, 1, 1, 1)                                 \
+    V(BigIntConstructor, BIGINT_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)                      \
+    V(BigIntConstructorInt32, BIGINT_CONSTRUCTOR_INT32, GateFlags::NO_WRITE, 1, 1, 1)           \
+    V(BigIntConstructorUint32, BIGINT_CONSTRUCTOR_UINT32, GateFlags::NO_WRITE, 1, 1, 1)         \
     V(ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW, GateFlags::NO_WRITE, 1, 1, 1)                    \
     V(DataViewGet, DATA_VIEW_GET, GateFlags::NO_WRITE, 1, 1, 5)                                 \
     V(DataViewSet, DATA_VIEW_SET, GateFlags::NO_WRITE, 1, 1, 6)                                 \
@@ -127,10 +131,18 @@ namespace panda::ecmascript::kungfu {
     V(MapGet, MAP_GET, GateFlags::NO_WRITE, 1, 1, 2)                                            \
     V(DateGetTime, DATE_GET_TIME, GateFlags::NO_WRITE, 1, 1, 1)                                 \
     V(MapHas, MAP_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(MapKeys, MAP_KEYS, GateFlags::NO_WRITE, 1, 1, 1)                                          \
+    V(MapValues, MAP_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MapEntries, MAP_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                                    \
     V(SetHas, SET_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(SetAdd, SET_ADD, GateFlags::NO_WRITE, 1, 1, 2)                                            \
     V(MapDelete, MAP_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
     V(SetDelete, SET_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
     V(DateNow, DATE_NOW, GateFlags::NONE_FLAG, 1, 1, 0)                                         \
+    V(SetValues, SET_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(SetEntries, SET_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                                    \
+    V(MapClear, MAP_CLEAR, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
+    V(SetClear, SET_CLEAR, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \

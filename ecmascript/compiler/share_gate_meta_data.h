@@ -124,7 +124,9 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(IsNotTaggedBoolean,              ISNOTTAGGEDBOOLEAN)            \
     V(IndexLessZeroOrInfinity,         INDEXLESSZEROORINFINITY)       \
     V(ArrayBufferIsDetached,           ARRAYBUFFERISDETACHED)         \
-    V(TotalSizeOverflow,               TOTALSIZEOVERFLOW)
+    V(TotalSizeOverflow,               TOTALSIZEOVERFLOW)             \
+    V(NotJSFunction,                   NOTJSFUNCTION)                 \
+    V(NotSymbol,                       NOTSYMBOL)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,

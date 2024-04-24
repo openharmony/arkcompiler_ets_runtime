@@ -419,7 +419,8 @@ def append_summary_info(report_file, total_cost_time):
     ark_divide_v_8_degraded_count = 0
     ark_divide_v_8_jitless_degraded_count = 0
 
-    for row_num in range(2, ws.max_row + 1):
+    last_bench_line = ws.max_row
+    for row_num in range(2, last_bench_line + 1):
         excu_status = str(ws.cell(row=row_num, column=3).value)
         is_degraded = str(ws.cell(row=row_num, column=6).value)
         if is_degraded == str(True):
@@ -445,9 +446,11 @@ def append_summary_info(report_file, total_cost_time):
         if ark_divide_v_8_jitless != Constants.NA_FIX and float(ark_divide_v_8_jitless) > 1:
             ark_divide_v_8_jitless_degraded_count += 1
 
-    count = 3
-    for _ in range(count):
-        new_row = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
+    avg_funcs = ['AVERAGE', 'GEOMEAN', 'MEDIAN']
+    for avg_func in avg_funcs:
+        new_row = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+                   f'=\"{avg_func}: \"&{avg_func}(I2:I{last_bench_line})',
+                   f'=\"{avg_func}: \"&{avg_func}(J2:J{last_bench_line})', ' ', ' ']
         ws.append(new_row)
     new_row = ['劣化判定比率上限', degraded_upper_limit, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)

@@ -274,6 +274,7 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(
     if (ElementAccessor::GetElementsLength(argObj) < len) {
         TypedArrayHelper::CreateFromOrdinaryObject<typedArrayKind>(argv, obj, arrayType);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return obj.GetTaggedValue();
     }
 
     TypedArrayHelper::AllocateTypedArrayBuffer<typedArrayKind>(thread, obj, len, arrayType);

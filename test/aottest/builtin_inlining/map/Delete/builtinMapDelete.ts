@@ -146,8 +146,10 @@ print(myMap.delete(throwingObj)); //: false
 
 // Check after clearing
 myMap.clear();
+//aot: [trace] aot inline builtin: Map.clear, caller function name:func_main_0@builtinMapDelete
+print(myMap.delete(2000));
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapDelete
-print(myMap.delete(2000)); //: false
+//: false
 
 let truedelete = Map.prototype.delete;
 let m = new Map();

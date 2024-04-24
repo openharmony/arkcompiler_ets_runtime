@@ -531,6 +531,8 @@ public:
 
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 
+    inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, size_t size);
+
     inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass);
 
     inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);

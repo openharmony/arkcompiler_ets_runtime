@@ -89,6 +89,7 @@ private:
     GateRef VisitNumberCompare(GateRef gate);
     GateRef VisitNumberShiftAndLogical(GateRef gate);
     GateRef VisitNumberToString(GateRef gate);
+    GateRef VisitNumberParseFloat(GateRef gate);
     GateRef VisitMathDoubleParamsBuiltin(GateRef gate);
     const GateMetaData *GetNewMeta(OpCode op, TypeInfo type);
     GateRef VisitMathTaggedNumberParamsBuiltin(GateRef gate);
@@ -113,6 +114,7 @@ private:
     GateRef VisitDataViewGet(GateRef gate);
     GateRef VisitDataViewSet(GateRef gate);
     GateRef VisitOthers(GateRef gate, GateType outputType = GateType::AnyType());
+    GateRef VisitBigIntConstructor(GateRef gate);
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);
     GateRef VisitIsTrueOrFalse(GateRef gate);

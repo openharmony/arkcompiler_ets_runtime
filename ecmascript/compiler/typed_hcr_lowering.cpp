@@ -95,6 +95,12 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::LOAD_PROPERTY:
             LowerLoadProperty(gate);
             break;
+        case OpCode::CALL_PRIVATE_GETTER:
+            LowerCallPrivateGetter(gate, glue);
+            break;
+        case OpCode::CALL_PRIVATE_SETTER:
+            LowerCallPrivateSetter(gate, glue);
+            break;
         case OpCode::CALL_GETTER:
             LowerCallGetter(gate, glue);
             break;
@@ -753,6 +759,30 @@ void TypedHCRLowering::LowerLoadProperty(GateRef gate)
     GateRef result = LoadPropertyFromHolder(receiver, plr);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypedHCRLowering::LowerCallPrivateGetter(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: receiver, accessor
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef accessor = acc_.GetValueIn(gate, 1);
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    result = CallAccessor(glue, gate, accessor, receiver, AccessorMode::GETTER);
+    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedHCRLowering::LowerCallPrivateSetter(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 3); // 3: receiver, accessor, value
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef accessor = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+
+    CallAccessor(glue, gate, accessor, receiver, AccessorMode::SETTER, value);
+    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypedHCRLowering::LowerCallGetter(GateRef gate, GateRef glue)

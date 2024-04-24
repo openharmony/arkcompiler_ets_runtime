@@ -80,6 +80,7 @@ libark_jsoptimizer_sources = [
   "access_object_stub_builder.cpp",
   "aot_compilation_env.cpp",
   "aot_compiler_preprocessor.cpp",
+  "aot_compiler_stats.cpp",
   "argument_accessor.cpp",
   "array_bounds_check_elimination.cpp",
   "assembler/aarch64/assembler_aarch64.cpp",

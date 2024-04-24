@@ -2698,14 +2698,17 @@ inline GateRef StubBuilder::InSharedSweepableSpace(GateRef region)
 
 inline GateRef StubBuilder::GetParentEnv(GateRef object)
 {
-    GateRef index = Int32(LexicalEnv::PARENT_ENV_INDEX);
-    return GetValueFromTaggedArray(object, index);
+    return env_->GetBuilder()->GetParentEnv(object);
 }
 
 inline GateRef StubBuilder::GetPropertiesFromLexicalEnv(GateRef object, GateRef index)
 {
-    GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
-    return GetValueFromTaggedArray(object, valueIndex);
+    return env_->GetBuilder()->GetPropertiesFromLexicalEnv(object, index);
+}
+
+inline GateRef StubBuilder::GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex)
+{
+    return env_->GetBuilder()->GetKeyFromLexivalEnv(lexicalEnv, levelIndex, slotIndex);
 }
 
 inline void StubBuilder::SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value)

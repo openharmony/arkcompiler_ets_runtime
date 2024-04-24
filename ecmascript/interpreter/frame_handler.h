@@ -201,6 +201,10 @@ public:
     uint32_t GetNumberArgs();
     uint32_t GetBytecodeOffset() const;
     Method *GetMethod() const;
+    const JSPandaFile* GetJSPandaFile() const;
+    std::string GetFileName() const;
+    uint32_t GetAbcId() const;
+    uint32_t GetMethodId() const;
     Method *CheckAndGetMethod() const;
     JSTaggedValue GetThis() const;
     JSTaggedValue GetFunction() const;

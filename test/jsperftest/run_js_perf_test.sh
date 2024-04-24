@@ -242,6 +242,56 @@ function prepare_js_test_files()
     fi
 }
 
+
+function get_cores {
+    local -i cores_count
+    local -i mask=$((16#$1))
+    cores_count=$(${HDC_PATH} shell nproc --all)
+    for i in $(seq 0 $((cores_count - 1)) )
+    do
+        if [[ $((mask & 1)) -ne 0 ]]
+        then
+            cores+=("${i}")
+        fi
+        mask=$((mask >> 1))
+    done
+}
+
+function fix_cores_freq()
+{
+    if [[ -z "${TASKSET_MASK}" ]]
+    then
+        echo "Taskset mask was not set. Frequency for cores will not be fixed"
+        return
+    fi
+    local -a cores=()
+    get_cores "${TASKSET_MASK}"
+    echo "Using cores: ${cores[*]}"
+    declare -i avg_freq
+    declare freqs_str=""
+    declare -a freqs_arr=()
+    declare -i freq_index=0
+    for core in "${cores[@]}"
+    do
+        freqs_str=$(hdc shell "cat /sys/devices/system/cpu/cpu${core}/cpufreq/scaling_available_frequencies")
+        # split string to array
+        freqs_arr=(${freqs_str})
+        freq_index=$(( ${#freqs_arr[@]} / 2 ))
+        avg_freq=${freqs_arr[${freq_index}]}
+        ${HDC_PATH} shell "echo performance > /sys/devices/system/cpu/cpu${core}/cpufreq/scaling_governor"
+        ${HDC_PATH} shell "echo ${avg_freq} > /sys/devices/system/cpu/cpu${core}/cpufreq/scaling_min_freq"
+        ${HDC_PATH} shell "echo ${avg_freq} > /sys/devices/system/cpu/cpu${core}/cpufreq/scaling_max_freq"
+    done
+    echo "Cores info after frequencies fix:"
+    for core in "${cores[@]}"
+    do
+        echo "Core ${core} info:"
+        echo "Governor: $(${HDC_PATH} shell "cat /sys/devices/system/cpu/cpu${core}/cpufreq/scaling_governor")"
+        echo "Min freq: $(${HDC_PATH} shell "cat /sys/devices/system/cpu/cpu${core}/cpufreq/scaling_min_freq")"
+        echo "Max freq: $(${HDC_PATH} shell "cat /sys/devices/system/cpu/cpu${core}/cpufreq/scaling_max_freq")"
+    done
+}
+
 function prepare_device()
 {
     # Check device
@@ -268,6 +318,7 @@ function prepare_device()
     ${HDC_PATH} file send "${D8_DEVICE_DIR}"/snapshot_blob.bin ${WORKDIR_ON_DEVICE}/v8
     ${HDC_PATH} file send "${D8_DEVICE_DIR}"/icudtl.dat ${WORKDIR_ON_DEVICE}/v8
     set +x
+    fix_cores_freq
 }
 
 function usage()
@@ -282,7 +333,8 @@ Options:
     --platform <platform>  - used platform. Possible values in config.json.
                              Default: full_x86_64
     --config <config_path> - path to specific json config
-    --taskset mask         - use CPU affinity with mask for benchmark runnings
+    --taskset mask         - use CPU affinity with mask for benchmark runnings.
+                             Frequency of these cores will be fixed
     --multiplier N         - iteration multiplier for js benchmarks
     --iterations N         - number of benchmark launches and get average
     --bench-filter=BenchDir1:BenchDir2:BenchDir3/bench.js:...
@@ -343,6 +395,12 @@ main()
     benchs_time=$(($(date +%s) - benchs_time_start))
     benchs_minutes=$((benchs_time / 60))
     echo "Benchmark script time: ${benchs_minutes} min $((benchs_time - benchs_minutes * 60)) sec"
+
+    if [[ "${VER_PLATFORM}" == *arm64* && -n "${TASKSET_MASK}" ]]
+    then
+        echo "Reboot device after fix frequencies for restoring of default values"
+        ${HDC_PATH} shell reboot
+    fi
 }
 
 main "$@"
