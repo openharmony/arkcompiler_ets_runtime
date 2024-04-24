@@ -1295,7 +1295,7 @@ void Builtins::LazyInitializeSet(const JSHandle<GlobalEnv> &env)
 void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    auto *globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // Map.prototype
     JSHandle<JSHClass> mapFuncPrototypeHClass = factory_->NewEcmaHClass(
         JSObject::SIZE, BuiltinsMap::GetNumPrototypeInlinedProperties(), JSType::JS_OBJECT, objFuncPrototypeVal);
@@ -1304,8 +1304,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     // Map.prototype_or_hclass
     JSHandle<JSHClass> mapFuncInstanceHClass =
         factory_->NewEcmaHClass(JSMap::SIZE, JSType::JS_MAP, mapFuncPrototypeValue);
-
-    globalConst->SetConstant(ConstantIndex::JS_MAP_HCLASS_INDEX, mapFuncInstanceHClass);
+    env->SetMapClass(thread_, mapFuncInstanceHClass);
 
     // Map() = new Function()
     JSHandle<JSTaggedValue> mapFunction(

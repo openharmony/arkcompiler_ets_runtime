@@ -436,8 +436,11 @@ void TypedHCRLowering::LowerEcmaMapCheck(GateRef gate)
     builder_.HeapObjectCheck(receiver, frameState);
 
     GateRef hclass = builder_.LoadHClass(receiver);
-    GateRef mapHclass = builder_.GetGlobalConstantValue(ConstantIndex::JS_MAP_HCLASS_INDEX);
-    GateRef isMap = builder_.Equal(hclass, mapHclass, "checkHClass");
+
+    size_t mapHclassIndex = GlobalEnv::MAP_CLASS_INDEX;
+    GateRef glueGlobalEnv = builder_.GetGlobalEnv();
+    GateRef mapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, mapHclassIndex);
+    GateRef isMap = builder_.Equal(hclass, mapHclass, "Check HClass");
 
     builder_.DeoptCheck(isMap, frameState, DeoptType::ISNOTMAP);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
