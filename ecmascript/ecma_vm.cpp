@@ -108,6 +108,42 @@ using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 AOTFileManager *JsStackInfo::loader = nullptr;
 JSRuntimeOptions *JsStackInfo::options = nullptr;
+#ifdef JIT_ESCAPE_ENABLE
+static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31
+
+void GetSignalHandler(int signal, siginfo_t *info, void *context)
+{
+    [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
+    [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
+    uintptr_t pc = 0;
+#if defined(PANDA_TARGET_AMD64)
+    pc = static_cast<uintptr_t>(mcontext.gregs[REG_RIP]);
+#elif defined(PANDA_TARGET_ARM64)
+    pc = static_cast<uintptr_t>(mcontext.pc);
+#endif
+    if (JsStackInfo::loader == nullptr) {
+        ecmascript::JsStackInfo::BuildCrashInfo(false);
+    } else if (!JsStackInfo::loader->InsideStub(pc) && !JsStackInfo::loader->InsideAOT(pc)) {
+        ecmascript::JsStackInfo::BuildCrashInfo(false);
+    } else {
+        ecmascript::JsStackInfo::BuildCrashInfo(false, pc);
+    }
+    sigaction(signal, &s_oldSa[signal], nullptr);
+    int rc = syscall(SYS_rt_tgsigqueueinfo, getpid(), syscall(SYS_gettid), info->si_signo, info);
+    if (rc != 0) {
+        LOG_ECMA(ERROR) << "GetSignalHandler() failed to resend signal during crash";
+    }
+}
+
+void SignalReg(int signo)
+{
+    sigaction(signo, nullptr, &s_oldSa[signo]);
+    struct sigaction newAction;
+    newAction.sa_flags = SA_RESTART | SA_SIGINFO;
+    newAction.sa_sigaction = GetSignalHandler;
+    sigaction(signo, &newAction, nullptr);
+}
+#endif
 
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 {
@@ -171,6 +207,16 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
     Taskpool::GetCurrentTaskpool()->Initialize();
+#ifdef JIT_ESCAPE_ENABLE
+    SignalReg(SIGABRT);
+    SignalReg(SIGBUS);
+    SignalReg(SIGSEGV);
+    SignalReg(SIGILL);
+    SignalReg(SIGKILL);
+    SignalReg(SIGSTKFLT);
+    SignalReg(SIGFPE);
+    SignalReg(SIGTRAP);
+#endif
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
