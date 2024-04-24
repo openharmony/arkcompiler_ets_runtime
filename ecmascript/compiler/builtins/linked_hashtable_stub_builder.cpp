@@ -373,13 +373,32 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label setLinked(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), linkedTable);
 
-    GateRef newTable = Create(Int32(LinkedHashTableType::MIN_CAPACITY));
+    Label reuseExistingTable(env);
+    Label createNewTable(env);
+    GateRef cap = GetCapacity(linkedTable);
+    GateRef minCapacity = Int32(LinkedHashTableType::MIN_CAPACITY);
+    BRANCH(Equal(cap, minCapacity), &reuseExistingTable, &createNewTable);
+
+    Bind(&reuseExistingTable);
+    size_t length = LinkedHashTableType::GetLengthOfTable(LinkedHashTableType::MIN_CAPACITY);
+    for (size_t i = LinkedHashTableType::ELEMENTS_START_INDEX; i < length; ++i) {
+        SetValueToTaggedArray(VariableType::JS_NOT_POINTER(), glue_, linkedTable, Int32(i), Hole());
+    }
+    GateRef numberOfElements = GetNumberOfElements(linkedTable);
+    GateRef numberOfDeletedElements = GetNumberOfDeletedElements(linkedTable);
+    SetNumberOfElements(linkedTable, Int32(0));
+    SetNumberOfDeletedElements(linkedTable, Int32Add(numberOfElements, numberOfDeletedElements));
+    Jump(&exit);
+
+    Bind(&createNewTable);
+    GateRef newTable = Create(minCapacity);
+    result = newTable;
     Label noException(env);
     BRANCH(TaggedIsException(newTable), &exit, &noException);
     Bind(&noException);
 
-    GateRef cap = GetCapacity(linkedTable);
     Label capGreaterZero(env);
     BRANCH(Int32GreaterThan(cap, Int32(0)), &capGreaterZero, &exit);
     Bind(&capGreaterZero);
@@ -392,8 +411,9 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     }
 
     Bind(&exit);
+    GateRef res = *result;
     env->SubCfgExit();
-    return newTable;
+    return res;
 }
 
 template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Clear(GateRef);

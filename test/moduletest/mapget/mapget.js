@@ -225,3 +225,66 @@ try {
 } catch (error) {
   print("Caught an error: " + error);
 }
+
+// Map.clear tests
+map = new Map();
+map.set(1, null);
+map.set(2, null);
+map.set(3, null);
+let beginNotTought = map.entries();
+let midNotTought = map.entries();
+midNotTought.next();
+let begin = map.entries(); // points to (1, null)
+let mid = map.entries(); // points to (2, null)
+mid.next();
+let last = map.entries(); // points to (3, null)
+last.next();
+last.next();
+let end = map.entries(); // points to the end
+while (end.next().done) {
+}
+map.clear();
+if (map.size != 0) {
+    throw new Error("Map size must be 0");
+}
+if (!begin.next().done) {
+    throw new Error("Invalid 'begin' iterator");
+}
+if (!mid.next().done) {
+    throw new Error("Invalid 'mid' iterator");
+}
+if (!last.next().done) {
+    throw new Error("Invalid 'last' iterator");
+}
+if (!end.next().done) {
+    throw new Error("Invalid 'end' iterator");
+}
+map.set(-1, null);
+map.set(-2, null);
+map.set(-3, null);
+let v = beginNotTought.next();
+if (v.done) {
+    throw new Error("Invalid 'beginNotTought' iterator");
+}
+if (v.value[0] != -1) {
+    throw new Error("Invalid 'beginNotTought' iterator's value");
+}
+v = midNotTought.next();
+if (v.done) {
+    throw new Error("Invalid 'midNotTought' iterator");
+}
+if (v.value[0] != -1) {
+    throw new Error("Invalid 'midNotTought' iterator's value");
+}
+if (!begin.next().done) {
+    throw new Error("Invalid 'begin' iterator");
+}
+if (!mid.next().done) {
+    throw new Error("Invalid 'mid' iterator");
+}
+if (!last.next().done) {
+    throw new Error("Invalid 'last' iterator");
+}
+if (!end.next().done) {
+    throw new Error("Invalid 'end' iterator");
+}
