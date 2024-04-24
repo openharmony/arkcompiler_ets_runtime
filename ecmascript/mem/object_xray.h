@@ -109,7 +109,6 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -156,17 +155,6 @@ public:
             case JSType::JS_SHARED_OBJECT: {
                 auto jsSharedObject = JSSharedObject::Cast(object);
                 jsSharedObject->VisitRangeSlot<visitType>(visitor);
-                break;
-            }
-            case JSType::JS_SHARED_JSON_OBJECT:
-            case JSType::JS_SHARED_JSON_NULL:
-            case JSType::JS_SHARED_JSON_TRUE:
-            case JSType::JS_SHARED_JSON_FALSE:
-            case JSType::JS_SHARED_JSON_NUMBER:
-            case JSType::JS_SHARED_JSON_STRING:
-            case JSType::JS_SHARED_JSON_ARRAY: {
-                auto jsSharedJSONValue = JSSharedJSONValue::Cast(object);
-                jsSharedJSONValue->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:

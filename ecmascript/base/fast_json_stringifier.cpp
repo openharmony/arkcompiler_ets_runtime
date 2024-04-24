@@ -123,7 +123,8 @@ JSTaggedValue FastJsonStringifier::SerializeJSONProperty(const JSHandle<JSTagged
         JSType jsType = tagValue.GetTaggedObject()->GetClass()->GetObjectType();
         JSHandle<JSTaggedValue> valHandle(thread_, tagValue);
         switch (jsType) {
-            case JSType::JS_ARRAY: {
+            case JSType::JS_ARRAY:
+            case JSType::JS_SHARED_ARRAY: {
                 SerializeJSArray(valHandle);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                 return tagValue;
@@ -347,8 +348,14 @@ bool FastJsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value)
     }
 
     result_ += "[";
-    JSHandle<JSArray> jsArr(value);
-    uint32_t len = jsArr->GetArrayLength();
+    uint32_t len = 0;
+    if (value->IsJSArray()) {
+        JSHandle<JSArray> jsArr(value);
+        len = jsArr->GetArrayLength();
+    } else if (value->IsJSSharedArray()) {
+        JSHandle<JSSharedArray> jsArr(value);
+        len = jsArr->GetArrayLength();
+    }
     if (len > 0) {
         for (uint32_t i = 0; i < len; i++) {
             JSTaggedValue tagVal = ObjectFastOperator::FastGetPropertyByIndex(thread_, value.GetTaggedValue(), i);
