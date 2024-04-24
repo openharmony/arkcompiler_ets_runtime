@@ -78,7 +78,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
         auto [argc, skipThis] = optCallInfo.value();
         CallTypeInfoAccessor ctia(compilationEnv_, circuit_, gate);
         BuiltinsStubCSigns::ID id = ctia.TryGetPGOBuiltinMethodId();
-        if (IS_INVALID_ID(id)) {
+        if (IS_INVALID_ID(id) && id != BuiltinsStubCSigns::ID::BigIntConstructor) {
             continue;
         }
         switch (id) {
@@ -93,6 +93,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 break;
             case BuiltinsStubCSigns::ID::NumberIsNaN:
                 TryInlineNumberIsNaN(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::NumberParseFloat:
+                TryInlineNumberParseFloat(gate, argc, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
                 TryInlineNumberIsSafeInteger(gate, argc, skipThis);
@@ -259,6 +262,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::SetHas:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetHas(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::SetAdd:
+                InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetAdd(), skipThis);
+                break;
             case BuiltinsStubCSigns::ID::DateNow:
                 TryInlineWhitoutParamBuiltin(gate, argc, id, circuit_->DateNow(), skipThis);
                 break;
@@ -273,6 +279,15 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 break;
             case BuiltinsStubCSigns::ID::SetEntries:
                 InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetEntries(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::BigIntConstructor:
+                TryInlineBigIntConstructor(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::MapClear:
+                InlineStubBuiltin(gate, 0U, argc, id, circuit_->MapClear(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::SetClear:
+                InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetClear(), skipThis);
                 break;
             default:
                 break;
@@ -378,6 +393,24 @@ void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool 
     }
     GateRef ret = builder_.NumberIsNaN(tacc.GetArg0());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineNumberParseFloat(GateRef gate, size_t argc, bool skipThis)
+{
+    auto firstParam = skipThis ? 1 : 0;
+    auto func = acc_.GetValueIn(gate, argc + firstParam);
+    auto arg = acc_.GetValueIn(gate, firstParam);
+
+    Environment env(gate, circuit_, &builder_);
+    auto id = BuiltinsStubCSigns::ID::NumberParseFloat;
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+    GateRef ret = builder_.NumberParseFloat(arg, acc_.GetFrameState(gate));
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t argc, bool skipThis)
@@ -710,18 +743,63 @@ void NativeInlineLowering::InlineStubBuiltin(GateRef gate, size_t builtinArgc, s
     }
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
+        GateRef obj = acc_.GetValueIn(gate, 0);
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, realArgc + 1U),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+                                 builder_.IntPtr(static_cast<int64_t>(id)), {obj});
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
+
     std::vector<GateRef> args {};
     for (size_t i = 0; i <= builtinArgc; i++) {
         args.push_back(i <= realArgc ? acc_.GetValueIn(gate, i) : builder_.Undefined());
     }
     GateRef ret = builder_.BuildControlDependOp(op, args);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::ReplaceGateWithPendingException(GateRef hirGate, GateRef value)
+{
+    GateRef state = builder_.GetState();
+    // copy depend-wire of hirGate to value
+    GateRef depend = builder_.GetDepend();
+    // exception value
+    GateRef exceptionVal = builder_.ExceptionConstant();
+    // compare with trampolines result
+    GateRef equal = builder_.Equal(value, exceptionVal);
+    auto ifBranch = builder_.Branch(state, equal, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
+
+    GateRef ifTrue = builder_.IfTrue(ifBranch);
+    GateRef ifFalse = builder_.IfFalse(ifBranch);
+    GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+    GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+    StateDepend success(ifFalse, sDepend);
+    StateDepend exception(ifTrue, eDepend);
+    acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
+}
+
+void NativeInlineLowering::TryInlineBigIntConstructor(GateRef gate, size_t argc, bool skipThis)
+{
+    Environment env(gate, circuit_, &builder_);
+    bool firstParam = skipThis ? 1 : 0;
+    auto id = BuiltinsStubCSigns::ID::BigIntConstructor;
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+                                 builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+
+    auto param = builder_.Undefined();
+    if (argc > 0) {
+        param = acc_.GetValueIn(gate, firstParam);
+    }
+
+    GateRef ret = builder_.BuildControlDependOp(circuit_->BigIntConstructor(), {param});
+    ReplaceGateWithPendingException(gate, ret);
+    return;
 }
 
 void NativeInlineLowering::TryInlineDateGetTime(GateRef gate, size_t argc, bool skipThis)
@@ -734,8 +812,9 @@ void NativeInlineLowering::TryInlineDateGetTime(GateRef gate, size_t argc, bool 
     // We are sure, that "this" is passed to this function, so always need to do +1
     bool firstParam = 1;
     if (!Uncheck()) {
+        GateRef obj = acc_.GetValueIn(gate, 0);
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::DateGetTime)));
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::DateGetTime)), {obj});
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, BuiltinsStubCSigns::ID::DateGetTime);

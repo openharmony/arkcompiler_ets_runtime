@@ -255,6 +255,10 @@ void MCRLowering::LowerIsSpecificObjectType(GateRef gate)
             result = builder_.TaggedObjectIsJSSet(obj);
             break;
         }
+        case JSType::JS_DATE: {
+            result = builder_.TaggedObjectIsJSDate(obj);
+            break;
+        }
         case JSType::JS_ARRAY: {
             result = builder_.TaggedObjectIsJSArray(obj);
             break;

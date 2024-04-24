@@ -13,7 +13,10 @@
 
 group("ark_aot_builtin_inlining_number_test") {
   testonly = true
-  test_list = [ "Constructor" ]
+  test_list = [
+    "Constructor",
+    "ParseFloat",
+  ]
 
   deps = []
   foreach(test, test_list) {

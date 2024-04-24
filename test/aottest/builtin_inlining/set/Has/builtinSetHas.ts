@@ -40,6 +40,7 @@ let mySet = new Set([0, 0.0, -5, 2.5, 1e-78, NaN, "xyz", "12345"]);
 print(mySet.has()); //: false
 
 // Check with adding element undefined
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetHas
 mySet.add(undefined);
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has()); //: true
@@ -67,7 +68,9 @@ print(mySet.has(-21, 10.2, 15)); //: false
 print(mySet.has(2.5, -800, 0.56, 0)); //: true
 
 // Check after inserting elements
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetHas
 mySet.add(-5);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetHas
 mySet.add(133.33);
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(-5)); //: true
@@ -81,6 +84,20 @@ mySet.has = replace
 // no deopt
 print(mySet.has(2.5)); //: 2.5
 mySet.has = true_has
+
+function checkObjWithSetProto() {
+    let o = {};
+    Object.setPrototypeOf(o, Set.prototype);
+    try {
+        print((o as Set<number>).has(1));
+    } catch(e) {
+        print(e);
+    }
+}
+
+//aot: [trace] Check Type: NotCallTarget1
+//: TypeError: obj is not JSSet
+checkObjWithSetProto();
 
 //aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
 printHas(-5); //: true
@@ -143,5 +160,7 @@ try {
 
 // Check after clearing
 mySet.clear();
+//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetHas
+print(mySet.has(0));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
-print(mySet.has(0)); //: false
+//: false

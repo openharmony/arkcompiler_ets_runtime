@@ -183,6 +183,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(AddElementInternal)                 \
     V(AllocateInYoung)                    \
     V(AllocateInSOld)                     \
+    V(AllocateInSNonMovable)              \
     V(TypedArraySpeciesCreate)            \
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
@@ -441,7 +442,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(HasProperty)                        \
     V(DumpObject)                         \
     V(TryGetInternString)                 \
-    V(TryToElementsIndexOrFindInStringTable)
+    V(TryToElementsIndexOrFindInStringTable) \
+    V(BigIntConstructor)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

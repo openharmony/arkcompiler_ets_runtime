@@ -799,8 +799,8 @@ void Builtins::InitializeBigInt(const JSHandle<GlobalEnv> &env, const JSHandle<J
         factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, JSType::JS_PRIMITIVE_REF, bigIntFuncPrototypeValue);
     // BigInt = new Function()
     JSHandle<JSObject> bigIntFunction(
-        NewBuiltinConstructor(env, bigIntFuncPrototype,
-                              BuiltinsBigInt::BigIntConstructor, "BigInt", FunctionLength::ONE));
+        NewBuiltinConstructor(env, bigIntFuncPrototype, BuiltinsBigInt::BigIntConstructor, "BigInt",
+                              FunctionLength::ONE, kungfu::BuiltinsStubCSigns::BigIntConstructor));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(bigIntFunction),
                                                      bigIntFuncInstanceHClass.GetTaggedValue());
@@ -2864,7 +2864,7 @@ void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, keyString, handleUndefine);
-    if (IS_TYPED_BUILTINS_ID(builtinId)) {
+    if (IS_TYPED_BUILTINS_ID(builtinId) || IS_TYPED_INLINE_BUILTINS_ID(builtinId)) {
         auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
         globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
     }

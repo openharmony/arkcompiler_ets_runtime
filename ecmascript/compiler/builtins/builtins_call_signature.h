@@ -238,6 +238,7 @@ namespace panda::ecmascript::kungfu {
     V(DateNow)                                      \
     V(GlobalIsFinite)                               \
     V(GlobalIsNan)                                  \
+    V(BigIntConstructor)                            \
     V(ArrayBufferIsView)                            \
     V(BigIntAsIntN)                                 \
     V(BigIntAsUintN)                                \
@@ -345,6 +346,10 @@ public:
             case BuiltinsStubCSigns::ID::TypedArrayValues:
             case BuiltinsStubCSigns::ID::SetValues:
             case BuiltinsStubCSigns::ID::SetEntries:
+            case BuiltinsStubCSigns::ID::MapClear:
+            case BuiltinsStubCSigns::ID::SetClear:
+            case BuiltinsStubCSigns::ID::SetAdd:
+            case BuiltinsStubCSigns::ID::NumberParseFloat:
                 return true;
             default:
                 return false;
@@ -481,6 +486,12 @@ public:
                 return ConstantIndex::SET_VALUES_INDEX;
             case BuiltinsStubCSigns::ID::SetEntries:
                 return ConstantIndex::SET_ENTRIES_INDEX;
+            case BuiltinsStubCSigns::ID::MapClear:
+                return ConstantIndex::MAP_CLEAR_INDEX;
+            case BuiltinsStubCSigns::ID::SetClear:
+                return ConstantIndex::SET_CLEAR_INDEX;
+            case BuiltinsStubCSigns::ID::SetAdd:
+                return ConstantIndex::SET_ADD_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
@@ -559,6 +570,8 @@ public:
                 return ConstantIndex::NUMBER_IS_NAN_INDEX;
             case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
                 return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
+            case BuiltinsStubCSigns::ID::NumberParseFloat:
+                return ConstantIndex::NUMBER_PARSE_FLOAT_INDEX;
             default:
                 LOG_COMPILER(INFO) << "GetConstantIndex Invalid Id:" << builtinId;
                 return ConstantIndex::INVALID;
@@ -628,6 +641,11 @@ public:
             {SetHas, "Set.has"},
             {MapDelete, "Map.delete"},
             {SetDelete, "Set.delete"},
+            {MapClear, "Map.clear"},
+            {SetClear, "Set.clear"},
+            {SetAdd, "Set.add"},
+            {BigIntConstructor, "BigInt"},
+            {NumberParseFloat, "Number.parseFloat"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
@@ -683,6 +701,7 @@ public:
             {"asUintN", BigIntAsUintN},
             {"mapDelete", MapDelete},
             {"setDelete", SetDelete},
+            {"BigInt", BigIntConstructor},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);
