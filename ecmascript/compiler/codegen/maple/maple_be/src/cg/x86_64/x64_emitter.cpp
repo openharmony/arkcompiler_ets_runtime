@@ -764,6 +764,12 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
         case x64::MOP_xorq_i_m:
             assmbler.Xor(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
+        case x64::MOP_bsrq_r_r:
+            assmbler.Bsr(kQ, TransferReg(opnd1), TransferReg(opnd0));
+            break;
+        case x64::MOP_bsrl_r_r:
+            assmbler.Bsr(kL, TransferReg(opnd1), TransferReg(opnd0));
+            break;
         /* not */
         case x64::MOP_notb_r:
             assmbler.Not(kB, TransferReg(opnd0));

@@ -1647,6 +1647,12 @@ void ElfAssembler::Xor(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
     OpImmAndMem(immOpnd, mem, kXorModReg);
 }
 
+/* bsr */
+void ElfAssembler::Bsr(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    OpRR(srcReg, destReg, 0x0f, 0xbd);
+}
+
 /* not */
 void ElfAssembler::Not(InsnSize insnSize, Reg reg)
 {

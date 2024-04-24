@@ -518,6 +518,14 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::ADD_WITH_OVERFLOW, &LiteCGIRBuilder::HandleAddWithOverflow},
         {OpCode::SUB_WITH_OVERFLOW, &LiteCGIRBuilder::HandleSubWithOverflow},
         {OpCode::MUL_WITH_OVERFLOW, &LiteCGIRBuilder::HandleMulWithOverflow},
+        {OpCode::EXP, &LiteCGIRBuilder::HandleExp},
+        {OpCode::ABS, &LiteCGIRBuilder::HandleAbs},
+        {OpCode::MIN, &LiteCGIRBuilder::HandleMin},
+        {OpCode::MAX, &LiteCGIRBuilder::HandleMax},
+        {OpCode::CLZ32, &LiteCGIRBuilder::HandleClz32},
+        {OpCode::DOUBLE_TRUNC, &LiteCGIRBuilder::HandleDoubleTrunc},
+        {OpCode::CEIL, &LiteCGIRBuilder::HandleCeil},
+        {OpCode::FLOOR, &LiteCGIRBuilder::HandleFloor},
         {OpCode::EXTRACT_VALUE, &LiteCGIRBuilder::HandleExtractValue},
         {OpCode::SQRT, &LiteCGIRBuilder::HandleSqrt},
         {OpCode::READSP, &LiteCGIRBuilder::HandleReadSp},
@@ -1592,6 +1600,21 @@ void LiteCGIRBuilder::VisitChangeInt64ToTagged(GateRef gate, GateRef e1)
     SaveGate2Expr(gate, result);
 }
 
+void LiteCGIRBuilder::HandleDoubleTrunc(GateRef gate)
+{
+    GateRef param = acc_.GetIn(gate, 0);
+    VisitDoubleTrunc(gate, param);
+}
+
+void LiteCGIRBuilder::VisitDoubleTrunc(GateRef gate, GateRef e1)
+{
+    Expr e1Value = GetExprFromGate(e1);
+    LiteCGType *type = ConvertLiteCGTypeFromGate(gate);
+    ASSERT(acc_.GetMachineType(e1) == acc_.GetMachineType(gate));
+    Expr result = lmirBuilder_->Trunc(type, type, e1Value);
+    SaveGate2Expr(gate, result);
+}
+
 void LiteCGIRBuilder::HandleSub(GateRef gate)
 {
     auto g0 = acc_.GetIn(gate, 0);
@@ -1833,6 +1856,123 @@ void LiteCGIRBuilder::VisitSqrt(GateRef gate, GateRef e1)
     }
     SaveGate2Expr(gate, result);
 }
+
+void LiteCGIRBuilder::HandleExp(GateRef gate)
+{
+    (void)gate;
+    CHECK_FATAL(false, "not support exp !");
+}
+
+void LiteCGIRBuilder::HandleCeil(GateRef gate)
+{
+    VisitCeil(gate, acc_.GetIn(gate, 0));
+}
+
+void LiteCGIRBuilder::VisitCeil(GateRef gate, GateRef e1)
+{
+    Expr e1Value = GetExprFromGate(e1);
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr result = lmirBuilder_->Ceil(type, type, e1Value);
+    SaveGate2Expr(gate, result);
+}
+
+void LiteCGIRBuilder::HandleAbs(GateRef gate)
+{
+    VisitAbs(gate, acc_.GetIn(gate, 0));
+}
+
+void LiteCGIRBuilder::VisitAbs(GateRef gate, GateRef e1)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    Expr result;
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr e1Value = GetExprFromGate(e1);
+    if (machineType == MachineType::I32 || machineType == MachineType::F64) {
+        result = lmirBuilder_->Abs(type, e1Value);
+    } else {
+        LOG_ECMA(FATAL) << "`Abs` type should be untagged double or signed int";
+        UNREACHABLE();
+    }
+    SaveGate2Expr(gate, result);
+    return;
+}
+
+void LiteCGIRBuilder::HandleMin(GateRef gate)
+{
+    VisitMin(gate, acc_.GetIn(gate, 0), acc_.GetIn(gate, 1U));
+}
+
+void LiteCGIRBuilder::VisitMin(GateRef gate, GateRef e1, GateRef e2)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    ASSERT(acc_.GetMachineType(e2) == machineType);
+    Expr result;
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr e1Value = GetExprFromGate(e1);
+    Expr e2Value = GetExprFromGate(e2);
+    if (machineType == MachineType::I32 || machineType == MachineType::F64) {
+        result = lmirBuilder_->Min(type, e1Value, e2Value);
+    } else {
+        LOG_ECMA(FATAL) << "`Min` type should be untagged double or signed int";
+        UNREACHABLE();
+    }
+    SaveGate2Expr(gate, result);
+    return;
+}
+
+void LiteCGIRBuilder::HandleMax(GateRef gate)
+{
+    VisitMax(gate, acc_.GetIn(gate, 0), acc_.GetIn(gate, 1U));
+}
+
+void LiteCGIRBuilder::VisitMax(GateRef gate, GateRef e1, GateRef e2)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    ASSERT(acc_.GetMachineType(e2) == machineType);
+    Expr result;
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr e1Value = GetExprFromGate(e1);
+    Expr e2Value = GetExprFromGate(e2);
+    if (machineType == MachineType::I32 || machineType == MachineType::F64) {
+        result = lmirBuilder_->Max(type, e1Value, e2Value);
+    } else {
+        LOG_ECMA(FATAL) << "`Max` type should be untagged double or signed int";
+        UNREACHABLE();
+    }
+    SaveGate2Expr(gate, result);
+    return;
+}
+
+void LiteCGIRBuilder::HandleFloor(GateRef gate)
+{
+    VisitFloor(gate, acc_.GetIn(gate, 0));
+}
+
+void LiteCGIRBuilder::VisitFloor(GateRef gate, GateRef e1)
+{
+    Expr e1Value = GetExprFromGate(e1);
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr result = lmirBuilder_->Floor(type, type, e1Value);
+    SaveGate2Expr(gate, result);
+}
+
+void LiteCGIRBuilder::HandleClz32(GateRef gate)
+{
+    VisitClz32(gate, acc_.GetIn(gate, 0));
+}
+
+void LiteCGIRBuilder::VisitClz32(GateRef gate,  GateRef param)
+{
+    std::vector<Expr> params;
+    params.push_back(GetExprFromGate(param));
+    LiteCGType *type = ConvertLiteCGTypeFromGate(param);
+    Expr result = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_C_clz32, type, params);
+    SaveGate2Expr(gate, result);
+}
+
 
 void LiteCGIRBuilder::HandleReadSp(GateRef gate)
 {
