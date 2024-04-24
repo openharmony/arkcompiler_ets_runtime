@@ -95,11 +95,7 @@
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/jit_tools.h"
 
-#ifdef JIT_SWITCH_COMPILE_MODE
-#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
-#endif
-
-#ifdef PANDA_TARGET_OHOS
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
 #endif
 
@@ -138,7 +134,7 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
         SetThreadInfoCallback(CrashCallback);
     }
 #endif
-#ifdef PANDA_TARGET_OHOS
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     vm->GetJSOptions().SetArkProperties(arkProperties);
 #endif
@@ -201,7 +197,7 @@ void EcmaVM::PostFork()
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
 #endif
-#ifdef PANDA_TARGET_OHOS
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);
 #endif

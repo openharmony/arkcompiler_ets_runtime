@@ -48,14 +48,17 @@ void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueu
     JSHandle<PendingJob> pendingJob(factory->NewPendingJob(job, argv));
     ENQUEUE_JOB_HITRACE(pendingJob, queueType);
 
-#if defined(ENABLE_BYTRACE)
+    [[maybe_unused]] uint64_t jobId = 0;
+#if defined(ENABLE_HITRACE)
+    jobId = thread->GetJobId();
+    pendingJob->SetJobId(jobId);
+#endif
+    std::string strTrace = "MicroJobQueue::EnqueueJob: jobId: " + std::to_string(jobId);
+    strTrace += ", threadId: " + std::to_string(thread->GetThreadId());
     if (thread->GetEcmaVM()->GetJSOptions().EnableMicroJobTrace()) {
         std::vector<JsFrameInfo> jsStackInfo = JsStackInfo::BuildJsStackInfo(thread, true);
         if (!jsStackInfo.empty()) {
-            uint64_t jobId = thread->GetJobId();
-            pendingJob->SetJobId(jobId);
             JsFrameInfo jsFrameInfo = jsStackInfo.front();
-
             std::string fileName = jsFrameInfo.fileName;
             int lineNumber;
             int columnNumber;
@@ -71,16 +74,10 @@ void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueu
             } else {
                 fileName += ":" + jsFrameInfo.pos;
             }
-
-            std::string strTrace = "MicroJobQueue::EnqueueJob: jobId: " + std::to_string(jobId);
-            strTrace += ", threadId: " + std::to_string(thread->GetThreadId());
             strTrace += ", funcName: " + jsFrameInfo.functionName + ", url: " + fileName;
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, strTrace);
         }
-    } else {
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "MicroJobQueue::EnqueueJob");
     }
-#endif
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, strTrace);
 
     if (queueType == QueueType::QUEUE_PROMISE) {
         JSHandle<TaggedQueue> promiseQueue(thread, jobQueue->GetPromiseJobQueue());
