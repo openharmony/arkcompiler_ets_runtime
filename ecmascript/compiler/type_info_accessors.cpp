@@ -17,10 +17,10 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_fields.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/ts_types/ts_type_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 ParamType TypeInfoAccessor::PGOSampleTypeToParamType() const
@@ -326,7 +326,8 @@ bool CallThisTypeInfoAccessor::CanOptimizeAsFastCall()
         return false;
     }
     if (!profileType->IsNone()) {
-        if (profileType->IsProfileTypeNone() || op != OpCode::LOAD_PROPERTY) {
+        if (profileType->IsProfileTypeNone() ||
+            (op != OpCode::LOAD_PROPERTY && op != OpCode::MONO_LOAD_PROPERTY_ON_PROTO)) {
             return false;
         }
         return true;
@@ -394,21 +395,6 @@ InlineTypeInfoAccessor::InlineTypeInfoAccessor(
     if (IsCallAccessor()) {
         plr_ = GetAccessorPlr();
     }
-}
-
-GlobalTSTypeRef InlineTypeInfoAccessor::GetAccessorFuncGT() const
-{
-    GateType receiverType = acc_.GetGateType(receiver_);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    GlobalTSTypeRef classInstanceGT = receiverType.GetGTRef();
-    GlobalTSTypeRef classGT = tsManager_->GetClassType(classInstanceGT);
-    TSTypeAccessor tsTypeAcc(tsManager_, classGT);
-    GateRef constData = acc_.GetValueIn(gate_, 1);
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto methodOffset = acc_.TryGetMethodOffset(gate_);
-    auto prop = compilationEnv_->GetStringFromConstantPool(methodOffset, propIndex);
-    GlobalTSTypeRef funcGT = tsTypeAcc.GetAccessorGT(prop, IsCallSetter());
-    return funcGT;
 }
 
 PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const
@@ -493,6 +479,117 @@ bool ObjAccByNameTypeInfoAccessor::GeneratePlr(ProfileTyper type, ObjectAccessIn
     }
 
     return (plr.IsFound() && !plr.IsFunction());
+}
+
+void StorePrivatePropertyTypeInfoAccessor::FetchPGORWTypesDual()
+{
+    const PGORWOpType* pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        types_.emplace_back(std::make_tuple(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+                                            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType()),
+                                            std::make_pair(temp.GetHoldTraRootType(), temp.GetHoldTraType())));
+    }
+}
+
+JSTaggedValue StorePrivatePropertyTypeInfoAccessor::GetKeyTaggedValue() const
+{
+    if (types_.empty()) {
+        return JSTaggedValue::Hole();
+    }
+
+    ProfileTyper receiverType = std::get<0>(types_.at(0));
+    auto slotIndex = acc_.GetConstantValue(slotIndex_);
+    ProfileTypeTuple type = std::make_tuple(receiverType.first, receiverType.second, slotIndex);
+    auto privateId = ptManager_->GetSymbolIdByProfileType(type);
+    if (!privateId) {
+        return JSTaggedValue::Hole();
+    }
+
+    AOTSnapshot& snapshot = ptManager_->GetAOTSnapshot();
+    auto symbolInfo = snapshot.GetSymbolInfo();
+    auto symbol = ConstantPool::GetSymbolFromSymbolInfo(symbolInfo, *privateId);
+    return symbol;
+}
+
+bool StorePrivatePropertyTypeInfoAccessor::GenerateObjectAccessInfo()
+{
+    JSTaggedValue key = GetKeyTaggedValue();
+    if (key.IsHole()) {
+        isAccessor_ = true;
+        return true;
+    }
+
+    ProfileTyper receiverType = std::get<0>(types_.at(0));
+    ProfileTyper holderType = std::get<1>(types_.at(0));
+
+    if (receiverType == holderType) {
+        ObjectAccessInfo receiverInfo;
+        if (!GeneratePlr(receiverType, receiverInfo, key)) {
+            return false;
+        }
+        accessInfos_.emplace_back(receiverInfo);
+        checkerInfos_.emplace_back(receiverInfo);
+    } else {
+        UNREACHABLE();
+    }
+
+    return true;
+}
+
+void LoadPrivatePropertyTypeInfoAccessor::FetchPGORWTypesDual()
+{
+    const PGORWOpType* pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        types_.emplace_back(std::make_pair(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+                                           std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())));
+    }
+}
+
+JSTaggedValue LoadPrivatePropertyTypeInfoAccessor::GetKeyTaggedValue() const
+{
+    if (types_.empty()) {
+        return JSTaggedValue::Hole();
+    }
+
+    ProfileTyper receiverType = types_.at(0).first;
+    auto slotIndex = acc_.GetConstantValue(slotIndex_);
+    ProfileTypeTuple type = std::make_tuple(receiverType.first, receiverType.second, slotIndex);
+    auto privateId = ptManager_->GetSymbolIdByProfileType(type);
+    if (!privateId) {
+        return JSTaggedValue::Hole();
+    }
+
+    AOTSnapshot& snapshot = ptManager_->GetAOTSnapshot();
+    auto symbolInfo = snapshot.GetSymbolInfo();
+    auto symbol = ConstantPool::GetSymbolFromSymbolInfo(symbolInfo, *privateId);
+    return symbol;
+}
+
+bool LoadPrivatePropertyTypeInfoAccessor::GenerateObjectAccessInfo()
+{
+    JSTaggedValue key = GetKeyTaggedValue();
+    if (key.IsHole()) {
+        isAccessor_ = true;
+        return true;
+    }
+
+    ProfileTyper receiverType = types_.at(0).first;
+    ProfileTyper holderType = types_.at(0).second;
+
+    if (receiverType == holderType) {
+        ObjectAccessInfo receiverInfo;
+        if (!GeneratePlr(receiverType, receiverInfo, key)) {
+            return false;
+        }
+        accessInfos_.emplace_back(receiverInfo);
+        checkerInfos_.emplace_back(receiverInfo);
+    } else {
+        UNREACHABLE();
+    }
+
+    return true;
 }
 
 LoadObjByNameTypeInfoAccessor::LoadObjByNameTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,

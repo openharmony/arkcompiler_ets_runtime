@@ -186,6 +186,7 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
             case JSFunction::MACHINECODE_OFFSET:
+            case JSFunction::BASELINECODE_OFFSET:
             case JSFunction::PROFILE_TYPE_INFO_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
@@ -266,6 +267,7 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
             case JSFunction::PROTO_OR_DYNCLASS_OFFSET:
             case JSFunction::LEXICAL_ENV_OFFSET:
             case JSFunction::MACHINECODE_OFFSET:
+            case JSFunction::BASELINECODE_OFFSET:
             case JSFunction::PROFILE_TYPE_INFO_OFFSET:
             case JSFunction::HOME_OBJECT_OFFSET:
             case JSFunction::ECMA_MODULE_OFFSET: {

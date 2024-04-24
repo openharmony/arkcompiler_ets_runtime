@@ -41,11 +41,11 @@
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/post_schedule.h"
+#include "ecmascript/compiler/precompile_checker.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/string_builder_optimizer.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/state_split_linearizer.h"
-#include "ecmascript/compiler/ts_class_analysis.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/typed_bytecode_lowering.h"
 #include "ecmascript/compiler/ts_hcr_opt_pass.h"
@@ -113,11 +113,6 @@ public:
     CompilationConfig* GetCompilerConfig() const
     {
         return ctx_->GetCompilerConfig();
-    }
-
-    TSManager* GetTSManager() const
-    {
-        return ctx_->GetTSManager();
     }
 
     PGOTypeManager* GetPTManager() const
@@ -213,13 +208,6 @@ public:
             if (methodInfo_->IsTypeInferAbort() && !methodInfo_->IsResolvedMethod()) {
                 return true;
             }
-        } else {
-            // For js method, type infer pass will be skipped and it don't have a type percent.
-            // If we set an non zero type threshold, js method will be skipped from full compilation.
-            // The default Type threshold is -1.
-            if (ctx_->GetTSManager()->GetTypeThreshold() >= 0) {
-                return true;
-            }
         }
         // when a method will be full compiled, we should confirm its TypeInferAbortBit to be false
         // maybe it used to be true in the first round of compilation.
@@ -276,6 +264,21 @@ private:
     T1* data_;
 };
 
+class PreCompileCheckPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("PreCompileCheckPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
+        PreCompileChecker preCompileChecker(data, data->GetCircuit(), data->GetMethodName(), enableLog);
+        if (!preCompileChecker.Run()) {
+            data->AbortCompilation();
+            return false;
+        }
+        return true;
+    }
+};
+
 class PGOTypeInferPass {
 public:
     bool Run(PassData* data)
@@ -283,21 +286,8 @@ public:
         TimeScope timescope("PGOTypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         Chunk chunk(data->GetNativeAreaAllocator());
-        PGOTypeInfer pgoTypeInfer(data->GetCircuit(), data->GetTSManager(), data->GetPTManager(), data->GetBuilder(),
-                                  data->GetMethodName(), &chunk, enableLog,
-                                  data->GetPassContext()->GetCompilationEnv());
+        PGOTypeInfer pgoTypeInfer(data->GetCircuit(), data->GetBuilder(), data->GetMethodName(), &chunk, enableLog);
         pgoTypeInfer.Run();
-        return true;
-    }
-};
-
-class TSClassAnalysisPass {
-public:
-    bool Run(PassData *data)
-    {
-        TimeScope timescope("TSClassAnalysisPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        TSClassAnalysis analyzer(data->GetPassContext()->GetTSManager());
-        analyzer.Run();
         return true;
     }
 };
@@ -371,10 +361,7 @@ public:
                                       data->GetCallMethodFlagMap(),
                                       data->GetPGOProfilerDecoder(),
                                       data->GetOptBCRange());
-        bool success = lowering.RunTypedBytecodeLowering();
-        if (!success) {
-            data->MarkAsTypeAbort();
-        }
+        lowering.RunTypedBytecodeLowering();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
         TSHCROptPass optimization(data->GetCircuit(), &visitor, &chunk, data->GetPassContext(), enableLog,
@@ -448,7 +435,6 @@ public:
                                     data->GetPassContext()->GetCompilationEnv(),
                                     &visitor,
                                     data->GetCompilerConfig(),
-                                    data->GetTSManager(),
                                     &chunk,
                                     passOptions->EnableLoweringBuiltin());
             visitor.AddPass(&lowering);
@@ -551,8 +537,8 @@ public:
         }
 
         if (passOptions->EnableInlineNative()) {
-            NativeInlineLowering nativeInline(data->GetCircuit(), data->GetPassContext(), enableLog,
-                                              data->GetMethodName());
+            NativeInlineLowering nativeInline(data->GetCircuit(), data->GetCompilerConfig(), data->GetPassContext(),
+                                              enableLog, data->GetMethodName());
             nativeInline.RunNativeInlineLowering();
         }
         return true;

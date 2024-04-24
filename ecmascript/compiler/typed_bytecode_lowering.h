@@ -22,7 +22,6 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/object_access_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/compiler/type_info_accessors.h"
@@ -46,7 +45,6 @@ public:
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
-          tsManager_(ctx->GetTSManager()),
           chunk_(chunk),
           enableLog_(enableLog),
           enableTypeLog_(enableTypeLog),
@@ -69,7 +67,7 @@ public:
 
     ~TypedBytecodeLowering() = default;
 
-    bool RunTypedBytecodeLowering();
+    void RunTypedBytecodeLowering();
 
 private:
     bool IsLogEnabled() const
@@ -115,13 +113,14 @@ private:
 
     void LowerTypedTryLdGlobalByName(GateRef gate);
 
+    void LowerTypedStPrivateProperty(GateRef gate);
+    void LowerTypedLdPrivateProperty(GateRef gate);
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedStObjByName(GateRef gate);
     void LowerTypedStOwnByName(GateRef gate);
     GateRef BuildNamedPropertyAccess(GateRef hir, GateRef receiver, GateRef holder, PropertyLookupResult plr);
     GateRef BuildNamedPropertyAccess(GateRef hir, GateRef receiver, GateRef holder,
                                      GateRef value, PropertyLookupResult plr, uint32_t receiverHClassIndex = 0);
-    using AccessMode = PGOObjectAccessHelper::AccessMode;
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate);
     bool TryLowerTypedLdObjByNameForBuiltinsId(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
     bool TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc);
@@ -129,6 +128,7 @@ private:
     void LowerTypedLdArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdTypedArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdStringLength(const LoadBulitinObjTypeInfoAccessor &tacc);
+    void LowerTypedLdMapSize(const LoadBulitinObjTypeInfoAccessor &tacc);
     bool TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
 
     void LowerTypedLdObjByIndex(GateRef gate);
@@ -230,7 +230,6 @@ private:
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_ {Gate::InvalidGateRef};
-    TSManager *tsManager_ {nullptr};
     Chunk *chunk_ {nullptr};
     bool enableLog_ {false};
     bool enableTypeLog_ {false};

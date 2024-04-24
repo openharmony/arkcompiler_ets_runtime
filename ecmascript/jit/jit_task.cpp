@@ -17,6 +17,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -36,13 +37,14 @@ uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]]uint32_t threadNu
 }
 
 JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHandle<JSFunction> &jsFunction,
-    CString &methodName, int32_t offset, uint32_t taskThreadId, JitCompileMode mode)
+    CompilerTier tier, CString &methodName, int32_t offset, uint32_t taskThreadId, JitCompileMode mode)
     : hostThread_(hostThread),
     compilerThread_(compilerThread),
     jit_(jit),
     jsFunction_(jsFunction),
     compilerTask_(nullptr),
     state_(CompileState::SUCCESS),
+    compilerTier_(tier),
     methodInfo_(methodName),
     offset_(offset),
     taskThreadId_(taskThreadId),
@@ -127,6 +129,25 @@ void JitTask::InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &co
     return;
 }
 
+static size_t ComputePayLoadSize(const MachineCodeDesc &codeDesc)
+{
+    if (codeDesc.codeType == MachineCodeType::BASELINE_CODE) {
+        // only code section in BaselineCode
+        return AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
+    }
+
+    ASSERT(codeDesc.codeType == MachineCodeType::FAST_JIT_CODE);
+    size_t funcEntryDesSizeAlign = AlignUp(codeDesc.funcEntryDesSize, MachineCode::TEXT_ALIGN);
+    size_t rodataSizeBeforeTextAlign = AlignUp(codeDesc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
+    size_t codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
+    size_t rodataSizeAfterTextAlign = AlignUp(codeDesc.rodataSizeAfterText, MachineCode::DATA_ALIGN);
+
+    size_t stackMapSizeAlign = AlignUp(codeDesc.stackMapSize, MachineCode::DATA_ALIGN);
+
+    return funcEntryDesSizeAlign + rodataSizeBeforeTextAlign + codeSizeAlign +
+           rodataSizeAfterTextAlign + stackMapSizeAlign;
+}
+
 void JitTask::InstallCode()
 {
     if (!IsCompileSuccess()) {
@@ -144,21 +165,12 @@ void JitTask::InstallCode()
         unsharedConstantPool->SetAotHClassInfoWithBarrier(hostThread_, info.GetTaggedValue());
     }
 
-    size_t funcEntryDesSizeAlign = AlignUp(codeDesc_.funcEntryDesSize, MachineCode::TEXT_ALIGN);
-
-    size_t rodataSizeBeforeTextAlign = AlignUp(codeDesc_.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
-    size_t codeSizeAlign = AlignUp(codeDesc_.codeSize, MachineCode::DATA_ALIGN);
-    size_t rodataSizeAfterTextAlign = AlignUp(codeDesc_.rodataSizeAfterText, MachineCode::DATA_ALIGN);
-
-    size_t stackMapSizeAlign = AlignUp(codeDesc_.stackMapSize, MachineCode::DATA_ALIGN);
-
-    size_t size = funcEntryDesSizeAlign + rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign +
-        stackMapSizeAlign;
+    size_t size = ComputePayLoadSize(codeDesc_);
 
     methodHandle = hostThread_->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
     jsFunction_->SetMethod(hostThread_, methodHandle);
     JSHandle<MachineCode> machineCodeObj =
-        hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, &codeDesc_, methodHandle);
+        hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_, methodHandle);
     machineCodeObj->SetOSROffset(offset_);
 
     if (hostThread_->HasPendingException()) {
@@ -173,18 +185,24 @@ void JitTask::InstallCode()
     }
 
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
-    FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
-    jsFunction_->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
-    methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
-    jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
-
-    LOG_JIT(DEBUG) << "Install machine code:" << GetMethodInfo();
+    if (compilerTier_ == CompilerTier::FAST) {
+        FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
+        jsFunction_->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
+        methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
+        jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
+        LOG_JIT(DEBUG) <<"Install fast jit machine code:" << GetMethodInfo();
 #if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
-    auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
-    if (profMap.find(GetMethodInfo()) != profMap.end()) {
-        profMap[GetMethodInfo()] = true;
-    }
+        auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
+        if (profMap.find(GetMethodInfo()) != profMap.end()) {
+            profMap[GetMethodInfo()] = true;
+        }
 #endif
+    } else {
+        ASSERT(compilerTier_ == CompilerTier::BASELINE);
+        methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
+        jsFunction_->SetBaselineCode(hostThread_, machineCodeObj);
+        LOG_BASELINEJIT(DEBUG) <<"Install baseline jit machine code:" << GetMethodInfo();
+    }
 }
 
 void JitTask::SustainingJSHandles()
@@ -199,6 +217,8 @@ void JitTask::SustainingJSHandles()
 
 void JitTask::ReleaseSustainingJSHandle()
 {
+    // in abort case, vm exit before task finish, release by explict
+    sustainingJSHandle_ = nullptr;
 }
 
 void JitTask::CloneProfileTypeInfo()
@@ -260,7 +280,7 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
         // for unit test
     } else {
         CString info = "compile method:" + jitTask_->GetMethodInfo() + ", in jit thread";
-        Jit::TimeScope scope(info);
+        Jit::TimeScope scope(info, jitTask_->GetCompilerTier());
 
         jitTask_->Optimize();
         jitTask_->Finalize();

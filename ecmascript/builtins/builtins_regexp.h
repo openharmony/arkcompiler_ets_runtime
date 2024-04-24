@@ -129,6 +129,12 @@ private:
     static constexpr uint32_t EXEC_RESULT_INPUT_OFFSET = 2;
     static constexpr uint32_t EXEC_RESULT_GROUPS_OFFSET = 3;
 
+    static constexpr uint32_t REPLACE_RESULT_VAL = 2;
+    static constexpr unsigned REPLACE_LENGTH_BITS = 30;
+    static constexpr unsigned REPLACE_POSITION_BITS = 30;
+    using ReplaceLengthField = BitField<uint32_t, 0, REPLACE_LENGTH_BITS>; // 30
+    using ReplacePositionField = ReplaceLengthField::NextField<uint32_t, REPLACE_POSITION_BITS>; // 60
+
     static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                         const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
 
@@ -160,6 +166,9 @@ private:
     static JSTaggedValue RegExpSplitFast(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                          JSHandle<JSTaggedValue> string, uint32_t limit, bool useCache);
     static bool GetOringinalFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag);
+    static JSHandle<EcmaString> CreateStringFromResultArray(JSThread *thread, const JSHandle<TaggedArray> resultArray,
+        const std::vector<uint64_t> &resultLengthArray, JSHandle<EcmaString> srcString,
+        uint32_t resultStrLength, bool isUtf8);
 };
 
 class RegExpExecResultCache : public TaggedArray {

@@ -44,7 +44,7 @@ icu::ListFormatter *JSListFormat::GetIcuListFormatter() const
     return reinterpret_cast<icu::ListFormatter *>(result);
 }
 
-void JSListFormat::FreeIcuListFormatter(void *pointer, [[maybe_unused]] void* hint)
+void JSListFormat::FreeIcuListFormatter([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void* hint)
 {
     if (pointer == nullptr) {
         return;
@@ -55,7 +55,7 @@ void JSListFormat::FreeIcuListFormatter(void *pointer, [[maybe_unused]] void* hi
 }
 
 void JSListFormat::SetIcuListFormatter(JSThread *thread, const JSHandle<JSListFormat> listFormat,
-                                       icu::ListFormatter *icuListFormatter, const DeleteEntryPoint &callback)
+                                       icu::ListFormatter *icuListFormatter, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -63,7 +63,7 @@ void JSListFormat::SetIcuListFormatter(JSThread *thread, const JSHandle<JSListFo
     JSTaggedValue data = listFormat->GetIcuLF();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuListFormatter);
+        native->ResetExternalPointer(thread, icuListFormatter);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuListFormatter, callback);
@@ -104,6 +104,8 @@ JSHandle<JSListFormat> JSListFormat::InitializeListFormat(JSThread *thread,
     JSHandle<JSObject> optionsObject;
     if (options->IsUndefined()) {
         optionsObject = factory->CreateNullJSObject();
+    } else if (!options->IsJSObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "options is not Object", listFormat);
     } else {
         optionsObject = JSTaggedValue::ToObject(thread, options);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSListFormat, thread);

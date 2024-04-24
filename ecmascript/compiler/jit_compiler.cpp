@@ -19,7 +19,9 @@
 #include <vector>
 
 #include "ecmascript/compiler/jit_compiler.h"
+#include "ecmascript/compiler/baseline/baseline_compiler.h"
 
+#include "ecmascript/jit/jit_task.h"
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/platform/file.h"
@@ -41,6 +43,9 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     LOG_JIT(FATAL) << "jit unsupport arch";
     UNREACHABLE();
 #endif
+    // refactor: remove JitCompilationOptions, reuse CompilationOptions
+    bool isApp = runtimeOptions.IsEnableAPPJIT();
+
     optLevel_ = runtimeOptions.GetOptLevel();
     relocMode_ = runtimeOptions.GetRelocMode();
     logOption_ = runtimeOptions.GetCompilerLogOption();
@@ -50,20 +55,17 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
     profilerIn_ = std::string(runtimeOptions.GetPGOProfilerPath());
     isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();
-    isEnableTypeLowering_ = runtimeOptions.IsEnableTypeLowering();
+    isEnableTypeLowering_ = isApp ? false : runtimeOptions.IsEnableTypeLowering();
     isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
-    isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
+    isEnableOptInlining_ = false;
     isEnableOptString_ = runtimeOptions.IsEnableOptString();
-    isEnableTypeInfer_ =
-        isEnableTypeLowering_ || runtimeOptions.AssertTypes();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
     isEnableOptTrackField_ = runtimeOptions.IsEnableOptTrackField();
     isEnableOptLoopPeeling_ = runtimeOptions.IsEnableOptLoopPeeling();
     isEnableOptOnHeapCheck_ = runtimeOptions.IsEnableOptOnHeapCheck();
     isEnableOptLoopInvariantCodeMotion_ = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
-    isEnableCollectLiteralInfo_ = false;
     isEnableOptConstantFolding_ = runtimeOptions.IsEnableOptConstantFolding();
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
@@ -86,14 +88,12 @@ void JitCompiler::Init(JSRuntimeOptions runtimeOptions)
             .EnableEarlyElimination(jitOptions_.isEnableEarlyElimination_)
             .EnableLaterElimination(jitOptions_.isEnableLaterElimination_)
             .EnableValueNumbering(jitOptions_.isEnableValueNumbering_)
-            .EnableTypeInfer(jitOptions_.isEnableTypeInfer_)
             .EnableOptInlining(jitOptions_.isEnableOptInlining_)
             .EnableOptString(jitOptions_.isEnableOptString_)
             .EnableOptPGOType(jitOptions_.isEnableOptPGOType_)
             .EnableOptTrackField(jitOptions_.isEnableOptTrackField_)
             .EnableOptLoopPeeling(jitOptions_.isEnableOptLoopPeeling_)
             .EnableOptLoopInvariantCodeMotion(jitOptions_.isEnableOptLoopInvariantCodeMotion_)
-            .EnableCollectLiteralInfo(jitOptions_.isEnableCollectLiteralInfo_)
             .EnableOptConstantFolding(jitOptions_.isEnableOptConstantFolding_)
             .EnableLexenvSpecialization(jitOptions_.isEnableLexenvSpecialization_)
             .EnableInlineNative(jitOptions_.isEnableNativeInline_)
@@ -108,6 +108,17 @@ JitCompilerTask *JitCompilerTask::CreateJitCompilerTask(JitTask *jitTask)
 
 bool JitCompilerTask::Compile()
 {
+    if (compilerTier_ == CompilerTier::BASELINE) {
+        auto baselineCompiler =
+            new (std::nothrow) BaselineCompiler(jitCompilationEnv_->GetHostThread()->GetEcmaVM());
+        if (baselineCompiler == nullptr) {
+            return false;
+        }
+        baselineCompiler_.reset(baselineCompiler);
+        baselineCompiler_->Compile(jsFunction_);
+        return true;
+    }
+
     JitCompiler *jitCompiler = JitCompiler::GetInstance();
     auto jitPassManager = new (std::nothrow) JitPassManager(jitCompilationEnv_.get(),
                                                             jitCompiler->GetJitOptions().triple_,
@@ -143,6 +154,10 @@ bool JitCompilerTask::Finalize(JitTask *jitTask)
 {
     if (jitTask == nullptr) {
         return false;
+    }
+    if (compilerTier_ == CompilerTier::BASELINE) {
+        baselineCompiler_->CollectMemoryCodeInfos(jitTask->GetMachineCodeDesc());
+        return true;
     }
     jitCodeGenerator_->JitCreateLitecgModule();
     passManager_->RunCg();

@@ -44,3 +44,12 @@ let d2 = new Date(2022, 3, 4);
 print(d2);
 let d3 = new Date(2022, NaN, 4);
 print(d3);
+
+let a = new Array("name", "length", {})
+print(a)
+
+const fruits = ["apple", "banana"];
+function filterItems(arr, query) {
+	return arr.filter((el) => el.toLowerCase().includes(query.toLowerCase()));
+}
+print(filterItems(fruits, "ap")); // ['apple']

@@ -17,7 +17,8 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/graph_editor.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/mem/assert_scope.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;

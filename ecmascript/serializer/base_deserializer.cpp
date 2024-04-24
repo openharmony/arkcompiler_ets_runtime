@@ -504,6 +504,20 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetSharedBigInt64ArrayFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_SHARED_BIGUINT64_ARRAY:
             return env->GetSharedBigUint64ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_OBJECT:
+            return env->GetSharedJSONObjectFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_STRING:
+            return env->GetSharedJSONStringFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_NUMBER:
+            return env->GetSharedJSONNumberFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_TRUE:
+            return env->GetSharedJSONTrueFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_FALSE:
+            return env->GetSharedJSONFalseFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_ARRAY:
+            return env->GetSharedJSONArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_JSON_NULL:
+            return env->GetSharedJSONNullFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_ARRAY_BUFFER:
             return JSHandle<JSFunction>(env->GetArrayBufferFunction())->GetFunctionPrototype().GetRawData();
         case (uint8_t)JSType::JS_SHARED_ARRAY_BUFFER:

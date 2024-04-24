@@ -160,7 +160,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         }                                                                                                      \
         Bind(&initialized);                                                                                    \
         (callback).TryDump();                                                                                  \
-        (callback).TryJitCompile();                                                                            \
+        (callback).TryJitCompile();                                                                    \
         Jump(&dispatch);                                                                                       \
     }                                                                                                          \
     Bind(&dispatch);
@@ -672,7 +672,7 @@ DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm8)
     GateRef frame = GetFrame(*varSp);
     GateRef func = GetFunctionFromFrame(frame);
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
-    varAcc = newBuilder.CreateEmptyArray(glue, func, pc, profileTypeInfo, slotId, callback);
+    varAcc = newBuilder.CreateEmptyArray(glue, func, { pc, 0, true }, profileTypeInfo, slotId, callback);
     DISPATCH_WITH_ACC(CREATEEMPTYARRAY_IMM8);
 }
 
@@ -684,7 +684,7 @@ DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm16)
     GateRef frame = GetFrame(*varSp);
     GateRef func = GetFunctionFromFrame(frame);
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
-    varAcc = newBuilder.CreateEmptyArray(glue, func, pc, profileTypeInfo, slotId, callback);
+    varAcc = newBuilder.CreateEmptyArray(glue, func, { pc, 0 , true }, profileTypeInfo, slotId, callback);
     DISPATCH_WITH_ACC(CREATEEMPTYARRAY_IMM16);
 }
 
@@ -711,25 +711,70 @@ DECLARE_ASM_HANDLER(HandleGetasynciteratorImm8)
 
 DECLARE_ASM_HANDLER(HandleLdPrivatePropertyImm8Imm16Imm16)
 {
+    auto env = GetEnvironment();
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
-    [[maybe_unused]] GateRef slotId = ReadInst8_0(pc);
+    GateRef slotId = ReadInst8_0(pc);
     GateRef levelIndex = ReadInst16_1(pc);
     GateRef slotIndex = ReadInst16_3(pc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(LdPrivateProperty), {lexicalEnv,
-        IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), acc});  // acc as obj
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16));
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    Label slowPath(env);
+    Label icPath(env);
+    Label exit(env);
+
+    Branch(TaggedIsUndefined(profileTypeInfo), &slowPath, &icPath);
+    Bind(&icPath);
+    {
+        GateRef key = GetKeyFromLexivalEnv(lexicalEnv, ZExtInt16ToInt32(levelIndex), ZExtInt16ToInt32(slotIndex));
+        AccessObjectStubBuilder builder(this);
+        result = builder.LoadPrivatePropertyByName(glue, acc, key, profileTypeInfo, slotId, callback);
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue,
+                             RTSTUB_ID(LdPrivateProperty),
+                             {lexicalEnv, IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), acc}); // acc as obj
+        Jump(&exit);
+    }
+    Bind(&exit);
+    CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleStPrivatePropertyImm8Imm16Imm16V8)
 {
+    auto env = GetEnvironment();
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
-    [[maybe_unused]] GateRef slotId = ReadInst8_0(pc);
+    GateRef slotId = ReadInst8_0(pc);
     GateRef levelIndex = ReadInst16_1(pc);
     GateRef slotIndex = ReadInst16_3(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_5(pc)));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(StPrivateProperty), {lexicalEnv,
-        IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc});  // acc as value
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8));
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    Label slowPath(env);
+    Label icPath(env);
+    Label exit(env);
+
+    Branch(TaggedIsUndefined(profileTypeInfo), &slowPath, &icPath);
+    Bind(&icPath);
+    {
+        GateRef key = GetKeyFromLexivalEnv(lexicalEnv, ZExtInt16ToInt32(levelIndex), ZExtInt16ToInt32(slotIndex));
+        AccessObjectStubBuilder builder(this);
+        result = builder.StorePrivatePropertyByName(glue, obj, key, acc, profileTypeInfo, slotId, callback);
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result =
+            CallRuntime(glue,
+                        RTSTUB_ID(StPrivateProperty),
+                        {lexicalEnv, IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc}); // acc as value
+        Jump(&exit);
+    }
+    Bind(&exit);
+    CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleTestInImm8Imm16Imm16)
@@ -2035,7 +2080,7 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm8Id16V8)
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
 
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
     GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYNAME_IMM8_ID16_V8));
 }
@@ -2046,7 +2091,7 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm16Id16V8)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
 
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
     GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYNAME_IMM16_ID16_V8));
 }
@@ -2671,8 +2716,8 @@ DECLARE_ASM_HANDLER(HandleReturn)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                       { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                         *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -2743,8 +2788,8 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                       { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                         *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -2825,8 +2870,8 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                      *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -2906,8 +2951,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                      *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -2918,7 +2963,7 @@ DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm8Id16)
 
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
     GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(TRYLDGLOBALBYNAME_IMM8_ID16));
 }
@@ -2929,7 +2974,7 @@ DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm16Id16)
 
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
     GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(TRYLDGLOBALBYNAME_IMM16_ID16));
 }
@@ -2938,7 +2983,7 @@ DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm8Id16)
 {
     GateRef slotId = ZExtInt16ToInt32(ReadInst8_0(pc));
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
     GateRef result = builder.TryStoreGlobalByName(glue, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(TRYSTGLOBALBYNAME_IMM8_ID16));
 }
@@ -2947,7 +2992,7 @@ DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm16Id16)
 {
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
     GateRef result = builder.TryStoreGlobalByName(glue, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(TRYSTGLOBALBYNAME_IMM16_ID16));
 }
@@ -2958,7 +3003,7 @@ DECLARE_ASM_HANDLER(HandleLdglobalvarImm16Id16)
 
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
     GateRef result = builder.LoadGlobalVar(glue, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDGLOBALVAR_IMM16_ID16));
 }
@@ -2967,7 +3012,7 @@ DECLARE_ASM_HANDLER(HandleStglobalvarImm16Id16)
 {
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
     GateRef result = builder.StoreGlobalVar(glue, 0, info, acc, profileTypeInfo, slotId);
     CHECK_EXCEPTION(result, INT_PTR(STGLOBALVAR_IMM16_ID16));
 }
@@ -3250,8 +3295,8 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                      *varAcc, *varHotnessCounter, jumpSize });
+            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+            *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -3946,7 +3991,7 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm8Id16)
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     GateRef receiver = acc;
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
     GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDOBJBYNAME_IMM8_ID16));
 }
@@ -3958,7 +4003,7 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm16Id16)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     GateRef receiver = acc;
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
     GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDOBJBYNAME_IMM16_ID16));
 }
@@ -4242,8 +4287,8 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm8Id16)
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
 
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, pc,
-                                                   profileTypeInfo, slotId, callback);
+    GateRef res = newBuilder.CreateArrayWithBuffer(
+        glue, imm, currentFunc, { pc, 0, true }, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM8_ID16));
 }
 
@@ -4254,8 +4299,8 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm16Id16)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
 
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, pc,
-                                                   profileTypeInfo, slotId, callback);
+    GateRef res = newBuilder.CreateArrayWithBuffer(
+        glue, imm, currentFunc, { pc, 0, true }, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM16_ID16));
 }
 
@@ -4266,8 +4311,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
 
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, pc,
-                                                   profileTypeInfo, slotId, callback);
+    GateRef res = newBuilder.CreateArrayWithBuffer(
+        glue, imm, currentFunc, { pc, 0, true }, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16));
 }
 
@@ -4793,7 +4838,7 @@ DECLARE_ASM_HANDLER(HandleStthisbynameImm16Id16)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
 
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
     GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STTHISBYNAME_IMM16_ID16));
 }
@@ -4803,7 +4848,7 @@ DECLARE_ASM_HANDLER(HandleStthisbynameImm8Id16)
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
 
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
     GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STTHISBYNAME_IMM8_ID16));
 }
@@ -4814,7 +4859,7 @@ DECLARE_ASM_HANDLER(HandleLdthisbynameImm16Id16)
     GateRef receiver = GetThisFromFrame(GetFrame(sp));
 
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
     GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDTHISBYNAME_IMM16_ID16));
 }
@@ -4825,7 +4870,7 @@ DECLARE_ASM_HANDLER(HandleLdthisbynameImm8Id16)
     GateRef receiver = GetThisFromFrame(GetFrame(sp));
 
     AccessObjectStubBuilder builder(this);
-    StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
     GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDTHISBYNAME_IMM8_ID16));
 }
@@ -5063,8 +5108,8 @@ DECLARE_ASM_HANDLER(BCDebuggerEntry)
             varHotnessCounter = GetHotnessCounterFromMethod(method);
             GateRef jumpSize = IntPtr(0);
             CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndRollback),
-                        { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                            *varAcc, *varHotnessCounter, jumpSize });
+                { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+                *varAcc, *varHotnessCounter, jumpSize });
             Return();
         }
     }
@@ -5130,7 +5175,7 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(holder, VariableType::JS_ANY(), receiver);
-    Label icPath(env);
+
     Label slowPath(env);
     Label exit(env);
     Label isEcmaObj(env);
@@ -5147,7 +5192,7 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
         BRANCH(TaggedIsHeapObject(firstValue), &firstValueHeapObject, &hclassNotHit);
         Bind(&firstValueHeapObject);
         GateRef hclass = LoadHClass(*holder);
-        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &icPath, &hclassNotHit);
+        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &slowPath, &hclassNotHit);
     }
     Bind(&hclassNotHit);
     // found entry -> slow path
@@ -5181,18 +5226,10 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
         Bind(&loopExit);
         {
             holder = GetPrototypeFromHClass(LoadHClass(*holder));
-            BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &icPath);
+            BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &slowPath);
         }
         Bind(&loopEnd);
         LoopEnd(&loopHead, env, glue);
-    }
-    Bind(&icPath);
-    {
-        // IC do the same thing as stobjbyname
-        AccessObjectStubBuilder builder(this);
-        StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
-        result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
-        Jump(&exit);
     }
     Bind(&slowPath);
     {

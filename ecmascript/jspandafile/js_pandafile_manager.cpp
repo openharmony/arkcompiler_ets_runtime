@@ -529,6 +529,34 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
     }
 }
 
+/*
+ * Check whether the file path can be loaded into pandafile, excluding bundle packaging and decompression paths
+ */
+bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName)
+{
+    std::shared_ptr<JSPandaFile> jsPandaFile = FindJSPandaFileUnlocked(fileName);
+    if (jsPandaFile != nullptr) {
+        return true;
+    }
+    EcmaVM *vm = thread->GetEcmaVM();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode()) {
+        ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
+        if (resolveBufferCallback == nullptr) {
+            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr";
+            return false;
+        }
+        uint8_t *data = nullptr;
+        size_t dataSize = 0;
+        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize);
+        if (!getBuffer) {
+            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback get buffer failed";
+            return false;
+        }
+    }
+    return true;
+}
+
 void *JSPandaFileManager::AllocateBuffer(size_t size)
 {
     return JSPandaFileAllocator::AllocateBuffer(size);

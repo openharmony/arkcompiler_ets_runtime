@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/aot_compilation_env.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
 AOTCompilationEnv::AOTCompilationEnv(EcmaVM *vm) : CompilationEnv(vm)
 {
-    tsManager_ = thread_->GetCurrentEcmaContext()->GetTSManager(),
     ptManager_ = thread_->GetCurrentEcmaContext()->GetPTManager();
 }
 

@@ -140,6 +140,13 @@ public:
     virtual bool RemoveBreakpoint(const JSPtLocation &location) = 0;
 
     /**
+     * \brief Remove breakpoints specified by url
+     * @param url file url
+     * @return Error if any errors occur
+     */
+    virtual bool RemoveBreakpointsByUrl(const std::string &url) = 0;
+
+    /**
      * \brief Remove all breakpoints
      */
     virtual void RemoveAllBreakpoints() = 0;

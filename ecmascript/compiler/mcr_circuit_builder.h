@@ -94,6 +94,12 @@ GateRef CircuitBuilder::TaggedObjectIsByteArray(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::BYTE_ARRAY)));
 }
 
+GateRef CircuitBuilder::TaggedObjectIsMap(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_MAP)));
+}
+
 GateRef CircuitBuilder::TaggedObjectIsDataView(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -277,6 +283,12 @@ GateRef CircuitBuilder::TaggedObjectIsJSSet(GateRef obj)
 {
     GateRef objType = GetObjectType(LoadHClass(obj));
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_SET)));
+}
+
+GateRef CircuitBuilder::TaggedObjectIsJSDate(GateRef obj)
+{
+    GateRef objType = GetObjectType(LoadHClass(obj));
+    return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_DATE)));
 }
 
 GateRef CircuitBuilder::TaggedObjectIsTypedArray(GateRef obj)

@@ -25,89 +25,7 @@
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
-/*    ts source code
- *    let a:number = 1;
- *    function f() {
- *        let b:number = 1;
- *        function g() {
- *            return a + b;
- *        }
- *        return g();
- *    }
- *
- *                                     The structure of Lexical Environment
- *
- *                                               Lexical Environment             Lexical Environment
- *               Global Environment                 of function f                   of function g
- *              +-------------------+ <----+    +-------------------+ <----+    +-------------------+
- *    null <----|  Outer Reference  |      +----|  Outer Reference  |      +----|  Outer Reference  |
- *              +-------------------+           +-------------------+           +-------------------+
- *              |Environment Recoder|           |Environment Recoder|           |Environment Recoder|
- *              +-------------------+           +-------------------+           +-------------------+
- *
- *    We only record the type of the variable in Environment Recoder.
- *    In the design of the Ark bytecode, if a method does not have any
- *    lex-env variable in its Lexical Environment, then there will be
- *    no EcmaOpcode::NEWLEXENV in it which leads to ARK runtime will
- *    not create a Lexical Environment when the method is executed.
- *    In order to simulate the state of the runtime as much as possible,
- *    a field named 'status' will be added into the class LexEnv to
- *    measure this state. Take the above code as an example, although in
- *    static analysis, we will create LexEnv for each method, only Lexenvs
- *    of global and function f will be created when methods are executed.
- */
-
 using PGOProfilerDecoder = pgo::PGOProfilerDecoder;
-
-enum class LexicalEnvStatus : uint8_t {
-    VIRTUAL_LEXENV,
-    REALITY_LEXENV
-};
-
-class LexEnv {
-public:
-    LexEnv() = default;
-    ~LexEnv() = default;
-
-    static constexpr uint32_t DEFAULT_ROOT = std::numeric_limits<uint32_t>::max();
-
-    inline void Inilialize(uint32_t outMethodId, uint32_t numOfLexVars, LexicalEnvStatus status)
-    {
-        outerMethodId_ = outMethodId;
-        lexVarTypes_.resize(numOfLexVars, GateType::AnyType());
-        status_ = status;
-    }
-
-    inline uint32_t GetOutMethodId() const
-    {
-        return outerMethodId_;
-    }
-
-    inline LexicalEnvStatus GetLexEnvStatus() const
-    {
-        return status_;
-    }
-
-    inline GateType GetLexVarType(uint32_t slot) const
-    {
-        if (slot < lexVarTypes_.size()) {
-            return lexVarTypes_[slot];
-        }
-        return GateType::AnyType();
-    }
-
-    inline void SetLexVarType(uint32_t slot, const GateType &type)
-    {
-        if (slot < lexVarTypes_.size()) {
-            lexVarTypes_[slot] = type;
-        }
-    }
-
-private:
-    uint32_t outerMethodId_ { DEFAULT_ROOT };
-    std::vector<GateType> lexVarTypes_ {};
-    LexicalEnvStatus status_ { LexicalEnvStatus::VIRTUAL_LEXENV };
-};
 
 // each method in the abc file corresponds to one MethodInfo and
 // methods with the same instructions share one common MethodPcInfo
@@ -193,17 +111,17 @@ private:
 
 class MethodInfo {
 public:
-    MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx,
-               uint32_t outMethodOffset = MethodInfo::DEFAULT_OUTMETHOD_OFFSET, uint32_t num = 0,
-               LexicalEnvStatus lexEnvStatus = LexicalEnvStatus::VIRTUAL_LEXENV, bool isNamespace = false)
+    MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx = MethodInfo::DEFAULT_ROOT,
+               uint32_t outMethodOffset = MethodInfo::DEFAULT_OUTMETHOD_OFFSET)
         : methodInfoIndex_(methodInfoIndex), methodPcInfoIndex_(methodPcInfoIndex), outerMethodId_(outMethodIdx),
-          outerMethodOffset_(outMethodOffset), numOfLexVars_(num), status_(lexEnvStatus), isNamespace_(isNamespace)
+          outerMethodOffset_(outMethodOffset)
     {
     }
 
     ~MethodInfo() = default;
 
     static constexpr uint32_t DEFAULT_OUTMETHOD_OFFSET = 0;
+    static constexpr uint32_t DEFAULT_ROOT = std::numeric_limits<uint32_t>::max();
 
     inline uint32_t GetOutMethodId() const
     {
@@ -223,28 +141,6 @@ public:
     inline void SetOutMethodOffset(uint32_t outMethodOffset)
     {
         outerMethodOffset_ = outMethodOffset;
-    }
-
-    inline uint32_t GetNumOfLexVars() const
-    {
-        return numOfLexVars_;
-    }
-
-    inline void SetNumOfLexVars(uint32_t numOfLexVars)
-    {
-        if (numOfLexVars > numOfLexVars_) {
-            numOfLexVars_ = numOfLexVars;
-        }
-    }
-
-    inline LexicalEnvStatus GetLexEnvStatus() const
-    {
-        return status_;
-    }
-
-    inline void SetLexEnvStatus(LexicalEnvStatus status)
-    {
-        status_ = status;
     }
 
     inline uint32_t GetMethodPcInfoIndex() const
@@ -289,16 +185,6 @@ public:
     inline const std::unordered_map<int32_t, uint32_t> &GetBCAndTypes() const
     {
         return bcToFuncTypeId_;
-    }
-
-    inline void MarkMethodNamespace()
-    {
-        isNamespace_ = true;
-    }
-
-    inline bool IsNamespace() const
-    {
-        return isNamespace_;
     }
 
     inline const std::vector<uint32_t> &GetInnerMethods() const
@@ -387,13 +273,10 @@ private:
     std::vector<uint32_t> innerMethods_ {};
     std::vector<uint32_t> constructorMethods_ {};
     std::unordered_map<int32_t, uint32_t> bcToFuncTypeId_ {};
-    uint32_t outerMethodId_ { LexEnv::DEFAULT_ROOT };
+    uint32_t outerMethodId_ { MethodInfo::DEFAULT_ROOT };
     uint32_t outerMethodOffset_ { MethodInfo::DEFAULT_OUTMETHOD_OFFSET };
-    uint32_t numOfLexVars_ { 0 };
-    LexicalEnvStatus status_ { LexicalEnvStatus::VIRTUAL_LEXENV };
     std::set<uint32_t> importIndex_ {};
     CompileStateBit compileState_ { 0 };
-    bool isNamespace_ {false};
 };
 
 struct FastCallInfo {
@@ -625,53 +508,17 @@ private:
     std::unordered_map<uint32_t, FastCallInfo> methodOffsetToFastCallInfos_ {};
 };
 
-class LexEnvManager {
-public:
-    explicit LexEnvManager(BCInfo &bcInfo);
-    ~LexEnvManager() = default;
-    NO_COPY_SEMANTIC(LexEnvManager);
-    NO_MOVE_SEMANTIC(LexEnvManager);
-
-    void SetLexEnvElementType(uint32_t methodId, uint32_t level, uint32_t slot, const GateType &type);
-    GateType GetLexEnvElementType(uint32_t methodId, uint32_t level, uint32_t slot) const;
-
-private:
-    uint32_t GetTargetLexEnv(uint32_t methodId, uint32_t level) const;
-
-    inline uint32_t GetOutMethodId(uint32_t methodId) const
-    {
-        return lexEnvs_[methodId].GetOutMethodId();
-    }
-
-    inline LexicalEnvStatus GetLexEnvStatus(uint32_t methodId) const
-    {
-        return lexEnvs_[methodId].GetLexEnvStatus();
-    }
-
-    inline bool HasDefaultRoot(uint32_t methodId) const
-    {
-        return GetOutMethodId(methodId) == LexEnv::DEFAULT_ROOT;
-    }
-
-    std::vector<LexEnv> lexEnvs_ {};
-};
-
 class BytecodeInfoCollector {
 public:
     BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *jsPandaFile, PGOProfilerDecoder &pfDecoder,
-                          size_t maxAotMethodSize, bool enableCollectLiteralInfo);
+                          size_t maxAotMethodSize);
 
     BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *jsPandaFile,
-                          PGOProfilerDecoder &pfDecoder, bool enableCollectLiteralInfo);
+                          PGOProfilerDecoder &pfDecoder);
 
-    ~BytecodeInfoCollector();
+    ~BytecodeInfoCollector() = default;;
     NO_COPY_SEMANTIC(BytecodeInfoCollector);
     NO_MOVE_SEMANTIC(BytecodeInfoCollector);
-
-    bool EnableCollectLiteralInfo() const
-    {
-        return enableCollectLiteralInfo_;
-    }
 
     Bytecodes* GetByteCodes()
     {
@@ -729,11 +576,6 @@ public:
         return compilationEnv_;
     }
 
-    LexEnvManager* GetEnvManager() const
-    {
-        return envManager_;
-    }
-
     template <class Callback>
     void IterateAllMethods(const Callback &cb)
     {
@@ -745,54 +587,34 @@ public:
     }
 
 private:
-    void ProcessEnvs();
-
     inline size_t GetMethodInfoID()
     {
         return methodInfoIndex_++;
     }
 
-    inline std::string GetClassName(const EntityId entityId)
-    {
-        std::string className(MethodLiteral::GetMethodName(jsPandaFile_, entityId));
-        if (LIKELY(className.find('#') != std::string::npos)) {
-            size_t poiIndex = className.find_last_of('#');
-            className = className.substr(poiIndex + 1);
-        }
-        return className;
-    }
-
-    const CString GetEntryFunName(const std::string_view &entryPoint) const;
     void ProcessClasses();
     void ProcessMethod();
     void RearrangeInnerMethods();
     void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
-        MethodLiteral *method, std::vector<std::string> &classNameVec, const CString &recordName,
-        uint32_t methodOffset, std::vector<panda_file::File::EntityId> &classConstructIndexes);
+        MethodLiteral *method, const CString &recordName, uint32_t methodOffset,
+        std::vector<panda_file::File::EntityId> &classConstructIndexes);
     void SetMethodPcInfoIndex(uint32_t methodOffset, const std::pair<size_t, uint32_t> &processedMethodInfo);
     void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset, bool isConstructor = false);
     void CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset, bool isConstructor = false);
     void CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index);
-    void CollectInnerFuncType(const MethodLiteral *method, uint32_t innerMethodOffset, int32_t bcIndex);
-    void NewLexEnvWithSize(const MethodLiteral *method, uint64_t numOfLexVars);
     void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
-    void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
-                                 std::vector<std::string> &classNameVec, int32_t bcIndex,
-                                 std::vector<panda_file::File::EntityId> &classConstructIndexes,
-                                 bool *canFastCall);
+    void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method, int32_t bcIndex,
+                                 std::vector<panda_file::File::EntityId> &classConstructIndexes, bool *canFastCall);
     void CollectModuleInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
                                  const CString &recordName);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
-    void CollectFunctionTypeId(panda_file::File::EntityId fieldId);
     void CollectImportIndexs(uint32_t methodOffset, uint32_t index);
     void CollectExportIndexs(const CString &recordName, uint32_t index);
-    bool CheckExportNameAndClassType(const CString &recordName, const JSHandle<EcmaString> &exportStr);
     void CollectRecordReferenceREL();
     void CollectRecordImportInfo(const CString &recordName);
     void CollectRecordExportInfo(const CString &recordName);
-    void MarkMethodNamespace(const uint32_t methodOffset);
 
     CompilationEnv *compilationEnv_ {nullptr};
     JSPandaFile *jsPandaFile_ {nullptr};
@@ -801,9 +623,7 @@ private:
     PGOBCInfo pgoBCInfo_ {};
     std::unique_ptr<SnapshotConstantPoolData> snapshotCPData_;
     size_t methodInfoIndex_ {0};
-    bool enableCollectLiteralInfo_ {false};
     std::set<int32_t> classDefBCIndexes_ {};
-    LexEnvManager* envManager_ {nullptr};
     Bytecodes bytecodes_;
 };
 }  // namespace panda::ecmascript::kungfu

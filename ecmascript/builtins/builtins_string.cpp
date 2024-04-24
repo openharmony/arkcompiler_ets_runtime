@@ -402,7 +402,7 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (posVal.GetNumber() == BuiltinsNumber::POSITIVE_INFINITY) {
-            pos = thisLen;
+            pos = static_cast<int32_t>(thisLen);
         } else {
             pos = posVal.ToInt32();
         }
@@ -646,7 +646,7 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!matcher->IsUndefined()) {
-            ASSERT(matcher->IsJSFunction());
+            ASSERT(matcher->IsJSFunctionBase());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1499,7 +1499,7 @@ JSTaggedValue BuiltinsString::Search(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> searcher = JSObject::GetMethod(thread, regexp, searchTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!searcher->IsUndefined()) {
-            ASSERT(searcher->IsJSFunction());
+            ASSERT(searcher->IsJSFunctionBase());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, searcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1665,7 +1665,7 @@ JSTaggedValue BuiltinsString::CreateArrayFromString(JSThread *thread, EcmaVM *ec
 {
     bool isUtf8 = EcmaStringAccessor(thisString).IsUtf8();
     bool canBeCompressed = false;
-    if (EcmaStringAccessor(thisString).IsLineString() || EcmaStringAccessor(thisString).IsConstantString()) {
+    if (EcmaStringAccessor(thisString).IsLineOrConstantString()) {
         canBeCompressed = EcmaStringAccessor::CanBeCompressed(*thisString);
     }
     bool isOneByte = isUtf8 & canBeCompressed;

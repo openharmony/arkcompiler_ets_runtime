@@ -1121,7 +1121,7 @@ RegOperand *AArch64CGFunc::ExtractMemBaseAddr(const MemOperand &memOpnd)
         addInsn.SetComment("new add insn");
         GetCurBB()->AppendInsn(addInsn);
     } else if (mode == MemOperand::kAddrModeBOi) {
-        if (offsetOpnd->GetOffsetValue() != 0) {
+        if ((offsetOpnd != nullptr) && (offsetOpnd->GetOffsetValue() != 0)) {
             MOperator mOp = is64Bits ? MOP_xaddrri12 : MOP_waddrri12;
             GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, resultOpnd, *baseOpnd, *offsetOpnd));
         } else {
@@ -2114,7 +2114,7 @@ bool AArch64CGFunc::LmbcSmallAggForRet(const BaseNode &bNode, const Operand *src
                 RegOperand &res1 = GetOrCreatePhysicalRegisterOperand(R0, loadSize, kRegTyInt);
                 SelectCopy(res1, pTy, mem, pTy);
             }
-            if (tySize > static_cast<int32>(k8ByteSize)) {
+            if (tySize > k8ByteSize) {
                 int32 newOffset = offset + static_cast<int32>(k8ByteSize);
                 MemOperand &newMem = CreateMemOpnd(regno, newOffset, size * kBitsPerByte);
                 RegOperand &res2 = GetOrCreatePhysicalRegisterOperand(R1, loadSize, kRegTyInt);
@@ -5259,14 +5259,30 @@ Operand *AArch64CGFunc::SelectRoundOperator(RoundType roundType, const TypeCvtNo
     PrimType ftype = node.FromType();
     DEBUG_ASSERT(((ftype == PTY_f64) || (ftype == PTY_f32)), "wrong float type");
     bool is64Bits = (ftype == PTY_f64);
+    bool isFloat = (ftype == PTY_f64) || (ftype == PTY_f32);
     RegOperand &resOpnd = GetOrCreateResOperand(parent, itype);
     RegOperand &regOpnd0 = LoadIntoRegister(opnd0, ftype);
     MOperator mop = MOP_undef;
     if (roundType == kCeil) {
-        mop = is64Bits ? MOP_xvcvtps : MOP_vcvtps;
+        if (isFloat) {
+            mop = is64Bits ? MOP_dfrintprr : MOP_sfrintprr;
+        } else {
+            mop = is64Bits ? MOP_xvcvtps : MOP_vcvtps;
+        }
     } else if (roundType == kFloor) {
-        mop = is64Bits ? MOP_xvcvtms : MOP_vcvtms;
+        if (isFloat) {
+            mop = is64Bits ? MOP_dfrintmrr : MOP_sfrintmrr;
+        } else {
+            mop = is64Bits ? MOP_xvcvtms : MOP_vcvtms;
+        }
+    } else if (roundType == kTrunc) {
+        if (isFloat) {
+            mop = is64Bits ? MOP_dfrintzrr : MOP_sfrintzrr;
+        } else {
+            CHECK_FATAL(false, "not support here!");
+        }
     } else {
+        CHECK_FATAL(!isFloat, "not support float here!");
         mop = is64Bits ? MOP_xvcvtas : MOP_vcvtas;
     }
     GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mop, resOpnd, regOpnd0));
@@ -5555,7 +5571,13 @@ Operand *AArch64CGFunc::SelectCvt(const BaseNode &parent, TypeCvtNode &node, Ope
 Operand *AArch64CGFunc::SelectTrunc(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent)
 {
     PrimType ftype = node.FromType();
+    PrimType nodeType = node.GetPrimType();
     bool is64Bits = (GetPrimTypeBitSize(node.GetPrimType()) == k64BitSize);
+    bool isFloat = (IsPrimitiveFloat(nodeType));
+    if (isFloat) {
+        CHECK_FATAL(nodeType == PTY_f32 || nodeType == PTY_f64, "only support f32, f64");
+        return SelectRoundOperator(kTrunc, node, opnd0, parent);
+    }
     PrimType itype = (is64Bits) ? (IsSignedInteger(node.GetPrimType()) ? PTY_i64 : PTY_u64)
                                 : (IsSignedInteger(node.GetPrimType()) ? PTY_i32 : PTY_u32); /* promoted type */
     RegOperand &resOpnd = GetOrCreateResOperand(parent, itype);

@@ -300,7 +300,8 @@ uint32 AArch64Schedule::ComputeEstart(uint32 cycle)
                     ++schedNum;
                 }
             }
-            CHECK_FATAL((node->GetPreds().size() - schedNum) == node->GetValidPredsSize(), "validPredsSize error.");
+            CHECK_FATAL((node->GetPreds().size() - static_cast<uint32>(schedNum)) ==
+                node->GetValidPredsSize(), "validPredsSize error.");
         }
     }
 

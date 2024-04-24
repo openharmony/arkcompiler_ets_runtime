@@ -69,7 +69,7 @@ inline constexpr uint32_t CountLeadingZeros(T value)
     static_assert(std::numeric_limits<T>::radix == RADIX, "Unexpected radix!");
     static_assert(sizeof(T) == sizeof(uint64_t) || sizeof(T) <= sizeof(uint32_t), "Unsupported sizeof(T)");
     if (value == 0) {
-        return sizeof(T) * 8;
+        return sizeof(T) * 8; // 8: Each byte has 8 bits
     }
     if (sizeof(T) == sizeof(uint64_t)) {
         return __builtin_clzll(static_cast<uint64_t>(value));
@@ -107,7 +107,7 @@ inline constexpr uint32_t CountTrailingZeros(T value)
     static_assert(std::numeric_limits<T>::radix == RADIX, "Unexpected radix!");
     static_assert(sizeof(T) == sizeof(uint64_t) || sizeof(T) <= sizeof(uint32_t), "Unsupported sizeof(T)");
     if (value == 0) {
-        return sizeof(T) * 8;
+        return sizeof(T) * 8; // 8: Each byte has 8 bits
     }
     if (sizeof(T) == sizeof(uint64_t)) {
         return __builtin_ctzll(static_cast<uint64_t>(value));

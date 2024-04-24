@@ -31,7 +31,6 @@ namespace panda::ecmascript {
     V(UpdateSendableAttributes, "Cannot update sendable object's attributes")                \
     V(SetProtoWithSendable, "Cannot set proto with sendable object")                         \
     V(ClassNotDerivedFromShared, "Class not derived from a sendable object")                 \
-    V(StringifySendableObject, "Only sendable object can stringify")                         \
     V(NotSendableSubClass, "The subclass of sendable class must be a sendable class")        \
     V(FunctionCallNotConstructor, "class constructor cannot call")                           \
     V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions")             \
@@ -90,7 +89,7 @@ public:
         ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DEF_MESSAGE_ID_DYN)
 #undef DEF_MESSAGE_ID_DYN
 #define DEF_BUILTINS_STUB_MESSAGE_ID(name, type, ...) Message_##type##name,
-        BUILTINS_STUB_LIST(DEF_MESSAGE_ID, DEF_BUILTINS_STUB_MESSAGE_ID)
+        BUILTINS_STUB_LIST(DEF_MESSAGE_ID, DEF_BUILTINS_STUB_MESSAGE_ID, DEF_MESSAGE_ID)
 #undef DEF_BUILTINS_STUB_MESSAGE_ID
         RUNTIME_ASM_STUB_LIST(DEF_MESSAGE_ID)
         DEBUG_CHECK_MESSAGE_STRING_LIST(DEF_MESSAGE_ID)

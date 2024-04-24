@@ -258,6 +258,7 @@ class PropertyMetaData {
 public:
     using IsFoundField = BitField<bool, 0, 1>;
     using IsInlinedPropsField = IsFoundField::NextFlag;
+    // 3: The bit field that represents the "Representation" of the property
     using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;
     using OffsetField = RepresentationField::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
 
@@ -384,7 +385,7 @@ public:
 
     void* GetNativePointerField(int32_t index) const;
     void SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-                               const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0,
+                               const NativePointerCallback &callBack, void *data, size_t nativeBindingsize = 0,
                                Concurrent isConcurrent = Concurrent::NO);
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(const JSThread *thread, int32_t count);

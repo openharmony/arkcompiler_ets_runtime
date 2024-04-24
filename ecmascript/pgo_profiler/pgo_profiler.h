@@ -446,15 +446,14 @@ private:
         WorkNode *last_ { nullptr };
     };
 public:
-    static ApEntityId GetMethodAbcId(JSFunction *jsFunction);
-    static ApEntityId GetMethodAbcId(JSTaggedValue jsMethod);
+    static ApEntityId PUBLIC_API GetMethodAbcId(JSFunction *jsFunction);
+    static ApEntityId PUBLIC_API GetMethodAbcId(JSTaggedValue jsMethod);
+    void Reset(bool isEnable);
 private:
     ProfileType GetRecordProfileType(JSFunction *jsFunction, const CString &recordName);
     ProfileType GetRecordProfileType(ApEntityId abcId, const CString &recordName);
     ProfileType GetRecordProfileType(const std::shared_ptr<JSPandaFile> &pf, ApEntityId abcId,
                                      const CString &recordName);
-
-    void Reset(bool isEnable);
 
     bool IsSkippableObjectType(ProfileType type)
     {

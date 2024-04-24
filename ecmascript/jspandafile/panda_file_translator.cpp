@@ -1181,7 +1181,7 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
             }
-            *(pc + 4) = *(pc + 4) + 1;
+            *(pc + 4) = *(pc + 4) + 1; // 4: index of new opcode; 4: index of old opcode
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_LDLEXVARDYN_PREF_IMM4_IMM4: {
@@ -1340,7 +1340,7 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             LOG_ECMA_IF(id > std::numeric_limits<uint16_t>::max(), FATAL) << "Cannot translate to 16 bits: " << id;
             *pc = static_cast<uint8_t>(newOpcode);
             *(pc + 1) = 0x00;
-            *(pc + 2) = 0x00;
+            *(pc + 2) = 0x00; // 2: offset of id
             uint16_t newId = static_cast<uint16_t>(id);
             if (memcpy_s(pc + 3, sizeof(uint16_t), &newId, sizeof(uint16_t)) != EOK) {  // 3: offset of id
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
@@ -1354,7 +1354,7 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             LOG_ECMA_IF(id > std::numeric_limits<uint16_t>::max(), FATAL) << "Cannot translate to 16 bits: " << id;
             *pc = static_cast<uint8_t>(newOpcode);
             *(pc + 1) = 0x00;
-            *(pc + 2) = 0x00;
+            *(pc + 2) = 0x00; // 2: offset of id
             uint16_t newId = static_cast<uint16_t>(id);
             if (memcpy_s(pc + 3, sizeof(uint16_t), &newId, sizeof(uint16_t)) != EOK) {  // 3: offset of id
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";

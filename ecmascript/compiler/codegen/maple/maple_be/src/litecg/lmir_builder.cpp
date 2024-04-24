@@ -641,6 +641,16 @@ Expr LMIRBuilder::Dread(Var &var)
     return Expr(mirBuilder.CreateExprDread(var), var.GetType());
 }
 
+Expr LMIRBuilder::IntrinsicOp(IntrinsicId id, Type *type, Args &args_)
+{
+    auto func = static_cast<MIRIntrinsicID>(id);
+    MapleVector<BaseNode *> args(mirBuilder.GetCurrentFuncCodeMpAllocator()->Adapter());
+    for (const auto &arg : args_) {
+        args.emplace_back(arg.GetNode());
+    }
+    return Expr(mirBuilder.CreateExprIntrinsicop(func, OP_intrinsicop, *type, args), type);
+}
+
 Expr LMIRBuilder::DreadWithField(Var &var, FieldId id)
 {
     auto *type = var.GetType();
@@ -706,6 +716,11 @@ Expr LMIRBuilder::Bnot(Type *type, Expr src)
 Expr LMIRBuilder::Sqrt(Type *type, Expr src)
 {
     return Expr(mirBuilder.CreateExprUnary(OP_sqrt, *type, src.GetNode()), type);
+}
+
+Expr LMIRBuilder::Abs(Type *type, Expr src)
+{
+    return Expr(mirBuilder.CreateExprUnary(OP_abs, *type, src.GetNode()), type);
 }
 
 inline Expr CreateBinOpInternal(MIRBuilder &mirBuilder, Opcode op, Type *type, Expr src1, Expr src2)
@@ -829,6 +844,16 @@ Expr LMIRBuilder::ICmpSGE(Type *type, Expr src1, Expr src2)
     return CreateBinOpInternal(mirBuilder, OP_ge, type, src1, src2);
 }
 
+Expr LMIRBuilder::Min(Type *type, Expr src1, Expr src2)
+{
+    return CreateBinOpInternal(mirBuilder, OP_min, type, src1, src2);
+}
+
+Expr LMIRBuilder::Max(Type *type, Expr src1, Expr src2)
+{
+    return CreateBinOpInternal(mirBuilder, OP_max, type, src1, src2);
+}
+
 inline Expr CreateExprCompare(MIRBuilder &mirBuilder, Opcode op, Type *type, Expr src1, Expr src2)
 {
     // we don't check for type mismatch and insert type-conversion here
@@ -934,6 +959,10 @@ Expr LMIRBuilder::Select(Type *type, Expr cond, Expr ifTrue, Expr ifFalse)
 
 Expr LMIRBuilder::Trunc(Type *fromType, Type *toType, Expr opnd)
 {
+    if (fromType->GetPrimType() == toType->GetPrimType() &&
+        (fromType->GetPrimType() == PTY_f64 || fromType->GetPrimType() == PTY_f32)) {
+        return Expr(mirBuilder.CreateExprTypeCvt(OP_trunc, *toType, *fromType, opnd.GetNode()), toType);
+    }
     return Expr(mirBuilder.CreateExprTypeCvt(OP_cvt, toType->GetPrimType(), fromType->GetPrimType(), *opnd.GetNode()),
                 toType);
 }
@@ -958,6 +987,16 @@ Expr LMIRBuilder::SExt(Type *fromType, Type *toType, Expr opnd)
     return Expr(mirBuilder.CreateExprExtractbits(OP_sext, toType->GetPrimType(), 0,
                                                  GetPrimTypeActualBitSize(fromType->GetPrimType()), opnd.GetNode()),
                 toType);
+}
+
+Expr LMIRBuilder::Floor(Type *fromType, Type *toType, Expr opnd)
+{
+    return Expr(mirBuilder.CreateExprTypeCvt(OP_floor, *toType, *fromType, opnd.GetNode()), toType);
+}
+
+Expr LMIRBuilder::Ceil(Type *fromType, Type *toType, Expr opnd)
+{
+    return Expr(mirBuilder.CreateExprTypeCvt(OP_ceil, *toType, *fromType, opnd.GetNode()), toType);
 }
 
 Expr LMIRBuilder::BitCast(Type *fromType, Type *toType, Expr opnd)

@@ -71,8 +71,7 @@ GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const
     return result;
 }
 
-GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
-                                           bool isNew, const char* comment)
+GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     int index = 0;
@@ -81,6 +80,7 @@ GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const s
     } else {
         index = static_cast<int>(RTSTUB_ID(PushCallNewAndDispatchNative));
     }
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
 
     const CallSignature *cs = RuntimeStubCSigns::Get(index);
     GateRef target = IntPtr(index);
@@ -88,17 +88,17 @@ GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const s
     if (depend == Gate::InvalidGateRef) {
         depend = label->GetDepend();
     }
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), name.c_str());
     return result;
 }
 
-GateRef CircuitBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
-                                                        const char* comment)
+GateRef CircuitBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     int index = 0;
 
     index = static_cast<int>(RTSTUB_ID(PushNewTargetAndDispatchNative));
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
 
     const CallSignature *cs = RuntimeStubCSigns::Get(index);
     GateRef target = IntPtr(index);
@@ -106,7 +106,7 @@ GateRef CircuitBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef de
     if (depend == Gate::InvalidGateRef) {
         depend = label->GetDepend();
     }
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), name.c_str());
     return result;
 }
 
@@ -338,6 +338,51 @@ GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
     return Int64And(
         Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
         Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
+}
+
+GateRef CircuitBuilder::CallPrivateGetter(GateRef hirGate, GateRef receiver, GateRef accessor, const char* comment)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
+
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> args = {currentControl, currentDepend, receiver, accessor};
+    AppendFrameArgs(args, hirGate);
+    auto callGate = GetCircuit()->NewGate(circuit_->CallPrivateGetter(pcOffset),
+                                          MachineType::I64,
+                                          args.size(),
+                                          args.data(),
+                                          GateType::AnyType(),
+                                          comment);
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
+GateRef CircuitBuilder::CallPrivateSetter(
+    GateRef hirGate, GateRef receiver, GateRef accessor, GateRef value, const char* comment)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
+
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> args = {currentControl, currentDepend, receiver, accessor, value};
+    AppendFrameArgs(args, hirGate);
+    auto callGate = GetCircuit()->NewGate(circuit_->CallPrivateSetter(pcOffset),
+                                          MachineType::I64,
+                                          args.size(),
+                                          args.data(),
+                                          GateType::AnyType(),
+                                          comment);
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
 }
 
 GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,

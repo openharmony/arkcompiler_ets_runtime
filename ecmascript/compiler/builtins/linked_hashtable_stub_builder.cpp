@@ -373,13 +373,32 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label setLinked(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), linkedTable);
 
-    GateRef newTable = Create(Int32(LinkedHashTableType::MIN_CAPACITY));
+    Label reuseExistingTable(env);
+    Label createNewTable(env);
+    GateRef cap = GetCapacity(linkedTable);
+    GateRef minCapacity = Int32(LinkedHashTableType::MIN_CAPACITY);
+    BRANCH(Equal(cap, minCapacity), &reuseExistingTable, &createNewTable);
+
+    Bind(&reuseExistingTable);
+    size_t length = LinkedHashTableType::GetLengthOfTable(LinkedHashTableType::MIN_CAPACITY);
+    for (size_t i = LinkedHashTableType::ELEMENTS_START_INDEX; i < length; ++i) {
+        SetValueToTaggedArray(VariableType::JS_NOT_POINTER(), glue_, linkedTable, Int32(i), Hole());
+    }
+    GateRef numberOfElements = GetNumberOfElements(linkedTable);
+    GateRef numberOfDeletedElements = GetNumberOfDeletedElements(linkedTable);
+    SetNumberOfElements(linkedTable, Int32(0));
+    SetNumberOfDeletedElements(linkedTable, Int32Add(numberOfElements, numberOfDeletedElements));
+    Jump(&exit);
+
+    Bind(&createNewTable);
+    GateRef newTable = Create(minCapacity);
+    result = newTable;
     Label noException(env);
     BRANCH(TaggedIsException(newTable), &exit, &noException);
     Bind(&noException);
 
-    GateRef cap = GetCapacity(linkedTable);
     Label capGreaterZero(env);
     BRANCH(Int32GreaterThan(cap, Int32(0)), &capGreaterZero, &exit);
     Bind(&capGreaterZero);
@@ -392,8 +411,9 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     }
 
     Bind(&exit);
+    GateRef res = *result;
     env->SubCfgExit();
-    return newTable;
+    return res;
 }
 
 template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Clear(GateRef);
@@ -548,7 +568,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Label cfgEntry(env);
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
-    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
+    DEFVARIABLE(res, VariableType::BOOL(), False());
     HashStubBuilder hashBuilder(this, glue_);
     GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
@@ -557,7 +577,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Bind(&findEntry);
     {
         RemoveEntry(linkedTable, entry);
-        res = TaggedTrue();
+        res = True();
         Jump(&exit);
     }
 
@@ -579,26 +599,10 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     auto env = GetEnvironment();
     Label cfgEntry(env);
     env->SubCfgEntry(&cfgEntry);
-    Label exit(env);
-    Label nonEmpty(env);
-    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
-    GateRef size = GetNumberOfElements(linkedTable);
-    BRANCH(Int32Equal(size, Int32(0)), &exit, &nonEmpty);
-    Bind(&nonEmpty);
     HashStubBuilder hashBuilder(this, glue_);
     GateRef hash = hashBuilder.GetHash(key);
-
     GateRef entry = FindElement(linkedTable, key, hash);
-    Label findEntry(env);
-    BRANCH(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
-    Bind(&findEntry);
-    {
-        res = TaggedTrue();
-        Jump(&exit);
-    }
-
-    Bind(&exit);
-    auto ret = *res;
+    GateRef ret = Int32NotEqual(entry, Int32(-1));
     env->SubCfgExit();
     return ret;
 }
@@ -682,14 +686,8 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     Jump(&exit);
 
     Bind(&slowPath);
-    std::string name;
-    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
-        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(MapConstructor));
-    } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
-        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(SetConstructor));
-    }
     returnValue = CallBuiltinRuntimeWithNewTarget(glue_, {glue_, nativeCode, func, thisValue,
-        numArgs, argv, newTarget}, name.c_str());
+        numArgs, argv, newTarget});
     Jump(&exit);
 
     Bind(&exit);

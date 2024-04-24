@@ -236,6 +236,7 @@ bool Verifier::RunFixedGatesRelationsCheck(const Circuit *circuit, const std::ve
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef predGate = *i;
             if (ac.IsFixed(predGate) &&
+                // 2: Judge equality
                 (circuit->GetOpCode(circuit->GetIn(fixedGate, 0)) == OpCode::LOOP_BEGIN && cnt == 2)) {
                 ASSERT(cnt > 0);
                 auto a = bbGatesAddrToIdx.at(circuit->GetIn(predGate, 0));

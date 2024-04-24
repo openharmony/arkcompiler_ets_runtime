@@ -26,6 +26,11 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
+enum class MachineCodeType : uint8_t {
+    BASELINE_CODE,
+    FAST_JIT_CODE,
+};
+
 struct MachineCodeDesc {
     uintptr_t rodataAddrBeforeText {0};
     size_t rodataSizeBeforeText {0};
@@ -38,7 +43,27 @@ struct MachineCodeDesc {
     size_t funcEntryDesSize {0};
     uintptr_t stackMapAddr {0};
     size_t stackMapSize {0};
+    MachineCodeType codeType {MachineCodeType::FAST_JIT_CODE};
 };
+// BaselineCode object layout:
+//                      +-----------------------------------+
+//                      |              MarkWord             | 8 bytes
+//      INS_SIZE_OFFSET +-----------------------------------+
+//                      |          machine payload size     | 4 bytes
+//                      +-----------------------------------+
+//                      |          FuncEntryDesc size (0)   | 4 bytes
+//                      +-----------------------------------+
+//                      |          instructions size        | 4 bytes
+//                      +-----------------------------------+
+//                      |           stack map size(0)       | 4 bytes
+//                      +-----------------------------------+
+//                      |             func addr             | 8 bytes
+//    PAYLOAD_OFFSET/   +-----------------------------------+
+//     INSTR_OFFSET     |                                   |
+//   (16 byte align)    |     machine instructions(text)    |
+//                      |              ...                  |
+//                      +-----------------------------------+
+//==================================================================
 // JitCode object layout:
 //                      +-----------------------------------+
 //                      |              MarkWord             | 8 bytes
@@ -118,7 +143,7 @@ public:
         return GetInstructionsSize();
     }
 
-    void SetData(const MachineCodeDesc *desc, JSHandle<Method> &method, size_t dataSize);
+    void SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
 
     template <VisitType visitType>
     void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)
@@ -159,6 +184,8 @@ public:
     {
         Barriers::SetPrimitive(this, OSR_EXECUTE_CNT_OFFSET, count);
     }
+private:
+    void SetBaselineCodeData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_MACHINE_CODE_H

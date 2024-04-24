@@ -395,7 +395,7 @@ void GetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4); // 4 : 5th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadObjByName(glue, receiver, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -418,7 +418,7 @@ void SetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(4); // 4 : 5th para
     GateRef slotId = Int32Argument(5); // 5 : 6th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreObjByName(glue, receiver, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -568,7 +568,7 @@ void TryLdGlobalByNameStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(2); // 2 : 3th para
     GateRef slotId = Int32Argument(3); // 3 : 4th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.TryLoadGlobalByName(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -581,7 +581,7 @@ void TryStGlobalByNameStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4);  // 4: 5th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.TryStoreGlobalByName(glue, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -593,7 +593,7 @@ void LdGlobalVarStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(2); // 2 : 3th para
     GateRef slotId = Int32Argument(3); // 3 : 4th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadGlobalVar(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -606,7 +606,7 @@ void StGlobalVarStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4);  // 4: 5th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreGlobalVar(glue, id, info, value, profileTypeInfo, slotId));
 }
@@ -810,8 +810,8 @@ void CreateArrayWithBufferStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(2); // 2 : 3rd para
     GateRef slotId = Int32Argument(5); // 5 : 6th para
     NewObjectStubBuilder newBuilder(this);
-    Return(newBuilder.CreateArrayWithBuffer(glue, index, jsFunc, IntPtr(0),
-        Undefined(), slotId, ProfileOperation()));
+    Return(newBuilder.CreateArrayWithBuffer(
+        glue, index, jsFunc, { IntPtr(0), 0, true }, Undefined(), slotId, ProfileOperation()));
 }
 
 void NewJSObjectStubBuilder::GenerateCircuit()
@@ -1108,24 +1108,65 @@ void GetnextpropnameStubBuilder::GenerateCircuit()
     Return(result);
 }
 
-void CreateJSSetIteratorStubBuilder::GenerateCircuit()
-{
-    auto env = GetEnvironment();
-    Label exit(env);
-
-    GateRef glue = PtrArgument(0);
-    GateRef obj = TaggedArgument(1);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-
-    NewObjectStubBuilder newBuilder(this);
-    newBuilder.SetGlue(glue);
-    GateRef kind = Int32(static_cast<int32_t>(IterationKind::VALUE));
-    newBuilder.CreateJSCollectionIterator<JSSetIterator, JSSet>(&result, &exit, obj, kind);
-    Bind(&exit);
-    Return(*result);
+#define CREATE_ITERATOR_STUB_BUILDER(name, collection, iterationKind)                                            \
+void name##StubBuilder::GenerateCircuit()                                                                        \
+{                                                                                                                \
+    auto env = GetEnvironment();                                                                                 \
+    Label exit(env);                                                                                             \
+                                                                                                                 \
+    GateRef glue = PtrArgument(0);                                                                               \
+    GateRef obj = TaggedArgument(1);                                                                             \
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());                                                    \
+                                                                                                                 \
+    NewObjectStubBuilder newBuilder(this);                                                                       \
+    newBuilder.SetGlue(glue);                                                                                    \
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::iterationKind));                                    \
+    newBuilder.CreateJSCollectionIterator<JS##collection##Iterator, JS##collection>(&result, &exit, obj, kind);  \
+    Bind(&exit);                                                                                                 \
+    Return(*result);                                                                                             \
 }
 
-void CreateJSMapIteratorStubBuilder::GenerateCircuit()
+CREATE_ITERATOR_STUB_BUILDER(CreateJSSetIterator, Set, VALUE)
+CREATE_ITERATOR_STUB_BUILDER(JSSetEntries, Set, KEY_AND_VALUE)
+CREATE_ITERATOR_STUB_BUILDER(JSMapKeys, Map, KEY)
+CREATE_ITERATOR_STUB_BUILDER(JSMapValues, Map, VALUE)
+CREATE_ITERATOR_STUB_BUILDER(CreateJSMapIterator, Map, KEY_AND_VALUE)
+
+
+void JSMapGetStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Get(linkedTable, key));
+}
+
+void JSMapHasStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Has(linkedTable, key));
+}
+
+void JSSetHasStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Has(linkedTable, key));
+}
+
+void CreateJSTypedArrayEntriesStubBuilder::GenerateCircuit()
 {
     auto env = GetEnvironment();
     Label exit(env);
@@ -1137,21 +1178,78 @@ void CreateJSMapIteratorStubBuilder::GenerateCircuit()
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetGlue(glue);
     GateRef kind = Int32(static_cast<int32_t>(IterationKind::KEY_AND_VALUE));
-    newBuilder.CreateJSCollectionIterator<JSMapIterator, JSMap>(&result, &exit, obj, kind);
+    newBuilder.CreateJSTypedArrayIterator(&result, &exit, obj, kind);
     Bind(&exit);
     Return(*result);
 }
 
-void JSMapGetStubBuilder::GenerateCircuit()
+void CreateJSTypedArrayKeysStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetGlue(glue);
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::KEY));
+    newBuilder.CreateJSTypedArrayIterator(&result, &exit, obj, kind);
+    Bind(&exit);
+    Return(*result);
+}
+
+void CreateJSTypedArrayValuesStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetGlue(glue);
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::VALUE));
+    newBuilder.CreateJSTypedArrayIterator(&result, &exit, obj, kind);
+    Bind(&exit);
+    Return(*result);
+}
+
+void JSMapDeleteStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef key = TaggedArgument(2U);
 
-    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue);
-    GateRef linkedTable = linkedHashTableStubBuilder.GetLinked(obj);
-    GateRef result = linkedHashTableStubBuilder.Get(linkedTable, key);
-    Return(result);
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Delete(linkedTable, key));
+}
+
+void JSSetDeleteStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    Return(builder.Delete(linkedTable, key));
+}
+
+void JSSetAddStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    GateRef newTable = builder.Insert(linkedTable, key, key);
+    builder.Store(VariableType::JS_ANY(), glue, obj, IntPtr(JSSet::LINKED_SET_OFFSET), newTable);
+    Return(obj);
 }
 
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];

@@ -23,7 +23,8 @@
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
-struct StringIdInfo {
+class StringIdInfo {
+public:
     enum class Offset : uint8_t {
         BYTE_0,
         BYTE_1,
@@ -35,16 +36,67 @@ struct StringIdInfo {
         BITS_32,
         INVALID,
     };
+    enum class StringIdType : uint8_t {
+        STRING_ID,
+        STRING_ID_INFO,
+    };
 
+    StringIdInfo() : constpool(0), pc(0), offset(Offset::INVALID),
+          length(Length::INVALID), stringId(0), stringIdType(StringIdType::STRING_ID_INFO) {}
+
+    StringIdInfo(GateRef inputConstpool, GateRef inputPc, Offset inputOffset, Length inputLength)
+        : constpool(inputConstpool), pc(inputPc), offset(inputOffset),
+          length(inputLength), stringId(0), stringIdType(StringIdType::STRING_ID_INFO) {}
+
+    explicit StringIdInfo(GateRef inputConstpool, GateRef inputStringId)
+        : constpool(inputConstpool), pc(0), offset(Offset::INVALID),
+          length(Length::INVALID), stringId(inputStringId), stringIdType(StringIdType::STRING_ID) {}
+
+    GateRef GetConstantPool() const
+    {
+        return constpool;
+    }
+
+    GateRef GetPc() const
+    {
+        return pc;
+    }
+
+    Offset GetOffset() const
+    {
+        return offset;
+    }
+
+    Length GetLength() const
+    {
+        return length;
+    }
+
+    GateRef GetStringId() const
+    {
+        return stringId;
+    }
+
+    StringIdType GetStringIdType() const
+    {
+        return stringIdType;
+    }
+
+    bool IsValid() const
+    {
+        if (stringIdType == StringIdType::STRING_ID_INFO) {
+            return (constpool != 0) && (pc != 0) && (offset != Offset::INVALID) && (length != Length::INVALID);
+        }
+        return stringId != 0;
+    }
+
+private:
     GateRef constpool { 0 };
     GateRef pc { 0 };
     Offset offset { Offset::INVALID };
     Length length { Length::INVALID };
-
-    bool IsValid() const
-    {
-        return (constpool != 0) && (pc != 0) && (offset != Offset::INVALID) && (length != Length::INVALID);
-    }
+    GateRef stringId { 0 };
+    StringIdType stringIdType { StringIdType::STRING_ID_INFO };
 };
 
 class InterpreterStubBuilder : public StubBuilder {

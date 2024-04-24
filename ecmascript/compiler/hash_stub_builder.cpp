@@ -24,13 +24,7 @@ GateRef HashStubBuilder::GetHash(GateRef key)
     Label exit(env);
     env->SubCfgEntry(&entryLabel);
     DEFVARIABLE(res, VariableType::INT32(), Int32(0));
-    Label intKey(env);
-    Label symbolCheck(env);
-    BRANCH(TaggedIsInt(key), &intKey, &symbolCheck);
-    Bind(&intKey);
-    res = TaggedGetInt(key);
-    Jump(&exit);
-    Bind(&symbolCheck);
+
     Label slowGetHash(env);
     Label symbolKey(env);
     Label stringCheck(env);
@@ -39,6 +33,7 @@ GateRef HashStubBuilder::GetHash(GateRef key)
     Bind(&symbolKey);
     res = Load(VariableType::INT32(), key, IntPtr(JSSymbol::HASHFIELD_OFFSET));
     Jump(&exit);
+
     Bind(&stringCheck);
     Label stringKey(env);
     Label objectCheck(env);

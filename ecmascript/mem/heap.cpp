@@ -803,9 +803,10 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     ASSERT(thread_->IsPropertyCacheCleared());
     ProcessGCListeners();
 
-    if (GetEcmaVM()->IsEnableJit()) {
+    if (GetEcmaVM()->IsEnableBaselineJit() || GetEcmaVM()->IsEnableFastJit()) {
         // check machine code space if enough
-        int remainSize = config_.GetDefaultMachineCodeSpaceSize() - GetMachineCodeSpace()->GetHeapObjectSize();
+        int remainSize = static_cast<int>(config_.GetDefaultMachineCodeSpaceSize()) -
+            static_cast<int>(GetMachineCodeSpace()->GetHeapObjectSize());
         Jit::GetInstance()->CheckMechineCodeSpaceMemory(GetEcmaVM()->GetJSThread(), remainSize);
     }
 }
@@ -824,6 +825,19 @@ void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string 
     }
     LOG_ECMA_MEM(ERROR) << oss.str().c_str();
     THROW_OOM_ERROR(thread, oss.str().c_str());
+}
+
+void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName)
+{
+    std::ostringstream oss;
+    oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: "
+        << functionName.c_str();
+    LOG_ECMA_MEM(ERROR) << oss.str().c_str();
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::OOM_ERROR, oss.str().c_str());
+    thread->SetException(error.GetTaggedValue());
 }
 
 void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
@@ -1043,7 +1057,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
             << " value:" << std::to_string(pid);
     }
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC);
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
@@ -1761,7 +1775,7 @@ void Heap::CleanCallBack()
     auto &callbacks = this->GetEcmaVM()->GetNativePointerCallbacks();
     if (!callbacks.empty()) {
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<DeleteCallbackTask>(this->GetJSThread()->GetThreadId(), callbacks)
+            std::make_unique<DeleteCallbackTask>(thread_, thread_->GetThreadId(), callbacks)
         );
     }
     ASSERT(callbacks.empty());
@@ -1771,7 +1785,7 @@ bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     for (auto iter : nativePointerCallbacks_) {
         if (iter.first != nullptr) {
-            iter.first(iter.second.first, iter.second.second);
+            iter.first(thread_, iter.second.first, iter.second.second);
         }
     }
     return true;
@@ -1867,8 +1881,9 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
 #endif
 }
 
-void Heap::StatisticHeapDetail() const
+void Heap::StatisticHeapDetail()
 {
+    Prepare();
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
     static const int MIN_COUNT_THRESHOLD = 1000;
@@ -1947,7 +1962,8 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
         });
     }
 
-    if (code == nullptr) {
+    if (code == nullptr ||
+        code->GetPayLoadSizeInBytes() == code->GetInstructionsSize()) { // baseline code
         return {};
     }
     return code->CalCallSiteInfo(retAddr);

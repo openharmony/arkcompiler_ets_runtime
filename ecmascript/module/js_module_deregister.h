@@ -42,7 +42,7 @@ public:
         moduleRecord->SetNamespace(thread, weakNameSp);
     }
 
-    static void FreeModuleRecord(void *pointer, void *hint);
+    static void FreeModuleRecord(void *env, void *pointer, void *hint);
 
     static void RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module);
 

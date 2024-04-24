@@ -40,7 +40,7 @@ void JSValueRefIsPromiseValueFuzzTest(const uint8_t *data, size_t size)
     Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm);
     Local<PromiseRef> promise = capability->GetPromise(vm);
     FunctionCallback nativeFunc = RejectCallback;
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<FunctionRef> reject = FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
     Local<PromiseRef> catchPromise = promise->Catch(vm, reject);
     promise->IsPromise();

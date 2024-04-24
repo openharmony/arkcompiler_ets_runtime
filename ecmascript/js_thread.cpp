@@ -242,7 +242,7 @@ void JSThread::InvokeSharedNativePointerCallbacks()
         ASSERT(callbackPair.first != nullptr && callbackPair.second.first != nullptr &&
                callbackPair.second.second != nullptr);
         auto callback = callbackPair.first;
-        (*callback)(callbackPair.second.first, callbackPair.second.second);
+        (*callback)(env_, callbackPair.second.first, callbackPair.second.second);
     }
 }
 
@@ -683,29 +683,22 @@ void JSThread::TerminateExecution()
 
 bool JSThread::CheckSafepoint()
 {
-    interruptMutex_.Lock();
-    ResetCheckSafePointStatusWithoutLock();
+    ResetCheckSafePointStatus();
 
-    if (HasTerminationRequestWithoutLock()) {
+    if (HasTerminationRequest()) {
         TerminateExecution();
-        SetVMTerminatedWithoutLock(true);
-        SetTerminationRequestWithoutLock(false);
+        SetVMTerminated(true);
+        SetTerminationRequest(false);
     }
 
     if (IsSuspended()) {
-        interruptMutex_.Unlock();
         WaitSuspension();
-        interruptMutex_.Lock();
     }
 
     // vmThreadControl_ 's thread_ is current JSThread's this.
-    if (VMNeedSuspensionWithoutLock()) {
-        interruptMutex_.Unlock();
+    if (VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
-    } else {
-        interruptMutex_.Unlock();
     }
-
     if (HasInstallMachineCode()) {
         vm_->GetJit()->InstallTasks(GetThreadId());
         SetInstallMachineCode(false);
@@ -820,7 +813,7 @@ size_t JSThread::GetAsmStackLimit()
 bool JSThread::IsLegalAsmSp(uintptr_t sp) const
 {
     uint64_t bottom = GetStackLimit() - EcmaParamConfiguration::GetDefaultReservedStackSize();
-    uint64_t top = GetStackStart();
+    uint64_t top = GetStackStart() + EcmaParamConfiguration::GetAllowedUpperStackDiff();
     return (bottom <= sp && sp <= top);
 }
 

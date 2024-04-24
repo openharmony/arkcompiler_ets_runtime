@@ -314,12 +314,12 @@ JSTaggedValue BuiltinsSendableArrayBuffer::CloneArrayBuffer(JSThread *thread,
     if (srcBuffer->IsByteArray()) {
         JSHandle<ByteArray> byteArrayBuf(srcBuffer);
         srcLen = byteArrayBuf->GetArrayLength();
-        int32_t byteLen = byteArrayBuf->GetByteLength();
+        int32_t byteLen = static_cast<int32_t>(byteArrayBuf->GetByteLength());
         // 5. Assert: srcByteOffset ≤ srcLength.
         ASSERT(srcByteOffset <= srcLen);
         // 6. Let cloneLength be (srcLength – srcByteOffset) * byteLen.
         cloneLen = static_cast<int32_t>(srcLen - srcByteOffset) * byteLen;
-        srcByteOffset *= byteLen;
+        srcByteOffset *= static_cast<uint32_t>(byteLen);
     } else {
         JSHandle<JSSendableArrayBuffer> arrBuf(srcBuffer);
         srcLen = arrBuf->GetArrayBufferByteLength();

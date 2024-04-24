@@ -26,6 +26,7 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript::job {
 class PendingJob final : public Record {
@@ -40,6 +41,15 @@ public:
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         EXECUTE_JOB_HITRACE(pendingJob);
+
+#if defined(ENABLE_BYTRACE)
+#if defined(ENABLE_HITRACE)
+        if (thread->GetEcmaVM()->GetJSOptions().EnableMicroJobTrace()) {
+            std::string strTrace = "PendingJob::ExecutePendingJob: jobId: " + std::to_string(pendingJob->GetJobId());
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, strTrace);
+        }
+#endif
+#endif
 
         JSHandle<JSTaggedValue> job(thread, pendingJob->GetJob());
         ASSERT(job->IsCallable());
@@ -59,7 +69,8 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(ChainId, uint64_t, CHAINID_OFFSET, SPANID_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(SpanId, uint64_t, SPANID_OFFSET, PARENTSPANID_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ParentSpanId, uint64_t, PARENTSPANID_OFFSET, FLAGS_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(Flags, uint32_t, FLAGS_OFFSET, LAST_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Flags, uint32_t, FLAGS_OFFSET, JOBID_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(JobId, uint64_t, JOBID_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     DECL_VISIT_OBJECT(JOB_OFFSET, CHAINID_OFFSET)

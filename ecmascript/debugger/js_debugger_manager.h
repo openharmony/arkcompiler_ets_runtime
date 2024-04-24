@@ -212,6 +212,7 @@ public:
 
     static void AddJsDebuggerManager(int tid, JsDebuggerManager *jsDebuggerManager);
     static JsDebuggerManager* GetJsDebuggerManager(int tid);
+    static void DeleteJsDebuggerManager(int tid);
 
 private:
     bool isDebugMode_ {false};

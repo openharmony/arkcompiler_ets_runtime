@@ -107,6 +107,10 @@ enum FrameCompletionPos : uint64_t {
 
 class Label {
 public:
+    Label() = default;
+
+    ~Label() = default;
+
     bool IsBound() const
     {
         return pos_ > 0;

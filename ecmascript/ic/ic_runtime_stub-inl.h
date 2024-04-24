@@ -33,6 +33,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/js_primitive_ref.h"
 
 namespace panda::ecmascript {
 JSTaggedValue ICRuntimeStub::LoadGlobalICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
@@ -97,10 +98,12 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryLoadICByName(JSThread *thread, JSTagg
             return LoadICWithHandler(thread, receiver, receiver, cachedHandler);
         }
     } else if (receiver.IsNumber()) {
-        auto hclass = thread->GetEcmaVM()->GetGlobalEnv()->GetNumberFunction()->GetTaggedObject()->GetClass();
-        if (firstValue.GetWeakReferentUnChecked() == hclass) {
-            return LoadICWithHandler(thread, receiver, receiver, secondValue);
-        }
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSTaggedValue> handler = JSHandle<JSTaggedValue>(thread, secondValue);
+        JSHandle<JSPrimitiveRef> primitive =
+            factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, JSHandle<JSTaggedValue>(thread, receiver));
+        JSTaggedValue primitiveValue = primitive.GetTaggedValue();
+        return LoadICWithHandler(thread, primitiveValue, primitiveValue, handler.GetTaggedValue());
     }
     return JSTaggedValue::Hole();
 }

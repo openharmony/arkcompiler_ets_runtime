@@ -19,15 +19,54 @@
  * @tc.type: FUNC
  */
 
-var arr=new Int8Array();
-let it = arr[Symbol.iterator]();
-let original_next=it.next;
-it.__proto__["next"]=function (){
+let int8Arr = new Int8Array();
+let it = int8Arr[Symbol.iterator]();
+it.__proto__["next"] = function() {
     print("get value");
-    return {value:undefined,done:true};
+    return { value:undefined, done:true };
 }
-var fromArr=Int8Array.from(arr);
-print(fromArr.length)
+let newInt8Arr = Int8Array.from(int8Arr);
+print(newInt8Arr.length);
+
+try {
+  let int8Arr = new Int8Array();
+  let it = int8Arr[Symbol.iterator]();
+  it.__proto__["next"] = new Map()[Symbol.iterator]().__proto__["next"];
+  let newInt8Arr = Int8Array.from(int8Arr);
+  print(newInt8Arr.length);
+} catch (e) {
+  print(e);
+}
+
+int8Arr = new Int8Array();
+int8Arr.__proto__.__proto__[Symbol.iterator] = function* () {
+    print("generator next");
+    yield 1;
+    yield 2;
+}
+newInt8Arr = Int8Array.from(int8Arr);
+print(newInt8Arr.length);
+
+int8Arr.__proto__.__proto__[Symbol.iterator] = function() {
+  return {
+    next: function() {
+      print("get value");
+      return { value:undefined, done:true };
+    }
+}
+};
+it = int8Arr[Symbol.iterator]();
+newInt8Arr = Int8Array.from(int8Arr);
+print(newInt8Arr.length);
+
+let arr = new Array(10);
+it = arr[Symbol.iterator]();
+it.__proto__["next"] = function() {
+  print("get value");
+  return { value:undefined, done:true };
+}
+let newArr = Int8Array.from(arr);
+print(newArr.length);
 
 const v1 = ([-4.0,415.6053436378277,0.0,-33773.81284924084,-5.0]).__proto__;
 v1[Symbol.iterator] = 1;

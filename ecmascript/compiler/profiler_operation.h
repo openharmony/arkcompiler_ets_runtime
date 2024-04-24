@@ -33,7 +33,7 @@ enum class OperationType : uint8_t {
     TRY_DUMP,
     TRY_PREDUMP,
     ITERATOR_FUNC_KIND,
-    TRY_JIT
+    TRY_JIT,
 };
 
 using SlotIDFormat = BytecodeInstruction::Format;

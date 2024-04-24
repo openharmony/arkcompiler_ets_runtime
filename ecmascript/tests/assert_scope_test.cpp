@@ -19,21 +19,7 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class AssertScopeTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override {}
-
-    void TearDown() override {}
+class AssertScopeTest : public BaseTestWithOutScope {
 };
 
 HWTEST_F_L0(AssertScopeTest, AssertScopeChecker)

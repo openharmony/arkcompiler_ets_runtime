@@ -202,7 +202,7 @@ bool LayoutInfo::IsUninitializedProperty(const JSObject *object, uint32_t index)
     return val.IsHole();
 }
 
-void LayoutInfo::DumpFieldIndex(int index, pgo::HClassLayoutDesc *desc)
+void LayoutInfo::DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc)
 {
     auto key = GetKey(index);
     if (key.IsString()) {
@@ -210,11 +210,32 @@ void LayoutInfo::DumpFieldIndex(int index, pgo::HClassLayoutDesc *desc)
         TrackType type = attr.GetTrackType();
         int propertyMeta = attr.GetPropertyMetaData();
         auto keyString = EcmaStringAccessor(key).ToCString();
-        desc->InsertKeyAndDesc(keyString, PGOHandler(type, propertyMeta));
+        desc->InsertKeyAndDesc(keyString, PGOHandler(type, propertyMeta, false));
+    } else if (key.IsSymbol()) {
+        auto symbol = JSSymbol::Cast(key);
+        auto id = symbol->GetPrivateId();
+        if (!id) {
+            return;
+        }
+        auto attr = GetAttr(index);
+        TrackType type = attr.GetTrackType();
+        int propertyMeta = attr.GetPropertyMetaData();
+        auto symbolDesc = symbol->GetDescription();
+        CString keyString;
+        if (symbolDesc.IsUndefined()) {
+            keyString = ToCString(id);
+        } else {
+            ASSERT(symbolDesc.IsString());
+            auto str = EcmaStringAccessor(symbolDesc).ToCString();
+            ASSERT(str == "method");
+            auto keyId = ToCString(id);
+            keyString = str + '_' + keyId;
+        }
+        desc->InsertKeyAndDesc(keyString, PGOHandler(type, propertyMeta, true));
     }
 }
 
-bool LayoutInfo::UpdateFieldIndex(int index, pgo::HClassLayoutDesc *desc)
+bool LayoutInfo::UpdateFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc)
 {
     auto key = GetKey(index);
     if (key.IsString()) {
@@ -222,7 +243,28 @@ bool LayoutInfo::UpdateFieldIndex(int index, pgo::HClassLayoutDesc *desc)
         TrackType type = attr.GetTrackType();
         int propertyMeta = attr.GetPropertyMetaData();
         auto keyString = EcmaStringAccessor(key).ToCString();
-        return desc->UpdateKeyAndDesc(keyString, PGOHandler(type, propertyMeta));
+        return desc->UpdateKeyAndDesc(keyString, PGOHandler(type, propertyMeta, false));
+    } else if (key.IsSymbol()) {
+        auto symbol = JSSymbol::Cast(key);
+        auto id = symbol->GetPrivateId();
+        if (!id) {
+            return false;
+        }
+        auto attr = GetAttr(index);
+        TrackType type = attr.GetTrackType();
+        int propertyMeta = attr.GetPropertyMetaData();
+        auto symbolDesc = symbol->GetDescription();
+        CString keyString;
+        if (symbolDesc.IsUndefined()) {
+            keyString = ToCString(id);
+        } else {
+            ASSERT(symbolDesc.IsString());
+            auto str = EcmaStringAccessor(symbolDesc).ToCString();
+            ASSERT(str == "method");
+            auto keyId = ToCString(id);
+            keyString = str + '_' + keyId;
+        }
+        return desc->UpdateKeyAndDesc(keyString, PGOHandler(type, propertyMeta, true));
     }
     return false;
 }

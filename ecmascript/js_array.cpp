@@ -104,9 +104,14 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
 
     JSHandle<JSArray> newArray(obj);
     // For new Array(Len), the elementsKind should be Hole
-    if (thread->GetEcmaVM()->IsEnableElementsKind() && (newTarget.GetTaggedValue() == arrayFunc.GetTaggedValue()) &&
-        normalArrayLength != 0) {
-        JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::HOLE);
+    if (thread->GetEcmaVM()->IsEnableElementsKind()) {
+        if ((newTarget.GetTaggedValue() == arrayFunc.GetTaggedValue()) && normalArrayLength != 0) {
+            #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+            JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::GENERIC);
+            #else
+            JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::HOLE);
+            #endif
+        }
     }
 
     return JSHandle<JSTaggedValue>(obj);
@@ -254,7 +259,11 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uin
     // Add this switch because we do not support ElementsKind for instance from new Array
     if (thread->GetEcmaVM()->IsEnableElementsKind() && !array->IsElementDict()) {
         ElementsKind oldKind = array->GetClass()->GetElementsKind();
+        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+        ElementsKind newKind = ElementsKind::GENERIC;
+        #else
         ElementsKind newKind = ElementsKind::NONE;
+        #endif
         for (uint32_t i = 0; i < newLen; ++i) {
             JSTaggedValue val = ElementAccessor::Get(array, i);
             newKind = Elements::ToElementsKind(val, newKind);
@@ -498,10 +507,87 @@ void JSArray::SortElements(JSThread *thread, const JSHandle<TaggedArray> &elemen
 {
     ASSERT(fn->IsUndefined() || fn->IsCallable());
 
+    uint32_t len = elements->GetLength();
+    // 64: if the elements is more than 64, use merge-sort algorithm.
+    if (len < 64) {
+        SortElementsByInsertionSort(thread, elements, len, fn);
+    } else {
+        SortElementsByMergeSort(thread, elements, fn, 0, len - 1);
+    }
+}
+
+void JSArray::SortElementsByMergeSort(JSThread *thread, const JSHandle<TaggedArray> &elements,
+                                      const JSHandle<JSTaggedValue> &fn, int64_t startIdx, int64_t endIdx)
+{
+    if (startIdx >= endIdx)
+        return;
+
+    int64_t middleIdx = startIdx + (endIdx - startIdx) / 2; // 2: half
+    SortElementsByMergeSort(thread, elements, fn, startIdx, middleIdx);
+    SortElementsByMergeSort(thread, elements, fn, middleIdx + 1, endIdx);
+    MergeSortedElements(thread, elements, fn, startIdx, middleIdx, endIdx);
+}
+
+void JSArray::MergeSortedElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
+                                  const JSHandle<JSTaggedValue> &fn, int64_t startIdx,
+                                  int64_t middleIdx, int64_t endIdx)
+{
+    int64_t leftLength = middleIdx - startIdx + 1;
+    int64_t rightLength = endIdx - middleIdx;
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> leftArray = factory->NewTaggedArray(leftLength);
+    JSHandle<TaggedArray> rightArray = factory->NewTaggedArray(rightLength);
+
+    for (int64_t i = 0; i < leftLength; i++) {
+        leftArray->Set(thread, i, elements->Get(startIdx + i));
+    }
+    for (int64_t j = 0; j < rightLength; j++) {
+        rightArray->Set(thread, j, elements->Get(middleIdx + 1 + j));
+    }
+
+    int64_t i = 0;
+    int64_t j = 0;
+    int64_t k = startIdx;
+    JSMutableHandle<JSTaggedValue> leftValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> rightValue(thread, JSTaggedValue::Undefined());
+    while (i < leftLength && j < rightLength) {
+        leftValue.Update(leftArray->Get(i));
+        rightValue.Update(rightArray->Get(j));
+        int64_t compareRet = base::ArrayHelper::SortCompare(thread, fn, leftValue, rightValue);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+        if (compareRet <= 0) {
+            elements->Set(thread, k, leftArray->Get(i));
+            i++;
+        } else {
+            elements->Set(thread, k, rightArray->Get(j));
+            j++;
+        }
+        k++;
+    }
+
+    while (i < leftLength) {
+        elements->Set(thread, k, leftArray->Get(i));
+        i++;
+        k++;
+    }
+
+    while (j < rightLength) {
+        elements->Set(thread, k, rightArray->Get(j));
+        j++;
+        k++;
+    }
+}
+
+void JSArray::SortElementsByInsertionSort(JSThread *thread, const JSHandle<TaggedArray> &elements, uint32_t len,
+    const JSHandle<JSTaggedValue> &fn)
+{
+    if (len <= 1)
+        return;
+
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
-    uint32_t len = elements->GetLength();
     for (uint32_t i = 1; i < len; i++) {
         uint32_t beginIndex = 0;
         uint32_t endIndex = i;

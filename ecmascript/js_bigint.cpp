@@ -67,11 +67,11 @@ CString BigIntHelper::Conversion(const CString &num, uint32_t conversionToRadix,
 
 JSHandle<BigInt> BigInt::GetUint64MaxBigint(JSThread *thread)
 {
-    JSHandle<BigInt> bigint = CreateBigint(thread, 3);
+    JSHandle<BigInt> bigint = CreateBigint(thread, 3); // 3:The number of digits in an object of type BigInt
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0);
-    bigint->SetDigit(2, 1);
+    bigint->SetDigit(2, 1); // 2:The number of digits in an object of type BigInt
     return bigint;
 }
 

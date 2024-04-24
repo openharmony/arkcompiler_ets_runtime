@@ -171,7 +171,8 @@ struct BytecodeRegion {
     {
     }
 
-    BytecodeIterator &GetBytecodeIterator() {
+    BytecodeIterator &GetBytecodeIterator()
+    {
         return bytecodeIterator_;
     }
 
@@ -603,6 +604,7 @@ private:
     void PrintDefsitesInfo(const std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
     void BuildRegionInfo();
     void BuildFrameArgs();
+    void RemoveIfInRpoList(BytecodeRegion *bb);
     BytecodeRegion &RegionAt(size_t i)
     {
         return *graph_[i];

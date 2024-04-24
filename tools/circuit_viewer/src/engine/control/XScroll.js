@@ -43,10 +43,18 @@ class XScroll {
     }
   }
   isTouchIn(x, y) {
-    if (x < this.posX_) return false;
-    if (y < this.posY_) return false;
-    if (x > this.posX_ + this.posW_) return false;
-    if (y > this.posY_ + this.posH_) return false;
+    if (x < this.posX_) {
+      return false;
+    }
+    if (y < this.posY_) {
+      return false;
+    }
+    if (x > this.posX_ + this.posW_) {
+      return false;
+    }
+    if (y > this.posY_ + this.posH_) {
+      return false;
+    }
     return true;
   }
   setBarOff(rate) {

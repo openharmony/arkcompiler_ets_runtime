@@ -23,7 +23,6 @@
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk_containers.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRetype {
@@ -90,6 +89,7 @@ private:
     GateRef VisitNumberCompare(GateRef gate);
     GateRef VisitNumberShiftAndLogical(GateRef gate);
     GateRef VisitNumberToString(GateRef gate);
+    GateRef VisitNumberParseFloat(GateRef gate);
     GateRef VisitMathDoubleParamsBuiltin(GateRef gate);
     const GateMetaData *GetNewMeta(OpCode op, TypeInfo type);
     GateRef VisitMathTaggedNumberParamsBuiltin(GateRef gate);
@@ -99,20 +99,22 @@ private:
     template <bool IS_NAN>
     GateRef VisitNumberOrGlobalBuiltin(GateRef gate);
     GateRef VisitNumberIsInteger(GateRef gate);
+    GateRef VisitBigIntAsIntN(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadArrayLength(GateRef gate);
     GateRef VisitLoadStringLength(GateRef gate);
+    GateRef VisitLoadMapSize(GateRef gate);
     GateRef VisitLoadElement(GateRef gate);
     GateRef VisitStoreElement(GateRef gate);
     GateRef VisitStoreProperty(GateRef gate);
     GateRef VisitLoadProperty(GateRef gate);
     GateRef VisitNumberRelated(GateRef gate, ParamType paramType);
-    GateRef VisitCallBuiltins(GateRef gate);
     GateRef VisitDataViewGet(GateRef gate);
     GateRef VisitDataViewSet(GateRef gate);
-    GateRef VisitOthers(GateRef gate);
+    GateRef VisitOthers(GateRef gate, GateType outputType = GateType::AnyType());
+    GateRef VisitBigIntConstructor(GateRef gate);
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);
     GateRef VisitIsTrueOrFalse(GateRef gate);
@@ -125,6 +127,8 @@ private:
     GateRef VisitMonoLoadPropertyOnProto(GateRef gate);
     GateRef VisitMonoCallGetterOnProto(GateRef gate);
     GateRef VisitMonoStoreProperty(GateRef gate);
+    GateRef VisitDateGetTime(GateRef gate);
+    GateRef VisitDateNow(GateRef gate);
 
     void ConvertForNumberBinaryOp(GateRef gate);
     void ConvertForNumberCompareOp(GateRef gate);

@@ -306,8 +306,8 @@ bool EcmaString::IsSubStringAt(const EcmaVM *vm, const JSHandle<EcmaString>& lef
         Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
         return IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else if (!rhs.IsUtf16()) {
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), rhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), lhsCount);
+        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
+        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
         return IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else {
         Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);

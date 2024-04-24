@@ -100,6 +100,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetBaselineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
@@ -894,7 +895,7 @@ bool JSFunction::NameSetter(JSThread *thread, const JSHandle<JSObject> &self, co
     return true;
 }
 
-void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
+void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
                                       void *data, size_t nativeBindingsize, Concurrent isConcurrent)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
@@ -937,7 +938,7 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const 
 }
 
 void JSFunction::SetSFunctionExtraInfo(
-    JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize)
+    JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter, void *data, size_t nativeBindingsize)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     EcmaVM *vm = thread->GetEcmaVM();

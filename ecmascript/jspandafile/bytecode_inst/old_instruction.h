@@ -1229,7 +1229,8 @@ public:
         UNREACHABLE();
     }
 
-    static constexpr bool HasId(Format format, size_t idx) {
+    static constexpr bool HasId(Format format, size_t idx)
+    {
         switch (format) {
             case Format::ID16:
                 return idx < 1;

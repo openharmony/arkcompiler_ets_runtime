@@ -433,6 +433,16 @@
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="Jsnapi_Sendable_Test">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="JsnapiSample">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="JSPandaFileTest">
         <preparer>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/base/index.abc -> /data/test/single_file/base/" src="out"/>
@@ -759,11 +769,6 @@
         </preparer>
     </target>
     <target name="HeapSamplingTest">
-        <preparer>
-            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
-        </preparer>
-    </target>
-    <target name="TSTypeTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>

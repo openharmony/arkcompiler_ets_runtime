@@ -23,12 +23,14 @@
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -48,6 +50,7 @@
 #include "ecmascript/platform/log.h"
 #include "ecmascript/global_index_map.h"
 #include "ecmascript/sustaining_js_handle.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -81,14 +84,6 @@ bool EcmaContext::Destroy(EcmaContext *context)
         return true;
     }
     return false;
-}
-
-void EcmaContext::SetTSManager(TSManager *set)
-{
-    if (tsManager_ != nullptr) {
-        delete tsManager_;
-    }
-    tsManager_ = set;
 }
 
 bool EcmaContext::Initialize()
@@ -125,7 +120,6 @@ bool EcmaContext::Initialize()
     SetupStringToListResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
-    tsManager_ = new TSManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
@@ -201,7 +195,7 @@ EcmaContext::~EcmaContext()
     handleScopeCount_ = 0;
     handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
 
-    if (vm_->IsEnableJit()) {
+    if (vm_->IsEnableBaselineJit() || vm_->IsEnableFastJit()) {
         // clear jit task
         vm_->GetJit()->ClearTask(this);
     }
@@ -216,7 +210,7 @@ EcmaContext::~EcmaContext()
         }
     }
     // clear icu cache
-    ClearIcuCache();
+    ClearIcuCache(thread_);
 
     if (runtimeStat_ != nullptr) {
         vm_->GetChunk()->Delete(runtimeStat_);
@@ -233,10 +227,6 @@ EcmaContext::~EcmaContext()
     if (moduleManager_ != nullptr) {
         delete moduleManager_;
         moduleManager_ = nullptr;
-    }
-    if (tsManager_ != nullptr) {
-        delete tsManager_;
-        tsManager_ = nullptr;
     }
     if (ptManager_ != nullptr) {
         delete ptManager_;
@@ -332,9 +322,15 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else if (vm_->GetJSOptions().IsEnableForceJitCompileMain()) {
-            Jit::Compile(vm_, func);
+            Jit::Compile(vm_, func, CompilerTier::FAST);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, entryPoint, nullptr);
+        } else if (vm_->GetJSOptions().IsEnableForceBaselineCompileMain()) {
+            Jit::Compile(vm_, func, CompilerTier::BASELINE);
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
+            EcmaRuntimeStatScope runtimeStatScope(vm_);
+            result = EcmaInterpreter::Execute(info);
         } else {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
@@ -350,7 +346,9 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
 #endif
     }
     if (!executeFromJob) {
+        JSHandle<JSTaggedValue> handleResult(thread_, result);
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        result = handleResult.GetTaggedValue();
     }
     return result;
 }
@@ -778,6 +776,9 @@ bool EcmaContext::ExecutePromisePendingJob()
     if (!thread_->HasPendingException()) {
         isProcessingPendingJob_ = true;
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        if (thread_->HasPendingException()) {
+            JsStackInfo::BuildCrashInfo(true);
+        }
         isProcessingPendingJob_ = false;
         return true;
     }
@@ -900,9 +901,6 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 
     if (moduleManager_) {
         moduleManager_->Iterate(v);
-    }
-    if (tsManager_) {
-        tsManager_->Iterate(v);
     }
     if (ptManager_) {
         ptManager_->Iterate(v);

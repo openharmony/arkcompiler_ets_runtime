@@ -357,7 +357,7 @@ void InterpreterStubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef funct
 }
 
 void InterpreterStubBuilder::SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
-                                    GateRef env, GateRef pc, GateRef prev, GateRef type)
+    GateRef env, GateRef pc, GateRef prev, GateRef type)
 {
     GateRef state = GetFrame(sp);
     SetFunctionToFrame(glue, state, function);
@@ -584,7 +584,7 @@ void InterpreterStubBuilder::DispatchBase(GateRef target, GateRef glue, Args... 
 }
 
 void InterpreterStubBuilder::Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool, GateRef profileTypeInfo,
-                               GateRef acc, GateRef hotnessCounter, GateRef format)
+    GateRef acc, GateRef hotnessCounter, GateRef format)
 {
     GateRef newPc = PtrAdd(pc, format);
     GateRef opcode = Load(VariableType::INT8(), newPc);
@@ -594,7 +594,7 @@ void InterpreterStubBuilder::Dispatch(GateRef glue, GateRef sp, GateRef pc, Gate
 }
 
 void InterpreterStubBuilder::DispatchLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                                   GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
+    GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef target = PtrMul(IntPtr(BytecodeStubCSigns::ID_ExceptionHandler), IntPtrSize());
     DispatchBase(target, glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
@@ -602,7 +602,7 @@ void InterpreterStubBuilder::DispatchLast(GateRef glue, GateRef sp, GateRef pc, 
 }
 
 void InterpreterStubBuilder::DispatchDebugger(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                                       GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
+    GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef opcode = Load(VariableType::INT8(), pc);
     GateRef target = PtrMul(ZExtInt32ToPtr(ZExtInt8ToInt32(opcode)), IntPtrSize());
@@ -612,7 +612,7 @@ void InterpreterStubBuilder::DispatchDebugger(GateRef glue, GateRef sp, GateRef 
 }
 
 void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                                           GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
+    GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef target = PtrMul(IntPtr(BytecodeStubCSigns::ID_ExceptionHandler), IntPtrSize());
     auto args = { glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter };
@@ -715,29 +715,32 @@ void InterpreterStubBuilder::CheckExceptionWithJump(GateRef glue, GateRef sp, Ga
 
 GateRef InterpreterToolsStubBuilder::GetStringId(const StringIdInfo &info)
 {
+    if (info.GetStringIdType() == StringIdInfo::StringIdType::STRING_ID) {
+        return info.GetStringId();
+    }
     GateRef stringId;
-    switch (info.offset) {
+    switch (info.GetOffset()) {
         case StringIdInfo::Offset::BYTE_0: {
-            if (info.length == StringIdInfo::Length::BITS_16) {
-                stringId = ZExtInt16ToInt32(ReadInst16_0(info.pc));
+            if (info.GetLength() == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_0(info.GetPc()));
             } else {
                 std::abort();
             }
             break;
         }
         case StringIdInfo::Offset::BYTE_1: {
-            if (info.length == StringIdInfo::Length::BITS_16) {
-                stringId = ZExtInt16ToInt32(ReadInst16_1(info.pc));
-            } else if (info.length == StringIdInfo::Length::BITS_32) {
-                stringId = ReadInst32_1(info.pc);
+            if (info.GetLength() == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_1(info.GetPc()));
+            } else if (info.GetLength() == StringIdInfo::Length::BITS_32) {
+                stringId = ReadInst32_1(info.GetPc());
             } else {
                 std::abort();
             }
             break;
         }
         case StringIdInfo::Offset::BYTE_2: {
-            if (info.length == StringIdInfo::Length::BITS_16) {
-                stringId = ZExtInt16ToInt32(ReadInst16_2(info.pc));
+            if (info.GetLength() == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_2(info.GetPc()));
             } else {
                 std::abort();
             }

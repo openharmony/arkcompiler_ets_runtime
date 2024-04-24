@@ -711,6 +711,9 @@ private:
     template <typename Char>
     static void WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength);
 
+    template <typename Char>
+    static void WriteToFlatWithPos(EcmaString *src, Char *buf, uint32_t length, uint32_t pos);
+
     static const uint8_t *PUBLIC_API GetUtf8DataFlat(const EcmaString *src, CVector<uint8_t> &buf);
 
     static const uint16_t *PUBLIC_API GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf);
@@ -1024,6 +1027,11 @@ public:
         return startIndex_;
     }
 
+    void SetStartIndex(uint32_t index)
+    {
+        startIndex_ = index;
+    }
+
     uint32_t GetLength() const
     {
         return length_;
@@ -1032,6 +1040,7 @@ public:
     const uint8_t *GetDataUtf8() const;
     const uint16_t *GetDataUtf16() const;
     uint8_t *GetDataUtf8Writable() const;
+    uint16_t *GetDataUtf16Writable() const;
     std::u16string ToU16String(uint32_t len = 0);
 private:
     EcmaString *string_ {nullptr};
@@ -1246,6 +1255,18 @@ public:
     uint32_t WriteToFlatUtf16(uint16_t *buf, uint32_t maxLength) const
     {
         return string_->CopyDataUtf16(buf, maxLength);
+    }
+
+    template <typename Char>
+    static void WriteToFlatWithPos(EcmaString *src, Char *buf, uint32_t length, uint32_t pos)
+    {
+        src->WriteToFlatWithPos(src, buf, length, pos);
+    }
+
+    template <typename Char>
+    static void WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
+    {
+        src->WriteToFlat(src, buf, maxLength);
     }
 
     // require dst is LineString

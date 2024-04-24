@@ -25,3 +25,4 @@ constructor is fail
 TypeError
 [object Array]
 TypeError: function.toString() target is incompatible object
+test proxy constructor success!

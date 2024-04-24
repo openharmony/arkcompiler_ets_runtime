@@ -80,7 +80,7 @@ JSHandle<TaggedArray> SendableClassModule::CloneModuleEnvironment(JSThread *thre
     }
     JSHandle<TaggedArray> currentEnvironment(moduleEnvironment);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    int enumKeys = currentEnvironment->GetLength();
+    int enumKeys = static_cast<int>(currentEnvironment->GetLength());
     JSHandle<TaggedArray> sendableEnvironment = factory->NewSDictionaryArray(enumKeys);
     for (int idx = 0; idx < enumKeys; idx++) {
         JSTaggedValue key = currentEnvironment->Get(idx);

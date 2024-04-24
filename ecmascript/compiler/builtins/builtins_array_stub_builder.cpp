@@ -502,8 +502,13 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                         BRANCH(Int64LessThan(*i, thisLen), &next, &loopExit);
                                         Bind(&next);
                                         GateRef ele = GetTaggedValueWithElementsKind(thisValue, *i);
+                                        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
                                         SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                                                 Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                            Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                                        #else
+                                        SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                        #endif
                                         Jump(&loopEnd);
                                     }
                                     Bind(&loopEnd);
@@ -521,8 +526,13 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                         BRANCH(Int64LessThan(*k, argLen), &next1, &loopExit1);
                                         Bind(&next1);
                                         GateRef ele = GetTaggedValueWithElementsKind(arg0, *k);
+                                        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+                                        SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                                                 Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                                        #else
                                         SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
                                                                  Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                        #endif
                                         Jump(&loopEnd1);
                                     }
                                     Bind(&loopEnd1);
@@ -857,19 +867,153 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
     [[maybe_unused]] Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
-    Label thisIsEmpty(env);
+    Label thisExists(env);
     Label isHeapObject(env);
-    // Fast path if all the conditions below are satisfied:
-    // (1) this is an empty array with constructor not reset (see ArraySpeciesCreate for details);
-    // (2) callbackFn is callable (otherwise a TypeError shall be thrown in the slow path)
-    JsArrayRequirements req;
-    req.defaultConstructor = true;
-    BRANCH(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, req), &thisIsEmpty, slowPath);
-    Bind(&thisIsEmpty);
-    // Do nothing on fast path
-    BRANCH(TaggedIsHeapObject(GetCallArg0(numArgs)), &isHeapObject, slowPath);
+    Label isJsArray(env);
+    Label defaultConstr(env);
+    Label isStability(env);
+    Label notCOWArray(env);
+    Label equalCls(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(IsCallable(GetCallArg0(numArgs)), exit, slowPath);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+    BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
+    Bind(&notCOWArray);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef arrayCls = LoadHClass(thisValue);
+    BRANCH(Equal(intialHClass, arrayCls), &equalCls, slowPath);
+    Bind(&equalCls);
+
+    Label arg0HeapObject(env);
+    Label callable(env);
+    Label thisIsStable(env);
+    Label thisNotStable(env);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+    GateRef argHandle = GetCallArg1(numArgs);
+
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(thisLen, VariableType::INT32(), Int32(0));
+    thisLen = GetArrayLength(thisValue);
+    Jump(&thisIsStable);
+
+    Bind(&thisIsStable);
+    {
+        DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Label loopExit(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label nextStep(env);
+            Label kValueIsHole(env);
+            Label callDispatch(env);
+            Label hasProperty(env);
+            Label hasException0(env);
+            Label hasException1(env);
+            GateRef newLen = GetArrayLength(thisValue);
+            BRANCH(BoolAnd(IsStableJSArray(glue, thisValue), Int32Equal(*thisLen, newLen)),
+                &nextStep, &thisNotStable);
+            Bind(&nextStep);
+            BRANCH(Int64GreaterThanOrEqual(*i, ZExtInt32ToInt64(*thisLen)), &loopExit, &next);
+            Bind(&next);
+            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
+            Bind(&kValueIsHole);
+            {
+                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+                BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
+                Bind(&hasProperty);
+                kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
+                BRANCH(HasPendingException(glue), &hasException0, &callDispatch);
+                Bind(&hasException0);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+            Bind(&callDispatch);
+            {
+                GateRef key = Int64ToTaggedInt(*i);
+                JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                    { argHandle, *kValue, key, thisValue });
+                BRANCH(HasPendingException(glue), &hasException1, &loopEnd);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        Jump(exit);
+    }
+
+    Bind(&thisNotStable);
+    {
+        DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Label loopExit(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label hasProperty(env);
+            Label hasException0(env);
+            Label notHasException0(env);
+            Label hasException1(env);
+            BRANCH(Int64GreaterThanOrEqual(*i, ZExtInt32ToInt64(*thisLen)), &loopExit, &next);
+            Bind(&next);
+            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+            BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
+            Bind(&hasProperty);
+            kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
+            BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+            Bind(&hasException0);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException0);
+            {
+                GateRef key = Int64ToTaggedInt(*i);
+                JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                    { argHandle, *kValue, key, thisValue });
+                BRANCH(HasPendingException(glue), &hasException1, &loopEnd);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        Jump(exit);
+    }
 }
 
 // Note: unused arguments are reserved for further development
@@ -4216,10 +4360,9 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
     Label slowPath1(env);
-    Label slowPath2(env);
     Label exit(env);
 
-    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
     Bind(&newTargetIsHeapObject);
     BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
@@ -4229,11 +4372,11 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
         auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-        BRANCH(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath2);
+        BRANCH(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath1);
         Bind(&fastGetHclass);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));
-        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
+        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
             Label noArg(env);
@@ -4251,7 +4394,7 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                 Bind(&hasOneArg);
                 {
                     Label argIsNumber(env);
-                    GateRef arg0 = GetArg(numArgs, IntPtr(0));
+                    GateRef arg0 = GetArgFromArgv(IntPtr(0), numArgs, true);
                     BRANCH(TaggedIsNumber(arg0), &argIsNumber, &slowPath);
                     Bind(&argIsNumber);
                     {
@@ -4310,26 +4453,18 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                 }
             }
         }
-        Bind(&slowPath2);
+        Bind(&slowPath1);
         {
-            auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
             GateRef argv = GetArgv();
-            res = CallBuiltinRuntimeWithNewTarget(glue, { glue, nativeCode, func, thisValue, numArgs, argv, newTarget },
-                name.c_str());
+            res = CallBuiltinRuntimeWithNewTarget(glue,
+                { glue, nativeCode, func, thisValue, numArgs, argv, newTarget });
             Jump(&exit);
         }
     }
     Bind(&slowPath);
     {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
         GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&slowPath1);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
         Jump(&exit);
     }
 

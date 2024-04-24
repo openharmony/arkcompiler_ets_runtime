@@ -31,7 +31,6 @@ foreach(file, test_js_files) {
     dst_file = rebase_path(test_abc)
     extra_args = [ "--module" ]
     extra_args += [ "--merge-abc" ]
-    extra_args += [ "--type-extractor" ]
 
     in_puts = [ test_js ]
     out_puts = [ test_abc ]

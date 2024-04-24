@@ -80,6 +80,7 @@ public:
                                               JSHandle<TaggedArray> &dstElements, uint32_t effectiveLength);
 
     inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length, uint32_t extraLength = 0);
+    inline void FillRangeWithSpecialValue(JSTaggedValue initValue, uint32_t start, uint32_t end);
 
     static inline bool ShouldTrim(uint32_t oldLength, uint32_t newLength)
     {

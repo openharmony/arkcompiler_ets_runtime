@@ -42,6 +42,7 @@ private:
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadArrayLength(GateRef gate);
     GateRef VisitLoadStringLength(GateRef gate);
+    GateRef VisitLoadMapSize(GateRef gate);
     GateRef VisitLoadTypedArrayLength(GateRef gate);
     GateRef VisitRangeGuard(GateRef gate);
     template<TypedBinOp Op>

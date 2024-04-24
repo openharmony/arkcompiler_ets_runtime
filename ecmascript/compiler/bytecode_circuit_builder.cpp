@@ -18,7 +18,6 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -321,6 +320,19 @@ void BytecodeCircuitBuilder::ClearUnreachableRegion(ChunkVector<BytecodeRegion*>
     bb->trys.clear();
     bb->catches.clear();
     numOfLiveBB_--;
+
+    RemoveIfInRpoList(bb);
+}
+
+void BytecodeCircuitBuilder::RemoveIfInRpoList(BytecodeRegion *bb)
+{
+    auto& rpoList = frameStateBuilder_.GetRpoList();
+    for (auto iter = rpoList.begin(); iter != rpoList.end(); iter++) {
+        if (*iter == bb->id) {
+            rpoList.erase(iter);
+            break;
+        }
+    }
 }
 
 void BytecodeCircuitBuilder::RemoveUnreachableRegion()
@@ -632,6 +644,8 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb)
 
     if (!bb.catches.empty() && !bytecodeInfo.NoThrow()) {
         MergeExceptionGete(bb, bytecodeInfo, iterator.Index());
+    } else if (!bb.catches.empty()) {
+        frameStateBuilder_.GetOrOCreateMergedContext(bb.catches.at(0)->id);
     }
     if (bytecodeInfo.IsGeneratorRelative()) {
         suspendAndResumeGates_.emplace_back(gate);
@@ -679,6 +693,10 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
         auto &bbNext = bb.succs.at(0);
         frameStateBuilder_.MergeIntoSuccessor(bb, *bbNext);
         bbNext->expandedPreds.push_back({bb.id, iterator.Index(), false});
+    }
+
+    if (!bb.catches.empty()) {
+        frameStateBuilder_.GetOrOCreateMergedContext(bb.catches.at(0)->id);
     }
 }
 

@@ -196,8 +196,8 @@ JSTaggedValue BuiltinsLocale::GetCalendar(EcmaRuntimeCallInfo *argv)
     }
     // 3. Return loc.[[Calendar]].
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
-    JSHandle<EcmaString> calendar = JSLocale::NormalizeKeywordValue(thread, locale, "ca");
-    return calendar.GetTaggedValue();
+    JSTaggedValue calendar = JSLocale::NormalizeKeywordValue(thread, locale, "ca");
+    return calendar;
 }
 
 JSTaggedValue BuiltinsLocale::GetCaseFirst(EcmaRuntimeCallInfo *argv)
@@ -214,8 +214,8 @@ JSTaggedValue BuiltinsLocale::GetCaseFirst(EcmaRuntimeCallInfo *argv)
     }
     // 3. Return loc.[[CaseFirst]].
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
-    JSHandle<EcmaString> caseFirst = JSLocale::NormalizeKeywordValue(thread, locale, "kf");
-    return caseFirst.GetTaggedValue();
+    JSTaggedValue caseFirst = JSLocale::NormalizeKeywordValue(thread, locale, "kf");
+    return caseFirst;
 }
 
 JSTaggedValue BuiltinsLocale::GetCollation(EcmaRuntimeCallInfo *argv)
@@ -231,8 +231,8 @@ JSTaggedValue BuiltinsLocale::GetCollation(EcmaRuntimeCallInfo *argv)
     }
     // 3. Return loc.[[Collation]].
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
-    JSHandle<EcmaString> collation = JSLocale::NormalizeKeywordValue(thread, locale, "co");
-    return collation.GetTaggedValue();
+    JSTaggedValue collation = JSLocale::NormalizeKeywordValue(thread, locale, "co");
+    return collation;
 }
 
 JSTaggedValue BuiltinsLocale::GetHourCycle(EcmaRuntimeCallInfo *argv)
@@ -248,8 +248,8 @@ JSTaggedValue BuiltinsLocale::GetHourCycle(EcmaRuntimeCallInfo *argv)
     }
     // 3. Return loc.[[HourCycle]].
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
-    JSHandle<EcmaString> hourCycle = JSLocale::NormalizeKeywordValue(thread, locale, "hc");
-    return hourCycle.GetTaggedValue();
+    JSTaggedValue hourCycle = JSLocale::NormalizeKeywordValue(thread, locale, "hc");
+    return hourCycle;
 }
 
 JSTaggedValue BuiltinsLocale::GetNumeric(EcmaRuntimeCallInfo *argv)
@@ -286,8 +286,8 @@ JSTaggedValue BuiltinsLocale::GetNumberingSystem(EcmaRuntimeCallInfo *argv)
     }
     // 3. Return loc.[[NumberingSystem]].
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
-    JSHandle<EcmaString> numberingSystem = JSLocale::NormalizeKeywordValue(thread, locale, "nu");
-    return numberingSystem.GetTaggedValue();
+    JSTaggedValue numberingSystem = JSLocale::NormalizeKeywordValue(thread, locale, "nu");
+    return numberingSystem;
 }
 
 JSTaggedValue BuiltinsLocale::GetLanguage(EcmaRuntimeCallInfo *argv)

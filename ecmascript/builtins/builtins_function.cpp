@@ -52,7 +52,7 @@ static size_t MakeArgListWithHole(JSThread *thread, TaggedArray *argv, int lengt
     size_t newlength = static_cast<size_t>(length);
     size_t arryLength = argv->GetLength();
     if (newlength > arryLength) {
-        length = arryLength;
+        length = static_cast<int>(arryLength);
     }
     for (size_t index = 0; index < newlength; ++index) {
         JSTaggedValue value = argv->Get(thread, index);
