@@ -67,7 +67,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     std::string_view entryPoint, bool needUpdate, bool executeFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromFile");
+    std::string traceInfo = "JSPandaFileExecutor::ExecuteFromFile " + ecmascript::ConvertToStdString(filename);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
     CString entry;
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
@@ -146,7 +147,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromBuffer");
+    std::string traceInfo = "JSPandaFileExecutor::ExecuteFromBuffer " + ecmascript::ConvertToStdString(filename);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
@@ -183,7 +185,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     JSThread *thread, const void *buffer, size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteModuleBuffer");
+    std::string traceInfo = "JSPandaFileExecutor::ExecuteModuleBuffer " + ecmascript::ConvertToStdString(filename);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
     CString name;
     CString entry;
     EcmaVM *vm = thread->GetEcmaVM();
@@ -306,7 +309,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBufferSecure with secure buffer filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromBufferSecure");
+    std::string traceInfo = "JSPandaFileExecutor::ExecuteFromBufferSecure " + ecmascript::ConvertToStdString(filename);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate);
@@ -368,7 +372,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBufferSecure with secure buffer filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteModuleBufferSecure");
+    std::string traceInfo = "JSPandaFileExecutor::ExecuteModuleBufferSecure " + ecmascript::ConvertToStdString(filename);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
 #if !defined(PANDA_TARGET_WINDOWS)
@@ -443,7 +448,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     JSThread *thread, CString &recordName, const CString &filename, bool isMergedAbc)
 {
     LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::LazyExecuteModule");
+    std::string traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + ecmascript::ConvertToStdString(filename);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, recordName);
     if (jsPandaFile == nullptr) {
