@@ -599,3 +599,11 @@ delete e.exec;
   v0[Symbol.match] = v4;
   print(v0["exec"]());
 }
+
+{
+  ("65535").split(/(?!\1(a\1)\1)\1/g);
+  const o4 = {
+    ...RegExp,
+  };
+  print(o4);
+}
