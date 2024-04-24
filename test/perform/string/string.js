@@ -23,7 +23,7 @@
     const time3 = time2 - time1;
 
     //print("string replace regexp flag is g: " + time3);
-    print("string replace regexp flag is g: time3");
+    print("string replace regexp flag is g:");
 }
 
 {
@@ -50,7 +50,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string replace regexp pattern is /([^\d]*)(\d*)([^\w]*)/ : " + time3);
-    print("string replace regexp pattern is /([^\d]*)(\d*)([^\w]*)/ : ");
+    print("string replace regexp pattern is /([^\d]*)(\d*)([^\w]*)/ :");
 }
 
 {
@@ -62,7 +62,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string split number of input parameters is 2 : " + time3);
-    print("string split number of input parameters is 2 : ");
+    print("string split number of input parameters is 2 :");
 }
 
 {
@@ -74,7 +74,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string split number of input parameters is 1 : " + time3);
-    print("string split number of input parameters is 1 : ");
+    print("string split number of input parameters is 1 :");
 }
 
 {
@@ -87,7 +87,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string split into regexp.split : " + time3);
-    print("string split into regexp.split : ");
+    print("string split into regexp.split :");
 }
 
 {
@@ -100,7 +100,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string indexOf input parameter is a substring : " + time3);
-    print("string indexOf input parameter is a substring : ");
+    print("string indexOf input parameter is a substring :");
 }
 
 {
@@ -113,7 +113,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string indexOf Input parameter is not a substring : " + time3);
-    print("string indexOf Input parameter is not a substring : ");
+    print("string indexOf Input parameter is not a substring :");
 }
 
 {
@@ -125,7 +125,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string indexOf number of input parameters is 2 : " + time3);
-    print("string indexOf number of input parameters is 2 : ");
+    print("string indexOf number of input parameters is 2 :");
 }
 
 {
@@ -137,7 +137,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string slice number of input parameters is 1 : " + time3);
-    print("string slice number of input parameters is 1 : ");
+    print("string slice number of input parameters is 1 :");
 }
 
 {
@@ -149,7 +149,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string slice number of input parameters is 2 : " + time3);
-    print("string slice number of input parameters is 2 : ");
+    print("string slice number of input parameters is 2 :");
 }
 
 {
@@ -161,7 +161,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string slice input parameter is negative : " + time3);
-    print("string slice input parameter is negative : ");
+    print("string slice input parameter is negative :");
 }
 
 {
@@ -173,7 +173,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string substring the first parameter is less than the second parameter : " + time3);
-    print("string substring the first parameter is less than the second parameter : ");
+    print("string substring the first parameter is less than the second parameter :");
 }
 
 {
@@ -185,7 +185,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string substring the first parameter is greater than the second parameter : " + time3);
-    print("string substring the first parameter is greater than the second parameter : ");
+    print("string substring the first parameter is greater than the second parameter :");
 }
 
 {
@@ -197,7 +197,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string substring The first parameter is equal to the second parameter : " + time3);
-    print("string substring The first parameter is equal to the second parameter : ");
+    print("string substring The first parameter is equal to the second parameter :");
 }
 
 {
@@ -209,7 +209,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string substr the two parameters are adjacent numbers : " + time3);
-    print("string substr the two parameters are adjacent numbers : ");
+    print("string substr the two parameters are adjacent numbers :");
 }
 
 {
@@ -221,7 +221,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string substr negative number in parameter : " + time3);
-    print("string substr negative number in parameter : ");
+    print("string substr negative number in parameter :");
 }
 
 {
@@ -233,7 +233,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string substr number of input parameters is 2 : " + time3);
-    print("string substr number of input parameters is 2 : ");
+    print("string substr number of input parameters is 2 :");
 }
 
 {
@@ -245,7 +245,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string replace into string.replace searchtag in the middle of the input parameter : " + time3);
-    print("string replace into string.replace searchtag in the middle of the input parameter : ");
+    print("string replace into string.replace searchtag in the middle of the input parameter :");
 }
 
 {
@@ -257,7 +257,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string replace into string.replace searchtag in the beginning of the input parameter : " + time3);
-    print("string replace into string.replace searchtag in the beginning of the input parameter : ");
+    print("string replace into string.replace searchtag in the beginning of the input parameter :");
 }
 
 {
@@ -269,7 +269,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string replace into string.repalce : " + time3);
-    print("string replace into string.repalce : ");
+    print("string replace into string.repalce :");
 }
 
 {
@@ -281,7 +281,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string repeat the parameter is integer : " + time3);
-    print("string repeat the parameter is integer : ");
+    print("string repeat the parameter is integer :");
 }
 
 {
@@ -293,7 +293,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string repeat the parameter is double : " + time3);
-    print("string repeat the parameter is double : ");
+    print("string repeat the parameter is double :");
 }
 
 {
@@ -305,7 +305,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string repeat the return value is himself : " + time3);
-    print("string repeat the return value is himself : ");
+    print("string repeat the return value is himself :");
 }
 
 {
@@ -317,7 +317,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string startsWith return true : " + time3);
-    print("string startsWith return true : ");
+    print("string startsWith return true :");
 }
 
 {
@@ -329,7 +329,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string startsWith return true : " + time3);
-    print("string startsWith return true : ");
+    print("string startsWith return true :");
 }
 
 {
@@ -341,7 +341,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string startsWith return false : " + time3);
-    print("string startsWith return false : ");
+    print("string startsWith return false :");
 }
 
 {
@@ -353,7 +353,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string charCodeAt small input parameter value : " + time3);
-    print("string charCodeAt small input parameter value : ");
+    print("string charCodeAt small input parameter value :");
 }
 
 {
@@ -365,7 +365,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string charCodeAt bigger input parameter value : " + time3);
-    print("string charCodeAt bigger input parameter value : ");
+    print("string charCodeAt bigger input parameter value :");
 }
 
 {
@@ -377,7 +377,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string charCodeAt index out of range : " + time3);
-    print("string charCodeAt index out of range : ");
+    print("string charCodeAt index out of range :");
 }
 
 {
@@ -389,7 +389,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string charAt small input parameter value : " + time3);
-    print("string charAt small input parameter value : ");
+    print("string charAt small input parameter value :");
 }
 
 {
@@ -401,7 +401,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string charAt bigger input parameter value : " + time3);
-    print("string charAt bigger input parameter value : ");
+    print("string charAt bigger input parameter value :");
 }
 
 {
@@ -413,7 +413,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string charAt index out of range : " + time3);
-    print("string charAt index out of range : ");
+    print("string charAt index out of range :");
 }
 
 {
@@ -425,7 +425,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string toLowerCase Hello World. How are you doing? : " + time3);
-    print("string toLowerCase Hello World. How are you doing? : ");
+    print("string toLowerCase Hello World. How are you doing? :");
 }
 
 {
@@ -437,7 +437,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string toLowerCase The quick brown fox jumps over the lazy dog : " + time3);
-    print("string toLowerCase The quick brown fox jumps over the lazy dog : ");
+    print("string toLowerCase The quick brown fox jumps over the lazy dog :");
 }
 
 {
@@ -449,7 +449,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string toLowerCase Hello World : " + time3);
-    print("string toLowerCase Hello World : ");
+    print("string toLowerCase Hello World :");
 }
 
 {
@@ -461,7 +461,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string toUpperCase Hello World. How are you doing? : " + time3);
-    print("string toUpperCase Hello World. How are you doing? : ");
+    print("string toUpperCase Hello World. How are you doing? :");
 }
 
 {
@@ -473,7 +473,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string toUpperCase Hello World : " + time3);
-    print("string toUpperCase Hello World : ");
+    print("string toUpperCase Hello World :");
 }
 
 {
@@ -485,7 +485,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string toUpperCase The quick brown fox jumps over the lazy dog. : " + time3);
-    print("string toUpperCase The quick brown fox jumps over the lazy dog. : ");
+    print("string toUpperCase The quick brown fox jumps over the lazy dog. :");
 }
 
 {
@@ -496,7 +496,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string localeCompare letter a is before c yielding a negative value : " + time3);
-    print("string localeCompare letter a is before c yielding a negative value : ");
+    print("string localeCompare letter a is before c yielding a negative value :");
 }
 
 {
@@ -507,7 +507,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string localeCompare Alphabetically the word check after against yielding a positive value : " + time3);
-    print("string localeCompare Alphabetically the word check after against yielding a positive value : ");
+    print("string localeCompare Alphabetically the word check after against yielding a positive value :");
 }
 
 {
@@ -518,7 +518,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("string localeCompare a and a are equivalent yielding a neutral value of zero : " + time3);
-    print("string localeCompare a and a are equivalent yielding a neutral value of zero : ");
+    print("string localeCompare a and a are equivalent yielding a neutral value of zero :");
 }
 
 {
@@ -530,7 +530,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("  This is a test string to test the interface    string rim : " + time3);
-    print("  This is a test string to test the interface    string rim : ");
+    print("  This is a test string to test the interface    string rim :");
 }
 
 {
@@ -542,7 +542,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("   Hello world!     string trim : " + time3);
-    print("   Hello world!     string trim : ");
+    print("   Hello world!     string trim :");
 }
 
 {
@@ -554,5 +554,5 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
     //print("   This is a test string    string trim : " + time3);
-    print("   This is a test string    string trim : ");
+    print("   This is a test string    string trim :");
 }
