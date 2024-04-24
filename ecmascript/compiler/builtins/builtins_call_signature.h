@@ -560,7 +560,7 @@ public:
             case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
                 return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
             default:
-                LOG_COMPILER(ERROR) << "GetConstantIndex Invalid Id:" << builtinId;
+                LOG_COMPILER(INFO) << "GetConstantIndex Invalid Id:" << builtinId;
                 return ConstantIndex::INVALID;
         }
     }
