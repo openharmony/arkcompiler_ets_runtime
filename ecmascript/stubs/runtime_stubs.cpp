@@ -203,8 +203,8 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
     JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
-    uint32_t srcByteIndex = srcStartPos * elementSize + srcArray->GetByteOffset();
-    uint32_t targetByteIndex = tarStartPos * elementSize + targetArray->GetByteOffset();
+    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize) + srcArray->GetByteOffset();
+    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize) + targetArray->GetByteOffset();
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);

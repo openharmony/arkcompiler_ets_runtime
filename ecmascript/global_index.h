@@ -32,7 +32,7 @@ public:
 
     int GetGlobalConstId() const
     {
-        int id = GlobalConstBits::Decode(index_);
+        int id = static_cast<int>(GlobalConstBits::Decode(index_));
         return id - 1;
     }
 
@@ -48,7 +48,7 @@ public:
 
     int GetGlobalEnvId() const
     {
-        int id = GlobalEnvBits::Decode(index_);
+        int id = static_cast<int>(GlobalEnvBits::Decode(index_));
         return id - 1;
     }
 
@@ -64,7 +64,7 @@ public:
 
     int GetBuiltinEntriesId() const
     {
-        int id = BuiltinEntriesBits::Decode(index_);
+        int id = static_cast<int>(BuiltinEntriesBits::Decode(index_));
         return id - 1;
     }
 

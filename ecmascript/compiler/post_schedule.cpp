@@ -72,7 +72,7 @@ void PostSchedule::GenerateExtraBB(ControlFlowGraph &cfg)
 
 bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx)
 {
-    int64_t flag = acc_.TryGetValue(gate);
+    int64_t flag = static_cast<int64_t>(acc_.TryGetValue(gate));
     ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE ||
            flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     std::vector<GateRef> currentBBGates;

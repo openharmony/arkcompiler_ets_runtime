@@ -403,7 +403,7 @@ public:
                 }
             }
             if (key == "jsHeap") {
-                heapSize_ = stoi(value) * 1_MB;
+                heapSize_ = static_cast<size_t>(stoi(value)) * 1_MB;
             }
         }
     }

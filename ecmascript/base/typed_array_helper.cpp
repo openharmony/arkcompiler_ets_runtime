@@ -906,7 +906,7 @@ JSHandle<JSObject> TypedArrayHelper::TypedArraySpeciesCreate(JSThread *thread, c
     if (isCtrUnchanged && isCtrBylen) {
         JSType type = obj->GetJSHClass()->GetObjectType();
         DataViewType arrayType = GetType(type);
-        uint32_t length = buffHandle->GetInt();
+        uint32_t length = static_cast<uint32_t>(buffHandle->GetInt());
         // 3. Let result be ? AllocateTypedArray(constructorName, defaultConstructor, length, arrayType).
         if constexpr (typedArrayKind == TypedArrayKind::NON_SHARED) {
             JSHandle<JSTaggedValue> constructorName = GetConstructorNameFromType(thread, arrayType);

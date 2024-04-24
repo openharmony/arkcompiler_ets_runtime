@@ -805,7 +805,8 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 
     if (GetEcmaVM()->IsEnableBaselineJit() || GetEcmaVM()->IsEnableFastJit()) {
         // check machine code space if enough
-        int remainSize = config_.GetDefaultMachineCodeSpaceSize() - GetMachineCodeSpace()->GetHeapObjectSize();
+        int remainSize = static_cast<int>(config_.GetDefaultMachineCodeSpaceSize()) -
+            static_cast<int>(GetMachineCodeSpace()->GetHeapObjectSize());
         Jit::GetInstance()->CheckMechineCodeSpaceMemory(GetEcmaVM()->GetJSThread(), remainSize);
     }
 }
