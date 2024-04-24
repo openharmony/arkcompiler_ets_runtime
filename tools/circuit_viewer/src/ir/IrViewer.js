@@ -693,22 +693,8 @@ class IrViewer {
     this.offy_ = (-this.scrollY_.getBarOff()) * this.dragScoll.hh - this.dragScoll.y1;
     this.offx_ = (-this.scrollX_.getBarOff()) * this.dragScoll.ww - this.dragScoll.x1;
   }
-  onTouch(msg, x, y) {
-    if (this.loading()) {
-      return true;
-    }
-    if (this.smallMapLocked_) {
-      if (msg === 2) {
-        this.resetOffset(x, y);
-      }
-      if (msg === 3) {
-        this.smallMapLocked_ = false;
-      }
-      return true;
-    }
-    if (msg === 6) {
-      this.drapBackground_ = null;
-    }
+
+  checkMsgAndDrapSelect_(msg, x, y){
     if (msg === 3 && this.drapSelect_) {
       let nodes = this.visable_.nodes;
       for (let k of this.selectPoint_) {
@@ -717,6 +703,9 @@ class IrViewer {
       }
       this.drapSelect_ = null;
     }
+  }
+
+  checkDrapBackground_(msg, x, y){
     if (this.drapBackground_) {
       if (msg === 2) {
         this.offx_ -= this.drapBackground_.x - x;
@@ -726,6 +715,9 @@ class IrViewer {
       }
       return true;
     }
+  }
+
+  checkDrapSelect_(msg, x, y){
     if (this.drapSelect_) {
       if (msg === 2) {
         if (Math.abs(this.drapSelect_.x - x) > 10 ||
@@ -740,19 +732,9 @@ class IrViewer {
       }
       return true;
     }
-    if (this.scrollX_.onTouch(msg, x, y)) {
-      return true;
-    }
-    if (this.scrollY_.onTouch(msg, x, y)) {
-      return true;
-    }
-    if (XTools.InRect(x, y, ...this.smallMapRect)) {
-      if (msg === 1) {
-        this.resetOffset(x, y);
-        this.smallMapLocked_ = true;
-      }
-      return true;
-    }
+  }
+
+  checkSearchInput(msg, x, y){
     if (this.searchInput) {
       if (XTools.InRect(x, y, ...this.searchInput.pos)) {
         if (this.searchInput.btnUp.onTouch(msg, x, y)) {
@@ -778,11 +760,9 @@ class IrViewer {
         return true;
       }
     }
-    for (let i = this.btnGo_.length - 1; i >= 0; i--) {
-      if (this.btnGo_[i].onTouch(msg, x, y)) {
-        return true;
-      }
-    }
+  }
+
+  checkMsg(msg, x, y){
     if (msg === 1) {
       let nodes = this.visable_.nodes;
       for (let k in nodes) {
@@ -810,7 +790,47 @@ class IrViewer {
       }
       this.selectPoint_ = [];
     }
+  }
 
+  onTouch(msg, x, y) {
+    if (this.loading()) {
+      return true;
+    }
+    if (this.smallMapLocked_) {
+      if (msg === 2) {
+        this.resetOffset(x, y);
+      }
+      if (msg === 3) {
+        this.smallMapLocked_ = false;
+      }
+      return true;
+    }
+    if (msg === 6) {
+      this.drapBackground_ = null;
+    }
+    this.checkMsgAndDrapSelect_(msg, x, y)
+    this.checkDrapBackground_(msg, x, y)
+    this.checkDrapSelect_(msg, x, y)
+    if (this.scrollX_.onTouch(msg, x, y)) {
+      return true;
+    }
+    if (this.scrollY_.onTouch(msg, x, y)) {
+      return true;
+    }
+    if (XTools.InRect(x, y, ...this.smallMapRect)) {
+      if (msg === 1) {
+        this.resetOffset(x, y);
+        this.smallMapLocked_ = true;
+      }
+      return true;
+    }
+    this.checkSearchInput(msg, x, y)
+    for (let i = this.btnGo_.length - 1; i >= 0; i--) {
+      if (this.btnGo_[i].onTouch(msg, x, y)) {
+        return true;
+      }
+    }
+    this.checkMsg(msg, x, y)
     if (msg === 4) {
       this.drapBackground_ = {
         x: x,
