@@ -47,7 +47,7 @@
     /* Array.prototype.fill ( value [ , start [ , end ] ] ) */              \
     V("fill",           Fill,             1, INVALID)                       \
     /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \
-    V("filter",         Filter,           1, INVALID)                       \
+    V("filter",         Filter,           1, ArrayFilter)                   \
     /* Array.prototype.find ( predicate [ , thisArg ] ) */                  \
     V("find",           Find,             1, ArrayFind)                     \
     /* Array.prototype.findIndex ( predicate [ , thisArg ] ) */             \
