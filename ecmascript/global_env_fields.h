@@ -119,6 +119,11 @@
     V(JSTaggedValue, ListFormatFunction, LIST_FORMAT_FUNCTION_INDEX)                                \
     V(JSTaggedValue, RegExpFunction, REGEXP_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, RegExpExecFunction, REGEXP_EXEC_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, RegExpSplitFunction, REGEXP_SPLIT_FUNCTION_INDEX)                              \
+    V(JSTaggedValue, RegExpSearchFunction, REGEXP_SEARCH_FUNCTION_INDEX)                            \
+    V(JSTaggedValue, RegExpMatchFunction, REGEXP_MATCH_FUNCTION_INDEX)                              \
+    V(JSTaggedValue, RegExpMatchAllFunction, REGEXP_MATCHALL_FUNCTION_INDEX)                        \
+    V(JSTaggedValue, RegExpReplaceFunction, REGEXP_REPLACE_FUNCTION_INDEX)                          \
     V(JSTaggedValue, RegExpPrototype, REGEXP_PROTOTYPE_INDEX)                                       \
     V(JSTaggedValue, RegExpPrototypeClass, REGEXP_PROTOTYPE_CLASS_INDEX)                            \
     V(JSTaggedValue, BuiltinsSetFunction, BUILTINS_SET_FUNCTION_INDEX)                              \
@@ -236,6 +241,7 @@
     /* DETECTOR SYMBOL BEGIN (Maintain the same order with DETECTOR_SYMBOL_LIST) */                              \
     V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                                        \
     V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                                            \
+    V(JSTaggedValue, MatchAllSymbol, MATCH_ALL_SYMBOL_INDEX)                                                     \
     V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                                      \
     V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)                                                        \
     /* DETECTOR SYMBOL END */                                                                                    \
@@ -243,7 +249,6 @@
     V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                                \
     V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                                           \
     V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                                            \
-    V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                                     \
     V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                                          \
     V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                                \
     V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                                \

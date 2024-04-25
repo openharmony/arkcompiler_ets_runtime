@@ -808,8 +808,6 @@ void Builtins::InitializeSSymbolAttributes(const JSHandle<GlobalEnv> &env)
         factory_->NewSPublicSymbolWithChar("Symbol.asyncIterator"));
     JSHandle<JSTaggedValue> matchSymbol(
         factory_->NewSPublicSymbolWithChar("Symbol.match"));
-    JSHandle<JSTaggedValue> matchAllSymbol(
-        factory_->NewSPublicSymbolWithChar("Symbol.matchAll"));
     JSHandle<JSTaggedValue> searchSymbol(
         factory_->NewSPublicSymbolWithChar("Symbol.search"));
     JSHandle<JSTaggedValue> toPrimitiveSymbol(
