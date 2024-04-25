@@ -26,33 +26,14 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class HugeObjectTest : public testing::Test {
+class HugeObjectTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
     void SetUp() override
     {
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
         thread->GetEcmaVM()->SetEnableForceGC(false);
         const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->SetMarkType(MarkType::MARK_FULL);
     }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    JSThread *thread {nullptr};
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
 };
 
 static JSObject *JSObjectTestCreate(JSThread *thread)

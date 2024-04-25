@@ -35,32 +35,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
 namespace panda::test {
-class JSAPILinkedListIteratorTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPILinkedListIteratorTest : public BaseTestWithScope<false> {
 protected:
     JSAPILinkedList *CreateLinkedList()
     {

@@ -20,31 +20,7 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class LineEcmaStringTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(ecmaVMPtr, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(ecmaVMPtr, scope);
-    }
-
-    EcmaVM *ecmaVMPtr {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class LineEcmaStringTest : public BaseTestWithScope<false> {
 };
 
 /*
@@ -77,31 +53,7 @@ HWTEST_F_L0(LineEcmaStringTest, ComputeSizeUtf16)
     }
 }
 
-class EcmaStringAccessorTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(ecmaVMPtr, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(ecmaVMPtr, scope);
-    }
-
-    EcmaVM *ecmaVMPtr {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class EcmaStringAccessorTest : public BaseTestWithScope<false> {
 };
 
 /*
@@ -115,7 +67,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, CreateLineString)
     // CreateLineString( , true, ).
     size_t sizeAllocComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocComp(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeAllocComp, true));
+        EcmaStringAccessor::CreateLineString(instance, sizeAllocComp, true));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocComp).GetLength(), sizeAllocComp);
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrAllocComp).IsUtf8());
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrAllocComp).IsUtf16());
@@ -123,7 +75,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, CreateLineString)
     // CreateLineString( , false, ).
     size_t sizeAllocNotComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocNotComp(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeAllocNotComp, false));
+        EcmaStringAccessor::CreateLineString(instance, sizeAllocNotComp, false));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocNotComp).GetLength(), sizeAllocNotComp);
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrAllocNotComp).IsUtf8());
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrAllocNotComp).IsUtf16());
@@ -137,7 +89,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, CreateLineString)
  */
 HWTEST_F_L0(EcmaStringAccessorTest, CreateEmptyString)
 {
-    JSHandle<EcmaString> handleEcmaStrEmpty(thread, EcmaStringAccessor::CreateEmptyString(ecmaVMPtr));
+    JSHandle<EcmaString> handleEcmaStrEmpty(thread, EcmaStringAccessor::CreateEmptyString(instance));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrEmpty).GetLength(), 0U);
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrEmpty).IsUtf8());
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrEmpty).IsUtf16());
@@ -154,7 +106,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, CreateFromUtf8)
     uint8_t arrayU8[] = {"xyz123!@#"};
     size_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
     JSHandle<EcmaString> handleEcmaStrU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8[0], lengthEcmaStrU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true));
     for (uint32_t i = 0; i < lengthEcmaStrU8; i++) {
         EXPECT_EQ(arrayU8[i], EcmaStringAccessor(handleEcmaStrU8).Get(i));
     }
@@ -175,7 +127,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, CreateFromUtf16)
     uint16_t arrayU16Comp[] = {1, 23, 45, 67, 127};
     size_t lengthEcmaStrU16Comp = sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0]);
     JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU16Comp).GetLength(), lengthEcmaStrU16Comp);
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrU16Comp).IsUtf8());
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrU16Comp).IsUtf16());
@@ -184,7 +136,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, CreateFromUtf16)
     uint16_t arrayU16NotComp[] = {127, 33, 128, 12, 256, 11100, 65535};
     size_t lengthEcmaStrU16NotComp = sizeof(arrayU16NotComp) / sizeof(arrayU16NotComp[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU16NotComp).GetLength(), lengthEcmaStrU16NotComp);
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrU16NotComp).IsUtf8());
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrU16NotComp).IsUtf16());
@@ -205,11 +157,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, Concat_001)
     uint32_t lengthEcmaStrFrontU8 = sizeof(arrayFrontU8) - 1;
     uint32_t lengthEcmaStrBackU8 = sizeof(arrayBackU8) - 1;
     JSHandle<EcmaString> handleEcmaStrFrontU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayFrontU8[0], lengthEcmaStrFrontU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayFrontU8[0], lengthEcmaStrFrontU8, true));
     JSHandle<EcmaString> handleEcmaStrBackU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayBackU8[0], lengthEcmaStrBackU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayBackU8[0], lengthEcmaStrBackU8, true));
     JSHandle<EcmaString> handleEcmaStrConcatU8(thread,
-        EcmaStringAccessor::Concat(ecmaVMPtr, handleEcmaStrFrontU8, handleEcmaStrBackU8));
+        EcmaStringAccessor::Concat(instance, handleEcmaStrFrontU8, handleEcmaStrBackU8));
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrConcatU8).IsUtf8());
     for (uint32_t i = 0; i < lengthEcmaStrFrontU8; i++) {
         EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8).Get(i), arrayFrontU8[i]);
@@ -235,11 +187,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, Concat_002)
     uint32_t lengthEcmaStrFrontU16NotComp = sizeof(arrayFrontU16NotComp) / sizeof(arrayFrontU16NotComp[0]);
     uint32_t lengthEcmaStrBackU16NotComp = sizeof(arrayBackU16NotComp) / sizeof(arrayBackU16NotComp[0]);
     JSHandle<EcmaString> handleEcmaStrFrontU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayFrontU16NotComp[0], lengthEcmaStrFrontU16NotComp, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayFrontU16NotComp[0], lengthEcmaStrFrontU16NotComp, false));
     JSHandle<EcmaString> handleEcmaStrBackU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayBackU16NotComp[0], lengthEcmaStrBackU16NotComp, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayBackU16NotComp[0], lengthEcmaStrBackU16NotComp, false));
     JSHandle<EcmaString> handleEcmaStrConcatU16NotComp(thread,
-        EcmaStringAccessor::Concat(ecmaVMPtr, handleEcmaStrFrontU16NotComp, handleEcmaStrBackU16NotComp));
+        EcmaStringAccessor::Concat(instance, handleEcmaStrFrontU16NotComp, handleEcmaStrBackU16NotComp));
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrConcatU16NotComp).IsUtf16());
     for (uint32_t i = 0; i < lengthEcmaStrFrontU16NotComp; i++) {
         EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU16NotComp).Get(i), arrayFrontU16NotComp[i]);
@@ -267,11 +219,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, Concat_003)
     uint32_t lengthEcmaStrFrontU8 = sizeof(arrayFrontU8) - 1;
     uint32_t lengthEcmaStrBackU16NotComp = sizeof(arrayBackU16NotComp) / sizeof(arrayBackU16NotComp[0]);
     JSHandle<EcmaString> handleEcmaStrFrontU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayFrontU8[0], lengthEcmaStrFrontU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayFrontU8[0], lengthEcmaStrFrontU8, true));
     JSHandle<EcmaString> handleEcmaStrBackU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayBackU16NotComp[0], lengthEcmaStrBackU16NotComp, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayBackU16NotComp[0], lengthEcmaStrBackU16NotComp, false));
     JSHandle<EcmaString> handleEcmaStrConcatU8U16NotComp(thread,
-        EcmaStringAccessor::Concat(ecmaVMPtr, handleEcmaStrFrontU8, handleEcmaStrBackU16NotComp));
+        EcmaStringAccessor::Concat(instance, handleEcmaStrFrontU8, handleEcmaStrBackU16NotComp));
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).IsUtf16());
     for (uint32_t i = 0; i < lengthEcmaStrFrontU8; i++) {
         EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).Get(i), arrayFrontU8[i]);
@@ -297,11 +249,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, FastSubString_001)
     uint8_t arrayU8[6] = {3, 7, 19, 54, 99};
     uint32_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
     JSHandle<EcmaString> handleEcmaStrU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8[0], lengthEcmaStrU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true));
     uint32_t indexStartSubU8 = 2;
     uint32_t lengthSubU8 = 2;
     JSHandle<EcmaString> handleEcmaStrSubU8(thread,
-        EcmaStringAccessor::FastSubString(ecmaVMPtr, handleEcmaStrU8, indexStartSubU8, lengthSubU8));
+        EcmaStringAccessor::FastSubString(instance, handleEcmaStrU8, indexStartSubU8, lengthSubU8));
     for (uint32_t i = 0; i < lengthSubU8; i++) {
         EXPECT_EQ(EcmaStringAccessor(handleEcmaStrSubU8).Get(i),
             EcmaStringAccessor(handleEcmaStrU8).Get(i + indexStartSubU8));
@@ -322,11 +274,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, FastSubString_002)
     uint16_t arrayU16Comp[] = {1, 12, 34, 56, 127};
     uint32_t lengthEcmaStrU16Comp = sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0]);
     JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
     uint32_t indexStartSubU16Comp = 0;
     uint32_t lengthSubU16Comp = 2;
     JSHandle<EcmaString> handleEcmaStrSubU16Comp(thread,
-        EcmaStringAccessor::FastSubString(ecmaVMPtr, handleEcmaStrU16Comp, indexStartSubU16Comp, lengthSubU16Comp));
+        EcmaStringAccessor::FastSubString(instance, handleEcmaStrU16Comp, indexStartSubU16Comp, lengthSubU16Comp));
     for (uint32_t i = 0; i < lengthSubU16Comp; i++) {
         EXPECT_EQ(EcmaStringAccessor(handleEcmaStrSubU16Comp).Get(i),
             EcmaStringAccessor(handleEcmaStrU16Comp).Get(i + indexStartSubU16Comp));
@@ -347,11 +299,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, FastSubString_003)
     uint16_t arrayU16NotComp[] = {19, 54, 256, 11100, 65535};
     uint32_t lengthEcmaStrU16NotComp = sizeof(arrayU16NotComp) / sizeof(arrayU16NotComp[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
     uint32_t indexStartSubU16NotComp = 0;
     uint32_t lengthSubU16NotComp = 2;
     JSHandle<EcmaString> handleEcmaStrSubU16NotComp(thread, EcmaStringAccessor::FastSubString(
-        ecmaVMPtr, handleEcmaStrU16NotComp, indexStartSubU16NotComp, lengthSubU16NotComp));
+        instance, handleEcmaStrU16NotComp, indexStartSubU16NotComp, lengthSubU16NotComp));
     for (uint32_t i = 0; i < lengthSubU16NotComp; i++) {
         EXPECT_EQ(EcmaStringAccessor(handleEcmaStrSubU16NotComp).Get(i),
             EcmaStringAccessor(handleEcmaStrU16NotComp).Get(i + indexStartSubU16NotComp));
@@ -367,12 +319,12 @@ HWTEST_F_L0(EcmaStringAccessorTest, FastSubString_003)
  */
 HWTEST_F_L0(EcmaStringAccessorTest, FastSubString_004)
 {
-    ObjectFactory* factory = ecmaVMPtr->GetFactory();
+    ObjectFactory* factory = instance->GetFactory();
     {
         JSHandle<EcmaString> sourceString = factory->NewFromUtf8("整数integer");
         JSHandle<EcmaString> tmpString = factory->NewFromASCII("integer");
         EXPECT_TRUE(EcmaStringAccessor(sourceString).IsUtf16());
-        EcmaString *res = EcmaStringAccessor::FastSubString(ecmaVMPtr, sourceString, 2, 7);
+        EcmaString *res = EcmaStringAccessor::FastSubString(instance, sourceString, 2, 7);
         EXPECT_TRUE(EcmaStringAccessor(res).IsUtf8());
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(res, *tmpString));
     }
@@ -380,7 +332,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, FastSubString_004)
         JSHandle<EcmaString> sourceString = factory->NewFromUtf8("整数integer");
         JSHandle<EcmaString> tmpString = factory->NewFromUtf8("整数");
         EXPECT_TRUE(EcmaStringAccessor(sourceString).IsUtf16());
-        EcmaString *res = EcmaStringAccessor::FastSubString(ecmaVMPtr, sourceString, 0, 2);
+        EcmaString *res = EcmaStringAccessor::FastSubString(instance, sourceString, 0, 2);
         EXPECT_TRUE(EcmaStringAccessor(res).IsUtf16());
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(res, *tmpString));
     }
@@ -388,7 +340,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, FastSubString_004)
         JSHandle<EcmaString> sourceString = factory->NewFromUtf8("整数integer");
         JSHandle<EcmaString> tmpString = factory->NewFromUtf8("数intege");
         EXPECT_TRUE(EcmaStringAccessor(sourceString).IsUtf16());
-        EcmaString *res = EcmaStringAccessor::FastSubString(ecmaVMPtr, sourceString, 1, 7);
+        EcmaString *res = EcmaStringAccessor::FastSubString(instance, sourceString, 1, 7);
         EXPECT_TRUE(EcmaStringAccessor(res).IsUtf16());
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(res, *tmpString));
     }
@@ -396,7 +348,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, FastSubString_004)
         JSHandle<EcmaString> sourceString = factory->NewFromASCII("integer123");
         JSHandle<EcmaString> tmpString = factory->NewFromASCII("integer");
         EXPECT_TRUE(EcmaStringAccessor(sourceString).IsUtf8());
-        EcmaString *res = EcmaStringAccessor::FastSubString(ecmaVMPtr, sourceString, 0, 7);
+        EcmaString *res = EcmaStringAccessor::FastSubString(instance, sourceString, 0, 7);
         EXPECT_TRUE(EcmaStringAccessor(res).IsUtf8());
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(res, *tmpString));
     }
@@ -417,11 +369,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetUtf8Length)
     uint32_t lengthEcmaStrU16Comp = sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0]);
     uint32_t lengthEcmaStrU16NotComp = sizeof(arrayU16NotComp) / sizeof(arrayU16NotComp[0]);
     JSHandle<EcmaString> handleEcmaStrU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8[0], lengthEcmaStrU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true));
     JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
     JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU8).GetUtf8Length(), lengthEcmaStrU8 + 1);
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU16Comp).GetUtf8Length(), lengthEcmaStrU16Comp + 1);
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU16NotComp).GetUtf8Length(), 2 * lengthEcmaStrU16NotComp + 1);
@@ -435,32 +387,32 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetUtf8Length)
  */
 HWTEST_F_L0(EcmaStringAccessorTest, ObjectSize)
 {
-    JSHandle<EcmaString> handleEcmaStrEmpty(thread, EcmaStringAccessor::CreateEmptyString(ecmaVMPtr));
+    JSHandle<EcmaString> handleEcmaStrEmpty(thread, EcmaStringAccessor::CreateEmptyString(instance));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrEmpty).ObjectSize(), EcmaString::SIZE + 0);
 
     size_t lengthEcmaStrAllocComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocComp(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, lengthEcmaStrAllocComp, true));
+        EcmaStringAccessor::CreateLineString(instance, lengthEcmaStrAllocComp, true));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocComp).ObjectSize(),
         EcmaString::SIZE + sizeof(uint8_t) * lengthEcmaStrAllocComp);
 
     size_t lengthEcmaStrAllocNotComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocNotComp(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, lengthEcmaStrAllocNotComp, false));
+        EcmaStringAccessor::CreateLineString(instance, lengthEcmaStrAllocNotComp, false));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocNotComp).ObjectSize(),
         EcmaString::SIZE + sizeof(uint16_t) * lengthEcmaStrAllocNotComp);
 
     uint8_t arrayU8[] = {"abcde"};
     size_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
     JSHandle<EcmaString> handleEcmaStrU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8[0], lengthEcmaStrU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU8).ObjectSize(), EcmaString::SIZE + sizeof(uint8_t) * lengthEcmaStrU8);
 
     // ObjectSize(). EcmaString made by CreateFromUtf16( , , , true).
     uint16_t arrayU16Comp[] = {1, 23, 45, 67, 127};
     size_t lengthEcmaStrU16Comp = sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0]);
     JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU16Comp).ObjectSize(),
         EcmaString::SIZE + sizeof(uint8_t) * lengthEcmaStrU16Comp);
 
@@ -468,7 +420,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, ObjectSize)
     uint16_t arrayU16NotComp[] = {127, 128, 256, 11100, 65535};
     size_t lengthEcmaStrU16NotComp = sizeof(arrayU16NotComp) / sizeof(arrayU16NotComp[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU16NotComp).ObjectSize(),
         EcmaString::SIZE + sizeof(uint16_t) * lengthEcmaStrU16NotComp);
 }
@@ -485,7 +437,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, SetInternString)
     uint8_t arrayU8[] = {"abc"};
     uint32_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
     JSHandle<EcmaString> handleEcmaStrU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8[0], lengthEcmaStrU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true));
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrU8).IsInternString());
     EcmaStringAccessor(handleEcmaStrU8).SetInternString();
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrU8).IsInternString());
@@ -493,7 +445,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, SetInternString)
     uint16_t arrayU16Comp[] = {97, 98, 99};
     uint32_t lengthEcmaStrU16Comp = sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0]);
     JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrU16Comp).IsInternString());
     EcmaStringAccessor(handleEcmaStrU16Comp).SetInternString();
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrU16Comp).IsInternString());
@@ -501,7 +453,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, SetInternString)
     uint16_t arrayU16NotComp[] = {97, 98, 99};
     uint32_t lengthEcmaStrU16NotComp = sizeof(arrayU16NotComp) / sizeof(arrayU16NotComp[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, true));
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrU16NotComp).IsInternString());
     EcmaStringAccessor(handleEcmaStrU16NotComp).SetInternString();
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrU16NotComp).IsInternString());
@@ -519,7 +471,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetDataUtf8)
     uint8_t arrayU8[] = {"abcde"};
     uint32_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
     JSHandle<EcmaString> handleEcmaStrU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8[0], lengthEcmaStrU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true));
     for (uint32_t i = 0; i < lengthEcmaStrU8; i++) {
         EXPECT_EQ(*(EcmaStringAccessor(handleEcmaStrU8).GetDataUtf8() + i), arrayU8[i]);
     }
@@ -528,7 +480,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetDataUtf8)
     uint16_t arrayU16Comp[] = {3, 1, 34, 123, 127, 111, 42, 3, 20, 10};
     uint32_t lengthEcmaStrU16Comp = sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0]);
     JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
     for (uint32_t i = 0; i < sizeof(arrayU16Comp) / arrayU16Comp[0]; i++) {
         EXPECT_EQ(*(EcmaStringAccessor(handleEcmaStrU16Comp).GetDataUtf8() + i), arrayU16Comp[i]);
     }
@@ -546,7 +498,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetDataUtf16)
     uint16_t arrayU16NotComp[] = {67, 777, 1999, 1, 45, 66, 23456, 65535, 127, 333};
     uint32_t lengthEcmaStrU16NotComp = sizeof(arrayU16NotComp) / sizeof(arrayU16NotComp[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
     for (uint32_t i = 0; i < lengthEcmaStrU16NotComp; i++) {
         EXPECT_EQ(*(EcmaStringAccessor(handleEcmaStrU16NotComp).GetDataUtf16() + i), arrayU16NotComp[i]);
     }
@@ -565,7 +517,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, WriteToFlatUtf8)
     uint8_t arrayU8CopyFrom[6] = {1, 12, 34, 56, 127};
     uint32_t lengthEcmaStrU8CopyFrom = sizeof(arrayU8CopyFrom) - 1;
     JSHandle<EcmaString> handleEcmaStrU8CopyFrom(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8CopyFrom[0], lengthEcmaStrU8CopyFrom, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8CopyFrom[0], lengthEcmaStrU8CopyFrom, true));
     const size_t lengthArrayU8Target = 6;
     uint8_t arrayU8CopyTo[lengthArrayU8Target];
 
@@ -582,7 +534,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, WriteToFlatUtf8)
     uint16_t arrayU16CompCopyFrom[] = {1, 12, 34, 56, 127};
     uint32_t lengthEcmaStrU16CompCopyFrom = sizeof(arrayU16CompCopyFrom) / sizeof(arrayU16CompCopyFrom[0]);
     JSHandle<EcmaString> handleEcmaStrU16CompCopyFrom(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompCopyFrom[0], lengthEcmaStrU16CompCopyFrom, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompCopyFrom[0], lengthEcmaStrU16CompCopyFrom, true));
     const size_t lengthArrayU16Target = 6;
     uint8_t arrayU8CompCopyTo[lengthArrayU16Target];
 
@@ -609,7 +561,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, WriteToFlatUtf16)
     uint16_t arrayU16NotCompCopyFrom[10] = {67, 777, 1999, 1, 45, 66, 23456, 65535, 127, 333};
     uint32_t lengthEcmaStrU16NotCompCopyFrom = sizeof(arrayU16NotCompCopyFrom) / sizeof(arrayU16NotCompCopyFrom[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotCompCopyFrom(thread, EcmaStringAccessor::CreateFromUtf16(
-        ecmaVMPtr, &arrayU16NotCompCopyFrom[0], lengthEcmaStrU16NotCompCopyFrom, false));
+        instance, &arrayU16NotCompCopyFrom[0], lengthEcmaStrU16NotCompCopyFrom, false));
     const size_t lengthArrayU16Target = 13;
     uint16_t arrayU16NotCompCopyTo[lengthArrayU16Target];
     uint8_t defaultOneByteValueOfArrayU16NotCompCopyTo = 244;
@@ -642,10 +594,10 @@ HWTEST_F_L0(EcmaStringAccessorTest, ReadData_001)
     uint8_t arrayU8WriteFrom[6] = {1, 12, 34, 56, 127};
     uint32_t lengthEcmaStrU8WriteFrom = sizeof(arrayU8WriteFrom) - 1;
     JSHandle<EcmaString> handleEcmaStrU8WriteFrom(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8WriteFrom[0], lengthEcmaStrU8WriteFrom, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8WriteFrom[0], lengthEcmaStrU8WriteFrom, true));
     size_t sizeEcmaStrU8WriteTo = 5;
     JSHandle<EcmaString> handleEcmaStrAllocTrueWriteTo(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeEcmaStrU8WriteTo, true));
+        EcmaStringAccessor::CreateLineString(instance, sizeEcmaStrU8WriteTo, true));
     uint32_t indexStartWriteFromArrayU8 = 2;
     uint32_t lengthWriteFromArrayU8 = 2;
     EcmaStringAccessor::ReadData(*handleEcmaStrAllocTrueWriteTo, *handleEcmaStrU8WriteFrom, indexStartWriteFromArrayU8,
@@ -671,10 +623,10 @@ HWTEST_F_L0(EcmaStringAccessorTest, ReadData_002)
     uint16_t arrayU16WriteFrom[10] = {67, 777, 1999, 1, 45, 66, 23456, 65535, 127, 333};
     uint32_t lengthEcmaStrU16WriteFrom = sizeof(arrayU16WriteFrom) / sizeof(arrayU16WriteFrom[0]);
     JSHandle<EcmaString> handleEcmaStrU16WriteFrom(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16WriteFrom[0], lengthEcmaStrU16WriteFrom, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16WriteFrom[0], lengthEcmaStrU16WriteFrom, false));
     size_t sizeEcmaStrU16WriteTo = 10;
     JSHandle<EcmaString> handleEcmaStrU16WriteTo(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeEcmaStrU16WriteTo, false));
+        EcmaStringAccessor::CreateLineString(instance, sizeEcmaStrU16WriteTo, false));
     uint32_t indexStartWriteFromArrayU16 = 3;
     uint32_t numBytesWriteFromArrayU16 = 2 * 3;
     EcmaStringAccessor::ReadData(*handleEcmaStrU16WriteTo, *handleEcmaStrU16WriteFrom, indexStartWriteFromArrayU16,
@@ -698,10 +650,10 @@ HWTEST_F_L0(EcmaStringAccessorTest, ReadData_003)
     uint8_t arrayU8WriteFrom[6] = {1, 12, 34, 56, 127};
     uint32_t lengthEcmaStrU8WriteFrom = sizeof(arrayU8WriteFrom) - 1;
     JSHandle<EcmaString> handleEcmaStrU8WriteFrom(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8WriteFrom[0], lengthEcmaStrU8WriteFrom, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8WriteFrom[0], lengthEcmaStrU8WriteFrom, true));
     size_t sizeEcmaStrU16WriteTo = 10;
     JSHandle<EcmaString> handleEcmaStrU16WriteTo(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeEcmaStrU16WriteTo, false));
+        EcmaStringAccessor::CreateLineString(instance, sizeEcmaStrU16WriteTo, false));
     uint32_t indexStartWriteFromU8ToU16 = 1;
     uint32_t numBytesWriteFromU8ToU16 = 4;
     EcmaStringAccessor::ReadData(*handleEcmaStrU16WriteTo, *handleEcmaStrU8WriteFrom,
@@ -726,7 +678,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, Set_001)
     char u8Write = 'a';
     size_t sizeEcmaStrU8WriteTo = 5;
     JSHandle<EcmaString> handleEcmaStrAllocTrueWriteTo(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeEcmaStrU8WriteTo, true));
+        EcmaStringAccessor::CreateLineString(instance, sizeEcmaStrU8WriteTo, true));
     uint32_t indexAtWriteFromU8 = 4;
     EcmaStringAccessor(handleEcmaStrAllocTrueWriteTo).Set(indexAtWriteFromU8, u8Write);
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocTrueWriteTo).Get(indexAtWriteFromU8), u8Write);
@@ -744,7 +696,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, Set_002)
     // Set(). From char to EcmaString made by CreateLineString( , false, ).
     size_t sizeEcmaStrU16WriteTo = 10;
     JSHandle<EcmaString> handleEcmaStrU16WriteTo(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeEcmaStrU16WriteTo, false));
+        EcmaStringAccessor::CreateLineString(instance, sizeEcmaStrU16WriteTo, false));
     char u8Write = 'a';
     uint32_t indexAt = 4;
     EcmaStringAccessor(handleEcmaStrU16WriteTo).Set(indexAt, u8Write);
@@ -764,7 +716,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetHashcode_001)
     uint8_t arrayU8[] = {"abc"};
     uint32_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
     JSHandle<EcmaString> handleEcmaStrU8(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8[0], lengthEcmaStrU8, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true));
     uint32_t hashExpect = 0;
     for (uint32_t i = 0; i < lengthEcmaStrU8; i++) {
         hashExpect = hashExpect * 31 + arrayU8[i];
@@ -785,7 +737,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetHashcode_002)
     uint16_t arrayU16Comp[] = {45, 92, 78, 24};
     uint32_t lengthEcmaStrU16Comp = sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0]);
     JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
     uint32_t hashExpect = 0;
     for (uint32_t i = 0; i < lengthEcmaStrU16Comp; i++) {
         hashExpect = hashExpect * 31 + arrayU16Comp[i];
@@ -806,7 +758,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetHashcode_003)
     uint16_t arrayU16NotComp[] = {199, 1, 256, 65535, 777};
     uint32_t lengthEcmaStrU16NotComp = sizeof(arrayU16NotComp) / sizeof(arrayU16NotComp[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
     uint32_t hashExpect = 0;
     for (uint32_t i = 0; i < lengthEcmaStrU16NotComp; i++) {
         hashExpect = hashExpect * 31 + arrayU16NotComp[i];
@@ -824,7 +776,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetHashcode_003)
 HWTEST_F_L0(EcmaStringAccessorTest, GetHashcode_004)
 {
     // GetHashcode(). EcmaString made by CreateEmptyString().
-    JSHandle<EcmaString> handleEcmaStrEmpty(thread, EcmaStringAccessor::CreateEmptyString(ecmaVMPtr));
+    JSHandle<EcmaString> handleEcmaStrEmpty(thread, EcmaStringAccessor::CreateEmptyString(instance));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrEmpty).GetHashcode(), 0U);
 }
 
@@ -879,20 +831,20 @@ HWTEST_F_L0(EcmaStringAccessorTest, IndexOf_001)
     uint32_t lengthEcmaStrU8From = sizeof(arrayU8From) - 1;
     uint32_t lengthEcmaStrU8Target = sizeof(arrayU8Target) - 1;
     JSHandle<EcmaString> handleEcmaStr(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8From[0], lengthEcmaStrU8From, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8From[0], lengthEcmaStrU8From, true));
     JSHandle<EcmaString> handleEcmaStr1(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8Target[0], lengthEcmaStrU8Target, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8Target[0], lengthEcmaStrU8Target, true));
     int32_t posStart = 0;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr, handleEcmaStr1, posStart), 2);
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr1, handleEcmaStr, posStart), -1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr, handleEcmaStr1, posStart), 2);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr1, handleEcmaStr, posStart), -1);
     posStart = -1;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr, handleEcmaStr1, posStart), 2);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr, handleEcmaStr1, posStart), 2);
     posStart = 1;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr, handleEcmaStr1, posStart), 2);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr, handleEcmaStr1, posStart), 2);
     posStart = 2;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr, handleEcmaStr1, posStart), 2);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr, handleEcmaStr1, posStart), 2);
     posStart = 3;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr, handleEcmaStr1, posStart), -1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr, handleEcmaStr1, posStart), -1);
 }
 
 /*
@@ -910,20 +862,20 @@ HWTEST_F_L0(EcmaStringAccessorTest, IndexOf_002)
     uint32_t lengthEcmaStrU8Target = sizeof(arrayU8Target) - 1;
     uint32_t lengthEcmaStrU16NotCompFromNo1 = sizeof(arrayU16NotCompFromNo1) / sizeof(arrayU16NotCompFromNo1[0]);
     JSHandle<EcmaString> handleEcmaStr(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8Target[0], lengthEcmaStrU8Target, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8Target[0], lengthEcmaStrU8Target, true));
     JSHandle<EcmaString> handleEcmaStr1(thread, EcmaStringAccessor::CreateFromUtf16(
-        ecmaVMPtr, &arrayU16NotCompFromNo1[0], lengthEcmaStrU16NotCompFromNo1, false));
+        instance, &arrayU16NotCompFromNo1[0], lengthEcmaStrU16NotCompFromNo1, false));
     int32_t posStart = 0;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr1, handleEcmaStr, posStart), 6);
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr, handleEcmaStr1, posStart), -1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr1, handleEcmaStr, posStart), 6);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr, handleEcmaStr1, posStart), -1);
     posStart = -1;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr1, handleEcmaStr, posStart), 6);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr1, handleEcmaStr, posStart), 6);
     posStart = 1;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr1, handleEcmaStr, posStart), 6);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr1, handleEcmaStr, posStart), 6);
     posStart = 6;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr1, handleEcmaStr, posStart), 6);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr1, handleEcmaStr, posStart), 6);
     posStart = 7;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr, handleEcmaStr1, handleEcmaStr, posStart), -1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, handleEcmaStr1, handleEcmaStr, posStart), -1);
 }
 
 /*
@@ -943,25 +895,25 @@ HWTEST_F_L0(EcmaStringAccessorTest, IndexOf_003)
     uint32_t lengthEcmaStrU16NotCompTarget = sizeof(arrayU16NotCompTarget) / sizeof(arrayU16NotCompTarget[0]);
     uint32_t lengthEcmaStrU16NotCompFrom = sizeof(arrayU16NotCompFrom) / sizeof(arrayU16NotCompFrom[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotCompTarget(thread, EcmaStringAccessor::CreateFromUtf16(
-        ecmaVMPtr, &arrayU16NotCompTarget[0], lengthEcmaStrU16NotCompTarget, false));
+        instance, &arrayU16NotCompTarget[0], lengthEcmaStrU16NotCompTarget, false));
     JSHandle<EcmaString> handleEcmaStrU16NotCompFrom(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompFrom[0], lengthEcmaStrU16NotCompFrom, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompFrom[0], lengthEcmaStrU16NotCompFrom, false));
     int32_t posStart = 0;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU16NotCompFrom, handleEcmaStrU16NotCompTarget, posStart), 4);
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU16NotCompTarget, handleEcmaStrU16NotCompFrom, posStart), -1);
     posStart = -1;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU16NotCompFrom, handleEcmaStrU16NotCompTarget, posStart), 4);
     posStart = 1;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU16NotCompFrom, handleEcmaStrU16NotCompTarget, posStart), 4);
     posStart = 4;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU16NotCompFrom, handleEcmaStrU16NotCompTarget, posStart), 4);
     posStart = 5;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU16NotCompFrom, handleEcmaStrU16NotCompTarget, posStart), -1);
 }
 
@@ -980,25 +932,25 @@ HWTEST_F_L0(EcmaStringAccessorTest, IndexOf_004)
     uint32_t lengthEcmaStrU16NotCompTarget = sizeof(ecmaStrU16NotCompTarget) / sizeof(ecmaStrU16NotCompTarget[0]);
     uint32_t lengthEcmaStrU8From = sizeof(arrayU8From) - 1;
     JSHandle<EcmaString> handleEcmaStrU16NotCompTarget(thread, EcmaStringAccessor::CreateFromUtf16(
-        ecmaVMPtr, &ecmaStrU16NotCompTarget[0], lengthEcmaStrU16NotCompTarget, true));
+        instance, &ecmaStrU16NotCompTarget[0], lengthEcmaStrU16NotCompTarget, true));
     JSHandle<EcmaString> handleEcmaStrU8From(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8From[0], lengthEcmaStrU8From, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8From[0], lengthEcmaStrU8From, true));
     int32_t posStart = 0;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU8From, handleEcmaStrU16NotCompTarget, posStart), 3);
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU16NotCompTarget, handleEcmaStrU8From, posStart), -1);
     posStart = -1;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU8From, handleEcmaStrU16NotCompTarget, posStart), 3);
     posStart = 1;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU8From, handleEcmaStrU16NotCompTarget, posStart), 3);
     posStart = 3;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU8From, handleEcmaStrU16NotCompTarget, posStart), 3);
     posStart = 4;
-    EXPECT_EQ(EcmaStringAccessor::IndexOf(ecmaVMPtr,
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance,
         handleEcmaStrU8From, handleEcmaStrU16NotCompTarget, posStart), -1);
 }
 
@@ -1019,15 +971,15 @@ HWTEST_F_L0(EcmaStringAccessorTest, Compare_001)
     uint32_t lengthEcmaStrU8No2 = sizeof(arrayU8No2) - 1;
     uint32_t lengthEcmaStrU8No3 = sizeof(arrayU8No3) - 1;
     JSHandle<EcmaString> handleEcmaStrU8No1(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     JSHandle<EcmaString> handleEcmaStrU8No2(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No2[0], lengthEcmaStrU8No2, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No2[0], lengthEcmaStrU8No2, true));
     JSHandle<EcmaString> handleEcmaStrU8No3(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No3[0], lengthEcmaStrU8No3, true));
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No1, handleEcmaStrU8No2), -1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No2, handleEcmaStrU8No1), 1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No2, handleEcmaStrU8No3), 49 - 45);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No3, handleEcmaStrU8No2), 45 - 49);
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No1, handleEcmaStrU8No2), -1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No2, handleEcmaStrU8No1), 1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No2, handleEcmaStrU8No3), 49 - 45);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No3, handleEcmaStrU8No2), 45 - 49);
 }
 
 /*
@@ -1047,15 +999,15 @@ HWTEST_F_L0(EcmaStringAccessorTest, Compare_002)
     uint32_t lengthEcmaStrU16CompNo2 = sizeof(arrayU16CompNo2) / sizeof(arrayU16CompNo2[0]);
     uint32_t lengthEcmaStrU16CompNo3 = sizeof(arrayU16CompNo3) / sizeof(arrayU16CompNo3[0]);
     JSHandle<EcmaString> handleEcmaStrU16CompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo1, handleEcmaStrU16CompNo2), -1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo2, handleEcmaStrU16CompNo1), 1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo2, handleEcmaStrU16CompNo3), 49 - 45);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo3, handleEcmaStrU16CompNo2), 45 - 49);
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo1, handleEcmaStrU16CompNo2), -1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo2, handleEcmaStrU16CompNo1), 1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo2, handleEcmaStrU16CompNo3), 49 - 45);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo3, handleEcmaStrU16CompNo2), 45 - 49);
 }
 
 /*
@@ -1080,21 +1032,21 @@ HWTEST_F_L0(EcmaStringAccessorTest, Compare_003)
     uint32_t lengthEcmaStrU16CompNo2 = sizeof(arrayU16CompNo2) / sizeof(arrayU16CompNo2[0]);
     uint32_t lengthEcmaStrU16CompNo3 = sizeof(arrayU16CompNo3) / sizeof(arrayU16CompNo3[0]);
     JSHandle<EcmaString> handleEcmaStrU8No1(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     JSHandle<EcmaString> handleEcmaStrU8No2(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No2[0], lengthEcmaStrU8No2, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No2[0], lengthEcmaStrU8No2, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No1, handleEcmaStrU16CompNo1), 0);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo1, handleEcmaStrU8No1), 0);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No1, handleEcmaStrU16CompNo2), -1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo2, handleEcmaStrU8No1), 1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No2, handleEcmaStrU16CompNo3), 49 - 45);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo3, handleEcmaStrU8No2), 45 - 49);
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No1, handleEcmaStrU16CompNo1), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo1, handleEcmaStrU8No1), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No1, handleEcmaStrU16CompNo2), -1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo2, handleEcmaStrU8No1), 1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No2, handleEcmaStrU16CompNo3), 49 - 45);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo3, handleEcmaStrU8No2), 45 - 49);
 }
 
 /*
@@ -1114,15 +1066,15 @@ HWTEST_F_L0(EcmaStringAccessorTest, Compare_004)
     uint32_t lengthEcmaStrU16NotCompNo2 = sizeof(arrayU16NotCompNo2) / sizeof(arrayU16NotCompNo2[0]);
     uint32_t lengthEcmaStrU16NotCompNo3 = sizeof(arrayU16NotCompNo3) / sizeof(arrayU16NotCompNo3[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo1, handleEcmaStrU16NotCompNo2), -1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo2, handleEcmaStrU16NotCompNo1), 1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo2, handleEcmaStrU16NotCompNo3), 49 - 456);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo3, handleEcmaStrU16NotCompNo2), 456 - 49);
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo1, handleEcmaStrU16NotCompNo2), -1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo2, handleEcmaStrU16NotCompNo1), 1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo2, handleEcmaStrU16NotCompNo3), 49 - 456);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo3, handleEcmaStrU16NotCompNo2), 456 - 49);
 }
 
 /*
@@ -1146,21 +1098,21 @@ HWTEST_F_L0(EcmaStringAccessorTest, Compare_005)
     uint32_t lengthEcmaStrU16NotCompNo2 = sizeof(arrayU16NotCompNo2) / sizeof(arrayU16NotCompNo2[0]);
     uint32_t lengthEcmaStrU16NotCompNo3 = sizeof(arrayU16NotCompNo3) / sizeof(arrayU16NotCompNo3[0]);
     JSHandle<EcmaString> handleEcmaStrU8No1(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     JSHandle<EcmaString> handleEcmaStrU8No2(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No2[0], lengthEcmaStrU8No2, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No2[0], lengthEcmaStrU8No2, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No1, handleEcmaStrU16NotCompNo1), 0);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo1, handleEcmaStrU8No1), 0);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No1, handleEcmaStrU16NotCompNo2), -1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo2, handleEcmaStrU8No1), 1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU8No2, handleEcmaStrU16NotCompNo3), 49 - 456);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo3, handleEcmaStrU8No2), 456 - 49);
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No1, handleEcmaStrU16NotCompNo1), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo1, handleEcmaStrU8No1), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No1, handleEcmaStrU16NotCompNo2), -1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo2, handleEcmaStrU8No1), 1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU8No2, handleEcmaStrU16NotCompNo3), 49 - 456);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo3, handleEcmaStrU8No2), 456 - 49);
 }
 
 /*
@@ -1184,21 +1136,21 @@ HWTEST_F_L0(EcmaStringAccessorTest, Compare_006)
     uint32_t lengthEcmaStrU16NotCompNo2 = sizeof(arrayU16NotCompNo2) / sizeof(arrayU16NotCompNo2[0]);
     uint32_t lengthEcmaStrU16NotCompNo3 = sizeof(arrayU16NotCompNo3) / sizeof(arrayU16NotCompNo3[0]);
     JSHandle<EcmaString> handleEcmaStrU16CompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo1, handleEcmaStrU16NotCompNo1), 0);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo1, handleEcmaStrU16CompNo1), 0);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo1, handleEcmaStrU16NotCompNo2), -1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo2, handleEcmaStrU16CompNo1), 1);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16CompNo2, handleEcmaStrU16NotCompNo3), 49 - 456);
-    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVMPtr, handleEcmaStrU16NotCompNo3, handleEcmaStrU16CompNo2), 456 - 49);
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo1, handleEcmaStrU16NotCompNo1), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo1, handleEcmaStrU16CompNo1), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo1, handleEcmaStrU16NotCompNo2), -1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo2, handleEcmaStrU16CompNo1), 1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16CompNo2, handleEcmaStrU16NotCompNo3), 49 - 456);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStrU16NotCompNo3, handleEcmaStrU16CompNo2), 456 - 49);
 }
 
 /*
@@ -1218,11 +1170,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqual_001)
     uint32_t lengthEcmaStrU8No2 = sizeof(arrayU8No2) - 1;
     uint32_t lengthEcmaStrU8No3 = sizeof(arrayU8No3) - 1;
     JSHandle<EcmaString> handleEcmaStrU8No1(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     JSHandle<EcmaString> handleEcmaStrU8No2(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No2[0], lengthEcmaStrU8No2, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No2[0], lengthEcmaStrU8No2, true));
     JSHandle<EcmaString> handleEcmaStrU8No3(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No3[0], lengthEcmaStrU8No3, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU8No1, *handleEcmaStrU8No2));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU8No1, *handleEcmaStrU8No3));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU8No3, *handleEcmaStrU8No1));
@@ -1245,11 +1197,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqual_002)
     uint32_t lengthEcmaStrU16CompNo2 = sizeof(arrayU16CompNo2) / sizeof(arrayU16CompNo2[0]);
     uint32_t lengthEcmaStrU16CompNo3 = sizeof(arrayU16CompNo3) / sizeof(arrayU16CompNo3[0]);
     JSHandle<EcmaString> handleEcmaStrU8No1(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU8No1, *handleEcmaStrU16CompNo2));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU8No1, *handleEcmaStrU16CompNo3));
 }
@@ -1271,11 +1223,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqual_003)
     uint32_t lengthEcmaStrU16CompNo2 = sizeof(arrayU16CompNo2) / sizeof(arrayU16CompNo2[0]);
     uint32_t lengthEcmaStrU16CompNo3 = sizeof(arrayU16CompNo3) / sizeof(arrayU16CompNo3[0]);
     JSHandle<EcmaString> handleEcmaStrU16CompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU16CompNo1, *handleEcmaStrU16CompNo2));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU16CompNo1, *handleEcmaStrU16CompNo3));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU16CompNo3, *handleEcmaStrU16CompNo1));
@@ -1296,9 +1248,9 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqual_004)
     uint32_t lengthEcmaStrU8No1 = sizeof(arrayU8No1) - 1;
     uint32_t lengthEcmaStrU16NotCompNo1 = sizeof(arrayU16NotCompNo1) / sizeof(arrayU16NotCompNo1[0]);
     JSHandle<EcmaString> handleEcmaStrU8No1(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU8No1, *handleEcmaStrU16NotCompNo1));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU16NotCompNo1, *handleEcmaStrU8No1));
 }
@@ -1318,9 +1270,9 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqual_005)
     uint32_t lengthEcmaStrU16CompNo1 = sizeof(arrayU16CompNo1) / sizeof(arrayU16CompNo1[0]);
     uint32_t lengthEcmaStrU16NotCompNo1 = sizeof(arrayU16NotCompNo1) / sizeof(arrayU16NotCompNo1[0]);
     JSHandle<EcmaString> handleEcmaStrU16CompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU16CompNo1, *handleEcmaStrU16NotCompNo1));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU16NotCompNo1, *handleEcmaStrU16CompNo1));
 }
@@ -1342,11 +1294,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqual_006)
     uint32_t lengthEcmaStrU16NotCompNo2 = sizeof(arrayU16NotCompNo2) / sizeof(arrayU16NotCompNo2[0]);
     uint32_t lengthEcmaStrU16NotCompNo3 = sizeof(arrayU16NotCompNo3) / sizeof(arrayU16NotCompNo3[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, false));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, false));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU16NotCompNo1, *handleEcmaStrU16NotCompNo2));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU16NotCompNo1, *handleEcmaStrU16NotCompNo3));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqual(*handleEcmaStrU16NotCompNo3, *handleEcmaStrU16NotCompNo1));
@@ -1369,11 +1321,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf8_001)
     uint32_t lengthEcmaStrU8No2 = sizeof(arrayU8No2) - 1;
     uint32_t lengthEcmaStrU8No3 = sizeof(arrayU8No3) - 1;
     JSHandle<EcmaString> handleEcmaStrU8No1(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     JSHandle<EcmaString> handleEcmaStrU8No2(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No2[0], lengthEcmaStrU8No2, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No2[0], lengthEcmaStrU8No2, true));
     JSHandle<EcmaString> handleEcmaStrU8No3(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No3[0], lengthEcmaStrU8No3, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
     EXPECT_TRUE(EcmaStringAccessor::StringIsEqualUint8Data(
         *handleEcmaStrU8No1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     EXPECT_FALSE(EcmaStringAccessor::StringIsEqualUint8Data(
@@ -1403,11 +1355,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf8_002)
     uint32_t lengthEcmaStrU16CompNo2 = sizeof(arrayU16CompNo2) / sizeof(arrayU16CompNo2[0]);
     uint32_t lengthEcmaStrU16CompNo3 = sizeof(arrayU16CompNo3) / sizeof(arrayU16CompNo3[0]);
     JSHandle<EcmaString> handleEcmaStrU16CompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
     EXPECT_TRUE(EcmaStringAccessor::StringIsEqualUint8Data(
         *handleEcmaStrU16CompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     EXPECT_FALSE(EcmaStringAccessor::StringIsEqualUint8Data(
@@ -1439,13 +1391,13 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf8_003)
     uint32_t lengthEcmaStrU16NotCompNo3 = sizeof(arrayU16NotCompNo3) / sizeof(arrayU16NotCompNo3[0]);
     uint32_t lengthEcmaStrU16NotCompNo4 = sizeof(arrayU16NotCompNo4) / sizeof(arrayU16NotCompNo4[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, true));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo4(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo4[0], lengthEcmaStrU16NotCompNo4, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo4[0], lengthEcmaStrU16NotCompNo4, false));
     EXPECT_FALSE(EcmaStringAccessor::StringIsEqualUint8Data(
         *handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
     EXPECT_TRUE(EcmaStringAccessor::StringIsEqualUint8Data(
@@ -1477,11 +1429,11 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf16_001)
     uint32_t lengthEcmaStrU8No3 = sizeof(arrayU8No3) - 1;
     uint32_t lengthEcmaStrU16NotCompNo1 = sizeof(arrayU16NotCompNo1) / sizeof(arrayU16NotCompNo1[0]);
     JSHandle<EcmaString> handleEcmaStrU8No1(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     JSHandle<EcmaString> handleEcmaStrU8No2(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No2[0], lengthEcmaStrU8No2, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No2[0], lengthEcmaStrU8No2, true));
     JSHandle<EcmaString> handleEcmaStrU8No3(thread,
-        EcmaStringAccessor::CreateFromUtf8(ecmaVMPtr, &arrayU8No3[0], lengthEcmaStrU8No3, true));
+        EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqualUtf16(
         *handleEcmaStrU8No1, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqualUtf16(
@@ -1509,13 +1461,13 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf16_002)
     uint32_t lengthEcmaStrU16CompNo3 = sizeof(arrayU16CompNo3) / sizeof(arrayU16CompNo3[0]);
     uint32_t lengthEcmaStrU16CompNo4 = sizeof(arrayU16CompNo4) / sizeof(arrayU16CompNo4[0]);
     JSHandle<EcmaString> handleEcmaStrU16CompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo4(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo4[0], lengthEcmaStrU16CompNo4, true));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo4[0], lengthEcmaStrU16CompNo4, true));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqualUtf16(
         *handleEcmaStrU16CompNo1, &arrayU16CompNo1[0], lengthEcmaStrU16CompNo1));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqualUtf16(
@@ -1545,13 +1497,13 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf16_003)
     uint32_t lengthEcmaStrU16NotCompNo3 = sizeof(arrayU16NotCompNo3) / sizeof(arrayU16NotCompNo3[0]);
     uint32_t lengthEcmaStrU16NotCompNo4 = sizeof(arrayU16NotCompNo4) / sizeof(arrayU16NotCompNo4[0]);
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo1(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, false));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo2(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, false));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo3(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo4(thread,
-        EcmaStringAccessor::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo4[0], lengthEcmaStrU16NotCompNo4, false));
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo4[0], lengthEcmaStrU16NotCompNo4, false));
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU16NotCompNo1, &arrayU16NotCompNo1[0],
         lengthEcmaStrU16NotCompNo1));
     EXPECT_FALSE(EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU16NotCompNo1, &arrayU16NotCompNo2[0],
@@ -1573,7 +1525,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf16_003)
  */
 HWTEST_F_L0(EcmaStringAccessorTest, EqualToSplicedString)
 {
-    ObjectFactory* factory = ecmaVMPtr->GetFactory();
+    ObjectFactory* factory = instance->GetFactory();
     {
         JSHandle<EcmaString> sourceString = factory->NewFromUtf8("Start开始");
         JSHandle<EcmaString> firstString = factory->NewFromASCII("Start");
@@ -1688,13 +1640,13 @@ HWTEST_F_L0(EcmaStringAccessorTest, CanBeCompressed)
  */
 HWTEST_F_L0(EcmaStringAccessorTest, TryToLower)
 {
-    ObjectFactory* factory = ecmaVMPtr->GetFactory();
+    ObjectFactory* factory = instance->GetFactory();
     JSHandle<EcmaString> lowerStr = factory->NewFromASCII("aaabbbcccddd");
     JSHandle<EcmaString> upperStr = factory->NewFromASCII("AAABBBCCCDDD");
     JSHandle<EcmaString> testStr1 = factory->NewFromASCII("aaaBBBcccDDD");
     JSHandle<EcmaString> testStr2 = factory->NewFromASCII("AAAbbbcccDDD");
     {
-        JSHandle<EcmaString> lowerEcmaString(thread, EcmaStringAccessor::TryToLower(ecmaVMPtr, lowerStr));
+        JSHandle<EcmaString> lowerEcmaString(thread, EcmaStringAccessor::TryToLower(instance, lowerStr));
         EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), lowerEcmaString.GetTaggedValue()));
         EXPECT_EQ(EcmaStringAccessor(lowerStr).GetLength(), EcmaStringAccessor(lowerEcmaString).GetLength());
         EXPECT_TRUE(EcmaStringAccessor(lowerEcmaString).IsUtf8());
@@ -1702,7 +1654,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, TryToLower)
     }
 
     {
-        JSHandle<EcmaString> lowerEcmaString(thread, EcmaStringAccessor::TryToLower(ecmaVMPtr, upperStr));
+        JSHandle<EcmaString> lowerEcmaString(thread, EcmaStringAccessor::TryToLower(instance, upperStr));
         EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), lowerEcmaString.GetTaggedValue()));
         EXPECT_EQ(EcmaStringAccessor(lowerStr).GetLength(), EcmaStringAccessor(lowerEcmaString).GetLength());
         EXPECT_TRUE(EcmaStringAccessor(lowerEcmaString).IsUtf8());
@@ -1710,7 +1662,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, TryToLower)
     }
 
     {
-        JSHandle<EcmaString> testEcmaString(thread, EcmaStringAccessor::TryToLower(ecmaVMPtr, testStr1));
+        JSHandle<EcmaString> testEcmaString(thread, EcmaStringAccessor::TryToLower(instance, testStr1));
         EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), testEcmaString.GetTaggedValue()));
         EXPECT_EQ(EcmaStringAccessor(lowerStr).GetLength(), EcmaStringAccessor(testEcmaString).GetLength());
         EXPECT_TRUE(EcmaStringAccessor(testEcmaString).IsUtf8());
@@ -1718,7 +1670,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, TryToLower)
     }
 
     {
-        JSHandle<EcmaString> testEcmaString(thread, EcmaStringAccessor::TryToLower(ecmaVMPtr, testStr2));
+        JSHandle<EcmaString> testEcmaString(thread, EcmaStringAccessor::TryToLower(instance, testStr2));
         EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), testEcmaString.GetTaggedValue()));
         EXPECT_EQ(EcmaStringAccessor(lowerStr).GetLength(), EcmaStringAccessor(testEcmaString).GetLength());
         EXPECT_TRUE(EcmaStringAccessor(testEcmaString).IsUtf8());

@@ -33,18 +33,8 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class HandleLeakTest : public testing::Test {
+class HandleLeakTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
     void SetUp() override
     {
         JSRuntimeOptions options;
@@ -56,15 +46,6 @@ public:
         thread->ManagedCodeBegin();
         scope = new EcmaHandleScope(thread);
     }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
 };
 
 static sigjmp_buf env;

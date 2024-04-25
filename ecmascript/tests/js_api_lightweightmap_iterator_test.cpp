@@ -35,32 +35,9 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
 namespace panda::test {
-class JSAPILightWeightMapIteratorTest : public testing::Test {
+class JSAPILightWeightMapIteratorTest : public BaseTestWithScope<false> {
 public:
     const static int DEFAULT_SIZE = 8;
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
 
 protected:
     JSAPILightWeightMap *CreateLightWeightMap()
