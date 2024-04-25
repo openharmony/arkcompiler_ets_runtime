@@ -81,13 +81,21 @@ public:
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(JSHandle);
     DEFAULT_COPY_SEMANTIC(JSHandle);
 
-    JSHandle(const JSThread *thread, JSTaggedValue value)
+    JSHandle(const JSThread *thread, JSTaggedValue value, bool isPrimitive = false)
     {
+        if (isPrimitive) {
+            address_ = EcmaHandleScope::NewPrimitiveHandle(
+                const_cast<JSThread *>(thread), value.GetRawData());
+        }
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), value.GetRawData());
     }
 
-    JSHandle(const JSThread *thread, const TaggedObject *value)
+    JSHandle(const JSThread *thread, const TaggedObject *value, bool isPrimitive = false)
     {
+        if (isPrimitive) {
+            address_ = EcmaHandleScope::NewPrimitiveHandle(
+                const_cast<JSThread *>(thread), JSTaggedValue(value).GetRawData());
+        }
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), JSTaggedValue(value).GetRawData());
     }
 

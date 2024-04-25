@@ -895,11 +895,10 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, double input)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     if (std::isnan(input)) {
         input = ecmascript::base::NAN_VALUE;
     }
-    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
+    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input), true);
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
@@ -908,8 +907,7 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, int32_t input)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
+    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input), true);
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
@@ -918,8 +916,7 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, uint32_t input)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
+    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input), true);
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
@@ -928,8 +925,7 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, int64_t input)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
+    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input), true);
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
@@ -1548,32 +1544,61 @@ LocalScope::LocalScope(const EcmaVM *vm) : thread_(vm->GetJSThread())
 {
     ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
     auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
+    OpenLocalScope(context);
+    OpenPrimitiveScope(context);
+}
+
+void LocalScope::OpenLocalScope(EcmaContext *context)
+{
     prevNext_ = context->GetHandleScopeStorageNext();
     prevEnd_ = context->GetHandleScopeStorageEnd();
     prevHandleStorageIndex_ = context->GetCurrentHandleStorageIndex();
     context->HandleScopeCountAdd();
+}
+
+void LocalScope::OpenPrimitiveScope(EcmaContext *context)
+{
+    prevPrimitiveNext_ = context->GetPrimitiveScopeStorageNext();
+    prevPrimitiveEnd_ = context->GetPrimitiveScopeStorageEnd();
+    prevPrimitiveStorageIndex_ = context->GetCurrentPrimitiveStorageIndex();
+    context->PrimitiveScopeCountAdd();
 }
 
 LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJSThread())
 {
     ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
     auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
+    // Simply reserve a slot on the handlescope. The escaped handle will still be retained in this slot.
     ecmascript::EcmaHandleScope::NewHandle(reinterpret_cast<JSThread *>(thread_), value);
-    prevNext_ = context->GetHandleScopeStorageNext();
-    prevEnd_ = context->GetHandleScopeStorageEnd();
-    prevHandleStorageIndex_ = context->GetCurrentHandleStorageIndex();
-    context->HandleScopeCountAdd();
+    OpenLocalScope(context);
+    OpenPrimitiveScope(context);
 }
 
 LocalScope::~LocalScope()
 {
     ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
     auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
+    CloseLocalScope(context);
+    ClosePrimitiveScope(context);
+}
+
+void LocalScope::CloseLocalScope(EcmaContext *context)
+{
     context->HandleScopeCountDec();
     context->SetHandleScopeStorageNext(static_cast<JSTaggedType *>(prevNext_));
     if (context->GetHandleScopeStorageEnd() != prevEnd_) {
         context->SetHandleScopeStorageEnd(static_cast<JSTaggedType *>(prevEnd_));
         context->ShrinkHandleStorage(prevHandleStorageIndex_);
+    }
+}
+
+void LocalScope::ClosePrimitiveScope(EcmaContext *context)
+{
+    context->PrimitiveScopeCountDec();
+    context->SetPrimitiveScopeStorageNext(static_cast<JSTaggedType *>(prevPrimitiveNext_));
+    if (context->GetPrimitiveScopeStorageEnd() != prevPrimitiveEnd_) {
+        context->SetPrimitiveScopeStorageEnd(static_cast<JSTaggedType *>(prevPrimitiveEnd_));
+        context->ShrinkPrimitiveStorage(prevPrimitiveStorageIndex_);
     }
 }
 
