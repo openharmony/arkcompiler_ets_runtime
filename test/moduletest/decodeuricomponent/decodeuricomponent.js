@@ -34,3 +34,17 @@ try {
 } catch(err) {
     print(err.name);
 }
+
+try {
+    let invalidURI1 = "http://example.com/?q=%";
+    decodeURI(invalidURI1);
+} catch(err) {
+    print(err);
+}
+
+try {
+    let invalidURI2 = "%E4%25BD%2593%25E8%2582%25B2";
+    decodeURIComponent(invalidURI2);
+} catch(err) {
+    print(err);
+}

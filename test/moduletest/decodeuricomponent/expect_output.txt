@@ -14,3 +14,5 @@
 %C2%AAfUX%C2%83%C2%93%00%C2%89%C3%96%08X%C2%B4%C3%BDF
 %00
 URIError
+URIError: DecodeURI: invalid character: http://example.com/?q=%
+URIError: DecodeURI: invalid character: %E4%25BD%2593%25E8%2582%25B2
