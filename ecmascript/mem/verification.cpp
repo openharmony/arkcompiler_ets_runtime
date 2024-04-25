@@ -437,6 +437,10 @@ size_t SharedHeapVerification::VerifyRoot() const
 
 size_t SharedHeapVerification::VerifyHeap() const
 {
+    Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+        ASSERT(!thread->IsInRunningState());
+        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
+    });
     size_t failCount = sHeap_->VerifyHeapObjects(verifyKind_);
     if (failCount > 0) {
         LOG_GC(ERROR) << "SharedHeap VerifyHeap detects deadObject count is " << failCount;
