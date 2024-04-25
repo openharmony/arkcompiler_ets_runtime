@@ -629,9 +629,20 @@ inline GateRef StubBuilder::TaggedIsSymbol(GateRef obj)
 
 inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
 {
-    auto allHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
-    auto allString = env_->GetBuilder()->TaggedObjectBothAreString(x, y);
-    return env_->GetBuilder()->LogicAnd(allHeapObject, allString);
+    Label entryPass(env_);
+    env_->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label heapObj(env_);
+    Label exit(env_);
+    GateRef isHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
+    BRANCH(isHeapObject, &heapObj, &exit);
+    Bind(&heapObj);
+    result = env_->GetBuilder()->TaggedObjectBothAreString(x, y);;
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
 }
 
 inline GateRef StubBuilder::TaggedIsNumber(GateRef x)
