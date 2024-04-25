@@ -19,6 +19,10 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+print("string".length);
+print("string"[3]);
+print("string".at(-1));
+
 let tmp = '今天吃什么:告诉了会晤今天吃什么促“让今天吃什么下来好起来”今天吃今天吃什么于6月1日于北京今天吃什么面。大杂烩中国都五年来首位访华\
 的今天吃什么王刚说,你吵的菜今天吃什么了赞不绝口,但是今天吃什么吃,他接到一个快递单号为#nsExpress3SF#123456789的包裹';
 let flag = tmp;

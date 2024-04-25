@@ -116,6 +116,10 @@ private:
 
     static inline bool IsFastTypeArray(JSType jsType);
 
+    static inline bool IsString(JSType jsType);
+
+    static inline bool IsJSPrimitiveRef(JSType jsType);
+
     static inline bool TryStringOrSymbolToIndex(JSTaggedValue key, uint32_t *output);
 
     static inline JSTaggedValue FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
