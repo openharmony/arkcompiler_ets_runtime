@@ -131,7 +131,7 @@ void PGOTypeManager::GenHClassInfo()
     ObjectFactory* factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> hclassInfo = factory->NewTaggedArray(count);
     uint32_t pos = 0;
-
+    profileTyperToHClassIndex_.clear();
     for (auto& root: hcData_) {
         ProfileType rootType = root.first;
         for (auto& child: root.second) {
@@ -146,27 +146,6 @@ void PGOTypeManager::GenHClassInfo()
     aotSnapshot_.StoreHClassInfo(hclassInfo);
 }
 
-void PGOTypeManager::GenJITHClassInfoLocal()
-{
-    LockHolder lock(mutex_);
-    profileTyperToHClassIndex_.clear();
-    hclassInfoLocal_.clear();
-    uint32_t count = 0;
-    for (auto &data : hcData_) {
-        count += data.second.size();
-    }
-    uint32_t pos = 0;
-    for (auto &x : hcData_) {
-        ProfileType rootType = x.first;
-        for (auto &y : x.second) {
-            ProfileType childType = y.first;
-            JSTaggedType hclass = y.second;
-            ProfileTyper key = std::make_pair(rootType, childType);
-            profileTyperToHClassIndex_.emplace(key, pos++);
-            hclassInfoLocal_.emplace_back(JSTaggedValue(hclass));
-        }
-    }
-}
 
 JSHandle<TaggedArray> PGOTypeManager::GenJITHClassInfo()
 {
@@ -209,6 +188,8 @@ void PGOTypeManager::RecordHClass(ProfileType rootType, ProfileType childType, J
         auto map = TransIdToHClass();
         map.emplace(childType, hclass);
         hcData_.emplace(rootType, map);
+        profileTyperToHClassIndex_.emplace(std::make_pair(rootType, childType), pos_++);
+        hclassInfoLocal_.emplace_back(JSTaggedValue(hclass));
         return;
     }
 
@@ -220,9 +201,14 @@ void PGOTypeManager::RecordHClass(ProfileType rootType, ProfileType childType, J
             return;
         } else {
             hclassMap[childType]= hclass;
+            auto index = GetHClassIndexByProfileType(std::pair(rootType, childType));
+            ASSERT(index >= 0);
+            hclassInfoLocal_[index] = JSTaggedValue(hclass);
             return;
         }
     }
+    profileTyperToHClassIndex_.emplace(std::make_pair(rootType, childType), pos_++);
+    hclassInfoLocal_.emplace_back(JSTaggedValue(hclass));
     hclassMap.emplace(childType, hclass);
 }
 
