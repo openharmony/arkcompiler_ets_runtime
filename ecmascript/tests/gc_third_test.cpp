@@ -27,18 +27,8 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class GCTest : public testing::Test {
+class GCTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
     void SetUp() override
     {
         JSRuntimeOptions options;
@@ -51,15 +41,6 @@ public:
         heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
         heap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
     }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
 };
 
 HWTEST_F_L0(GCTest, HighSensitiveForceExpand)

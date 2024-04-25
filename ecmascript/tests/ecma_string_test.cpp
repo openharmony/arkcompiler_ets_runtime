@@ -20,7 +20,7 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class EcmaStringTest : public testing::Test {
+class EcmaStringTest : public BaseTestWithScope<false> {
 public:
     static void SetUpTestCase()
     {
@@ -32,25 +32,6 @@ public:
         EXPECT_TRUE(EcmaString::CanBeCompressed(arrayU16Comp, sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0])));
         EXPECT_FALSE(EcmaString::CanBeCompressed(arrayU16NotComp, sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0])));
     }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(ecmaVMPtr, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(ecmaVMPtr, scope);
-    }
-
-    EcmaVM *ecmaVMPtr {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
 };
 
 /*
