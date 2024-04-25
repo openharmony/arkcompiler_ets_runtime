@@ -1670,6 +1670,7 @@ void Heap::NotifyFinishColdStartSoon()
 
 void Heap::NotifyHighSensitive(bool isStart)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SmartGC: set high sensitive status: " + std::to_string(isStart));
     isStart ? SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE)
         : SetSensitiveStatus(AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
     LOG_GC(DEBUG) << "SmartGC: set high sensitive status: " << isStart;
