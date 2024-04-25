@@ -24,31 +24,7 @@ using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
 using BuiltinsRegExp = builtins::BuiltinsRegExp;
-class JSRegexpIteratorTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JSRegexpIteratorTest : public BaseTestWithScope<false> {
 };
 
 static JSTaggedValue CreateJSRegexpByPatternAndFlags(JSThread *thread, const JSHandle<EcmaString> &pattern,

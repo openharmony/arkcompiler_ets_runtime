@@ -993,31 +993,7 @@ private:
     JSThread *thread = nullptr;
 };
 
-class JSSerializerTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(ecmaVm, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(ecmaVm, scope);
-    }
-
-    JSThread *thread {nullptr};
-    EcmaVM *ecmaVm {nullptr};
-    EcmaHandleScope *scope {nullptr};
+class JSSerializerTest : public BaseTestWithScope<false> {
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeJSSpecialValue)
@@ -1043,7 +1019,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSSpecialValue)
 
 HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject1)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
 
@@ -1089,7 +1065,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject1)
 
 HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject2)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
 
@@ -1138,7 +1114,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject2)
 
 HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject3)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
     const uint32_t numOfProps = 2;
     JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
 
@@ -1206,8 +1182,8 @@ static panda::JSNApi::NativeBindingInfo* CreateNativeBindingInfo(void* attach, v
 
 HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<GlobalEnv> env = instance->GetGlobalEnv();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj3 = factory->NewEmptyJSObject();
@@ -1258,8 +1234,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
 // not support native object without detach and attach
 HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject2)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<GlobalEnv> env = instance->GetGlobalEnv();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
 
@@ -1296,8 +1272,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject2)
 
 HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject3)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<GlobalEnv> env = instance->GetGlobalEnv();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
 
@@ -1339,7 +1315,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject3)
 
 HWTEST_F_L0(JSSerializerTest, TestSerializeDescription)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
     JSHandle<JSObject> obj = factory->NewEmptyJSObject();
 
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("x"));
@@ -1374,7 +1350,7 @@ HWTEST_F_L0(JSSerializerTest, TestSerializeDescription)
 
 HWTEST_F_L0(JSSerializerTest, TestSerializeJSSet)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
     JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
@@ -1413,7 +1389,7 @@ HWTEST_F_L0(JSSerializerTest, TestSerializeJSSet)
 
 HWTEST_F_L0(JSSerializerTest, TestSerializeJSArray)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
     JSHandle<JSArray> array = factory->NewJSArray();
 
     // set property to object
@@ -1447,7 +1423,7 @@ HWTEST_F_L0(JSSerializerTest, TestSerializeJSArray)
 // Test the situation that Objects' properties stores values that reference with each other
 HWTEST_F_L0(JSSerializerTest, TestObjectsPropertyReference)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
     [[maybe_unused]] JSHandle<JSObject> obj3 = factory->NewEmptyJSObject();
@@ -1590,7 +1566,7 @@ JSDate *JSDateCreate(EcmaVM *ecmaVM)
 HWTEST_F_L0(JSSerializerTest, SerializeDate)
 {
     double tm = 28 * 60 * 60 * 1000;
-    JSHandle<JSDate> jsDate(thread, JSDateCreate(ecmaVm));
+    JSHandle<JSDate> jsDate(thread, JSDateCreate(instance));
     jsDate->SetTimeValue(thread, JSTaggedValue(tm));
     JSSerializer *serializer = new JSSerializer(thread);
     bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(jsDate));
@@ -2161,18 +2137,18 @@ HWTEST_F_L0(JSSerializerTest, SerializeSymbolWithProperty)
 // Test transfer JSArrayBuffer
 HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer1)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
 
     // create a JSArrayBuffer
     size_t length = 5;
     uint8_t value = 100;
-    void *buffer = ecmaVm->GetNativeAreaAllocator()->AllocateBuffer(length);
+    void *buffer = instance->GetNativeAreaAllocator()->AllocateBuffer(length);
     if (memset_s(buffer, length, value, length) != EOK) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     JSHandle<JSArrayBuffer> arrBuf = factory->NewJSArrayBuffer(buffer,
-        length, NativeAreaAllocator::FreeBufferFunc, ecmaVm->GetNativeAreaAllocator());
+        length, NativeAreaAllocator::FreeBufferFunc, instance->GetNativeAreaAllocator());
     JSHandle<JSTaggedValue> arrBufTag = JSHandle<JSTaggedValue>::Cast(arrBuf);
 
     CUnorderedSet<uintptr_t> transferDataSet;
@@ -2198,18 +2174,18 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer1)
 // Test serialize JSArrayBuffer that not transfer
 HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer2)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
 
     // create a JSArrayBuffer
     size_t length = 5;
     uint8_t value = 100;
-    void *buffer = ecmaVm->GetNativeAreaAllocator()->AllocateBuffer(length);
+    void *buffer = instance->GetNativeAreaAllocator()->AllocateBuffer(length);
     if (memset_s(buffer, length, value, length) != EOK) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     JSHandle<JSArrayBuffer> arrBuf = factory->NewJSArrayBuffer(buffer,
-        length, NativeAreaAllocator::FreeBufferFunc, ecmaVm->GetNativeAreaAllocator());
+        length, NativeAreaAllocator::FreeBufferFunc, instance->GetNativeAreaAllocator());
     JSHandle<JSTaggedValue> arrBufTag = JSHandle<JSTaggedValue>::Cast(arrBuf);
 
     JSSerializer *serializer = new JSSerializer(thread);
@@ -2229,7 +2205,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer2)
 // Test serialize an empty JSArrayBuffer
 HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer3)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
 
     // create a JSArrayBuffer
     JSHandle<JSArrayBuffer> arrBuf = factory->NewJSArrayBuffer(0);
@@ -2251,18 +2227,18 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer3)
 // Test default transfer JSArrayBuffer
 HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer4)
 {
-    ObjectFactory *factory = ecmaVm->GetFactory();
+    ObjectFactory *factory = instance->GetFactory();
 
     // create a JSArrayBuffer
     size_t length = 5;
     uint8_t value = 100;
-    void *buffer = ecmaVm->GetNativeAreaAllocator()->AllocateBuffer(length);
+    void *buffer = instance->GetNativeAreaAllocator()->AllocateBuffer(length);
     if (memset_s(buffer, length, value, length) != EOK) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     JSHandle<JSArrayBuffer> arrBuf = factory->NewJSArrayBuffer(buffer,
-        length, NativeAreaAllocator::FreeBufferFunc, ecmaVm->GetNativeAreaAllocator());
+        length, NativeAreaAllocator::FreeBufferFunc, instance->GetNativeAreaAllocator());
     JSHandle<JSTaggedValue> arrBufTag = JSHandle<JSTaggedValue>::Cast(arrBuf);
 
     JSSerializer *serializer = new JSSerializer(thread);

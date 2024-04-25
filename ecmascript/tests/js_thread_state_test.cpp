@@ -28,33 +28,13 @@ using namespace panda::ecmascript;
 
 namespace panda::test {
 
-class StateTransitioningTest : public testing::Test {
+class StateTransitioningTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
     void InitializeLogger()
     {
         panda::ecmascript::JSRuntimeOptions runtimeOptions;
         runtimeOptions.SetLogLevel("error");
         ecmascript::Log::Initialize(runtimeOptions);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
 
     static void NewVMThreadEntry(EcmaVM *newVm,
@@ -157,9 +137,6 @@ public:
     std::atomic<size_t> activeThreadCount {0};
     std::atomic<bool> isTestEnded {false};
     std::atomic<bool> changeToRunning {false};
-    JSThread *thread {nullptr};
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
 };
 
 HWTEST_F_L0(StateTransitioningTest, ThreadStateTransitionScopeTest)
