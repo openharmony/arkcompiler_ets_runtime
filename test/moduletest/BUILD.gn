@@ -138,7 +138,7 @@ group("ark_js_moduletest") {
     "stackoverflow",
     "storeicbyname",
     "storeicbyvalue",
-    "string",
+    "stringff",
     "stringfromcharcode",
     "stringreplace",
     "stringsplit",
