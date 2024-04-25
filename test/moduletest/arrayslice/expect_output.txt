@@ -14,3 +14,4 @@
 undefined
 3
 [object Object]
+runNearStackLimit test success!
