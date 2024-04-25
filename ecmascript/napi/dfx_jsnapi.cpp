@@ -19,6 +19,7 @@
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/debugger/debugger_api.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/tracing/tracing.h"
@@ -783,6 +784,12 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
         return true;
     }
     return false;
+}
+
+int32_t DFXJSNApi::GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject)
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(nativeObject);
+    return ecmascript::tooling::DebuggerApi::GetObjectHash(vm, obj);
 }
 
 bool DFXJSNApi::StartSampling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] uint64_t samplingInterval)

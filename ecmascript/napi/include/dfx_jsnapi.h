@@ -39,6 +39,9 @@ struct SamplingInfo;
 struct TraceEvent;
 }
 class DFXJSNApi;
+class JSValueRef;
+template<typename T>
+class Local;
 using EcmaVM = ecmascript::EcmaVM;
 using Stream = ecmascript::Stream;
 using Progress = ecmascript::Progress;
@@ -106,6 +109,7 @@ public:
     static void NotifyFinishColdStart(EcmaVM *vm, bool isConvinced);
     static void NotifyHighSensitive(EcmaVM *vm, bool isStart);
     static bool BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames);
+    static int32_t GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject);
 
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);
