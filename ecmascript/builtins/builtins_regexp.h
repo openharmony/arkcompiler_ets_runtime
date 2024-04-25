@@ -354,14 +354,15 @@ public:
         JSTaggedValue res = globalTable->Get(CAPTURE_START_INDEX + N - 1);
         int captureNum = globalTable->GetTotalCaptureCounts().GetInt();
         if (res.IsHole() && (N < captureNum)) {
-            uint32_t startIndex = static_cast<uint32_t>(globalTable->GetStartOfCaptureIndex(N).GetInt());
-            uint32_t endIndex = static_cast<uint32_t>(globalTable->GetEndOfCaptureIndex(N).GetInt());
-            uint32_t len = endIndex - startIndex;
+            int startIndex = globalTable->GetStartOfCaptureIndex(N).GetInt();
+            int endIndex = globalTable->GetEndOfCaptureIndex(N).GetInt();
+            int len = endIndex - startIndex;
             if (len < 0) {
                 res = JSTaggedValue::Undefined();
             } else {
                 res = JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(),
-                    JSHandle<EcmaString>(thread, EcmaString::Cast(globalTable->GetInputString())), startIndex, len));
+                    JSHandle<EcmaString>(thread, EcmaString::Cast(globalTable->GetInputString())),
+                    static_cast<uint32_t>(startIndex), static_cast<uint32_t>(len)));
             }
             globalTable->Set(thread, CAPTURE_START_INDEX + N - 1, res);
         } else if (res.IsHole()) {
