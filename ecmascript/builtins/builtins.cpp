@@ -1363,6 +1363,7 @@ void Builtins::LazyInitializeMap(const JSHandle<GlobalEnv> &env) const
     env->SetBuiltinsMapFunction(thread_, accessor);
     env->SetMapPrototype(thread_, accessor);
     env->SetMapProtoEntriesFunction(thread_, accessor);
+    env->SetMapClass(thread_, accessor);
 }
 
 void Builtins::InitializeWeakMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
