@@ -66,6 +66,7 @@ public:
     static constexpr char EXT_NAME_JSON[] = ".json";
     static constexpr char EXT_NAME_Z_SO[] = ".z.so";
     static constexpr char EXT_NAME_D_TS[] = ".d.ts";
+    static constexpr char EXT_NAME_MJS[] = ".mjs";
     static constexpr char PREFIX_NORMALIZED[] = "@normalized:";
     static constexpr char PREFIX_NORMALIZED_SO[] = "@normalized:Y";
     static constexpr char PREFIX_NORMALIZED_NOT_SO[] = "@normalized:N";
@@ -171,12 +172,17 @@ public:
     static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
                                                 const CString &requestName);
     static CVector<CString> SplitNormalizedOhmurl(const CString &ohmurl);
-    static CString ConcatImportFileNormalizedOhmurl(const CString &recordPath, const CString &requestName);
+    static CString ConcatImportFileNormalizedOhmurl(const CString &recordPath, const CString &requestName,
+                                                    const CString &version = "");
     static CString ConcatNativeSoNormalizedOhmurl(const CString &moduleName, const CString &bundleName,
                                                   const CString &pkgName, const CString &version);
     static CString ConcatNotSoNormalizedOhmurl(const CString &moduleName, const CString &bundleName,
                                                const CString &pkgName, const CString &entryPath,
                                                const CString &version);
+    static CString ConcatMergeFileNameToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                   CString &baseFileName, CString recordName, CString requestName);
+    static CVector<CString> SplitNormalizedRecordName(const CString &recordName);
+    static CString ConcatImportFileNormalizedOhmurlWithRecordName(CString &recordName, CString &requestName);
     static inline bool IsSandboxPath(const CString &moduleFileName)
     {
         return base::StringHelper::StringStartWith(moduleFileName, ModulePathHelper::BUNDLE_INSTALL_PATH);
@@ -341,6 +347,15 @@ public:
             return "";
         }
         return res[NORMALIZED_IMPORT_PATH_INDEX];
+    }
+
+    inline static bool IsShouldRemoveSuffix(const CString &suffix)
+    {
+        CSet<CString> suffixSet = {EXT_NAME_JS, EXT_NAME_TS, EXT_NAME_ETS, EXT_NAME_JSON, EXT_NAME_MJS};
+        if (suffixSet.find(suffix) != suffixSet.end()) {
+            return true;
+        }
+        return false;
     }
 };
 } // namespace panda::ecmascript
