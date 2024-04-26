@@ -363,7 +363,12 @@ protected:
             JSHandle<TaggedArray> propertyArray = factory_->NewSTaggedArray(size);
             for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
                 JSHandle<JSTaggedValue> keyHandle = propertyList[start + i];
-                propertyArray->Set(thread_, i, keyHandle);
+                auto newKey = keyHandle.GetTaggedValue();
+                auto stringAccessor = EcmaStringAccessor(newKey);
+                if (!stringAccessor.IsInternString()) {
+                    newKey = JSTaggedValue(thread_->GetEcmaVM()->GetFactory()->InternString(keyHandle));
+                }
+                propertyArray->Set(thread_, i, newKey);
                 propertyArray->Set(thread_, i + 1, JSTaggedValue(int(FieldType::NONE)));
             }
             hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
