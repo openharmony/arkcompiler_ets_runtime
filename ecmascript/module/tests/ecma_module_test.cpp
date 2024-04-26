@@ -748,7 +748,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurl)
 {
     CString recordPath = "entry/ets/";
     CString requestName = "test";
-    CString outFileName = ModulePathHelper::ConcatImportFileNormalizedOhmurl(recordPath, requestName);
+    CString outFileName = ModulePathHelper::ConcatImportFileNormalizedOhmurl(recordPath, requestName, "");
     CString exceptOutFileName = "@normalized:N&&entry/ets/test&";
     EXPECT_EQ(outFileName, exceptOutFileName);
 }
@@ -789,5 +789,22 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized)
     ModulePathHelper::TranslateExpressionToNormalized(thread, nullptr, baseFileName, recordName, requestPath);
     exceptOutFileName = "@normalized:N&&&har/Index&1.0.0";
     EXPECT_EQ(requestPath, exceptOutFileName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName)
+{
+    CString requestPath = "&har/Index&1.0.0";
+    CVector<CString> res = ModulePathHelper::SplitNormalizedRecordName(requestPath);
+    int exceptCount = 5;
+    EXPECT_EQ(res.size(), exceptCount);
+    CString emptyStr = "";
+    EXPECT_EQ(res[0], emptyStr);
+    EXPECT_EQ(res[1], emptyStr);
+    EXPECT_EQ(res[2], emptyStr);
+
+    CString importPath = "har/Index";
+    EXPECT_EQ(res[3], importPath);
+    CString version = "1.0.0";
+    EXPECT_EQ(res[4], version);
 }
 }  // namespace panda::test
