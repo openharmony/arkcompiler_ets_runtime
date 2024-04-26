@@ -153,6 +153,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitLoadArrayLength(gate);
         case OpCode::LOAD_STRING_LENGTH:
             return VisitLoadStringLength(gate);
+        case OpCode::LOAD_MAP_SIZE:
+            return VisitLoadMapSize(gate);
         case OpCode::LOAD_ELEMENT:
             return VisitLoadElement(gate);
         case OpCode::STORE_ELEMENT:
@@ -233,6 +235,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::NUMBER_IS_INTEGER:
         case OpCode::NUMBER_IS_SAFEINTEGER:
             return VisitNumberIsInteger(gate);
+        case OpCode::NUMBER_PARSE_FLOAT:
+            return VisitNumberParseFloat(gate);
         case OpCode::MATH_IMUL:
             return VisitMathImul(gate);
         case OpCode::DATA_VIEW_GET:
@@ -241,9 +245,21 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitDataViewSet(gate);
         case OpCode::DATE_GET_TIME:
             return VisitDateGetTime(gate);
+        case OpCode::BIGINT_ASINTN:
+        case OpCode::BIGINT_ASUINTN:
+            return VisitBigIntAsIntN(gate);
         case OpCode::MAP_HAS:
         case OpCode::SET_HAS:
+        case OpCode::MAP_DELETE:
+        case OpCode::SET_DELETE:
             return VisitOthers(gate, GateType::BooleanType());
+        case OpCode::DATE_NOW:
+            return VisitDateNow(gate);
+        case OpCode::BIGINT_CONSTRUCTOR:
+            return VisitBigIntConstructor(gate);
+        case OpCode::MAP_CLEAR:
+        case OpCode::SET_CLEAR:
+            return VisitOthers(gate, GateType::UndefinedType());
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:
@@ -278,6 +294,10 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
         case OpCode::MAP_GET:
         case OpCode::NEW_NUMBER:
+        case OpCode::TYPED_ARRAY_ENTRIES:
+        case OpCode::TYPED_ARRAY_KEYS:
+        case OpCode::TYPED_ARRAY_VALUES:
+        case OpCode::SET_ADD:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -1335,6 +1355,15 @@ GateRef NumberSpeculativeRetype::VisitLoadStringLength(GateRef gate)
     return Circuit::NullGate();
 }
 
+GateRef NumberSpeculativeRetype::VisitLoadMapSize(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::IntType());
+    }
+
+    return Circuit::NullGate();
+}
+
 GateRef NumberSpeculativeRetype::VisitLoadElement(GateRef gate)
 {
     if (IsRetype()) {
@@ -1544,6 +1573,7 @@ GateRef NumberSpeculativeRetype::VisitNumberOrGlobalBuiltin(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
+
     // We change IsNan/IsFinite to constant if input is INT32 without check
     // So we skip tagged input with int profiled type
     auto type = GetNumberInputTypeInfo(input, true);
@@ -1592,6 +1622,15 @@ GateRef NumberSpeculativeRetype::VisitNumberIsInteger(GateRef gate)
     ResizeAndSetTypeInfo(input, TypeInfo::FLOAT64);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitNumberParseFloat(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::DoubleType());
+    }
+    ASSERT(IsConvert());
     return Circuit::NullGate();
 }
 
@@ -1720,6 +1759,22 @@ GateRef NumberSpeculativeRetype::VisitMathTrunc(GateRef gate)
     return Circuit::NullGate();
 }
 
+GateRef NumberSpeculativeRetype::VisitBigIntAsIntN(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+    ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 3U);
+    GateRef bits = acc_.GetValueIn(gate, 0);
+    acc_.ReplaceValueIn(gate, ConvertToTagged(CheckAndConvertToFloat64(bits, GateType::NumberType(),
+                                                                       ConvertToNumber::BOOL_ONLY)), 0);
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
+
 TypeInfo NumberSpeculativeRetype::GetNumberInputTypeInfo(GateRef gate, bool skipTagged)
 {
     TypeInfo typeInfo = GetOutputTypeInfo(gate);
@@ -1817,6 +1872,44 @@ GateRef NumberSpeculativeRetype::VisitDataViewGet(GateRef gate)
     return Circuit::NullGate();
 }
 
+GateRef NumberSpeculativeRetype::VisitBigIntConstructor(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::BigIntType());
+    }
+    GateRef input = acc_.GetValueIn(gate, 0);
+    TypeInfo typeInfo = GetOutputTypeInfo(input);
+    const GateMetaData* meta = nullptr;
+    switch (typeInfo) {
+        case TypeInfo::INT32:
+            meta = circuit_->BigIntConstructorInt32();
+            break;
+        case TypeInfo::UINT32:
+            meta = circuit_->BigIntConstructorUint32();
+            break;
+        default:
+            auto int32_cnst = TryConvertConstant(input, true);
+            if (int32_cnst != Circuit::NullGate()) {
+                acc_.ReplaceValueIn(gate, int32_cnst, 0);
+                int32_t rawValue = acc_.GetInt32FromConstant(int32_cnst);
+                if (rawValue < 0) {
+                    meta = circuit_->BigIntConstructorInt32();
+                } else {
+                    meta = circuit_->BigIntConstructorUint32();
+                }
+            }
+            break;
+    }
+    if (meta != nullptr) {
+        // int or uint input
+        acc_.SetMetaData(gate, meta);
+    } else {
+        // double, object or some other input
+        acc_.ReplaceValueIn(gate, ConvertToTagged(input), 0);
+    }
+    return Circuit::NullGate();
+}
+
 GateRef NumberSpeculativeRetype::VisitDataViewSet(GateRef gate)
 {
     if (IsRetype()) {
@@ -1842,6 +1935,16 @@ GateRef NumberSpeculativeRetype::VisitDateGetTime(GateRef gate)
     }
     ASSERT(IsConvert());
     // Nothing to do, because one input and it is object "this"
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitDateNow(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::DoubleType());
+    }
+    ASSERT(IsConvert());
+    // Nothing to do, because don't have inputs
     return Circuit::NullGate();
 }
 

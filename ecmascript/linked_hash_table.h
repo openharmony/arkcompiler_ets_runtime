@@ -63,6 +63,11 @@ public:
 
     static JSHandle<Derived> Shrink(const JSThread *thread, const JSHandle<Derived> &table, int additionalCapacity = 0);
 
+    static int GetLengthOfTable(int numberOfElements)
+    {
+        return ELEMENTS_START_INDEX + numberOfElements + numberOfElements * (HashObject::ENTRY_SIZE + 1);
+    }
+
     inline bool HasSufficientCapacity(int numOfAddElements) const
     {
         int numberOfElements = NumberOfElements();

@@ -980,7 +980,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
         } else {
             JSHandle<NameDictionary> baseDict(thread, baseIHClass->GetLayout());
             auto baseLength = baseDict->EntriesCount();
-            auto newLength = fieldNum + baseLength;
+            auto newLength = fieldNum + static_cast<uint32_t>(baseLength);
             JSHandle<NameDictionary> dict =
                 NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(newLength));
             baseDict->Rehash(thread, *dict);

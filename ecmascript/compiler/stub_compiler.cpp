@@ -29,6 +29,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/compiler/baseline/baseline_stubs.h"
 
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
@@ -120,6 +121,7 @@ void StubCompiler::InitializeCS() const
 {
     BytecodeStubCSigns::Initialize();
     CommonStubCSigns::Initialize();
+    BaselineStubCSigns::Initialize();
     BuiltinsStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
 }
@@ -164,6 +166,16 @@ bool StubCompiler::BuildStubModuleAndSave() const
         return false;
     }
     RunPipeline(static_cast<LLVMModule*>(builtinM->GetModule()), &allocator);
+
+    LOG_COMPILER(INFO) << "=============== compiling baseline stubs ===============";
+    LOptions baselineOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
+    Module* baselineM = generator.AddModule(&allocator, "baseline_stub", triple_, baselineOp, log->OutputASM(),
+                                            StubFileKind::BASELINE);
+    if (!baselineM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(baselineM->GetModule()), &allocator);
 
     generator.SaveStubFile(filePath_);
     return true;

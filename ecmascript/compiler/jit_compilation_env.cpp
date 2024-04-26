@@ -15,7 +15,6 @@
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
 namespace panda::ecmascript {
@@ -70,7 +69,11 @@ JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFil
 {
     ASSERT(thread_->IsInRunningState());
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    return method->GetConstantPool();
+    JSTaggedValue constpool = method->GetConstantPool();
+    [[maybe_unused]] const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+    ASSERT(taggedPool->GetJSPandaFile() == jsPandaFile);
+    ASSERT(method->GetMethodId() == id);
+    return constpool;
 }
 
 JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFile *jsPandaFile,
@@ -78,25 +81,31 @@ JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFil
 {
     ASSERT(thread_->IsInRunningState());
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    return method->GetConstantPool();
+    JSTaggedValue constpool = method->GetConstantPool();
+    [[maybe_unused]] const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+    ASSERT(taggedPool->GetJSPandaFile() == jsPandaFile);
+    ASSERT(taggedPool->GetSharedConstpoolId().GetInt() == index);
+    return constpool;
 }
 
 JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] const uint32_t methodOffset) const
 {
     ASSERT(thread_->IsInRunningState());
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    ASSERT(method->GetMethodId().GetOffset() == methodOffset);
     JSTaggedValue constpool = method->GetConstantPool();
-    if (!ConstantPool::CheckUnsharedConstpool(constpool)) {
-        constpool = hostThread_->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
-        return constpool;
-    }
-    ASSERT(constpool.IsHole());
-    return constpool;
+    ASSERT(!ConstantPool::CheckUnsharedConstpool(constpool));
+    JSTaggedValue unSharedConstpool = hostThread_->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
+    return unSharedConstpool;
 }
 
 JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] JSTaggedValue sharedConstpool) const
 {
-    return FindOrCreateUnsharedConstpool(0);
+    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    [[maybe_unused]] JSTaggedValue constpool = method->GetConstantPool();
+    ASSERT(constpool == sharedConstpool);
+    uint32_t methodOffset = method->GetMethodId().GetOffset();
+    return FindOrCreateUnsharedConstpool(methodOffset);
 }
 
 JSHandle<ConstantPool> JitCompilationEnv::FindOrCreateConstPool([[maybe_unused]] const JSPandaFile *jsPandaFile,
@@ -110,6 +119,7 @@ JSTaggedValue JitCompilationEnv::GetConstantPoolByMethodOffset([[maybe_unused]] 
 {
     ASSERT(thread_->IsInRunningState());
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    ASSERT(method->GetMethodId().GetOffset() == methodOffset);
     return method->GetConstantPool();
 }
 
@@ -144,10 +154,11 @@ const GlobalEnvConstants *JitCompilationEnv::GlobalConstants() const
 }
 
 JSTaggedValue JitCompilationEnv::GetStringFromConstantPool([[maybe_unused]] const uint32_t methodOffset,
-    [[maybe_unused]] const uint16_t cpIdx) const
+    const uint16_t cpIdx) const
 {
     ASSERT(thread_->IsInRunningState());
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    ASSERT(method->GetMethodId().GetOffset() == methodOffset);
     JSTaggedValue constpool = method->GetConstantPool();
     return ConstantPool::GetStringFromCacheForJit(GetJSThread(), constpool, cpIdx);
 }

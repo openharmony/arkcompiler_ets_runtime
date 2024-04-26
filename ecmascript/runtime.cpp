@@ -80,8 +80,10 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
         if (++vmCount_ == 1) {
             ThreadManagedScope managedScope(vm->GetAssociatedJSThread());
             PreInitialization(vm);
-            bool isEnableJit = vm->GetJSOptions().IsEnableJIT() && vm->GetJSOptions().GetEnableAsmInterpreter();
-            Jit::GetInstance()->SetEnableOrDisable(vm->GetJSOptions(), isEnableJit);
+            bool isEnableFastJit = vm->GetJSOptions().IsEnableJIT() && vm->GetJSOptions().GetEnableAsmInterpreter();
+            bool isEnableBaselineJit =
+                vm->GetJSOptions().IsEnableBaselineJIT() && vm->GetJSOptions().GetEnableAsmInterpreter();
+            Jit::GetInstance()->SetEnableOrDisable(vm->GetJSOptions(), isEnableFastJit, isEnableBaselineJit);
             vm->Initialize();
             PostInitialization(vm);
         }

@@ -19,6 +19,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/baseline/baseline_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
@@ -26,6 +27,7 @@
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/baseline/baseline_stubs.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
@@ -267,8 +269,8 @@ void LLVMIRBuilder::Build()
                 continue;
             }
             if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
-                LOG_COMPILER(FATAL) << "The gate below need to be translated ";
                 acc_.Print(gate);
+                LOG_COMPILER(FATAL) << "The gate below need to be translated ";
                 UNREACHABLE();
             }
         }
@@ -363,6 +365,11 @@ void LLVMIRBuilder::GenPrologue()
     size_t reservedSlotsSize = 0;
     if (frameType == FrameType::OPTIMIZED_FRAME) {
         reservedSlotsSize = OptimizedFrame::ComputeReservedSize(slotSize_);
+        LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
+                                           std::to_string(reservedSlotsSize).c_str());
+        SaveFrameTypeOnFrame(frameType, builder_);
+    } else if (frameType == FrameType::BASELINE_BUILTIN_FRAME) {
+        reservedSlotsSize = BaselineBuiltinFrame::ComputeReservedSize(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
                                            std::to_string(reservedSlotsSize).c_str());
         SaveFrameTypeOnFrame(frameType, builder_);
@@ -554,6 +561,11 @@ LLVMValueRef LLVMIRBuilder::GetFunctionFromGlobalValue([[maybe_unused]] LLVMValu
 bool LLVMIRBuilder::IsInterpreted() const
 {
     return circuit_->GetFrameType() == FrameType::ASM_INTERPRETER_FRAME;
+}
+
+bool LLVMIRBuilder::IsBaselineBuiltin() const
+{
+    return circuit_->GetFrameType() == FrameType::BASELINE_BUILTIN_FRAME;
 }
 
 bool LLVMIRBuilder::IsOptimized() const
@@ -2893,6 +2905,12 @@ void LLVMModule::SetUpForBytecodeHandlerStubs()
 void LLVMModule::SetUpForBuiltinsStubs()
 {
     BuiltinsStubCSigns::GetCSigns(callSigns_);
+    InitialLLVMFuncTypeAndFuncByModuleCSigns();
+}
+
+void LLVMModule::SetUpForBaselineStubs()
+{
+    BaselineStubCSigns::GetCSigns(callSigns_);
     InitialLLVMFuncTypeAndFuncByModuleCSigns();
 }
 

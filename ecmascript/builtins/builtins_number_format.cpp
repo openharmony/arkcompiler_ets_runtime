@@ -66,14 +66,16 @@ JSTaggedValue BuiltinsNumberFormat::NumberFormatConstructor(EcmaRuntimeCallInfo 
     //    a. Perform ? DefinePropertyOrThrow(this, %Intl%.[[FallbackSymbol]], PropertyDescriptor{
     //       [[Value]]: numberFormat, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
     //    b. Return this.
-    bool isInstanceOf = JSObject::InstanceOf(thread, thisValue, env->GetNumberFormatFunction());
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (newTarget->IsUndefined() && thisValue->IsJSObject() && isInstanceOf) {
-        PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>::Cast(numberFormat), false, false, false);
-        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
-        JSTaggedValue::DefinePropertyOrThrow(thread, thisValue, key, descriptor);
+    if (newTarget->IsUndefined() && thisValue->IsJSObject()) {
+        bool isInstanceOf = JSObject::InstanceOf(thread, thisValue, env->GetNumberFormatFunction());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        return thisValue.GetTaggedValue();
+        if (isInstanceOf) {
+            PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>::Cast(numberFormat), false, false, false);
+            JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
+            JSTaggedValue::DefinePropertyOrThrow(thread, thisValue, key, descriptor);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return thisValue.GetTaggedValue();
+        }
     }
 
     // 6. Return numberFormat.

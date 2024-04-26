@@ -202,6 +202,7 @@ public:
     GateRef GetElementsArray(GateRef object);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
+    GateRef IsTypedArray(GateRef array);
     GateRef GetSuperConstructor(GateRef ctor);
     GateRef Merge(const std::vector<GateRef> &inList);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -280,6 +281,7 @@ public:
     GateRef GetUnsharedConstpoolIndex(GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef arrayAddr, GateRef index);
     GateRef GetCodeAddr(GateRef jsFunc);
+    GateRef GetBaselineCodeAddr(GateRef baselineCode);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
     GateRef GetFunctionLexicalEnv(GateRef function);
@@ -396,8 +398,14 @@ public:
     inline GateRef GetMethodId(GateRef func);
     inline GateRef GetBuiltinsId(GateRef func);
     inline GateRef IsAOTLiteralInfo(GateRef x);
+    GateRef GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex);
+    GateRef GetParentEnv(GateRef object);
+    GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
 
     // call operation
+    GateRef CallPrivateGetter(GateRef hirGate, GateRef receiver, GateRef accessor, const char* comment = nullptr);
+    GateRef CallPrivateSetter(
+        GateRef hirGate, GateRef receiver, GateRef accessor, GateRef value, const char* comment = nullptr);
     GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef holder,
         GateRef propertyLookupResult, const char* comment = nullptr);
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,
@@ -495,6 +503,7 @@ public:
     GateRef ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
     GateRef EcmaStringCheck(GateRef gate);
+    GateRef EcmaMapCheck(GateRef gate);
     GateRef FlattenTreeStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
@@ -614,6 +623,7 @@ public:
     GateRef LoadArrayLength(GateRef array);
     inline GateRef LoadFromTaggedArray(GateRef array, size_t index);
     GateRef LoadStringLength(GateRef string);
+    GateRef LoadMapSize(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
         MemoryOrder order = MemoryOrder::Default());
     GateRef LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index);
@@ -646,6 +656,7 @@ public:
     GateRef TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn);
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);
+    GateRef BuildBigIntAsIntN(const GateMetaData* op, std::vector<GateRef> &&args);
 
     // bit operation
     inline GateRef TaggedIsInt(GateRef x);
@@ -689,6 +700,7 @@ public:
     inline GateRef TaggedIsProtoChangeMarker(GateRef obj);
     inline GateRef TaggedObjectIsJSMap(GateRef obj);
     inline GateRef TaggedObjectIsJSSet(GateRef obj);
+    inline GateRef TaggedObjectIsJSDate(GateRef obj);
     inline GateRef TaggedObjectIsTypedArray(GateRef obj);
     inline GateRef TaggedObjectIsJSArray(GateRef obj);
     inline GateRef TaggedGetInt(GateRef x);
@@ -697,6 +709,7 @@ public:
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
     inline GateRef TaggedObjectIsByteArray(GateRef obj);
+    inline GateRef TaggedObjectIsMap(GateRef obj);
     inline GateRef TaggedObjectIsDataView(GateRef obj);
     inline GateRef IsSpecialHole(GateRef x);
     inline GateRef IsNotSpecialHole(GateRef x);
@@ -735,6 +748,7 @@ public:
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
     GateRef NumberIsNaN(GateRef gate);
+    GateRef NumberParseFloat(GateRef gate, GateRef frameState);
     GateRef NumberIsFinite(GateRef gate);
     GateRef NumberIsInteger(GateRef gate);
     GateRef NumberIsSafeInteger(GateRef gate);
@@ -835,6 +849,8 @@ public:
     inline GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOpWithOverflow(GateRef x, GateRef y);
+
+    GateRef BuildTypedArrayIterator(GateRef gate, const GateMetaData* op);
 
 #define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                                        \
     inline GateRef NAME(GateRef x, GateRef y, GateType type = GateType::Empty(), const char* comment = nullptr)  \

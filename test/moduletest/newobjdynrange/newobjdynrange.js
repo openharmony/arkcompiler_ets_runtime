@@ -32,3 +32,10 @@ try {
 } catch (e) {
     print(e.name);
 }
+function func() {
+    func.prototype = "hello"
+}
+for (let i = 0; i < 2; i++) {
+    let obj = new func();
+    print(Object.getPrototypeOf(obj))
+}

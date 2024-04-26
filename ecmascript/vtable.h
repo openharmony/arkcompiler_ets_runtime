@@ -21,6 +21,8 @@
 namespace panda::ecmascript {
 class VTable : public TaggedArray {
 public:
+    static constexpr uint32_t DEFAULT_SUPERS_CAPACITY = 4;
+
     enum TupleItem {
         NAME = 0,
         TYPE,

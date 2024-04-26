@@ -220,10 +220,10 @@ public:
         GetClass()->SetClassConstructor(flag);
     }
 
-    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
-        void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
-    void SetSFunctionExtraInfo(
-        JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize = 0);
+    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
+                              void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
+    void SetSFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
+                               void *data, size_t nativeBindingsize = 0);
 
     JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;
@@ -244,7 +244,8 @@ public:
     ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
     // For runtime native function, the LexicalEnv field is used to store GlobalEnv, such as RegExp's native function
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, MACHINECODE_OFFSET)
-    ACCESSORS(MachineCode, MACHINECODE_OFFSET, PROFILE_TYPE_INFO_OFFSET)
+    ACCESSORS(MachineCode, MACHINECODE_OFFSET, BASELINECODE_OFFSET)
+    ACCESSORS(BaselineCode, BASELINECODE_OFFSET, PROFILE_TYPE_INFO_OFFSET)
     ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, HOME_OBJECT_OFFSET)
     ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, ECMA_MODULE_OFFSET)
     ACCESSORS(Module, ECMA_MODULE_OFFSET, WORK_NODE_POINTER_OFFSET)

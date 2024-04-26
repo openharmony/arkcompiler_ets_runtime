@@ -33,7 +33,7 @@ icu::number::LocalizedNumberFormatter *JSPluralRules::GetIcuNumberFormatter() co
     return reinterpret_cast<icu::number::LocalizedNumberFormatter *>(result);
 }
 
-void JSPluralRules::FreeIcuNumberFormatter(void *pointer, void* hint)
+void JSPluralRules::FreeIcuNumberFormatter([[maybe_unused]] void *env, void *pointer, void* hint)
 {
     if (pointer == nullptr) {
         return;
@@ -46,7 +46,7 @@ void JSPluralRules::FreeIcuNumberFormatter(void *pointer, void* hint)
 }
 
 void JSPluralRules::SetIcuNumberFormatter(JSThread *thread, const JSHandle<JSPluralRules> &pluralRules,
-    const icu::number::LocalizedNumberFormatter &icuNF, const DeleteEntryPoint &callback)
+    const icu::number::LocalizedNumberFormatter &icuNF, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -57,7 +57,7 @@ void JSPluralRules::SetIcuNumberFormatter(JSThread *thread, const JSHandle<JSPlu
     JSTaggedValue data = pluralRules->GetIcuNF();
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuPointer);
+        native->ResetExternalPointer(thread, icuPointer);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuPointer, callback, ecmaVm);
@@ -71,7 +71,7 @@ icu::PluralRules *JSPluralRules::GetIcuPluralRules() const
     return reinterpret_cast<icu::PluralRules *>(result);
 }
 
-void JSPluralRules::FreeIcuPluralRules(void *pointer, void* hint)
+void JSPluralRules::FreeIcuPluralRules([[maybe_unused]] void *env, void *pointer, void* hint)
 {
     if (pointer == nullptr) {
         return;
@@ -84,7 +84,7 @@ void JSPluralRules::FreeIcuPluralRules(void *pointer, void* hint)
 }
 
 void JSPluralRules::SetIcuPluralRules(JSThread *thread, const JSHandle<JSPluralRules> &pluralRules,
-    const icu::PluralRules &icuPR, const DeleteEntryPoint &callback)
+    const icu::PluralRules &icuPR, const NativePointerCallback &callback)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
@@ -95,7 +95,7 @@ void JSPluralRules::SetIcuPluralRules(JSThread *thread, const JSHandle<JSPluralR
     JSTaggedValue data = pluralRules->GetIcuPR();
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuPointer);
+        native->ResetExternalPointer(thread, icuPointer);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuPointer, callback, ecmaVm);

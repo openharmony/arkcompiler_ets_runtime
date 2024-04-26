@@ -140,7 +140,7 @@ JSHandle<JSHClass> PGOHClassGenerator::CreateRootHClass(
     auto hclassValue = ptManager_->QueryHClass(rootType, rootType);
     JSHandle<JSHClass> rootHClass(thread, hclassValue);
     if (hclassValue.IsUndefined()) {
-        rootHClass = JSHClass::CreateRootHClass(thread, layoutDesc, maxNum);
+        rootHClass = JSHClass::CreateRootHClassFromPGO(thread, layoutDesc, maxNum);
         ptManager_->RecordHClass(rootType, rootType, rootHClass.GetTaggedType());
     }
     return rootHClass;
@@ -158,7 +158,7 @@ void PGOHClassGenerator::CreateChildHClass(ProfileType rootType, const PGOHClass
         auto thread = ptManager_->GetJSThread();
         JSHandle<JSHClass> childHClass(thread, hclassValue);
         if (hclassValue.IsUndefined()) {
-            childHClass = JSHClass::CreateChildHClass(thread, parent, layoutDesc);
+            childHClass = JSHClass::CreateChildHClassFromPGO(thread, parent, layoutDesc);
             ptManager_->RecordHClass(rootType, childType, childHClass.GetTaggedType());
         }
         CreateChildHClass(rootType, desc, childHClass, layoutDesc);

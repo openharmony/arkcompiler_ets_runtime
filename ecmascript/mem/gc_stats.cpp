@@ -51,7 +51,11 @@ void GCStats::PrintGCStatistic()
                         << scopeDuration_[Scope::ScopeId::TotalGC] << "(+"
                         << GetConcurrrentMarkDuration()
                         << ")ms, " << GCReasonToString();
-
+        LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground();
+        LOG_GC(INFO) << "InSensitiveStatus: " << heap_->InSensitiveStatus();
+        LOG_GC(INFO) << "onStartUpEvent: " << heap_->onStartUpEvent();
+        LOG_GC(INFO) << "BundleName: " << heap_->GetEcmaVM()->GetBundleName();
+        
         // print verbose gc statsistics
         PrintVerboseGCStatistic();
     }

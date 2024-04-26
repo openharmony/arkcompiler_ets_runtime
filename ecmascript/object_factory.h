@@ -31,7 +31,6 @@
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/byte_array.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 
 namespace panda::ecmascript {
 struct MethodLiteral;
@@ -106,19 +105,6 @@ class LayoutInfo;
 class JSIntlBoundFunction;
 class FreeObject;
 class JSNativePointer;
-class TSModuleTable;
-class TSTypeTable;
-class TSObjLayoutInfo;
-class TSType;
-class TSObjectType;
-class TSClassType;
-class TSUnionType;
-class TSInterfaceType;
-class TSClassInstanceType;
-class TSFunctionType;
-class TSArrayType;
-class TSIteratorInstanceType;
-class TSNamespaceType;
 class JSAPIArrayList;
 class JSAPIArrayListIterator;
 class JSAPIDeque;
@@ -336,14 +322,6 @@ public:
 
     JSHandle<JSArray> NewJSArray();
     JSHandle<JSSharedArray> PUBLIC_API NewJSSArray();
-    JSHandle<JSSharedMap> PUBLIC_API NewJSSMap();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONArray();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONTrue();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONFalse();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONString();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNumber();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNull();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONObject();
     JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
@@ -515,8 +493,8 @@ public:
 
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length);
 
-    JSHandle<JSArrayBuffer> NewJSArrayBuffer(void *buffer, int32_t length, const DeleteEntryPoint &deleter, void *data,
-                                             bool share = false);
+    JSHandle<JSArrayBuffer> NewJSArrayBuffer(void *buffer, int32_t length, const NativePointerCallback &deleter,
+                                             void *data, bool share = false);
 
     JSHandle<JSDataView> NewJSDataView(JSHandle<JSArrayBuffer> buffer, uint32_t offset, uint32_t length);
 
@@ -529,12 +507,12 @@ public:
     void NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, void *buffer, size_t size);
 
     template<typename T, typename S>
-    inline void NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const DeleteEntryPoint &callback);
+    inline void NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const NativePointerCallback &callback);
 
     EcmaString *PUBLIC_API InternString(const JSHandle<JSTaggedValue> &key);
 
     inline JSHandle<JSNativePointer> NewJSNativePointer(void *externalPointer,
-                                                        const DeleteEntryPoint &callBack = nullptr,
+                                                        const NativePointerCallback &callBack = nullptr,
                                                         void *data = nullptr,
                                                         bool nonMovable = false,
                                                         size_t nativeBindingsize = 0,
@@ -561,29 +539,17 @@ public:
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 const JSHandle<JSTaggedValue> &newTarget);
+    JSHandle<JSObject> NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
+        const JSHandle<JSFunction> &constructor, uint32_t inlinedProps);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);
 
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
-    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc *desc, JSHandle<Method> &method);
+    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc, JSHandle<Method> &method);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
-
-    // ----------------------------------- new TSType ----------------------------------------
-    JSHandle<TSObjLayoutInfo> CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal = JSTaggedValue::Hole());
-    JSHandle<TSObjectType> NewTSObjectType(uint32_t numOfKeys);
-    JSHandle<TSClassType> NewTSClassType();
-    JSHandle<TSUnionType> NewTSUnionType(uint32_t length);
-    JSHandle<TSInterfaceType> NewTSInterfaceType();
-    JSHandle<TSClassInstanceType> NewTSClassInstanceType();
-    JSHandle<TSTypeTable> NewTSTypeTable(uint32_t length);
-    JSHandle<TSModuleTable> NewTSModuleTable(uint32_t length);
-    JSHandle<TSFunctionType> NewTSFunctionType(uint32_t length);
-    JSHandle<TSArrayType> NewTSArrayType();
-    JSHandle<TSIteratorInstanceType> NewTSIteratorInstanceType();
-    JSHandle<TSNamespaceType> NewTSNamespaceType();
 
     // ----------------------------------- new string ----------------------------------------
     JSHandle<EcmaString> PUBLIC_API NewFromASCII(std::string_view data);
@@ -857,7 +823,7 @@ public:
                                             const JSHandle<JSTaggedValue> &prototype, bool isAccessor = true);
 
     JSHandle<JSNativePointer> NewSJSNativePointer(void *externalPointer,
-                                                  const DeleteEntryPoint &callBack,
+                                                  const NativePointerCallback &callBack,
                                                   void *data = nullptr,
                                                   bool nonMovable = false,
                                                   size_t nativeBindingsize = 0,
@@ -877,7 +843,6 @@ private:
     friend class GlobalEnvConstants;
     friend class EcmaString;
     friend class SnapshotProcessor;
-    friend class TSManager;
     friend class SingleCharTable;
     void InitObjectFields(const TaggedObject *object);
 

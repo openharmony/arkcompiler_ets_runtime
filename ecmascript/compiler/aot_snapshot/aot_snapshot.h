@@ -36,6 +36,16 @@ public:
         return snapshotData_.GetData();
     }
 
+    void StoreSymbolInfo(JSHandle<TaggedArray> info)
+    {
+        snapshotData_.StoreSymbolInfo(info);
+    }
+
+    JSTaggedValue GetSymbolInfo() const
+    {
+        return snapshotData_.GetSymbolInfo();
+    }
+
     void StoreHClassInfo(JSHandle<TaggedArray> info)
     {
         snapshotData_.StoreHClassInfo(info);

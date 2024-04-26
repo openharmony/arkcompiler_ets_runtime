@@ -16,7 +16,6 @@
 #include <codecvt>
 #include <iomanip>
 #include <iostream>
-#include <ostream>
 #include <string>
 
 #include "ecmascript/accessor_data.h"
@@ -25,8 +24,6 @@
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/mem/tagged_object.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -127,11 +124,9 @@
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/template_map.h"
 #include "ecmascript/transitions_dictionary.h"
-#include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/js_displaynames.h"
 #include "ecmascript/js_list_format.h"
-#include "js_hclass.h"
-#include "shared_objects/js_shared_json_value.h"
+#include "ecmascript/mem/object_xray.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -151,6 +146,44 @@ using PendingJob = panda::ecmascript::job::PendingJob;
 static constexpr uint32_t DUMP_TYPE_OFFSET = 12;
 static constexpr uint32_t DUMP_PROPERTY_OFFSET = 20;
 static constexpr uint32_t DUMP_ELEMENT_OFFSET = 2;
+
+static bool HasEdge(std::vector<Reference> &vec, JSTaggedValue toValue)
+{
+    for (auto &ref : vec) {
+        if (ref.value_ == toValue) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void AddAnonymousEdge(TaggedObject *obj, std::vector<Reference> &vec)
+{
+    auto hclass = obj->GetClass();
+    if (hclass == nullptr) {
+        return;
+    }
+    ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(obj, hclass,
+        [&vec]([[maybe_unused]]TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+            if (area != VisitObjectArea::NORMAL) {
+                return;
+            }
+            uint32_t cnt = 0;
+            for (auto slot = start; slot != end; slot++) {
+                JSTaggedValue toValue = JSTaggedValue(slot.GetTaggedType());
+                if (!toValue.IsHeapObject()) {
+                    continue;
+                }
+                if (HasEdge(vec, toValue)) {
+                    continue;
+                }
+                std::string name = "anonymous-slot" + std::to_string(cnt);
+                cnt += 1;
+                vec.emplace_back(ConvertToString(name), toValue);
+            }
+        }
+    );
+}
 
 CString JSHClass::DumpJSType(JSType type)
 {
@@ -238,6 +271,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Array";
         case JSType::JS_SHARED_ARRAY:
             return "SharedArray";
+        case JSType::JS_SHARED_ARRAY_ITERATOR:
+            return "SharedArrayIterator";
         case JSType::JS_TYPED_ARRAY:
             return "Typed Array";
         case JSType::JS_INT8_ARRAY:
@@ -436,24 +471,6 @@ CString JSHClass::DumpJSType(JSType type)
             return "ClassInfoExtractor";
         case JSType::JS_API_ARRAY_LIST:
             return "ArrayList";
-        case JSType::TS_OBJECT_TYPE:
-            return "TSObjectType";
-        case JSType::TS_CLASS_TYPE:
-            return "TSClassType";
-        case JSType::TS_INTERFACE_TYPE:
-            return "TSInterfaceType";
-        case JSType::TS_CLASS_INSTANCE_TYPE:
-            return "TSClassInstanceType";
-        case JSType::TS_UNION_TYPE:
-            return "TSUnionType";
-        case JSType::TS_FUNCTION_TYPE:
-            return "TSFunctionType";
-        case JSType::TS_ARRAY_TYPE:
-            return "TSArrayType";
-        case JSType::TS_ITERATOR_INSTANCE_TYPE:
-            return "TSIteratorInstanceType";
-        case JSType::TS_NAMESPACE_TYPE:
-            return "TSNamespaceType";
         case JSType::JS_API_ARRAYLIST_ITERATOR:
             return "JSArraylistIterator";
         case JSType::LINKED_NODE:
@@ -542,14 +559,6 @@ CString JSHClass::DumpJSType(JSType type)
             return "LocalExportEntry";
         case JSType::STAR_EXPORTENTRY_RECORD:
             return "StarExportEntry";
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_STRING:
-        case JSType::JS_SHARED_JSON_ARRAY:
-            return "SharedJSONValue";
         default: {
             CString ret = "unknown type ";
             return ret.append(std::to_string(static_cast<char>(type)));
@@ -1203,33 +1212,6 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
             JSAPILightWeightSetIterator::Cast(obj)->Dump(os);
             break;
-        case JSType::TS_OBJECT_TYPE:
-            TSObjectType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_CLASS_TYPE:
-            TSClassType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_INTERFACE_TYPE:
-            TSInterfaceType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_CLASS_INSTANCE_TYPE:
-            TSClassInstanceType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_UNION_TYPE:
-            TSUnionType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_FUNCTION_TYPE:
-            TSFunctionType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_ARRAY_TYPE:
-            TSArrayType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_ITERATOR_INSTANCE_TYPE:
-            TSIteratorInstanceType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_NAMESPACE_TYPE:
-            TSNamespaceType::Cast(obj)->Dump(os);
-            break;
         case JSType::LINKED_NODE:
             LinkedNode::Cast(obj)->Dump(os);
             break;
@@ -1345,15 +1327,6 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::CLASS_LITERAL:
             ClassLiteral::Cast(obj)->Dump(os);
-            break;
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_STRING:
-        case JSType::JS_SHARED_JSON_ARRAY:
-            JSSharedJSONValue::Cast(obj)->Dump(os);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -3649,274 +3622,6 @@ void ClassInfoExtractor::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void TSObjectType::Dump(std::ostream &os) const
-{
-    os << " - TSObjectType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSObjectType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSObjectType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << "  - ObjLayoutInfo: ";
-    DumpArrayClass(TaggedArray::Cast(GetObjLayoutInfo().GetTaggedObject()), os);
-
-    os << " - Index signature: ";
-    if (GetIndexSigns().IsUndefined()) {
-        os << " no index signature type " << "\n";
-    } else {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
-    }
-}
-
-void TSClassType::Dump(std::ostream &os) const
-{
-    os << " - Dump TSClassType - " << "\n";
-    os << " - TSClassType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSClassType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSClassType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " - ExtensionTypeGT: ";
-    GlobalTSTypeRef extensionGT = GetExtensionGT();
-    if (extensionGT.IsDefault()) {
-        os << " (base class type) ";
-    } else {
-        os << extensionGT.GetType();
-    }
-    os << "\n";
-
-    CString hasLinked = GetHasLinked() ? "true" : "false";
-    os << " - HasLinked: " << hasLinked  << "\n";
-
-    os << " - InstanceType: " << "\n";
-    if (GetInstanceType().IsTSObjectType()) {
-        TSObjectType *instanceType = TSObjectType::Cast(GetInstanceType().GetTaggedObject());
-        instanceType->Dump(os);
-        os << "\n";
-    }
-
-    os << " - ConstructorType: " << "\n";
-    if (GetConstructorType().IsTSObjectType()) {
-        TSObjectType *constructorType = TSObjectType::Cast(GetConstructorType().GetTaggedObject());
-        constructorType->Dump(os);
-        os << "\n";
-    }
-
-    os << " - PrototypeType: " << "\n";
-    if (GetPrototypeType().IsTSObjectType()) {
-        TSObjectType *prototypeType = TSObjectType::Cast(GetPrototypeType().GetTaggedObject());
-        prototypeType->Dump(os);
-        os << "\n";
-    }
-
-    os << " - Index signature: ";
-    if (GetIndexSigns().IsUndefined()) {
-        os << " no index signature type " << "\n";
-    } else {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
-    }
-    os << "\n";
-}
-
-void TSInterfaceType::Dump(std::ostream &os) const
-{
-    os << " - Dump Interface Type - " << "\n";
-    os << " - TSInterfaceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSInterfaceType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSInterfaceType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " - Extends TypeId: " << "\n";
-    if (TaggedArray::Cast(GetExtends().GetTaggedObject())->GetLength() == 0) {
-        os << " (base interface type) "<< "\n";
-    }
-    DumpArrayClass(TaggedArray::Cast(GetExtends().GetTaggedObject()), os);
-
-    os << " - Fields: " << "\n";
-    if (GetFields().IsTSObjectType()) {
-        TSObjectType *fieldsType = TSObjectType::Cast(GetFields().GetTaggedObject());
-        fieldsType->Dump(os);
-        os << "\n";
-    }
-
-    os << " - Index signature: ";
-    if (GetIndexSigns().IsUndefined()) {
-        os << " no index signature type " << "\n";
-    } else {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
-    }
-    os << "\n";
-}
-
-void TSClassInstanceType::Dump(std::ostream &os) const
-{
-    os << " - Dump ClassInstance Type - " << "\n";
-    os << " - TSClassInstanceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSClassInstanceType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSClassInstanceType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-
-    os << " - createClassType GT: ";
-    GlobalTSTypeRef createClassTypeGT = GetClassGT();
-    os << createClassTypeGT.GetType();
-    os << "\n";
-}
-
-void TSUnionType::Dump(std::ostream &os) const
-{
-    os << " - Dump UnionType Type - " << "\n";
-    os << " - TSUnionType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSUnionType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSUnionType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " - TSUnionType TypeId: " << "\n";
-    DumpArrayClass(TaggedArray::Cast(GetComponents().GetTaggedObject()), os);
-}
-
-void TSFunctionType::Dump(std::ostream &os) const
-{
-    os << " - Dump TSFunctionType - " << "\n";
-    os << " - TSFunctionType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSFunctionType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSFunctionType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " - TSFunctionType Name: ";
-    JSTaggedValue name = GetName();
-    if (name.IsString()) {
-        os << ConvertToString(EcmaString::Cast(name.GetTaggedObject()));
-    }
-    os << "\n";
-    os << " - TSFunctionType ParameterTypeIds: " << "\n";
-    DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), os);
-    os << " - TSFunctionType ReturnType: " << GetReturnGT().GetType() << "\n";
-    os << " - TSFunctionType ThisType: " << GetThisGT().GetType() << "\n";
-    TSFunctionType::Visibility visibility = GetVisibility();
-    switch (visibility) {
-        case TSFunctionType::Visibility::PUBLIC:
-            os << " - Visibility: public";
-            break;
-        case TSFunctionType::Visibility::PRIVATE:
-            os << " - Visibility: private";
-            break;
-        case TSFunctionType::Visibility::PROTECTED:
-            os << " - Visibility: protected";
-            break;
-    }
-    os << " | IsStatic: " << std::boolalpha << GetStatic();
-    os << " | IsAsync: " << std::boolalpha << GetAsync();
-    os << " | IsGenerator: " << std::boolalpha << GetGenerator();
-    os << " | IsGetterSetter: " << std::boolalpha << GetIsGetterSetter();
-    os << "\n";
-}
-
-void TSArrayType::Dump(std::ostream &os) const
-{
-    os << " - Dump TSArrayType - " << "\n";
-    os << " - TSArrayType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    os << gt.GetType();
-    os << "\n";
-    os << " - TSArrayType ElementGT: ";
-    os <<  GetElementGT().GetType();
-    os << "\n";
-}
-
-void TSIteratorInstanceType::Dump(std::ostream &os) const
-{
-    os << " - Dump IteratorInstance Type - " << "\n";
-    os << " - TSIteratorInstanceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSIteratorInstanceType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSIteratorInstanceType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-
-    os << " - TSIteratorInstanceType KindGT: ";
-    os << GetKindGT().GetType();
-    os << "\n";
-
-    os << " - TSIteratorInstanceType ElementGT: ";
-    os << GetElementGT().GetType();
-    os << "\n";
-}
-
-void TSNamespaceType::Dump(std::ostream &os) const
-{
-    os << " - Dump Namespace Type - " << "\n";
-    os << " - TSNamespaceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSNamespaceType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSNamespaceType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << "  - Properties: ";
-    DumpArrayClass(TaggedArray::Cast(GetPropertyType().GetTaggedObject()), os);
-}
-
 void SourceTextModule::Dump(std::ostream &os) const
 {
     os << " - Environment: ";
@@ -4242,6 +3947,7 @@ static void DumpStringClass([[maybe_unused]] const EcmaString *str, [[maybe_unus
 
 static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVmMode)
 {
+    JSTaggedValue objValue(obj);
     DISALLOW_GARBAGE_COLLECTION;
     auto jsHclass = obj->GetClass();
     JSType type = jsHclass->GetObjectType();
@@ -4249,37 +3955,37 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
     switch (type) {
         case JSType::HCLASS:
             JSHClass::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
         case JSType::COW_TAGGED_ARRAY:
         case JSType::AOT_LITERAL_INFO:
             DumpArrayClass(TaggedArray::Cast(obj), vec);
-            return;
+            break;
         case JSType::MUTANT_TAGGED_ARRAY:
             DumpMutantTaggedArrayClass(MutantTaggedArray::Cast(obj), vec);
-            return;
+            break;
         case JSType::COW_MUTANT_TAGGED_ARRAY:
             DumpCOWMutantTaggedArrayClass(COWMutantTaggedArray::Cast(obj), vec);
-            return;
+            break;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
-            return;
+            break;
         case JSType::VTABLE:
             VTable::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::PROFILE_TYPE_INFO:
             ProfileTypeInfo::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::LINE_STRING:
         case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
             DumpStringClass(EcmaString::Cast(obj), vec);
-            return;
+            break;
         case JSType::JS_NATIVE_POINTER:
-            return;
+            break;
         case JSType::JS_OBJECT:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
@@ -4295,54 +4001,54 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_GLOBAL_OBJECT:
         case JSType::JS_SHARED_OBJECT:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_FUNCTION_BASE:
         case JSType::JS_FUNCTION:
         case JSType::JS_SHARED_FUNCTION:
             JSFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_BOUND_FUNCTION:
             JSBoundFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_SET:
             JSSet::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_SHARED_SET:
             JSSharedSet::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_MAP:
             JSMap::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_SHARED_MAP:
             JSSharedMap::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_WEAK_SET:
             JSWeakSet::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_WEAK_MAP:
             JSWeakMap::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_WEAK_REF:
             JSWeakRef::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_FINALIZATION_REGISTRY:
             JSFinalizationRegistry::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::CELL_RECORD:
             CellRecord::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_REG_EXP:
             JSRegExp::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_DATE:
             JSDate::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ARRAY:
             JSArray::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_SHARED_ARRAY:
             JSSharedArray::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_TYPED_ARRAY:
         case JSType::JS_INT8_ARRAY:
         case JSType::JS_UINT8_ARRAY:
@@ -4356,98 +4062,112 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_BIGINT64_ARRAY:
         case JSType::JS_BIGUINT64_ARRAY:
             JSTypedArray::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
+        case JSType::JS_SHARED_TYPED_ARRAY:
+        case JSType::JS_SHARED_INT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_SHARED_INT16_ARRAY:
+        case JSType::JS_SHARED_UINT16_ARRAY:
+        case JSType::JS_SHARED_INT32_ARRAY:
+        case JSType::JS_SHARED_UINT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+        case JSType::JS_SHARED_BIGUINT64_ARRAY:
+            JSSharedTypedArray::Cast(obj)->DumpForSnapshot(vec);
+            break;
         case JSType::BIGINT:
             BigInt::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::BYTE_ARRAY:
             ByteArray::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROXY:
             JSProxy::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PRIMITIVE_REF:
             JSPrimitiveRef::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::SYMBOL:
             JSSymbol::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::ACCESSOR_DATA:
         case JSType::INTERNAL_ACCESSOR:
             AccessorData::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_DATA_VIEW:
             JSDataView::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::PROMISE_REACTIONS:
             PromiseReaction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::PROMISE_CAPABILITY:
             PromiseCapability::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::PROMISE_ITERATOR_RECORD:
             PromiseIteratorRecord::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::PROMISE_RECORD:
             PromiseRecord::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::RESOLVING_FUNCTIONS_RECORD:
             ResolvingFunctionsRecord::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROMISE:
             JSPromise::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROMISE_REACTIONS_FUNCTION:
             JSPromiseReactionsFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSPromiseExecutorFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION:
             JSAsyncModuleFulfilledFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION:
             JSAsyncModuleRejectedFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::ASYNC_GENERATOR_REQUEST:
             AsyncGeneratorRequest::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::ASYNC_ITERATOR_RECORD:
             AsyncIteratorRecord::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
             JSAsyncFromSyncIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
             JSAsyncFromSyncIterUnwarpFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSPromiseAllResolveElementFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION:
             JSPromiseAnyRejectElementFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION:
             JSPromiseAllSettledElementFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROMISE_FINALLY_FUNCTION:
             JSPromiseFinallyFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             JSPromiseValueThunkOrThrowerFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
             JSAsyncGeneratorResNextRetProRstFtn::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::MICRO_JOB_QUEUE:
             MicroJobQueue::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::PENDING_JOB:
             PendingJob::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::COMPLETION_RECORD:
             CompletionRecord::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ITERATOR:
         case JSType::JS_ASYNCITERATOR:
         case JSType::JS_FORIN_ITERATOR:
@@ -4461,80 +4181,71 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_REG_EXP_ITERATOR:
         case JSType::JS_ARRAY_BUFFER:
             JSArrayBuffer::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_SHARED_ARRAY_BUFFER:
             JSArrayBuffer::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_SENDABLE_ARRAY_BUFFER:
             JSSendableArrayBuffer::Cast(obj)->DumpForSnapshot(vec);
-            return;
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_ARRAY:
-        case JSType::JS_SHARED_JSON_STRING:
-            JSSharedJSONValue::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PROXY_REVOC_FUNCTION:
             JSProxyRevocFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_FUNCTION:
             JSAsyncFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION:
             JSAsyncAwaitStatusFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_GENERATOR_FUNCTION:
             JSGeneratorFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_GENERATOR_FUNCTION:
             JSAsyncGeneratorFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_INTL_BOUND_FUNCTION:
             JSIntlBoundFunction::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_REALM:
             JSRealm::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
 #ifdef ARK_SUPPORT_INTL
         case JSType::JS_INTL:
             JSIntl::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_LOCALE:
             JSLocale::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_DATE_TIME_FORMAT:
             JSDateTimeFormat::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_RELATIVE_TIME_FORMAT:
             JSRelativeTimeFormat::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_NUMBER_FORMAT:
             JSNumberFormat::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_COLLATOR:
             JSCollator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_PLURAL_RULES:
             JSPluralRules::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_DISPLAYNAMES:
             JSDisplayNames::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_SEGMENTER:
             JSSegmenter::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_SEGMENTS:
             JSSegments::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_SEGMENT_ITERATOR:
             JSSegmentIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_LIST_FORMAT:
             JSListFormat::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
 #else
         case JSType::JS_INTL:
         case JSType::JS_LOCALE:
@@ -4548,148 +4259,148 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_SEGMENTS:
         case JSType::JS_SEGMENT_ITERATOR:
         case JSType::JS_LIST_FORMAT:
-            return;
+            break;
 #endif
         case JSType::JS_CJS_MODULE:
             CjsModule::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_CJS_EXPORTS:
             CjsExports::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_CJS_REQUIRE:
             CjsRequire::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_GENERATOR_OBJECT:
             JSGeneratorObject::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_GENERATOR_OBJECT:
             JSAsyncGeneratorObject::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_ASYNC_FUNC_OBJECT:
             JSAsyncFuncObject::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_GENERATOR_CONTEXT:
             GeneratorContext::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_ARRAY_LIST:
             JSAPIArrayList::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_ARRAYLIST_ITERATOR:
             JSAPIArrayListIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::LINKED_NODE:
             LinkedNode::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::RB_TREENODE:
-            return;
+            break;
         case JSType::JS_API_HASH_MAP:
             JSAPIHashMap::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_HASH_SET:
             JSAPIHashSet::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_HASHMAP_ITERATOR:
             JSAPIHashMapIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_HASHSET_ITERATOR:
             JSAPIHashSetIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_LIGHT_WEIGHT_MAP:
             JSAPILightWeightMap::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_LIGHT_WEIGHT_MAP_ITERATOR:
             JSAPILightWeightMapIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_LIGHT_WEIGHT_SET:
             JSAPILightWeightSet::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
             JSAPILightWeightSetIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_TREE_MAP:
             JSAPITreeMap::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_TREE_SET:
             JSAPITreeSet::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_TREEMAP_ITERATOR:
             JSAPITreeMapIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_TREESET_ITERATOR:
             JSAPITreeSetIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_VECTOR:
             JSAPIVector::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_VECTOR_ITERATOR:
             JSAPIVectorIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_QUEUE:
             JSAPIQueue::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_QUEUE_ITERATOR:
             JSAPIQueueIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_DEQUE:
             JSAPIDeque::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_DEQUE_ITERATOR:
             JSAPIDequeIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_STACK:
             JSAPIStack::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_STACK_ITERATOR:
             JSAPIStackIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_LIST:
             JSAPIList::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_LINKED_LIST:
             JSAPILinkedList::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_LIST_ITERATOR:
             JSAPIListIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_LINKED_LIST_ITERATOR:
             JSAPILinkedListIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::SOURCE_TEXT_MODULE_RECORD:
             SourceTextModule::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::IMPORTENTRY_RECORD:
             ImportEntry::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::LOCAL_EXPORTENTRY_RECORD:
             LocalExportEntry::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::INDIRECT_EXPORTENTRY_RECORD:
             IndirectExportEntry::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::STAR_EXPORTENTRY_RECORD:
             StarExportEntry::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::RESOLVEDBINDING_RECORD:
             ResolvedBinding::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
             ResolvedRecordIndexBinding::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_PLAIN_ARRAY:
             JSAPIPlainArray::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         case JSType::JS_API_PLAIN_ARRAY_ITERATOR:
             JSAPIPlainArrayIterator::Cast(obj)->DumpForSnapshot(vec);
-            return;
+            break;
         default:
             break;
     }
@@ -4697,87 +4408,59 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         switch (type) {
             case JSType::PROPERTY_BOX:
                 PropertyBox::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::TEMPLATE_MAP:
                 DumpArrayClass(TaggedArray::Cast(obj), vec);
-                return;
+                break;
             case JSType::GLOBAL_ENV:
                 GlobalEnv::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::PROTO_CHANGE_MARKER:
                 ProtoChangeMarker::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::MARKER_CELL:
                 MarkerCell::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::PROTOTYPE_INFO:
                 ProtoChangeDetails::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::TRACK_INFO:
                 TrackInfo::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::PROGRAM:
                 Program::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::MACHINE_CODE_OBJECT:
                 MachineCode::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::TRANSITION_HANDLER:
                 TransitionHandler::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::TRANS_WITH_PROTO_HANDLER:
                 TransWithProtoHandler::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::STORE_TS_HANDLER:
                 StoreTSHandler::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::PROTOTYPE_HANDLER:
                 PrototypeHandler::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::CLASS_INFO_EXTRACTOR:
                 ClassInfoExtractor::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_OBJECT_TYPE:
-                TSObjectType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_CLASS_TYPE:
-                TSClassType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_INTERFACE_TYPE:
-                TSInterfaceType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_CLASS_INSTANCE_TYPE:
-                TSClassInstanceType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_UNION_TYPE:
-                TSUnionType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_FUNCTION_TYPE:
-                TSFunctionType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_ARRAY_TYPE:
-                TSArrayType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_ITERATOR_INSTANCE_TYPE:
-                TSIteratorInstanceType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_NAMESPACE_TYPE:
-                TSNamespaceType::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::METHOD:
                 Method::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             case JSType::CLASS_LITERAL:
                 ClassLiteral::Cast(obj)->DumpForSnapshot(vec);
-                return;
+                break;
             default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
                 break;
         }
     } else {
         vec.pop_back();
     }
+    AddAnonymousEdge(obj, vec);
 }
 
 static inline void EcmaStringToStd(CString &res, EcmaString *str)
@@ -4914,20 +4597,6 @@ void LinkedHashMap::DumpForSnapshot(std::vector<Reference> &vec) const
             KeyToStd(str, key);
             vec.emplace_back(str, val);
         }
-    }
-}
-
-void JSSharedJSONValue::Dump(std::ostream &os) const
-{
-    JSObject::Dump(os);
-    auto value = GetValue();
-    os << "wrapped value(Raw): " << std::hex << value.GetRawData() << "\n";
-    if (value.IsJSSharedArray()) {
-        JSSharedArray::Cast(value)->Dump(os);
-    } else if (value.IsJSSharedMap()) {
-        JSSharedMap::Cast(value)->Dump(os);
-    } else {
-        value.DumpTaggedValue(os);
     }
 }
 
@@ -5562,6 +5231,19 @@ void JSTypedArray::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSSharedTypedArray::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 5;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back(CString("viewed-array-buffer"), GetViewedArrayBufferOrByteArray());
+    vec.emplace_back(CString("typed-array-name"), GetTypedArrayName());
+    vec.emplace_back(CString("byte-length"), JSTaggedValue(GetByteLength()));
+    vec.emplace_back(CString("byte-offset"), JSTaggedValue(GetByteOffset()));
+    vec.emplace_back(CString("array-length"), JSTaggedValue(GetArrayLength()));
+    JSObject::DumpForSnapshot(vec);
+}
+
 void ByteArray::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("array-length"), JSTaggedValue(GetArrayLength()));
@@ -5617,147 +5299,23 @@ void LexicalEnv::DumpForSnapshot(std::vector<Reference> &vec) const
 void GlobalEnv::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     auto globalConst = GetJSThread()->GlobalConstants();
-    // please update the NUM_OF_ITEMS if you change the items below
-    constexpr int16_t NUM_OF_ITEMS = 137;
-    vec.reserve(vec.size() + NUM_OF_ITEMS);
-    vec.emplace_back(CString("ObjectFunction"), GetObjectFunction().GetTaggedValue());
-    vec.emplace_back(CString("FunctionFunction"), GetFunctionFunction().GetTaggedValue());
-    vec.emplace_back(CString("NumberFunction"), GetNumberFunction().GetTaggedValue());
-    vec.emplace_back(CString("BigIntFunction"), GetBigIntFunction().GetTaggedValue());
-    vec.emplace_back(CString("DateFunction"), GetDateFunction().GetTaggedValue());
-    vec.emplace_back(CString("BooleanFunction"), GetBooleanFunction().GetTaggedValue());
-    vec.emplace_back(CString("ErrorFunction"), GetErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("ArrayFunction"), GetArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("TypedArrayFunction"), GetTypedArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("Int8ArrayFunction"), GetInt8ArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("Uint8ArrayFunction"), GetUint8ArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("Uint8ClampedArrayFunction"), GetUint8ClampedArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("Int16ArrayFunction"), GetInt16ArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("Uint16ArrayFunction"), GetUint16ArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("Int32ArrayFunction"), GetInt32ArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("Uint32ArrayFunction"), GetUint32ArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("Float32ArrayFunction"), GetFloat32ArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("Float64ArrayFunction"), GetFloat64ArrayFunction().GetTaggedValue());
-    vec.emplace_back(CString("ArrayBufferFunction"), GetArrayBufferFunction().GetTaggedValue());
-    vec.emplace_back(CString("SharedArrayBufferFunction"), GetSharedArrayBufferFunction().GetTaggedValue());
-    vec.emplace_back(CString("SymbolFunction"), GetSymbolFunction().GetTaggedValue());
-    vec.emplace_back(CString("RangeErrorFunction"), GetRangeErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("ReferenceErrorFunction"), GetReferenceErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("TypeErrorFunction"), GetTypeErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("AggregateErrorFunction"), GetAggregateErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("URIErrorFunction"), GetURIErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("SyntaxErrorFunction"), GetSyntaxErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("EvalErrorFunction"), GetEvalErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("OOMErrorFunction"), GetOOMErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("TerminationErrorFunction"), GetTerminationErrorFunction().GetTaggedValue());
-    vec.emplace_back(CString("RegExpFunction"), GetRegExpFunction().GetTaggedValue());
-    vec.emplace_back(CString("BuiltinsSetFunction"), GetBuiltinsSetFunction().GetTaggedValue());
-    vec.emplace_back(CString("BuiltinsMapFunction"), GetBuiltinsMapFunction().GetTaggedValue());
-    vec.emplace_back(CString("BuiltinsWeakSetFunction"), GetBuiltinsWeakSetFunction().GetTaggedValue());
-    vec.emplace_back(CString("BuiltinsWeakMapFunction"), GetBuiltinsWeakMapFunction().GetTaggedValue());
-    vec.emplace_back(CString("BuiltinsWeakRefFunction"), GetBuiltinsWeakRefFunction().GetTaggedValue());
-    vec.emplace_back(CString("BuiltinsFinalizationRegistryFunction"),
-        GetBuiltinsFinalizationRegistryFunction().GetTaggedValue());
-    vec.emplace_back(CString("MathFunction"), GetMathFunction().GetTaggedValue());
-    vec.emplace_back(CString("AtomicsFunction"), GetAtomicsFunction().GetTaggedValue());
-    vec.emplace_back(CString("JsonFunction"), GetJsonFunction().GetTaggedValue());
-    vec.emplace_back(CString("StringFunction"), GetStringFunction().GetTaggedValue());
-    vec.emplace_back(CString("ProxyFunction"), GetProxyFunction().GetTaggedValue());
-    vec.emplace_back(CString("ReflectFunction"), GetReflectFunction().GetTaggedValue());
-    vec.emplace_back(CString("AsyncFunction"), GetAsyncFunction().GetTaggedValue());
-    vec.emplace_back(CString("AsyncFunctionPrototype"), GetAsyncFunctionPrototype().GetTaggedValue());
-    vec.emplace_back(CString("JSGlobalObject"), GetJSGlobalObject().GetTaggedValue());
-    vec.emplace_back(CString("EmptyArray"), globalConst->GetEmptyArray());
-    vec.emplace_back(CString("EmptyString"), globalConst->GetEmptyString());
-    vec.emplace_back(CString("EmptyTaggedQueue"), globalConst->GetEmptyTaggedQueue());
-    vec.emplace_back(CString("PrototypeString"), globalConst->GetPrototypeString());
-    vec.emplace_back(CString("HasInstanceSymbol"), GetHasInstanceSymbol().GetTaggedValue());
-    vec.emplace_back(CString("IsConcatSpreadableSymbol"), GetIsConcatSpreadableSymbol().GetTaggedValue());
-    vec.emplace_back(CString("ToStringTagSymbol"), GetToStringTagSymbol().GetTaggedValue());
-    vec.emplace_back(CString("IteratorSymbol"), GetIteratorSymbol().GetTaggedValue());
-    vec.emplace_back(CString("AsyncIteratorSymbol"), GetAsyncIteratorSymbol().GetTaggedValue());
-    vec.emplace_back(CString("MatchSymbol"), GetMatchSymbol().GetTaggedValue());
-    vec.emplace_back(CString("MatchAllSymbol"), GetMatchAllSymbol().GetTaggedValue());
-    vec.emplace_back(CString("ReplaceSymbol"), GetReplaceSymbol().GetTaggedValue());
-    vec.emplace_back(CString("SearchSymbol"), GetSearchSymbol().GetTaggedValue());
-    vec.emplace_back(CString("SpeciesSymbol"), GetSpeciesSymbol().GetTaggedValue());
-    vec.emplace_back(CString("SplitSymbol"), GetSplitSymbol().GetTaggedValue());
-    vec.emplace_back(CString("ToPrimitiveSymbol"), GetToPrimitiveSymbol().GetTaggedValue());
-    vec.emplace_back(CString("UnscopablesSymbol"), GetUnscopablesSymbol().GetTaggedValue());
-    vec.emplace_back(CString("HoleySymbol"), GetHoleySymbol().GetTaggedValue());
-    vec.emplace_back(CString("NativeBindingSymbol"), GetNativeBindingSymbol().GetTaggedValue());
-    vec.emplace_back(CString("ConstructorString"), globalConst->GetConstructorString());
-    vec.emplace_back(CString("IteratorPrototype"), GetIteratorPrototype().GetTaggedValue());
-    vec.emplace_back(CString("ForinIteratorPrototype"), GetForinIteratorPrototype().GetTaggedValue());
-    vec.emplace_back(CString("StringIterator"), GetStringIterator().GetTaggedValue());
-    vec.emplace_back(CString("MapIteratorPrototype"), GetMapIteratorPrototype().GetTaggedValue());
-    vec.emplace_back(CString("SetIteratorPrototype"), GetSetIteratorPrototype().GetTaggedValue());
-    vec.emplace_back(CString("RegExpIteratorPrototype"), GetRegExpIteratorPrototype().GetTaggedValue());
-    vec.emplace_back(CString("ArrayIteratorPrototype"), GetArrayIteratorPrototype().GetTaggedValue());
-    vec.emplace_back(CString("StringIteratorPrototype"), GetStringIteratorPrototype().GetTaggedValue());
-    vec.emplace_back(CString("LengthString"), globalConst->GetLengthString());
-    vec.emplace_back(CString("ValueString"), globalConst->GetValueString());
-    vec.emplace_back(CString("WritableString"), globalConst->GetWritableString());
-    vec.emplace_back(CString("GetString"), globalConst->GetGetString());
-    vec.emplace_back(CString("SetString"), globalConst->GetSetString());
-    vec.emplace_back(CString("EnumerableString"), globalConst->GetEnumerableString());
-    vec.emplace_back(CString("ConfigurableString"), globalConst->GetConfigurableString());
-    vec.emplace_back(CString("NameString"), globalConst->GetNameString());
-    vec.emplace_back(CString("ValueOfString"), globalConst->GetValueOfString());
-    vec.emplace_back(CString("ToStringString"), globalConst->GetToStringString());
-    vec.emplace_back(CString("ToLocaleStringString"), globalConst->GetToLocaleStringString());
-    vec.emplace_back(CString("UndefinedString"), globalConst->GetUndefinedString());
-    vec.emplace_back(CString("NullString"), globalConst->GetNullString());
-    vec.emplace_back(CString("TrueString"), globalConst->GetTrueString());
-    vec.emplace_back(CString("FalseString"), globalConst->GetFalseString());
-    vec.emplace_back(CString("RegisterSymbols"), GetRegisterSymbols().GetTaggedValue());
-    vec.emplace_back(CString("ThrowTypeError"), GetThrowTypeError().GetTaggedValue());
-    vec.emplace_back(CString("GetPrototypeOfString"), globalConst->GetGetPrototypeOfString());
-    vec.emplace_back(CString("SetPrototypeOfString"), globalConst->GetSetPrototypeOfString());
-    vec.emplace_back(CString("IsExtensibleString"), globalConst->GetIsExtensibleString());
-    vec.emplace_back(CString("PreventExtensionsString"), globalConst->GetPreventExtensionsString());
-    vec.emplace_back(CString("GetOwnPropertyDescriptorString"), globalConst->GetGetOwnPropertyDescriptorString());
-    vec.emplace_back(CString("DefinePropertyString"), globalConst->GetDefinePropertyString());
-    vec.emplace_back(CString("HasString"), globalConst->GetHasString());
-    vec.emplace_back(CString("DeletePropertyString"), globalConst->GetDeletePropertyString());
-    vec.emplace_back(CString("EnumerateString"), globalConst->GetEnumerateString());
-    vec.emplace_back(CString("OwnKeysString"), globalConst->GetOwnKeysString());
-    vec.emplace_back(CString("ApplyString"), globalConst->GetApplyString());
-    vec.emplace_back(CString("ProxyString"), globalConst->GetProxyString());
-    vec.emplace_back(CString("RevokeString"), globalConst->GetRevokeString());
-    vec.emplace_back(CString("ProxyConstructString"), globalConst->GetProxyConstructString());
-    vec.emplace_back(CString("ProxyCallString"), globalConst->GetProxyCallString());
-    vec.emplace_back(CString("DoneString"), globalConst->GetDoneString());
-    vec.emplace_back(CString("NegativeZeroString"), globalConst->GetNegativeZeroString());
-    vec.emplace_back(CString("NextString"), globalConst->GetNextString());
-    vec.emplace_back(CString("PromiseThenString"), globalConst->GetPromiseThenString());
-    vec.emplace_back(CString("PromiseFunction"), GetPromiseFunction().GetTaggedValue());
-    vec.emplace_back(CString("PromiseReactionJob"), GetPromiseReactionJob().GetTaggedValue());
-    vec.emplace_back(CString("PromiseResolveThenableJob"), GetPromiseResolveThenableJob().GetTaggedValue());
-    vec.emplace_back(CString("DynamicImportJob"), GetDynamicImportJob().GetTaggedValue());
-    vec.emplace_back(CString("ScriptJobString"), globalConst->GetScriptJobString());
-    vec.emplace_back(CString("PromiseString"), globalConst->GetPromiseString());
-    vec.emplace_back(CString("IdentityString"), globalConst->GetIdentityString());
-    vec.emplace_back(CString("AsyncFunctionString"), globalConst->GetAsyncFunctionString());
-    vec.emplace_back(CString("ThrowerString"), globalConst->GetThrowerString());
-    vec.emplace_back(CString("Undefined"), globalConst->GetUndefined());
-    vec.emplace_back(CString("ArrayListFunction"), globalConst->GetArrayListFunction());
-    vec.emplace_back(CString("ArrayListIteratorPrototype"), globalConst->GetArrayListIteratorPrototype());
-    vec.emplace_back(CString("HashMapIteratorPrototype"), globalConst->GetHashMapIteratorPrototype());
-    vec.emplace_back(CString("HashSetIteratorPrototype"), globalConst->GetHashSetIteratorPrototype());
-    vec.emplace_back(CString("LightWeightMapIteratorPrototype"), globalConst->GetLightWeightMapIteratorPrototype());
-    vec.emplace_back(CString("LightWeightSetIteratorPrototype"), globalConst->GetLightWeightSetIteratorPrototype());
-    vec.emplace_back(CString("TreeMapIteratorPrototype"), globalConst->GetTreeMapIteratorPrototype());
-    vec.emplace_back(CString("TreeSetIteratorPrototype"), globalConst->GetTreeSetIteratorPrototype());
-    vec.emplace_back(CString("VectorFunction"), globalConst->GetVectorFunction());
-    vec.emplace_back(CString("VectorIteratorPrototype"), globalConst->GetVectorIteratorPrototype());
-    vec.emplace_back(CString("QueueIteratorPrototype"), globalConst->GetQueueIteratorPrototype());
-    vec.emplace_back(CString("PlainArrayIteratorPrototype"), globalConst->GetPlainArrayIteratorPrototype());
-    vec.emplace_back(CString("DequeIteratorPrototype"), globalConst->GetDequeIteratorPrototype());
-    vec.emplace_back(CString("StackIteratorPrototype"), globalConst->GetStackIteratorPrototype());
-    vec.emplace_back(CString("LinkedListIteratorPrototype"), globalConst->GetLinkedListIteratorPrototype());
-    vec.emplace_back(CString("ListIteratorPrototype"), globalConst->GetListIteratorPrototype());
-    vec.emplace_back(CString("GlobalPatch"), GetGlobalPatch().GetTaggedValue());
+#define DUMP_ENV_FIELD(type, name, _) vec.emplace_back(#name, Get##name().GetTaggedValue());
+#define DUMP_CONST_FIELD(type, name, ...) vec.emplace_back(#name, globalConst->Get##name());
+#define DUMP_CONST_STRING(name, ...) vec.emplace_back(#name, globalConst->Get##name());
+
+    GLOBAL_ENV_FIELDS(DUMP_ENV_FIELD)
+
+    GLOBAL_ENV_CONSTANT_CLASS(DUMP_CONST_FIELD)
+
+    GLOBAL_ENV_CONSTANT_SPECIAL(DUMP_CONST_FIELD)
+
+    GLOBAL_ENV_CONSTANT_CONSTANT(DUMP_CONST_FIELD)
+
+    GLOBAL_ENV_CACHES(DUMP_CONST_FIELD)
+
+#undef DUMP_FIELD
+#undef DUMP_CONST_FIELD
+#undef DUMP_CONST_STRING
 }
 
 void JSDataView::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5782,12 +5340,6 @@ void JSSendableArrayBuffer::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("buffer-data"), GetArrayBufferData());
     vec.emplace_back(CString("byte-length"), JSTaggedValue(GetArrayBufferByteLength()));
     vec.emplace_back(CString("shared"), JSTaggedValue(GetShared()));
-    JSObject::DumpForSnapshot(vec);
-}
-
-void JSSharedJSONValue::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("value"), GetValue());
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -6256,79 +5808,6 @@ void ClassInfoExtractor::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("StaticElements"), GetStaticElements());
     vec.emplace_back(CString("ConstructorMethod"), GetConstructorMethod());
     vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
-}
-
-void TSObjectType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("ObjLayoutInfo"), GetObjLayoutInfo());
-    vec.emplace_back(CString("IndexSigns"), GetIndexSigns());
-}
-
-void TSClassType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    // please update the NUM_OF_ITEMS if you change the items below
-    constexpr int16_t NUM_OF_ITEMS = 5;
-    vec.reserve(vec.size() + NUM_OF_ITEMS);
-    vec.emplace_back(CString("InstanceType"), GetInstanceType());
-    vec.emplace_back(CString("ConstructorType"), GetConstructorType());
-    vec.emplace_back(CString("PrototypeType"), GetPrototypeType());
-    vec.emplace_back(CString("ExtensionGT"), JSTaggedValue(GetExtensionGT().GetType()));
-    vec.emplace_back(CString("HasLinked"), JSTaggedValue(GetHasLinked()));
-    vec.emplace_back(CString("Name"), JSTaggedValue(GetName()));
-    if (!GetIndexSigns().IsUndefined()) {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), vec);
-    }
-}
-
-void TSInterfaceType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("Fields"), GetFields());
-    vec.emplace_back(CString("Extends"), GetExtends());
-    DumpArrayClass(TaggedArray::Cast(GetExtends().GetTaggedObject()), vec);
-    if (!GetIndexSigns().IsUndefined()) {
-        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), vec);
-    }
-}
-
-void TSClassInstanceType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("ClassGT"), JSTaggedValue(GetClassGT().GetType()));
-}
-
-void TSUnionType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("ComponentTypes"), GetComponents());
-    DumpArrayClass(TaggedArray::Cast(GetComponents().GetTaggedObject()), vec);
-}
-
-void TSFunctionType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    // please update the NUM_OF_ITEMS if you change the items below
-    constexpr int16_t NUM_OF_ITEMS = 5;
-    vec.reserve(vec.size() + NUM_OF_ITEMS);
-    vec.emplace_back(CString("Name"), GetName());
-    vec.emplace_back(CString("ParameterTypes"), GetParameterTypes());
-    DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), vec);
-    vec.emplace_back(CString("ReturnGT"), JSTaggedValue(GetReturnGT().GetType()));
-    vec.emplace_back(CString("ThisGT"), JSTaggedValue(GetThisGT().GetType()));
-    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
-}
-
-void TSArrayType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("ParameterTypeRef"), JSTaggedValue(GetElementGT().GetType()));
-}
-
-void TSIteratorInstanceType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("kindGT"), JSTaggedValue(GetKindGT().GetType()));
-    vec.emplace_back(CString("elementGT"), JSTaggedValue(GetElementGT().GetType()));
-}
-
-void TSNamespaceType::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    vec.emplace_back(CString("PropertyType"), GetPropertyType());
-    DumpArrayClass(TaggedArray::Cast(GetPropertyType().GetTaggedObject()), vec);
 }
 
 void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const

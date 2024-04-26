@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/compiler/ir_module.h"
@@ -27,11 +28,11 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/ts_types/ts_manager.h"
+
+#include "ecmascript/compiler/aot_compiler_stats.h"
 
 namespace panda::ecmascript::kungfu {
 class Bytecodes;
-class LexEnvManager;
 class CompilationConfig;
 class PassData;
 class CallMethodFlagMap;
@@ -42,20 +43,13 @@ public:
         PGOProfilerDecoder *decoder)
         : compilationEnv_(collector->GetCompilationEnv()),
           bcInfoCollector_(collector),
-          tsManager_(compilationEnv_->GetTSManager()),
           bytecodes_(collector->GetByteCodes()),
-          lexEnvManager_(bcInfoCollector_->GetEnvManager()),
           cmpCfg_(triple, &compilationEnv_->GetJSOptions()),
           log_(log),
           jsPandaFile_(collector->GetJSPandaFile()),
           aotModule_(aotModule),
           decoder_(decoder)
     {
-    }
-
-    TSManager* GetTSManager() const
-    {
-        return tsManager_;
     }
 
     PGOTypeManager* GetPTManager() const
@@ -66,11 +60,6 @@ public:
     Bytecodes* GetByteCodes()
     {
         return bytecodes_;
-    }
-
-    LexEnvManager* GetLexEnvManager() const
-    {
-        return lexEnvManager_;
     }
 
     CompilationConfig* GetCompilerConfig()
@@ -131,9 +120,7 @@ public:
 private:
     CompilationEnv *compilationEnv_ {nullptr};
     BytecodeInfoCollector *bcInfoCollector_ {nullptr};
-    TSManager *tsManager_ {nullptr};
     Bytecodes *bytecodes_ {nullptr};
-    LexEnvManager *lexEnvManager_ {nullptr};
     CompilationConfig cmpCfg_;
     CompilerLog *log_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
@@ -155,7 +142,8 @@ public:
             };
 
     virtual ~PassManager() = default;
-    bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator);
+    bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator,
+        AotCompilerStats &compilerStats);
 
 protected:
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;

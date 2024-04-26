@@ -313,6 +313,12 @@ public:
         return stream.str();
     }
 
+    friend std::ostream& operator<<(std::ostream& os, const ProfileType& type)
+    {
+        os << type.GetTypeString();
+        return os;
+    }
+
     void UpdateId(uint32_t id)
     {
         type_ = IdBits::Update(type_, id);
@@ -365,6 +371,15 @@ public:
         ASSERT(IsBuiltinsArray());
         auto builtinsArrayId = BuiltinsArrayId(GetId());
         return builtinsArrayId.GetTransitionElementsKind();
+    }
+
+    bool IsBuiltinsMap() const
+    {
+        if (IsBuiltinsType()) {
+            JSType type = GetBuiltinsType();
+            return type == JSType::JS_MAP;
+        }
+        return false;
     }
 
     bool IsBuiltinsString() const

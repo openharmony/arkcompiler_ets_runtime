@@ -37,7 +37,7 @@
 namespace panda::ecmascript {
 
 void JSSegmentIterator::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSSegmentIterator> &iterator,
-                                            icu::BreakIterator* icuBreakIterator, const DeleteEntryPoint &callback)
+                                            icu::BreakIterator* icuBreakIterator, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -46,7 +46,7 @@ void JSSegmentIterator::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSS
     JSTaggedValue data = iterator->GetIcuField();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuBreakIterator);
+        native->ResetExternalPointer(thread, icuBreakIterator);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuBreakIterator, callback);
@@ -54,7 +54,7 @@ void JSSegmentIterator::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSS
 }
 
 void JSSegmentIterator::SetUString(JSThread *thread, const JSHandle<JSSegmentIterator> &iterator,
-                                   icu::UnicodeString* icuUnicodeString, const DeleteEntryPoint &callback)
+                                   icu::UnicodeString* icuUnicodeString, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -63,7 +63,7 @@ void JSSegmentIterator::SetUString(JSThread *thread, const JSHandle<JSSegmentIte
     JSTaggedValue data = iterator->GetUnicodeString();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuUnicodeString);
+        native->ResetExternalPointer(thread, icuUnicodeString);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuUnicodeString, callback);

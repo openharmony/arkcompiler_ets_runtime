@@ -153,8 +153,10 @@ try {
 
 // Check after clearing
 myMap.clear();
+//aot: [trace] aot inline builtin: Map.clear, caller function name:func_main_0@builtinMapGet
+print(myMap.get(2000));
 //aot: [trace] aot inline builtin: Map.get, caller function name:func_main_0@builtinMapGet
-print(myMap.get(2000)); //: undefined
+//: undefined
 
 let trueGet = Map.prototype.get
 let m = new Map()
@@ -187,6 +189,20 @@ print(m.get()) //: undefined
 m.set(undefined, -1)
 //aot: [trace] aot inline builtin: Map.get, caller function name:func_main_0@builtinMapGet
 print(m.get()) //: -1
+
+function checkObjWithMapProto() {
+    let o = {};
+    Object.setPrototypeOf(o, Map.prototype);
+    try {
+        print((o as Map<number, number>).get(1));
+    } catch(e) {
+        print(e);
+    }
+}
+
+//aot: [trace] Check Type: NotCallTarget1
+//: TypeError: obj is not JSMap
+checkObjWithMapProto();
 
 let notMap = {
     get(x: any) {

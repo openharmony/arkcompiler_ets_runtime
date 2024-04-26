@@ -13,7 +13,10 @@
 
 group("ark_aot_builtin_inlining_date_test") {
   testonly = true
-  test_list = [ "GetTime" ]
+  test_list = [
+    "GetTime",
+    "Now",
+  ]
 
   deps = []
   foreach(test, test_list) {

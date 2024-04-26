@@ -19,6 +19,7 @@
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/debugger/debugger_api.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/tracing/tracing.h"
@@ -29,8 +30,11 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/vm_thread_control.h"
+#include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#include <sys/wait.h>
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #endif
@@ -75,8 +79,6 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
                                  [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
-    ecmascript::base::BlockHookScope blockScope;
-    ecmascript::ThreadManagedScope managedScope(vm->GetAssociatedJSThread());
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress,
@@ -110,6 +112,37 @@ void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm, [[maybe_unused
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
+bool DFXJSNApi::ForceFullGC(const EcmaVM *vm)
+{
+    if (vm->IsInitialized()) {
+        const_cast<ecmascript::Heap *>(vm->GetHeap())->CollectGarbage(ecmascript::TriggerGCType::FULL_GC);
+        return true;
+    }
+    return false;
+}
+
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+static void WaitProcess(pid_t pid)
+{
+    time_t startTime = time(nullptr);
+    constexpr int DUMP_TIME_OUT = 30;
+    constexpr int DEFAULT_SLEEP_TIME = 100000;
+    while (true) {
+        int status = 0;
+        pid_t p = waitpid(pid, &status, WNOHANG);
+        if (p < 0 || p == pid) {
+            break;
+        }
+        if (time(nullptr) > startTime + DUMP_TIME_OUT) {
+            LOG_GC(ERROR) << "wait " << DUMP_TIME_OUT << " s";
+            kill(pid, SIGTERM);
+            break;
+        }
+        usleep(DEFAULT_SLEEP_TIME);
+    }
+}
+#endif // ENABLE_DUMP_IN_FAULTLOG
+
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
                                  [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
@@ -127,14 +160,37 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
             vm->GetJSThread()->SetStackTraceFd(stackTraceFd);
         }
     }
-    // Write in faultlog for heap leak.
-    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
-    if (fd < 0) {
-        LOG_ECMA(ERROR) << "Write FD failed, fd" << fd;
+    if (isFullGC) {
+        [[maybe_unused]] bool heapClean = ForceFullGC(vm);
+        ASSERT(heapClean);
+    }
+    ecmascript::base::BlockHookScope blockScope;
+    // suspend All.
+    ecmascript::SuspendAllScope suspendScope(vm->GetAssociatedJSThread());
+    if (isFullGC) {
+        DISALLOW_GARBAGE_COLLECTION;
+        const_cast<ecmascript::Heap *>(vm->GetHeap())->Prepare();
+    }
+    // fork
+    pid_t pid = -1;
+    if ((pid = fork()) < 0) {
+        LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
         return;
     }
-    FileDescriptorStream stream(fd);
-    DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, isFullGC);
+    if (pid == 0) {
+        // Write in faultlog for heap leak.
+        int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+        if (fd < 0) {
+            LOG_ECMA(ERROR) << "Write FD failed, fd" << fd;
+            return;
+        }
+        FileDescriptorStream stream(fd);
+        DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, false);
+        _exit(0);
+    } else {
+        std::thread thread(&WaitProcess, pid);
+        thread.detach();
+    }
     sem_post(&g_heapdumpCnt);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #else
@@ -185,6 +241,7 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
         LOG_ECMA(ERROR) << "uv_loop_alive dead";
         return;
     }
+
     int ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
         struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
         DFXJSNApi::GetHeapPrepare(dump->vm);
@@ -727,6 +784,12 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
         return true;
     }
     return false;
+}
+
+int32_t DFXJSNApi::GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject)
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(nativeObject);
+    return ecmascript::tooling::DebuggerApi::GetObjectHash(vm, obj);
 }
 
 bool DFXJSNApi::StartSampling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] uint64_t samplingInterval)

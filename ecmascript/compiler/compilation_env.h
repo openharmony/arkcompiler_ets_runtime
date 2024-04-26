@@ -24,7 +24,6 @@ namespace panda::ecmascript {
 namespace kungfu {
 class PGOTypeManager;
 };
-class TSManager;
 class ConstantPool;
 namespace pgo {
 class PGOProfiler;
@@ -54,11 +53,6 @@ public:
     kungfu::PGOTypeManager *GetPTManager() const
     {
         return ptManager_;
-    }
-
-    TSManager *GetTSManager() const
-    {
-        return tsManager_;
     }
 
     NativeAreaAllocator *GetNativeAreaAllocator() const;
@@ -124,7 +118,6 @@ public:
 protected:
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
-    TSManager *tsManager_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ {nullptr};
 };
 } // namespace panda::ecmascript

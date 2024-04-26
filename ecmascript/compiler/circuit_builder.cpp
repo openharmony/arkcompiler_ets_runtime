@@ -210,6 +210,14 @@ GateRef CircuitBuilder::GetLengthOfJSTypedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
 }
 
+GateRef CircuitBuilder::IsTypedArray(GateRef array)
+{
+    GateRef hclass = LoadHClass(array);
+    GateRef type = GetObjectType(hclass);
+    return BoolAnd(Int32GreaterThan(type, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), type));
+}
+
 void CircuitBuilder::Jump(Label *label)
 {
     ASSERT(label);
@@ -769,13 +777,29 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Label exit(env_);
     Label cacheMiss(env_);
     Label cache(env_);
+    Label unshareCpHit(env_);
+    Label unshareCpMiss(env_);
 
     // HirGate Can not be a nullGate in Aot
     if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate == Circuit::NullGate()) {
         hirGate = index;
     }
-    auto cacheValue = GetValueFromTaggedArray(constPool, index);
-    DEFVALUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    // Call runtime to create unshared constpool when current context's cache is hole in multi-thread.
+    DEFVALUE(cacheValue, env_, VariableType::JS_ANY(), Hole());
+    if (type == ConstPoolType::ARRAY_LITERAL || type == ConstPoolType::OBJECT_LITERAL) {
+        GateRef unsharedConstPool = GetUnsharedConstpoolFromGlue(glue, constPool);
+        BRANCH_CIR2(TaggedIsNotHole(unsharedConstPool), &unshareCpHit, &unshareCpMiss);
+        Bind(&unshareCpHit);
+        {
+            cacheValue = GetValueFromTaggedArray(unsharedConstPool, index);
+            Jump(&unshareCpMiss);
+        }
+    } else {
+        cacheValue = GetValueFromTaggedArray(constPool, index);
+        Jump(&unshareCpMiss);
+    }
+    Bind(&unshareCpMiss);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), *cacheValue);
     BRANCH_CIR2(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {
@@ -872,6 +896,12 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef jsFunc)
 {
     auto codeAddOffset = IntPtr(JSFunction::CODE_ENTRY_OFFSET);
     return Load(VariableType::NATIVE_POINTER(), jsFunc, codeAddOffset);
+}
+
+GateRef CircuitBuilder::GetBaselineCodeAddr(GateRef baselineCode)
+{
+    auto codeAddrOffset = IntPtr(MachineCode::FUNCADDR_OFFSET);
+    return Load(VariableType::NATIVE_POINTER(), baselineCode, codeAddrOffset);
 }
 
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
@@ -985,4 +1015,48 @@ GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)
     return ret;
 }
 
+GateRef CircuitBuilder::GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    Label loopHead(env_);
+    Label loopEnd(env_);
+    Label afterLoop(env_);
+
+    DEFVALUE(result, env_, VariableType::JS_ANY(), Hole());
+    DEFVALUE(currentEnv, env_, VariableType::JS_ANY(), lexicalEnv);
+    DEFVALUE(i, env_, VariableType::INT32(), Int32(0));
+
+    Branch(Int32LessThan(*i, levelIndex), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    {
+        currentEnv = GetParentEnv(*currentEnv);
+        i = Int32Add(*i, Int32(1));
+        Branch(Int32LessThan(*i, levelIndex), &loopEnd, &afterLoop);
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
+    }
+    Bind(&afterLoop);
+    {
+        result = GetPropertiesFromLexicalEnv(*currentEnv, slotIndex);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::GetParentEnv(GateRef object)
+{
+    GateRef index = Int32(LexicalEnv::PARENT_ENV_INDEX);
+    return GetValueFromTaggedArray(object, index);
+}
+
+GateRef CircuitBuilder::GetPropertiesFromLexicalEnv(GateRef object, GateRef index)
+{
+    GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
+    return GetValueFromTaggedArray(object, valueIndex);
+}
 }  // namespace panda::ecmascript::kungfu

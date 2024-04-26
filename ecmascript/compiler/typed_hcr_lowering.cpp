@@ -14,10 +14,12 @@
  */
 
 #include "ecmascript/compiler/typed_hcr_lowering.h"
+
 #include "ecmascript/compiler/builtins_lowering.h"
+#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
@@ -25,11 +27,12 @@
 #include "ecmascript/elements.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_map.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/message_string.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/vtable.h"
 
 namespace panda::ecmascript::kungfu {
@@ -53,11 +56,17 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::ECMA_STRING_CHECK:
             LowerEcmaStringCheck(gate);
             break;
+        case OpCode::ECMA_MAP_CHECK:
+            LowerEcmaMapCheck(gate);
+            break;
         case OpCode::FLATTEN_TREE_STRING_CHECK:
             LowerFlattenTreeStringCheck(gate, glue);
             break;
         case OpCode::LOAD_STRING_LENGTH:
             LowerStringLength(gate);
+            break;
+        case OpCode::LOAD_MAP_SIZE:
+            LowerMapSize(gate);
             break;
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
             LowerLoadTypedArrayLength(gate);
@@ -85,6 +94,12 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::LOAD_PROPERTY:
             LowerLoadProperty(gate);
+            break;
+        case OpCode::CALL_PRIVATE_GETTER:
+            LowerCallPrivateGetter(gate, glue);
+            break;
+        case OpCode::CALL_PRIVATE_SETTER:
+            LowerCallPrivateSetter(gate, glue);
             break;
         case OpCode::CALL_GETTER:
             LowerCallGetter(gate, glue);
@@ -413,6 +428,24 @@ void TypedHCRLowering::LowerEcmaStringCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypedHCRLowering::LowerEcmaMapCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    builder_.HeapObjectCheck(receiver, frameState);
+
+    GateRef hclass = builder_.LoadHClass(receiver);
+
+    size_t mapHclassIndex = GlobalEnv::MAP_CLASS_INDEX;
+    GateRef glueGlobalEnv = builder_.GetGlobalEnv();
+    GateRef mapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, mapHclassIndex);
+    GateRef isMap = builder_.Equal(hclass, mapHclass, "Check HClass");
+
+    builder_.DeoptCheck(isMap, frameState, DeoptType::ISNOTMAP);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 void TypedHCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
@@ -457,6 +490,18 @@ void TypedHCRLowering::LowerStringLength(GateRef gate)
     GateRef length = GetLengthFromString(receiver);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), length);
+}
+
+void TypedHCRLowering::LowerMapSize(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+
+    GateRef linkedMap = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSMap::LINKED_MAP_OFFSET);
+    GateRef mapSizeTagged = builder_.LoadFromTaggedArray(linkedMap, LinkedHashMap::NUMBER_OF_ELEMENTS_INDEX);
+    GateRef mapSize = builder_.TaggedGetInt(mapSizeTagged);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), mapSize);
 }
 
 void TypedHCRLowering::LowerLoadTypedArrayLength(GateRef gate)
@@ -717,6 +762,30 @@ void TypedHCRLowering::LowerLoadProperty(GateRef gate)
     GateRef result = LoadPropertyFromHolder(receiver, plr);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypedHCRLowering::LowerCallPrivateGetter(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: receiver, accessor
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef accessor = acc_.GetValueIn(gate, 1);
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    result = CallAccessor(glue, gate, accessor, receiver, AccessorMode::GETTER);
+    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedHCRLowering::LowerCallPrivateSetter(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 3); // 3: receiver, accessor, value
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef accessor = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+
+    CallAccessor(glue, gate, accessor, receiver, AccessorMode::SETTER, value);
+    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypedHCRLowering::LowerCallGetter(GateRef gate, GateRef glue)

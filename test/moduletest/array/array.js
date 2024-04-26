@@ -430,10 +430,13 @@ arr = new Array(1026);
 arr.fill(100);
 print(arr.toSpliced(0, 0, 0, 0)[0])
 
-// Test Array.includes if array trans to dictionary mode
 var arr25 = []
 arr25[1025] = 0;
 print(arr25.includes({}, 414));
+
+var arr26 = []
+arr25[100] = 0;
+print(arr25.includes({}, 26));
 
 function fun1(obj, name, type) {
     return typeof type === 'undefined' || typeof desc.value === type;
@@ -627,3 +630,9 @@ var result_toSorted1 = arr_toSorted1.toSorted();
 print(result_toSorted1);
 var result_toSorted2 = arr_toSorted2.toSorted();
 print(result_toSorted2);
+
+const v0 = [0, 1];
+const mapEd = v0.map(() => {
+  v0["pop"]();
+});
+print(new Uint16Array(v0).length);

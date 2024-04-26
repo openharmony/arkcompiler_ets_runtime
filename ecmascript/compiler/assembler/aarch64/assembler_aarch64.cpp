@@ -35,14 +35,14 @@ LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
     // First, determine the element size.
     unsigned int size = static_cast<uint32_t>(width);
     do {
-        size /= 2;
+        size /= 2; // 2: Divide by 2
         uint64_t mask = (1ULL << size) - 1;
 
         if ((imm & mask) != ((imm >> size) & mask)) {
-            size *= 2;
+            size *= 2; // 2: Multiply by 2
             break;
         }
-    } while (size > 2);
+    } while (size > 2); // 2: Greater than 2
 
     // Second, determine the rotation to make the element be: 0^m 1^n.
     unsigned int cto = 0;
@@ -407,7 +407,7 @@ void AssemblerAarch64::Mov(const Register &rd, const Immediate &imm)
         Orr(rd, Register(Zero), orrImm);
         return;
     }
-    // One to up three instruction sequence.
+    // 2: One to up three instruction sequence.
     if (allOneHalfWords >= (halfWords - 2) || allZeroHalfWords >= (halfWords - 2)) {
         EmitMovInstruct(rd, immValue, allOneHalfWords, allZeroHalfWords);
         return;

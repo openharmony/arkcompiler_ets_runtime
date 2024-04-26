@@ -219,7 +219,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Delete(Variable *result, Lab
         LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
         res = linkedHashTableStubBuilder.Delete(linkedTable, key);
     }
-    *result = res;
+    *result = BooleanToTaggedBooleanPtr(res);
     Jump(exit);
 }
 

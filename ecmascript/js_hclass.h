@@ -69,9 +69,11 @@ class NameDictionary;
 namespace pgo {
     class HClassLayoutDesc;
     class PGOHClassTreeDesc;
+    class PGOHandler;
 } // namespace pgo
 using HClassLayoutDesc = pgo::HClassLayoutDesc;
 using PGOHClassTreeDesc = pgo::PGOHClassTreeDesc;
+using PGOHandler = pgo::PGOHandler;
 
 struct Reference;
 
@@ -119,13 +121,6 @@ struct Reference;
         JS_SHARED_SET, /*  ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_MAP,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SHARED_MAP, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_SHARED_JSON_OBJECT, /* SHARED_JSON_VALUE_FIRST /////////////////////////////////////////////////-PADDING */ \
-        JS_SHARED_JSON_STRING, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_SHARED_JSON_NUMBER, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_SHARED_JSON_TRUE,   /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_SHARED_JSON_FALSE,  /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_SHARED_JSON_ARRAY,  /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_SHARED_JSON_NULL,   /* SHARED_JSON_VALUE_LAST///////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_MAP, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_SET, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_REF, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -292,15 +287,6 @@ struct Reference;
         COMPLETION_RECORD, /* JS_RECORD_LAST ////////////////////////////////////////////////////////////////////// */ \
         MACHINE_CODE_OBJECT,                                                                                           \
         CLASS_INFO_EXTRACTOR, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_ARRAY_TYPE,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_UNION_TYPE,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_FUNCTION_TYPE,  /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_OBJECT_TYPE,  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_CLASS_TYPE,    /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_CLASS_INSTANCE_TYPE,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_INTERFACE_TYPE,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_ITERATOR_INSTANCE_TYPE,    /* //////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_NAMESPACE_TYPE,  /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         VTABLE,                       /* //////////////////////////////////////////////////////////////////-PADDING */ \
         AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -318,9 +304,6 @@ struct Reference;
         JS_ERROR_FIRST = JS_ERROR,      /* ////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ERROR_LAST = JS_TERMINATION_ERROR,    /* ///////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
-        SHARED_JSON_VALUE_FIRST = JS_SHARED_JSON_OBJECT, /* ///////////////////////////////////////////////-PADDING */ \
-        SHARED_JSON_VALUE_LAST = JS_SHARED_JSON_NULL,    /* ///////////////////////////////////////////////-PADDING */ \
-                                                                                                                       \
         JS_ITERATOR_FIRST = JS_ITERATOR,      /* //////////////////////////////////////////////////////////-PADDING */ \
         JS_ITERATOR_LAST = JS_STRING_ITERATOR, /* /////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
@@ -335,9 +318,6 @@ struct Reference;
                                                                                                                        \
         MODULE_RECORD_FIRST = MODULE_RECORD, /* ///////////////////////////////////////////////////////////-PADDING */ \
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
-                                                                                                                       \
-        TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_TYPE_LAST = TS_NAMESPACE_TYPE, /* //////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         STRING_FIRST = LINE_STRING, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         STRING_LAST = TREE_STRING  /* /////////////////////////////////////////////////////////////////////-PADDING */
@@ -489,8 +469,7 @@ public:
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
 
-    static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                 JSTaggedValue addedKey = JSTaggedValue::Undefined());
+    static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
@@ -506,6 +485,10 @@ public:
 
     static void CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
                                   JSHandle<JSHClass> &newHClass);
+
+    static JSHandle<JSTaggedValue> ParseKeyFromPGOCString(ObjectFactory* factory,
+                                                          const CString& key,
+                                                          const PGOHandler& handler);
 
     inline void ClearBitField()
     {
@@ -985,11 +968,6 @@ public:
     bool IsJSSharedMap() const
     {
         return GetObjectType() == JSType::JS_SHARED_MAP;
-    }
-
-    bool IsJSSharedJSONValue() const
-    {
-        return GetObjectType() >= JSType::SHARED_JSON_VALUE_FIRST && GetObjectType() <= JSType::SHARED_JSON_VALUE_LAST;
     }
 
     bool IsJSWeakMap() const
@@ -1628,57 +1606,6 @@ public:
         return GetObjectType() == JSType::MACHINE_CODE_OBJECT;
     }
 
-    inline bool IsTSType() const
-    {
-        JSType jsType = GetObjectType();
-        return jsType >= JSType::TS_TYPE_FIRST && jsType <= JSType::TS_TYPE_LAST;
-    }
-
-    inline bool IsTSObjectType() const
-    {
-        return GetObjectType() == JSType::TS_OBJECT_TYPE;
-    }
-
-    inline bool IsTSClassType() const
-    {
-        return GetObjectType() == JSType::TS_CLASS_TYPE;
-    }
-
-    inline bool IsTSInterfaceType() const
-    {
-        return GetObjectType() == JSType::TS_INTERFACE_TYPE;
-    }
-
-    inline bool IsTSUnionType() const
-    {
-        return GetObjectType() == JSType::TS_UNION_TYPE;
-    }
-
-    inline bool IsTSClassInstanceType() const
-    {
-        return GetObjectType() == JSType::TS_CLASS_INSTANCE_TYPE;
-    }
-
-    inline bool IsTSFunctionType() const
-    {
-        return GetObjectType() == JSType::TS_FUNCTION_TYPE;
-    }
-
-    inline bool IsTSArrayType() const
-    {
-        return GetObjectType() == JSType::TS_ARRAY_TYPE;
-    }
-
-    inline bool IsTSIteratorInstanceType() const
-    {
-        return GetObjectType() == JSType::TS_ITERATOR_INSTANCE_TYPE;
-    }
-
-    inline bool IsTSNamespaceType() const
-    {
-        return GetObjectType() == JSType::TS_NAMESPACE_TYPE;
-    }
-
     inline bool IsAOTLiteralInfo() const
     {
         return GetObjectType() == JSType::AOT_LITERAL_INFO;
@@ -1768,41 +1695,6 @@ public:
     inline bool IsJSSharedArray() const
     {
         return GetObjectType() == JSType::JS_SHARED_ARRAY;
-    }
-
-    inline bool IsJSSharedJSONFalse() const
-    {
-        return GetObjectType() == JSType::JS_SHARED_JSON_FALSE;
-    }
-
-    inline bool IsJSSharedJSONTrue() const
-    {
-        return GetObjectType() == JSType::JS_SHARED_JSON_TRUE;
-    }
-
-    inline bool IsJSSharedJSONString() const
-    {
-        return GetObjectType() == JSType::JS_SHARED_JSON_STRING;
-    }
-
-    inline bool IsJSSharedJSONNull() const
-    {
-        return GetObjectType() == JSType::JS_SHARED_JSON_NULL;
-    }
-
-    inline bool IsJSSharedJSONObject() const
-    {
-        return GetObjectType() == JSType::JS_SHARED_JSON_OBJECT;
-    }
-
-    inline bool IsJSSharedJSONNumber() const
-    {
-        return GetObjectType() == JSType::JS_SHARED_JSON_NUMBER;
-    }
-
-    inline bool IsJSSharedJSONArray() const
-    {
-        return GetObjectType() == JSType::JS_SHARED_JSON_ARRAY;
     }
 
     inline void SetElementsKind(ElementsKind kind)
@@ -2051,18 +1943,26 @@ public:
 
     static CString DumpJSType(JSType type);
 
-    static JSHandle<JSHClass> CreateRootHClass(const JSThread *thread, const HClassLayoutDesc *desc, uint32_t maxNum);
-    static JSHandle<JSHClass> CreateChildHClass(
-        const JSThread *thread, const JSHandle<JSHClass> &parent, const HClassLayoutDesc *desc);
-    static bool DumpForRootHClass(const JSHClass *hclass, HClassLayoutDesc *desc);
-    static bool DumpForChildHClass(const JSHClass *hclass, HClassLayoutDesc *desc);
-    static bool UpdateRootLayoutDesc(
-        const JSHClass *hclass, const PGOHClassTreeDesc *treeDesc, HClassLayoutDesc *rootDesc);
-    static bool UpdateChildLayoutDesc(const JSHClass *hclass, HClassLayoutDesc *childDesc);
+    static JSHandle<JSHClass> CreateRootHClassFromPGO(const JSThread* thread,
+                                                      const HClassLayoutDesc* desc,
+                                                      uint32_t maxNum);
+    static JSHandle<JSHClass> CreateChildHClassFromPGO(const JSThread* thread,
+                                                       const JSHandle<JSHClass>& parent,
+                                                       const HClassLayoutDesc* desc);
+    static bool DumpRootHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc);
+    static bool DumpChildHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc);
+    static bool UpdateRootLayoutDescByPGO(const JSHClass* hclass,
+                                          const PGOHClassTreeDesc* treeDesc,
+                                          HClassLayoutDesc* rootDesc);
+    static bool UpdateChildLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* childDesc);
     static CString DumpToString(JSTaggedType hclassVal);
 
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
     inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
+    inline bool HasTransitions() const
+    {
+        return !GetTransitions().IsUndefined();
+    }
 
     static JSHandle<JSHClass> CreateSHClass(JSThread *thread,
                                             const std::vector<PropertyDescriptor> &descs,

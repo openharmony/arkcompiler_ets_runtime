@@ -81,7 +81,6 @@ class Constants:
     ES2ABC_PATH = ""
     ARK_JS_VM_PATH = ""
     ARK_AOT_COMPILER_PATH = ""
-    BUILTINS_DTS = ""
     CaseTestDataType = namedtuple('test', ['exec_status', 'exec_time'])
 
 
@@ -238,7 +237,7 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
 
     es2abc_path = Constants.ES2ABC_PATH
     # tranmit abc
-    cmd = [es2abc_path, "--type-extractor", "--module", "--merge-abc", "--extension=js", js_file_path]
+    cmd = [es2abc_path, "--module", "--merge-abc", "--extension=js", js_file_path]
 
     logger.info("run cmd: %s", cmd)
     ret = subprocess.run(cmd)
@@ -272,7 +271,6 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
     # excute first time aot
     ark_aot_compiler_path = Constants.ARK_AOT_COMPILER_PATH
     cmd = [ark_aot_compiler_path,
-           f"--builtins-dts={Constants.BUILTINS_DTS}",
            f"--aot-file={api_name}",
            f"--compiler-pgo-profiler-path={api_name}.ap",
            "--icu-data-path", ICU_DATA_PATH,
@@ -303,7 +301,6 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
     # excute second time aot
     ark_aot_compiler_path = Constants.ARK_AOT_COMPILER_PATH
     cmd = [ark_aot_compiler_path,
-           f"--builtins-dts={Constants.BUILTINS_DTS}",
            f"--aot-file={api_name}",
            f"--compiler-pgo-profiler-path={api_name}.ap",
            "--icu-data-path", ICU_DATA_PATH,
@@ -775,7 +772,6 @@ def get_config():
                                             "ark_js_vm")
     Constants.ARK_AOT_COMPILER_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ETS_RUNTIME_PATH"],
                                             "ark_aot_compiler")
-    Constants.BUILTINS_DTS = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["BUILTINS_DTS"])
     ETS_RUNTIME_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ETS_RUNTIME_PATH"])
     ICU_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ICU_PATH"])
     ZLIB_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ZLIB_PATH"])

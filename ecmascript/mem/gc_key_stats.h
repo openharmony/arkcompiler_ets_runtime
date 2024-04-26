@@ -31,13 +31,13 @@ class GCStats;
 
 enum class RecordKeyData : uint8_t {
     GC_TOTAL_MEM_USED = 0,
-    GC_TOTAL_MEM_COMMITED,
+    GC_TOTAL_MEM_COMMITTED,
     GC_ACTIVE_MEM_USED,
-    GC_ACTIVE_MEM_COMMITED,
+    GC_ACTIVE_MEM_COMMITTED,
     GC_OLD_MEM_USED,
-    GC_OLD_MEM_COMMITED,
+    GC_OLD_MEM_COMMITTED,
     GC_HUGE_MEM_USED,
-    GC_HUGE_MEM_COMMITED,
+    GC_HUGE_MEM_COMMITTED,
     NUM_OF_KEY_DATA,
     FIRST_DATA = GC_TOTAL_MEM_USED,
 };
@@ -45,7 +45,7 @@ enum class RecordKeyData : uint8_t {
 enum class RecordKeyDuration : uint8_t {
     GC_TOTAL_TIME = 0,
     GC_MARK_TIME,
-    GC_EVACUTE_TIME,
+    GC_EVACUATE_TIME,
     NUM_OF_KEY_DURATION,
     FIRST_DATA = GC_TOTAL_TIME,
 };

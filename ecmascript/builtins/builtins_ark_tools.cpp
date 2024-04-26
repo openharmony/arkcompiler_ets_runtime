@@ -483,6 +483,22 @@ JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo
     return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
 }
 
+JSTaggedValue BuiltinsArkTools::IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(PropertyDetector::IsRegExpFlagsDetectorValid(env));
+}
+
+JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env));
+}
+
 JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -1153,7 +1169,8 @@ JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::False();
     }
     JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction, MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
     return JSTaggedValue::True();
 }
 
@@ -1167,7 +1184,8 @@ JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::False();
     }
     JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction, MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
     return JSTaggedValue::True();
 }
 
@@ -1183,7 +1201,7 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     JSHandle<JSFunction> jsFunction(thisValue);
 
     auto jit = Jit::GetInstance();
-    if (!jit->IsEnable()) {
+    if (!jit->IsEnableFastJit()) {
         return JSTaggedValue::False();
     }
     if (jsFunction->GetMachineCode() == JSTaggedValue::Undefined()) {

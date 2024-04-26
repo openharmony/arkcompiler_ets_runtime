@@ -339,6 +339,8 @@ void Heap::Initialize()
     auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
     auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
+    sOldTlab_ = new ThreadLocalAllocationBuffer(this);
+    thread_->ReSetSOldSpaceAllocationAddress(sOldTlab_->GetTopAddress(), sOldTlab_->GetEndAddress());
     inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
 
     // whether should verify heap duration gc
@@ -408,8 +410,23 @@ void Heap::Initialize()
     gcListeners_.reserve(16U);
 }
 
+void Heap::ResetTlab()
+{
+    sOldTlab_->Reset();
+}
+
+void Heap::FillBumpPointerForTlab()
+{
+    sOldTlab_->FillBumpPointer();
+}
+
 void Heap::Destroy()
 {
+    if (sOldTlab_ != nullptr) {
+        sOldTlab_->Reset();
+        delete sOldTlab_;
+        sOldTlab_ = nullptr;
+    }
     if (workManager_ != nullptr) {
         delete workManager_;
         workManager_ = nullptr;
@@ -803,9 +820,10 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     ASSERT(thread_->IsPropertyCacheCleared());
     ProcessGCListeners();
 
-    if (GetEcmaVM()->IsEnableJit()) {
+    if (GetEcmaVM()->IsEnableBaselineJit() || GetEcmaVM()->IsEnableFastJit()) {
         // check machine code space if enough
-        int remainSize = config_.GetDefaultMachineCodeSpaceSize() - GetMachineCodeSpace()->GetHeapObjectSize();
+        int remainSize = static_cast<int>(config_.GetDefaultMachineCodeSpaceSize()) -
+            static_cast<int>(GetMachineCodeSpace()->GetHeapObjectSize());
         Jit::GetInstance()->CheckMechineCodeSpaceMemory(GetEcmaVM()->GetJSThread(), remainSize);
     }
 }
@@ -824,6 +842,19 @@ void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string 
     }
     LOG_ECMA_MEM(ERROR) << oss.str().c_str();
     THROW_OOM_ERROR(thread, oss.str().c_str());
+}
+
+void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName)
+{
+    std::ostringstream oss;
+    oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: "
+        << functionName.c_str();
+    LOG_ECMA_MEM(ERROR) << oss.str().c_str();
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::OOM_ERROR, oss.str().c_str());
+    thread->SetException(error.GetTaggedValue());
 }
 
 void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
@@ -1043,7 +1074,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
             << " value:" << std::to_string(pid);
     }
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC);
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
@@ -1656,6 +1687,7 @@ void Heap::NotifyFinishColdStartSoon()
 
 void Heap::NotifyHighSensitive(bool isStart)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SmartGC: set high sensitive status: " + std::to_string(isStart));
     isStart ? SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE)
         : SetSensitiveStatus(AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
     LOG_GC(DEBUG) << "SmartGC: set high sensitive status: " << isStart;
@@ -1761,7 +1793,7 @@ void Heap::CleanCallBack()
     auto &callbacks = this->GetEcmaVM()->GetNativePointerCallbacks();
     if (!callbacks.empty()) {
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<DeleteCallbackTask>(this->GetJSThread()->GetThreadId(), callbacks)
+            std::make_unique<DeleteCallbackTask>(thread_, thread_->GetThreadId(), callbacks)
         );
     }
     ASSERT(callbacks.empty());
@@ -1771,7 +1803,7 @@ bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     for (auto iter : nativePointerCallbacks_) {
         if (iter.first != nullptr) {
-            iter.first(iter.second.first, iter.second.second);
+            iter.first(thread_, iter.second.first, iter.second.second);
         }
     }
     return true;
@@ -1948,7 +1980,8 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
         });
     }
 
-    if (code == nullptr) {
+    if (code == nullptr ||
+        code->GetPayLoadSizeInBytes() == code->GetInstructionsSize()) { // baseline code
         return {};
     }
     return code->CalCallSiteInfo(retAddr);

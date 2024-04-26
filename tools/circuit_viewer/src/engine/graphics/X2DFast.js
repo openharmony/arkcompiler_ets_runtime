@@ -136,7 +136,10 @@ export class X2DFast {
     this.drawCount = 0;
   }
   swapC(c) {
-    let r, g, b, a;
+    let r;
+    let g;
+    let b;
+    let a;
     if (isNaN(c)) {
       r = Math.floor(c[0] * 63 / 255);
       g = Math.floor(c[1] * 63 / 255);

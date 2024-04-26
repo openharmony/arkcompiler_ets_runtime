@@ -20,7 +20,6 @@
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/number_speculative_retype.h"
 #include "ecmascript/compiler/range_guard.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRunner {

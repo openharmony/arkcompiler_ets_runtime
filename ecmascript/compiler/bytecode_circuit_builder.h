@@ -171,7 +171,8 @@ struct BytecodeRegion {
     {
     }
 
-    BytecodeIterator &GetBytecodeIterator() {
+    BytecodeIterator &GetBytecodeIterator()
+    {
         return bytecodeIterator_;
     }
 

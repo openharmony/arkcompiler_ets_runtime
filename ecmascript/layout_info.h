@@ -44,6 +44,11 @@ public:
         return reinterpret_cast<LayoutInfo *>(obj);
     }
 
+    static LayoutInfo* GetLayoutInfoFromHClass(const JSHClass* hclass)
+    {
+        return LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    }
+
     void Initialize(const JSThread *thread, int num = 0);
     int GetPropertiesCapacity() const;
     int NumberOfElements() const;
@@ -97,8 +102,8 @@ public:
     void GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys,
                         const JSHandle<JSObject> object);
 
-    void DumpFieldIndex(int index, pgo::HClassLayoutDesc *desc);
-    bool UpdateFieldIndex(int index, pgo::HClassLayoutDesc *desc);
+    void DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
+    bool UpdateFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
     DECL_DUMP()
 
 private:

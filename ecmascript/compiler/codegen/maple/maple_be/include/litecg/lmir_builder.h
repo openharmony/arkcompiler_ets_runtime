@@ -439,7 +439,7 @@ public:
     }
 
     Expr DreadWithField(Var &var, FieldId id);
-
+    Expr IntrinsicOp(IntrinsicId id, Type *type, Args &args_);
     Expr Iread(Type *type, Expr addr, Type *baseType, FieldId fieldId = 0);
     PregIdx CreatePreg(Type *mtype);
     Stmt &Regassign(Expr src, PregIdx reg);
@@ -450,6 +450,8 @@ public:
     Expr Lnot(Type *type, Expr src);
     Expr Bnot(Type *type, Expr src);
     Expr Sqrt(Type *type, Expr src);
+    Expr Ceil(Type *type, Expr src);
+    Expr Abs(Type *type, Expr src);
 
     Expr Add(Type *type, Expr src1, Expr src2);
     Expr Sub(Type *type, Expr src1, Expr src2);
@@ -464,6 +466,8 @@ public:
     Expr And(Type *type, Expr src1, Expr src2);
     Expr Or(Type *type, Expr src1, Expr src2);
     Expr Xor(Type *type, Expr src1, Expr src2);
+    Expr Max(Type *type, Expr src1, Expr src2);
+    Expr Min(Type *type, Expr src1, Expr src2);
 
     Expr ICmpEQ(Type *type, Expr src1, Expr src2);
     Expr ICmpNE(Type *type, Expr src1, Expr src2);
@@ -487,6 +491,8 @@ public:
     Expr SExt(Type *fromType, Type *toType, Expr opnd);
     Expr BitCast(Type *fromType, Type *toType, Expr opnd);
     Expr Cvt(Type *fromType, Type *toType, Expr opnd);
+    Expr Floor(Type *fromType, Type *toType, Expr opnd);
+    Expr Ceil(Type *fromType, Type *toType, Expr opnd);
 
     Expr Select(Type *type, Expr cond, Expr ifTrue, Expr ifFalse);
 

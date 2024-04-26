@@ -43,7 +43,7 @@ void BufferRefMultiParamNewFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     BufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     JSNApi::DestroyJSVM(vm);
 }

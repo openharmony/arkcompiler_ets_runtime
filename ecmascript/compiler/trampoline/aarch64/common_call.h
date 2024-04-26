@@ -21,6 +21,12 @@
 #include "ecmascript/frames.h"
 
 namespace panda::ecmascript::aarch64 {
+
+enum class CompilerTierCheck : uint8_t {
+    CHECK_BASELINE_CODE,
+    NOT_CHECK_BASELINE_CODE,
+};
+
 using Label = panda::ecmascript::Label;
 class CommonCall {
 public:
@@ -193,12 +199,13 @@ public:
     static void CallReturnWithArgv([[maybe_unused]]ExtendedAssembler *assembler);
 
 private:
-    static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
+    static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
+                             Label *stackOverflow, CompilerTierCheck tierCheck);
 
     static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
     static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
 
-    static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
+    static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow, CompilerTierCheck tierCheck);
 
     static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp,
                              Register acc = INVALID_REG);
@@ -214,7 +221,7 @@ private:
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register currentSlot,
         Register callTarget, Register thisObj, Register method, Register pc, Register op);
 
-    static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode);
+    static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode, CompilerTierCheck tierCheck);
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *pushCallThis,
         Label *stackOverflow);
     static void JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
@@ -242,6 +249,24 @@ private:
 
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     friend class OptimizedCall;
+    friend class BaselineCall;
 };
+
+class BaselineCall : public CommonCall {
+public:
+    static void BaselineCallArg0(ExtendedAssembler *assembler);
+    static void BaselineCallArg1(ExtendedAssembler *assembler);
+    static void BaselineCallArgs2(ExtendedAssembler *assembler);
+    static void BaselineCallArgs3(ExtendedAssembler *assembler);
+    static void BaselineCallThisArg0(ExtendedAssembler *assembler);
+    static void BaselineCallThisArg1(ExtendedAssembler *assembler);
+    static void BaselineCallThisArgs2(ExtendedAssembler *assembler);
+    static void BaselineCallThisArgs3(ExtendedAssembler *assembler);
+    static void BaselineCallRange(ExtendedAssembler *assembler);
+    static void BaselineCallNew(ExtendedAssembler *assembler);
+    static void BaselineSuperCall(ExtendedAssembler *assembler);
+    static void BaselineCallThisRange(ExtendedAssembler *assembler);
+};
+
 }  // namespace panda::ecmascript::x64
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_MODULE_X64_H

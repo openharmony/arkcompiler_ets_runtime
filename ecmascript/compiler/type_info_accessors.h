@@ -22,7 +22,6 @@
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/global_index.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/index_accessor.h"
 
 namespace panda::ecmascript::kungfu {
@@ -36,7 +35,6 @@ public:
     {
         pgoType_ = acc_.TryGetPGOType(gate);
         // NOTICE-PGO: wx delete in part3
-        tsManager_ = compilationEnv_->GetTSManager();
         ptManager_ = compilationEnv_->GetPTManager();
     }
 
@@ -62,7 +60,6 @@ protected:
     GateRef gate_;
     PGOTypeRef pgoType_;
     // NOTICE-PGO: wx delete in part3
-    TSManager *tsManager_ {nullptr};
     PGOTypeManager *ptManager_ {nullptr};
 };
 
@@ -106,6 +103,9 @@ public:
 
     inline ParamType GetParamType() const
     {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return ParamType::AnyType();
+        }
         return PGOSampleTypeToParamType();
     }
 
@@ -204,12 +204,9 @@ public:
         return GetCtorGT().IsBuiltinModule();
     }
 
-    bool IsBuiltinConstructor(BuiltinTypeId type)
+    bool IsBuiltinConstructor([[maybe_unused]] BuiltinTypeId type)
     {
-        if (compilationEnv_->IsJitCompiler()) {
-            return false;
-        }
-        return tsManager_->IsBuiltinConstructor(type, GetCtorGT());
+        return false; // NOTICE-PGO:: tsManager_->IsBuiltinConstructor(type, GetCtorGT());
     }
 
 private:
@@ -238,14 +235,6 @@ public:
                               GateRef gate);
     NO_COPY_SEMANTIC(SuperCallTypeInfoAccessor);
     NO_MOVE_SEMANTIC(SuperCallTypeInfoAccessor);
-
-    bool IsClassTypeKind() const
-    {
-        if (compilationEnv_->IsJitCompiler()) {
-            return false;
-        }
-        return tsManager_->IsClassTypeKind(acc_.GetGateType(ctor_));
-    }
 
     bool IsValidCallMethodId() const
     {
@@ -625,14 +614,6 @@ public:
         return false;
     }
 
-    bool IsClassInstanceTypeKind() const
-    {
-        if (compilationEnv_->IsJitCompiler()) {
-            return false;
-        }
-        return tsManager_->IsClassInstanceTypeKind(acc_.GetGateType(receiver_));
-    }
-
     bool IsValidCallMethodId() const
     {
         return pgoType_.IsValidCallMethodId();
@@ -700,7 +681,6 @@ public:
 
 private:
     PropertyLookupResult GetAccessorPlr() const;
-    GlobalTSTypeRef GetAccessorFuncGT() const;
 
     GateRef receiver_;
     CallKind kind_ {CallKind::INVALID};
@@ -766,14 +746,6 @@ public:
         return receiver_;
     }
 
-    GateType GetReceiverGateType() const
-    {
-        if (compilationEnv_->IsJitCompiler()) {
-            return acc_.GetGateType(receiver_);
-        }
-        return tsManager_->TryNarrowUnionType(acc_.GetGateType(receiver_));
-    }
-
 protected:
     Chunk *chunk_;
     AccessMode mode_;
@@ -820,6 +792,127 @@ protected:
     bool hasIllegalType_;
     ChunkVector<ObjectAccessInfo> accessInfos_;
     ChunkVector<ObjectAccessInfo> checkerInfos_;
+};
+
+class LoadPrivatePropertyTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
+public:
+    LoadPrivatePropertyTypeInfoAccessor(const CompilationEnv *env, Circuit* circuit, GateRef gate, Chunk* chunk)
+        : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_)
+    {
+        levelIndex_ = acc_.GetValueIn(gate, 1); // 1: levelIndex
+        slotIndex_ = acc_.GetValueIn(gate, 2); // 2: slotIndex
+        lexicalEnv_ = acc_.GetValueIn(gate, 3); // 3: lexicalEnv
+        receiver_ = acc_.GetValueIn(gate, 4); // 4: acc as receiver
+        FetchPGORWTypesDual();
+        hasIllegalType_ = !GenerateObjectAccessInfo();
+    }
+    NO_COPY_SEMANTIC(LoadPrivatePropertyTypeInfoAccessor);
+    NO_MOVE_SEMANTIC(LoadPrivatePropertyTypeInfoAccessor);
+
+    bool IsMono() const
+    {
+        return types_.size() == 1;
+    }
+
+    bool TypesIsEmpty() const
+    {
+        return types_.size() == 0;
+    }
+
+    GateRef GetLevelIndex() const
+    {
+        return levelIndex_;
+    }
+
+    GateRef GetSlotIndex() const
+    {
+        return slotIndex_;
+    }
+
+    GateRef GetLexicalEnv() const
+    {
+        return lexicalEnv_;
+    }
+
+    bool IsAccessor() const
+    {
+        return isAccessor_;
+    }
+
+private:
+    void FetchPGORWTypesDual();
+    bool GenerateObjectAccessInfo();
+    JSTaggedValue GetKeyTaggedValue() const;
+
+    ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types_;
+    GateRef levelIndex_;
+    GateRef slotIndex_;
+    GateRef lexicalEnv_;
+    bool isAccessor_ {false};
+};
+
+class StorePrivatePropertyTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
+public:
+    StorePrivatePropertyTypeInfoAccessor(const CompilationEnv *env, Circuit* circuit, GateRef gate, Chunk* chunk)
+        : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_)
+    {
+        levelIndex_ = acc_.GetValueIn(gate, 1); // 1: levelIndex
+        slotIndex_ = acc_.GetValueIn(gate, 2); // 2: slotIndex
+        receiver_ = acc_.GetValueIn(gate, 3); // 3: receiver
+        lexicalEnv_ = acc_.GetValueIn(gate, 4); // 4: lexicalEnv
+        value_ = acc_.GetValueIn(gate, 5); // 5: acc as value
+        FetchPGORWTypesDual();
+        hasIllegalType_ = !GenerateObjectAccessInfo();
+    }
+    NO_COPY_SEMANTIC(StorePrivatePropertyTypeInfoAccessor);
+    NO_MOVE_SEMANTIC(StorePrivatePropertyTypeInfoAccessor);
+
+    bool IsMono() const
+    {
+        return types_.size() == 1;
+    }
+
+    bool TypesIsEmpty() const
+    {
+        return types_.size() == 0;
+    }
+
+    GateRef GetValue() const
+    {
+        return value_;
+    }
+
+    GateRef GetLevelIndex() const
+    {
+        return levelIndex_;
+    }
+
+    GateRef GetSlotIndex() const
+    {
+        return slotIndex_;
+    }
+
+    GateRef GetLexicalEnv() const
+    {
+        return lexicalEnv_;
+    }
+
+    bool IsAccessor() const
+    {
+        return isAccessor_;
+    }
+
+private:
+    void FetchPGORWTypesDual();
+    bool GenerateObjectAccessInfo();
+    JSTaggedValue GetKeyTaggedValue() const;
+
+    ChunkVector<std::tuple<ProfileTyper, ProfileTyper, ProfileTyper>> types_;
+    GateRef value_;
+    GateRef levelIndex_;
+    GateRef slotIndex_;
+    GateRef lexicalEnv_;
+    bool isAccessor_ {false};
 };
 
 class LoadObjByNameTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
@@ -977,6 +1070,11 @@ public:
         return types_.size();
     }
 
+    bool IsBuiltinsMap() const
+    {
+        return types_[0].IsBuiltinsMap();
+    }
+
     bool IsBuiltinsString() const
     {
         return types_[0].IsBuiltinsString();
@@ -1053,14 +1151,6 @@ public:
     std::optional<GlobalIndex> GetGlobalsId() const
     {
         return types_[0].GetGlobalsId();
-    }
-
-    bool IsBuiltinInstanceType(BuiltinTypeId type) const
-    {
-        if (compilationEnv_->IsJitCompiler()) {
-            return false;
-        }
-        return tsManager_->IsBuiltinInstanceType(type, GetReceiverGateType());
     }
 
     OnHeapMode TryGetHeapMode() const

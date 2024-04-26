@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/compiler/baseline/baseline_compiler.h"
 
 namespace panda::ecmascript::kungfu {
 extern "C" {
@@ -54,13 +55,11 @@ struct JitCompilationOptions {
     bool isEnableValueNumbering_;
     bool isEnableOptInlining_;
     bool isEnableOptString_;
-    bool isEnableTypeInfer_;
     bool isEnableOptPGOType_;
     bool isEnableOptTrackField_;
     bool isEnableOptLoopPeeling_;
     bool isEnableOptOnHeapCheck_;
     bool isEnableOptLoopInvariantCodeMotion_;
-    bool isEnableCollectLiteralInfo_;
     bool isEnableOptConstantFolding_;
     bool isEnableLexenvSpecialization_;
     bool isEnableNativeInline_;
@@ -72,6 +71,7 @@ public:
     JitCompilerTask(JitTask *jitTask) : jsFunction_(jitTask->GetJsFunction()), offset_(jitTask->GetOffset()),
         jitCompilationEnv_(new JitCompilationEnv(jitTask->GetCompilerVM(), jitTask->GetHostVM(), jsFunction_)),
         profileTypeInfo_(jitTask->GetProfileTypeInfo()),
+        compilerTier_(jitTask->GetCompilerTier()), baselineCompiler_(nullptr),
         passManager_(nullptr), jitCodeGenerator_(nullptr) { };
     static JitCompilerTask *CreateJitCompilerTask(JitTask *jitTask);
 
@@ -85,6 +85,8 @@ private:
     int32_t offset_;
     std::unique_ptr<JitCompilationEnv> jitCompilationEnv_;
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
+    CompilerTier compilerTier_;
+    std::unique_ptr<BaselineCompiler> baselineCompiler_;
     std::unique_ptr<JitPassManager> passManager_;
     // need refact AOTFileGenerator to JitCodeGenerator
     std::unique_ptr<AOTFileGenerator> jitCodeGenerator_;

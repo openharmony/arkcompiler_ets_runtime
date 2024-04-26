@@ -26,7 +26,6 @@
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/jit/jit.h"
 #include "jsnapi_expo.h"
 
@@ -43,7 +42,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
     std::string fileName = jsPandaFile->GetFileName();
 
     collector_ = new BytecodeInfoCollector(compilationEnv_, const_cast<JSPandaFile*>(jsPandaFile),
-        profilerDecoder_, passOptions_->EnableCollectLiteralInfo());
+        profilerDecoder_);
 
     gen.SetCurrentCompileFileName(jsPandaFile->GetNormalizedFileDesc());
     lOptions_ = new LOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
@@ -127,21 +126,12 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             pipeline.RunPass<LoopOptimizationPass>();
             pipeline.RunPass<RedundantPhiEliminationPass>();
         }
-        //  support when remove tsmanager in pass
-        const bool enablepass = false;
-        if (enablepass) {
-            {
-                Jit::JitLockHolder lock(compilationEnv_, "PGOTypeInferPass");
-                pipeline.RunPass<PGOTypeInferPass>();
-            }
-            {
-                Jit::JitLockHolder lock(compilationEnv_, "TSClassAnalysisPass");
-                pipeline.RunPass<TSClassAnalysisPass>();
-            }
-            {
-                Jit::JitLockHolder lock(compilationEnv_, "TSInlineLoweringPass");
-                pipeline.RunPass<TSInlineLoweringPass>();
-            }
+        if (passOptions_->EnableTypeLowering()) {
+            pipeline.RunPass<PGOTypeInferPass>();
+        }
+        {
+            Jit::JitLockHolder lock(compilationEnv_, "TSInlineLoweringPass");
+            pipeline.RunPass<TSInlineLoweringPass>();
         }
 
         pipeline.RunPass<RedundantPhiEliminationPass>();
@@ -213,12 +203,12 @@ JitPassManager::~JitPassManager()
     }
 }
 
-bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen)
+bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen,
+    AotCompilerStats &compilerStats)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(compilationEnv_->GetJSThread());
 
-    BytecodeInfoCollector collector(compilationEnv_, jsPandaFile, profilerDecoder_,
-                                    maxAotMethodSize_, passOptions_->EnableCollectLiteralInfo());
+    BytecodeInfoCollector collector(compilationEnv_, jsPandaFile, profilerDecoder_, maxAotMethodSize_);
     // Checking released/debuggable pandafile uses method literals, which are initialized in BytecodeInfoCollector,
     // should after it.
     if (!IsReleasedPandaFile(jsPandaFile)) {
@@ -282,8 +272,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
                       compilationEnv_->GetNativeAreaAllocator(), decoder, passOptions_,
                       optBCRange_);
         PassRunner<PassData> pipeline(&data);
-        if (data.GetMethodLiteral()->HasDebuggerStmt()) {
-            data.AbortCompilation();
+        if (!pipeline.RunPass<PreCompileCheckPass>()) {
             return;
         }
         pipeline.RunPass<RunFlowCyclesVerifierPass>();
@@ -323,6 +312,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<CGIRGenPass>();
     });
 
+    compilerStats.SetCompilerMethodCount(cmpDriver.GetCompilerMethodCount());
     LOG_COMPILER(INFO) << collector.GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
     return true;

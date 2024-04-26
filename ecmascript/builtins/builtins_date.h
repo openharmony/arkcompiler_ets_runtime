@@ -25,7 +25,7 @@
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
 #define BUILTIN_DATE_FUNCTIONS(V)                                                                   \
     /* Date.now ( ) */                                                                              \
-    V("now",   Now,   0, INVALID)                                                                   \
+    V("now",   Now,   0, DateNow)                                                                   \
     /* Date.parse ( string ) */                                                                     \
     V("parse", Parse, 1, INVALID)                                                                   \
     /* Date.UTC ( year [ , month [ , date [ , hours [ , minutes [ , seconds [ , ms ] ] ] ] ] ] ) */ \
