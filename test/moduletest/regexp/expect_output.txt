@@ -143,3 +143,5 @@ true
 SyntaxError: nothing to repeat
 null
 [object Object]
+false
+false
