@@ -42,14 +42,11 @@ public:
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         EXECUTE_JOB_HITRACE(pendingJob);
 
-#if defined(ENABLE_BYTRACE)
+        [[maybe_unused]] uint64_t jobId = 0;
 #if defined(ENABLE_HITRACE)
-        if (thread->GetEcmaVM()->GetJSOptions().EnableMicroJobTrace()) {
-            std::string strTrace = "PendingJob::ExecutePendingJob: jobId: " + std::to_string(pendingJob->GetJobId());
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, strTrace);
-        }
+        jobId = pendingJob->GetJobId();
 #endif
-#endif
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PendingJob::ExecutePendingJob: jobId: " + std::to_string(jobId));
 
         JSHandle<JSTaggedValue> job(thread, pendingJob->GetJob());
         ASSERT(job->IsCallable());
