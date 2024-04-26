@@ -326,7 +326,7 @@ public:
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
     JSHandle<TaggedArray> PUBLIC_API NewSJsonFixedArray(size_t start, size_t length,
-                                                    const std::vector<JSHandle<JSTaggedValue>> &vec);
+                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
 
     JSHandle<JSProxy> NewJSProxy(const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &handler);
     JSHandle<JSRealm> NewJSRealm();
