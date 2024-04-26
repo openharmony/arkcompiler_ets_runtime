@@ -166,11 +166,12 @@ JSTaggedValue BuiltinsRegExp::Exec(EcmaRuntimeCallInfo *argv)
     }
 
     bool useCache = true;
+    bool isFastPath = IsFastRegExp(thread, thisObj);
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
-    if (cacheTable->GetLargeStrCount() == 0 || cacheTable->GetConflictCount() == 0) {
+    if (!isFastPath || cacheTable->GetLargeStrCount() == 0 || cacheTable->GetConflictCount() == 0) {
         useCache = false;
     }
-    bool isFastPath = IsFastRegExp(thread, thisObj);
+
     // 6. Return RegExpBuiltinExec(R, S).
     return RegExpBuiltinExec(thread, thisObj, string, isFastPath, useCache);
 }
