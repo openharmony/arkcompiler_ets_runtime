@@ -20,6 +20,14 @@
  * @tc.require: issueI83B0E
  */
 
+print(ArkTools.isRegExpFlagsDetectorValid())
+Object.defineProperty(RegExp.prototype, 'flags', {
+  get: function () {
+    return undefined;
+  }
+});
+print(ArkTools.isRegExpFlagsDetectorValid())
+
 let str = '这是一段原始文本,"3c这要替换4d"!';
 let regexp = /([0-9])([a-z])/g
 let newStr1 = str.replace(regexp, "$1" );
@@ -49,3 +57,7 @@ p[Symbol.replace] = function () {return 4}
 let newStr4 = str.replace( /([0-9])([a-z])/g,"$4" );
 print(newStr4)
 print(ArkTools.isRegExpReplaceDetectorValid())
+
+print(ArkTools.isNumberStringNotRegexpLikeDetectorValid());
+String.prototype[Symbol.matchAll] = function () {return "aaa"}
+print(ArkTools.isNumberStringNotRegexpLikeDetectorValid());

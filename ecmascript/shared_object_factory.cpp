@@ -31,8 +31,6 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
-#include "ecmascript/shared_objects/js_shared_map.h" 
-#include "ecmascript/linked_hash_table.h"
 
 // class Object;
 namespace panda::ecmascript {
@@ -297,21 +295,6 @@ JSHandle<TaggedArray> ObjectFactory::SharedEmptyArray() const
     return JSHandle<TaggedArray>(thread_->GlobalConstants()->GetHandledEmptyArray());
 }
 
-JSHandle<TaggedArray> ObjectFactory::NewSJsonFixedArray(size_t start, size_t length,
-                                                        const std::vector<JSHandle<JSTaggedValue>> &vec)
-{
-    if (length == 0) {
-        return SharedEmptyArray();
-    }
-
-    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, MemSpaceType::SHARED_OLD_SPACE);
-    array->SetExtraLength(0);
-    for (size_t i = 0; i < length; i++) {
-        array->Set(thread_, i, vec[start + i]);
-    }
-    return array;
-}
-
 JSHandle<TaggedArray> ObjectFactory::CopySArray(const JSHandle<TaggedArray> &old, uint32_t oldLength,
                                                 uint32_t newLength, JSTaggedValue initVal, ElementsKind kind)
 {
@@ -366,78 +349,6 @@ JSHandle<TaggedArray> ObjectFactory::ExtendSArray(const JSHandle<TaggedArray> &o
     return newArray;
 }
 
-JSHandle<JSSharedArray> ObjectFactory::NewJSSArray()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedArrayFunction());
-    return JSHandle<JSSharedArray>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedMap> ObjectFactory::NewJSSMap()
-{
-    auto globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = vm_->GetFactory();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetSharedMapPrototype();
-    auto emptySLayout = thread_->GlobalConstants()->GetHandledEmptySLayoutInfo();
-    JSHandle<JSHClass> mapClass = factory->NewSEcmaHClass(JSSharedMap::SIZE, 0,
-        JSType::JS_SHARED_MAP, proto, emptySLayout);
-    JSHandle<JSSharedMap> jsMap = JSHandle<JSSharedMap>::Cast(factory->NewSharedOldSpaceJSObjectWithInit(mapClass));
-    JSHandle<LinkedHashMap> linkedMap(
-        LinkedHashMap::Create(thread_, LinkedHashSet::MIN_CAPACITY, MemSpaceKind::SHARED));
-    jsMap->SetLinkedMap(thread_, linkedMap);
-    jsMap->SetModRecord(0);
-    return jsMap;
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONArray()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONArrayFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONTrue()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONTrueFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONFalse()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONFalseFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONString()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONStringFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONNumber()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONNumberFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONNull()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONNullFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONObject()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONObjectFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
 JSHandle<TaggedArray> ObjectFactory::NewSTaggedArrayWithoutInit(uint32_t length)
 {
     NewSObjectHook();
@@ -455,6 +366,28 @@ JSHandle<LayoutInfo> ObjectFactory::CreateSLayoutInfo(uint32_t properties)
     JSHandle<LayoutInfo> layoutInfoHandle = JSHandle<LayoutInfo>::Cast(NewSTaggedArrayWithoutInit(arrayLength));
     layoutInfoHandle->Initialize(thread_);
     return layoutInfoHandle;
+}
+
+JSHandle<JSSharedArray> ObjectFactory::NewJSSArray()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedArrayFunction());
+    return JSHandle<JSSharedArray>(NewJSObjectByConstructor(function));
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewSJsonFixedArray(size_t start, size_t length,
+                                                        const std::vector<JSHandle<JSTaggedValue>> &vec)
+{
+    if (length == 0) {
+        return SharedEmptyArray();
+    }
+
+    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, MemSpaceType::SHARED_OLD_SPACE);
+    array->SetExtraLength(0);
+    for (size_t i = 0; i < length; i++) {
+        array->Set(thread_, i, vec[start + i]);
+    }
+    return array;
 }
 
 JSHandle<LayoutInfo> ObjectFactory::CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity)

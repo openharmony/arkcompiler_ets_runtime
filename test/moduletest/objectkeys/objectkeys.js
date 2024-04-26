@@ -75,3 +75,23 @@ print(Object.keys(obj));
     print(Object.keys(o1));
     print(Object.keys(o2));
 })();
+
+const firstname = Symbol("firstname");
+var object = { wode:1, wode1:2, wode2:3, wod38:4, wode4:5, wodejn5:6, wode6:7, wode7:8, wewnde8:9, wode9:10, wode10:11, wfde11:12, w32de12:13, u231mk3:14, [firstname]:"symmmm"};
+print(object[firstname]);
+print(object.u231mk3);
+print(object.wodejn5);
+print(object.wewnde8);
+print(object.wode10);
+print(object.u231mk3);
+print(object[firstname]);
+print(object.hhh);
+print(object.hhh);
+Object.defineProperty(object, "deffff", {
+    value: object.wode4,
+    writable:false,
+    enumerable:true
+})
+print(object.deffff);
+object.fff = "haode";
+print(object.fff);

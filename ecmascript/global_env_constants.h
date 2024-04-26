@@ -125,7 +125,6 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)                     \
     V(JSTaggedValue, JSAPIAsyncIteratorFuncHClass, JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
-    V(JSTaggedValue, JSMapClass, JS_MAP_HCLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
@@ -198,6 +197,9 @@ class ObjectFactory;
     V(JSTaggedValue, SetDelete, SET_DELETE_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, SetValues, SET_VALUES_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, SetEntries, SET_ENTRIES_INDEX, ecma_roots_builtins)                                \
+    V(JSTaggedValue, MapClear, MAP_CLEAR_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, SetClear, SET_CLEAR_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, SetAdd, SET_ADD_INDEX, ecma_roots_builtins)                                        \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_builtins)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_builtins)                 \
     V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_builtins)         \
@@ -232,7 +234,8 @@ class ObjectFactory;
     V(JSTaggedValue, NumberIsNaN, NUMBER_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, NumberIsFinite, NUMBER_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, NumberIsInteger, NUMBER_IS_INTEGER_INDEX, ecma_roots_builtins)                     \
-    V(JSTaggedValue, NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER_INDEX, ecma_roots_builtins)
+    V(JSTaggedValue, NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER_INDEX, ecma_roots_builtins)             \
+    V(JSTaggedValue, NumberParseFloat, NUMBER_PARSE_FLOAT_INDEX, ecma_roots_builtins)
 
 // All of type JSTaggedValue
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \

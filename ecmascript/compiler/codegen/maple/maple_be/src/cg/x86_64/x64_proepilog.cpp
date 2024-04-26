@@ -34,8 +34,8 @@ void X64GenProEpilog::GenerateCalleeSavedRegs(bool isPush)
     }
     /* CalleeSave(0) = -(FrameSize + CalleeReg - ArgsStk) */
     X64MemLayout *memLayout = static_cast<X64MemLayout *>(cgFunc.GetMemlayout());
-    int64 offset = -(memLayout->StackFrameSize() + static_cast<X64CGFunc &>(cgFunc).SizeOfCalleeSaved() -
-                     memLayout->SizeOfArgsToStackPass());
+    int64 offset = -static_cast<int64>((memLayout->StackFrameSize() +
+        static_cast<X64CGFunc &>(cgFunc).SizeOfCalleeSaved() - memLayout->SizeOfArgsToStackPass()));
     RegOperand &baseReg = cgFunc.GetOpndBuilder()->CreatePReg(x64::RBP, k64BitSize, kRegTyInt);
     std::vector<std::pair<uint16, int32>> calleeRegAndOffsetVec;
     for (const auto &reg : calleeSavedRegs) {

@@ -130,3 +130,17 @@ try {
 } finally {
     print(time.getTime(obj)); //: 50000000000
 }
+
+function checkObjWithDateProto() {
+    let o = {};
+    Object.setPrototypeOf(o, Date.prototype);
+    try {
+        o.getTime();
+    } catch(e) {
+        print(e);
+    }
+}
+
+//aot: [trace] Check Type: NotCallTarget1
+//: TypeError: Not a Date Object
+checkObjWithDateProto();

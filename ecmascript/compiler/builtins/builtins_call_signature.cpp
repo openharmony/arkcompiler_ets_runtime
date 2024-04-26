@@ -69,6 +69,8 @@ size_t BuiltinsStubCSigns::GetGlobalEnvIndex(ID builtinId)
     switch (builtinId) {
         case BuiltinsStubCSigns::ID::NumberConstructor:
             return static_cast<size_t>(GlobalEnvField::NUMBER_FUNCTION_INDEX);
+        case BuiltinsStubCSigns::ID::BigIntConstructor:
+            return static_cast<size_t>(GlobalEnvField::BIGINT_FUNCTION_INDEX);
         default:
             LOG_COMPILER(FATAL) << "this branch is unreachable";
             UNREACHABLE();

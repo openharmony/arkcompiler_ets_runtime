@@ -75,11 +75,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 void PatchLoader::ExecuteFuncOrPatchMain(
     JSThread *thread, const JSPandaFile *jsPandaFile, const PatchInfo &patchInfo, bool loadPatch)
 {
-    bool needToFinishManagedCode = false;
-    if (thread->GetState() != ThreadState::RUNNING) {
-        needToFinishManagedCode = true;
-        thread->ManagedCodeBegin();
-    }
+    ThreadManagedScope managedScope(thread);
     LOG_ECMA(DEBUG) << "execute main begin";
     EcmaContext *context = thread->GetCurrentEcmaContext();
     context->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
@@ -116,9 +112,6 @@ void PatchLoader::ExecuteFuncOrPatchMain(
         context->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
     }
     LOG_ECMA(DEBUG) << "execute main end";
-    if (needToFinishManagedCode) {
-        thread->ManagedCodeEnd();
-    }
 }
 
 PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString &patchFileName,

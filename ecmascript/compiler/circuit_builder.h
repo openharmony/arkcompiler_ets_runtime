@@ -700,6 +700,7 @@ public:
     inline GateRef TaggedIsProtoChangeMarker(GateRef obj);
     inline GateRef TaggedObjectIsJSMap(GateRef obj);
     inline GateRef TaggedObjectIsJSSet(GateRef obj);
+    inline GateRef TaggedObjectIsJSDate(GateRef obj);
     inline GateRef TaggedObjectIsTypedArray(GateRef obj);
     inline GateRef TaggedObjectIsJSArray(GateRef obj);
     inline GateRef TaggedGetInt(GateRef x);
@@ -747,6 +748,7 @@ public:
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
     GateRef NumberIsNaN(GateRef gate);
+    GateRef NumberParseFloat(GateRef gate, GateRef frameState);
     GateRef NumberIsFinite(GateRef gate);
     GateRef NumberIsInteger(GateRef gate);
     GateRef NumberIsSafeInteger(GateRef gate);

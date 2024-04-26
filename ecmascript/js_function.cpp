@@ -705,15 +705,23 @@ JSTaggedValue JSBoundFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     const uint32_t boundLength = boundArgs->GetLength();
     const uint32_t argsLength = info->GetArgsNumber() + boundLength;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    uint32_t argc = info->GetArgsNumber();
+    std::vector<JSTaggedType> argArray(argc);
+    for (uint32_t index = 0; index < argc; ++index) {
+        argArray[index] = info->GetCallArgValue(index).GetRawData();
+    }
+    JSTaggedType *currentSp = reinterpret_cast<JSTaggedType *>(info);
+    InterpretedEntryFrame *currentEntryState = InterpretedEntryFrame::GetFrameFromSp(currentSp);
+    JSTaggedType *prevSp = currentEntryState->base.prev;
+    thread->SetCurrentSPFrame(prevSp);
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, target, undefined, newTargetMutable, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (boundLength == 0) {
-        runtimeInfo->SetCallArg(argsLength, 0, info, 0);
-    } else {
-        // 0 ~ boundLength is boundArgs; boundLength ~ argsLength is args of EcmaRuntimeCallInfo.
+    if (boundLength != 0) {
         runtimeInfo->SetCallArg(boundLength, boundArgs);
-        runtimeInfo->SetCallArg(argsLength, boundLength, info, 0);
+    }
+    for (uint32_t index = 0; index < argc; index++) {
+        runtimeInfo->SetCallArg(static_cast<uint32_t>(index + boundLength), JSTaggedValue(argArray[index]));
     }
     return JSFunction::Construct(runtimeInfo);
 }

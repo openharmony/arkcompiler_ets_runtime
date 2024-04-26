@@ -106,11 +106,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {
-        bool needToFinishManagedCode = false;
-        if (thread->GetState() != ThreadState::RUNNING) {
-            needToFinishManagedCode = true;
-            thread->ManagedCodeBegin();
-        }
+        ThreadManagedScope managedScope(thread);
         [[maybe_unused]] EcmaHandleScope scope(thread);
         SharedModuleManager* sharedModuleManager = SharedModuleManager::GetInstance();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
@@ -129,9 +125,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
         module->SetStatus(ModuleStatus::INSTANTIATED);
         BindPandaFilesForAot(vm, jsPandaFile.get());
         SourceTextModule::Evaluate(thread, module, nullptr, 0, executeFromJob);
-        if (needToFinishManagedCode) {
-            thread->ManagedCodeEnd();
-        }
         if (thread->HasPendingException()) {
             return Unexpected(false);
         }
@@ -265,11 +258,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                            std::string_view entryPoint, bool executeFromJob)
 {
-    bool needToFinishManagedCode = false;
-    if (thread->GetState() != ThreadState::RUNNING) {
-        needToFinishManagedCode = true;
-        thread->ManagedCodeBegin();
-    }
+    ThreadManagedScope managedScope(thread);
     // For Ark application startup
     EcmaContext *context = thread->GetCurrentEcmaContext();
 
@@ -282,9 +271,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
         quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
 
         result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, executeFromJob);
-    }
-    if (needToFinishManagedCode) {
-        thread->ManagedCodeEnd();
     }
     return result;
 }

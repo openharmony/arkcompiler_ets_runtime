@@ -31,7 +31,6 @@
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/byte_array.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 
 namespace panda::ecmascript {
 struct MethodLiteral;
@@ -323,14 +322,6 @@ public:
 
     JSHandle<JSArray> NewJSArray();
     JSHandle<JSSharedArray> PUBLIC_API NewJSSArray();
-    JSHandle<JSSharedMap> PUBLIC_API NewJSSMap();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONArray();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONTrue();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONFalse();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONString();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNumber();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNull();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONObject();
     JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
@@ -548,6 +539,8 @@ public:
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 const JSHandle<JSTaggedValue> &newTarget);
+    JSHandle<JSObject> NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
+        const JSHandle<JSFunction> &constructor, uint32_t inlinedProps);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);

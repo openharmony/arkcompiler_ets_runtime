@@ -13,9 +13,6 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_test_action("sharedJSON") {
+host_moduletest_action("mapset") {
   deps = []
-  src_dir = "$js_root/test/sharedtest/sharedJSON"
-  is_enable_pgo = true
-  use_one_expect_path = true
 }

@@ -2533,6 +2533,16 @@ DEF_CALL_SIGNATURE(JSSetDelete)
         });
 }
 
+DEF_CALL_SIGNATURE(JSSetAdd)
+{
+    *callSign = CallSignature("JSSetAdd", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
 DEF_CALL_SIGNATURE(FastStringEqual)
 {
     // 3 : 3 input parameters

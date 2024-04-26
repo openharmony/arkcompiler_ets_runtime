@@ -15,7 +15,7 @@
 #ifndef ECMASCRIPT_JIT_TOOLS_H
 #define ECMASCRIPT_JIT_TOOLS_H
 
-#ifdef JIT_ESCAPE_ENABLE
+#if defined(JIT_ESCAPE_ENABLE) || defined(JIT_SWITCH_COMPILE_MODE)
 #include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
 #endif
 
@@ -27,6 +27,14 @@ bool GetJitEscapeEanble()
     return OHOS::system::GetBoolParameter("ark.jit.escape.disable", false);
 #endif
     return true;
+}
+
+bool IsJitEnableLitecg(bool value)
+{
+#ifdef JIT_SWITCH_COMPILE_MODE
+    return OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);
+#endif
+    return value;
 }
 }
 #endif  // ECMASCRIPT_JIT_TOOLS_H

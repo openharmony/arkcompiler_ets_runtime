@@ -38,6 +38,13 @@ JSTaggedValue BuiltinsBigInt::BigIntConstructor(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "BigInt is not a constructor", JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+    return BigIntConstructorInternal(thread, value);
+}
+
+JSTaggedValue BuiltinsBigInt::BigIntConstructorInternal(JSThread *thread, JSHandle<JSTaggedValue> value)
+{
+    BUILTINS_API_TRACE(thread, BigInt, Constructor);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 2. Let prim be ? ToPrimitive(value).
     JSHandle<JSTaggedValue> Primitive(thread, JSTaggedValue::ToPrimitive(thread, value));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

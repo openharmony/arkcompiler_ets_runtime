@@ -278,15 +278,6 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_SHARED_FUNCTION: {
             return GetString("JSSharedFunction");
         }
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_STRING:
-        case JSType::JS_SHARED_JSON_ARRAY: {
-            return GetString("SharedJSONValue");
-        }
         case JSType::FREE_OBJECT_WITH_ONE_FIELD:
         case JSType::FREE_OBJECT_WITH_NONE_FIELD:
         case JSType::FREE_OBJECT_WITH_TWO_FIELD:
@@ -393,6 +384,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("ArrayBuffer");
         case JSType::JS_SENDABLE_ARRAY_BUFFER:
             return GetString("SendableArrayBuffer");
+        case JSType::JS_SHARED_ARRAY:
+            return GetString("SharedArray");
         case JSType::JS_SHARED_ARRAY_BUFFER:
             return GetString("SharedArrayBuffer");
         case JSType::JS_PROXY_REVOC_FUNCTION:
@@ -711,6 +704,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
                 }
                 InsertNodeUnique(node);
                 ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
+                return node;
             } else {
                 existNode->SetLive(true);
                 return existNode;
@@ -1029,15 +1023,18 @@ Node *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bool is
 
 void HeapSnapshot::FillEdges(bool isSimplify)
 {
-    size_t length = nodes_.size();
     auto iter = nodes_.begin();
     size_t count = 0;
-    while (count++ < length) {
+    while (count++ < nodes_.size()) {
         ASSERT(*iter != nullptr);
         auto entryFrom = *iter;
         auto *objFrom = reinterpret_cast<TaggedObject *>(entryFrom->GetAddress());
         std::vector<Reference> referenceResources;
         JSTaggedValue objValue(objFrom);
+        if (!objValue.IsHeapObject()) {
+            iter++;
+            continue;
+        }
         objValue.DumpForSnapshot(referenceResources, isVmMode_);
         for (auto const &it : referenceResources) {
             JSTaggedValue toValue = it.value_;

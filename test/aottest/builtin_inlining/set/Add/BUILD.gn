@@ -13,11 +13,5 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_moduletest_action("sharedJSON") {
-  deps = []
-  entry_point = "--entry-point=sharedJSON"
-  is_module = true
-  is_merge = true
-  src_dir = "$js_root/test/sharedtest/sharedJSON"
-  src_postfix = "ts"
+host_aot_builtin_inlining_test_action("builtinSetAdd") {
 }

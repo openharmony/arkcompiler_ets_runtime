@@ -50,7 +50,6 @@
 #include "ecmascript/builtins/builtins_reflect.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_set.h"
-#include "ecmascript/builtins/builtins_shared_json_value.h"
 #include "ecmascript/builtins/builtins_sharedarraybuffer.h"
 #include "ecmascript/builtins/builtins_shared_typedarray.h"
 #include "ecmascript/builtins/builtins_string.h"
@@ -205,6 +204,8 @@ using SharedArrayBuffer = builtins::BuiltinsSharedArrayBuffer;
 using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
+static constexpr size_t REGEXP_INLINE_PROPS = 18;
+
 void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit, bool isRealm)
 {
     thread->CheckSafepointIfSuspended();
@@ -302,7 +303,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     } else {
         CopySObjectAndSFunction(env, runtimeGlobalEnv);
         RegisterSendableContainers(env);
-        RegisterSendableJSONValue(env);
     }
     if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
@@ -356,7 +356,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeGlobalObject(env, globalObject);
     InitializeAtomics(env, objFuncPrototypeVal);
     InitializeJson(env, objFuncPrototypeVal);
-    InitializeSendableJson(env, objFuncPrototypeVal);
     InitializeIterator(env, objFuncClass);
     InitializeAsyncIterator(env, objFuncClass);
     InitializeAsyncFromSyncIterator(env, objFuncClass);
@@ -799,8 +798,8 @@ void Builtins::InitializeBigInt(const JSHandle<GlobalEnv> &env, const JSHandle<J
         factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, JSType::JS_PRIMITIVE_REF, bigIntFuncPrototypeValue);
     // BigInt = new Function()
     JSHandle<JSObject> bigIntFunction(
-        NewBuiltinConstructor(env, bigIntFuncPrototype,
-                              BuiltinsBigInt::BigIntConstructor, "BigInt", FunctionLength::ONE));
+        NewBuiltinConstructor(env, bigIntFuncPrototype, BuiltinsBigInt::BigIntConstructor, "BigInt",
+                              FunctionLength::ONE, kungfu::BuiltinsStubCSigns::BigIntConstructor));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(bigIntFunction),
                                                      bigIntFuncInstanceHClass.GetTaggedValue());
@@ -1295,7 +1294,7 @@ void Builtins::LazyInitializeSet(const JSHandle<GlobalEnv> &env)
 void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    auto *globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // Map.prototype
     JSHandle<JSHClass> mapFuncPrototypeHClass = factory_->NewEcmaHClass(
         JSObject::SIZE, BuiltinsMap::GetNumPrototypeInlinedProperties(), JSType::JS_OBJECT, objFuncPrototypeVal);
@@ -1304,8 +1303,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     // Map.prototype_or_hclass
     JSHandle<JSHClass> mapFuncInstanceHClass =
         factory_->NewEcmaHClass(JSMap::SIZE, JSType::JS_MAP, mapFuncPrototypeValue);
-
-    globalConst->SetConstant(ConstantIndex::JS_MAP_HCLASS_INDEX, mapFuncInstanceHClass);
+    env->SetMapClass(thread_, mapFuncInstanceHClass);
 
     // Map() = new Function()
     JSHandle<JSTaggedValue> mapFunction(
@@ -1367,6 +1365,7 @@ void Builtins::LazyInitializeMap(const JSHandle<GlobalEnv> &env) const
     env->SetBuiltinsMapFunction(thread_, accessor);
     env->SetMapPrototype(thread_, accessor);
     env->SetMapProtoEntriesFunction(thread_, accessor);
+    env->SetMapClass(thread_, accessor);
 }
 
 void Builtins::InitializeWeakMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
@@ -1593,7 +1592,8 @@ void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     JSHandle<JSObject> jsonObject = factory_->NewJSObjectWithInit(jsonHClass);
 
     SetFunction(env, jsonObject, "parse", Json::Parse, FunctionLength::TWO);
-    SetFunction(env, jsonObject, "stringify", Json::Stringify, FunctionLength::THREE, BUILTINS_STUB_ID(JsonStringify));
+    SetFunction(env, jsonObject, "parseSendable", SendableJson::Parse, FunctionLength::THREE);
+    SetFunction(env, jsonObject, "stringify", Json::Stringify, FunctionLength::FOUR, BUILTINS_STUB_ID(JsonStringify));
 
     PropertyDescriptor jsonDesc(thread_, JSHandle<JSTaggedValue>::Cast(jsonObject), true, false, true);
     JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCII("JSON"));
@@ -1601,24 +1601,6 @@ void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     JSObject::DefineOwnProperty(thread_, globalObject, jsonString, jsonDesc);
     // @@ToStringTag
     SetStringTagSymbol(env, jsonObject, "JSON");
-    env->SetJsonFunction(thread_, jsonObject);
-}
-
-void Builtins::InitializeSendableJson(const JSHandle<GlobalEnv> &env,
-                                      const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    JSHandle<JSHClass> jsonHClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
-    JSHandle<JSObject> jsonObject = factory_->NewJSObjectWithInit(jsonHClass);
-
-    SetFunction(env, jsonObject, "parse", SendableJson::Parse, FunctionLength::TWO);
-    SetFunction(env, jsonObject, "stringify", SendableJson::Stringify, FunctionLength::THREE);
-    PropertyDescriptor jsonDesc(thread_, JSHandle<JSTaggedValue>::Cast(jsonObject), true, false, true);
-    JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCII("SENDABLE_JSON"));
-    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSObject::DefineOwnProperty(thread_, globalObject, jsonString, jsonDesc);
-    // @@ToStringTag
-    SetStringTagSymbol(env, jsonObject, "SENDABLE_JSON");
     env->SetJsonFunction(thread_, jsonObject);
 }
 
@@ -1926,7 +1908,7 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // RegExp.prototype
     JSHandle<JSFunction> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> regPrototype = factory_->NewJSObjectByConstructor(objFun);
+    JSHandle<JSObject> regPrototype = factory_->NewJSObjectByConstructor(env, objFun, REGEXP_INLINE_PROPS);
     JSHandle<JSTaggedValue> regPrototypeValue(regPrototype);
 
     // RegExp.prototype_or_hclass
@@ -2007,22 +1989,29 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     JSHandle<JSFunction>(speciesGetter)->SetLexicalEnv(thread_, env);
 
     // Set RegExp.prototype[@@split]
-    SetFunctionAtSymbol(env, regPrototype, env->GetSplitSymbol(), "[Symbol.split]", RegExp::Split, FunctionLength::TWO);
+    JSHandle<JSTaggedValue> splitFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetSplitSymbol(), "[Symbol.split]", RegExp::Split, FunctionLength::TWO);
     // Set RegExp.prototype[@@search]
-    SetFunctionAtSymbol(env, regPrototype, env->GetSearchSymbol(), "[Symbol.search]", RegExp::Search,
-                        FunctionLength::ONE);
+    JSHandle<JSTaggedValue> searchFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetSearchSymbol(), "[Symbol.search]", RegExp::Search, FunctionLength::ONE);
     // Set RegExp.prototype[@@match]
-    SetFunctionAtSymbol(env, regPrototype, env->GetMatchSymbol(), "[Symbol.match]", RegExp::Match, FunctionLength::ONE);
+    JSHandle<JSTaggedValue> matchFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetMatchSymbol(), "[Symbol.match]", RegExp::Match, FunctionLength::ONE);
     // Set RegExp.prototype[@@matchAll]
-    SetFunctionAtSymbol(env, regPrototype, env->GetMatchAllSymbol(), "[Symbol.matchAll]", RegExp::MatchAll,
-                        FunctionLength::ONE);
+    JSHandle<JSTaggedValue> matchAllFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetMatchAllSymbol(), "[Symbol.matchAll]", RegExp::MatchAll, FunctionLength::ONE);
     // Set RegExp.prototype[@@replace]
-    SetFunctionAtSymbol(env, regPrototype, env->GetReplaceSymbol(), "[Symbol.replace]", RegExp::Replace,
-                        FunctionLength::TWO);
+    JSHandle<JSTaggedValue> replaceFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetReplaceSymbol(), "[Symbol.replace]", RegExp::Replace, FunctionLength::TWO);
 
     env->SetRegExpFunction(thread_, regexpFunction);
     env->SetRegExpPrototype(thread_, regPrototype);
     env->SetRegExpExecFunction(thread_, execFunc);
+    env->SetRegExpSplitFunction(thread_, splitFunc);
+    env->SetRegExpSearchFunction(thread_, searchFunc);
+    env->SetRegExpMatchFunction(thread_, matchFunc);
+    env->SetRegExpMatchAllFunction(thread_, matchAllFunc);
+    env->SetRegExpReplaceFunction(thread_, replaceFunc);
     // Set RegExp.prototype hclass
     JSHandle<JSHClass> regPrototypeClass(thread_, regPrototype->GetJSHClass());
     env->SetRegExpPrototypeClass(thread_, regPrototypeClass.GetTaggedValue());
@@ -2864,7 +2853,7 @@ void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, keyString, handleUndefine);
-    if (IS_TYPED_BUILTINS_ID(builtinId)) {
+    if (IS_TYPED_BUILTINS_ID(builtinId) || IS_TYPED_INLINE_BUILTINS_ID(builtinId)) {
         auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
         globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
     }
@@ -3885,18 +3874,5 @@ void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
     }
     BUILTIN_SHARED_TYPED_ARRAY_TYPES(REGISTER_BUILTIN_SHARED_TYPED_ARRAY)
 #undef REGISTER_BUILTIN_SHARED_TYPED_ARRAY
-}
-
-void Builtins::RegisterSendableJSONValue(const JSHandle<GlobalEnv> &env) const
-{
-    auto globalObject = JSHandle<JSObject>::Cast(env->GetJSGlobalObject());
-#define REGISTER_BUILTIN_SHARED_JSON_VALUE(Type, ctorName, TYPE)                             \
-    {                                                                                        \
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(#ctorName));                \
-        PropertyDescriptor desc(thread_, env->Get##ctorName##Function(), true, false, true); \
-        JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                \
-    }
-    BUILTIN_SHARED_JSON_VALUE_TYPES(REGISTER_BUILTIN_SHARED_JSON_VALUE)
-#undef REGISTER_BUILTIN_SHARED_JSON_VALUE
 }
 }  // namespace panda::ecmascript

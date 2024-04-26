@@ -15,6 +15,7 @@ group("ark_aot_builtin_inlining_map_test") {
   testonly = true
   test_list = [
     "Delete",
+    "Clear",
     "Entries",
     "Get",
     "GetSize",

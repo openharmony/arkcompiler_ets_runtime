@@ -60,6 +60,45 @@ public:
         return true;
     }
     static const int NOT_FOUND = -1;
+    static const uint32_t CACHE_LENGTH_BIT = 10;
+    static const uint32_t CACHE_LENGTH = (1U << CACHE_LENGTH_BIT);
+    static const uint32_t CACHE_LENGTH_MASK = CACHE_LENGTH - 1;
+
+    struct PropertyKey : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
+                                                    base::AlignedPointer,
+                                                    JSTaggedValue,
+                                                    base::AlignedUint32> {
+        enum class Index : size_t {
+            HclassIndex = 0,
+            KeyIndex,
+            ResultsIndex,
+            NumOfMembers
+        };
+        static size_t GetHclassOffset(bool isArch32 = false)
+        {
+            return GetOffset<static_cast<size_t>(Index::HclassIndex)>(isArch32);
+        }
+
+        static size_t GetKeyOffset(bool isArch32 = false)
+        {
+            return GetOffset<static_cast<size_t>(Index::KeyIndex)>(isArch32);
+        }
+
+        static size_t GetResultsOffset(bool isArch32 = false)
+        {
+            return GetOffset<static_cast<size_t>(Index::ResultsIndex)>(isArch32);
+        }
+
+        static size_t GetPropertyKeySize()
+        {
+            return static_cast<size_t>(Index::NumOfMembers) * static_cast<size_t>(JSTaggedValue::TaggedTypeSize());
+        }
+
+        static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
+        alignas(EAS) JSHClass *hclass_ {nullptr};
+        alignas(EAS) JSTaggedValue key_ {JSTaggedValue::Hole()};
+        alignas(EAS) int results_ {NOT_FOUND};
+    };
 
 private:
     PropertiesCache()
@@ -72,11 +111,7 @@ private:
     }
     ~PropertiesCache() = default;
 
-    struct PropertyKey {
-        JSHClass *hclass_{nullptr};
-        JSTaggedValue key_{JSTaggedValue::Hole()};
-        int results_{NOT_FOUND};
-    };
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 
     static inline int Hash(JSHClass *cls, JSTaggedValue key)
     {
@@ -84,10 +119,6 @@ private:
         uint32_t keyHash = key.GetKeyHashCode();
         return static_cast<int>((clsHash ^ keyHash) & CACHE_LENGTH_MASK);
     }
-
-    static const uint32_t CACHE_LENGTH_BIT = 10;
-    static const uint32_t CACHE_LENGTH = (1U << CACHE_LENGTH_BIT);
-    static const uint32_t CACHE_LENGTH_MASK = CACHE_LENGTH - 1;
 
     std::array<PropertyKey, CACHE_LENGTH> keys_{};
 

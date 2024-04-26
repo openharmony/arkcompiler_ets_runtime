@@ -51,6 +51,7 @@ class SharedConcurrentSweeper;
 class SharedGC;
 class SharedGCMarker;
 class STWYoungGC;
+class ThreadLocalAllocationBuffer;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
@@ -531,6 +532,8 @@ public:
 
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 
+    inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, size_t size);
+
     inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass);
 
     inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
@@ -544,6 +547,8 @@ public:
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass);
 
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+
+    inline TaggedObject *AllocateSOldTlab(JSThread *thread, size_t size);
 
     size_t VerifyHeapObjects(VerifyKind verifyKind) const;
 private:
@@ -754,7 +759,11 @@ public:
     inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size);
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
+    // shared old space tlab
+    inline TaggedObject *AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size);
 
+    void ResetTlab();
+    void FillBumpPointerForTlab();
     /*
      * GC triggers.
      */
@@ -1156,7 +1165,8 @@ private:
     HugeMachineCodeSpace *hugeMachineCodeSpace_ {nullptr};
     HugeObjectSpace *hugeObjectSpace_ {nullptr};
     SnapshotSpace *snapshotSpace_ {nullptr};
-
+    // tlab for shared old space
+    ThreadLocalAllocationBuffer *sOldTlab_;
     /*
      * Garbage collectors collecting garbage in different scopes.
      */

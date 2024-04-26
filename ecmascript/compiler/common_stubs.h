@@ -97,6 +97,7 @@ namespace panda::ecmascript::kungfu {
     V(JSMapGet)                       \
     V(JSMapHas)                       \
     V(JSSetHas)                       \
+    V(JSSetAdd)                       \
     V(JSMapDelete)                    \
     V(JSSetDelete)                    \
     V(CreateJSTypedArrayEntries)      \

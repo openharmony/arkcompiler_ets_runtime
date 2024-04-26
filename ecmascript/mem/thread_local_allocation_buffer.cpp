@@ -13,22 +13,22 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_JSON_VALUE_H
-#define ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_JSON_VALUE_H
-
-#include "ecmascript/js_object.h"
+#include "ecmascript/free_object.h"
+#include "ecmascript/mem/thread_local_allocation_buffer.h"
 
 namespace panda::ecmascript {
-class JSSharedJSONValue : public JSObject {
-public:
-    CAST_CHECK(JSSharedJSONValue, IsJSSharedJSONValue);
+    void ThreadLocalAllocationBuffer::Reset(uintptr_t begin, uintptr_t end, uintptr_t top)
+    {
+        FillBumpPointer();
+        tlabWasteLimit_ = INIT_WASTE_LIMIT;
+        bpAllocator_.Reset(begin, end, top);
+    }
 
-    static constexpr size_t VALUE_OFFSET = JSObject::SIZE;
-    ACCESSORS(Value, VALUE_OFFSET, SIZE)
-
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, VALUE_OFFSET, SIZE)
-    DECL_DUMP()
-};
-}  // namespace panda::ecmascript
-
-#endif  // ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_JSON_VALUE_H
+    void ThreadLocalAllocationBuffer::FillBumpPointer()
+    {
+        size_t remainSize = Available();
+        if (remainSize != 0) {
+            FreeObject::FillFreeObject(heap_, GetTop(), remainSize);
+        }
+    }
+}

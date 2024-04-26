@@ -865,6 +865,16 @@ public:
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
     GateRef GetLastLeaveFrame(GateRef glue);
+    inline GateRef GetPropertiesCache(GateRef glue);
+    GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key);
+    inline void SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result);
+    GateRef HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key);
+    GateRef GetKeyHashCode(GateRef glue, GateRef key);
+    inline GateRef GetSortedKey(GateRef layoutInfo, GateRef index);
+    inline GateRef GetSortedIndex(GateRef layoutInfo, GateRef index);
+    inline GateRef GetSortedIndex(GateRef attr);
+    inline void StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
+    GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

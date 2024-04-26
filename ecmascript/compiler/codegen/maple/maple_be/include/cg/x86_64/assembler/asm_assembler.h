@@ -213,6 +213,8 @@ public:
     /* not */
     void Not(InsnSize insnSize, Reg reg) override;
     void Not(InsnSize insnSize, const Mem &mem) override;
+    /* bsr */
+    void Bsr(InsnSize insnSize, Reg srcReg, Reg destReg) override;
     /* neg */
     void Neg(InsnSize insnSize, Reg reg) override;
     void Neg(InsnSize insnSize, const Mem &mem) override;

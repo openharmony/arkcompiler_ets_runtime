@@ -135,6 +135,8 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
                 context->FindPatchModule(ConvertToString(module->GetEcmaModuleRecordName()));
             if (!resolvedModuleOfHotReload->IsHole()) {
                 resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
+                JSHandle<SourceTextModule> moduleOfHotReload(thread, resolvedModule);
+                return ModuleManagerHelper::GetModuleValue(thread, moduleOfHotReload, binding->GetIndex());
             }
         }
         return ModuleManagerHelper::GetModuleValue(thread, module, binding->GetIndex());

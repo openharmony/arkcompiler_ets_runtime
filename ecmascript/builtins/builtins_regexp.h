@@ -26,6 +26,14 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsRegExp : public base::BuiltinsBase {
 public:
+    enum RegExpSymbol {
+        SPLIT,
+        SEARCH,
+        MATCH,
+        MATCHALL,
+        REPLACE,
+        UNKNOWN
+    };
     // 21.2.3.1 RegExp ( pattern, flags )
     static JSTaggedValue RegExpConstructor(EcmaRuntimeCallInfo *argv);
 
@@ -82,8 +90,10 @@ public:
                                          JSHandle<JSTaggedValue> string,
                                          JSHandle<JSTaggedValue> inputReplaceValue);
     static JSTaggedValue GetAllFlagsInternal(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
-    static bool IsFastRegExp(JSThread *thread, JSHandle<JSTaggedValue> regexp);
+    static bool IsFastRegExp(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+                             RegExpSymbol symbolTag = RegExpSymbol::UNKNOWN);
     static bool GetFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag, bool isFastPath);
+    static bool GetOriginalFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag);
     static void SetLastIndex(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
         JSTaggedValue lastIndex, bool isFastPath);
     static int64_t GetLastIndex(JSThread *thread, const JSHandle<JSTaggedValue> regexp, bool isFastPath);
@@ -94,6 +104,9 @@ public:
     static JSTaggedValue RegExpBuiltinExec(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                            const JSHandle<JSTaggedValue> inputStr,
                                            bool isFastPath, bool useCache, bool isIntermediateResult = false);
+    static JSTaggedValue RegExpSearch(JSThread *thread,
+                                      const JSHandle<JSTaggedValue> regexp,
+                                      const JSHandle<JSTaggedValue> string);
     static JSTaggedValue RegExpSearchFast(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                           const JSHandle<JSTaggedValue> string);
     static JSTaggedValue RegExpSplit(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
@@ -103,6 +116,10 @@ public:
                                             bool isFastPath);
     static JSTaggedValue GetExecResultGroups(JSThread *thread, const JSHandle<JSTaggedValue> &execResults,
                                              bool isFastPath);
+    static JSTaggedValue RegExpMatch(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
+                                     const JSHandle<JSTaggedValue> string, bool isFastPath);
+    static JSTaggedValue RegExpMatchAll(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
+                                        const JSHandle<EcmaString> string, bool isFastPath);
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_GET_CAPTURE(index)                                                                                \
     static JSTaggedValue GetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj);                  \
@@ -119,6 +136,13 @@ public:
     SET_GET_CAPTURE(8)
     SET_GET_CAPTURE(9)
 #undef SET_GET_CAPTURE
+
+#define REGEXP_SYMBOL_FUNCTION_LIST(V)    \
+    V(SPLIT, Split)                       \
+    V(SEARCH, Search)                     \
+    V(MATCH, Match)                       \
+    V(MATCHALL, MatchAll)                 \
+    V(REPLACE, Replace)
 
 private:
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
@@ -165,7 +189,6 @@ private:
                                    JSHandle<EcmaString> inputString, int32_t lastIndex);
     static JSTaggedValue RegExpSplitFast(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                          JSHandle<JSTaggedValue> string, uint32_t limit, bool useCache);
-    static bool GetOringinalFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag);
     static JSHandle<EcmaString> CreateStringFromResultArray(JSThread *thread, const JSHandle<TaggedArray> resultArray,
         const std::vector<uint64_t> &resultLengthArray, JSHandle<EcmaString> srcString,
         uint32_t resultStrLength, bool isUtf8);
@@ -331,14 +354,15 @@ public:
         JSTaggedValue res = globalTable->Get(CAPTURE_START_INDEX + N - 1);
         int captureNum = globalTable->GetTotalCaptureCounts().GetInt();
         if (res.IsHole() && (N < captureNum)) {
-            uint32_t startIndex = static_cast<uint32_t>(globalTable->GetStartOfCaptureIndex(N).GetInt());
-            uint32_t endIndex = static_cast<uint32_t>(globalTable->GetEndOfCaptureIndex(N).GetInt());
-            uint32_t len = endIndex - startIndex;
+            int startIndex = globalTable->GetStartOfCaptureIndex(N).GetInt();
+            int endIndex = globalTable->GetEndOfCaptureIndex(N).GetInt();
+            int len = endIndex - startIndex;
             if (len < 0) {
                 res = JSTaggedValue::Undefined();
             } else {
                 res = JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(),
-                    JSHandle<EcmaString>(thread, EcmaString::Cast(globalTable->GetInputString())), startIndex, len));
+                    JSHandle<EcmaString>(thread, EcmaString::Cast(globalTable->GetInputString())),
+                    static_cast<uint32_t>(startIndex), static_cast<uint32_t>(len)));
             }
             globalTable->Set(thread, CAPTURE_START_INDEX + N - 1, res);
         } else if (res.IsHole()) {

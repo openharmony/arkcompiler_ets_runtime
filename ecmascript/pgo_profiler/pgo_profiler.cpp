@@ -1228,7 +1228,7 @@ void PGOProfiler::DumpNewObjRange(ApEntityId abcId, const CString &recordName, E
         ctorMethodId = slotValue.GetInt();
     } else if (slotValue.IsMethod()) {
         Method *calleeMethod = Method::Cast(slotValue);
-        ctorMethodId = calleeMethod->GetMethodId().GetOffset();
+        ctorMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
     } else {
         return;
     }

@@ -127,7 +127,6 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -1004,6 +1003,41 @@ JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
     return NewJSObjectByConstructor(constructor);
 }
 
+JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
+    const JSHandle<JSFunction> &constructor, uint32_t inlinedProps)
+{
+    if (!constructor->HasFunctionPrototype() ||
+        (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
+        JSHandle<JSHClass> jshclass;
+        if (LIKELY(inlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS)) {
+            jshclass = JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, constructor));
+        } else {
+            jshclass = NewEcmaHClass(JSObject::SIZE, inlinedProps, JSType::JS_OBJECT,
+                                     env->GetObjectFunctionPrototype());
+        }
+        JSHandle<JSObject> obj;
+        if (jshclass->IsJSSharedObject()) {
+            obj = NewSharedOldSpaceJSObject(jshclass);
+            if (jshclass->IsDictionaryMode()) {
+                auto fieldLayout = jshclass->GetLayout();
+                ASSERT(fieldLayout.IsDictionary());
+                auto dict = JSHandle<TaggedArray>(thread_, fieldLayout);
+                auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
+                obj->SetProperties(thread_, properties);
+            }
+        } else {
+            obj = NewJSObjectWithInit(jshclass);
+        }
+        return obj;
+    }
+    JSHandle<JSObject> result =
+        NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
+    if (thread_->HasPendingException()) {
+        LOG_FULL(FATAL) << "NewJSObjectByConstructor should not throw Exception! ";
+    }
+    return result;
+}
+
 JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                            uint32_t inlinedProps)
 {
@@ -1097,16 +1131,6 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ITERATOR: {
-            break;
-        }
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_STRING:
-        case JSType::JS_SHARED_JSON_ARRAY: {
-            JSSharedJSONValue::Cast(*obj)->SetValue(thread_, JSTaggedValue::Null());
             break;
         }
 #ifdef ARK_SUPPORT_INTL

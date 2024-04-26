@@ -2226,7 +2226,7 @@ JSTaggedValue BuiltinsSharedArray::ExtendTo(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    for (uint32_t k = length; k < newLength; k++) {
+    for (uint32_t k = static_cast<uint32_t>(length); k < newLength; k++) {
         key.Update(JSTaggedValue(k));
         JSObject::CreateDataPropertyOrThrow(thread, thisObjHandle, key, initValue, SCheckMode::SKIP);
     }

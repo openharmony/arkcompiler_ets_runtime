@@ -209,6 +209,10 @@ template("libark_jsruntime_common_set") {
       ]
     }
 
+    if (ark_standalone_build) {
+      defines += [ "STANDALONE_MODE" ]
+    }
+
     if (enable_target_compilation) {
       external_deps += [ "c_utils:utils" ]
     }

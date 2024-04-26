@@ -1239,6 +1239,19 @@ void JSSetDeleteStubBuilder::GenerateCircuit()
     Return(builder.Delete(linkedTable, key));
 }
 
+void JSSetAddStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue);
+    GateRef linkedTable = builder.GetLinked(obj);
+    GateRef newTable = builder.Insert(linkedTable, key, key);
+    builder.Store(VariableType::JS_ANY(), glue, obj, IntPtr(JSSet::LINKED_SET_OFFSET), newTable);
+    Return(obj);
+}
+
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()

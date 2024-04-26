@@ -954,12 +954,53 @@ void NewObjectStubBuilder::HeapAlloc(Variable *result, Label *exit, RegionSpaceF
     }
 }
 
+void NewObjectStubBuilder::AllocateInSOldPrologue(Variable *result, Label *callRuntime, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label success(env);
+    Label next(env);
+
+#ifdef ARK_ASAN_ON
+    Jump(callRuntime);
+#else
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    auto isStartHeapSamplingOffset = JSThread::GlueData::GetIsStartHeapSamplingOffset(env->Is32Bit());
+    auto isStartHeapSampling = Load(VariableType::JS_ANY(), glue_, IntPtr(isStartHeapSamplingOffset));
+    BRANCH(TaggedIsTrue(isStartHeapSampling), callRuntime, &next);
+    Bind(&next);
+#endif
+    auto topOffset = JSThread::GlueData::GetSOldSpaceAllocationTopAddressOffset(env->Is32Bit());
+    auto endOffset = JSThread::GlueData::GetSOldSpaceAllocationEndAddressOffset(env->Is32Bit());
+    auto topAddress = Load(VariableType::NATIVE_POINTER(), glue_, IntPtr(topOffset));
+    auto endAddress = Load(VariableType::NATIVE_POINTER(), glue_, IntPtr(endOffset));
+    auto top = Load(VariableType::JS_POINTER(), topAddress, IntPtr(0));
+    auto end = Load(VariableType::JS_POINTER(), endAddress, IntPtr(0));
+    auto newTop = PtrAdd(top, size_);
+    BRANCH(IntPtrGreaterThan(newTop, end), callRuntime, &success);
+    Bind(&success);
+    {
+        Store(VariableType::NATIVE_POINTER(), glue_, topAddress, IntPtr(0), newTop);
+        if (env->Is32Bit()) {
+            top = ZExtInt32ToInt64(top);
+        }
+        result->WriteVariable(top);
+        Jump(exit);
+    }
+#endif
+}
+
 void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef hclass)
 {
-    DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
-    ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_), hclass});
-    result->WriteVariable(*ret);
-    Jump(exit);
+    auto env = GetEnvironment();
+    Label callRuntime(env);
+    AllocateInSOldPrologue(result, &callRuntime, exit);
+    Bind(&callRuntime);
+    {
+        DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
+        ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_), hclass});
+        result->WriteVariable(*ret);
+        Jump(exit);
+    }
 }
 
 void NewObjectStubBuilder::AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit)
@@ -1615,7 +1656,7 @@ void NewObjectStubBuilder::CreateJSTypedArrayIterator(Variable *result, Label *e
 
     Bind(&throwTypeError);
     {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(LenGreaterThanMax));
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotTypedArray));
         CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
         result->WriteVariable(Exception());
         Jump(exit);

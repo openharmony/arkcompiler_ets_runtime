@@ -206,6 +206,12 @@ public:
         glueData_.newSpaceAllocationEndAddress_ = end;
     }
 
+    void ReSetSOldSpaceAllocationAddress(const uintptr_t *top, const uintptr_t* end)
+    {
+        glueData_.sOldSpaceAllocationTopAddress_ = top;
+        glueData_.sOldSpaceAllocationEndAddress_ = end;
+    }
+
     uintptr_t GetUnsharedConstpools() const
     {
         return glueData_.unsharedConstpools_;
@@ -839,6 +845,8 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  RTStubEntries,
                                                  COStubEntries,
                                                  BuiltinStubEntries,
@@ -875,6 +883,8 @@ public:
             LastFpIndex,
             NewSpaceAllocationTopAddressIndex,
             NewSpaceAllocationEndAddressIndex,
+            SOldSpaceAllocationTopAddressIndex,
+            SOldSpaceAllocationEndAddressIndex,
             RTStubEntriesIndex,
             COStubEntriesIndex,
             BuiltinsStubEntriesIndex,
@@ -953,6 +963,16 @@ public:
         static size_t GetNewSpaceAllocationEndAddressOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::NewSpaceAllocationEndAddressIndex)>(isArch32);
+        }
+
+        static size_t GetSOldSpaceAllocationTopAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SOldSpaceAllocationTopAddressIndex)>(isArch32);
+        }
+
+        static size_t GetSOldSpaceAllocationEndAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SOldSpaceAllocationEndAddressIndex)>(isArch32);
         }
 
         static size_t GetBCStubEntriesOffset(bool isArch32)
@@ -1105,6 +1125,8 @@ public:
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationTopAddress_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationEndAddress_ {nullptr};
+        alignas(EAS) const uintptr_t *sOldSpaceAllocationTopAddress_ {nullptr};
+        alignas(EAS) const uintptr_t *sOldSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) RTStubEntries rtStubEntries_;
         alignas(EAS) COStubEntries coStubEntries_;
         alignas(EAS) BuiltinStubEntries builtinStubEntries_;

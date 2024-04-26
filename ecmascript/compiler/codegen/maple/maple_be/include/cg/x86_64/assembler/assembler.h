@@ -231,6 +231,8 @@ public:
     virtual void Xor(InsnSize insnSize, const Mem &mem, Reg reg) = 0;
     virtual void Xor(InsnSize insnSize, Reg reg, const Mem &mem) = 0;
     virtual void Xor(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem) = 0;
+    /* bsr */
+    virtual void Bsr(InsnSize insnSize, Reg srcReg, Reg destReg) =0;
     /* not */
     virtual void Not(InsnSize insnSize, Reg reg) = 0;
     virtual void Not(InsnSize insnSize, const Mem &mem) = 0;

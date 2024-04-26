@@ -285,15 +285,12 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
     // 3. do not do much things inside callback, stack size is limited
     // 4. do not use normal log
     if (JsStackInfo::loader == nullptr) {
-        JsStackInfo::BuildCrashInfo(false);
         return;
     }
     if (!JsStackInfo::loader->InsideStub(pc) && !JsStackInfo::loader->InsideAOT(pc)) {
-        JsStackInfo::BuildCrashInfo(false);
         return;
     }
     LOG_ECMA(ERROR) << std::hex << "CrashCallback pc:" << pc << " fp:" << fp;
-    JsStackInfo::BuildCrashInfo(false, pc);
     FrameIterator frame(reinterpret_cast<JSTaggedType *>(fp));
     bool isBuiltinStub = (frame.GetFrameType() == FrameType::OPTIMIZED_FRAME);
     Method *method = frame.CheckAndGetMethod();

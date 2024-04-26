@@ -629,9 +629,20 @@ inline GateRef StubBuilder::TaggedIsSymbol(GateRef obj)
 
 inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
 {
-    auto allHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
-    auto allString = env_->GetBuilder()->TaggedObjectBothAreString(x, y);
-    return env_->GetBuilder()->LogicAnd(allHeapObject, allString);
+    Label entryPass(env_);
+    env_->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label heapObj(env_);
+    Label exit(env_);
+    GateRef isHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
+    BRANCH(isHeapObject, &heapObj, &exit);
+    Bind(&heapObj);
+    result = env_->GetBuilder()->TaggedObjectBothAreString(x, y);;
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
 }
 
 inline GateRef StubBuilder::TaggedIsNumber(GateRef x)
@@ -1848,6 +1859,13 @@ inline GateRef StubBuilder::PropAttrGetOffset(GateRef attr)
     return Int32And(
         TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::OffsetField::START_BIT))),
         Int32((1LLU << PropertyAttributes::OffsetField::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::GetSortedIndex(GateRef attr)
+{
+    return TruncInt64ToInt32(Int64And(
+        Int64LSR(attr, Int64(PropertyAttributes::SortedIndexField::START_BIT)),
+        Int64((1LLU << PropertyAttributes::SortedIndexField::SIZE) - 1)));
 }
 
 // SetDictionaryOrder func in property_attribute.h
@@ -3190,7 +3208,13 @@ inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fal
         VariableType::INT64(), glueGlobalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
     GateRef isDetectorName = BoolAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
                                      Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
-    BRANCH(isDetectorName, slow, fallthrough);
+    Label checkCommonDetector(env_);
+    BRANCH(isDetectorName, slow, &checkCommonDetector);
+    Bind(&checkCommonDetector);
+    auto gFlagsStr = GetGlobalConstantValue(
+        VariableType::JS_POINTER(), glue, ConstantIndex::FLAGS_INDEX);
+    GateRef isFlagsStr = Equal(key, gFlagsStr);
+    BRANCH(isFlagsStr, slow, fallthrough);
 }
 
 inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef jsFunc)
@@ -3322,6 +3346,47 @@ inline GateRef StubBuilder::GetLastLeaveFrame(GateRef glue)
     bool isArch32 = GetEnvironment()->Is32Bit();
     GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(isArch32));
     return Load(VariableType::NATIVE_POINTER(), glue, spOffset);
+}
+
+inline GateRef StubBuilder::GetPropertiesCache(GateRef glue)
+{
+    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
+    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
+    return Load(VariableType::NATIVE_POINTER(), currentContext, IntPtr(0));
+}
+
+inline GateRef StubBuilder::GetSortedKey(GateRef layoutInfo, GateRef index)
+{
+    GateRef fixedIdx = GetSortedIndex(layoutInfo, index);
+    return GetKey(layoutInfo, fixedIdx);
+}
+
+inline GateRef StubBuilder::GetSortedIndex(GateRef layoutInfo, GateRef index)
+{
+    return GetSortedIndex(GetAttr(layoutInfo, index));
+}
+
+inline void StubBuilder::SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result)
+{
+    GateRef hash = HashFromHclassAndKey(glue, cls, key);
+    GateRef prop =
+        PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(PropertiesCache::PropertyKey::GetPropertyKeySize())));
+    StoreWithoutBarrier(VariableType::JS_POINTER(), prop, IntPtr(PropertiesCache::PropertyKey::GetHclassOffset()), cls);
+    StoreWithoutBarrier(VariableType::JS_ANY(), prop, IntPtr(PropertiesCache::PropertyKey::GetKeyOffset()), key);
+    StoreWithoutBarrier(VariableType::INT32(), prop, IntPtr(PropertiesCache::PropertyKey::GetResultsOffset()), result);
+}
+
+inline void StubBuilder::StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
+{
+    GateRef addr = PtrAdd(base, offset);
+    env_->GetBuilder()->StoreWithoutBarrier(type, addr, value);
+}
+
+inline GateRef StubBuilder::HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key)
+{
+    GateRef clsHash = Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(3));  // skip 8bytes
+    GateRef keyHash = GetKeyHashCode(glue, key);
+    return Int32And(Int32Xor(clsHash, keyHash), Int32(PropertiesCache::CACHE_LENGTH_MASK));
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

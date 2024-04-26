@@ -333,7 +333,7 @@ void TypedBytecodeLowering::Lower(GateRef gate)
 int32_t TypedBytecodeLowering::GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode)
 {
     std::vector<EcmaOpcode> opcodeList = GetEcmaCodeListForRange();
-    int32_t index = opcodeList.size();
+    int32_t index =  static_cast<int32_t>(opcodeList.size());
     int32_t size = static_cast<int32_t>(opcodeList.size());
     for (int32_t i = 0; i < size; i++) {
         if (opcodeList[i] == ecmaOpCode) {
@@ -506,7 +506,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
             GateRef constpoool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
-            size_t holderHClassIndex = tacc.GetAccessInfo(0).HClassIndex();
+            size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
             if (LIKELY(!plr.IsAccessor())) {
                 result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, constpoool, holderHClassIndex);
             } else {
@@ -685,7 +685,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
             GateRef constpool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
-            size_t holderHClassIndex = tacc.GetAccessInfo(0).HClassIndex();
+            size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
             GateRef value = tacc.GetValue();
             if (tacc.IsHolderEqNewHolder(0)) {
                 builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, constpool, holderHClassIndex, value);

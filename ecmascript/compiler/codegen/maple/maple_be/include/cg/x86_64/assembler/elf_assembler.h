@@ -211,6 +211,8 @@ public:
     void Xor(InsnSize insnSize, const Mem &mem, Reg reg) override;
     void Xor(InsnSize insnSize, Reg reg, const Mem &mem) override;
     void Xor(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem) override;
+    /* bsr */
+    void Bsr(InsnSize insnSize, Reg srcReg, Reg destReg) override;
     /* not */
     void Not(InsnSize insnSize, Reg reg) override;
     void Not(InsnSize insnSize, const Mem &mem) override;

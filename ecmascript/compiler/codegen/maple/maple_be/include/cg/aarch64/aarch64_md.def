@@ -626,6 +626,20 @@ DEFINE_MOP(MOP_vsqrts, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS},CANTHROW,kLtAdvsi
 /* MOP_vsqrtd */
 DEFINE_MOP(MOP_vsqrtd, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS},CANTHROW,kLtAdvsimdDivD,"fsqrt","0,1",1,kFloatDataProcessing1,0x1e61c000)
 
+/* MOP_sfrintzrr */
+DEFINE_MOP(MOP_sfrintzrr, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS},CANTHROW,kLtAdvsimdDivS,"frintz","0,1",1,kFloatDataProcessing1,0x1e25c000)
+/* MOP_dfrintzrr */
+DEFINE_MOP(MOP_dfrintzrr, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS},CANTHROW,kLtAdvsimdDivS,"frintz","0,1",1,kFloatDataProcessing1,0x1e65c000)
+
+/* MOP_sfrintmrr */
+DEFINE_MOP(MOP_sfrintmrr, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS},CANTHROW,kLtAdvsimdDivS,"frintm","0,1",1,kFloatDataProcessing1,0x1e254000)
+/* MOP_dfrintmrr */
+DEFINE_MOP(MOP_dfrintmrr, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS},CANTHROW,kLtAdvsimdDivS,"frintm","0,1",1,kFloatDataProcessing1,0x1e654000)
+
+/* MOP_sfrintprr */
+DEFINE_MOP(MOP_sfrintprr, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS},CANTHROW,kLtAdvsimdDivS,"frintp","0,1",1,kFloatDataProcessing1,0x1e24c000)
+/* MOP_dfrintprr */
+DEFINE_MOP(MOP_dfrintprr, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS},CANTHROW,kLtAdvsimdDivS,"frintp","0,1",1,kFloatDataProcessing1,0x1e64c000)
 
 /* # Non Definitions */
 /* # As far as register allocation is concerned, the instructions below are non-definitions. */
