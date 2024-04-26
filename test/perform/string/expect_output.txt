@@ -50,3 +50,9 @@ string toLowerCase Hello World : 18
 string toUpperCase Hello World. How are you doing? : 16
 string toUpperCase Hello World : 16
 string toUpperCase The quick brown fox jumps over the lazy dog. : 18
+string localeCompare letter a is before c yielding a negative value : 503
+string localeCompare Alphabetically the word check after against yielding a positive value : 13
+string localeCompare a and a are equivalent yielding a neutral value of zero : 7
+  This is a test string to test the interface    string rim : 5
+   Hello world!     string trim : 6
+   This is a test string    string trim : 5
