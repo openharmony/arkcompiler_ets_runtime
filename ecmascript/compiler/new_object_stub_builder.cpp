@@ -1656,7 +1656,7 @@ void NewObjectStubBuilder::CreateJSTypedArrayIterator(Variable *result, Label *e
 
     Bind(&throwTypeError);
     {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(LenGreaterThanMax));
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotTypedArray));
         CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
         result->WriteVariable(Exception());
         Jump(exit);
