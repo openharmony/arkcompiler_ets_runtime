@@ -10,3 +10,43 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+string replace regexp flag is g: 44
+string replace regexp flag is gi :15
+string replace regexp pattern is /([^d]*)(d*)([^w]*)/ : 161
+string split number of input parameters is 2 : 70
+string split number of input parameters is 1 : 35
+string split into regexp.split : 22
+string indexOf input parameter is a substring : 14
+string indexOf Input parameter is not a substring : 15
+string indexOf number of input parameters is 2 : 11
+string slice number of input parameters is 1 : 17
+string slice number of input parameters is 2 : 18
+string slice input parameter is negative : 18
+string substring the first parameter is less than the second parameter : 18
+string substring the first parameter is greater than the second parameter : 18
+string substring The first parameter is equal to the second parameter : 11
+string substr the two parameters are adjacent numbers : 17
+string substr negative number in parameter : 18
+string substr number of input parameters is 2 : 17
+string replace into string.replace searchtag in the middle of the input parameter : 59
+string replace into string.replace searchtag in the beginning of the input parameter : 46
+string replace into string.repalce : 55
+string repeat the parameter is integer : 18
+string repeat the parameter is double : 19
+string repeat the return value is himself : 15
+string startsWith return true : 12
+string startsWith return true : 12
+string startsWith return false : 12
+string charCodeAt small input parameter value : 9
+string charCodeAt bigger input parameter value : 10
+string charCodeAt index out of range : 9
+string charAt small input parameter value : 10
+string charAt bigger input parameter value : 9
+string charAt index out of range : 10
+string toLowerCase Hello World. How are you doing? : 18
+string toLowerCase The quick brown fox jumps over the lazy dog : 18
+string toLowerCase Hello World : 18
+string toUpperCase Hello World. How are you doing? : 16
+string toUpperCase Hello World : 16
+string toUpperCase The quick brown fox jumps over the lazy dog. : 18
