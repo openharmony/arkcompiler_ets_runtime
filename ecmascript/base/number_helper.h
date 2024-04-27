@@ -126,6 +126,33 @@ public:
     {
         return number.IsDouble() && std::isnan(number.GetDouble());
     }
+
+    static bool inline IsDenormal(uint64_t x)
+    {
+        return (x & kINFINITY) == 0;
+    }
+
+    static int inline Exponent(double x)
+    {
+        uint64_t value =  base::bit_cast<uint64_t>(x);
+        if (IsDenormal(value)) {
+            return kDENORMAL;
+        }
+        int biased = static_cast<int>((value & kINFINITY) >> DOUBLE_SIGNIFICAND_SIZE);
+        return biased - EXPONENTBIAS;
+    }
+
+    static uint64_t inline Significand(double x)
+    {
+        uint64_t value =  base::bit_cast<uint64_t>(x);
+        uint64_t significand = value & DOUBLE_SIGNIFICAND_MASK;
+        if (!IsDenormal(value)) {
+            return significand + DOUBLE_HIDDEN_BIT;
+        } else {
+            return significand;
+        }
+    }
+
     static JSTaggedValue DoubleToString(JSThread *thread, double number, int radix);
     static bool IsEmptyString(const uint8_t *start, const uint8_t *end);
     static JSHandle<EcmaString> IntToEcmaString(const JSThread *thread, int number);
@@ -148,6 +175,7 @@ public:
     static JSTaggedValue StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal);
     static JSTaggedValue DoubleToExponential(JSThread *thread, double number, int digit);
     static JSTaggedValue DoubleToASCII(JSThread *thread, double valueNumber, int digits, int flags);
+    static JSTaggedValue DoubleToFixedString(JSThread *thread, double valueNumber, int digits);
     static void DoubleToASCIIWithFlag(std::string& buf, double valueNumber, int digits, int flags);
     static void ToASCIIWithNegative(std::string& tmpbuf, int digitNumber, int n, const std::string& buf);
     static void ToASCIIWithGreatThanZero(std::string& tmpbuf, int digitNumber, int number, const std::string& buf);
