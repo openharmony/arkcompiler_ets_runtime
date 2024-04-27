@@ -3973,6 +3973,22 @@ JSHandle<EcmaString> ObjectFactory::NewFromASCIIReadOnly(std::string_view data)
     return GetStringFromStringTableReadOnly(utf8Data, data.length());
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTable(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
+    uint32_t utf8Len = data.length();
+    NewObjectHook();
+    if (utf8Len == 0) {
+        return GetEmptyString();
+    }
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+    str->SetMixHashcode(hashCode);
+    return JSHandle<EcmaString>(thread_, str);
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data)
 {
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
@@ -3985,6 +4001,22 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8ReadOnly(std::string_view data)
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
     return GetStringFromStringTableReadOnly(utf8Data, data.length(), canBeCompress);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromUtf16WithoutStringTable(std::u16string_view data)
+{
+    uint32_t utf16Len = data.length();
+    auto utf16Data = reinterpret_cast<const uint16_t *>(data.data());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, utf16Len);
+    NewObjectHook();
+    if (utf16Len == 0) {
+        return GetEmptyString();
+    }
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
+    str->SetMixHashcode(hashCode);
+    return JSHandle<EcmaString>(thread_, str);
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf16(std::u16string_view data)
@@ -4002,10 +4034,38 @@ JSHandle<EcmaString> ObjectFactory::NewFromStdString(const std::string &data)
     return GetStringFromStringTable(utf8Data, data.size(), canBeCompress);
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTable(const uint8_t *utf8Data, uint32_t utf8Len)
+{
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len);
+    NewObjectHook();
+    if (utf8Len == 0) {
+        return GetEmptyString();
+    }
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+    str->SetMixHashcode(hashCode);
+    return JSHandle<EcmaString>(thread_, str);
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len)
 {
     bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len);
     return GetStringFromStringTable(utf8Data, utf8Len, canBeCompress);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromUtf16WithoutStringTable(const uint16_t *utf16Data, uint32_t utf16Len)
+{
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, utf16Len);
+    NewObjectHook();
+    if (utf16Len == 0) {
+        return GetEmptyString();
+    }
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
+    str->SetMixHashcode(hashCode);
+    return JSHandle<EcmaString>(thread_, str);
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf16(const uint16_t *utf16Data, uint32_t utf16Len)
@@ -4774,7 +4834,11 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithProperties(size_t prope
     int inlineProps = std::max(static_cast<int>(propertyCount), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps));
     for (size_t i = 0; i < propertyCount; ++i) {
-        JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
+        JSMutableHandle<JSTaggedValue> key(JSNApiHelper::ToJSMutableHandle(keys[i]));
+        if (key->IsString() && !EcmaStringAccessor(key.GetTaggedValue()).IsInternString()) {
+            // update string stable
+            key.Update(JSTaggedValue(InternString(key)));
+        }
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
         if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
@@ -4810,7 +4874,11 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateLargeJSObjectWithProperties(size_t 
     JSHandle<JSObject> object = NewJSObject(hClassHandle);
 
     for (size_t i = 0; i < propertyCount; ++i) {
-        JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
+        JSMutableHandle<JSTaggedValue> key(JSNApiHelper::ToJSMutableHandle(keys[i]));
+        if (key->IsString() && !EcmaStringAccessor(key.GetTaggedValue()).IsInternString()) {
+            // update string stable
+            key.Update(JSTaggedValue(InternString(key)));
+        }
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
         if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
@@ -4844,7 +4912,11 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithProperties(si
     JSMutableHandle<NameDictionary> dict(
         thread_, NameDictionary::Create(thread_, NameDictionary::ComputeHashTableSize(propertyCount)));
     for (size_t i = 0; i < propertyCount; ++i) {
-        JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
+        JSMutableHandle<JSTaggedValue> key(JSNApiHelper::ToJSMutableHandle(keys[i]));
+        if (key->IsString() && !EcmaStringAccessor(key.GetTaggedValue()).IsInternString()) {
+            // update string stable
+            key.Update(JSTaggedValue(InternString(key)));
+        }
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
         if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",

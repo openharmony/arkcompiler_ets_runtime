@@ -127,6 +127,12 @@ public:
         return *reinterpret_cast<ecmascript::JSTaggedValue *>(from);
     }
 
+    static inline ecmascript::JSMutableHandle<ecmascript::JSTaggedValue> ToJSMutableHandle(Local<JSValueRef> from)
+    {
+        ASSERT(!from.IsEmpty());
+        return ecmascript::JSMutableHandle<ecmascript::JSTaggedValue>(reinterpret_cast<uintptr_t>(*from));
+    }
+
     static inline ecmascript::JSHandle<ecmascript::JSTaggedValue> ToJSHandle(Local<JSValueRef> from)
     {
         ASSERT(!from.IsEmpty());

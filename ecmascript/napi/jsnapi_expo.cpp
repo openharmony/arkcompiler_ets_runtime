@@ -1364,6 +1364,37 @@ Local<StringRef> StringRef::NewFromUtf8(const EcmaVM *vm, const char *utf8, int 
     return JSNApiHelper::ToLocal<StringRef>(current);
 }
 
+Local<StringRef> StringRef::NewFromUtf8WithoutStringTable(const EcmaVM *vm, const char *utf8, int length)
+{
+    // This only supports for napi_create_string_utf8
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    ObjectFactory *factory = vm->GetFactory();
+    if (length < 0) {
+        JSHandle<JSTaggedValue> current(factory->NewFromUtf8WithoutStringTable(utf8));
+        return JSNApiHelper::ToLocal<StringRef>(current);
+    }
+    JSHandle<JSTaggedValue> current(factory->NewFromUtf8WithoutStringTable(reinterpret_cast<const uint8_t *>(utf8),
+                                                                           length));
+    return JSNApiHelper::ToLocal<StringRef>(current);
+}
+
+Local<StringRef> StringRef::NewFromUtf16WithoutStringTable(const EcmaVM *vm, const char16_t *utf16, int length)
+{
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    ObjectFactory *factory = vm->GetFactory();
+    if (length < 0) {
+        JSHandle<JSTaggedValue> current(factory->NewFromUtf16WithoutStringTable(utf16));
+        return JSNApiHelper::ToLocal<StringRef>(current);
+    }
+    JSHandle<JSTaggedValue> current(factory->NewFromUtf16WithoutStringTable(reinterpret_cast<const uint16_t *>(utf16),
+                                                                            length));
+    return JSNApiHelper::ToLocal<StringRef>(current);
+}
+
 Local<StringRef> StringRef::NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length)
 {
     // Omit exception check because ark calls here may not

@@ -1124,4 +1124,27 @@ HWTEST_F_L0(JSNApiTests, NapiFastPathGetNamedProperty)
     ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
 }
 
+HWTEST_F_L0(JSNApiTests, NewObjectWithPropertiesDuplicateWithKeyNotFromStringTable)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> keys[] = {
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "duplicateKey"),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "simpleKey"),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "duplicateKey"),
+    };
+    Local<JSValueRef> values[] = {
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "value1"),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "value2"),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "value3"),
+    };
+    PropertyAttribute attributes[] = {
+        PropertyAttribute(values[0], true, true, true),
+        PropertyAttribute(values[1], true, true, true),
+        PropertyAttribute(values[2], true, true, true),
+    };
+    Local<ObjectRef> object = ObjectRef::NewWithProperties(vm_, 3, keys, attributes);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(object);
+    EXPECT_TRUE(obj.GetTaggedValue() == JSTaggedValue::Undefined());
+    thread_->ClearException();
+}
 } // namespace panda::test
