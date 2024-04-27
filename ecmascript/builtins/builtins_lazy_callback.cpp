@@ -224,7 +224,7 @@ void BuiltinsLazyCallback::ResetLazyInternalAttr(JSThread *thread, const JSHandl
 {
     JSHClass *hclass = object->GetClass();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> key(factory->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> key(factory->NewFromUtf8ReadOnly(name));
     if (LIKELY(!hclass->IsDictionaryMode())) {
         LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
         uint32_t propsNumber = hclass->NumberOfProps();

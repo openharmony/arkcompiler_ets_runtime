@@ -147,7 +147,7 @@ void Builtins::InitializeSArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHa
 
     InitializeSCtor(arrayBufferIHClass, arrayBufferFunction, "SendableArrayBuffer", FunctionLength::ONE);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SendableArrayBuffer"));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SendableArrayBuffer"));
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(arrayBufferFunction), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -164,7 +164,7 @@ void Builtins::InitializeSArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHa
         JSHandle<JSObject>(arrayBufferPrototype), fieldIndex++, lengthGetter, globalConst->GetHandledUndefined());
 
     // 24.1.4.4 SendableArrayBuffer.prototype[@@toStringTag]
-    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SendableArrayBuffer"));
+    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8ReadOnly("SendableArrayBuffer"));
     arrayBufferPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
 
     // 24.1.3.3 get SendableArrayBuffer[@@species]
@@ -208,7 +208,7 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
 
     InitializeSCtor(setIHClass, setFunction, "SharedSet", FunctionLength::ZERO);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedSet"));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedSet"));
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(setFunction), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -223,15 +223,15 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
         entry.GetLength(), entry.GetBuiltinStubId());
     }
     // SharedSet.prototype.keys, which is strictly equal to Set.prototype.values
-    JSHandle<JSTaggedValue> keys(factory_->NewFromASCII("keys"));
-    JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
+    JSHandle<JSTaggedValue> keys(factory_->NewFromASCIIReadOnly("keys"));
+    JSHandle<JSTaggedValue> values(factory_->NewFromASCIIReadOnly("values"));
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(setPrototype), values);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
     setPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, valuesFunc.GetTaggedValue());
 
     // @@ToStringTag
-    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SharedSet"));
+    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8ReadOnly("SharedSet"));
     setPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
 
     // 23.1.3.10get SharedSet.prototype.size
@@ -274,7 +274,7 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
                                        mapFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
     InitializeSCtor(mapIHClass, mapFunction, "SharedMap", FunctionLength::ZERO);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedMap"));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedMap"));
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(mapFunction), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -288,7 +288,7 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
                      entry.GetLength(), entry.GetBuiltinStubId());
     }
     // @@ToStringTag
-    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SharedMap"));
+    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8ReadOnly("SharedMap"));
     mapPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
 
     // 23.1.3.10get SharedMap.prototype.size
@@ -297,7 +297,7 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     SetSAccessor(mapPrototype, fieldIndex++, sizeGetter, globalConst->GetHandledUndefined());
 
     // %MapPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> entries(factory_->NewFromASCII("entries"));
+    JSHandle<JSTaggedValue> entries(factory_->NewFromASCIIReadOnly("entries"));
     JSHandle<JSTaggedValue> entriesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(mapPrototype), entries);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -376,7 +376,7 @@ JSHandle<JSHClass> Builtins::CreateSObjectFunctionHClass(const JSHandle<JSFuncti
     for (const std::pair<std::string_view, bool> &each : properties) {
         attributes.SetOffset(index);
         attributes.SetIsAccessor(each.second);
-        JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(each.first));
+        JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(each.first));
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
     JSHandle<JSHClass> sobjPrototypeHClass =
@@ -402,7 +402,7 @@ JSHandle<JSHClass> Builtins::CreateSObjectPrototypeHClass() const
     for (const std::pair<std::string_view, bool> &each : properties) {
         attributes.SetOffset(index);
         attributes.SetIsAccessor(each.second);
-        JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(each.first));
+        JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(each.first));
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
 
@@ -424,7 +424,7 @@ JSHandle<JSHClass> Builtins::CreateSFunctionHClass(const JSHandle<JSFunction> &s
     for (const std::pair<std::string_view, bool> &each : properties) {
         attributes.SetOffset(index);
         attributes.SetIsAccessor(each.second);
-        JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(each.first));
+        JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(each.first));
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
     JSHandle<JSHClass> sobjPrototypeHClass =
@@ -452,7 +452,7 @@ JSHandle<JSHClass> Builtins::CreateSArrayBufferFunctionHClass(const JSHandle<JSF
         if (key == "[Symbol.species]") {
             keyString = env->GetSpeciesSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -481,7 +481,7 @@ JSHandle<JSHClass> Builtins::CreateSSetFunctionHClass(const JSHandle<JSFunction>
         if (key == "[Symbol.species]") {
             keyString = env->GetSpeciesSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -510,7 +510,7 @@ JSHandle<JSHClass> Builtins::CreateSMapFunctionHClass(const JSHandle<JSFunction>
         if (key == "[Symbol.species]") {
             keyString = env->GetSpeciesSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -539,7 +539,7 @@ JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<JSTag
         if (each.first == "[Symbol.hasInstance]") {
             keyString = env->GetHasInstanceSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(each.first));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(each.first));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -568,7 +568,7 @@ JSHandle<JSHClass> Builtins::CreateSArrayBufferPrototypeHClass(const JSHandle<JS
         if (key == "[Symbol.toStringTag]") {
             keyString = env->GetToStringTagSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -599,7 +599,7 @@ JSHandle<JSHClass> Builtins::CreateSSetPrototypeHClass(const JSHandle<JSObject> 
         } else if (key == "[Symbol.toStringTag]") {
             keyString = env->GetToStringTagSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -630,7 +630,7 @@ JSHandle<JSHClass> Builtins::CreateSMapPrototypeHClass(const JSHandle<JSObject> 
         } else if (key == "[Symbol.toStringTag]") {
             keyString = env->GetToStringTagSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -661,7 +661,7 @@ JSHandle<JSHClass> Builtins::CreateSArrayPrototypeHClass(const JSHandle<JSObject
         } else if (key == "[Symbol.toStringTag]") {
             keyString = env->GetToStringTagSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -690,7 +690,7 @@ JSHandle<JSHClass> Builtins::CreateSArrayFunctionHClass(const JSHandle<JSFunctio
         if (key == "[Symbol.species]") {
             keyString = env->GetSpeciesSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -704,7 +704,7 @@ JSHandle<JSHClass> Builtins::CreateSArrayFunctionHClass(const JSHandle<JSFunctio
 
 void Builtins::SetSFunctionName(const JSHandle<JSFunction> &ctor, std::string_view name) const
 {
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
     SetSFunctionName(ctor, nameString);
 }
 
@@ -753,7 +753,7 @@ void Builtins::SetSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObj
                             EcmaEntrypoint func, uint32_t index, int length,
                             kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     SetSFunction(env, obj, keyString, func, index, length, builtinId);
 }
 
@@ -777,7 +777,7 @@ void Builtins::SetSAccessor(const JSHandle<JSObject> &obj, uint32_t index,
 JSHandle<JSTaggedValue> Builtins::CreateSGetterSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
                                                       std::string_view name, int length) const
 {
-    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8ReadOnly(name));
     JSHandle<JSFunction> function = NewSFunction(env, funcName, func, length);
     return JSHandle<JSTaggedValue>(function);
 }
@@ -822,16 +822,16 @@ void Builtins::InitializeSSymbolAttributes(const JSHandle<GlobalEnv> &env)
     // Attention: Symbol serialization & deserialization are not supported now and
     // the order of symbols and symbol-strings must be maintained too when
     // Symbol serialization & deserialization are ready.
-#define INIT_SYMBOL_STRING(name, description, key)                                         \
-    {                                                                                      \
-        [[maybe_unused]] JSHandle<EcmaString> string = factory_->NewFromUtf8(description); \
+#define INIT_SYMBOL_STRING(name, description, key)                                                 \
+    {                                                                                              \
+        [[maybe_unused]] JSHandle<EcmaString> string = factory_->NewFromUtf8ReadOnly(description); \
     }
 DETECTOR_SYMBOL_LIST(INIT_SYMBOL_STRING)
 #undef INIT_SYMBOL_STRING
 
 #define INIT_PUBLIC_SYMBOL(name, description, key)                                 \
     JSHandle<JSSymbol> key##Symbol = factory_->NewSEmptySymbol();                  \
-    JSHandle<EcmaString> key##String = factory_->NewFromUtf8(description);         \
+    JSHandle<EcmaString> key##String = factory_->NewFromUtf8ReadOnly(description); \
     key##Symbol->SetDescription(thread_, key##String.GetTaggedValue());            \
     key##Symbol->SetHashField(SymbolTable::Hash(key##String.GetTaggedValue()));
 DETECTOR_SYMBOL_LIST(INIT_PUBLIC_SYMBOL)
@@ -880,7 +880,7 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
 
     arrFuncPrototype->SetPropertyInlinedProps(thread_, protoFieldIndex++, arrayFunction.GetTaggedValue());
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedArray"));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedArray"));
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(arrayFunction), false, false, false);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -890,7 +890,7 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
     }
 
     // %ArrayPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
+    JSHandle<JSTaggedValue> values(factory_->NewFromASCIIReadOnly("values"));
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(arrFuncPrototype), values);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -943,7 +943,7 @@ void Builtins::InitializeS##Type(const JSHandle<GlobalEnv> &env, const JSHandle<
         FunctionKind::BUILTIN_CONSTRUCTOR);                                                                     \
     InitializeSCtor(arrFuncInstanceHClass, arrayFunction, #ctorName, FunctionLength::THREE);                    \
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());                                           \
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(#ctorName));                                       \
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(#ctorName));                               \
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(arrayFunction), false, false, false);        \
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                                       \
     RETURN_IF_ABRUPT_COMPLETION(thread_);                                                                       \
@@ -1001,7 +1001,7 @@ void Builtins::InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHan
     }
 
     // %SharedTypedArray%.prototype [ @@iterator ] ( )
-    JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
+    JSHandle<JSTaggedValue> values(factory_->NewFromASCIIReadOnly("values"));
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(typedArrFuncPrototype), values);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -1057,7 +1057,7 @@ JSHandle<JSHClass> Builtins::CreateSTypedArrayPrototypeHClass(const JSHandle<JSO
         } else if (key == "[Symbol.toStringTag]") {
             keyString = env->GetToStringTagSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -1085,7 +1085,7 @@ JSHandle<JSHClass> Builtins::CreateSTypedArrayFunctionHClass(const JSHandle<JSFu
         if (key == "[Symbol.species]") {
             keyString = env->GetSpeciesSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
@@ -1110,7 +1110,7 @@ JSHandle<JSHClass> Builtins::CreateSSpecificTypedArrayFuncHClass(const JSHandle<
     for (const auto &[key, isAccessor] : properties) {
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
-        keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+        keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
     JSHandle<JSHClass> sobjPrototypeHClass =
@@ -1134,7 +1134,7 @@ JSHandle<JSHClass> Builtins::CreateSSpecificTypedArrayInstanceHClass(const JSHan
     for (const auto &[key, isAccessor] : properties) {
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
-        keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+        keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
     JSHandle<JSHClass> sSpecificTypedArrayPrototypeHClass =

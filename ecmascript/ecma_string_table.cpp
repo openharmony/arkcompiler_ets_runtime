@@ -180,14 +180,15 @@ EcmaString *EcmaStringTable::CreateAndInternStringNonMovable(EcmaVM *vm, const u
     This function is used to create global constant strings from read-only sapce only.
     It only inserts string into string-table and provides no string-table validity check.
 */
-EcmaString *EcmaStringTable::CreateAndInternStringReadOnly(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len)
+EcmaString *EcmaStringTable::CreateAndInternStringReadOnly(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+                                                           bool canBeCompress)
 {
     RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, true);
+    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress);
     if (result.first != nullptr) {
         return result.first;
     }
-    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, true,
+    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress,
                                                          MemSpaceType::SHARED_READ_ONLY_SPACE);
     str->SetMixHashcode(result.second);
     InternStringThreadUnsafe(str);
