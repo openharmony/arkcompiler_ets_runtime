@@ -280,6 +280,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
             status = JSFunction::SetFunctionName(thread, JSHandle<JSFunctionBase>(boundFunction),
                                                  targetName, boundName);
         }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // Assert: status is not an abrupt completion.
         ASSERT_PRINT(status, "DefinePropertyOr failed");
     }

@@ -1455,10 +1455,18 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
             i = Int32Add(*i, Int32(1));
             LoopEnd(&loopHead);
             Bind(&loopExit);
-
+            Label hasException2(env);
+            Label notHasException2(env);
             NewObjectStubBuilder newBuilder(this);
             newBuilder.SetParameters(glue, 0);
             GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
+            BRANCH(HasPendingException(glue), &hasException2, &notHasException2);
+            Bind(&hasException2);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException2);
             i = Int32(0);
             Label loopHead2(env);
             Label loopEnd2(env);
@@ -1519,6 +1527,8 @@ void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateR
     Label newTypedArray(env);
     Label writeVariable(env);
     Label copyBuffer(env);
+    Label hasException0(env);
+    Label notHasException0(env);
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
     BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &startTagExists);
     Bind(&startTagExists);
@@ -1558,6 +1568,13 @@ void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateR
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
         GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
+        BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+        Bind(&hasException0);
+        {
+            result->WriteVariable(Exception());
+            Jump(exit);
+        }
+        Bind(&notHasException0);
         BRANCH(Int32Equal(TruncInt64ToInt32(*newArrayLen), Int32(0)), &writeVariable, &copyBuffer);
         Bind(&copyBuffer);
         {
@@ -1685,6 +1702,15 @@ void BuiltinsTypedArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRe
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
     GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+    Label hasException0(env);
+    Label notHasException0(env);
+    BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+    Bind(&hasException0);
+    {
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+    Bind(&notHasException0);
     CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
         {thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen),
         newBuilder.GetElementSizeFromType(glue, jsType)});
