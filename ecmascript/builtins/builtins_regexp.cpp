@@ -764,6 +764,7 @@ JSTaggedValue BuiltinsRegExp::RegExpMatchAll(JSThread *thread, const JSHandle<JS
         JSHandle<JSTaggedValue> pattern(thread, jsRegExp->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, jsRegExp->GetOriginalFlags());
         matcher.Update(BuiltinsRegExp::RegExpCreate(thread, pattern, flags));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SetLastIndex(thread, matcher,
             JSHandle<JSObject>::Cast(jsRegExp)->GetPropertyInlinedProps(LAST_INDEX_OFFSET), isFastPath);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
