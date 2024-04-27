@@ -83,3 +83,15 @@ for (let i = 0; i < 100; i++) {
   f(Number, 1);
 }
 print("load Number ic by name success!")
+
+function f(a, b) {
+  a.valueOf();
+}
+
+for (let i = 0; i < 100; i++) {
+  f(Number.prototype, 1);
+}
+for (let i = 0; i < 100; i++) {
+  f(120, 1);
+}
+print("load Number ic by name success1!")
