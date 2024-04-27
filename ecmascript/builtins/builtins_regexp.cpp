@@ -731,6 +731,7 @@ JSTaggedValue BuiltinsRegExp::MatchAll(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> pattern(thread, regexp->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, regexp->GetOriginalFlags());
         matcher.Update(BuiltinsRegExp::RegExpCreate(thread, pattern, flags));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SetLastIndex(thread, matcher,
             JSHandle<JSObject>::Cast(regexp)->GetPropertyInlinedProps(LAST_INDEX_OFFSET), isFastPath);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

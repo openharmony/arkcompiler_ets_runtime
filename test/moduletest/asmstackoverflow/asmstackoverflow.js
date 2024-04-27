@@ -351,3 +351,22 @@ class C4{
 }
 new C4();
 print("recursive stack overflow")
+
+function f(a5) {
+    ("ZU").matchAll(a5);
+}
+function runNearStackLimit(f) {
+    function t() {
+        try {
+            t();
+        } catch (e) {
+            f();
+        }
+    }
+    try {
+        t();
+    } catch (e) {
+    }
+}
+runNearStackLimit(f);
+print("matchAll success");
