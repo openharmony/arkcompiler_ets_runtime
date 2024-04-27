@@ -185,9 +185,28 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
         return JSTaggedValue(result).GetRawData();                                         \
     }
 
-ALLOCATE_IN_SHARED_HEAP(NonMovable)
-
 #undef ALLOCATE_IN_SHARED_HEAP
+
+DEF_RUNTIME_STUBS(AllocateInSNonMovable)
+{
+    RUNTIME_STUBS_HEADER(AllocateInSNonMovable);
+    JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto size = static_cast<size_t>(allocateSize.GetInt());
+    auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+    auto result = heap->AllocateSharedNonMovableSpaceFromTlab(thread, size);
+    if (result != nullptr) {
+        return JSTaggedValue(result).GetRawData();
+    }
+    auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());
+    result = sharedHeap->AllocateNonMovableOrHugeObject(thread, size);
+    ASSERT(result != nullptr);
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+    }
+    return JSTaggedValue(result).GetRawData();
+}
 
 DEF_RUNTIME_STUBS(AllocateInSOld)
 {

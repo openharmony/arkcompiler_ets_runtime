@@ -202,14 +202,19 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
 {
     auto object = AllocateYoungOrHugeObject(size);
     object->SetClass(thread_, hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
-void BaseHeap::SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass, size_t size)
+void BaseHeap::SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
+                                           [[maybe_unused]] size_t size)
 {
     object->SetClass(thread, hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
+#endif
 }
 
 uintptr_t Heap::AllocateYoungSync(size_t size)
@@ -237,7 +242,9 @@ TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
     if (object != nullptr) {
         object->SetClass(thread_, hclass);
     }
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -245,7 +252,9 @@ TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
     TaggedObject *object = AllocateOldOrHugeObject(hclass, size);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -260,7 +269,9 @@ TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass, size_t size)
         CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
         object->SetClass(thread_, hclass);
     }
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject*>(object), size);
+#endif
     return object;
 }
 
@@ -268,7 +279,9 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
     TaggedObject *object = AllocateReadOnlyOrHugeObject(hclass, size);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -283,7 +296,9 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
         CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_, "Heap::AllocateReadOnlyOrHugeObject");
         object->SetClass(thread_, hclass);
     }
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -291,7 +306,9 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
     TaggedObject *object = AllocateNonMovableOrHugeObject(hclass, size);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -306,7 +323,9 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
         CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
         object->SetClass(thread_, hclass);
     }
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -319,7 +338,9 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
         UNREACHABLE();
     }
     *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -332,7 +353,9 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
         UNREACHABLE();
     }
     *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -368,7 +391,9 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
     CheckAndTriggerOldGC(size);
     auto object = AllocateHugeObject(size);
     object->SetClass(thread_, hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -386,7 +411,9 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
         reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
     CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
     object->SetClass(thread_, hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -397,7 +424,34 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
     if (UNLIKELY(object == 0)) {
         FatalOutOfMemoryError(size, "Heap::AllocateSnapshotSpaceObject");
     }
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject *>(object), size);
+#endif
+    return object;
+}
+
+TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    TaggedObject *object = reinterpret_cast<TaggedObject*>(sNonMovableTlab_->Allocate(size));
+    if (object != nullptr) {
+        return object;
+    }
+    if (!sNonMovableTlab_->NeedNewTlab(size)) {
+        // slowpath
+        return nullptr;
+    }
+    size_t newTlabSize = sNonMovableTlab_->ComputeSize();
+    object = SharedHeap::GetInstance()->AllocateSNonMovableTlab(thread, newTlabSize);
+    if (object == nullptr) {
+        LOG_ECMA_MEM(WARN) << "allocate shared non movable space tlab failed";
+        return nullptr;
+    }
+    uintptr_t begin = reinterpret_cast<uintptr_t>(object);
+    sNonMovableTlab_->Reset(begin, begin + newTlabSize, begin + size);
+    auto topAddress = sNonMovableTlab_->GetTopAddress();
+    auto endAddress = sNonMovableTlab_->GetEndAddress();
+    thread_->ReSetSNonMovableSpaceAllocationAddress(topAddress, endAddress);
     return object;
 }
 
@@ -554,11 +608,17 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, hclass, size);
     }
-    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+    TaggedObject *object =
+        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
+    if (object == nullptr) {
+        object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+    }
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
         "SharedHeap::AllocateNonMovableOrHugeObject");
-    object->SetClass(thread, hclass);
+    object->SetClassWithoutBarrier(hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -568,10 +628,16 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, size);
     }
-    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+    TaggedObject *object =
+        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
+    if (object == nullptr) {
+        object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+    }
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
         "SharedHeap::AllocateNonMovableOrHugeObject");
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -593,8 +659,10 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
         object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
     }
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
-    object->SetClass(thread, hclass);
+    object->SetClassWithoutBarrier(hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -616,8 +684,10 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
 TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
 {
     auto object = AllocateHugeObject(thread, size);
-    object->SetClass(thread, hclass);
+    object->SetClassWithoutBarrier(hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
+#endif
     return object;
 }
 
@@ -658,7 +728,7 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClas
     }
     auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
-    object->SetClass(thread, hclass);
+    object->SetClassWithoutBarrier(hclass);
     return object;
 }
 
@@ -674,6 +744,17 @@ TaggedObject *SharedHeap::AllocateSOldTlab(JSThread *thread, size_t size)
     } else {
         object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
     }
+    return object;
+}
+
+TaggedObject *SharedHeap::AllocateSNonMovableTlab(JSThread *thread, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return nullptr;
+    }
+    TaggedObject *object = nullptr;
+    object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
     return object;
 }
 }  // namespace panda::ecmascript
