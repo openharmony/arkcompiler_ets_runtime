@@ -576,3 +576,37 @@ function testTypeArrayReverse2(ctor) {
     }
     return true;
 }
+
+function fun1(accumulator, currentvalue) {
+    print(accumulator, currentvalue);
+    return accumulator + currentvalue;
+}
+let arr1 = new Uint32Array();
+let arr2 = new Uint32Array(3);
+for (let i = 0; i < 3; i++) {
+    arr2[i] = i + 1;
+}
+let res1 = arr1.reduceRight(fun1, 1, 1);
+print(res1);
+let res2 = arr2.reduceRight(fun1, 1, 1);
+print(res2);
+let res3 = arr1.reduceRight(fun1, 1);
+print(res3);
+let res4 = arr2.reduceRight(fun1, 1);
+print(res4);
+try {
+    let res5 = arr1.reduceRight(fun1);
+    print(res5);
+} catch (e) {
+    print(e.name);
+}
+let res6 = arr2.reduceRight(fun1);
+print(res6);
+let res7 = arr1.reduceRight(fun1, undefined);
+print(res3);
+let res8 = arr2.reduceRight(fun1, undefined);
+print(res4);
+let res9 = arr1.reduceRight(fun1, null);
+print(res3);
+let res10 = arr2.reduceRight(fun1, null);
+print(res4);

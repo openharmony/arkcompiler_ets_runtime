@@ -3796,7 +3796,6 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     Label atLeastOneArg(env);
     Label callbackFnHandleHeapObject(env);
     Label callbackFnHandleCallable(env);
-    Label noTypeError(env);
     Label updateAccumulator(env);
     Label thisIsStable(env);
     Label thisNotStable(env);
@@ -3808,12 +3807,9 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     Bind(&callbackFnHandleHeapObject);
     BRANCH(IsCallable(callbackFnHandle), &callbackFnHandleCallable, slowPath);
     Bind(&callbackFnHandleCallable);
-    GateRef thisLenIsZero = Int32Equal(*thisLen, Int32(0));
     GateRef numArgsLessThanTwo = Int64LessThan(numArgs, IntPtr(2));                 // 2: callbackFn initialValue
-    BRANCH(BoolAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
-    Bind(&noTypeError);
     k = Int32Sub(*thisLen, Int32(1));
-    BRANCH(Int64Equal(numArgs, IntPtr(2)), &updateAccumulator, slowPath);           // 2: callbackFn initialValue
+    BRANCH(numArgsLessThanTwo, slowPath, &updateAccumulator);           // 2: callbackFn initialValue
     Bind(&updateAccumulator);
     accumulator = GetCallArg1(numArgs);
     Jump(&thisIsStable);
