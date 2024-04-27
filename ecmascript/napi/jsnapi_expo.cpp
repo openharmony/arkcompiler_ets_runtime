@@ -255,10 +255,10 @@ Local<ObjectRef> JSValueRef::ToObject(const EcmaVM *vm)
 Local<StringRef> JSValueRef::ToString(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     if (!obj->IsString()) {
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         obj = JSHandle<JSTaggedValue>(JSTaggedValue::ToString(thread, obj));
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     }
