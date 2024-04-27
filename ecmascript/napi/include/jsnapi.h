@@ -234,6 +234,16 @@ public:
         return isWorker_;
     }
 
+    void SetIsRestrictedWorker(bool isRestrictedWorker)
+    {
+        isRestrictedWorker_ = isRestrictedWorker;
+    }
+
+    bool GetIsRestrictedWorker() const
+    {
+        return isRestrictedWorker_;
+    }
+
     void SetBundleName(const std::string &value)
     {
         bundleName_ = value;
@@ -410,6 +420,7 @@ private:
     bool enableAsmInterpreter_ {true};
     bool enableBuiltinsLazy_ {true};
     bool isWorker_ {false};
+    bool isRestrictedWorker_ {false};
     std::string asmOpcodeDisableRange_ {""};
     std::string bundleName_ {};
     bool enableAOT_ {false};

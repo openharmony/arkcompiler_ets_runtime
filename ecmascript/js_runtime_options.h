@@ -720,9 +720,19 @@ public:
         isWorker_ = isWorker;
     }
 
+    void SetIsRestrictedWorker(bool isRestrictedWorker)
+    {
+        isRestrictedWorker_ = isRestrictedWorker;
+    }
+
     bool IsWorker() const
     {
         return isWorker_;
+    }
+
+    bool IsRestrictedWorker() const
+    {
+        return isRestrictedWorker_;
     }
 
     bool EnableIC() const
@@ -1743,6 +1753,7 @@ private:
     bool compilerLogTime_ {false};
     bool enableRuntimeStat_ {false};
     bool isWorker_ {false};
+    bool isRestrictedWorker_ {false};
     bool traceBc_ {false};
     std::string logLevel_ {"error"};
     arg_list_t logDebug_ {{"all"}};

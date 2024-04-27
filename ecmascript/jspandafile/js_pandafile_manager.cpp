@@ -68,7 +68,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     EcmaVM *vm = thread->GetEcmaVM();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     std::unique_ptr<const panda_file::File> pf;
-    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode()) {
+    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode() && !vm->IsRestrictedWorkerThread()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
@@ -81,6 +81,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         }
         uint8_t *data = nullptr;
         size_t dataSize = 0;
+        LOG_FULL(DEBUG) << "HSP path: " << filename;
         bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(filename), &data, &dataSize);
         if (!getBuffer) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
@@ -91,15 +92,14 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             LOG_FULL(FATAL) << "resolveBufferCallback get buffer failed";
             return nullptr;
         }
-        if (!JSNApi::CheckSecureMem(reinterpret_cast<uintptr_t>(data))) {
-            LOG_FULL(FATAL) << "Hsp secure memory check failed, please execute in secure memory.";
-            return nullptr;
-        }
 #if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
         pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
 #else
         pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
 #endif
+    } else if (vm->IsRestrictedWorkerThread()) {
+        // ReadOnly
+        pf = panda_file::OpenPandaFileOrZip(filename);
     } else {
         pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
     }
