@@ -1807,7 +1807,6 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
     }
 }
 
-// Note: unused arguments are reserved for further development
 void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
@@ -1828,11 +1827,40 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
 
-    result->WriteVariable(DoReverse(glue, thisValue, thisValue, Boolean(false), result, exit));
+    GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(thisArrLen, Int64(1)));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label arrayValue(env);
+        Label valueEqual(env);
+        BRANCH(Int64LessThan(*i, *j), &next, &loopExit);
+        Bind(&next);
+        {
+            GateRef lower = GetTaggedValueWithElementsKind(thisValue, *i);
+            GateRef upper = GetTaggedValueWithElementsKind(thisValue, *j);
+            SetValueWithElementsKind(glue, thisValue, upper, *i, Boolean(false),
+                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            SetValueWithElementsKind(glue, thisValue, lower, *j, Boolean(false),
+                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    i = Int64Add(*i, Int64(1));
+    j = Int64Sub(*j, Int64(1));
+    LoopEnd(&loopHead, env, glue);
+    Bind(&loopExit);
+    result->WriteVariable(thisValue);
     Jump(exit);
 }
 
-// Note: unused arguments are reserved for further development
 void BuiltinsArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
