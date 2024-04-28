@@ -925,7 +925,7 @@ JSHandle<JSTaggedValue> JSDateTimeFormat::UnwrapDateTimeFormat(JSThread *thread,
     //    and ? InstanceofOperator(dateTimeFormat, %DateTimeFormat%) is true, then
     //       a. Let dateTimeFormat be ? Get(dateTimeFormat, %Intl%.[[FallbackSymbol]]).
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    bool isInstanceOf = JSFunction::InstanceOf(thread, dateTimeFormat, env->GetDateTimeFormatFunction());
+    bool isInstanceOf = JSFunction::OrdinaryHasInstance(thread, env->GetDateTimeFormatFunction(), dateTimeFormat);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, dateTimeFormat);
     if (!dateTimeFormat->IsJSDateTimeFormat() && isInstanceOf) {
         JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
