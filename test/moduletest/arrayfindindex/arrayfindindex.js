@@ -37,3 +37,18 @@
     array1.__proto__.push(6);
     print(findIndex())
 })();
+
+{
+    class C1 {
+        [28262n] = 28262n;
+    }
+    const v2 = new C1();
+    const v3 = [-4.869758437495864e+307,1000000000000.0];
+    function f4(a5, a6) {
+        for (const v7 in v2) {
+        }
+        a6();
+        return a6;
+    }
+    try { v3.findIndex(f4);} catch (err) { print(err)};
+}

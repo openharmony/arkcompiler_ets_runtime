@@ -2250,7 +2250,7 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
                 GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
                     Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
                     { argHandle, *kValue, key, thisValue });
-                BRANCH(TaggedIsException(retValue), &hasException, &notHasException);
+                BRANCH(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
                 {
                     result->WriteVariable(retValue);
