@@ -830,6 +830,26 @@ bool JSValueRef::IsJSShared()
     return JSNApiHelper::ToJSTaggedValue(this).IsJSShared();
 }
 
+bool JSValueRef::IsSharedArray()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedArray();
+}
+
+bool JSValueRef::IsSharedTypedArray()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedTypedArray();
+}
+
+bool JSValueRef::IsSharedSet()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedSet();
+}
+
+bool JSValueRef::IsSharedMap()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedMap();
+}
+
 bool JSValueRef::IsHeapObject()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsHeapObject();
