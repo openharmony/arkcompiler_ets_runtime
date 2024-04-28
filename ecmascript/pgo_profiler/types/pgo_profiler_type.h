@@ -883,6 +883,9 @@ public:
             if (sampleType->GetProfileType().IsMethodId()) {
                 return sampleType->GetProfileType().IsValidCallMethodId();
             }
+            if (sampleType->GetProfileType().IsClassType()) {
+                return sampleType->GetProfileType().IsValidClassConstructorMethodId();
+            }
         }
         return false;
     }
@@ -890,6 +893,9 @@ public:
     uint32_t GetCallMethodId() const
     {
         auto sampleType = static_cast<const PGOSampleType*>(type_);
+        if (sampleType->GetProfileType().IsClassType()) {
+            return sampleType->GetProfileType().GetClassConstructorMethodId();
+        }
         return sampleType->GetProfileType().GetCallMethodId();
     }
 

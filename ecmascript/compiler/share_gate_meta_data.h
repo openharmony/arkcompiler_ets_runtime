@@ -89,6 +89,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotJSCallTarget2,                NOTJSCALLTGT2)                 \
     V(NotJSCallTarget3,                NOTJSCALLTGT3)                 \
     V(NotJSCallTarget4,                NOTJSCALLTGT4)                 \
+    V(NotJSNewCallTarget,              NOTJSNEWCALLTGT)               \
     V(DivideZero1,                     DIVZERO1)                      \
     V(DivideZero2,                     DIVZERO2)                      \
     V(InlineFail1,                     INLINEFAIL1)                   \
@@ -160,6 +161,7 @@ public:
         TYPED_BINARY_OP,
         TYPED_CALLTARGETCHECK_OP,
         TYPED_CALL,
+        CALL_NEW,
     };
     GateMetaData() = default;
     GateMetaData(OpCode opcode, GateFlags flags,
@@ -235,7 +237,8 @@ public:
     bool IsOneParameterKind() const
     {
         return GetKind() == Kind::IMMUTABLE_ONE_PARAMETER || GetKind() == Kind::MUTABLE_ONE_PARAMETER ||
-            GetKind() == Kind::TYPED_BINARY_OP || GetKind() == Kind::TYPED_CALLTARGETCHECK_OP;
+            GetKind() == Kind::TYPED_BINARY_OP || GetKind() == Kind::TYPED_CALLTARGETCHECK_OP ||
+            GetKind() == Kind::CALL_NEW;
     }
 
     bool IsStringType() const

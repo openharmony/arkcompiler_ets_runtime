@@ -43,6 +43,7 @@ public:
                          const std::string optBCRange)
         : circuit_(circuit),
           acc_(circuit),
+          ctx_(ctx),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
           chunk_(chunk),
@@ -228,6 +229,7 @@ private:
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
+    PassContext *ctx_ {nullptr};
     CircuitBuilder builder_;
     GateRef dependEntry_ {Gate::InvalidGateRef};
     Chunk *chunk_ {nullptr};

@@ -52,6 +52,7 @@ public:
 
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
     void NewJSObject(Variable *result, Label *exit, GateRef hclass);
+    void NewJSObject(Variable *result, Label *exit, GateRef hclass, GateRef size);
     GateRef NewJSObject(GateRef glue, GateRef hclass);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);

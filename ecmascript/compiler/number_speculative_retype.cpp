@@ -181,6 +181,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
         case OpCode::CONSTRUCT:
+        case OpCode::CALL_NEW:
         case OpCode::TYPEDCALL:
         case OpCode::TYPEDFASTCALL:
         case OpCode::OBJECT_TYPE_CHECK:
@@ -268,7 +269,6 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TYPED_CALLTARGETCHECK_OP:
         case OpCode::TYPED_CALL_CHECK:
         case OpCode::HEAP_ALLOC:
-        case OpCode::TYPED_NEW_ALLOCATE_THIS:
         case OpCode::TYPED_SUPER_ALLOCATE_THIS:
         case OpCode::GET_SUPER_CONSTRUCTOR:
         case OpCode::ARG:

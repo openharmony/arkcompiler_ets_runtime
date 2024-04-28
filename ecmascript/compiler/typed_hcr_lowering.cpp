@@ -243,6 +243,10 @@ void TypedHCRLowering::LowerJSCallTargetCheck(GateRef gate)
             LowerJSNoGCFastCallThisTargetTypeCheck(gate);
             break;
         }
+        case TypedCallTargetCheckOp::JS_NEWOBJRANGE: {
+            LowerJSNewObjRangeCallTargetCheck(gate);
+            break;
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -1534,6 +1538,18 @@ void TypedHCRLowering::LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypedHCRLowering::LowerJSNewObjRangeCallTargetCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    auto ctor = acc_.GetValueIn(gate, 0);
+    GateRef isObj = builder_.TaggedIsHeapObject(ctor);
+    GateRef isJsFunc = builder_.IsJSFunction(ctor);
+    GateRef check = builder_.BoolAnd(isObj, isJsFunc);
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSNEWCALLTGT);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 void TypedHCRLowering::LowerCallTargetCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1565,27 +1581,17 @@ void TypedHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     ArgumentAccessor argAcc(circuit_);
-    GateRef frameState = GetFrameState(gate);
-
-    GateRef ctor = acc_.GetValueIn(gate, 0);
-
-    GateRef isObj = builder_.TaggedIsHeapObject(ctor);
-    GateRef isJsFunc = builder_.IsJSFunction(ctor);
-    GateRef checkFunc = builder_.BoolAnd(isObj, isJsFunc);
-    GateRef check = builder_.BoolAnd(checkFunc, builder_.IsConstructor(ctor));
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTNEWOBJ1);
-
-    DEFVALUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    Label allocate(&builder_);
+    GateRef ctor = acc_.GetValueIn(gate, 0); // 0: 1st argument
+    GateRef ihclass = acc_.GetValueIn(gate, 1); // 1: 2nd argument
+    GateRef size = acc_.GetValueIn(gate, 2); // 2: 3rd argument
+    Label isBase(&builder_);
     Label exit(&builder_);
-
-    GateRef isBase = builder_.IsBase(ctor);
-    BRANCH_CIR(isBase, &allocate, &exit);
-    builder_.Bind(&allocate);
-    {
-        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, ctor });
-        builder_.Jump(&exit);
-    }
+    DEFVALUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    BRANCH_CIR(builder_.IsBase(ctor), &isBase, &exit);
+    builder_.Bind(&isBase);
+    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+    newBuilder.SetParameters(glue, 0);
+    newBuilder.NewJSObject(&thisObj, &exit, ihclass, size);
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *thisObj);
 }

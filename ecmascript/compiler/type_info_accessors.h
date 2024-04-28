@@ -180,6 +180,18 @@ public:
     NO_MOVE_SEMANTIC(NewObjRangeTypeInfoAccessor);
 
     bool FindHClass();
+    JSTaggedValue GetHClass();
+
+    bool IsValidCallMethodId() const
+    {
+        return pgoType_.IsValidCallMethodId();
+    }
+
+    uint32_t GetCallMethodId() const
+    {
+        ASSERT(IsValidCallMethodId());
+        return pgoType_.GetCallMethodId();
+    }
 
     int GetHClassIndex() const
     {

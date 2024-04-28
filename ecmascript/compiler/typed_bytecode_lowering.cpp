@@ -1423,27 +1423,43 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
         return;
     }
     NewObjRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
-    if (!tacc.FindHClass()) {
+    if (!tacc.FindHClass() || !tacc.IsValidCallMethodId()) {
         return;
     }
+    size_t methodId = tacc.GetCallMethodId();
+    MethodLiteral* method = ctx_->GetJSPandaFile()->FindMethodLiteral(methodId);
+    JSTaggedValue value = tacc.GetHClass();
+    JSHClass *hclass = JSHClass::Cast(value.GetTaggedObject());
+    if (method == nullptr || !value.IsJSHClass() || hclass->GetObjectType() != JSType::JS_OBJECT) {
+        return ;
+    }
     AddProfiling(gate);
-    GateRef hclassIndex = builder_.IntPtr(tacc.GetHClassIndex());
     GateRef ctor = tacc.GetValue();
-
+    GateRef hclassIndex = tacc.GetHClassIndex();
     GateRef stateSplit = acc_.GetDep(gate);
     GateRef frameState = acc_.FindNearestFrameState(stateSplit);
-    GateRef thisObj = builder_.TypedNewAllocateThis(ctor, hclassIndex, frameState);
-
-    // call constructor
+    GateRef ihclass = builder_.GetHClassGateFromIndex(frameState, hclassIndex);
+    GateRef size = builder_.IntPtr(hclass->GetObjectSize());
+    builder_.JSCallThisTargetTypeCheck<TypedCallTargetCheckOp::JS_NEWOBJRANGE>(ctor, gate); // call target check
+    // check IHC
+    GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), ctor,
+        JSFunction::PROTO_OR_DYNCLASS_OFFSET);
+    GateRef checkProto = builder_.Equal(ihclass, protoOrHclass);
+    builder_.DeoptCheck(checkProto, frameState, DeoptType::NOTNEWOBJ2);
+    // construct
+    GateRef thisObj = builder_.TypedNewAllocateThis(ctor, ihclass, size, frameState);
     size_t range = acc_.GetNumValueIn(gate);
-    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(range,
-        EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
-    std::vector<GateRef> args { glue_, actualArgc, ctor, ctor, thisObj };
+    size_t expectedArgc = method->GetNumArgs();
+    size_t actualArgc = BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8);
+    GateRef argc = builder_.Int64(actualArgc);
+    std::vector<GateRef> args { glue_, argc, ctor, ctor, thisObj }; // func thisobj numofargs
     for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
-    GateRef constructGate = builder_.Construct(gate, args);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
+    bool needPushUndefined = (expectedArgc > actualArgc);
+    GateRef result = builder_.CallNew(gate, args, needPushUndefined);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
@@ -2120,6 +2136,8 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
                 return;
             }
             inlinedProps.emplace_back(converted.second.GetRawData());
+        } else if (compilationEnv_ != nullptr && compilationEnv_->IsJitCompiler() && value.IsString()) {
+            inlinedProps.emplace_back(value.GetRawData());
         } else {
             return;
         }
