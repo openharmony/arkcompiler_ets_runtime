@@ -204,6 +204,8 @@ using SharedArrayBuffer = builtins::BuiltinsSharedArrayBuffer;
 using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
+static constexpr size_t REGEXP_INLINE_PROPS = 18;
+
 void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit, bool isRealm)
 {
     thread->CheckSafepointIfSuspended();
@@ -583,7 +585,7 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     }
 
     // B.2.2.1 Object.prototype.__proto__
-    JSHandle<JSTaggedValue> protoKey(factory_->NewFromASCII("__proto__"));
+    JSHandle<JSTaggedValue> protoKey(factory_->NewFromASCIIReadOnly("__proto__"));
     JSHandle<JSTaggedValue> protoGetter = CreateGetter(env, Object::ProtoGetter, "__proto__", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> protoSetter = CreateSetter(env, Object::ProtoSetter, "__proto__", FunctionLength::ONE);
     SetAccessor(objFuncPrototype, protoKey, protoGetter, protoSetter);
@@ -630,7 +632,7 @@ BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
 
     // symbol.prototype.description
     PropertyDescriptor descriptionDesc(thread_);
-    JSHandle<JSTaggedValue> getterKey(factory_->NewFromASCII("description"));
+    JSHandle<JSTaggedValue> getterKey(factory_->NewFromASCIIReadOnly("description"));
     JSHandle<JSTaggedValue> getter(factory_->NewJSFunction(env, reinterpret_cast<void *>(Symbol::DescriptionGetter)));
     SetGetter(symbolFuncPrototype, getterKey, getter);
 
@@ -699,7 +701,7 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
 
     // symbol.prototype.description
     PropertyDescriptor descriptionDesc(thread_);
-    JSHandle<JSTaggedValue> getterKey(factory_->NewFromASCII("description"));
+    JSHandle<JSTaggedValue> getterKey(factory_->NewFromASCIIReadOnly("description"));
     JSHandle<JSTaggedValue> getter(factory_->NewJSFunction(realm, reinterpret_cast<void *>(Symbol::DescriptionGetter)));
     SetGetter(symbolFuncPrototype, getterKey, getter);
 
@@ -778,7 +780,7 @@ void Builtins::InitializeBigIntWithRealm(const JSHandle<GlobalEnv> &realm) const
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     realm->SetBigIntFunction(thread_, env->GetBigIntFunction());
 
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromASCII("BigInt"));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromASCIIReadOnly("BigInt"));
     JSHandle<JSObject> globalObject(thread_, realm->GetGlobalObject());
     PropertyDescriptor descriptor(thread_, env->GetBigIntFunction(), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, descriptor);
@@ -868,7 +870,7 @@ void Builtins::LazyInitializeDate(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("Date"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("Date"));
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Date));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetDateFunction(thread_, accessor);
@@ -920,7 +922,7 @@ JSHandle<JSFunction> Builtins::InitializeExoticConstructor(const JSHandle<Global
         factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
 
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
     JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(ctor), nameString,
                                 JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined()));
 
@@ -997,7 +999,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_OOM_ERROR);
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_TERMINATION_ERROR);
 
-    JSHandle<EcmaString> handleMsg = factory_->NewFromUtf8("Default oom error");
+    JSHandle<EcmaString> handleMsg = factory_->NewFromUtf8ReadOnly("Default oom error");
     JSHandle<JSObject> oomError = factory_->NewJSError(ErrorType::OOM_ERROR, handleMsg, true);
     env->SetOOMErrorObject(thread_, oomError);
 }
@@ -1195,7 +1197,7 @@ void Builtins::InitializeCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
     JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(ctor), nameString,
                                 JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined()));
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -1242,8 +1244,8 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
     // Set.prototype.keys, which is strictly equal to Set.prototype.values
-    JSHandle<JSTaggedValue> keys(factory_->NewFromASCII("keys"));
-    JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
+    JSHandle<JSTaggedValue> keys(factory_->NewFromASCIIReadOnly("keys"));
+    JSHandle<JSTaggedValue> values(factory_->NewFromASCIIReadOnly("values"));
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(setFuncPrototype), values);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -1255,7 +1257,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
 
     // 23.1.3.10get Set.prototype.size
     JSHandle<JSTaggedValue> sizeGetter = CreateGetter(env, BuiltinsSet::GetSize, "size", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> sizeKey(factory_->NewFromASCII("size"));
+    JSHandle<JSTaggedValue> sizeKey(factory_->NewFromASCIIReadOnly("size"));
     SetGetter(setFuncPrototype, sizeKey, sizeGetter);
 
     // 23.1.2.2get Set [ @@species ]
@@ -1281,7 +1283,7 @@ void Builtins::LazyInitializeSet(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("Set"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("Set"));
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Set));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetBuiltinsSetFunction(thread_, accessor);
@@ -1326,7 +1328,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
 
     // 23.1.3.10get Map.prototype.size
     JSHandle<JSTaggedValue> sizeGetter = CreateGetter(env, BuiltinsMap::GetSize, "size", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> sizeKey(factory_->NewFromASCII("size"));
+    JSHandle<JSTaggedValue> sizeKey(factory_->NewFromASCIIReadOnly("size"));
     SetGetter(mapFuncPrototype, sizeKey, sizeGetter);
 
     // 23.1.2.2get Map [ @@species ]
@@ -1337,7 +1339,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
 
     // %MapPrototype% [ @@iterator ]
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
-    JSHandle<JSTaggedValue> entries(factory_->NewFromASCII("entries"));
+    JSHandle<JSTaggedValue> entries(factory_->NewFromASCIIReadOnly("entries"));
     JSHandle<JSTaggedValue> entriesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(mapFuncPrototype), entries);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -1357,7 +1359,7 @@ void Builtins::LazyInitializeMap(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("Map"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("Map"));
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Map));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetBuiltinsMapFunction(thread_, accessor);
@@ -1407,7 +1409,7 @@ void Builtins::LazyInitializeWeakMap(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("WeakMap"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("WeakMap"));
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::WeakMap));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetBuiltinsWeakMapFunction(thread_, accessor);
@@ -1449,7 +1451,7 @@ void Builtins::LazyInitializeWeakSet(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("WeakSet"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("WeakSet"));
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::WeakSet));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetBuiltinsWeakSetFunction(thread_, accessor);
@@ -1467,7 +1469,7 @@ void Builtins::InitializeAtomics(const JSHandle<GlobalEnv> &env,
         SetFunction(env, atomicsObject, entry.GetName(), entry.GetEntrypoint(),
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
-    JSHandle<JSTaggedValue> atomicsString(factory_->NewFromASCII("Atomics"));
+    JSHandle<JSTaggedValue> atomicsString(factory_->NewFromASCIIReadOnly("Atomics"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     PropertyDescriptor atomicsDesc(thread_, JSHandle<JSTaggedValue>::Cast(atomicsObject), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, atomicsString, atomicsDesc);
@@ -1508,7 +1510,7 @@ void Builtins::LazyInitializeWeakRef(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("WeakRef"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("WeakRef"));
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::WeakRef));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetBuiltinsWeakRefFunction(thread_, accessor);
@@ -1553,7 +1555,7 @@ void Builtins::LazyInitializeFinalizationRegistry(const JSHandle<GlobalEnv> &env
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("FinalizationRegistry"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("FinalizationRegistry"));
     auto accessor = factory_->NewInternalAccessor(nullptr,
         reinterpret_cast<void *>(BuiltinsLazyCallback::FinalizationRegistry));
     SetLazyAccessor(globalObject, key, accessor);
@@ -1574,7 +1576,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     for (const base::BuiltinConstantEntry &entry: Math::GetMathConstants()) {
         SetConstant(mathObject, entry.GetName(), entry.GetTaggedValue());
     }
-    JSHandle<JSTaggedValue> mathString(factory_->NewFromASCII("Math"));
+    JSHandle<JSTaggedValue> mathString(factory_->NewFromASCIIReadOnly("Math"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     PropertyDescriptor mathDesc(thread_, JSHandle<JSTaggedValue>::Cast(mathObject), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, mathString, mathDesc);
@@ -1594,7 +1596,7 @@ void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     SetFunction(env, jsonObject, "stringify", Json::Stringify, FunctionLength::FOUR, BUILTINS_STUB_ID(JsonStringify));
 
     PropertyDescriptor jsonDesc(thread_, JSHandle<JSTaggedValue>::Cast(jsonObject), true, false, true);
-    JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCII("JSON"));
+    JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCIIReadOnly("JSON"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     JSObject::DefineOwnProperty(thread_, globalObject, jsonString, jsonDesc);
     // @@ToStringTag
@@ -1642,7 +1644,7 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
 
     // String.prototype.length
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(env, BuiltinsString::GetLength, "length", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(factory_->NewFromASCII("length"));
+    JSHandle<JSTaggedValue> lengthKey(factory_->NewFromASCIIReadOnly("length"));
     SetGetter(stringFuncPrototype, lengthKey, lengthGetter);
 
     env->SetStringFunction(thread_, stringFunction);
@@ -1906,7 +1908,7 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // RegExp.prototype
     JSHandle<JSFunction> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> regPrototype = factory_->NewJSObjectByConstructor(objFun);
+    JSHandle<JSObject> regPrototype = factory_->NewJSObjectByConstructor(env, objFun, REGEXP_INLINE_PROPS);
     JSHandle<JSTaggedValue> regPrototypeValue(regPrototype);
 
     // RegExp.prototype_or_hclass
@@ -1948,24 +1950,24 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
 
     JSHandle<JSTaggedValue> hasIndicesGetter =
         CreateGetter(env, RegExp::GetHasIndices, "hasIndices", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> hasIndicesKey(factory_->NewFromASCII("hasIndices"));
+    JSHandle<JSTaggedValue> hasIndicesKey(factory_->NewFromASCIIReadOnly("hasIndices"));
     SetGetter(regPrototype, hasIndicesKey, hasIndicesGetter);
     JSHandle<JSFunction>(hasIndicesGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> ignoreCaseGetter =
         CreateGetter(env, RegExp::GetIgnoreCase, "ignoreCase", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> ignoreCaseKey(factory_->NewFromASCII("ignoreCase"));
+    JSHandle<JSTaggedValue> ignoreCaseKey(factory_->NewFromASCIIReadOnly("ignoreCase"));
     SetGetter(regPrototype, ignoreCaseKey, ignoreCaseGetter);
     JSHandle<JSFunction>(ignoreCaseGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> multilineGetter =
         CreateGetter(env, RegExp::GetMultiline, "multiline", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> multilineKey(factory_->NewFromASCII("multiline"));
+    JSHandle<JSTaggedValue> multilineKey(factory_->NewFromASCIIReadOnly("multiline"));
     SetGetter(regPrototype, multilineKey, multilineGetter);
     JSHandle<JSFunction>(multilineGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> dotAllGetter = CreateGetter(env, RegExp::GetDotAll, "dotAll", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> dotAllKey(factory_->NewFromASCII("dotAll"));
+    JSHandle<JSTaggedValue> dotAllKey(factory_->NewFromASCIIReadOnly("dotAll"));
     SetGetter(regPrototype, dotAllKey, dotAllGetter);
     JSHandle<JSFunction>(dotAllGetter)->SetLexicalEnv(thread_, env);
 
@@ -1987,22 +1989,29 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     JSHandle<JSFunction>(speciesGetter)->SetLexicalEnv(thread_, env);
 
     // Set RegExp.prototype[@@split]
-    SetFunctionAtSymbol(env, regPrototype, env->GetSplitSymbol(), "[Symbol.split]", RegExp::Split, FunctionLength::TWO);
+    JSHandle<JSTaggedValue> splitFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetSplitSymbol(), "[Symbol.split]", RegExp::Split, FunctionLength::TWO);
     // Set RegExp.prototype[@@search]
-    SetFunctionAtSymbol(env, regPrototype, env->GetSearchSymbol(), "[Symbol.search]", RegExp::Search,
-                        FunctionLength::ONE);
+    JSHandle<JSTaggedValue> searchFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetSearchSymbol(), "[Symbol.search]", RegExp::Search, FunctionLength::ONE);
     // Set RegExp.prototype[@@match]
-    SetFunctionAtSymbol(env, regPrototype, env->GetMatchSymbol(), "[Symbol.match]", RegExp::Match, FunctionLength::ONE);
+    JSHandle<JSTaggedValue> matchFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetMatchSymbol(), "[Symbol.match]", RegExp::Match, FunctionLength::ONE);
     // Set RegExp.prototype[@@matchAll]
-    SetFunctionAtSymbol(env, regPrototype, env->GetMatchAllSymbol(), "[Symbol.matchAll]", RegExp::MatchAll,
-                        FunctionLength::ONE);
+    JSHandle<JSTaggedValue> matchAllFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetMatchAllSymbol(), "[Symbol.matchAll]", RegExp::MatchAll, FunctionLength::ONE);
     // Set RegExp.prototype[@@replace]
-    SetFunctionAtSymbol(env, regPrototype, env->GetReplaceSymbol(), "[Symbol.replace]", RegExp::Replace,
-                        FunctionLength::TWO);
+    JSHandle<JSTaggedValue> replaceFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetReplaceSymbol(), "[Symbol.replace]", RegExp::Replace, FunctionLength::TWO);
 
     env->SetRegExpFunction(thread_, regexpFunction);
     env->SetRegExpPrototype(thread_, regPrototype);
     env->SetRegExpExecFunction(thread_, execFunc);
+    env->SetRegExpSplitFunction(thread_, splitFunc);
+    env->SetRegExpSearchFunction(thread_, searchFunc);
+    env->SetRegExpMatchFunction(thread_, matchFunc);
+    env->SetRegExpMatchAllFunction(thread_, matchAllFunc);
+    env->SetRegExpReplaceFunction(thread_, replaceFunc);
     // Set RegExp.prototype hclass
     JSHandle<JSHClass> regPrototypeClass(thread_, regPrototype->GetJSHClass());
     env->SetRegExpPrototypeClass(thread_, regPrototypeClass.GetTaggedValue());
@@ -2063,7 +2072,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     }
 
     // %ArrayPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
+    JSHandle<JSTaggedValue> values(factory_->NewFromASCIIReadOnly("values"));
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(arrFuncPrototype), values);
@@ -2089,7 +2098,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
                                   false);
     JSObject::DefineOwnProperty(thread_, arrFuncPrototype, keyString, descriptor);
 
-    JSHandle<JSTaggedValue> valuesKey(factory_->NewFromASCII("values"));
+    JSHandle<JSTaggedValue> valuesKey(factory_->NewFromASCIIReadOnly("values"));
     PropertyDescriptor desc(thread_);
     JSObject::GetOwnProperty(thread_, arrFuncPrototype, valuesKey, desc);
 
@@ -2137,7 +2146,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JST
     for (const base::BuiltinFunctionEntry &entry: BuiltinsTypedArray::GetTypedArrayPrototypeAccessors()) {
         JSHandle<JSTaggedValue> getter =
             CreateGetter(env, entry.GetEntrypoint(), entry.GetName(), entry.GetLength());
-        JSHandle<JSTaggedValue> key(factory_->NewFromASCII(entry.GetName()));
+        JSHandle<JSTaggedValue> key(factory_->NewFromASCIIReadOnly(entry.GetName()));
         SetGetter(typedArrFuncPrototype, key, getter);
     }
 
@@ -2151,7 +2160,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JST
                                 toStringDesc);
 
     // %TypedArray%.prototype [ @@iterator ] ( )
-    JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
+    JSHandle<JSTaggedValue> values(factory_->NewFromASCIIReadOnly("values"));
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(typedArrFuncPrototype), values);
@@ -2200,7 +2209,7 @@ void Builtins::LazyInitializeTypedArray(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("TypedArray"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("TypedArray"));
     auto accessor = factory_->NewInternalAccessor(nullptr,
         reinterpret_cast<void *>(BuiltinsLazyCallback::TypedArray));
     SetLazyAccessor(globalObject, key, accessor);
@@ -2259,7 +2268,7 @@ void Builtins::LazyInitialize##Type(const JSHandle<GlobalEnv> &env) const       
 {                                                                                                                   \
     [[maybe_unused]] EcmaHandleScope scope(thread_);                                                                \
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());                                               \
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8(#Type));                                                      \
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly(#Type));                                              \
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Type));   \
     SetLazyAccessor(globalObject, key, accessor);                                                                   \
     env->Set##Type##Function(thread_, accessor);                                                                    \
@@ -2312,7 +2321,7 @@ void Builtins::InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHan
     // 24.1.4.1 get ArrayBuffer.prototype.byteLength
     JSHandle<JSTaggedValue> lengthGetter =
         CreateGetter(env, ArrayBuffer::GetByteLength, "byteLength", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(factory_->NewFromASCII("byteLength"));
+    JSHandle<JSTaggedValue> lengthKey(factory_->NewFromASCIIReadOnly("byteLength"));
     SetGetter(arrayBufferFuncPrototype, lengthKey, lengthGetter);
 
     // 24.1.4.4 ArrayBuffer.prototype[@@toStringTag]
@@ -2325,7 +2334,7 @@ void Builtins::LazyInitializeArrayBuffer(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("ArrayBuffer"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("ArrayBuffer"));
     auto accessor = factory_->NewInternalAccessor(nullptr,
         reinterpret_cast<void *>(BuiltinsLazyCallback::ArrayBuffer));
     SetLazyAccessor(globalObject, key, accessor);
@@ -2346,7 +2355,7 @@ void Builtins::InitializeReflect(const JSHandle<GlobalEnv> &env,
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
 
-    JSHandle<JSTaggedValue> reflectString(factory_->NewFromASCII("Reflect"));
+    JSHandle<JSTaggedValue> reflectString(factory_->NewFromASCIIReadOnly("Reflect"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     PropertyDescriptor reflectDesc(thread_, JSHandle<JSTaggedValue>::Cast(reflectObject), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, reflectString, reflectDesc);
@@ -2394,7 +2403,7 @@ void Builtins::InitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env,
     // 25.2.4.1 get SharedArrayBuffer.prototype.byteLength
     JSHandle<JSTaggedValue> lengthGetter =
         CreateGetter(env, SharedArrayBuffer::GetByteLength, "byteLength", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(factory_->NewFromASCII("byteLength"));
+    JSHandle<JSTaggedValue> lengthKey(factory_->NewFromASCIIReadOnly("byteLength"));
     SetGetter(sharedArrayBufferFuncPrototype, lengthKey, lengthGetter);
 
     // 25.2.4.4 SharedArrayBuffer.prototype [ @@toStringTag ]
@@ -2407,7 +2416,7 @@ void Builtins::LazyInitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env) c
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("SharedArrayBuffer"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("SharedArrayBuffer"));
     auto accessor =
         factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::SharedArrayBuffer));
     SetLazyAccessor(globalObject, key, accessor);
@@ -2556,18 +2565,18 @@ void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, JSHandle<JSTag
 
     // 24.2.4.1 get DataView.prototype.buffer
     JSHandle<JSTaggedValue> bufferGetter = CreateGetter(env, DataView::GetBuffer, "buffer", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> bufferKey(factory_->NewFromASCII("buffer"));
+    JSHandle<JSTaggedValue> bufferKey(factory_->NewFromASCIIReadOnly("buffer"));
     SetGetter(dataViewFuncPrototype, bufferKey, bufferGetter);
 
     // 24.2.4.2 get DataView.prototype.byteLength
     JSHandle<JSTaggedValue> lengthGetter =
         CreateGetter(env, DataView::GetByteLength, "byteLength", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(factory_->NewFromASCII("byteLength"));
+    JSHandle<JSTaggedValue> lengthKey(factory_->NewFromASCIIReadOnly("byteLength"));
     SetGetter(dataViewFuncPrototype, lengthKey, lengthGetter);
 
     // 24.2.4.3 get DataView.prototype.byteOffset
     JSHandle<JSTaggedValue> offsetGetter = CreateGetter(env, DataView::GetOffset, "byteOffset", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> offsetKey(factory_->NewFromASCII("byteOffset"));
+    JSHandle<JSTaggedValue> offsetKey(factory_->NewFromASCIIReadOnly("byteOffset"));
     SetGetter(dataViewFuncPrototype, offsetKey, offsetGetter);
 
     // 24.2.4.21 DataView.prototype[ @@toStringTag ]
@@ -2585,7 +2594,7 @@ void Builtins::LazyInitializeDataView(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("DataView"));
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly("DataView"));
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::DataView));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetDataViewFunction(thread_, accessor);
@@ -2612,7 +2621,7 @@ JSHandle<JSFunction> Builtins::NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
 
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
     JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(ctor), nameString,
                                 JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined()));
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -2642,7 +2651,7 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
 void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                            EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     SetFunction(env, obj, keyString, func, length, builtinId);
 }
 
@@ -2659,7 +2668,7 @@ JSHandle<JSFunction> Builtins::SetAndReturnFunction(const JSHandle<GlobalEnv> &e
                                                     const char *key, EcmaEntrypoint func, int length,
                                                     kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     return SetAndReturnFunction(env, obj, keyString, func, length, builtinId);
 }
 
@@ -2676,7 +2685,7 @@ JSHandle<JSFunction> Builtins::SetAndReturnFunction(const JSHandle<GlobalEnv> &e
 void Builtins::SetFrozenFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                                  EcmaEntrypoint func, int length) const
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     JSHandle<JSFunction> function = NewFunction(env, keyString, func, length);
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(function), false, false, false);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
@@ -2689,7 +2698,7 @@ void Builtins::SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandl
 {
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, nameString, handleUndefine);
@@ -2722,7 +2731,7 @@ JSHandle<JSTaggedValue> Builtins::SetAndReturnFunctionAtSymbol(const JSHandle<Gl
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
         FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, nameString, handleUndefine);
@@ -2747,7 +2756,7 @@ JSHandle<JSTaggedValue> Builtins::SetAndReturnFunctionAtSymbol(const JSHandle<Gl
 void Builtins::SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                                   std::string_view key) const
 {
-    JSHandle<JSTaggedValue> tag(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> tag(factory_->NewFromUtf8ReadOnly(key));
     JSHandle<JSTaggedValue> symbol = env->GetToStringTagSymbol();
     PropertyDescriptor desc(thread_, tag, false, false, true);
     JSObject::DefineOwnProperty(thread_, obj, symbol, desc);
@@ -2756,7 +2765,7 @@ void Builtins::SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle
 JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
                                                std::string_view name, int length) const
 {
-    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8ReadOnly(name));
     return CreateGetter(env, func, funcName, length);
 }
 
@@ -2773,7 +2782,7 @@ JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, E
 JSHandle<JSTaggedValue> Builtins::CreateSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
                                                std::string_view name, int length) const
 {
-    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8ReadOnly(name));
     return CreateSetter(env, func, funcName, length);
 }
 
@@ -2789,7 +2798,7 @@ JSHandle<JSTaggedValue> Builtins::CreateSetter(const JSHandle<GlobalEnv> &env, E
 
 void Builtins::SetConstant(const JSHandle<JSObject> &obj, std::string_view key, JSTaggedValue value) const
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(thread_, value), false, false, false);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
@@ -2797,7 +2806,7 @@ void Builtins::SetConstant(const JSHandle<JSObject> &obj, std::string_view key, 
 void Builtins::SetConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                                  JSHandle<JSTaggedValue> &value) const
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     PropertyDescriptor descriptor(thread_, value, false, false, false);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
@@ -2805,7 +2814,7 @@ void Builtins::SetConstantObject(const JSHandle<JSObject> &obj, std::string_view
 void Builtins::SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                                     JSHandle<JSTaggedValue> &value) const
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     PropertyDescriptor descriptor(thread_, value, true, true, true);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
@@ -2813,22 +2822,23 @@ void Builtins::SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_v
 void Builtins::SetGlobalThis(const JSHandle<JSObject> &obj, std::string_view key,
                              const JSHandle<JSTaggedValue> &globalValue)
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     PropertyDescriptor descriptor(thread_, globalValue, true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
 
 void Builtins::SetAttribute(const JSHandle<JSObject> &obj, std::string_view key, std::string_view value) const
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
-    PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(factory_->NewFromUtf8(value)), true, false, true);
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
+    PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(value)),
+                                                                   true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
 
 void Builtins::SetNoneAttributeProperty(const JSHandle<JSObject> &obj, std::string_view key,
                                         const JSHandle<JSTaggedValue> &value) const
 {
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     PropertyDescriptor des(thread_, value, false, false, false);
     JSObject::DefineOwnProperty(thread_, obj, keyString, des);
 }
@@ -2840,7 +2850,7 @@ void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
         FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, keyString, handleUndefine);
@@ -2859,10 +2869,10 @@ void Builtins::StrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv
     JSHandle<JSFunction> function =
         factory_->NewJSFunction(env, reinterpret_cast<void *>(JSFunction::AccessCallerArgumentsThrowTypeError));
 
-    JSHandle<JSTaggedValue> caller(factory_->NewFromASCII("caller"));
+    JSHandle<JSTaggedValue> caller(factory_->NewFromASCIIReadOnly("caller"));
     SetAccessor(prototype, caller, JSHandle<JSTaggedValue>::Cast(function), JSHandle<JSTaggedValue>::Cast(function));
 
-    JSHandle<JSTaggedValue> arguments(factory_->NewFromASCII("arguments"));
+    JSHandle<JSTaggedValue> arguments(factory_->NewFromASCIIReadOnly("arguments"));
     SetAccessor(prototype, arguments, JSHandle<JSTaggedValue>::Cast(function), JSHandle<JSTaggedValue>::Cast(function));
 }
 
@@ -3071,7 +3081,7 @@ JSHandle<JSFunction> Builtins::NewIntlConstructor(const JSHandle<GlobalEnv> &env
     {                                                                            \
         [[maybe_unused]] EcmaHandleScope scope(thread_);                         \
         JSHandle<JSObject> intlObject(env->GetIntlFunction());                   \
-        JSHandle<JSTaggedValue> key(factory_->NewFromUtf8(#type));               \
+        JSHandle<JSTaggedValue> key(factory_->NewFromUtf8ReadOnly(#type));       \
         auto accessor = factory_->NewInternalAccessor(nullptr,                   \
             reinterpret_cast<void *>(BuiltinsLazyCallback::type));               \
         SetLazyAccessor(intlObject, key, accessor);                              \
@@ -3086,7 +3096,7 @@ void Builtins::InitializeIntlCtor(const JSHandle<GlobalEnv> &env, const JSHandle
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
     JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(ctor), nameString,
                                 JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined()));
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -3115,7 +3125,7 @@ void Builtins::InitializeIntl(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     SetFunction(env, intlObject, "getCanonicalLocales", Intl::GetCanonicalLocales, FunctionLength::ONE);
 
     // initial value of the "Intl" property of the global object.
-    JSHandle<JSTaggedValue> intlString(factory_->NewFromASCII("Intl"));
+    JSHandle<JSTaggedValue> intlString(factory_->NewFromASCIIReadOnly("Intl"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     PropertyDescriptor intlDesc(thread_, JSHandle<JSTaggedValue>::Cast(intlObject), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, intlString, intlDesc);
@@ -3763,7 +3773,7 @@ void Builtins::InitializeDefaultExportOfScript(const JSHandle<GlobalEnv> &env) c
 {
     JSHandle<JSFunction> builtinObj(env->GetObjectFunction());
     JSHandle<JSTaggedValue> emptyObj(factory_->NewJSObjectByConstructor(builtinObj));
-    JSHandle<JSTaggedValue> defaultKey(factory_->NewFromUtf8("default"));
+    JSHandle<JSTaggedValue> defaultKey(factory_->NewFromUtf8ReadOnly("default"));
 
     JSHandle<TaggedArray> props(factory_->NewTaggedArray(2)); // 2 : two propertise
     props->Set(thread_, 0, defaultKey);
@@ -3784,7 +3794,7 @@ JSHandle<JSTaggedValue> Builtins::CreateArrayUnscopables(JSThread *thread) const
 
     JSHandle<JSTaggedValue> trueVal(thread, JSTaggedValue::True());
 
-    JSHandle<JSTaggedValue> atKey((factory->NewFromASCII("at")));
+    JSHandle<JSTaggedValue> atKey((factory->NewFromASCIIReadOnly("at")));
     JSObject::CreateDataProperty(thread, unscopableList, atKey, trueVal);
 
     JSHandle<JSTaggedValue> copyWithKey = globalConst->GetHandledCopyWithinString();
@@ -3802,10 +3812,10 @@ JSHandle<JSTaggedValue> Builtins::CreateArrayUnscopables(JSThread *thread) const
     JSHandle<JSTaggedValue> findIndexKey = globalConst->GetHandledFindIndexString();
     JSObject::CreateDataProperty(thread, unscopableList, findIndexKey, trueVal);
 
-    JSHandle<JSTaggedValue> findLastKey((factory->NewFromASCII("findLast")));
+    JSHandle<JSTaggedValue> findLastKey((factory->NewFromASCIIReadOnly("findLast")));
     JSObject::CreateDataProperty(thread, unscopableList, findLastKey, trueVal);
 
-    JSHandle<JSTaggedValue> findLastIndexKey((factory->NewFromASCII("findLastIndex")));
+    JSHandle<JSTaggedValue> findLastIndexKey((factory->NewFromASCIIReadOnly("findLastIndex")));
     JSObject::CreateDataProperty(thread, unscopableList, findLastIndexKey, trueVal);
 
     JSHandle<JSTaggedValue> flatKey = globalConst->GetHandledFlatString();
@@ -3823,13 +3833,13 @@ JSHandle<JSTaggedValue> Builtins::CreateArrayUnscopables(JSThread *thread) const
     JSHandle<JSTaggedValue> valuesKey = globalConst->GetHandledValuesString();
     JSObject::CreateDataProperty(thread, unscopableList, valuesKey, trueVal);
 
-    JSHandle<JSTaggedValue> toReversedKey((factory->NewFromASCII("toReversed")));
+    JSHandle<JSTaggedValue> toReversedKey((factory->NewFromASCIIReadOnly("toReversed")));
     JSObject::CreateDataProperty(thread, unscopableList, toReversedKey, trueVal);
 
-    JSHandle<JSTaggedValue> toSortedKey((factory->NewFromASCII("toSorted")));
+    JSHandle<JSTaggedValue> toSortedKey((factory->NewFromASCIIReadOnly("toSorted")));
     JSObject::CreateDataProperty(thread, unscopableList, toSortedKey, trueVal);
 
-    JSHandle<JSTaggedValue> toSplicedKey((factory->NewFromASCII("toSpliced")));
+    JSHandle<JSTaggedValue> toSplicedKey((factory->NewFromASCIIReadOnly("toSpliced")));
     JSObject::CreateDataProperty(thread, unscopableList, toSplicedKey, trueVal);
     return JSHandle<JSTaggedValue>::Cast(unscopableList);
 }
@@ -3838,28 +3848,28 @@ void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
 {
     auto globalObject = JSHandle<JSObject>::Cast(env->GetJSGlobalObject());
     {
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedMap"));
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedMap"));
         PropertyDescriptor desc(thread_, env->GetSBuiltininMapFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
     {
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedSet"));
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedSet"));
         PropertyDescriptor desc(thread_, env->GetSBuiltininSetFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
     {
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedArray"));
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedArray"));
         PropertyDescriptor desc(thread_, env->GetSharedArrayFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
     {
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SendableArrayBuffer"));
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SendableArrayBuffer"));
         PropertyDescriptor desc(thread_, env->GetSBuiltininArrayBufferFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
 #define REGISTER_BUILTIN_SHARED_TYPED_ARRAY(Type, ctorName, TYPE, bytesPerElement)           \
     {                                                                                        \
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(#ctorName));                \
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(#ctorName));        \
         PropertyDescriptor desc(thread_, env->Get##ctorName##Function(), true, false, true); \
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                \
     }

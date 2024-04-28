@@ -80,7 +80,7 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
     std::vector<GateRef> successBBGates;
     std::vector<GateRef> failBBGates;
     std::vector<GateRef> endBBGates;
-    if (flag == RegionSpaceFlag::IN_YOUNG_SPACE) {
+    if (flag == RegionSpaceFlag::IN_YOUNG_SPACE || flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
         LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
 #ifdef ARK_ASAN_ON
         ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
@@ -93,7 +93,7 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
         ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
         return true;
 #endif
-    } else if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE || flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
+    } else if (flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
         LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
         ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
         return false;
@@ -205,8 +205,16 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), hole);
     Label success(&builder_);
     Label callRuntime(&builder_);
-    size_t topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
-    size_t endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
+    size_t topOffset;
+    size_t endOffset;
+    if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
+        topOffset = JSThread::GlueData::GetSOldSpaceAllocationTopAddressOffset(false);
+        endOffset = JSThread::GlueData::GetSOldSpaceAllocationEndAddressOffset(false);
+    } else {
+        ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
+        topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
+        endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
+    }
     GateRef topAddrOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, topOffset, GateType::NJSValue());
     GateRef endAddrOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, endOffset, GateType::NJSValue());
     GateRef topAddrAddr = builder_.PtrAdd(glue, topAddrOffset);

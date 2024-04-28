@@ -42,3 +42,4 @@ RangeError
 RangeError
 RangeError
 recursive stack overflow
+matchAll success

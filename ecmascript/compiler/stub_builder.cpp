@@ -387,7 +387,6 @@ GateRef StubBuilder::BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key,
         BRANCH(Int32LessThanOrEqual(*low, *high), &next, &exit);
         Bind(&next);
         mid = Int32Add(*low, Int32Div(Int32Sub(*high, *low), Int32(2)));  // 2: half
-        DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(INT32_VALUE)), *mid });
         GateRef midKey = GetSortedKey(layoutInfo, *mid);
         GateRef midHash = GetKeyHashCode(glue, midKey);
         BRANCH(Int32UnsignedGreaterThan(midHash, keyHash), &midGreaterKey, &midnotGreaterKey);
@@ -4207,11 +4206,11 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                 Jump(&exit);
             }
             Label isString(env);
-            Label notString(env);
+            Label checkDetector(env);
             Bind(&notNumber1);
             {
                 Label notIntenalString(env);
-                BRANCH(TaggedIsString(*varKey), &isString, &notString);
+                BRANCH(TaggedIsString(*varKey), &isString, &checkDetector);
                 Bind(&isString);
                 {
                     BRANCH(IsInternalString(*varKey), &setByName, &notIntenalString);
@@ -4225,21 +4224,21 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                         {
                             varKey = CallRuntime(glue, RTSTUB_ID(InsertStringToTable), { *varKey });
                             isInternal = False();
-                            Jump(&setByName);
+                            Jump(&checkDetector);
                         }
                         Bind(&find);
                         {
                             varKey = res;
-                            Jump(&setByName);
+                            Jump(&checkDetector);
                         }
                     }
                 }
             }
-            Bind(&notString);
+            Bind(&checkDetector);
             CheckDetectorName(glue, *varKey, &setByName, &exit);
             Bind(&setByName);
             {
-                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn,  *isInternal, callback,
+                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn, *isInternal, callback,
                                            true, defineSemantics);
                 Jump(&exit);
             }
@@ -5029,11 +5028,22 @@ GateRef StubBuilder::SameValue(GateRef glue, GateRef left, GateRef right)
                 Label leftIsInt(env);
                 Label leftNotInt(env);
                 Label getRight(env);
+
                 BRANCH(TaggedIsInt(left), &leftIsInt, &leftNotInt);
                 Bind(&leftIsInt);
                 {
+                    Label fastPath(env);
+                    Label slowPath(env);
+                    BRANCH(TaggedIsInt(right), &fastPath, &slowPath);
+                    Bind(&fastPath);
+                    {
+                        result = False();
+                        Jump(&exit);
+                    }
+                    Bind(&slowPath);
                     doubleLeft = ChangeInt32ToFloat64(GetInt32OfTInt(left));
-                    Jump(&getRight);
+                    doubleRight = GetDoubleOfTDouble(right);
+                    Jump(&numberEqualCheck2);
                 }
                 Bind(&leftNotInt);
                 {
@@ -5167,8 +5177,18 @@ GateRef StubBuilder::SameValueZero(GateRef glue, GateRef left, GateRef right)
                 BRANCH(TaggedIsInt(left), &leftIsInt, &leftNotInt);
                 Bind(&leftIsInt);
                 {
+                    Label fastPath(env);
+                    Label slowPath(env);
+                    BRANCH(TaggedIsInt(right), &fastPath, &slowPath);
+                    Bind(&fastPath);
+                    {
+                        result = False();
+                        Jump(&exit);
+                    }
+                    Bind(&slowPath);
                     doubleLeft = ChangeInt32ToFloat64(GetInt32OfTInt(left));
-                    Jump(&getRight);
+                    doubleRight = GetDoubleOfTDouble(right);
+                    Jump(&numberEqualCheck2);
                 }
                 Bind(&leftNotInt);
                 {
@@ -7123,7 +7143,6 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
     GateRef xInt64 = Int64Sub(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
     GateRef fractionBits = Int64And(xInt64, Int64(base::DOUBLE_SIGNIFICAND_MASK));
     GateRef expBits = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-    GateRef signBit = Int64And(xInt64, Int64(base::DOUBLE_SIGN_MASK));
     GateRef isZero = BoolAnd(
         Int64Equal(expBits, Int64(0)),
         Int64Equal(fractionBits, Int64(0)));
@@ -7143,22 +7162,8 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
         BRANCH(CanDoubleRepresentInt(exp, expBits, fractionBits), &calcHash, &convertToInt);
         Bind(&convertToInt);
         {
-            GateRef shift = Int64Sub(Int64(base::DOUBLE_SIGNIFICAND_SIZE), exp);
-            GateRef intVal = Int64Add(
-                Int64LSL(Int64(1), exp),
-                Int64LSR(fractionBits, shift));
-            DEFVARIABLE(intVariable, VariableType::INT64(), intVal);
-            Label negate(env);
-            Label pass(env);
-            BRANCH(Int64NotEqual(signBit, Int64(0)), &negate, &pass);
-            Bind(&negate);
-            {
-                intVariable = Int64Sub(Int64(0), intVal);
-                Jump(&pass);
-            }
-            Bind(&pass);
-            value = IntToTaggedPtr(TruncInt64ToInt32(*intVariable));
-            Jump(&calcHash);
+            *res = ChangeFloat64ToInt32(CastInt64ToFloat64(xInt64));
+            Jump(exit);
         }
         Bind(&calcHash);
         {
@@ -7168,7 +7173,7 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
     }
 
     Bind(&zero);
-    *res = env_->GetBuilder()->CalcHashcodeForInt(IntToTaggedPtr(Int32(0)));
+    *res = Int32(0);
     Jump(exit);
 }
 

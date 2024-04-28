@@ -629,9 +629,20 @@ inline GateRef StubBuilder::TaggedIsSymbol(GateRef obj)
 
 inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
 {
-    auto allHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
-    auto allString = env_->GetBuilder()->TaggedObjectBothAreString(x, y);
-    return env_->GetBuilder()->LogicAnd(allHeapObject, allString);
+    Label entryPass(env_);
+    env_->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label heapObj(env_);
+    Label exit(env_);
+    GateRef isHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
+    BRANCH(isHeapObject, &heapObj, &exit);
+    Bind(&heapObj);
+    result = env_->GetBuilder()->TaggedObjectBothAreString(x, y);;
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
 }
 
 inline GateRef StubBuilder::TaggedIsNumber(GateRef x)
@@ -3197,7 +3208,13 @@ inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fal
         VariableType::INT64(), glueGlobalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
     GateRef isDetectorName = BoolAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
                                      Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
-    BRANCH(isDetectorName, slow, fallthrough);
+    Label checkCommonDetector(env_);
+    BRANCH(isDetectorName, slow, &checkCommonDetector);
+    Bind(&checkCommonDetector);
+    auto gFlagsStr = GetGlobalConstantValue(
+        VariableType::JS_POINTER(), glue, ConstantIndex::FLAGS_INDEX);
+    GateRef isFlagsStr = Equal(key, gFlagsStr);
+    BRANCH(isFlagsStr, slow, fallthrough);
 }
 
 inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef jsFunc)

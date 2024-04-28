@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+true
+false
 这是一段原始文本,"3这要替换4"!
 true
 true
@@ -20,4 +22,6 @@ false
 aaa
 false
 4
+false
+true
 false

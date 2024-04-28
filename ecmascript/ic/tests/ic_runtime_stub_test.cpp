@@ -21,6 +21,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/object_operator.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -235,6 +236,18 @@ HWTEST_F_L0(ICRuntimeStubTest, TryStoreICAndLoadIC_ByName)
     JSTaggedValue resultValue2 = ICRuntimeStub::TryLoadICByName(thread, handleObj.GetTaggedValue(),
                                                                 handleFirstArrVal, handleSecondPropertyBoxVal);
     EXPECT_TRUE(resultValue2.IsHole());
+    // receiver is number
+    int a = 32;
+    JSHandle<JSTaggedValue> numReceiver(thread, JSTaggedValue(a));
+    JSHandle<JSTaggedValue> receiver =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, numReceiver));
+    JSHandle<JSHClass> hclass(thread, receiver->GetTaggedObject()->GetClass());
+    JSHandle<JSTaggedValue> key = thread->GlobalConstants()->GetHandledValueOfString();
+    ObjectOperator op(thread, numReceiver, key);
+    JSHandle<JSTaggedValue> handlerValue = PrototypeHandler::LoadPrototype(thread, op, hclass);
+    JSTaggedValue resultValue3 = ICRuntimeStub::TryLoadICByName(thread, numReceiver.GetTaggedValue(),
+        hclass.GetTaggedValue(), handlerValue.GetTaggedValue());
+    EXPECT_EQ(op.GetValue(), resultValue3);
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, TryStoreICAndLoadIC_ByValue1)

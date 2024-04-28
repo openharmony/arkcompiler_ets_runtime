@@ -107,7 +107,7 @@ void GlobalEnvConstants::Init(JSThread *thread)
 void GlobalEnvConstants::InitSharedStrings(ObjectFactory *factory)
 {
     #define INIT_GLOBAL_ENV_CONSTANT_STRING(Name, Index, Token) \
-        SetConstant(ConstantIndex::Index, factory->NewFromASCIINonMovable(Token));
+        SetConstant(ConstantIndex::Index, factory->NewFromASCIIReadOnly(Token));
         SHARED_GLOBAL_ENV_CONSTANT_STRING(INIT_GLOBAL_ENV_CONSTANT_STRING)
     #undef INIT_GLOBAL_ENV_CONSTANT_STRING
 }

@@ -224,7 +224,7 @@ public:
 
 private:
     using MultiConstantPoolMap = CMap<int32_t, JSTaggedValue>; // key: constpool id, value: constantpool
-    
+
     struct PandaCpInfo {
         uint32_t fileIndex_;
         MultiConstantPoolMap multiCpsMap_;

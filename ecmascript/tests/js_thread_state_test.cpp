@@ -117,7 +117,7 @@ public:
     {
         bool result = true;
         for (auto i: vms) {
-            result &= i->GetAssociatedJSThread()->IsSuspended();
+            result &= i->GetAssociatedJSThread()->HasSuspendRequest();
         }
         return result;
     }
@@ -265,17 +265,13 @@ HWTEST_F_L0(StateTransitioningTest, IsInRunningStateTest)
 
 HWTEST_F_L0(StateTransitioningTest, ChangeStateTest)
 {
-    ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
     {
         ThreadNativeScope nativeScope(thread);
-        ASSERT(!Runtime::GetInstance()->GetMutatorLock()->HasLock());
     }
     {
         ThreadNativeScope nativeScope(thread);
-        ASSERT(!Runtime::GetInstance()->GetMutatorLock()->HasLock());
         {
             ThreadManagedScope managedScope(thread);
-            ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
         }
     }
 }
@@ -330,8 +326,8 @@ HWTEST_F_L0(StateTransitioningTest, SuspendAllNativeTransferToRunningTest)
         SuspendAllScope suspendScope(JSThread::GetCurrent());
         EXPECT_TRUE(CheckAllThreadsState(ThreadState::NATIVE));
         ChangeAllThreadsToRunning();
-        while (!CheckAllThreadsState(ThreadState::IS_SUSPENDED)) {}
-        EXPECT_TRUE(CheckAllThreadsState(ThreadState::IS_SUSPENDED));
+        while (!CheckAllThreadsState(ThreadState::NATIVE)) {}
+        EXPECT_TRUE(CheckAllThreadsState(ThreadState::NATIVE));
     }
     while (CheckAllThreadsState(ThreadState::IS_SUSPENDED)) {}
     while (CheckAllThreadsState(ThreadState::NATIVE)) {}

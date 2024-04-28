@@ -326,7 +326,7 @@ public:
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
     JSHandle<TaggedArray> PUBLIC_API NewSJsonFixedArray(size_t start, size_t length,
-                                                    const std::vector<JSHandle<JSTaggedValue>> &vec);
+                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
 
     JSHandle<JSProxy> NewJSProxy(const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &handler);
     JSHandle<JSRealm> NewJSRealm();
@@ -539,6 +539,8 @@ public:
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 const JSHandle<JSTaggedValue> &newTarget);
+    JSHandle<JSObject> NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
+        const JSHandle<JSFunction> &constructor, uint32_t inlinedProps);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);
@@ -552,6 +554,7 @@ public:
     // ----------------------------------- new string ----------------------------------------
     JSHandle<EcmaString> PUBLIC_API NewFromASCII(std::string_view data);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf8(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf8ReadOnly(std::string_view data);
     JSHandle<EcmaString> NewFromASCIISkippingStringTable(std::string_view data);
     JSHandle<EcmaString> NewFromUtf16(std::u16string_view data);
 
@@ -872,7 +875,7 @@ private:
 
     // used to create nonmovable utf8 string at global constants
     JSHandle<EcmaString> NewFromASCIINonMovable(std::string_view data);
-    // used to create nonmovable utf8 string at global constants
+    // used to create read only utf8 string at global constants
     JSHandle<EcmaString> NewFromASCIIReadOnly(std::string_view data);
 
     // used for creating Function
@@ -893,7 +896,8 @@ private:
     JSHandle<EcmaString> GetCompressedSubStringFromStringTable(const JSHandle<EcmaString> &string, uint32_t offset,
                                                                uint32_t utf8Len) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
-    JSHandle<EcmaString> GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len) const;
+    JSHandle<EcmaString> GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len,
+                                                          bool canBeCompress = true) const;
     // For MUtf-8 string data
     EcmaString *PUBLIC_API GetRawStringFromStringTable(StringData sd,
                                                        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE,

@@ -599,3 +599,19 @@ delete e.exec;
   v0[Symbol.match] = v4;
   print(v0["exec"]());
 }
+
+{
+  ("65535").split(/(?!\1(a\1)\1)\1/g);
+  const o4 = {
+    ...RegExp,
+  };
+  print(o4);
+}
+
+{
+  const v2 = /e\8Z(x)(x)(x)(x)(x)(x)(x)(x)(x)(x)\10*/misd;
+  v2[1073741824] = -194290175n;
+  for (let v3 = 0; v3 < 2; v3++) {
+    print(v2.test(-194290175n));
+  }
+}

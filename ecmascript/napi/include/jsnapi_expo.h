@@ -1259,6 +1259,7 @@ public:
 
     // aot load
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
+    static std::string GetPreloadAotFile(EcmaVM *vm, const std::string &moduleName);
     // context
     static EcmaContext *CreateJSContext(EcmaVM *vm);
     static void SwitchCurrentContext(EcmaVM *vm, EcmaContext *context);
@@ -1435,6 +1436,7 @@ private:
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
     static bool IsAotEscape();
+    static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
     template<typename T>
     friend class Global;
     template<typename T>

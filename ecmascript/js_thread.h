@@ -75,10 +75,12 @@ enum class StableArrayChangeKind { PROTO, NOT_PROTO };
 
 enum ThreadFlag : uint16_t {
     NO_FLAGS = 0 << 0,
-    SUSPEND_REQUEST = 1 << 0
+    SUSPEND_REQUEST = 1 << 0,
+    ACTIVE_BARRIER = 1 << 1,
 };
 
 static constexpr uint32_t THREAD_STATE_OFFSET = 16;
+static constexpr uint32_t THREAD_FLAGS_MASK = (0x1 << THREAD_STATE_OFFSET) - 1;
 enum class ThreadState : uint16_t {
     CREATED = 0,
     RUNNING = 1,
@@ -204,6 +206,12 @@ public:
     {
         glueData_.newSpaceAllocationTopAddress_ = top;
         glueData_.newSpaceAllocationEndAddress_ = end;
+    }
+
+    void ReSetSOldSpaceAllocationAddress(const uintptr_t *top, const uintptr_t* end)
+    {
+        glueData_.sOldSpaceAllocationTopAddress_ = top;
+        glueData_.sOldSpaceAllocationEndAddress_ = end;
     }
 
     uintptr_t GetUnsharedConstpools() const
@@ -465,6 +473,10 @@ public:
     }
 
     bool CheckSafepoint();
+
+    void CheckAndPassActiveBarrier();
+
+    bool PassSuspendBarrier();
 
     void SetGetStackSignal(bool isParseStack)
     {
@@ -839,6 +851,8 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  RTStubEntries,
                                                  COStubEntries,
                                                  BuiltinStubEntries,
@@ -875,6 +889,8 @@ public:
             LastFpIndex,
             NewSpaceAllocationTopAddressIndex,
             NewSpaceAllocationEndAddressIndex,
+            SOldSpaceAllocationTopAddressIndex,
+            SOldSpaceAllocationEndAddressIndex,
             RTStubEntriesIndex,
             COStubEntriesIndex,
             BuiltinsStubEntriesIndex,
@@ -953,6 +969,16 @@ public:
         static size_t GetNewSpaceAllocationEndAddressOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::NewSpaceAllocationEndAddressIndex)>(isArch32);
+        }
+
+        static size_t GetSOldSpaceAllocationTopAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SOldSpaceAllocationTopAddressIndex)>(isArch32);
+        }
+
+        static size_t GetSOldSpaceAllocationEndAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SOldSpaceAllocationEndAddressIndex)>(isArch32);
         }
 
         static size_t GetBCStubEntriesOffset(bool isArch32)
@@ -1105,6 +1131,8 @@ public:
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationTopAddress_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationEndAddress_ {nullptr};
+        alignas(EAS) const uintptr_t *sOldSpaceAllocationTopAddress_ {nullptr};
+        alignas(EAS) const uintptr_t *sOldSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) RTStubEntries rtStubEntries_;
         alignas(EAS) COStubEntries coStubEntries_;
         alignas(EAS) BuiltinStubEntries builtinStubEntries_;
@@ -1172,19 +1200,26 @@ public:
         fullMarkRequest_ = true;
     }
 
-    inline bool IsThreadSafe()
+    inline bool IsThreadSafe() const
     {
-        return IsMainThread() || IsSuspended();
+        return IsMainThread() || HasSuspendRequest();
     }
 
-    inline bool IsSuspended()
+    bool IsSuspended() const
+    {
+        bool f = ReadFlag(ThreadFlag::SUSPEND_REQUEST);
+        bool s = (GetState() != ThreadState::RUNNING);
+        return f && s;
+    }
+
+    inline bool HasSuspendRequest() const
     {
         return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
     }
 
     void CheckSafepointIfSuspended()
     {
-        if (IsSuspended()) {
+        if (HasSuspendRequest()) {
             WaitSuspension();
         }
     }
@@ -1202,7 +1237,7 @@ public:
         return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
     }
     void PUBLIC_API UpdateState(ThreadState newState);
-    void SuspendThread(bool internalSuspend);
+    void SuspendThread(bool internalSuspend, SuspendBarrier* barrier = nullptr);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
     static bool IsMainThread();
@@ -1282,12 +1317,22 @@ private:
     }
 
     void TransferFromRunningToSuspended(ThreadState newState);
+
     void TransferToRunning();
-    void StoreState(ThreadState newState, bool lockMutatorLock);
+
+    inline void StoreState(ThreadState newState);
+
+    void StoreRunningState(ThreadState newState);
+
+    void StoreSuspendedState(ThreadState newState);
+
     bool ReadFlag(ThreadFlag flag) const
     {
-        return (glueData_.stateAndFlags_.asStruct.flags & static_cast<uint16_t>(flag)) != 0;
+        uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
+        uint16_t flags = (stateAndFlags & THREAD_FLAGS_MASK);
+        return (flags & static_cast<uint16_t>(flag)) != 0;
     }
+
     void SetFlag(ThreadFlag flag)
     {
         glueData_.stateAndFlags_.asAtomicInt.fetch_or(flag, std::memory_order_seq_cst);
@@ -1358,6 +1403,7 @@ private:
     Mutex suspendLock_;
     int32_t suspendCount_ {0};
     ConditionVariable suspendCondVar_;
+    SuspendBarrier *suspendBarrier_ {nullptr};
 
     bool isJitThread_ {false};
     RecursiveMutex jitMutex_;

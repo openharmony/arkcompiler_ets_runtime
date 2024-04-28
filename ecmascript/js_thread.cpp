@@ -681,6 +681,28 @@ void JSThread::TerminateExecution()
     SetException(error.GetTaggedValue());
 }
 
+void JSThread::CheckAndPassActiveBarrier()
+{
+    ThreadStateAndFlags oldStateAndFlags;
+    oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
+    if ((oldStateAndFlags.asStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
+        PassSuspendBarrier();
+    }
+}
+
+bool JSThread::PassSuspendBarrier()
+{
+    // Use suspendLock_ to avoid data-race between suspend-all-thread and suspended-threads.
+    LockHolder lock(suspendLock_);
+    if (suspendBarrier_ != nullptr) {
+        suspendBarrier_->PassStrongly();
+        suspendBarrier_ = nullptr;
+        ClearFlag(ThreadFlag::ACTIVE_BARRIER);
+        return true;
+    }
+    return false;
+}
+
 bool JSThread::CheckSafepoint()
 {
     ResetCheckSafePointStatus();
@@ -691,7 +713,8 @@ bool JSThread::CheckSafepoint()
         SetTerminationRequest(false);
     }
 
-    if (IsSuspended()) {
+    if (HasSuspendRequest()) {
+        CheckAndPassActiveBarrier();
         WaitSuspension();
     }
 
@@ -1006,19 +1029,27 @@ void JSThread::UpdateState(ThreadState newState)
         TransferToRunning();
     } else {
         // Here can be some extra checks...
-        StoreState(newState, false);
+        StoreState(newState);
     }
 }
 
-void JSThread::SuspendThread(bool internalSuspend)
+void JSThread::SuspendThread(bool internalSuspend, SuspendBarrier* barrier)
 {
     LockHolder lock(suspendLock_);
     if (!internalSuspend) {
         // do smth here if we want to combine internal and external suspension
     }
+
     uint32_t old_count = suspendCount_++;
     if (old_count == 0) {
         SetFlag(ThreadFlag::SUSPEND_REQUEST);
+        SetCheckSafePointStatus();
+    }
+
+    if (barrier != nullptr) {
+        ASSERT(suspendBarrier_ == nullptr);
+        suspendBarrier_ = barrier;
+        SetFlag(ThreadFlag::ACTIVE_BARRIER);
         SetCheckSafePointStatus();
     }
 }
@@ -1049,8 +1080,9 @@ void JSThread::WaitSuspension()
         while (suspendCount_ > 0) {
             suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
             // we need to do smth if Runtime is terminating at this point
+            LOG_ECMA(ERROR) << "Suspend timeout when triggering shared-gc: " << TIMEOUT << "ms";
         }
-        ASSERT(!IsSuspended());
+        ASSERT(!HasSuspendRequest());
     }
     UpdateState(oldState);
 }
@@ -1070,15 +1102,14 @@ void JSThread::ManagedCodeEnd()
 void JSThread::TransferFromRunningToSuspended(ThreadState newState)
 {
     ASSERT(currentThread == this);
-    StoreState(newState, false);
-    ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
-    Runtime::GetInstance()->GetMutatorLock()->Unlock();
+    StoreSuspendedState(newState);
+    CheckAndPassActiveBarrier();
 }
 
 void JSThread::TransferToRunning()
 {
     ASSERT(currentThread == this);
-    StoreState(ThreadState::RUNNING, true);
+    StoreRunningState(ThreadState::RUNNING);
     // Invoke free weak global callback when thread switch to running
     if (!weakNodeFreeGlobalCallbacks_.empty()) {
         InvokeWeakNodeFreeGlobalCallBack();
@@ -1091,34 +1122,60 @@ void JSThread::TransferToRunning()
     }
 }
 
-void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
+inline void JSThread::StoreState(ThreadState newState)
 {
     while (true) {
         ThreadStateAndFlags oldStateAndFlags;
         oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
-        if (lockMutatorLock && oldStateAndFlags.asStruct.flags != ThreadFlag::NO_FLAGS) {
-            WaitSuspension();
-            continue;
-        }
+
         ThreadStateAndFlags newStateAndFlags;
         newStateAndFlags.asStruct.flags = oldStateAndFlags.asStruct.flags;
         newStateAndFlags.asStruct.state = newState;
 
-        if (lockMutatorLock) {
-            Runtime::GetInstance()->GetMutatorLock()->ReadLock();
-        }
-
-        if (glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
-            newStateAndFlags.asNonvolatileInt, std::memory_order_release)) {
+        bool done = glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
+                                                                               newStateAndFlags.asNonvolatileInt,
+                                                                               std::memory_order_release);
+        if (LIKELY(done)) {
             break;
         }
+    }
+}
 
-        // CAS failed. Unlock mutator lock
-        if (lockMutatorLock) {
-            ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
-            Runtime::GetInstance()->GetMutatorLock()->Unlock();
+void JSThread::StoreRunningState(ThreadState newState)
+{
+    ASSERT(newState == ThreadState::RUNNING);
+    while (true) {
+        ThreadStateAndFlags oldStateAndFlags;
+        oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
+        ASSERT(oldStateAndFlags.asStruct.state != ThreadState::RUNNING);
+
+        if (LIKELY(oldStateAndFlags.asStruct.flags == ThreadFlag::NO_FLAGS)) {
+            ThreadStateAndFlags newStateAndFlags;
+            newStateAndFlags.asStruct.flags = oldStateAndFlags.asStruct.flags;
+            newStateAndFlags.asStruct.state = newState;
+
+            if (glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
+                                                                           newStateAndFlags.asNonvolatileInt,
+                                                                           std::memory_order_release)) {
+                break;
+            }
+        } else if ((oldStateAndFlags.asStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
+            PassSuspendBarrier();
+        } else if ((oldStateAndFlags.asStruct.flags & ThreadFlag::SUSPEND_REQUEST) != 0) {
+            constexpr int TIMEOUT = 100;
+            LockHolder lock(suspendLock_);
+            while (suspendCount_ > 0) {
+                suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
+            }
+            ASSERT(!HasSuspendRequest());
         }
     }
+}
+
+inline void JSThread::StoreSuspendedState(ThreadState newState)
+{
+    ASSERT(newState != ThreadState::RUNNING);
+    StoreState(newState);
 }
 
 void JSThread::PostFork()
@@ -1138,7 +1195,7 @@ void JSThread::PostFork()
 bool JSThread::IsInManagedState() const
 {
     ASSERT(this == JSThread::GetCurrent());
-    return GetMutatorLockState() == MutatorLock::MutatorLockState::RDLOCK && GetState() == ThreadState::RUNNING;
+    return GetState() == ThreadState::RUNNING;
 }
 
 MutatorLock::MutatorLockState JSThread::GetMutatorLockState() const

@@ -227,6 +227,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
 {
     BUILTINS_API_TRACE(thread, Global, Encode);
     // 1. Let strLen be the number of code units in string.
+    CString errorMsg;
     uint32_t strLen = EcmaStringAccessor(str).GetLength();
     // 2. Let R be the empty String.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -256,8 +257,8 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
             // i. If the code unit value of C is not less than 0xDC00 and not greater than 0xDFFF,
             //    throw a URIError exception.
             if (cc >= base::utf_helper::DECODE_TRAIL_LOW && cc <= base::utf_helper::DECODE_TRAIL_HIGH) {
-                THROW_URI_ERROR_AND_RETURN(thread, "EncodeURI: The format of the URI to be parsed is incorrect",
-                                           JSTaggedValue::Exception());
+                errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+                THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
             }
 
             // ii. If the code unit value of C is less than 0xD800 or greater than 0xDBFF, then
@@ -274,12 +275,13 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
             } else {
                 k++;
                 if (k == strLen) {
-                    THROW_URI_ERROR_AND_RETURN(thread, "k is invalid", JSTaggedValue::Exception());
+                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+                    THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
                 uint16_t kc = EcmaStringAccessor(str).Get(k);
                 if (kc < base::utf_helper::DECODE_TRAIL_LOW || kc > base::utf_helper::DECODE_TRAIL_HIGH) {
-                    THROW_URI_ERROR_AND_RETURN(thread, "EncodeURI: The format of the URI to be parsed is incorrect",
-                                               JSTaggedValue::Exception());
+                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+                    THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
                 vv = base::utf_helper::UTF16Decode(cc, kc);
             }
@@ -496,19 +498,19 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
                                                     judgURIFunc IsInURISet, int32_t strLen, std::u16string &sStr)
 {
     [[maybe_unused]] uint32_t start = static_cast<uint32_t>(k);
-
+    CString errorMsg;
     // ii. If k + 2 is greater than or equal to strLen, throw a URIError exception.
     // iii. If the code units at index (k+1) and (k + 2) within string do not represent hexadecimal digits,
     //      throw a URIError exception.
     if ((k + 2) >= strLen) {  // 2: means plus 2
-        THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                   JSTaggedValue::Exception());
+        errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+        THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
     uint16_t frontChar = EcmaStringAccessor(str).Get(k + 1);
     uint16_t behindChar = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
     if (!(IsHexDigits(frontChar) && IsHexDigits(behindChar))) {
-        THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                   JSTaggedValue::Exception());
+        errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+        THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
     uint8_t bb = GetValueFromTwoHex(frontChar, behindChar);
     k += 2;  // 2: means plus 2
@@ -553,16 +555,16 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
         }
         // 2. If n equals 1 or n is greater than 4, throw a URIError exception.
         if ((n == 1) || (n > 4)) {
-            THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                       JSTaggedValue::Exception());
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
 
         std::vector<uint8_t> oct = {bb};
 
         // 5. If k + (3 × (n – 1)) is greater than or equal to strLen, throw a URIError exception.
         if (k + (3 * (n - 1)) >= strLen) {  // 3: means multiply by 3
-            THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                       JSTaggedValue::Exception());
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
         int32_t j = 1;
         while (j < n) {
@@ -572,21 +574,21 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
             // c. If the code units at index (k +1) and (k + 2) within string do not represent hexadecimal
             //    digits, throw a URIError exception.
             if (!(codeUnit == '%')) {
-                THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                           JSTaggedValue::Exception());
+                errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+                THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
             }
             if (!(IsHexDigits(EcmaStringAccessor(str).Get(k + 1)) &&
                   IsHexDigits(EcmaStringAccessor(str).Get(k + 2)))) {  // 2: means plus 2
-                THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                           JSTaggedValue::Exception());
+                errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+                THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
             }
             uint16_t frontChart = EcmaStringAccessor(str).Get(k + 1);
             uint16_t behindChart = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
             bb = GetValueFromTwoHex(frontChart, behindChart);
             // e. If the two most significant bits in B are not 10, throw a URIError exception.
             if (!((bb & BIT_MASK_TWO) == BIT_MASK_ONE)) {
-                THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                           JSTaggedValue::Exception());
+                errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+                THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
             }
             k += 2;  // 2: means plus 2
             oct.push_back(bb);
@@ -602,8 +604,8 @@ JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc
                                                    uint32_t &start, int32_t &k, std::u16string &sStr)
 {
     if (!base::utf_helper::IsValidUTF8(oct)) {
-        THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                   JSTaggedValue::Exception());
+        CString errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+        THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
     uint32_t vv = StringHelper::Utf8ToU32String(oct);
     if (vv < base::utf_helper::DECODE_SECOND_FACTOR) {

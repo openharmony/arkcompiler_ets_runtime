@@ -1003,6 +1003,41 @@ JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
     return NewJSObjectByConstructor(constructor);
 }
 
+JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
+    const JSHandle<JSFunction> &constructor, uint32_t inlinedProps)
+{
+    if (!constructor->HasFunctionPrototype() ||
+        (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
+        JSHandle<JSHClass> jshclass;
+        if (LIKELY(inlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS)) {
+            jshclass = JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, constructor));
+        } else {
+            jshclass = NewEcmaHClass(JSObject::SIZE, inlinedProps, JSType::JS_OBJECT,
+                                     env->GetObjectFunctionPrototype());
+        }
+        JSHandle<JSObject> obj;
+        if (jshclass->IsJSSharedObject()) {
+            obj = NewSharedOldSpaceJSObject(jshclass);
+            if (jshclass->IsDictionaryMode()) {
+                auto fieldLayout = jshclass->GetLayout();
+                ASSERT(fieldLayout.IsDictionary());
+                auto dict = JSHandle<TaggedArray>(thread_, fieldLayout);
+                auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
+                obj->SetProperties(thread_, properties);
+            }
+        } else {
+            obj = NewJSObjectWithInit(jshclass);
+        }
+        return obj;
+    }
+    JSHandle<JSObject> result =
+        NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
+    if (thread_->HasPendingException()) {
+        LOG_FULL(FATAL) << "NewJSObjectByConstructor should not throw Exception! ";
+    }
+    return result;
+}
+
 JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                            uint32_t inlinedProps)
 {
@@ -3113,14 +3148,16 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uin
     return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringNonMovable(vm_, utf8Data, utf8Len));
 }
 
-JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len) const
+JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len,
+                                                                     bool canBeCompress) const
 {
     NewObjectHook();
     if (utf8Len == 0) {
         return GetEmptyString();
     }
     auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringReadOnly(vm_, utf8Data, utf8Len));
+    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringReadOnly(vm_, utf8Data, utf8Len,
+                                                                                    canBeCompress));
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
@@ -3941,6 +3978,13 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data)
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
     return GetStringFromStringTable(utf8Data, data.length(), canBeCompress);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8ReadOnly(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
+    return GetStringFromStringTableReadOnly(utf8Data, data.length(), canBeCompress);
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf16(std::u16string_view data)

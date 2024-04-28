@@ -209,6 +209,31 @@ public:
     {
         return isObjHashDisplayEnabled_;
     }
+    
+    void EnableSerializationTimeoutCheck()
+    {
+        isSerializationTimeoutCheckEnabled_ = true;
+    }
+
+    void DisableSerializationTimeoutCheck()
+    {
+        isSerializationTimeoutCheckEnabled_ = false;
+    }
+
+    bool IsSerializationTimeoutCheckEnabled()
+    {
+        return isSerializationTimeoutCheckEnabled_;
+    }
+
+    void SetSerializationCheckThreshold(int threshold)
+    {
+        serializationCheckThreshold_ = threshold;
+    }
+
+    int32_t GetSerializationCheckThreshold() const
+    {
+        return serializationCheckThreshold_;
+    }
 
     static void AddJsDebuggerManager(int tid, JsDebuggerManager *jsDebuggerManager);
     static JsDebuggerManager* GetJsDebuggerManager(int tid);
@@ -231,6 +256,11 @@ private:
 
     NotificationManager notificationManager_;
     HotReloadManager hotReloadManager_;
+    // Serialization / DeSerialization Timeout check
+    bool isSerializationTimeoutCheckEnabled_ { false };
+    // in milliseconds
+    static constexpr int32_t DEFAULT_THRESHOLD = 8;
+    int32_t serializationCheckThreshold_ { DEFAULT_THRESHOLD };
 
     static std::unordered_map<int, JsDebuggerManager *> jsDebuggerManagerMap_;
     static std::shared_mutex mutex_;

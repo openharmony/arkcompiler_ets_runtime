@@ -170,10 +170,11 @@ bool JSObject::IsRegExp(JSThread *thread, const JSHandle<JSTaggedValue> &argumen
         return false;
     }
     JSHandle<JSTaggedValue> matchSymbol = thread->GetEcmaVM()->GetGlobalEnv()->GetMatchSymbol();
-    JSHandle<JSTaggedValue> isRegexp = JSObject::GetProperty(thread, argument, matchSymbol).GetValue();
+    JSTaggedValue isRegexp =  ObjectFastOperator::FastGetPropertyByValue(
+        thread, argument.GetTaggedValue(), matchSymbol.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-    if (!isRegexp->IsUndefined()) {
-        return isRegexp->ToBoolean();
+    if (!isRegexp.IsUndefined()) {
+        return isRegexp.ToBoolean();
     }
     JSHandle<JSObject> argumentObj = JSHandle<JSObject>::Cast(argument);
     return argumentObj->IsJSRegExp();

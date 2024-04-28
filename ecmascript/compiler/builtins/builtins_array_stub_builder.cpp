@@ -1807,7 +1807,6 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
     }
 }
 
-// Note: unused arguments are reserved for further development
 void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
@@ -1828,11 +1827,40 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
 
-    result->WriteVariable(DoReverse(glue, thisValue, thisValue, Boolean(false), result, exit));
+    GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(thisArrLen, Int64(1)));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label arrayValue(env);
+        Label valueEqual(env);
+        BRANCH(Int64LessThan(*i, *j), &next, &loopExit);
+        Bind(&next);
+        {
+            GateRef lower = GetTaggedValueWithElementsKind(thisValue, *i);
+            GateRef upper = GetTaggedValueWithElementsKind(thisValue, *j);
+            SetValueWithElementsKind(glue, thisValue, upper, *i, Boolean(false),
+                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            SetValueWithElementsKind(glue, thisValue, lower, *j, Boolean(false),
+                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    i = Int64Add(*i, Int64(1));
+    j = Int64Sub(*j, Int64(1));
+    LoopEnd(&loopHead, env, glue);
+    Bind(&loopExit);
+    result->WriteVariable(thisValue);
     Jump(exit);
 }
 
-// Note: unused arguments are reserved for further development
 void BuiltinsArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
@@ -2222,7 +2250,7 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
                 GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
                     Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
                     { argHandle, *kValue, key, thisValue });
-                BRANCH(TaggedIsException(retValue), &hasException, &notHasException);
+                BRANCH(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
                 {
                     result->WriteVariable(retValue);
@@ -2466,8 +2494,6 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(IsDictionaryMode(thisValue), &isDictMode, slowPath);
-    Bind(&isDictMode);
     GateRef thisLen = GetArrayLength(thisValue);
     BRANCH(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
     Bind(&thisLenNotZero);
@@ -3798,7 +3824,6 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     Label atLeastOneArg(env);
     Label callbackFnHandleHeapObject(env);
     Label callbackFnHandleCallable(env);
-    Label noTypeError(env);
     Label updateAccumulator(env);
     Label thisIsStable(env);
     Label thisNotStable(env);
@@ -3810,12 +3835,9 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     Bind(&callbackFnHandleHeapObject);
     BRANCH(IsCallable(callbackFnHandle), &callbackFnHandleCallable, slowPath);
     Bind(&callbackFnHandleCallable);
-    GateRef thisLenIsZero = Int32Equal(*thisLen, Int32(0));
     GateRef numArgsLessThanTwo = Int64LessThan(numArgs, IntPtr(2));                 // 2: callbackFn initialValue
-    BRANCH(BoolAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
-    Bind(&noTypeError);
     k = Int32Sub(*thisLen, Int32(1));
-    BRANCH(Int64Equal(numArgs, IntPtr(2)), &updateAccumulator, slowPath);           // 2: callbackFn initialValue
+    BRANCH(numArgsLessThanTwo, slowPath, &updateAccumulator);           // 2: callbackFn initialValue
     Bind(&updateAccumulator);
     accumulator = GetCallArg1(numArgs);
     Jump(&thisIsStable);
