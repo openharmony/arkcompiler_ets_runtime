@@ -269,7 +269,7 @@ JSTaggedValue NumberHelper::DoubleToFixedString(JSThread *thread, double valueNu
     bool isFast = DtoaHelper::FixedDtoa(absValue, digitNumber,
         BufferVector<char>(decimalRep, decimalRepCapacity), &length, &decimalPoint);
     if (!isFast) {
-        return DoubleToASCII(thread, absValue, digitNumber, base::FRAC_FORMAT); // slow
+        return DoubleToASCII(thread, valueNumber, digitNumber, base::FRAC_FORMAT); // slow
     }
     int zeroPrefixLen = 0;
     int zeroPostfixLen = 0;
@@ -420,19 +420,53 @@ void NumberHelper::CustomFcvt(std::string& buf, int bufSize, double valueNumber,
     CustomFcvtHelper(buf, bufSize, valueNumber, digits, roundingMode);
 }
 
+JSTaggedValue NumberHelper::DoubleToPrecisionString(JSThread *thread, double number, int digit)
+{
+    if (number == 0.0) {
+        return DoubleToFixedString(thread, number, digit - 1);
+    }
+    double positiveNumber = number > 0 ? number : -number;
+    int logDigit = std::floor(log10(positiveNumber));
+    int radixDigit = digit - logDigit - 1;
+    const int MIN_EXPONENT_DIGIT = -6;
+    if ((logDigit >= MIN_EXPONENT_DIGIT && logDigit < digit)) {
+        return DoubleToFixedString(thread, number, std::abs(radixDigit));
+    }
+    return DoubleToExponential(thread, number, digit);
+}
+
 JSTaggedValue NumberHelper::DoubleToExponential(JSThread *thread, double number, int digit)
 {
-    CStringStream ss;
-    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
+    char tmpbuf[JS_DTOA_BUF_SIZE] = {0};
+    // Can use std::to_chars for performance.
     if (digit == 0) {
-        int decimalPoint = 0;
-        int sign = 0;
-        int digitNumber = CustomEcvt(number, digit, &decimalPoint, buffer, false, &sign);
-        ss << std::setiosflags(std::ios::scientific) << std::setprecision(digitNumber - 1) << number;
+        if (number == 0.0) {
+            return BuiltinsBase::GetTaggedString(thread, "0e+0");
+        }
+        std::string res;
+        if (number < 0) {
+            res += "-";
+            number = -number;
+        }
+        int n;
+        int k;
+        DtoaHelper::Dtoa(number, tmpbuf, &n, &k);
+        std::string base = tmpbuf;
+        base.erase(1, k - 1);
+        if (k != 1) {
+            base += std::string(".") + std::string(tmpbuf + 1);
+        }
+        base += "e" + (n >= 1 ? std::string("+") : "") + std::to_string(n - 1);
+        res += base;
+        return BuiltinsBase::GetTaggedString(thread, res.c_str());
     } else {
-        ss << std::setiosflags(std::ios::scientific) << std::setprecision(digit - 1) << number;
+        int result = snprintf_s(tmpbuf, sizeof(tmpbuf), sizeof(tmpbuf) - 1, "%.*e", digit - 1, number);
+        if (result == -1) {
+            LOG_FULL(FATAL) << "snprintf_s failed";
+            UNREACHABLE();
+        }
     }
-    CString result = ss.str();
+    std::string result = tmpbuf;
     size_t found = result.find_last_of('e');
     if (found != CString::npos && found < result.size() - 2 && result[found + 2] == '0') { // 2:offset of e
         result.erase(found + 2, 1); // 2:offset of e

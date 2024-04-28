@@ -176,6 +176,7 @@ public:
     static JSTaggedValue DoubleToExponential(JSThread *thread, double number, int digit);
     static JSTaggedValue DoubleToASCII(JSThread *thread, double valueNumber, int digits, int flags);
     static JSTaggedValue DoubleToFixedString(JSThread *thread, double valueNumber, int digits);
+    static JSTaggedValue DoubleToPrecisionString(JSThread *thread, double valueNumber, int digits);
     static void DoubleToASCIIWithFlag(std::string& buf, double valueNumber, int digits, int flags);
     static void ToASCIIWithNegative(std::string& tmpbuf, int digitNumber, int n, const std::string& buf);
     static void ToASCIIWithGreatThanZero(std::string& tmpbuf, int digitNumber, int number, const std::string& buf);
