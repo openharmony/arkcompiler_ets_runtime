@@ -17,6 +17,7 @@
 #define ECMASCRIPT_PLATFORM_MUTEX_H
 
 #include <pthread.h>
+#include <atomic>
 
 #include "ecmascript/common.h"
 #ifdef DEBUG

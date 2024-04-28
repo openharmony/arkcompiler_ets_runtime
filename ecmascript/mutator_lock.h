@@ -19,6 +19,7 @@
 #include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
+
 class MutatorLock : public RWLock {
 #ifndef NDEBUG
 public:
@@ -35,5 +36,44 @@ private:
     void SetState(MutatorLockState newState);
 #endif
 };
+
+class SuspendBarrier {
+public:
+    SuspendBarrier() : passBarrierCount_(0)
+    {
+    }
+
+    explicit SuspendBarrier(int32_t count) : passBarrierCount_(count)
+    {
+    }
+
+    void Wait();
+
+    void Pass()
+    {
+        PassCount(-1);
+    }
+
+    void PassStrongly()
+    {
+        passBarrierCount_.fetch_sub(1, std::memory_order_seq_cst);
+    }
+
+    void Initialize(int32_t count)
+    {
+        passBarrierCount_.store(count, std::memory_order_relaxed);
+    }
+
+    void Increment(int32_t delta)
+    {
+        PassCount(delta);
+        Wait();
+    }
+
+private:
+    void PassCount(int32_t delta);
+    std::atomic<int32_t> passBarrierCount_;
+};
+
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_MUTATOR_LOCK_H
