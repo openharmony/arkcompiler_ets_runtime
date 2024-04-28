@@ -388,6 +388,7 @@ public:
                                   GateRef constPoolIndex, GateRef elementIndex);
     GateRef CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
+    GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool isFastCall);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef ctor);
     GateRef ToLength(GateRef receiver);
@@ -557,7 +558,7 @@ public:
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
     GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, ParamType paramType,
                                const std::vector<GateRef>& inList);
-    GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
+    GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclass, GateRef size, GateRef frameState);
     GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
     template<TypedBinOp Op>
     inline GateRef TypedBinaryOp(GateRef x, GateRef y, ParamType paramType);

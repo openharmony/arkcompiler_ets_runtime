@@ -30,6 +30,7 @@ std::string GateMetaData::Str(OpCode opcode)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(GATE_NAME_MAP)
     GATE_META_DATA_LIST_FOR_CALL(GATE_NAME_MAP)
+    GATE_META_DATA_LIST_FOR_NEW(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(GATE_NAME_MAP)
 #undef GATE_NAME_MAP
 #define GATE_NAME_MAP(OP) { OpCode::OP, #OP },
@@ -308,7 +309,7 @@ const GateMetaData* GateMetaBuilder::NAME(uint64_t value, uint64_t pcOffset)    
 GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
-#define DECLARE_GATE_META_FOR_CALL(NAME, OP, R, S, D, V)                                                 \
+#define DECLARE_GATE_META_FOR_CALL(NAME, OP, R, S, D, V)                                        \
 const GateMetaData* GateMetaBuilder::NAME(uint64_t value, uint64_t pcOffset, bool noGC)         \
 {                                                                                               \
     auto meta = new (chunk_) TypedCallMetaData(OpCode::OP, R, S, D, value, pcOffset, noGC);     \
@@ -317,6 +318,18 @@ const GateMetaData* GateMetaBuilder::NAME(uint64_t value, uint64_t pcOffset, boo
 }
 GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_META_FOR_CALL)
 #undef DECLARE_GATE_META_FOR_CALL
+
+#define DECLARE_GATE_META_FOR_NEW(NAME, OP, R, S, D, V)                                         \
+const GateMetaData* GateMetaBuilder::NAME(uint64_t value, uint64_t pcOffset,                    \
+                                          bool isFastCall)                                      \
+{                                                                                               \
+    auto meta = new (chunk_) NewConstructMetaData(OpCode::OP, R, S, D, value,                   \
+                                                  pcOffset, isFastCall);                        \
+    meta->SetKind(GateMetaData::Kind::CALL_NEW);                                                \
+    return meta;                                                                                \
+}
+GATE_META_DATA_LIST_FOR_NEW(DECLARE_GATE_META_FOR_NEW)
+#undef DECLARE_GATE_META_FOR_NEW
 
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V)                                          \
 const GateMetaData* GateMetaBuilder::NAME(uint64_t pcOffset) const                       \

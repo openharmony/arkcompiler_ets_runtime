@@ -280,6 +280,13 @@ ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
     return ArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
+bool GateAccessor::NeedPushUndefined(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CALL_NEW);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetNewConstructMetaData()->NeedPushUndefined();
+}
+
 CreateArgumentsAccessor GateAccessor::GetCreateArgumentsAccessor(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::CREATE_ARGUMENTS);
@@ -535,6 +542,7 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
         case OpCode::TYPED_CALL_BUILTIN:
         case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
         case OpCode::CONSTRUCT:
+        case OpCode::CALL_NEW:
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
             return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());

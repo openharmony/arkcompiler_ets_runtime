@@ -238,6 +238,16 @@ bool NewObjRangeTypeInfoAccessor::FindHClass()
     return ptManager_->QueryHClass(type.first, type.second).IsJSHClass();
 }
 
+JSTaggedValue NewObjRangeTypeInfoAccessor::GetHClass()
+{
+    auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+    ASSERT(sampleType->IsProfileType());
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+    hclassIndex_ = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
+    ASSERT(hclassIndex_ != -1);
+    return ptManager_->QueryHClass(type.first, type.second);
+}
+
 bool TypeOfTypeInfoAccessor::IsIllegalType() const
 {
     return true;

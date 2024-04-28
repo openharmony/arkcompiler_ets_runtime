@@ -169,6 +169,9 @@ private:
     void LowerToJSCall(GateRef hirGate, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
     void LowerFastCall(GateRef gate, GateRef glue, GateRef func, GateRef argc, const std::vector<GateRef> &args,
         const std::vector<GateRef> &fastCallArgs, Variable *result, Label *exit, bool isNew);
+    void LowerNewFastCall(GateRef gate, GateRef glue, GateRef func, bool needPushUndefined,
+        const std::vector<GateRef> &args, const std::vector<GateRef> &fastCallArgs,
+        Variable *result, Label *exit);
     void LowerCallArg0(GateRef gate);
     void LowerCallArg1Imm8V8(GateRef gate);
     void LowerCallThisArg1(GateRef gate);
@@ -298,6 +301,7 @@ private:
     void LowerWideStPatchVar(GateRef gate);
     void LowerLdThisByName(GateRef gate);
     void LowerConstruct(GateRef gate);
+    void LowerCallNew(GateRef gate);
     void LowerTypedCall(GateRef gate);
     void LowerTypedFastCall(GateRef gate);
     void LowerCheckSafePointAndStackOver(GateRef gate);

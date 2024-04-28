@@ -105,7 +105,8 @@ namespace panda::ecmascript::kungfu {
     V(JSCALLTHIS)                           \
     V(JSCALLTHIS_FAST)                      \
     V(JSCALLTHIS_NOGC)                      \
-    V(JSCALLTHIS_FAST_NOGC)
+    V(JSCALLTHIS_FAST_NOGC)                 \
+    V(JS_NEWOBJRANGE)
 
 enum class TypedBinOp : uint8_t {
 #define DECLARE_TYPED_BIN_OP(OP) OP,
@@ -202,6 +203,38 @@ public:
     }
 private:
     bool noGC_;
+};
+
+class NewConstructMetaData : public OneParameterMetaData {
+public:
+    static constexpr int NEED_PUSH_UNDEFINED_BIT_SIZE = 1;
+    NewConstructMetaData(OpCode opcode, GateFlags flags, uint32_t statesIn,
+        uint16_t dependsIn, uint32_t valuesIn, uint64_t value, bool needPushUndefined)
+        : OneParameterMetaData(opcode, flags, statesIn, dependsIn, valuesIn, value)
+    {
+        bitField_ = NeedPushUndefinedBit::Encode(needPushUndefined);
+    }
+    
+    static const NewConstructMetaData* Cast(const GateMetaData* meta)
+    {
+        meta->AssertKind(GateMetaData::Kind::CALL_NEW);
+        return static_cast<const NewConstructMetaData*>(meta);
+    }
+
+    bool NeedPushUndefined() const
+    {
+        return NeedPushUndefinedBit::Get(bitField_);
+    }
+
+    uint64_t GetValue() const
+    {
+        return bitField_;
+    }
+
+private:
+    using NeedPushUndefinedBit = panda::BitField<bool, 0, NEED_PUSH_UNDEFINED_BIT_SIZE>;
+
+    uint64_t bitField_;
 };
 
 class TypedUnaryAccessor {

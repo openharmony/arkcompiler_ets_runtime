@@ -162,6 +162,15 @@ public:
     GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_META_FOR_CALL)
 #undef DECLARE_GATE_META_FOR_CALL
 
+#define DECLARE_GATE_META_FOR_NEW(NAME, OP, R, S, D, V)                        \
+    const GateMetaData* NAME(uint64_t value, uint64_t pcOffset,                \
+                             bool isFastCall)                                  \
+    {                                                                          \
+        return metaBuilder_.NAME(value, pcOffset, isFastCall);                 \
+    }
+    GATE_META_DATA_LIST_FOR_NEW(DECLARE_GATE_META_FOR_NEW)
+#undef DECLARE_GATE_META_FOR_NEW
+
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V)                    \
     const GateMetaData* NAME(uint64_t pcOffset) const              \
     {                                                              \

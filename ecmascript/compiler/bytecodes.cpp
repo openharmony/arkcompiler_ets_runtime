@@ -242,9 +242,6 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
-        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
-        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
         case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
@@ -269,6 +266,9 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
             flags |= BytecodeFlags::SUPPORT_DEOPT;
             kind = BytecodeKind::CALL_BC;
             break;

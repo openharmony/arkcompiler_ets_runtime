@@ -123,6 +123,12 @@ public:
     GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_META_FOR_CALL)
 #undef DECLARE_GATE_META_FOR_CALL
 
+#define DECLARE_GATE_META_FOR_NEW(NAME, OP, R, S, D, V)                \
+    const GateMetaData* NAME(uint64_t value, uint64_t pcOffset,        \
+                             bool isFastCall);
+    GATE_META_DATA_LIST_FOR_NEW(DECLARE_GATE_META_FOR_NEW)
+#undef DECLARE_GATE_META_FOR_NEW
+
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V)                        \
     const GateMetaData* NAME(uint64_t pcOffset) const;
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_META)
