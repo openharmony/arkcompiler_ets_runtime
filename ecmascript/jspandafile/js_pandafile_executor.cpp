@@ -67,9 +67,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     std::string_view entryPoint, bool needUpdate, bool executeFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename;
-    std::string traceInfo = "JSPandaFileExecutor::ExecuteFromFile " +
-        ecmascript::ConvertToStdString(filename);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromFile " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString entry;
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
@@ -148,9 +147,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename;
-    std::string traceInfo = "JSPandaFileExecutor::ExecuteFromBuffer " +
-        ecmascript::ConvertToStdString(filename);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromBuffer " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
@@ -187,9 +185,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     JSThread *thread, const void *buffer, size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename " << filename;
-    std::string traceInfo = "JSPandaFileExecutor::ExecuteModuleBuffer " +
-        ecmascript::ConvertToStdString(filename);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
+    CString traceInfo = "JSPandaFileExecutor::ExecuteModuleBuffer " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString name;
     CString entry;
     EcmaVM *vm = thread->GetEcmaVM();
@@ -312,9 +309,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBufferSecure with secure buffer filename " << filename;
-    std::string traceInfo = "JSPandaFileExecutor::ExecuteFromBufferSecure " +
-        ecmascript::ConvertToStdString(filename);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromBufferSecure " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate);
@@ -376,9 +372,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBufferSecure with secure buffer filename " << filename;
-    std::string traceInfo = "JSPandaFileExecutor::ExecuteModuleBufferSecure " +
-        ecmascript::ConvertToStdString(filename);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
+    CString traceInfo = "JSPandaFileExecutor::ExecuteModuleBufferSecure " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
 #if !defined(PANDA_TARGET_WINDOWS)
@@ -453,9 +448,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     JSThread *thread, CString &recordName, const CString &filename, bool isMergedAbc)
 {
     LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
-    std::string traceInfo = "JSPandaFileExecutor::LazyExecuteModule " +
-        ecmascript::ConvertToStdString(filename);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo);
+    CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, recordName);
     if (jsPandaFile == nullptr) {
