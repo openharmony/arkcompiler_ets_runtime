@@ -26,6 +26,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/vm_thread_control.h"
@@ -427,6 +428,7 @@ void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     const_cast<ecmascript::Heap *>(vm->GetHeap())->ChangeGCParams(inBackground);
+    ecmascript::Jit::GetInstance()->ChangeTaskPoolState(inBackground);
 }
 
 void DFXJSNApi::NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback)

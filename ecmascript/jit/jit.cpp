@@ -402,6 +402,17 @@ void Jit::CheckMechineCodeSpaceMemory(JSThread *thread, int remainSize)
     }
 }
 
+void Jit::ChangeTaskPoolState(bool inBackground)
+{
+    if (fastJitEnable_ || baselineJitEnable_) {
+        if (inBackground) {
+            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(false);
+        } else {
+            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(true);
+        }
+    }
+}
+
 Jit::TimeScope::~TimeScope()
 {
     if (outPutLog_) {
