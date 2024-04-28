@@ -120,6 +120,8 @@ public:
     static void StartCpuProfilerForInfo(const EcmaVM *vm,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static std::unique_ptr<ProfileInfo> StopCpuProfilerForInfo(const EcmaVM *vm);
+    static void EnableSeriliazationTimeoutCheck(const EcmaVM *ecmaVM, int32_t threshhold);
+    static void DisableSeriliazationTimeoutCheck(const EcmaVM *ecmaVM);
 
     enum class PUBLIC_API ProfilerType : uint8_t { CPU_PROFILER, HEAP_PROFILER };
 

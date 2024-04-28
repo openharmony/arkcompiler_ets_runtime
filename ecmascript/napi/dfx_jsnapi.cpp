@@ -20,6 +20,7 @@
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/debugger/debugger_api.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/tracing/tracing.h"
@@ -717,6 +718,17 @@ void DFXJSNApi::SetCpuSamplingInterval([[maybe_unused]] const EcmaVM *vm, [[mayb
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
 #endif
+}
+
+void DFXJSNApi::EnableSeriliazationTimeoutCheck(const EcmaVM *ecmaVM, int32_t threshold)
+{
+    ecmaVM->GetJsDebuggerManager()->EnableSerializationTimeoutCheck();
+    ecmaVM->GetJsDebuggerManager()->SetSerializationCheckThreshold(threshold);
+}
+
+void DFXJSNApi::DisableSeriliazationTimeoutCheck(const EcmaVM *ecmaVM)
+{
+    ecmaVM->GetJsDebuggerManager()->DisableSerializationTimeoutCheck();
 }
 
 bool DFXJSNApi::SuspendVM([[maybe_unused]] const EcmaVM *vm)
