@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/frame_states.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
 
@@ -170,7 +171,8 @@ struct BytecodeRegion {
     {
     }
 
-    BytecodeIterator &GetBytecodeIterator() {
+    BytecodeIterator &GetBytecodeIterator()
+    {
         return bytecodeIterator_;
     }
 
@@ -216,7 +218,8 @@ public:
                            std::string name,
                            const CString &recordName,
                            PGOProfilerDecoder *decoder,
-                           bool isInline)
+                           bool isInline,
+                           JITProfiler* jitProfiler = nullptr)
         : circuit_(circuit), graph_(circuit->chunk()), file_(jsPandaFile),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
           pgoTypeRecorder_(*decoder, jsPandaFile, method_->GetMethodId().GetOffset()),
@@ -231,6 +234,9 @@ public:
           isInline_(isInline),
           methodId_(method_->GetMethodId().GetOffset())
     {
+        if (jitProfiler != nullptr) {
+            pgoTypeRecorder_.InitMap(jitProfiler);
+        }
     }
     ~BytecodeCircuitBuilder() = default;
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
@@ -598,6 +604,7 @@ private:
     void PrintDefsitesInfo(const std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
     void BuildRegionInfo();
     void BuildFrameArgs();
+    void RemoveIfInRpoList(BytecodeRegion *bb);
     BytecodeRegion &RegionAt(size_t i)
     {
         return *graph_[i];

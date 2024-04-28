@@ -100,6 +100,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetBaselineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
@@ -565,10 +566,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
 // [[Construct]]
 JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
 {
-    if (info == nullptr) {
-        return JSTaggedValue::Exception();
-    }
-
+    ASSERT(info != nullptr);
     JSThread *thread = info->GetThread();
     JSHandle<JSFunction> func(info->GetFunction());
     JSHandle<JSTaggedValue> newTarget(info->GetNewTarget());
@@ -603,16 +601,17 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     if (resultValue.IsECMAObject()) {
         return resultValue;
     }
-
     if (func->IsBase()) {
         return obj.GetTaggedValue();
     }
-
     // derived ctor(sub class) return the obj which created by base ctor(parent class)
     if (func->IsDerivedConstructor()) {
+        if (!resultValue.IsECMAObject() && !resultValue.IsUndefined()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread,
+                "derived class constructor must return an object or undefined", JSTaggedValue::Exception());
+        }
         return resultValue;
     }
-
     if (!resultValue.IsUndefined()) {
         RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "function is non-constructor", JSTaggedValue::Exception());
@@ -706,15 +705,23 @@ JSTaggedValue JSBoundFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     const uint32_t boundLength = boundArgs->GetLength();
     const uint32_t argsLength = info->GetArgsNumber() + boundLength;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    uint32_t argc = info->GetArgsNumber();
+    std::vector<JSTaggedType> argArray(argc);
+    for (uint32_t index = 0; index < argc; ++index) {
+        argArray[index] = info->GetCallArgValue(index).GetRawData();
+    }
+    JSTaggedType *currentSp = reinterpret_cast<JSTaggedType *>(info);
+    InterpretedEntryFrame *currentEntryState = InterpretedEntryFrame::GetFrameFromSp(currentSp);
+    JSTaggedType *prevSp = currentEntryState->base.prev;
+    thread->SetCurrentSPFrame(prevSp);
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, target, undefined, newTargetMutable, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (boundLength == 0) {
-        runtimeInfo->SetCallArg(argsLength, 0, info, 0);
-    } else {
-        // 0 ~ boundLength is boundArgs; boundLength ~ argsLength is args of EcmaRuntimeCallInfo.
+    if (boundLength != 0) {
         runtimeInfo->SetCallArg(boundLength, boundArgs);
-        runtimeInfo->SetCallArg(argsLength, boundLength, info, 0);
+    }
+    for (uint32_t index = 0; index < argc; index++) {
+        runtimeInfo->SetCallArg(static_cast<uint32_t>(index + boundLength), JSTaggedValue(argArray[index]));
     }
     return JSFunction::Construct(runtimeInfo);
 }
@@ -896,7 +903,7 @@ bool JSFunction::NameSetter(JSThread *thread, const JSHandle<JSObject> &self, co
     return true;
 }
 
-void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
+void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
                                       void *data, size_t nativeBindingsize, Concurrent isConcurrent)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
@@ -939,7 +946,7 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const 
 }
 
 void JSFunction::SetSFunctionExtraInfo(
-    JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize)
+    JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter, void *data, size_t nativeBindingsize)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     EcmaVM *vm = thread->GetEcmaVM();

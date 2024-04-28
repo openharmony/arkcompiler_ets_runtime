@@ -952,8 +952,8 @@ int ConvertValue(const UErrorCode &status, std::string &value, const std::string
     return 0;
 }
 
-JSHandle<EcmaString> JSLocale::NormalizeKeywordValue(JSThread *thread, const JSHandle<JSLocale> &locale,
-                                                     const std::string &key)
+JSTaggedValue JSLocale::NormalizeKeywordValue(JSThread *thread, const JSHandle<JSLocale> &locale,
+                                              const std::string &key)
 {
     icu::Locale *icuLocale = locale->GetIcuLocale();
     UErrorCode status = U_ZERO_ERROR;
@@ -964,12 +964,12 @@ JSHandle<EcmaString> JSLocale::NormalizeKeywordValue(JSThread *thread, const JSH
 
     int result = ConvertValue(status, value, key);
     if (result == 1) {
-        return JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledUndefinedString());
+        return JSTaggedValue::Undefined();
     }
     if (result == 2) {  // 2: in this case normalizedKeyword is empty string
-        return factory->GetEmptyString();
+        return factory->GetEmptyString().GetTaggedValue();
     }
-    return factory->NewFromStdString(value);
+    return factory->NewFromStdString(value).GetTaggedValue();
 }
 
 JSHandle<EcmaString> JSLocale::ToString(JSThread *thread, const JSHandle<JSLocale> &locale)

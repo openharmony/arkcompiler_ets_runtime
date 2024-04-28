@@ -26,6 +26,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/mem.h"
+#include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_set.h"
@@ -82,9 +83,15 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
         BRANCH(Equal(TruncInt64ToInt32(size), Int32(0)), &initObj, &notEmptyArray);
         Bind(&notEmptyArray);
         {
+            #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+            GateRef holeKindArrayClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue_,
+                                                                ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+            StoreHClass(glue_, result, holeKindArrayClass);
+            #else
             GateRef holeKindArrayClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue_,
                                                                 ConstantIndex::ELEMENT_HOLE_HCLASS_INDEX);
             StoreHClass(glue_, result, holeKindArrayClass);
+            #endif
             Jump(&initObj);
         }
     }
@@ -947,12 +954,53 @@ void NewObjectStubBuilder::HeapAlloc(Variable *result, Label *exit, RegionSpaceF
     }
 }
 
+void NewObjectStubBuilder::AllocateInSOldPrologue(Variable *result, Label *callRuntime, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label success(env);
+    Label next(env);
+
+#ifdef ARK_ASAN_ON
+    Jump(callRuntime);
+#else
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    auto isStartHeapSamplingOffset = JSThread::GlueData::GetIsStartHeapSamplingOffset(env->Is32Bit());
+    auto isStartHeapSampling = Load(VariableType::JS_ANY(), glue_, IntPtr(isStartHeapSamplingOffset));
+    BRANCH(TaggedIsTrue(isStartHeapSampling), callRuntime, &next);
+    Bind(&next);
+#endif
+    auto topOffset = JSThread::GlueData::GetSOldSpaceAllocationTopAddressOffset(env->Is32Bit());
+    auto endOffset = JSThread::GlueData::GetSOldSpaceAllocationEndAddressOffset(env->Is32Bit());
+    auto topAddress = Load(VariableType::NATIVE_POINTER(), glue_, IntPtr(topOffset));
+    auto endAddress = Load(VariableType::NATIVE_POINTER(), glue_, IntPtr(endOffset));
+    auto top = Load(VariableType::JS_POINTER(), topAddress, IntPtr(0));
+    auto end = Load(VariableType::JS_POINTER(), endAddress, IntPtr(0));
+    auto newTop = PtrAdd(top, size_);
+    BRANCH(IntPtrGreaterThan(newTop, end), callRuntime, &success);
+    Bind(&success);
+    {
+        Store(VariableType::NATIVE_POINTER(), glue_, topAddress, IntPtr(0), newTop);
+        if (env->Is32Bit()) {
+            top = ZExtInt32ToInt64(top);
+        }
+        result->WriteVariable(top);
+        Jump(exit);
+    }
+#endif
+}
+
 void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef hclass)
 {
-    DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
-    ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_), hclass});
-    result->WriteVariable(*ret);
-    Jump(exit);
+    auto env = GetEnvironment();
+    Label callRuntime(env);
+    AllocateInSOldPrologue(result, &callRuntime, exit);
+    Bind(&callRuntime);
+    {
+        DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
+        ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_), hclass});
+        result->WriteVariable(*ret);
+        Jump(exit);
+    }
 }
 
 void NewObjectStubBuilder::AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit)
@@ -1163,6 +1211,7 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
     Label callRuntime(env);
     Label checkJSObject(env);
     Label newObject(env);
+    Label isJSObject(env);
 
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     auto protoOrHclass = Load(VariableType::JS_ANY(), ctor,
@@ -1172,8 +1221,12 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
     BRANCH(IsJSHClass(protoOrHclass), &checkJSObject, &callRuntime);
     Bind(&checkJSObject);
     auto objectType = GetObjectType(protoOrHclass);
-    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
-        &newObject, &callRuntime);
+    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))), &isJSObject, &callRuntime);
+    Bind(&isJSObject);
+    {
+        auto funcProto = GetPrototypeFromHClass(protoOrHclass);
+        BRANCH(IsEcmaObject(funcProto), &newObject, &callRuntime);
+    }
     Bind(&newObject);
     {
         SetParameters(glue, 0);
@@ -1283,8 +1336,8 @@ GateRef NewObjectStubBuilder::NewThisObjectChecked(GateRef glue, GateRef ctor)
     return ret;
 }
 
-GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo,
-    GateRef slotId, GateRef arrayLiteral, ProfileOperation callback)
+GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
+    GateRef profileTypeInfo, GateRef slotId, GateRef arrayLiteral, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1303,7 +1356,7 @@ GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRe
     }
     Bind(&uninitialized);
     {
-        auto hclass = LoadArrayHClassSlowPath(glue, jsFunc, pc, arrayLiteral, callback);
+        auto hclass = LoadArrayHClassSlowPath(glue, jsFunc, traceIdInfo, arrayLiteral, callback);
         // emptyarray
         if (arrayLiteral == Circuit::NullGate()) {
             ret = NewTrackInfo(glue, hclass, jsFunc, RegionSpaceFlag::IN_YOUNG_SPACE, Int32(0));
@@ -1323,7 +1376,7 @@ GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRe
 }
 
 GateRef NewObjectStubBuilder::LoadArrayHClassSlowPath(
-    GateRef glue, GateRef jsFunc, GateRef pc, GateRef arrayLiteral, ProfileOperation callback)
+    GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo, GateRef arrayLiteral, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1339,8 +1392,14 @@ GateRef NewObjectStubBuilder::LoadArrayHClassSlowPath(
     BRANCH(Int32Equal(indexInfosLength, Int32(0)), &originLoad, &aotLoad);
     Bind(&aotLoad);
     {
-        auto pfAddr = LoadPfHeaderFromConstPool(jsFunc);
-        GateRef traceId = TruncPtrToInt32(PtrSub(pc, pfAddr));
+        GateRef traceId = 0;
+        if (traceIdInfo.isPc) {
+            auto pfAddr = LoadPfHeaderFromConstPool(jsFunc);
+            traceId = TruncPtrToInt32(PtrSub(traceIdInfo.pc, pfAddr));
+        } else {
+            traceId = traceIdInfo.traceId;
+        }
+
         GateRef hcIndex = LoadHCIndexFromConstPool(hcIndexInfos, indexInfosLength, traceId, &originLoad);
         GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
             IntPtr(JSThread::GlueData::GetGlobalConstOffset(env->Is32Bit())));
@@ -1414,8 +1473,8 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue)
     return CreateEmptyArrayCommon(glue, hclass, *trackInfo);
 }
 
-GateRef NewObjectStubBuilder::CreateEmptyArray(
-    GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
+GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
+    GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1429,14 +1488,14 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(
     BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &mayFastpath);
     Bind(&mayFastpath);
     {
-        trackInfo = LoadTrackInfo(glue, jsFunc, pc, profileTypeInfo, slotId, Circuit::NullGate(), callback);
+        trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, Circuit::NullGate(), callback);
         hclass = Load(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
         trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
     Bind(&slowpath);
     {
-        hclass = LoadArrayHClassSlowPath(glue, jsFunc, pc, Circuit::NullGate(), callback);
+        hclass = LoadArrayHClassSlowPath(glue, jsFunc, traceIdInfo, Circuit::NullGate(), callback);
         Jump(&createArray);
     }
     Bind(&createArray);
@@ -1445,8 +1504,8 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(
     return result;
 }
 
-GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue,
-    GateRef index, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
+GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc,
+    TraceIdInfo traceIdInfo, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1469,14 +1528,14 @@ GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue,
     BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &mayFastpath);
     Bind(&mayFastpath);
     {
-        trackInfo = LoadTrackInfo(glue, jsFunc, pc, profileTypeInfo, slotId, obj, callback);
+        trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, obj, callback);
         hclass = Load(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
         trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
     Bind(&slowpath);
     {
-        hclass = LoadArrayHClassSlowPath(glue, jsFunc, pc, obj, callback);
+        hclass = LoadArrayHClassSlowPath(glue, jsFunc, traceIdInfo, obj, callback);
         Jump(&createArray);
     }
     Bind(&createArray);
@@ -1548,6 +1607,61 @@ template void NewObjectStubBuilder::CreateJSCollectionIterator<JSSetIterator, JS
     Variable *result, Label *exit, GateRef set, GateRef kind);
 template void NewObjectStubBuilder::CreateJSCollectionIterator<JSMapIterator, JSMap>(
     Variable *result, Label *exit, GateRef set, GateRef kind);
+
+void NewObjectStubBuilder::CreateJSTypedArrayIterator(Variable *result, Label *exit, GateRef thisValue, GateRef kind)
+{
+    auto env = GetEnvironment();
+    size_ = IntPtr(JSArrayIterator::SIZE);
+
+    ConstantIndex iterClassIdx = ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX;
+    GateRef iteratorHClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, iterClassIdx);
+
+    Label thisExists(env);
+    Label isEcmaObject(env);
+    Label isTypedArray(env);
+    Label throwTypeError(env);
+
+    BRANCH(BoolOr(TaggedIsHole(thisValue), TaggedIsUndefinedOrNull(thisValue)), &throwTypeError, &thisExists);
+    Bind(&thisExists);
+    BRANCH(IsEcmaObject(thisValue), &isEcmaObject, &throwTypeError);
+    Bind(&isEcmaObject);
+    BRANCH(IsTypedArray(thisValue), &isTypedArray, &throwTypeError);
+    Bind(&isTypedArray);
+
+    Label noException(env);
+    // Be careful. NO GC is allowed when initization is not complete.
+    AllocateInYoung(result, exit, &noException, iteratorHClass);
+    Bind(&noException);
+    {
+        StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
+        SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
+        auto emptyArray = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+        SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
+        SetElementsArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
+
+        GateRef iteratorOffset = IntPtr(JSArrayIterator::ITERATED_ARRAY_OFFSET);
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, thisValue,
+              MemoryOrder::NeedBarrier());
+
+        // SetIteratorNextIndex
+        GateRef nextIndexOffset = IntPtr(JSArrayIterator::NEXT_INDEX_OFFSET);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), nextIndexOffset, Int32(0));
+
+        // SetIterationKind
+        GateRef kindBitfieldOffset = IntPtr(JSArrayIterator::BIT_FIELD_OFFSET);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), kindBitfieldOffset, kind);
+        Jump(exit);
+    }
+
+    Bind(&throwTypeError);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotTypedArray));
+        CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+}
 
 GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedArray,
     GateRef elementSize, GateRef newLength, GateRef beginIndex, GateRef arrayCls, GateRef buffer)

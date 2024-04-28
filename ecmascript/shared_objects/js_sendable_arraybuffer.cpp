@@ -52,7 +52,7 @@ void JSSendableArrayBuffer::Attach(JSThread *thread, uint32_t arrayBufferByteLen
     if (transferWithNativeAreaAllocator) {
         LOG_FULL(DEBUG) << "attaching for transfer";
         JSHandle<JSNativePointer> np(thread, arrayBufferData.GetTaggedObject());
-        NativeAreaAllocator *allocator = thread->GetEcmaVM()->GetNativeAreaAllocator();
+        NativeAreaAllocator *allocator = SharedHeap::GetInstance()->GetNativeAreaAllocator();
         allocator->IncreaseNativeMemoryUsage(MallocUsableSize(np->GetExternalPointer()));
         np->SetData(allocator);
     }
@@ -72,7 +72,7 @@ void JSSendableArrayBuffer::Detach(JSThread *thread, bool transferWithNativeArea
     if (transferWithNativeAreaAllocator) {
         LOG_FULL(DEBUG) << "detaching for transfer";
         JSHandle<JSNativePointer> np(thread, arrayBufferData.GetTaggedObject());
-        NativeAreaAllocator *allocator = thread->GetEcmaVM()->GetNativeAreaAllocator();
+        NativeAreaAllocator *allocator = SharedHeap::GetInstance()->GetNativeAreaAllocator();
         allocator->DecreaseNativeMemoryUsage(MallocUsableSize(np->GetExternalPointer()));
         np->SetData(nullptr);
     }

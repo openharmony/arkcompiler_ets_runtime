@@ -183,31 +183,12 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> source = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
     JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, source, iteratorSymbol);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> arrIter = JSObject::GetMethod(thread, env->GetArrayProtoValuesFunction(), iteratorSymbol);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> typedArrIter = JSObject::GetMethod(thread, env->GetTypedArrayPrototype(), iteratorSymbol);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    bool isArrIter = JSTaggedValue::SameValue(usingIterator, arrIter);
-    bool isTypedArrIter = JSTaggedValue::SameValue(usingIterator, typedArrIter);
-    bool isNativeFunc = true;
-    if (source->IsTypedArray() && !typedArrIter->IsUndefined()) {
-        JSHandle<JSTaggedValue> typedArrIterator = JSIterator::GetIterator(thread, source, typedArrIter);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        JSHandle<JSTaggedValue> nextKey(thread->GlobalConstants()->GetHandledNextString());
-        JSHandle<JSTaggedValue> typedArrIterNext(JSObject::GetMethod(thread, typedArrIterator, nextKey));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (typedArrIterNext->IsJSFunction()) {
-            JSTaggedValue method = JSHandle<JSFunction>::Cast(typedArrIterNext)->GetMethod();
-            Method *target = Method::Cast(method.GetTaggedObject());
-            isNativeFunc = target->IsNativeWithCallField();
-        }
-    }
     // 6. If usingIterator is not undefined, then
     //   a. Let values be ? IterableToList(source, usingIterator).
     //   b. Let len be the number of elements in values.
     //   c. Let targetObj be ? TypedArrayCreate(C, « len »).
-    if (!usingIterator->IsUndefined() && !(isArrIter || (isTypedArrIter && isNativeFunc))) {
+    if (!usingIterator->IsUndefined() &&
+        !TypedArrayHelper::IsNativeArrayIterator(thread, source, usingIterator)) {
         CVector<JSHandle<JSTaggedValue>> vec;
         JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, source, usingIterator);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -801,6 +782,10 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
     CVector<JSHandle<EcmaString>> vec;
     JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    if (length <= 1) {
+        // sep unused, set isOneByte to default(true)
+        isOneByte = true;
+    }
     for (uint32_t k = 0; k < length; k++) {
         JSTaggedValue element = JSTypedArray::GetProperty(thread, thisHandle, k).GetValue().GetTaggedValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -821,10 +806,6 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
         }
     }
     allocateLength += sepLength * (length - 1);
-    if (allocateLength <= 1) {
-        // sep unused, set isOneByte to default(true)
-        isOneByte = true;
-    }
     auto newString = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), allocateLength, isOneByte);
     int current = 0;
     DISALLOW_GARBAGE_COLLECTION;

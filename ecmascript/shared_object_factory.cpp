@@ -36,6 +36,7 @@
 namespace panda::ecmascript {
 void ObjectFactory::NewSObjectHook() const
 {
+    CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
     static std::atomic<uint32_t> count = 0;
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
@@ -367,6 +368,28 @@ JSHandle<LayoutInfo> ObjectFactory::CreateSLayoutInfo(uint32_t properties)
     return layoutInfoHandle;
 }
 
+JSHandle<JSSharedArray> ObjectFactory::NewJSSArray()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedArrayFunction());
+    return JSHandle<JSSharedArray>(NewJSObjectByConstructor(function));
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewSJsonFixedArray(size_t start, size_t length,
+                                                        const std::vector<JSHandle<JSTaggedValue>> &vec)
+{
+    if (length == 0) {
+        return SharedEmptyArray();
+    }
+
+    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, MemSpaceType::SHARED_OLD_SPACE);
+    array->SetExtraLength(0);
+    for (size_t i = 0; i < length; i++) {
+        array->Set(thread_, i, vec[start + i]);
+    }
+    return array;
+}
+
 JSHandle<LayoutInfo> ObjectFactory::CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity)
 {
     ASSERT(capacity >= end);
@@ -413,7 +436,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewSEmptyMutantArray()
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPointer,
-                                                             const DeleteEntryPoint &callBack,
+                                                             const NativePointerCallback &callBack,
                                                              void *data,
                                                              bool nonMovable,
                                                              size_t nativeBindingsize,
@@ -725,23 +748,43 @@ JSHandle<ResolvedBinding> ObjectFactory::NewSResolvedBindingRecord(const JSHandl
     return obj;
 }
 
-JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord()
+JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord()
 {
     JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
     JSHandle<EcmaString> ecmaModule(undefinedValue);
     int32_t index = 0;
-    return NewSResolvedRecordBindingRecord(ecmaModule, index);
+    return NewSResolvedRecordIndexBindingRecord(ecmaModule, index);
+}
+
+JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord(
+    const JSHandle<EcmaString> &moduleRecord, int32_t index)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordIndexBindingClass().GetTaggedObject()));
+    JSHandle<ResolvedRecordIndexBinding> obj(thread_, header);
+    obj->SetModuleRecord(thread_, moduleRecord);
+    obj->SetIndex(index);
+    return obj;
+}
+
+JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord()
+{
+    JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
+    JSHandle<EcmaString> ecmaModule(undefinedValue);
+    JSHandle<JSTaggedValue> bindingName(undefinedValue);
+    return NewSResolvedRecordBindingRecord(ecmaModule, bindingName);
 }
 
 JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord(
-    const JSHandle<EcmaString> &moduleRecord, int32_t index)
+    const JSHandle<EcmaString> &moduleRecord, const JSHandle<JSTaggedValue> &bindingName)
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordBindingClass().GetTaggedObject()));
     JSHandle<ResolvedRecordBinding> obj(thread_, header);
     obj->SetModuleRecord(thread_, moduleRecord);
-    obj->SetIndex(index);
+    obj->SetBindingName(thread_, bindingName);
     return obj;
 }
 

@@ -19,6 +19,7 @@
 #include "ecmascript/byte_array.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef BuiltinsTypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)
@@ -427,6 +428,177 @@ GateRef BuiltinsTypedArrayStubBuilder::CalculatePositionWithLength(GateRef posit
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label typedArray(env);
+    Label isFastTypedArray(env);
+    Label defaultConstr(env);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    GateRef arrayType = GetObjectType(LoadHClass(thisValue));
+    Branch(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    Bind(&isFastTypedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
+    GateRef middle = Int64Div(*thisArrLen, Int64(2));
+    DEFVARIABLE(lower, VariableType::INT64(), Int64(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label loopNext(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        BRANCH(Int64NotEqual(*lower, middle), &loopNext, &loopExit);
+        Bind(&loopNext);
+        {
+            DEFVARIABLE(upper, VariableType::INT64(), Int64Sub(Int64Sub(*thisArrLen, *lower), Int64(1)));
+            Label hasException0(env);
+            Label hasException1(env);
+            Label notHasException0(env);
+            GateRef lowerValue = FastGetPropertyByIndex(glue, thisValue,
+                TruncInt64ToInt32(*lower), arrayType);
+            GateRef upperValue = FastGetPropertyByIndex(glue, thisValue,
+                TruncInt64ToInt32(*upper), arrayType);
+            BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+            Bind(&hasException0);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException0);
+            {
+                StoreTypedArrayElement(glue, thisValue, *lower, upperValue, arrayType);
+                StoreTypedArrayElement(glue, thisValue, *upper, lowerValue, arrayType);
+                BRANCH(HasPendingException(glue), &hasException1, &loopEnd);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+        }
+    }
+    Bind(&loopEnd);
+    lower = Int64Add(*lower, Int64(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    result->WriteVariable(thisValue);
+    Jump(exit);
+}
+
+void BuiltinsTypedArrayStubBuilder::LastIndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label isHeapObject(env);
+    Label typedArray(env);
+
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+
+    GateRef len = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    Label isEmptyArray(env);
+    Label notEmptyArray(env);
+    BRANCH(Int64Equal(len, Int64(0)), &isEmptyArray, &notEmptyArray);
+    Bind(&isEmptyArray);
+    {
+        result->WriteVariable(IntToTaggedPtr(Int32(-1)));
+        Jump(exit);
+    }
+    Bind(&notEmptyArray);
+
+    GateRef value = GetCallArg0(numArgs);
+    DEFVARIABLE(relativeFromIndex, VariableType::INT64(), Int64(0));
+    Label findIndex(env);
+    Label isOneArg(env);
+    Label isTwoArg(env);
+    // 2:Indicates the number of parameters passed in.
+    BRANCH(Int64Equal(TruncPtrToInt32(numArgs), Int32(2)), &isTwoArg, &isOneArg);
+    Bind(&isOneArg);
+    {
+        relativeFromIndex = Int64Sub(len, Int64(1));
+        Jump(&findIndex);
+    }
+    Bind(&isTwoArg);
+    {
+        GateRef fromIndex = GetCallArg1(numArgs);
+        Label taggedIsInt(env);
+        BRANCH(TaggedIsInt(fromIndex), &taggedIsInt, slowPath);
+        Bind(&taggedIsInt);
+        GateRef fromIndexInt = SExtInt32ToInt64(TaggedGetInt(fromIndex));
+        Label isFromIndexLessZero(env);
+        Label isFromIndexNotLessZero(env);
+        BRANCH(Int64LessThan(fromIndexInt, Int64(0)), &isFromIndexLessZero, &isFromIndexNotLessZero);
+        Bind(&isFromIndexLessZero);
+        {
+            relativeFromIndex = Int64Add(len, fromIndexInt);
+            Jump(&findIndex);
+        }
+        Bind(&isFromIndexNotLessZero);
+        {
+            Label isFromIndexGreatLen(env);
+            Label isFromIndexNotGreatLen(env);
+            BRANCH(Int64GreaterThan(fromIndexInt, Int64Sub(len, Int64(1))),
+                &isFromIndexGreatLen, &isFromIndexNotGreatLen);
+            Bind(&isFromIndexGreatLen);
+            {
+                relativeFromIndex = Int64Sub(len, Int64(1));
+                Jump(&findIndex);
+            }
+            Bind(&isFromIndexNotGreatLen);
+            {
+                relativeFromIndex = fromIndexInt;
+                Jump(&findIndex);
+            }
+        }
+    }
+
+    Bind(&findIndex);
+    {
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label loopExit(env);
+        Label loopNext(env);
+        Label isFound(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            BRANCH(Int64LessThan(*relativeFromIndex, Int64(0)), &loopExit, &loopNext);
+            Bind(&loopNext);
+            {
+                GateRef hclass = LoadHClass(thisValue);
+                GateRef jsType = GetObjectType(hclass);
+                GateRef ele = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*relativeFromIndex), jsType);
+                BRANCH(FastStrictEqual(glue, value, ele, ProfileOperation()), &isFound, &loopEnd);
+                Bind(&isFound);
+                {
+                    result->WriteVariable(IntToTaggedPtr(*relativeFromIndex));
+                    Jump(exit);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        relativeFromIndex = Int64Sub(*relativeFromIndex, Int64(1));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        result->WriteVariable(IntToTaggedPtr(Int32(-1)));
+        Jump(exit);
+    }
 }
 
 void BuiltinsTypedArrayStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
@@ -854,8 +1026,7 @@ void BuiltinsTypedArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue,
         Label updateAccumulator(env);
         Label accumulateBegin(env);
         Label defaultValue(env);
-        // 2 : index of the param
-        BRANCH(Int64Equal(numArgs, IntPtr(2)), &updateAccumulator, &defaultValue);
+        BRANCH(numArgsLessThanTwo, &defaultValue, &updateAccumulator);
         Bind(&updateAccumulator);
         {
             accumulator = GetCallArg1(numArgs);
@@ -1283,10 +1454,18 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
             i = Int32Add(*i, Int32(1));
             LoopEnd(&loopHead);
             Bind(&loopExit);
-
+            Label hasException2(env);
+            Label notHasException2(env);
             NewObjectStubBuilder newBuilder(this);
             newBuilder.SetParameters(glue, 0);
             GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
+            BRANCH(HasPendingException(glue), &hasException2, &notHasException2);
+            Bind(&hasException2);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException2);
             i = Int32(0);
             Label loopHead2(env);
             Label loopEnd2(env);
@@ -1347,6 +1526,8 @@ void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateR
     Label newTypedArray(env);
     Label writeVariable(env);
     Label copyBuffer(env);
+    Label hasException0(env);
+    Label notHasException0(env);
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
     BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &startTagExists);
     Bind(&startTagExists);
@@ -1386,6 +1567,13 @@ void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateR
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
         GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
+        BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+        Bind(&hasException0);
+        {
+            result->WriteVariable(Exception());
+            Jump(exit);
+        }
+        Bind(&notHasException0);
         BRANCH(Int32Equal(TruncInt64ToInt32(*newArrayLen), Int32(0)), &writeVariable, &copyBuffer);
         Bind(&copyBuffer);
         {
@@ -1513,6 +1701,15 @@ void BuiltinsTypedArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRe
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
     GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+    Label hasException0(env);
+    Label notHasException0(env);
+    BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+    Bind(&hasException0);
+    {
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+    Bind(&notHasException0);
     CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
         {thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen),
         newBuilder.GetElementSizeFromType(glue, jsType)});
@@ -2036,5 +2233,126 @@ void BuiltinsTypedArrayStubBuilder::Set(GateRef glue, GateRef thisValue, GateRef
             }
         }
     }
+}
+
+void BuiltinsTypedArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label typedArray(env);
+    Label defaultConstr(env);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    Label arg0HeapObject(env);
+    Label callable(env);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+    result->WriteVariable(IntToTaggedPtr(Int32(-1)));
+
+    GateRef argHandle = GetCallArg1(numArgs);
+    DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
+    DEFVARIABLE(j, VariableType::INT32(), Int32(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+        BRANCH(Int64LessThan(ZExtInt32ToInt64(*j), *thisArrLen), &next, &loopExit);
+        Bind(&next);
+        {
+            Label hasException0(env);
+            Label notHasException0(env);
+            GateRef kValue = FastGetPropertyByIndex(glue, thisValue, *j, GetObjectType(LoadHClass(thisValue)));
+            BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+            Bind(&hasException0);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException0);
+            {
+                GateRef key = IntToTaggedPtr(*j);
+                Label hasException(env);
+                Label notHasException(env);
+                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                    0, Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                    { argHandle, kValue, key, thisValue });
+                BRANCH(TaggedIsException(retValue), &hasException, &notHasException);
+                Bind(&hasException);
+                {
+                    result->WriteVariable(retValue);
+                    Jump(exit);
+                }
+                Bind(&notHasException);
+                {
+                    Label find(env);
+                    BRANCH(TaggedIsTrue(FastToBoolean(retValue)), &find, &loopEnd);
+                    Bind(&find);
+                    {
+                        result->WriteVariable(key);
+                        Jump(exit);
+                    }
+                }
+            }
+        }
+    }
+    Bind(&loopEnd);
+    thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    j = Int32Add(*j, Int32(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    Jump(exit);
+}
+
+void BuiltinsTypedArrayStubBuilder::Entries(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    BuildArrayIterator(glue, thisValue, numArgs, result, exit, slowPath, IterationKind::KEY_AND_VALUE);
+}
+
+void BuiltinsTypedArrayStubBuilder::Keys(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    BuildArrayIterator(glue, thisValue, numArgs, result, exit, slowPath, IterationKind::KEY);
+}
+
+void BuiltinsTypedArrayStubBuilder::Values(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    BuildArrayIterator(glue, thisValue, numArgs, result, exit, slowPath, IterationKind::VALUE);
+}
+
+void BuiltinsTypedArrayStubBuilder::BuildArrayIterator(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath, IterationKind iteratorKind)
+{
+    auto env = GetEnvironment();
+
+    Label thisExists(env);
+    Label isEcmaObject(env);
+    Label isTypedArray(env);
+
+    BRANCH(BoolOr(TaggedIsHole(thisValue), TaggedIsUndefinedOrNull(thisValue)), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
+    Bind(&isEcmaObject);
+    BRANCH(IsTypedArray(thisValue), &isTypedArray, slowPath);
+    Bind(&isTypedArray);
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetGlue(glue);
+    GateRef kind = Int32(static_cast<int32_t>(iteratorKind));
+    newBuilder.CreateJSTypedArrayIterator(result, exit, thisValue, kind);
 }
 }  // namespace panda::ecmascript::kungfu

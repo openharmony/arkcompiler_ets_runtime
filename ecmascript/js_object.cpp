@@ -170,10 +170,11 @@ bool JSObject::IsRegExp(JSThread *thread, const JSHandle<JSTaggedValue> &argumen
         return false;
     }
     JSHandle<JSTaggedValue> matchSymbol = thread->GetEcmaVM()->GetGlobalEnv()->GetMatchSymbol();
-    JSHandle<JSTaggedValue> isRegexp = JSObject::GetProperty(thread, argument, matchSymbol).GetValue();
+    JSTaggedValue isRegexp =  ObjectFastOperator::FastGetPropertyByValue(
+        thread, argument.GetTaggedValue(), matchSymbol.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-    if (!isRegexp->IsUndefined()) {
-        return isRegexp->ToBoolean();
+    if (!isRegexp.IsUndefined()) {
+        return isRegexp.ToBoolean();
     }
     JSHandle<JSObject> argumentObj = JSHandle<JSObject>::Cast(argument);
     return argumentObj->IsJSRegExp();
@@ -189,7 +190,6 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
     ASSERT(!jshclass->GetLayout().IsNull());
     ASSERT(!jshclass->IsJSShared());
     JSHandle<LayoutInfo> layoutInfoHandle(thread, jshclass->GetLayout());
-    ASSERT(layoutInfoHandle->GetLength() != 0);
     JSMutableHandle<NameDictionary> dict(
         thread, NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(propNumber)));
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
@@ -578,7 +578,9 @@ JSHandle<TaggedArray> JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
                 ->GetAllEnumKeys(thread, end, EnumCache::ENUM_CACHE_HEADER_SIZE, keyArray, keys, obj);
             JSObject::SetEnumCacheKind(thread, *keyArray, EnumCacheKind::ONLY_OWN_KEYS);
-            jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
+            if (!JSTaggedValue(jsHclass).IsInSharedHeap()) {
+                jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
+            }
             JSHandle<TaggedArray> newkeyArray = factory->CopyFromEnumCache(keyArray);
             return newkeyArray;
         }
@@ -2881,7 +2883,7 @@ void *ECMAObject::GetNativePointerField(int32_t index) const
 }
 
 void ECMAObject::SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-    const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize, Concurrent isConcurrent)
+    const NativePointerCallback &callBack, void *data, size_t nativeBindingsize, Concurrent isConcurrent)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     JSTaggedValue value(hashField);

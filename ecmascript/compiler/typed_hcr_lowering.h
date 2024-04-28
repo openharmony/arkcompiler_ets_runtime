@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/type_info_accessors.h"
+#include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
 // TypeHCRLowering Process
@@ -100,17 +101,17 @@ namespace panda::ecmascript::kungfu {
 class TypedHCRLowering : public PassVisitor {
 public:
     TypedHCRLowering(Circuit* circuit,
-                    RPOVisitor* visitor,
-                    CompilationConfig* cmpCfg,
-                    TSManager* tsManager,
-                    Chunk* chunk,
-                    bool enableLoweringBuiltin)
+                     CompilationEnv *env,
+                     RPOVisitor* visitor,
+                     CompilationConfig* cmpCfg,
+                     Chunk* chunk,
+                     bool enableLoweringBuiltin)
         : PassVisitor(circuit, chunk, visitor),
           circuit_(circuit),
+          compilationEnv_(env),
           acc_(circuit),
           builder_(circuit, cmpCfg),
           dependEntry_(circuit->GetDependRoot()),
-          tsManager_(tsManager),
           enableLoweringBuiltin_(enableLoweringBuiltin)
     {
         if (cmpCfg != nullptr) {
@@ -139,9 +140,13 @@ private:
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerEcmaStringCheck(GateRef gate);
+    void LowerEcmaMapCheck(GateRef gate);
     void LowerFlattenTreeStringCheck(GateRef gate, GateRef glue);
     void LowerLoadTypedArrayLength(GateRef gate);
     void LowerStringLength(GateRef gate);
+    void LowerMapSize(GateRef gate);
+    void LowerCallPrivateGetter(GateRef gate, GateRef glue);
+    void LowerCallPrivateSetter(GateRef gate, GateRef glue);
     void LowerLoadProperty(GateRef gate);
     void LowerCallGetter(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate);
@@ -267,10 +272,10 @@ private:
     }
 
     Circuit *circuit_;
+    CompilationEnv *compilationEnv_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_;
-    [[maybe_unused]] TSManager *tsManager_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     bool typedOpProfiling_ {false};
 };

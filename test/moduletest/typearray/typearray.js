@@ -402,6 +402,35 @@ print(arr5_copyWithin.copyWithin(4));
 let arr6_copyWithin = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 print(arr6_copyWithin.copyWithin(1));
 
+// Test case for findIndex()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayFindIndex(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testFindIndex(element, Last, array) {
+    return element >= 60;
+}
+
+function testTypeArrayFindIndex(ctor) {
+    let obj = new ctor([5, 10, 20, 30, 40, 50, 60])
+    let result = obj.findIndex(testFindIndex);
+    return result != -1;
+}
+
 // Test case for includes()
 let arr1_includes = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 print(arr1_includes.includes(5, -100));
@@ -449,3 +478,135 @@ function testTypeArrayIndexOf(ctor) {
     let result = obj.indexOf(60);
     return result != -1;
 }
+
+// Test case for lastIndexOf()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayLastIndexOf(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayLastIndexOf(ctor) {
+    let obj = new ctor([5, 10, 20, 30, 40, 50, 60]);
+    let result = obj.lastIndexOf(5)
+    return result != -1;
+}
+
+[
+    BigInt64Array,
+    BigUint64Array
+].forEach(function(ctor, i) {
+    if (testTypeArrayLastIndexOf1(ctor) ) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayLastIndexOf1(ctor) {
+    let obj = new ctor([5n, 10n, 20n, 30n, 40n, 50n, 60n]);
+    let result = obj.lastIndexOf(5n)
+    return result != -1;
+}
+
+let lastIndexOfFailed = new Int16Array(5, 10, 20, 30, 40, 50, 60)
+let lastIndexOfFailedResult = lastIndexOfFailed.lastIndexOf('ABC')
+print(lastIndexOfFailedResult);
+
+// Test case for reverse()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayReverse1(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayReverse1(ctor) {
+    let arr1 = new ctor([1, 2, 3, 4, 5]);
+    arr1.reverse();
+    let arr2 = new ctor([5, 4, 3, 2, 1]);
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+}
+
+[
+    BigInt64Array,
+    BigUint64Array
+].forEach(function(ctor, i) {
+    if (testTypeArrayReverse2(ctor) ) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayReverse2(ctor) {
+    let arr1 = new ctor([1n, 2n, 3n, 4n, 5n]);
+    arr1.reverse();
+    let arr2 = new ctor([5n, 4n, 3n, 2n, 1n]);
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+}
+
+function fun1(accumulator, currentvalue) {
+    print(accumulator, currentvalue);
+    return accumulator + currentvalue;
+}
+let arr1 = new Uint32Array();
+let arr2 = new Uint32Array(3);
+for (let i = 0; i < 3; i++) {
+    arr2[i] = i + 1;
+}
+let res1 = arr1.reduceRight(fun1, 1, 1);
+print(res1);
+let res2 = arr2.reduceRight(fun1, 1, 1);
+print(res2);
+let res3 = arr1.reduceRight(fun1, 1);
+print(res3);
+let res4 = arr2.reduceRight(fun1, 1);
+print(res4);
+try {
+    let res5 = arr1.reduceRight(fun1);
+    print(res5);
+} catch (e) {
+    print(e.name);
+}
+let res6 = arr2.reduceRight(fun1);
+print(res6);
+let res7 = arr1.reduceRight(fun1, undefined);
+print(res3);
+let res8 = arr2.reduceRight(fun1, undefined);
+print(res4);
+let res9 = arr1.reduceRight(fun1, null);
+print(res3);
+let res10 = arr2.reduceRight(fun1, null);
+print(res4);

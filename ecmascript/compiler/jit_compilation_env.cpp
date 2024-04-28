@@ -1,0 +1,165 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "ecmascript/compiler/jit_compilation_env.h"
+#include "ecmascript/ecma_context.h"
+#include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
+
+namespace panda::ecmascript {
+// jit
+JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm, JSHandle<JSFunction> &jsFunction)
+    : CompilationEnv(jitVm), hostThread_(jsVm->GetJSThread()), jsFunction_(jsFunction)
+{
+    ptManager_ = hostThread_->GetCurrentEcmaContext()->GetPTManager();
+    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
+    jsPandaFile_ = const_cast<JSPandaFile*>(method->GetJSPandaFile());
+    methodLiteral_ = method->GetMethodLiteral();
+    pcStart_ = method->GetBytecodeArray();
+    abcId_ = PGOProfiler::GetMethodAbcId(*jsFunction);
+    if (method->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
+        methodLiteral_->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
+    }
+}
+
+JSRuntimeOptions &JitCompilationEnv::GetJSOptions()
+{
+    return hostThread_->GetEcmaVM()->GetJSOptions();
+}
+
+const CMap<ElementsKind, ConstantIndex> &JitCompilationEnv::GetArrayHClassIndexMap() const
+{
+    return hostThread_->GetArrayHClassIndexMap();
+}
+
+const BuiltinHClassEntries &JitCompilationEnv::GetBuiltinHClassEntries() const
+{
+    return hostThread_->GetBuiltinHClassEntries();
+}
+
+JSHClass *JitCompilationEnv::GetBuiltinPrototypeHClass(BuiltinTypeId type) const
+{
+    return hostThread_->GetBuiltinPrototypeHClass(type);
+}
+
+void JitCompilationEnv::SetTsManagerCompilationEnv()
+{
+    auto pt = hostThread_->GetCurrentEcmaContext()->GetPTManager();
+    ptManager_ = pt;
+}
+
+std::shared_ptr<pgo::PGOProfiler> JitCompilationEnv::GetPGOProfiler() const
+{
+    return hostThread_->GetEcmaVM()->GetPGOProfiler();
+}
+
+JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFile *jsPandaFile,
+    [[maybe_unused]] panda_file::File::EntityId id) const
+{
+    ASSERT(thread_->IsInRunningState());
+    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    JSTaggedValue constpool = method->GetConstantPool();
+    [[maybe_unused]] const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+    ASSERT(taggedPool->GetJSPandaFile() == jsPandaFile);
+    ASSERT(method->GetMethodId() == id);
+    return constpool;
+}
+
+JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFile *jsPandaFile,
+    [[maybe_unused]] int32_t index) const
+{
+    ASSERT(thread_->IsInRunningState());
+    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    JSTaggedValue constpool = method->GetConstantPool();
+    [[maybe_unused]] const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+    ASSERT(taggedPool->GetJSPandaFile() == jsPandaFile);
+    ASSERT(taggedPool->GetSharedConstpoolId().GetInt() == index);
+    return constpool;
+}
+
+JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] const uint32_t methodOffset) const
+{
+    ASSERT(thread_->IsInRunningState());
+    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    ASSERT(method->GetMethodId().GetOffset() == methodOffset);
+    JSTaggedValue constpool = method->GetConstantPool();
+    ASSERT(!ConstantPool::CheckUnsharedConstpool(constpool));
+    JSTaggedValue unSharedConstpool = hostThread_->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
+    return unSharedConstpool;
+}
+
+JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] JSTaggedValue sharedConstpool) const
+{
+    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    [[maybe_unused]] JSTaggedValue constpool = method->GetConstantPool();
+    ASSERT(constpool == sharedConstpool);
+    uint32_t methodOffset = method->GetMethodId().GetOffset();
+    return FindOrCreateUnsharedConstpool(methodOffset);
+}
+
+JSHandle<ConstantPool> JitCompilationEnv::FindOrCreateConstPool([[maybe_unused]] const JSPandaFile *jsPandaFile,
+    [[maybe_unused]] panda_file::File::EntityId id)
+{
+    ASSERT_PRINT(0, "jit should unreachable");
+    return JSHandle<ConstantPool>();
+}
+
+JSTaggedValue JitCompilationEnv::GetConstantPoolByMethodOffset([[maybe_unused]] const uint32_t methodOffset) const
+{
+    ASSERT(thread_->IsInRunningState());
+    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    ASSERT(method->GetMethodId().GetOffset() == methodOffset);
+    return method->GetConstantPool();
+}
+
+JSTaggedValue JitCompilationEnv::GetArrayLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const
+{
+    ASSERT(thread_->IsInRunningState());
+    return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(constpool, index, entry);
+}
+
+JSTaggedValue JitCompilationEnv::GetObjectLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const
+{
+    ASSERT(thread_->IsInRunningState());
+    return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(constpool, index, entry);
+}
+
+panda_file::File::EntityId JitCompilationEnv::GetIdFromCache(JSTaggedValue constpool, uint32_t index) const
+{
+    ASSERT(thread_->IsInRunningState());
+    return ConstantPool::GetIdFromCache(constpool, index);
+}
+
+JSHandle<GlobalEnv> JitCompilationEnv::GetGlobalEnv() const
+{
+    ASSERT(thread_->IsInRunningState());
+    return hostThread_->GetEcmaVM()->GetGlobalEnv();
+}
+
+const GlobalEnvConstants *JitCompilationEnv::GlobalConstants() const
+{
+    ASSERT(thread_->IsInRunningState());
+    return hostThread_->GlobalConstants();
+}
+
+JSTaggedValue JitCompilationEnv::GetStringFromConstantPool([[maybe_unused]] const uint32_t methodOffset,
+    const uint16_t cpIdx) const
+{
+    ASSERT(thread_->IsInRunningState());
+    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    ASSERT(method->GetMethodId().GetOffset() == methodOffset);
+    JSTaggedValue constpool = method->GetConstantPool();
+    return ConstantPool::GetStringFromCacheForJit(GetJSThread(), constpool, cpIdx);
+}
+} // namespace panda::ecmascript

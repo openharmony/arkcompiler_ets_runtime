@@ -135,7 +135,7 @@ public:
         globalObject = tObject.release();
         return reinterpret_cast<T *>(globalObject);
     }
-    static void FreeCollatorFormat(void *pointer, void *data)
+    static void FreeCollatorFormat([[maybe_unused]] void *env, void *pointer, void *data)
     {
         if (pointer == nullptr) {
             return;
@@ -146,7 +146,7 @@ public:
             reinterpret_cast<EcmaVM *>(data)->GetNativeAreaAllocator()->FreeBuffer(pointer);
         }
     }
-    static void FreeNumberFormat(void *pointer, void *data)
+    static void FreeNumberFormat([[maybe_unused]] void *env, void *pointer, void *data)
     {
         if (pointer == nullptr) {
             return;
@@ -157,7 +157,7 @@ public:
             reinterpret_cast<EcmaVM *>(data)->GetNativeAreaAllocator()->FreeBuffer(pointer);
         }
     }
-    static void FreeDateTimeFormat(void *pointer, void *data)
+    static void FreeDateTimeFormat([[maybe_unused]] void *env, void *pointer, void *data)
     {
         if (pointer == nullptr) {
             return;

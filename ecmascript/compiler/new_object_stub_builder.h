@@ -21,6 +21,13 @@
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
+
+struct TraceIdInfo {
+    GateRef pc = 0;
+    GateRef traceId = 0;
+    bool isPc = true;
+};
+
 class NewObjectStubBuilder : public StubBuilder {
 public:
     explicit NewObjectStubBuilder(StubBuilder *parent)
@@ -77,31 +84,32 @@ public:
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
     GateRef CreateEmptyObject(GateRef glue);
     GateRef CreateEmptyArray(GateRef glue);
-    GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId,
-                             ProfileOperation callback);
-    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, GateRef pc,
+    GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
+        GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
+    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, TraceIdInfo traceIdInfo,
                                   GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
     void NewMutantTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
     template <typename IteratorType, typename CollectionType>
     void CreateJSCollectionIterator(Variable *result, Label *exit, GateRef set, GateRef kind);
+    void CreateJSTypedArrayIterator(Variable *result, Label *exit, GateRef set, GateRef kind);
     GateRef NewTaggedSubArray(GateRef glue, GateRef srcTypedArray, GateRef elementSize, GateRef newLength,
         GateRef beginIndex, GateRef arrayCls, GateRef buffer);
     GateRef NewTypedArray(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
     void NewByteArray(Variable *result, Label *exit, GateRef elementSize, GateRef length);
     GateRef GetElementSizeFromType(GateRef glue, GateRef type);
     GateRef GetOnHeapHClassFromType(GateRef glue, GateRef type);
-
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
-    GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId,
-        GateRef arrayLiteral, ProfileOperation callback);
+    GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
+        GateRef profileTypeInfo, GateRef slotId, GateRef arrayLiteral, ProfileOperation callback);
     GateRef LoadArrayHClassSlowPath(
-        GateRef glue, GateRef jsFunc, GateRef pc, GateRef arrayLiteral, ProfileOperation callback);
+        GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo, GateRef arrayLiteral, ProfileOperation callback);
     GateRef CreateEmptyArrayCommon(GateRef glue, GateRef hclass, GateRef trackInfo);
     void AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit);
     void AllocateInYoung(Variable *result, Label *exit, GateRef hclass);
     void AllocateInYoung(Variable *result, Label *error, Label *noError, GateRef hclass);
+    void AllocateInSOldPrologue(Variable *result, Label *callRuntime, Label *exit);
     void AllocateInSOld(Variable *result, Label *exit, GateRef hclass);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);

@@ -153,10 +153,6 @@ JSTaggedValue BuiltinsString::FromCodePoint(EcmaRuntimeCallInfo *argv)
         if (cp < 0 || cp > ENCODE_MAX_UTF16) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "CodePoint < 0 or CodePoint > 0x10FFFF", JSTaggedValue::Exception());
         }
-        if (cp == 0) {
-            CVector<uint16_t> data {0x00};
-            return factory->NewFromUtf16Literal(data.data(), 1).GetTaggedValue();
-        }
         if (cp > UINT16_MAX) {
             uint16_t cu1 =
                 std::floor((static_cast<uint32_t>(cp) - ENCODE_SECOND_FACTOR) / ENCODE_FIRST_FACTOR) + ENCODE_LEAD_LOW;
@@ -406,7 +402,7 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (posVal.GetNumber() == BuiltinsNumber::POSITIVE_INFINITY) {
-            pos = thisLen;
+            pos = static_cast<int32_t>(thisLen);
         } else {
             pos = posVal.ToInt32();
         }
@@ -628,29 +624,19 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> regexp = BuiltinsString::GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> matchTag = thread->GetEcmaVM()->GetGlobalEnv()->GetMatchSymbol();
-    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    if (regexp->IsJSRegExp()) {
-        JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
-        JSHandle<JSRegExp> re(regexp);
-        JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
-        JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
-        bool isFastPath = BuiltinsRegExp::IsFastRegExp(thread, regexp);
-        if (isFastPath) {
-            uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, regexp, true));
-            JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, thisTag,
-                                                                     RegExpExecResultCache::MATCH_TYPE, regexp,
-                                                                     JSTaggedValue(lastIndex));
-            if (!cacheResult.IsUndefined()) {
-                return cacheResult;
-            }
+    if (thisTag->IsString() && regexp->IsECMAObject()) {
+        if (BuiltinsRegExp::IsFastRegExp(thread, regexp, BuiltinsRegExp::RegExpSymbol::MATCH)) {
+            return BuiltinsRegExp::RegExpMatch(thread, regexp, thisTag, true);
         }
     }
+
+    JSHandle<JSTaggedValue> matchTag = thread->GetEcmaVM()->GetGlobalEnv()->GetMatchSymbol();
+    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     if (!regexp->IsUndefined() && !regexp->IsNull()) {
         JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!matcher->IsUndefined()) {
-            ASSERT(matcher->IsJSFunction());
+            ASSERT(matcher->IsJSFunctionBase());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -680,19 +666,23 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> regexp = BuiltinsString::GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> matchAllTag = thread->GetEcmaVM()->GetGlobalEnv()->GetMatchAllSymbol();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> matchAllTag = env->GetMatchAllSymbol();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    auto ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSTaggedValue> gvalue(factory->NewFromASCII("g"));
 
     // 2. If regexp is neither undefined nor null, then
     if (!regexp->IsUndefined() && !regexp->IsNull()) {
         // a. Let isRegExp be ? IsRegExp(searchValue).
-        bool isJSRegExp = JSObject::IsRegExp(thread, regexp);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        // b. If isRegExp is true, then
-        if (isJSRegExp) {
+        if (regexp->IsECMAObject() &&
+            BuiltinsRegExp::IsFastRegExp(thread, regexp, BuiltinsRegExp::RegExpSymbol::MATCH)) {
+            bool isGlobal = BuiltinsRegExp::GetOriginalFlag(thread, regexp, RegExpParser::FLAG_GLOBAL);
+            if (!isGlobal) {
+                THROW_TYPE_ERROR_AND_RETURN(thread,
+                                            "matchAll called with a non-global RegExp argument",
+                                            JSTaggedValue::Exception());
+            }
+        } else if (JSObject::IsRegExp(thread, regexp)) {
             // i. Let flags be ? Get(searchValue, "flags").
             JSHandle<JSTaggedValue> flagsString(globalConst->GetHandledFlagsString());
             JSHandle<JSTaggedValue> flags = JSObject::GetProperty(thread, regexp, flagsString).GetValue();
@@ -704,7 +694,7 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
             JSHandle<EcmaString> flagString = JSTaggedValue::ToString(thread, flags);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             int32_t pos = EcmaStringAccessor::IndexOf(ecmaVm,
-                flagString, JSHandle<EcmaString>(gvalue));
+                flagString, ecmaVm->GetFactory()->NewFromASCII("g"));
             if (pos == -1) {
                 THROW_TYPE_ERROR_AND_RETURN(thread,
                                             "matchAll called with a non-global RegExp argument",
@@ -712,24 +702,37 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
             }
         }
 
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (thisTag->IsString() && regexp->IsECMAObject()) {
+            if (PropertyDetector::IsRegExpSpeciesDetectorValid(env) &&
+                BuiltinsRegExp::IsFastRegExp(thread, regexp, BuiltinsRegExp::RegExpSymbol::MATCHALL)) {
+                JSHandle<EcmaString> string = JSHandle<EcmaString>::Cast(thisTag);
+                return BuiltinsRegExp::RegExpMatchAll(thread, regexp, string, true);
+            }
+        }
         // c. Let matcher be ? GetMethod(regexp, @@matchAll).
         // d. If matcher is not undefined, then
-        JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchAllTag);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (!matcher->IsUndefined()) {
-            // i. Return ? Call(matcher, regexp, « O »).
-            EcmaRuntimeCallInfo *info =
-                EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
+        bool canSkip = (PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env) &&
+                       (regexp->IsString() || regexp->IsNumber()));
+        if (!canSkip) {
+            JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchAllTag);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(thisTag.GetTaggedValue());
-            return JSFunction::Call(info);
+            if (!matcher->IsUndefined()) {
+                // i. Return ? Call(matcher, regexp, « O »).
+                EcmaRuntimeCallInfo *info =
+                    EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                info->SetCallArg(thisTag.GetTaggedValue());
+                return JSFunction::Call(info);
+            }
         }
     }
     // 3. Let S be ? ToString(O).
     JSHandle<EcmaString> thisVal = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 4. Let rx be ? RegExpCreate(regexp, "g").
-    JSHandle<JSTaggedValue> rx(thread, BuiltinsRegExp::RegExpCreate(thread, regexp, gvalue));
+    JSHandle<JSTaggedValue> rx(thread, BuiltinsRegExp::RegExpCreate(
+        thread, regexp, JSHandle<JSTaggedValue>(ecmaVm->GetFactory()->NewFromASCII("g"))));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, rx, undefined, 1);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1493,7 +1496,7 @@ JSTaggedValue BuiltinsString::Search(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> regexp = BuiltinsString::GetCallArg(argv, 0);
     if (thisTag->IsString() && regexp->IsECMAObject()) {
-        if (BuiltinsRegExp::IsFastRegExp(thread, regexp)) {
+        if (BuiltinsRegExp::IsFastRegExp(thread, regexp, BuiltinsRegExp::RegExpSymbol::SEARCH)) {
             return BuiltinsRegExp::RegExpSearchFast(thread, regexp, thisTag);
         }
     }
@@ -1503,7 +1506,7 @@ JSTaggedValue BuiltinsString::Search(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> searcher = JSObject::GetMethod(thread, regexp, searchTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!searcher->IsUndefined()) {
-            ASSERT(searcher->IsJSFunction());
+            ASSERT(searcher->IsJSFunctionBase());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, searcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1669,7 +1672,7 @@ JSTaggedValue BuiltinsString::CreateArrayFromString(JSThread *thread, EcmaVM *ec
 {
     bool isUtf8 = EcmaStringAccessor(thisString).IsUtf8();
     bool canBeCompressed = false;
-    if (EcmaStringAccessor(thisString).IsLineString() || EcmaStringAccessor(thisString).IsConstantString()) {
+    if (EcmaStringAccessor(thisString).IsLineOrConstantString()) {
         canBeCompressed = EcmaStringAccessor::CanBeCompressed(*thisString);
     }
     bool isOneByte = isUtf8 & canBeCompressed;

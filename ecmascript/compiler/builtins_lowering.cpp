@@ -194,6 +194,14 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
         case BuiltinsStubCSigns::ID::TypeArrayProtoIterator: {
             return LowerCallTargetCheckWithDetector(gate, id);
         }
+        case BuiltinsStubCSigns::ID::DateGetTime:
+        case BuiltinsStubCSigns::ID::MapGet:
+        case BuiltinsStubCSigns::ID::MapHas:
+        case BuiltinsStubCSigns::ID::SetAdd:
+        case BuiltinsStubCSigns::ID::SetHas: {
+            return LowerCallTargetCheckWithObjectType(gate, id);
+        }
+        case BuiltinsStubCSigns::ID::BigIntConstructor:
         case BuiltinsStubCSigns::ID::NumberConstructor: {
             return LowerCallTargetCheckWithGlobalEnv(gate, id);
         }
@@ -222,7 +230,7 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithGlobalEnv(GateRef gate, Builtin
 GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, BuiltinsStubCSigns::ID id)
 {
     JSType expectType = JSType::INVALID;
-    uint8_t detectorIndex = 0;
+    uint16_t detectorIndex = 0;
     switch (id) {
         case BuiltinsStubCSigns::ID::MapProtoIterator: {
             expectType = JSType::JS_MAP;
@@ -263,6 +271,35 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, Builtins
     return check2;
 }
 
+GateRef BuiltinLowering::LowerCallTargetCheckWithObjectType(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    JSType expectType = JSType::INVALID;
+    switch (id) {
+        case BuiltinsStubCSigns::ID::MapGet:
+        case BuiltinsStubCSigns::ID::MapHas: {
+            expectType = JSType::JS_MAP;
+            break;
+        }
+        case BuiltinsStubCSigns::ID::SetAdd:
+        case BuiltinsStubCSigns::ID::SetHas: {
+            expectType = JSType::JS_SET;
+            break;
+        }
+        case BuiltinsStubCSigns::ID::DateGetTime: {
+            expectType = JSType::JS_DATE;
+            break;
+        }
+        default: {
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
+    GateRef obj = acc_.GetValueIn(gate, 2);  // 2: receiver obj
+    GateRef check1 = builder_.IsSpecificObjectType(obj, expectType);
+    GateRef check2 = LowerCallTargetCheckDefault(gate, id);
+    return builder_.BoolAnd(check1, check2);
+}
+
 GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
 {
     GateRef idGate = acc_.GetValueIn(gate, 1);
@@ -286,6 +323,9 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::ArrayIteratorProtoNext:
         case BuiltinsStubCSigns::ID::IteratorProtoReturn:
         case BuiltinsStubCSigns::ID::NumberConstructor:
+        case BuiltinsStubCSigns::ID::TypedArrayEntries:
+        case BuiltinsStubCSigns::ID::TypedArrayKeys:
+        case BuiltinsStubCSigns::ID::TypedArrayValues:
             // Don't need check para
             return funcCheck;
         default: {

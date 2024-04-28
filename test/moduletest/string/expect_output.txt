@@ -97,3 +97,8 @@ true
 true
 sub_string test success!
 true
+123
+TypeError: The NewTarget is undefined.
+true
+false
+true

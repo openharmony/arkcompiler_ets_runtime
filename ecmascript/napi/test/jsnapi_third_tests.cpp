@@ -291,7 +291,7 @@ HWTEST_F_L0(JSNApiTests, BufferRef_New01_ByteLength_GetBuffer_BufferToStringCall
         int32_t length;
     };
     const int32_t length = 15;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = []([[maybe_unused]] void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         delete currentData;
@@ -524,7 +524,7 @@ HWTEST_F_L0(JSNApiTests, New2)
     const int32_t length = 15;
     Data *data = new Data();
     data->length = length;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = []([[maybe_unused]] void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         ASSERT_EQ(currentData->length, 15); // 5 : size of arguments
@@ -1109,4 +1109,19 @@ HWTEST_F_L0(JSNApiTests, SetNamedPropertyByPassingUtf8Key)
     Local<JSValueRef> value1 = object->Get(vm_, utf8Key);
     ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
 }
+
+HWTEST_F_L0(JSNApiTests, NapiFastPathGetNamedProperty)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    const char* utf8Key = "TestKey";
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, utf8Key);
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    PropertyAttribute attribute(value, true, true, true);
+
+    ASSERT_TRUE(object->DefineProperty(vm_, key, attribute));
+    Local<JSValueRef> value1 = JSNApi::NapiGetNamedProperty(vm_, reinterpret_cast<uintptr_t>(*object), utf8Key);
+    ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
+}
+
 } // namespace panda::test

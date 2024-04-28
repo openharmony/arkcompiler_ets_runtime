@@ -18,6 +18,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -979,7 +980,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
         } else {
             JSHandle<NameDictionary> baseDict(thread, baseIHClass->GetLayout());
             auto baseLength = baseDict->EntriesCount();
-            auto newLength = fieldNum + baseLength;
+            auto newLength = fieldNum + static_cast<uint32_t>(baseLength);
             JSHandle<NameDictionary> dict =
                 NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(newLength));
             baseDict->Rehash(thread, *dict);
@@ -1091,6 +1092,8 @@ std::pair<uint32_t, uint32_t> SendableClassDefiner::GetSizeAndMaxInlineByType(JS
             return { JSSharedMap::SIZE, JSSharedMap::MAX_INLINE };
         case JSType::JS_SHARED_SET:
             return { JSSharedSet::SIZE, JSSharedSet::MAX_INLINE };
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            return { JSSendableArrayBuffer::SIZE, JSSendableArrayBuffer::MAX_INLINE };
         default:
             if (JSType::JS_SHARED_TYPED_ARRAY_FIRST < type && type <= JSType::JS_SHARED_TYPED_ARRAY_LAST) {
                 return { JSSharedTypedArray::SIZE, JSSharedTypedArray::MAX_INLINE };

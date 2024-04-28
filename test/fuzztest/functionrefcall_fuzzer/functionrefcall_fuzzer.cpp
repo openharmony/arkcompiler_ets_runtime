@@ -36,7 +36,7 @@ namespace OHOS {
             return;
         }
         FunctionCallback nativeFunc = FuncRefCallCallbackForTest;
-        Deleter deleter = nullptr;
+        NativePointerCallback deleter = nullptr;
         Local<FunctionRef> func = FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
         const int32_t argvLen = 3;
         Local<JSValueRef> thisObj(JSValueRef::Undefined(vm));

@@ -187,13 +187,12 @@ protected:
                         Advance();
                         continue;
                     case Tokens::ARRAY:
-                        // sendable array not support now
-                        if (UNLIKELY(transformType_ == TransformType::SENDABLE)) {
-                            THROW_SYNTAX_ERROR_AND_RETURN(thread_, GET_MESSAGE_STRING(SendableArrayForJson),
-                                                          JSTaggedValue::Exception());
-                        }
                         if (EmptyArrayCheck()) {
-                            parseValue = JSHandle<JSTaggedValue>(factory_->NewJSArray(0, initialJSArrayClass_));
+                            if (transformType_ == TransformType::SENDABLE) {
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewJSSArray());
+                            } else {
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewJSArray(0, initialJSArrayClass_));
+                            }
                             GetNextNonSpaceChar();
                             break;
                         }
@@ -244,7 +243,11 @@ protected:
                             Advance();
                             break;
                         }
-                        parseValue = CreateJsonArray(continuation, elementsList);
+                        if (transformType_ == TransformType::SENDABLE) {
+                            parseValue = CreateSJsonArray(continuation, elementsList);
+                        } else {
+                            parseValue = CreateJsonArray(continuation, elementsList);
+                        }
                         if (*current_ != ']') {
                             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON",
                                                           JSTaggedValue::Exception());
@@ -307,6 +310,19 @@ protected:
         return JSHandle<JSTaggedValue>(array);
     }
 
+    JSHandle<JSTaggedValue> CreateSJsonArray([[maybe_unused]] JsonContinuation continuation,
+                                             [[maybe_unused]] std::vector<JSHandle<JSTaggedValue>> &elementsList)
+    {
+        size_t start = continuation.index_;
+        size_t size = elementsList.size() - start;
+        JSHandle<JSSharedArray> array = factory_->NewJSSArray();
+        array->SetArrayLength(thread_, size);
+        JSHandle<TaggedArray> elements = factory_->NewSJsonFixedArray(start, size, elementsList);
+        JSHandle<JSObject> obj(array);
+        obj->SetElements(thread_, elements);
+        return JSHandle<JSTaggedValue>(array);
+    }
+
     JSHandle<JSTaggedValue> CreateJsonObject(JsonContinuation continuation,
                                              std::vector<JSHandle<JSTaggedValue>> &propertyList)
     {
@@ -347,7 +363,12 @@ protected:
             JSHandle<TaggedArray> propertyArray = factory_->NewSTaggedArray(size);
             for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
                 JSHandle<JSTaggedValue> keyHandle = propertyList[start + i];
-                propertyArray->Set(thread_, i, keyHandle);
+                auto newKey = keyHandle.GetTaggedValue();
+                auto stringAccessor = EcmaStringAccessor(newKey);
+                if (!stringAccessor.IsInternString()) {
+                    newKey = JSTaggedValue(thread_->GetEcmaVM()->GetFactory()->InternString(keyHandle));
+                }
+                propertyArray->Set(thread_, i, newKey);
                 propertyArray->Set(thread_, i + 1, JSTaggedValue(int(FieldType::NONE)));
             }
             hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
@@ -387,7 +408,8 @@ protected:
         ASSERT(key->IsString());
         auto newKey = key.GetTaggedValue();
         auto stringAccessor = EcmaStringAccessor(newKey);
-        if (!stringAccessor.IsLineString() || IsNumberCharacter(*stringAccessor.GetDataUtf8())) {
+        if (!stringAccessor.IsLineString() || (stringAccessor.IsUtf8() &&
+            IsNumberCharacter(*stringAccessor.GetDataUtf8()))) {
             uint32_t index = 0;
             if (stringAccessor.ToElementIndex(&index)) {
                 return ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>(thread_,

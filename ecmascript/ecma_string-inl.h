@@ -423,6 +423,55 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
     }
 }
 
+template <typename Char>
+void EcmaString::WriteToFlatWithPos(EcmaString *src, Char *buf, uint32_t length, uint32_t pos)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    [[ maybe_unused ]] uint32_t maxLength = src->GetLength();
+    if (length == 0) {
+        return;
+    }
+    while (true) {
+        ASSERT(length + pos <= maxLength && length > 0);
+        ASSERT(length <= src->GetLength());
+        ASSERT(pos >= 0);
+        switch (src->GetStringType()) {
+            case JSType::LINE_STRING: {
+                if (src->IsUtf8()) {
+                    CopyChars(buf, src->GetDataUtf8() + pos, length);
+                } else {
+                    CopyChars(buf, src->GetDataUtf16() + pos, length);
+                }
+                return;
+            }
+            case JSType::CONSTANT_STRING: {
+                ASSERT(src->IsUtf8());
+                CopyChars(buf, src->GetDataUtf8() + pos, length);
+                return;
+            }
+            case JSType::TREE_STRING: {
+                TreeEcmaString *treeSrc = TreeEcmaString::Cast(src);
+                EcmaString *first = EcmaString::Cast(treeSrc->GetFirst());
+                ASSERT(first->IsLineString());
+                src = first;
+                continue;
+            }
+            case JSType::SLICED_STRING: {
+                EcmaString *parent = EcmaString::Cast(SlicedString::Cast(src)->GetParent());
+                if (src->IsUtf8()) {
+                    CopyChars(buf, parent->GetDataUtf8() + SlicedString::Cast(src)->GetStartIndex() + pos, length);
+                } else {
+                    CopyChars(buf, parent->GetDataUtf16() + SlicedString::Cast(src)->GetStartIndex() + pos, length);
+                }
+                return;
+            }
+            default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+        }
+    }
+}
+
 inline const uint8_t *FlatStringInfo::GetDataUtf8() const
 {
     return string_->GetDataUtf8() + startIndex_;
@@ -436,6 +485,11 @@ inline const uint16_t *FlatStringInfo::GetDataUtf16() const
 inline uint8_t *FlatStringInfo::GetDataUtf8Writable() const
 {
     return string_->GetDataUtf8Writable() + startIndex_;
+}
+
+inline uint16_t *FlatStringInfo::GetDataUtf16Writable() const
+{
+    return string_->GetDataUtf16Writable() + startIndex_;
 }
 
 inline const uint8_t *EcmaStringAccessor::GetDataUtf8()

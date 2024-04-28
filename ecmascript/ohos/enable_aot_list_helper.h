@@ -154,9 +154,9 @@ private:
     std::set<std::string> enableList_ {};
     std::set<std::string> disableList_ {};
     std::set<std::string> jitEnableList_ {};
-    static const std::string ENABLE_LIST_NAME;
-    static const std::string DISABLE_LIST_NAME;
-    static const std::string JIT_ENABLE_LIST_NAME;
+    PUBLIC_API static const std::string ENABLE_LIST_NAME;
+    PUBLIC_API static const std::string DISABLE_LIST_NAME;
+    PUBLIC_API static const std::string JIT_ENABLE_LIST_NAME;
 };
 }  // namespace panda::ecmascript::ohos
 #endif  // ECMASCRIPT_OHOS_ENABLE_AOT_LIST_HELPER_H

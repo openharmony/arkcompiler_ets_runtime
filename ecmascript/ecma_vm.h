@@ -81,7 +81,6 @@ class JSArrayBuffer;
 class JSFunction;
 class SourceTextModule;
 class Program;
-class TSManager;
 class AOTFileManager;
 class SlowRuntimeStub;
 class RequireManager;
@@ -91,6 +90,7 @@ class FunctionCallTimer;
 class EcmaStringTable;
 class JSObjectResizingStrategy;
 class Jit;
+class JitThread;
 
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
@@ -102,7 +102,7 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
-using DeleteEntryPoint = void (*)(void *, void *);
+using NativePointerCallback = void (*)(void *, void *, void *);
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options);
@@ -142,6 +142,7 @@ public:
     bool PUBLIC_API IsEnableElementsKind() const;
 
     bool Initialize();
+    void InitializeForJit(JitThread *thread);
 
     GCStats *GetEcmaGCStats() const
     {
@@ -475,6 +476,7 @@ public:
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void DeleteHeapProfile();
     HeapProfilerInterface *GetHeapProfile();
+    void  SetHeapProfile(HeapProfilerInterface *heapProfile) { heapProfile_ = heapProfile; }
     HeapProfilerInterface *GetOrNewHeapProfile();
     void StartHeapTracking();
     void StopHeapTracking();
@@ -631,8 +633,9 @@ public:
     }
 
     Jit *GetJit() const;
-    bool PUBLIC_API IsEnableJit() const;
-    void EnableJit() const;
+    bool PUBLIC_API IsEnableFastJit() const;
+    bool PUBLIC_API IsEnableBaselineJit() const;
+    void EnableJit();
 
     bool IsEnableOsr() const
     {
@@ -664,28 +667,27 @@ public:
         return thread_->GetThreadId();
     }
 
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetNativePointerCallbacks()
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetNativePointerCallbacks()
     {
         return nativePointerCallbacks_;
     }
 
+    void SetIsJitCompileVM(bool isJitCompileVM)
+    {
+        isJitCompileVM_ = isJitCompileVM;
+    }
+
+    bool IsJitCompileVM() const
+    {
+        return isJitCompileVM_;
+    }
+
     static void InitializeIcuData(const JSRuntimeOptions &options);
 
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
     {
         return sharedNativePointerCallbacks_;
     }
-
-    void *GetEnv() const
-    {
-        return env_;
-    }
-
-    void SetEnv(void *env)
-    {
-        env_ = env;
-    }
-
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -716,9 +718,9 @@ private:
     ObjectFactory *factory_ {nullptr};
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
     CList<JSNativePointer *> sharedNativePointerList_;
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
 
@@ -799,11 +801,12 @@ private:
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
     friend class EcmaContext;
+    friend class JitVM;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;
     bool isEnableOsr_ {false};
+    bool isJitCompileVM_ {false};
     bool overLimit_ {false};
-    void *env_ = nullptr;
 };
 }  // namespace ecmascript
 }  // namespace panda

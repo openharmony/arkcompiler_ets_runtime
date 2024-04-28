@@ -167,7 +167,7 @@ public:
         return reinterpret_cast<icu::Locale *>(result);
     }
 
-    static void FreeIcuLocale(void *pointer, void *data)
+    static void FreeIcuLocale([[maybe_unused]] void *env, void *pointer, void *data)
     {
         if (pointer == nullptr) {
             return;
@@ -492,7 +492,7 @@ public:
                                                const JSHandle<EcmaString> &localeString,
                                                const JSHandle<JSObject> &options);
 
-    static JSHandle<EcmaString> NormalizeKeywordValue(JSThread *thread, const JSHandle<JSLocale> &locale,
+    static JSTaggedValue NormalizeKeywordValue(JSThread *thread, const JSHandle<JSLocale> &locale,
                                                     const std::string &key);
 
     static JSHandle<EcmaString> ToString(JSThread *thread, const JSHandle<JSLocale> &locale);

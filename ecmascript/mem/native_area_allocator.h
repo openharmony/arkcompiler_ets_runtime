@@ -49,10 +49,10 @@ public:
     void *AllocateBuffer(size_t size);
     void FreeBuffer(void *mem);
 
-    static void FreeBufferFunc(void* buffer, void* data);
+    static void FreeBufferFunc(void *env, void* buffer, void* data);
 
     template<class T>
-    static void FreeObjectFunc(void* buffer, void* data)
+    static void FreeObjectFunc([[maybe_unused]] void *env, void* buffer, void* data)
     {
         if (buffer == nullptr || data == nullptr) {
             return;

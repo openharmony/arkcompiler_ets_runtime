@@ -39,6 +39,9 @@ struct SamplingInfo;
 struct TraceEvent;
 }
 class DFXJSNApi;
+class JSValueRef;
+template<typename T>
+class Local;
 using EcmaVM = ecmascript::EcmaVM;
 using Stream = ecmascript::Stream;
 using Progress = ecmascript::Progress;
@@ -75,6 +78,7 @@ public:
     static void DumpHeapSnapshotWithVm(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
                                  bool captureNumericValue, bool isFullGC);
     static void TriggerGC(const EcmaVM *vm, uint32_t tid);
+    static bool ForceFullGC(const EcmaVM *vm);
     static void TriggerGCWithVm(const EcmaVM *vm);
     static void DestroyHeapProfiler(const EcmaVM *vm);
 
@@ -105,6 +109,7 @@ public:
     static void NotifyFinishColdStart(EcmaVM *vm, bool isConvinced);
     static void NotifyHighSensitive(EcmaVM *vm, bool isStart);
     static bool BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames);
+    static int32_t GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject);
 
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);
@@ -115,6 +120,8 @@ public:
     static void StartCpuProfilerForInfo(const EcmaVM *vm,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static std::unique_ptr<ProfileInfo> StopCpuProfilerForInfo(const EcmaVM *vm);
+    static void EnableSeriliazationTimeoutCheck(const EcmaVM *ecmaVM, int32_t threshhold);
+    static void DisableSeriliazationTimeoutCheck(const EcmaVM *ecmaVM);
 
     enum class PUBLIC_API ProfilerType : uint8_t { CPU_PROFILER, HEAP_PROFILER };
 

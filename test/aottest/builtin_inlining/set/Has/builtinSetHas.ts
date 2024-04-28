@@ -36,31 +36,45 @@ function printHas(x: any) {
 let mySet = new Set([0, 0.0, -5, 2.5, 1e-78, NaN, "xyz", "12345"]);
 
 // Check without params
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has()); //: false
 
 // Check with adding element undefined
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetHas
 mySet.add(undefined);
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has()); //: true
 
 // Check with single param
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(0)); //: true
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(3)); //: false
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(2.5)); //: true
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(NaN)); //: true
 
 // Check with 2 params
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(0, 0)); //: true
 
 // Check with 3 params
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(-21, 10.2, 15)); //: false
 
 // Check with 4 params
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(2.5, -800, 0.56, 0)); //: true
 
 // Check after inserting elements
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetHas
 mySet.add(-5);
+//aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetHas
 mySet.add(133.33);
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(-5)); //: true
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(133.33)); //: true
 
 // Replace standard builtin
@@ -71,10 +85,28 @@ mySet.has = replace
 print(mySet.has(2.5)); //: 2.5
 mySet.has = true_has
 
+function checkObjWithSetProto() {
+    let o = {};
+    Object.setPrototypeOf(o, Set.prototype);
+    try {
+        print((o as Set<number>).has(1));
+    } catch(e) {
+        print(e);
+    }
+}
+
+//aot: [trace] Check Type: NotCallTarget1
+//: TypeError: obj is not JSSet
+checkObjWithSetProto();
+
+//aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
 printHas(-5); //: true
 // Call standard builtin with non-number param
+//aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
 printHas("abc"); //: false
+//aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
 printHas("-5"); //: false
+//aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
 printHas("xyz"); //: true
 
 if (ArkTools.isAOTCompiled(printHas)) {
@@ -82,46 +114,53 @@ if (ArkTools.isAOTCompiled(printHas)) {
     mySet.has = replace
 }
 printHas(2.5); //pgo: true
+//aot: [trace] Check Type: NotCallTarget1
 //aot: 2.5
 
 printHas("abc"); //pgo: false
+//aot: [trace] Check Type: NotCallTarget1
 //aot: abc
 
 mySet.has = true_has
 
 // Check IR correctness inside try-block
 try {
+    //aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
     printHas(NaN); //: true
+    //aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
     printHas("abc"); //: false
 } catch (e) {
 }
 
 let obj = {};
 obj.valueOf = (() => { return 0; })
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 print(mySet.has(obj)); //: false
 
 function Throwing() {
-    this.value = -1;
-}
-//aot: [trace] Check Type: InconsistentHClass6
-Throwing.prototype.valueOf = function() {
-    if (this.value > 0) {
-        throw new Error("already positive");
+    this.value = 2.5;
+    this.valueOf = function() {
+        if (this.value > 0) {
+            throw new Error("already positive");
+        }
+        return this.value;
     }
-    return this.value;
 }
-let throwingObj = new Throwing();
 
+let throwingObj = new Throwing();
 try {
-    print(mySet.has(throwingObj)); //: false
-    throwingObj.value = 2.5;
+    //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
     print(mySet.has(throwingObj)); //: false
 } catch(e) {
     print(e);
 } finally {
+    //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
     print(mySet.has(obj)); //: false
 }
 
 // Check after clearing
 mySet.clear();
-print(mySet.has(0)); //: false
+//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetHas
+print(mySet.has(0));
+//aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
+//: false

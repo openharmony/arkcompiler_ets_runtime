@@ -90,7 +90,6 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JS
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     JSHandle<EcmaString> parseString = JSTaggedValue::ToString(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> result;
@@ -102,7 +101,6 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JS
         result = parser.Parse(*parseString);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     JSTaggedValue reviver = JSTaggedValue::Undefined();
     if (reviverVal->IsJSFunction()) {
         reviver = reviverVal.GetTaggedValue();

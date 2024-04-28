@@ -94,6 +94,10 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitLoadStringLength(gate);
             break;
         }
+        case OpCode::LOAD_MAP_SIZE: {
+            VisitLoadMapSize(gate);
+            break;
+        }
         case OpCode::LOAD_PROPERTY: {
             VisitLoadProperty(gate);
             break;
@@ -567,6 +571,12 @@ void NumberSpeculativeLowering::VisitLoadArrayLength(GateRef gate)
 }
 
 void NumberSpeculativeLowering::VisitLoadStringLength(GateRef gate)
+{
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.SetMachineType(gate, MachineType::I32);
+}
+
+void NumberSpeculativeLowering::VisitLoadMapSize(GateRef gate)
 {
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.SetMachineType(gate, MachineType::I32);

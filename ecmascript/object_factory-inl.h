@@ -93,7 +93,7 @@ EcmaString *ObjectFactory::AllocTreeStringObject()
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointer,
-                                                            const DeleteEntryPoint &callBack,
+                                                            const NativePointerCallback &callBack,
                                                             void *data,
                                                             bool nonMovable,
                                                             size_t nativeBindingsize,
@@ -140,14 +140,14 @@ LexicalEnv *ObjectFactory::InlineNewLexicalEnv(int numSlots)
 }
 
 template<typename T, typename S>
-void ObjectFactory::NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const DeleteEntryPoint &callback)
+void ObjectFactory::NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const NativePointerCallback &callback)
 {
     S *icuPoint = vm_->GetNativeAreaAllocator()->New<S>(icu);
     ASSERT(icuPoint != nullptr);
     JSTaggedValue data = obj->GetIcuField();
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuPoint);
+        native->ResetExternalPointer(thread_, icuPoint);
         return;
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(icuPoint, callback, vm_);

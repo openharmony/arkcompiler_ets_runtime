@@ -26,6 +26,7 @@
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/mem/thread_local_allocation_buffer.h"
 #include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 
@@ -49,6 +50,15 @@ namespace panda::ecmascript {
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
         ThrowOutOfMemoryError(thread, size, message);                                                       \
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(thread, size));                       \
+    }
+
+#define CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, space, message)                              \
+    if (UNLIKELY((object) == nullptr)) {                                                                    \
+        EcmaVM *vm = GetEcmaVM();                                                                           \
+        size_t oomOvershootSize = vm->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();            \
+        (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
+        SetMachineCodeOutOfMemoryError(GetJSThread(), size, message);                                       \
+        (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                               \
     }
 
 template<class Callback>
@@ -148,15 +158,17 @@ void Heap::EnumerateRegions(const Callback &cb) const
 }
 
 template<class Callback>
-void Heap::IterateOverObjects(const Callback &cb) const
+void Heap::IterateOverObjects(const Callback &cb, bool isSimplify) const
 {
     activeSemiSpace_->IterateOverObjects(cb);
     oldSpace_->IterateOverObjects(cb);
-    readOnlySpace_->IterateOverObjects(cb);
-    appSpawnSpace_->IterateOverMarkedObjects(cb);
     nonMovableSpace_->IterateOverObjects(cb);
     hugeObjectSpace_->IterateOverObjects(cb);
     hugeMachineCodeSpace_->IterateOverObjects(cb);
+    if (!isSimplify) {
+        readOnlySpace_->IterateOverObjects(cb);
+        appSpawnSpace_->IterateOverMarkedObjects(cb);
+    }
 }
 
 TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass)
@@ -320,7 +332,7 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
         UNREACHABLE();
     }
     *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
-    // todo(Gymee) OnAllocateEvent
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
     return object;
 }
 
@@ -372,7 +384,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
     auto object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
         reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
         reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
-    CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
+    CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
     object->SetClass(thread_, hclass);
     OnAllocateEvent(GetEcmaVM(), object, size);
     return object;
@@ -386,6 +398,31 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
         FatalOutOfMemoryError(size, "Heap::AllocateSnapshotSpaceObject");
     }
     OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject *>(object), size);
+    return object;
+}
+
+TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    TaggedObject *object = reinterpret_cast<TaggedObject*>(sOldTlab_->Allocate(size));
+    if (object != nullptr) {
+        return object;
+    }
+    if (!sOldTlab_->NeedNewTlab(size)) {
+        // slowpath
+        return nullptr;
+    }
+    size_t newTlabSize = sOldTlab_->ComputeSize();
+    object = SharedHeap::GetInstance()->AllocateSOldTlab(thread, newTlabSize);
+    if (object == nullptr) {
+        LOG_ECMA_MEM(WARN) << "allocate shared old space tlab failed";
+        return nullptr;
+    }
+    uintptr_t begin = reinterpret_cast<uintptr_t>(object);
+    sOldTlab_->Reset(begin, begin + newTlabSize, begin + size);
+    auto topAddress = sOldTlab_->GetTopAddress();
+    auto endAddress = sOldTlab_->GetEndAddress();
+    thread_->ReSetSOldSpaceAllocationAddress(topAddress, endAddress);
     return object;
 }
 
@@ -521,7 +558,20 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
         "SharedHeap::AllocateNonMovableOrHugeObject");
     object->SetClass(thread, hclass);
-    // todo(lukai) OnAllocateEvent
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
+    return object;
+}
+
+TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return AllocateHugeObject(thread, size);
+    }
+    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
+        "SharedHeap::AllocateNonMovableOrHugeObject");
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
     return object;
 }
 
@@ -537,10 +587,14 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, hclass, size);
     }
-    auto object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    TaggedObject *object =
+        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
+    if (object == nullptr) {
+        object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    }
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
     object->SetClass(thread, hclass);
-    // todo(lukai) OnAllocateEvent
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
     return object;
 }
 
@@ -550,8 +604,11 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, size);
     }
-
-    auto object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    TaggedObject *object =
+        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
+    if (object == nullptr) {
+        object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    }
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
     return object;
 }
@@ -560,7 +617,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass,
 {
     auto object = AllocateHugeObject(thread, size);
     object->SetClass(thread, hclass);
-    // todo(lukai) OnAllocateEvent
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
     return object;
 }
 
@@ -602,6 +659,21 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClas
     auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
     object->SetClass(thread, hclass);
+    return object;
+}
+
+TaggedObject *SharedHeap::AllocateSOldTlab(JSThread *thread, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return nullptr;
+    }
+    TaggedObject *object = nullptr;
+    if (sOldSpace_->GetCommittedSize() > sOldSpace_->GetInitialCapacity() / 2) { // 2: half
+        object = reinterpret_cast<TaggedObject *>(sOldSpace_->AllocateNoGCAndExpand(thread, size));
+    } else {
+        object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    }
     return object;
 }
 }  // namespace panda::ecmascript

@@ -78,16 +78,25 @@ config("include_maple") {
 
 libark_jsoptimizer_sources = [
   "access_object_stub_builder.cpp",
+  "aot_compilation_env.cpp",
   "aot_compiler_preprocessor.cpp",
+  "aot_compiler_stats.cpp",
   "argument_accessor.cpp",
   "array_bounds_check_elimination.cpp",
   "assembler/aarch64/assembler_aarch64.cpp",
   "assembler/aarch64/extend_assembler.cpp",
+  "assembler/aarch64/macro_assembler_aarch64.cpp",
   "assembler/x64/assembler_x64.cpp",
   "assembler/x64/extended_assembler_x64.cpp",
+  "assembler/x64/macro_assembler_x64.cpp",
   "assembler_module.cpp",
   "async_function_lowering.cpp",
   "base/depend_chain_helper.cpp",
+  "baseline/baseline_assembler.cpp",
+  "baseline/baseline_call_signature.cpp",
+  "baseline/baseline_compiler.cpp",
+  "baseline/baseline_stub_builder.cpp",
+  "baseline/baseline_stubs.cpp",
   "bc_call_signature.cpp",
   "builtins/builtins_array_stub_builder.cpp",
   "builtins/builtins_call_signature.cpp",
@@ -114,6 +123,7 @@ libark_jsoptimizer_sources = [
   "combined_pass_visitor.cpp",
   "common_stubs.cpp",
   "compilation_driver.cpp",
+  "compilation_env.cpp",
   "compiler_log.cpp",
   "constant_folding.cpp",
   "dead_code_elimination.cpp",
@@ -136,6 +146,7 @@ libark_jsoptimizer_sources = [
   "interpreter_stub.cpp",
   "ir_builder.cpp",
   "ir_module.cpp",
+  "jit_compilation_env.cpp",
   "jit_compiler.cpp",
   "later_elimination.cpp",
   "lcr_circuit_builder.cpp",
@@ -153,10 +164,10 @@ libark_jsoptimizer_sources = [
   "number_speculative_lowering.cpp",
   "number_speculative_retype.cpp",
   "number_speculative_runner.cpp",
-  "object_access_helper.cpp",
   "operations_stub_builder.cpp",
   "pass_manager.cpp",
   "post_schedule.cpp",
+  "precompile_checker.cpp",
   "profiler_stub_builder.cpp",
   "range_analysis.cpp",
   "range_guard.cpp",
@@ -169,22 +180,20 @@ libark_jsoptimizer_sources = [
   "stub.cpp",
   "stub_builder.cpp",
   "trampoline/aarch64/asm_interpreter_call.cpp",
+  "trampoline/aarch64/baseline_call.cpp",
   "trampoline/aarch64/common_call.cpp",
   "trampoline/aarch64/optimized_call.cpp",
   "trampoline/aarch64/optimized_fast_call.cpp",
   "trampoline/x64/asm_interpreter_call.cpp",
+  "trampoline/x64/baseline_call.cpp",
   "trampoline/x64/common_call.cpp",
   "trampoline/x64/optimized_call.cpp",
   "trampoline/x64/optimized_fast_call.cpp",
-  "ts_class_analysis.cpp",
-  "ts_hclass_generator.cpp",
   "ts_hcr_opt_pass.cpp",
   "ts_inline_lowering.cpp",
   "type.cpp",
   "type_inference/pgo_type_infer.cpp",
-  "type_inference/pgo_type_infer_helper.cpp",
   "type_info_accessors.cpp",
-  "type_recorder.cpp",
   "typed_bytecode_lowering.cpp",
   "typed_hcr_lowering.cpp",
   "typed_native_inline_lowering.cpp",
@@ -315,7 +324,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     ":libark_jsoptimizer_set_config",
   ]
 
-  external_deps = []
+  external_deps = [ "zlib:libz" ]
   deps = []
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
@@ -326,10 +335,7 @@ ohos_source_set("libark_jsoptimizer_set") {
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   if (enable_local_code_sign) {
-    external_deps += [
-      "code_signature:libcode_sign_utils",
-      "code_signature:liblocal_code_sign_sdk",
-    ]
+    external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
   }
   deps += hiviewdfx_deps
 
@@ -376,10 +382,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   if (enable_local_code_sign) {
-    external_deps += [
-      "code_signature:libcode_sign_utils",
-      "code_signature:liblocal_code_sign_sdk",
-    ]
+    external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
   }
 
   part_name = "ets_runtime"
@@ -419,6 +422,12 @@ ohos_source_set("libark_mock_stub_set") {
 
 ohos_shared_library("libark_jsoptimizer") {
   stack_protector_ret = false
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
+  }
   deps = [
     ":libark_jsoptimizer_set_with_maple",
     "$js_root:libark_jsruntime",
@@ -435,7 +444,7 @@ ohos_shared_library("libark_jsoptimizer") {
     external_deps += [ "hilog:libhilog" ]
   }
 
-  install_enable = false
+  install_enable = true
 
   if (!is_mingw && !is_mac) {
     output_extension = "so"
@@ -460,7 +469,7 @@ ohos_executable("ark_stub_compiler") {
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
   ]
-  external_deps = []
+  external_deps = [ "zlib:libz" ]
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_static" ]
   } else {
@@ -507,14 +516,22 @@ ohos_executable("ark_aot_compiler") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
-  deps = [
-    ":lib_ark_builtins.d.abc",
-    ":libark_jsoptimizer_set_with_maple",
-    ":libark_mock_stub_set",
-    "$js_root:libark_js_intl_set",
-    "$js_root:libark_jsruntime_set",
-    "${MAPLEALL_ROOT}/maple_be:libcg",
-  ]
+  deps = [ ":libark_mock_stub_set" ]
+
+  if (is_ohos) {
+    deps += [
+      ":libark_jsoptimizer",
+      "$js_root:libark_jsruntime",
+    ]
+  } else {
+    deps += [
+      ":libark_jsoptimizer_set_with_maple",
+      "$js_root:libark_js_intl_set",
+      "$js_root:libark_jsruntime_set",
+      "${MAPLEALL_ROOT}/maple_be:libcg",
+    ]
+  }
+
   external_deps = [ "zlib:libz" ]
   if (!is_arkui_x) {
     external_deps += [
@@ -624,21 +641,4 @@ action("build_stub_to_cpp") {
   ]
 
   outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp" ]
-}
-
-ohos_copy("lib_ark_builtins.d.abc") {
-  deps = [ "$js_root:es2abc_gen_builtins_d_abc" ]
-  sources = [ rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc" ]
-
-  # Set the output directory
-  outputs = [ "$target_out_dir/lib_ark_builtins.d.abc" ]
-
-  # Set the install directory
-  install_enable = true
-  module_type = "lib"
-  relative_install_dir = arkcompiler_relative_lib_path
-
-  # Set the subsystem name
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
 }

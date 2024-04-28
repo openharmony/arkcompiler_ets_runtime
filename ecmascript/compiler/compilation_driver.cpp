@@ -14,9 +14,10 @@
  */
 
 #include "ecmascript/compiler/compilation_driver.h"
+
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
@@ -31,7 +32,7 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
                                      bool outputAsm,
                                      size_t maxMethodsInModule,
                                      const std::pair<uint32_t, uint32_t> &compilerMethodsRange)
-    : vm_(collector->GetVM()),
+    : compilationEnv_(collector->GetCompilationEnv()),
       jsPandaFile_(collector->GetJSPandaFile()),
       pfDecoder_(profilerDecoder),
       collector_(collector),
@@ -45,8 +46,6 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
       maxMethodsInModule_(maxMethodsInModule),
       optionMethodsRange_(compilerMethodsRange)
 {
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetCompilationDriver(this);
-
     if (!optionSelectMethods.empty() && !optionSkipMethods.empty()) {
         LOG_COMPILER(FATAL) <<
             "--compiler-select-methods and --compiler-skip-methods should not be set at the same time";
@@ -59,11 +58,6 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
     if (!optionSkipMethods.empty()) {
         ParseOption(optionSkipMethods, optionSkipMethods_);
     }
-}
-
-CompilationDriver::~CompilationDriver()
-{
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetCompilationDriver(nullptr);
 }
 
 Module *CompilationDriver::GetModule()
@@ -259,7 +253,7 @@ bool CompilationDriver::FilterOption(const std::map<std::string, std::vector<std
 
 void CompilationDriver::SetCurrentCompilationFile() const
 {
-    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
     ptManager->SetCurCompilationFile(jsPandaFile_);
 }
 
@@ -271,7 +265,7 @@ void CompilationDriver::StoreConstantPoolInfo() const
             bytecodeInfo_.AddSkippedMethod(x.first);
         }
     }
-    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
     ptManager->GetAOTSnapshot().StoreConstantPoolInfo(collector_);
 }
 

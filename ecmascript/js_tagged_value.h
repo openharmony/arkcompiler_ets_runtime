@@ -659,16 +659,6 @@ public:
     bool IsRegularObject() const;
     bool IsMachineCodeObject() const;
     bool IsClassInfoExtractor() const;
-    bool IsTSType() const;
-    bool IsTSObjectType() const;
-    bool IsTSClassType() const;
-    bool IsTSUnionType() const;
-    bool IsTSInterfaceType() const;
-    bool IsTSClassInstanceType() const;
-    bool IsTSFunctionType() const;
-    bool IsTSArrayType() const;
-    bool IsTSIteratorInstanceType() const;
-    bool IsTSNamespaceType() const;
 
     bool IsCjsExports() const;
     bool IsCjsModule() const;
@@ -681,6 +671,7 @@ public:
     bool IsStarExportEntry() const;
     bool IsResolvedBinding() const;
     bool IsResolvedIndexBinding() const;
+    bool IsResolvedRecordIndexBinding() const;
     bool IsResolvedRecordBinding() const;
     bool IsModuleNamespace() const;
     bool IsJSSharedObject() const;
@@ -710,6 +701,11 @@ public:
     void D() const DUMP_API_ATTR;
     void DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode = true) const;
     static void DV(JSTaggedType val) DUMP_API_ATTR;
+    friend std::ostream& operator<<(std::ostream& os, const JSTaggedValue& value)
+    {
+        value.Dump(os);
+        return os;
+    }
 
 private:
     JSTaggedType value_;

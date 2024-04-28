@@ -523,6 +523,8 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleStobjbynameImm8Id16V8, V)                           \
     APPEND_SUFFIX_IMM16(HandleStobjbynameImm16Id16V8, V)                    \
     APPEND_SUFFIX(HandleDefineFieldByNameImm8Id16V8, V)                     \
+    APPEND_SUFFIX(HandleLdPrivatePropertyImm8Imm16Imm16, V)                 \
+    APPEND_SUFFIX(HandleStPrivatePropertyImm8Imm16Imm16V8, V)               \
     APPEND_SUFFIX(HandleStobjbyvalueImm8V8V8, V)                            \
     APPEND_SUFFIX(HandleStobjbyindexImm8V8Imm16, V)                         \
     APPEND_SUFFIX_IMM16(HandleStobjbyindexImm16V8Imm16, V)                  \

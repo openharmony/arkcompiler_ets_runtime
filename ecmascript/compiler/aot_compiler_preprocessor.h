@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "macros.h"
+#include "ecmascript/compiler/aot_compilation_env.h"
 
 namespace panda::ecmascript::kungfu {
 class OhosPkgArgs;
@@ -48,7 +49,7 @@ private:
 };
 
 struct CompilationOptions {
-    explicit CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions);
+    explicit CompilationOptions(JSRuntimeOptions &runtimeOptions);
     void ParseOption(const std::string &option, std::map<std::string, std::vector<std::string>> &optionMap) const;
     std::vector<std::string> SplitString(const std::string &str, const char ch) const;
     std::string triple_;
@@ -72,12 +73,10 @@ struct CompilationOptions {
     bool isEnableValueNumbering_;
     bool isEnableOptInlining_;
     bool isEnableOptString_;
-    bool isEnableTypeInfer_;
     bool isEnableOptPGOType_;
     bool isEnableOptTrackField_;
     bool isEnableOptLoopPeeling_;
     bool isEnableOptLoopInvariantCodeMotion_;
-    bool isEnableCollectLiteralInfo_;
     bool isEnableOptConstantFolding_;
     bool isEnableLexenvSpecialization_;
     bool isEnableNativeInline_;
@@ -99,7 +98,8 @@ public:
           runtimeOptions_(runtimeOptions),
           pkgsArgs_(pkgsArgs),
           profilerDecoder_(profilerDecoder),
-          pandaFileNames_(pandaFileNames) {};
+          pandaFileNames_(pandaFileNames),
+          aotCompilationEnv_(vm) {};
 
     ~AotCompilerPreprocessor() = default;
 
@@ -109,9 +109,9 @@ public:
 
     void AOTInitialize();
 
-    void SetShouldCollectLiteralInfo(CompilationOptions &cOptions, const CompilerLog *log);
+    uint32_t GenerateAbcFileInfos();
 
-    bool GenerateAbcFileInfos();
+    bool HandleMergedPgoFile(uint32_t checksum);
 
     void GeneratePGOTypes(const CompilationOptions &cOptions);
 
@@ -204,6 +204,7 @@ private:
     arg_list_t &pandaFileNames_;
     CVector<AbcFileInfo> fileInfos_;
     CallMethodFlagMap callMethodFlagMap_;
+    AOTCompilationEnv aotCompilationEnv_;
     friend class OhosPkgArgs;
 };
 }  // namespace panda::ecmascript::kungfu

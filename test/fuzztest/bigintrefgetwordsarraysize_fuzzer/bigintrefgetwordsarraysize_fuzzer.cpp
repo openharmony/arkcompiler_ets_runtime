@@ -35,13 +35,21 @@ void BigIntRefGetWordsArraySize(const uint8_t *data, size_t size)
         size = MAXBYTELEN;
     }
     bool sign = false;
-    uint64_t words[1] = {0};
-    if (memcpy_s(words, MAXBYTELEN, data, size) != 0) {
+    const size_t uint64BytesNum = 8;
+    size_t wordsNum = size / uint64BytesNum;
+    size_t hasRemain = size % uint64BytesNum;
+    if (hasRemain) {
+        wordsNum++;
+    }
+    uint64_t *words = new uint64_t[wordsNum]();
+    if (memcpy_s(words, MAXBYTELEN, data, size) != EOK) {
         LOG_ECMA(ERROR) << "memcpy_s failed!";
     }
-    Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm, sign, (uint32_t)size, words);
+    Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm, sign, wordsNum, words);
     Local<BigIntRef> bigWordsRef(bigWords);
     bigWordsRef->GetWordsArraySize();
+    delete[] words;
+    words = nullptr;
     JSNApi::DestroyJSVM(vm);
 }
 }

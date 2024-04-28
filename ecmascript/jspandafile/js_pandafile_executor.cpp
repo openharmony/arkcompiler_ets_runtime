@@ -67,7 +67,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     std::string_view entryPoint, bool needUpdate, bool executeFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromFile");
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromFile " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString entry;
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
@@ -106,11 +107,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {
-        bool needToFinishManagedCode = false;
-        if (thread->GetState() != ThreadState::RUNNING) {
-            needToFinishManagedCode = true;
-            thread->ManagedCodeBegin();
-        }
+        ThreadManagedScope managedScope(thread);
         [[maybe_unused]] EcmaHandleScope scope(thread);
         SharedModuleManager* sharedModuleManager = SharedModuleManager::GetInstance();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
@@ -129,9 +126,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
         module->SetStatus(ModuleStatus::INSTANTIATED);
         BindPandaFilesForAot(vm, jsPandaFile.get());
         SourceTextModule::Evaluate(thread, module, nullptr, 0, executeFromJob);
-        if (needToFinishManagedCode) {
-            thread->ManagedCodeEnd();
-        }
         if (thread->HasPendingException()) {
             return Unexpected(false);
         }
@@ -146,7 +140,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromBuffer");
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromBuffer " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
@@ -183,7 +178,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     JSThread *thread, const void *buffer, size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteModuleBuffer");
+    CString traceInfo = "JSPandaFileExecutor::ExecuteModuleBuffer " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString name;
     CString entry;
     EcmaVM *vm = thread->GetEcmaVM();
@@ -265,11 +261,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                            std::string_view entryPoint, bool executeFromJob)
 {
-    bool needToFinishManagedCode = false;
-    if (thread->GetState() != ThreadState::RUNNING) {
-        needToFinishManagedCode = true;
-        thread->ManagedCodeBegin();
-    }
+    ThreadManagedScope managedScope(thread);
     // For Ark application startup
     EcmaContext *context = thread->GetCurrentEcmaContext();
 
@@ -282,9 +274,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
         quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
 
         result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, executeFromJob);
-    }
-    if (needToFinishManagedCode) {
-        thread->ManagedCodeEnd();
     }
     return result;
 }
@@ -306,7 +295,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBufferSecure with secure buffer filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromBufferSecure");
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromBufferSecure " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate);
@@ -368,7 +358,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBufferSecure with secure buffer filename " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteModuleBufferSecure");
+    CString traceInfo = "JSPandaFileExecutor::ExecuteModuleBufferSecure " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
 #if !defined(PANDA_TARGET_WINDOWS)
@@ -443,7 +434,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     JSThread *thread, CString &recordName, const CString &filename, bool isMergedAbc)
 {
     LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::LazyExecuteModule");
+    CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, recordName);
     if (jsPandaFile == nullptr) {
@@ -529,5 +521,31 @@ int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ROUTE_INTERNAL_ERROR);
     }
     return ROUTE_SUCCESS;
+}
+
+bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unused]] const CString &bundleName,
+    const CString &moduleName, const CString &entry)
+{
+    CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
+    bool isValid = JSPandaFileManager::GetInstance()->CheckFilePath(thread, abcFilePath);
+    if (!isValid) {
+        return false;
+    }
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entry);
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(ERROR) << "When checking if module is in abc file, loading panda file failed. Current file is " <<
+            abcFilePath;
+        return false;
+    }
+    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(),
+        abcFilePath, "", entry);
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    if (!hasRecord) {
+        LOG_ECMA(ERROR) << "When checking if module is in abc file, Cannot find module '" << entryPoint << "'";
+        return false;
+    }
+    return true;
 }
 }  // namespace panda::ecmascript

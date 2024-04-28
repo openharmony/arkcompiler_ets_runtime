@@ -87,7 +87,6 @@ struct HmsMap {
     uint32_t sinceVersion;
 };
 
-using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
 using WeakFinalizeTaskCallback = std::function<void()>;
 using EcmaVM = ecmascript::EcmaVM;
@@ -493,6 +492,7 @@ public:
     bool IsVector();
     bool IsSharedObject();
     bool IsJSShared();
+    bool IsHeapObject();
 
 private:
     JSTaggedType value_;
@@ -619,7 +619,7 @@ private:
     bool hasConfigurable_ = false;
 };
 
-using NativePointerCallback = void (*)(void* value, void* hint);
+using NativePointerCallback = void (*)(void *env, void* data, void* hint);
 class ECMA_PUBLIC_API NativePointerRef : public JSValueRef {
 public:
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize = 0);
@@ -713,27 +713,39 @@ public:
         SendablePropertiesInfo staticPropertiesInfo;
         SendablePropertiesInfo nonStaticPropertiesInfo;
     };
-    static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
+    static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, NativePointerCallback deleter = nullptr,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
-    static Local<FunctionRef> NewConcurrent(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
+    static Local<FunctionRef> NewConcurrent(EcmaVM *vm,
+                                            FunctionCallback nativeFunc,
+                                            NativePointerCallback deleter = nullptr,
+                                            void *data = nullptr,
+                                            bool callNapi = false,
+                                            size_t nativeBindingsize = 0);
+    static Local<FunctionRef> New(EcmaVM *vm, InternalFunctionCallback nativeFunc, NativePointerCallback deleter,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
-    static Local<FunctionRef> New(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
-        void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
-    static Local<FunctionRef> NewConcurrent(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
-        void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewConcurrent(EcmaVM *vm,
+                                            InternalFunctionCallback nativeFunc,
+                                            NativePointerCallback deleter,
+                                            void *data = nullptr,
+                                            bool callNapi = false,
+                                            size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewSendable(EcmaVM *vm,
                                           InternalFunctionCallback nativeFunc,
-                                          Deleter deleter,
+                                          NativePointerCallback deleter,
                                           void *data = nullptr,
                                           bool callNapi = false,
                                           size_t nativeBindingsize = 0);
-    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, NativePointerCallback deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
-    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
-        void *data, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm,
+                                               InternalFunctionCallback nativeFunc,
+                                               NativePointerCallback deleter,
+                                               void *data,
+                                               bool callNapi = false,
+                                               size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewSendableClassFunction(const EcmaVM *vm,
                                                        InternalFunctionCallback nativeFunc,
-                                                       Deleter deleter,
+                                                       NativePointerCallback deleter,
                                                        void *data,
                                                        Local<StringRef> name,
                                                        SendablePropertiesInfos &infos,
@@ -753,7 +765,7 @@ public:
     Local<StringRef> GetName(const EcmaVM *vm);
     Local<StringRef> GetSourceCode(const EcmaVM *vm, int lineNumber);
     bool IsNative(const EcmaVM *vm);
-    void SetData(const EcmaVM *vm, void *data, Deleter deleter = nullptr, bool callNapi = false);
+    void SetData(const EcmaVM *vm, void *data, NativePointerCallback deleter = nullptr, bool callNapi = false);
     void* GetData(const EcmaVM *vm);
 };
 
@@ -907,8 +919,8 @@ public:
 class ECMA_PUBLIC_API ArrayBufferRef : public ObjectRef {
 public:
     static Local<ArrayBufferRef> New(const EcmaVM *vm, int32_t length);
-    static Local<ArrayBufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter,
-                                     void *data);
+    static Local<ArrayBufferRef> New(const EcmaVM *vm, void *buffer, int32_t length,
+                                     const NativePointerCallback &deleter, void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
     void *GetBuffer();
@@ -1048,6 +1060,18 @@ private:
     uint16_t oldThreadState_;
 };
 
+class ECMA_PUBLIC_API JsiFastNativeScope {
+public:
+    explicit JsiFastNativeScope(const EcmaVM *vm);
+    ~JsiFastNativeScope();
+    ECMA_DISALLOW_COPY(JsiFastNativeScope);
+    ECMA_DISALLOW_MOVE(JsiFastNativeScope);
+
+private:
+    JSThread *thread_;
+    uint16_t oldThreadState_;
+};
+
 /**
  * JsiRuntimeCallInfo is used for ace_engine and napi, is same to ark EcamRuntimeCallInfo except data.
  */
@@ -1137,7 +1161,7 @@ public:
 class ECMA_PUBLIC_API BufferRef : public ObjectRef {
 public:
     static Local<BufferRef> New(const EcmaVM *vm, int32_t length);
-    static Local<BufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter,
+    static Local<BufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const NativePointerCallback &deleter,
                                 void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
@@ -1235,6 +1259,7 @@ public:
 
     // aot load
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
+    static std::string GetPreloadAotFile(EcmaVM *vm, const std::string &moduleName);
     // context
     static EcmaContext *CreateJSContext(EcmaVM *vm);
     static void SwitchCurrentContext(EcmaVM *vm, EcmaContext *context);
@@ -1249,6 +1274,8 @@ public:
                         const std::string &filename = "", bool needUpdate = false);
     static int ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
         const std::string &moduleName, const std::string &ohmurl, bool isSingletonPattern);
+    static bool IsExecuteModuleInAbcFile(EcmaVM *vm, const std::string &bundleName,
+        const std::string &moduleName, const std::string &ohmurl);
     // merge abc, execute module buffer
     static bool ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename = "",
                                     bool needUpdate = false);
@@ -1366,6 +1393,7 @@ public:
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func, void *taskInfo);
     static void* GetCurrentTaskInfo(const EcmaVM *vm);
+    static void ClearCurrentTaskInfo(const EcmaVM *vm);
     static void SetBundleName(EcmaVM *vm, const std::string &bundleName);
     static std::string GetBundleName(EcmaVM *vm);
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
@@ -1382,6 +1410,16 @@ public:
                     int32_t triggerMode)> &cb);
     static void SetSearchHapPathTracker(EcmaVM *vm, std::function<bool(const std::string moduleName,
                     std::string &hapPath)> cb);
+
+    // Napi Heavy Logics fast path
+    static Local<JSValueRef> NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativeObj, const char* utf8Key);
+
+    static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
+
+    // Napi helper function
+    static bool KeyIsNumber(const char* utf8);
+
+    static bool IsJitEscape();
 private:
     static int vmCount_;
     static bool initialize_;
@@ -1397,7 +1435,8 @@ private:
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
-    static bool IsAotCrash();
+    static bool IsAotEscape();
+    static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
     template<typename T>
     friend class Global;
     template<typename T>

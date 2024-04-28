@@ -61,6 +61,7 @@
     V(JSTaggedValue, Float64ArrayFunctionPrototype, FLOAT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)         \
     V(JSTaggedValue, BigInt64ArrayFunctionPrototype, BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)       \
     V(JSTaggedValue, BigUint64ArrayFunctionPrototype, BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)     \
+    V(JSTaggedValue, MapClass, MAP_CLASS_INDEX)                                                     \
     V(JSTaggedValue, Int8ArrayRootHclass, INT8_ARRAY_ROOT_HCLASS_INDEX)                             \
     V(JSTaggedValue, Uint8ArrayRootHclass, UINT8_ARRAY_ROOT_HCLASS_INDEX)                           \
     V(JSTaggedValue, Uint8ClampedArrayRootHclass, UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX)            \
@@ -118,6 +119,11 @@
     V(JSTaggedValue, ListFormatFunction, LIST_FORMAT_FUNCTION_INDEX)                                \
     V(JSTaggedValue, RegExpFunction, REGEXP_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, RegExpExecFunction, REGEXP_EXEC_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, RegExpSplitFunction, REGEXP_SPLIT_FUNCTION_INDEX)                              \
+    V(JSTaggedValue, RegExpSearchFunction, REGEXP_SEARCH_FUNCTION_INDEX)                            \
+    V(JSTaggedValue, RegExpMatchFunction, REGEXP_MATCH_FUNCTION_INDEX)                              \
+    V(JSTaggedValue, RegExpMatchAllFunction, REGEXP_MATCHALL_FUNCTION_INDEX)                        \
+    V(JSTaggedValue, RegExpReplaceFunction, REGEXP_REPLACE_FUNCTION_INDEX)                          \
     V(JSTaggedValue, RegExpPrototype, REGEXP_PROTOTYPE_INDEX)                                       \
     V(JSTaggedValue, RegExpPrototypeClass, REGEXP_PROTOTYPE_CLASS_INDEX)                            \
     V(JSTaggedValue, BuiltinsSetFunction, BUILTINS_SET_FUNCTION_INDEX)                              \
@@ -202,7 +208,6 @@
     V(JSTaggedValue, ProxyRevocFunctionClass, PROXY_REVOC_FUNCTION_CLASS)                           \
     V(JSTaggedValue, NativeErrorFunctionClass, NATIVE_ERROR_FUNCTION_CLASS)                         \
     V(JSTaggedValue, SpecificTypedArrayFunctionClass, SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \
-    V(JSTaggedValue, SharedSpecificTypedArrayFunctionClass, SHARED_SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \
     V(JSTaggedValue, ConstructorFunctionClass, CONSTRUCTOR_FUNCTION_CLASS)                          \
     V(JSTaggedValue, NormalFunctionClass, NORMAL_FUNCTION_CLASS)                                    \
     V(JSTaggedValue, JSIntlBoundFunctionClass, JS_INTL_BOUND_FUNCTION_CLASS)                        \
@@ -236,6 +241,7 @@
     /* DETECTOR SYMBOL BEGIN (Maintain the same order with DETECTOR_SYMBOL_LIST) */                              \
     V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                                        \
     V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                                            \
+    V(JSTaggedValue, MatchAllSymbol, MATCH_ALL_SYMBOL_INDEX)                                                     \
     V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                                      \
     V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)                                                        \
     /* DETECTOR SYMBOL END */                                                                                    \
@@ -243,7 +249,6 @@
     V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                                \
     V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                                           \
     V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                                            \
-    V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                                     \
     V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                                          \
     V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                                \
     V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                                \
@@ -267,6 +272,7 @@
     V(JSTaggedValue, SharedFloat64ArrayFunction, SHARED_FLOAT64_ARRAY_FUNCTION_INDEX)                            \
     V(JSTaggedValue, SharedBigInt64ArrayFunction, SHARED_BIGINT64_ARRAY_FUNCTION_INDEX)                          \
     V(JSTaggedValue, SharedBigUint64ArrayFunction, SHARED_BIGUINT64_ARRAY_FUNCTION_INDEX)                        \
+    V(JSTaggedValue, SharedSpecificTypedArrayFunctionClass, SHARED_SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \
     V(JSTaggedValue, SharedInt8ArrayFunctionPrototype, SHARED_INT8_ARRAY_FUNCTION_PROTOTYPE_INDEX)               \
     V(JSTaggedValue, SharedUint8ArrayFunctionPrototype, SHARED_UINT8_ARRAY_FUNCTION_PROTOTYPE_INDEX)             \
     V(JSTaggedValue, SharedUint8ClampedArrayFunctionPrototype, SHARED_UINT8_CLAMPED_ARRAY_FUNCTION_PROTO_INDEX)  \
@@ -278,6 +284,28 @@
     V(JSTaggedValue, SharedFloat64ArrayFunctionPrototype, SHARED_FLOAT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)         \
     V(JSTaggedValue, SharedBigInt64ArrayFunctionPrototype, SHARED_BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)       \
     V(JSTaggedValue, SharedBigUint64ArrayFunctionPrototype, SHARED_BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)     \
+    V(JSTaggedValue, SharedInt8ArrayRootHclass, SHARED_INT8_ARRAY_ROOT_HCLASS_INDEX)                             \
+    V(JSTaggedValue, SharedUint8ArrayRootHclass, SHARED_UINT8_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, SharedUint8ClampedArrayRootHclass, SHARED_UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX)            \
+    V(JSTaggedValue, SharedInt16ArrayRootHclass, SHARED_INT16_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, SharedUint16ArrayRootHclass, SHARED_UINT16_ARRAY_ROOT_HCLASS_INDEX)                         \
+    V(JSTaggedValue, SharedInt32ArrayRootHclass, SHARED_INT32_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, SharedUint32ArrayRootHclass, SHARED_UINT32_ARRAY_ROOT_HCLASS_INDEX)                         \
+    V(JSTaggedValue, SharedFloat32ArrayRootHclass, SHARED_FLOAT32_ARRAY_ROOT_HCLASS_INDEX)                       \
+    V(JSTaggedValue, SharedFloat64ArrayRootHclass, SHARED_FLOAT64_ARRAY_ROOT_HCLASS_INDEX)                       \
+    V(JSTaggedValue, SharedBigInt64ArrayRootHclass, SHARED_BIGINT64_ARRAY_ROOT_HCLASS_INDEX)                     \
+    V(JSTaggedValue, SharedBigUint64ArrayRootHclass, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_INDEX)                   \
+    V(JSTaggedValue, SharedInt8ArrayRootHclassOnHeap, SHARED_INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)               \
+    V(JSTaggedValue, SharedUint8ArrayRootHclassOnHeap, SHARED_UINT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, SharedUint8ClampedArrayRootHclassOnHeap, SHARED_UINT8_CLAMPED_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)  \
+    V(JSTaggedValue, SharedInt16ArrayRootHclassOnHeap, SHARED_INT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, SharedUint16ArrayRootHclassOnHeap, SHARED_UINT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)           \
+    V(JSTaggedValue, SharedInt32ArrayRootHclassOnHeap, SHARED_INT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, SharedUint32ArrayRootHclassOnHeap, SHARED_UINT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)           \
+    V(JSTaggedValue, SharedFloat32ArrayRootHclassOnHeap, SHARED_FLOAT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
+    V(JSTaggedValue, SharedFloat64ArrayRootHclassOnHeap, SHARED_FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
+    V(JSTaggedValue, SharedBigInt64ArrayRootHclassOnHeap, SHARED_BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)       \
+    V(JSTaggedValue, SharedBigUint64ArrayRootHclassOnHeap, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \

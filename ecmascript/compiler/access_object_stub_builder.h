@@ -38,6 +38,19 @@ public:
     GateRef DeprecatedLoadObjByName(GateRef glue, GateRef receiver, GateRef propKey);
     GateRef StoreObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info, GateRef value,
         GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback = ProfileOperation());
+    GateRef LoadPrivatePropertyByName(GateRef glue,
+                                      GateRef receiver,
+                                      GateRef key,
+                                      GateRef profileTypeInfo,
+                                      GateRef slotId,
+                                      ProfileOperation callback);
+    GateRef StorePrivatePropertyByName(GateRef glue,
+                                       GateRef receiver,
+                                       GateRef key,
+                                       GateRef value,
+                                       GateRef profileTypeInfo,
+                                       GateRef slotId,
+                                       ProfileOperation callback = ProfileOperation());
     GateRef LoadObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef profileTypeInfo, GateRef slotId,
         ProfileOperation callback = ProfileOperation());
     GateRef StoreObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef profileTypeInfo,
@@ -60,6 +73,7 @@ public:
     GateRef StOwnByNameWithNameSet(GateRef glue, GateRef receiver, GateRef key, GateRef value);
     GateRef StObjByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value);
     GateRef LdObjByIndex(GateRef glue, GateRef receiver, GateRef index);
+
 private:
     GateRef ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info);
     GateRef jsFunc_ { Circuit::NullGate() };

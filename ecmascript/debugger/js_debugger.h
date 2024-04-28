@@ -117,8 +117,10 @@ public:
     }
     bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset) override;
     bool SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> condFuncRef) override;
+    bool SetSmartBreakpoint(const JSPtLocation &location);
     bool RemoveBreakpoint(const JSPtLocation &location) override;
     void RemoveAllBreakpoints() override;
+    bool RemoveBreakpointsByUrl(const std::string &url) override;
     void BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset) override;
     void LoadModule(std::string_view filename, std::string_view entryPoint) override
     {
@@ -169,7 +171,9 @@ public:
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
     std::optional<JSBreakpoint> FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;
+    std::optional<JSBreakpoint> FindSmartBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;
     bool RemoveBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset);
+    bool RemoveSmartBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset);
     void HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Method> method, uint32_t bcOffset);
     bool HandleStep(JSHandle<Method> method, uint32_t bcOffset);
     bool HandleNativeOut();
@@ -183,6 +187,7 @@ private:
     bool singleStepOnDebuggerStmt_ {false};
 
     CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpoints_ {};
+    CUnorderedSet<JSBreakpoint, HashJSBreakpoint> smartBreakpoints_ {};
 };
 }  // namespace panda::ecmascript::tooling
 

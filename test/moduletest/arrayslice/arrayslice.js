@@ -26,3 +26,27 @@ print(holey_array.slice(2, 3)[0]);
 	print(Object.getOwnPropertyDescriptor(narr, 0));
 })();
 
+
+
+// This use case takes a long time, but the corresponding bug is only repeated in the debug
+let err = [];
+err.length=100;
+let err_len = 0;
+function runNearStackLimit(f) {
+    function t() {
+        try {
+            t();
+        } catch (e) {
+            err[err_len++]=e;
+            f();
+        }
+    }; try {
+        t();
+    } catch (e) { }
+}
+const v7 = new Proxy(String, {});
+function f0() {
+    v7.bind();
+}
+runNearStackLimit(f0);
+print("runNearStackLimit test success!");

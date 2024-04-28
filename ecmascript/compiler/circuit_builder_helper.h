@@ -327,6 +327,10 @@ public:
     {
         return circuit_->GetFrameType() == FrameType::ASM_INTERPRETER_FRAME;
     }
+    inline bool IsBaselineBuiltin() const
+    {
+        return circuit_->GetFrameType() == FrameType::BASELINE_BUILTIN_FRAME;
+    }
     inline bool IsArch32Bit() const
     {
         return ccfg_->Is32Bit();

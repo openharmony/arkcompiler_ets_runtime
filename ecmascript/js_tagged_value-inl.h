@@ -1449,7 +1449,7 @@ inline bool JSTaggedValue::IsSpecialKeysObject() const
 
 inline bool JSTaggedValue::IsSlowKeysObject() const
 {
-    return IsJSGlobalObject() || IsJSProxy() || IsSpecialKeysObject();
+    return IsJSGlobalObject() || IsJSProxy() || IsSpecialKeysObject() || IsInSharedHeap();
 }
 
 inline bool JSTaggedValue::IsRegularObject() const
@@ -1467,36 +1467,6 @@ inline bool JSTaggedValue::IsClassInfoExtractor() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsClassInfoExtractor();
 }
 
-inline bool JSTaggedValue::IsTSType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSType();
-}
-
-inline bool JSTaggedValue::IsTSObjectType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSObjectType();
-}
-
-inline bool JSTaggedValue::IsTSClassType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSClassType();
-}
-
-inline bool JSTaggedValue::IsTSInterfaceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSInterfaceType();
-}
-
-inline bool JSTaggedValue::IsTSUnionType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSUnionType();
-}
-
-inline bool JSTaggedValue::IsTSClassInstanceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSClassInstanceType();
-}
-
 inline bool JSTaggedValue::IsCjsExports() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCjsExports();
@@ -1510,26 +1480,6 @@ inline bool JSTaggedValue::IsCjsModule() const
 inline bool JSTaggedValue::IsCjsRequire() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCjsRequire();
-}
-
-inline bool JSTaggedValue::IsTSFunctionType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSFunctionType();
-}
-
-inline bool JSTaggedValue::IsTSArrayType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSArrayType();
-}
-
-inline bool JSTaggedValue::IsTSIteratorInstanceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSIteratorInstanceType();
-}
-
-inline bool JSTaggedValue::IsTSNamespaceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSNamespaceType();
 }
 
 inline bool JSTaggedValue::IsModuleRecord() const
@@ -1570,6 +1520,11 @@ inline bool JSTaggedValue::IsResolvedBinding() const
 inline bool JSTaggedValue::IsResolvedIndexBinding() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsResolvedIndexBinding();
+}
+
+inline bool JSTaggedValue::IsResolvedRecordIndexBinding() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsResolvedRecordIndexBinding();
 }
 
 inline bool JSTaggedValue::IsResolvedRecordBinding() const

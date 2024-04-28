@@ -270,8 +270,11 @@ void DebuggerApi::RegisterHooks(JSDebugger *debugger, PtHooks *hooks)
 }
 
 bool DebuggerApi::SetBreakpoint(JSDebugger *debugger, const JSPtLocation &location,
-    Local<FunctionRef> condFuncRef)
+    Local<FunctionRef> condFuncRef, bool isSmartBreakpoint)
 {
+    if (isSmartBreakpoint) {
+        return debugger->SetSmartBreakpoint(location);
+    }
     return debugger->SetBreakpoint(location, condFuncRef);
 }
 
@@ -342,6 +345,11 @@ void DebuggerApi::SwitchThreadStateRunningOrNative(const EcmaVM *ecmaVM, ThreadS
     } else {
         ecmascript::ThreadManagedScope managedScope(thread);
     }
+}
+
+bool DebuggerApi::RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url)
+{
+    return debugger->RemoveBreakpointsByUrl(url);
 }
 
 // ScopeInfo

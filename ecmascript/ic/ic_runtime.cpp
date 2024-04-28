@@ -194,7 +194,7 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
     }
-    if (receiver->IsTypedArray()) {
+    if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
         return LoadTypedArrayValueMiss(receiver, key);
     }
     // fixme(hzzhouzebin) Open IC for SharedArray later.
@@ -255,6 +255,16 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
             }
             return PropertyBox::Cast(box.GetTaggedObject())->GetValue();
         }
+    }
+
+    if (key->IsJSFunction()) { // key is a private getter
+        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo* info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 0); // 0: getter has 0 argument
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        JSTaggedValue resGetter = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        return resGetter;
     }
 
     ObjectOperator op(GetThread(), receiver, key);
@@ -332,7 +342,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
-    if (receiver->IsTypedArray()) {
+    if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
         return StoreTypedArrayValueMiss(receiver, key, value);
     }
     ICKind kind = GetICKind();
@@ -359,6 +369,17 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             return JSTaggedValue::Undefined();
         }
         return JSTaggedValue::Exception();
+    }
+
+    if (key->IsJSFunction()) { // key is a private setter
+        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo* info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 1); // 1: setter has 1 argument
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        info->SetCallArg(value.GetTaggedValue());
+        JSTaggedValue resSetter = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        return resSetter;
     }
 
     ObjectOperator op = ConstructOp(receiver, key, value, isOwn);

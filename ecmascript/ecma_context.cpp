@@ -23,12 +23,14 @@
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -47,6 +49,8 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/platform/log.h"
 #include "ecmascript/global_index_map.h"
+#include "ecmascript/sustaining_js_handle.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -80,14 +84,6 @@ bool EcmaContext::Destroy(EcmaContext *context)
         return true;
     }
     return false;
-}
-
-void EcmaContext::SetTSManager(TSManager *set)
-{
-    if (tsManager_ != nullptr) {
-        delete tsManager_;
-    }
-    tsManager_ = set;
 }
 
 bool EcmaContext::Initialize()
@@ -124,12 +120,13 @@ bool EcmaContext::Initialize()
     SetupStringToListResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
-    tsManager_ = new TSManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
         typedOpProfiler_ = new TypedOpProfiler();
     }
+
+    sustainingJSHandleList_ = new SustainingJSHandleList();
     initialized_ = true;
     return true;
 }
@@ -197,6 +194,12 @@ EcmaContext::~EcmaContext()
     currentHandleStorageIndex_ = -1;
     handleScopeCount_ = 0;
     handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
+
+    if (vm_->IsEnableBaselineJit() || vm_->IsEnableFastJit()) {
+        // clear jit task
+        vm_->GetJit()->ClearTask(this);
+    }
+
     ClearBufferData();
     // clear c_address: c++ pointer delete
     if (!vm_->IsBundlePack()) {
@@ -207,7 +210,7 @@ EcmaContext::~EcmaContext()
         }
     }
     // clear icu cache
-    ClearIcuCache();
+    ClearIcuCache(thread_);
 
     if (runtimeStat_ != nullptr) {
         vm_->GetChunk()->Delete(runtimeStat_);
@@ -225,10 +228,6 @@ EcmaContext::~EcmaContext()
         delete moduleManager_;
         moduleManager_ = nullptr;
     }
-    if (tsManager_ != nullptr) {
-        delete tsManager_;
-        tsManager_ = nullptr;
-    }
     if (ptManager_ != nullptr) {
         delete ptManager_;
         ptManager_ = nullptr;
@@ -243,6 +242,10 @@ EcmaContext::~EcmaContext()
     if (propertiesCache_ != nullptr) {
         delete propertiesCache_;
         propertiesCache_ = nullptr;
+    }
+    if (sustainingJSHandleList_ != nullptr) {
+        delete sustainingJSHandleList_;
+        sustainingJSHandleList_ = nullptr;
     }
     // clear join stack
     joinStack_.clear();
@@ -319,9 +322,15 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else if (vm_->GetJSOptions().IsEnableForceJitCompileMain()) {
-            Jit::Compile(vm_, func);
+            Jit::Compile(vm_, func, CompilerTier::FAST);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, entryPoint, nullptr);
+        } else if (vm_->GetJSOptions().IsEnableForceBaselineCompileMain()) {
+            Jit::Compile(vm_, func, CompilerTier::BASELINE);
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
+            EcmaRuntimeStatScope runtimeStatScope(vm_);
+            result = EcmaInterpreter::Execute(info);
         } else {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
@@ -337,7 +346,9 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
 #endif
     }
     if (!executeFromJob) {
+        JSHandle<JSTaggedValue> handleResult(thread_, result);
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        result = handleResult.GetTaggedValue();
     }
     return result;
 }
@@ -445,15 +456,25 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
     }
 }
 
-JSTaggedValue EcmaContext::FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool)
+JSTaggedValue EcmaContext::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
 {
     ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
     int32_t constpoolIndex = shareCp->GetUnsharedConstpoolIndex();
     // unshared constpool index is default INT32_MAX.
     ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG &&
         constpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
-    JSTaggedValue unsharedConstpool = unsharedConstpools_[constpoolIndex];
+    return unsharedConstpools_[constpoolIndex];
+}
+
+JSTaggedValue EcmaContext::FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool)
+{
+    JSTaggedValue unsharedConstpool = FindUnsharedConstpool(sharedConstpool);
     if (unsharedConstpool.IsHole()) {
+        ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
+        int32_t constpoolIndex = shareCp->GetUnsharedConstpoolIndex();
+        // unshared constpool index is default INT32_MAX.
+        ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG &&
+            constpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
         ASSERT(constpoolIndex != INT32_MAX);
         JSHandle<ConstantPool> unshareCp =
             ConstantPool::CreateUnSharedConstPoolBySharedConstpool(vm_, shareCp->GetJSPandaFile(), shareCp);
@@ -755,6 +776,9 @@ bool EcmaContext::ExecutePromisePendingJob()
     if (!thread_->HasPendingException()) {
         isProcessingPendingJob_ = true;
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        if (thread_->HasPendingException()) {
+            JsStackInfo::BuildCrashInfo(true);
+        }
         isProcessingPendingJob_ = false;
         return true;
     }
@@ -878,9 +902,6 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (moduleManager_) {
         moduleManager_->Iterate(v);
     }
-    if (tsManager_) {
-        tsManager_->Iterate(v);
-    }
     if (ptManager_) {
         ptManager_->Iterate(v);
     }
@@ -899,6 +920,10 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
             rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
+    }
+
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->Iterate(rv);
     }
 
     if (!joinStack_.empty()) {
@@ -1076,12 +1101,20 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> EcmaContext:
     uintptr_t retAddr) const
 {
     auto loader = aotFileManager_;
-    auto callSiteInfo = loader->CalCallSiteInfo(retAddr);
-    if (std::get<1>(callSiteInfo) != nullptr) {
-        return callSiteInfo;
+    return loader->CalCallSiteInfo(retAddr);
+}
+
+void EcmaContext::AddSustainingJSHandle(SustainingJSHandle *sustainingHandle)
+{
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->AddSustainingJSHandle(sustainingHandle);
     }
-    // try get jit code
-    callSiteInfo = thread_->GetEcmaVM()->GetHeap()->CalCallSiteInfo(retAddr);
-    return callSiteInfo;
+}
+
+void EcmaContext::RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle)
+{
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->RemoveSustainingJSHandle(sustainingHandle);
+    }
 }
 }  // namespace panda::ecmascript

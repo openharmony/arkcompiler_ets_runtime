@@ -488,6 +488,13 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
         }
     }
 
+    if (!numberingSystemStr.empty()) {
+        // If numberingSystem is invalid, Let numberingSystem be undefined.
+        if (!JSLocale::IsWellNumberingSystem(numberingSystemStr)) {
+            numberFormat->SetNumberingSystem(thread, undefinedValue);
+        }
+    }
+
     // 10. Let localeData be %NumberFormat%.[[LocaleData]].
     JSHandle<TaggedArray> availableLocales;
     if (requestedLocales->GetLength() == 0) {
@@ -877,7 +884,7 @@ JSHandle<JSTaggedValue> JSNumberFormat::UnwrapNumberFormat(JSThread *thread, con
     // 2. If nf does not have an [[InitializedNumberFormat]] internal slot and ?
     //  InstanceofOperator(nf, %NumberFormat%) is true, then Let nf be ? Get(nf, %Intl%.[[FallbackSymbol]]).
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    bool hasInstance = JSObject::InstanceOf(thread, nf, env->GetNumberFormatFunction());
+    bool hasInstance = JSFunction::OrdinaryHasInstance(thread, env->GetNumberFormatFunction(), nf);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
 
     bool isJSNumberFormat = nf->IsJSNumberFormat();
@@ -1028,6 +1035,20 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
         JSHandle<JSTaggedValue> maximumFractionDigits(thread, numberFormat->GetMaximumFractionDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumFractionDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
+
+        // in v3, should contain BOTH significant and fraction digits
+        if (roundingType == RoundingType::COMPACTROUNDING) {
+            // [[MinimumSignificantDigits]]
+            property = globalConst->GetHandledMinimumSignificantDigitsString();
+            JSHandle<JSTaggedValue> minimumSignificantDigits(thread, numberFormat->GetMinimumSignificantDigits());
+            JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumSignificantDigits);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+            // [[MaximumSignificantDigits]]
+            property = globalConst->GetHandledMaximumSignificantDigitsString();
+            JSHandle<JSTaggedValue> maximumSignificantDigits(thread, numberFormat->GetMaximumSignificantDigits());
+            JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumSignificantDigits);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+        }
     }
 
     // [[UseGrouping]]

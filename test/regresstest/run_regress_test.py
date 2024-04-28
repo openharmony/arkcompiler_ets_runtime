@@ -32,6 +32,7 @@ import sys
 
 from regress_test_config import RegressTestConfig
 
+ENV_PATTERN = re.compile(r"//\s+Environment Variables:(.*)")
 
 def init_log_file(args):
     logging.basicConfig(filename=args.out_log, format=RegressTestConfig.DEFAULT_LOG_FORMAT, level=logging.INFO)
@@ -390,6 +391,28 @@ def run_test_case_file(command, test_case_file, expect_file, result_file, timeou
     else:
         return run_test_case_with_assert(command, test_case_file, result_file, timeout)
 
+def get_file_source(file):
+    with open(file, encoding='ISO-8859-1') as f:
+        return f.read()
+
+def setIntlEnviron(case):
+    # intl environ LC_ALL
+    if case.startswith('/'):
+        real_path = case.replace('/regresstest/ark-regress/', '')
+    else:
+        real_path = case.replace('regresstest/ark-regress/', '')
+    js_case_path = os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, real_path)
+    if not os.path.exists(js_case_path):
+        return;
+    source = get_file_source(js_case_path)
+    env_match = ENV_PATTERN.search(source)
+    if 'LC_ALL' in os.environ:
+        del os.environ['LC_ALL']
+    if env_match:
+        for env_pair in env_match.group(1).strip().split():
+            var, value = env_pair.split('=')
+            os.environ['LC_ALL'] = value
+            break;
 
 def run_test_case_dir(args, test_abc_files, force_gc_files, timeout=RegressTestConfig.DEFAULT_TIMEOUT):
     pass_count = 0
@@ -406,6 +429,8 @@ def run_test_case_dir(args, test_abc_files, force_gc_files, timeout=RegressTestC
         os.environ["LD_LIBRARY_PATH"] = ld_library_path
         unforced_gc = False
         force_gc_file = test_case_file.replace('regresstest/ark-regress/', '')
+        # intl environ LC_ALL
+        setIntlEnviron(test_case_file)
         if force_gc_file in force_gc_files:
             unforced_gc = True
         asm_arg1 = "--enable-force-gc=true"

@@ -1410,7 +1410,7 @@ function test104() {
     const words = ['spray', 'elite', 'exuberant', 'destruction', 'present'];
     const result = words.filter((word) => word.length > 6);
     // Expected output: Array ["exuberant", "destruction", "present"]
-    if (result.length == 3 && ArkTools.getElementsKind(result) == PACKEDSTRING){
+    if (result.length == 3 && ArkTools.getElementsKind(result) == HOLESTRING){
         print("test104 - success");
     } else {
         print("test104 - failed");
@@ -1436,7 +1436,7 @@ function test105() {
 
 function test106() {
     let result = [1, , undefined].filter((x) => x === undefined); // [undefined]
-    if (result.length == 1 && ArkTools.getElementsKind(result) == PACKEDTAGGED){
+    if (result.length == 1 && ArkTools.getElementsKind(result) == GENERIC){
         print("test106 - success");
     } else {
         print("test106 - failed");

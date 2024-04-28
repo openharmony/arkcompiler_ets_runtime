@@ -36,7 +36,7 @@ namespace OHOS {
             return;
         }
         FunctionCallback nativeFunc = FuncRefNewCallbackForTest;
-        Deleter deleter = nullptr;
+        NativePointerCallback deleter = nullptr;
         FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
         JSNApi::DestroyJSVM(vm);
     }

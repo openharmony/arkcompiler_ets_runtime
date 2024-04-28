@@ -343,7 +343,8 @@ HWTEST_F_L0(JsonParserTest, Parser_010)
     JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"([])"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
     JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
-    CheckUnsupportedSendableJson(result);
+    result->D();
+    EXPECT_TRUE(CheckSendableConstraint(result.GetTaggedValue()));
 }
 
 /**
@@ -359,7 +360,8 @@ HWTEST_F_L0(JsonParserTest, Parser_011)
     JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"([1, 2, 3])"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
     JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
-    CheckUnsupportedSendableJson(result);
+    result->D();
+    EXPECT_TRUE(CheckSendableConstraint(result.GetTaggedValue()));
 }
 
 /**
@@ -376,6 +378,7 @@ HWTEST_F_L0(JsonParserTest, Parser_012)
         factory->NewFromASCII(R"({"innerEntry": {"array": [1, 2, 3]}, "x": 1, "str": "outerStr"})"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
     JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
-    CheckUnsupportedSendableJson(result);
+    result->D();
+    EXPECT_TRUE(CheckSendableConstraint(result.GetTaggedValue()));
 }
 } // namespace panda::test

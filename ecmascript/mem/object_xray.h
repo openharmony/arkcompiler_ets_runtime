@@ -115,8 +115,6 @@
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/tagged_node.h"
-#include "ecmascript/ts_types/ts_type.h"
-#include "ecmascript/ts_types/ts_type_table.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
@@ -604,36 +602,6 @@ public:
             case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
                 JSAPILightWeightSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
-            case JSType::TS_OBJECT_TYPE:
-                TSObjectType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_CLASS_TYPE:
-                TSClassType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_UNION_TYPE:
-                TSUnionType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_INTERFACE_TYPE:
-                TSInterfaceType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_CLASS_INSTANCE_TYPE:
-                break;
-            case JSType::TS_FUNCTION_TYPE:
-                TSFunctionType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_ARRAY_TYPE:
-                if (visitType == VisitType::ALL_VISIT) {
-                    TSArrayType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                }
-                break;
-            case JSType::TS_ITERATOR_INSTANCE_TYPE:
-                if (visitType == VisitType::ALL_VISIT) {
-                    TSIteratorInstanceType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                }
-                break;
-            case JSType::TS_NAMESPACE_TYPE:
-                TSNamespaceType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
             case JSType::RB_TREENODE:
                 RBTreeNode::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
@@ -725,6 +693,9 @@ public:
                 break;
             case JSType::RESOLVEDINDEXBINDING_RECORD:
                 ResolvedIndexBinding::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+                ResolvedRecordIndexBinding::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::RESOLVEDRECORDBINDING_RECORD:
                 ResolvedRecordBinding::Cast(object)->VisitRangeSlot<visitType>(visitor);

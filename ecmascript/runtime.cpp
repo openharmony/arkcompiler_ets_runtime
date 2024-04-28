@@ -67,8 +67,6 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE);
         PGOProfilerManager::GetInstance()->Initialize(options.GetPGOProfilerPath(),
                                                       options.GetPGOHotnessThreshold());
-        bool isEnableJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
-        Jit::GetInstance()->SetEnableOrDisable(options, isEnableJit);
         ASSERT(instance_ == nullptr);
         instance_ = new Runtime();
         firstVmCreated_ = true;
@@ -82,6 +80,10 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
         if (++vmCount_ == 1) {
             ThreadManagedScope managedScope(vm->GetAssociatedJSThread());
             PreInitialization(vm);
+            bool isEnableFastJit = vm->GetJSOptions().IsEnableJIT() && vm->GetJSOptions().GetEnableAsmInterpreter();
+            bool isEnableBaselineJit =
+                vm->GetJSOptions().IsEnableBaselineJIT() && vm->GetJSOptions().GetEnableAsmInterpreter();
+            Jit::GetInstance()->SetEnableOrDisable(vm->GetJSOptions(), isEnableFastJit, isEnableBaselineJit);
             vm->Initialize();
             PostInitialization(vm);
         }
@@ -165,18 +167,46 @@ void Runtime::ResumeAll(JSThread *current)
 
 void Runtime::SuspendAllThreadsImpl(JSThread *current)
 {
-    LockHolder lock(threadsLock_);
-    while (suspendNewCount_ != 0) {
-        // Someone has already suspended all threads.
-        // Wait until it finishes.
-        threadSuspendCondVar_.Wait(&threadsLock_);
-    }
-    suspendNewCount_++;
-    for (auto i : threads_) {
-        if (i != current) {
-            i->SuspendThread(true);
+    SuspendBarrier barrier;
+    {
+        LockHolder lock(threadsLock_);
+        while (suspendNewCount_ != 0) {
+            // Someone has already suspended all threads.
+            // Wait until it finishes.
+            threadSuspendCondVar_.Wait(&threadsLock_);
+        }
+        suspendNewCount_++;
+        if (threads_.size() == 1) {
+            ASSERT(current == mainThread_);
+            return;
+        }
+        barrier.Initialize(threads_.size() - 1);
+        for (auto i: threads_) {
+            if (i == current) {
+                continue;
+            }
+            i->SuspendThread(+1, &barrier);
+
+            // The two flags, SUSPEND_REQUEST and ACTIVE_BARRIER, are set by Suspend-Thread guarded by suspendLock_, so
+            // the target thread-I may do not see these two flags in time. As a result, it can switch its state freely
+            // without responding to the ACTIVE_BARRIER flag and the suspend-thread will always wait it. However,
+            // as long as it sees the flags, the actions of passing barrier will be triggered. When the thread-I
+            // switches from NON_RUNNING to RUNNING, it will firstly pass the barrier and then be blocked by the
+            // SUSPEND_REQUEST flag. If the thread-I switches from RUNNING to NON_RUNNING, it will switch the state and
+            // then act on the barrier. If the thread-I go to checkpoint in RUNNING state, it will act on the barrier
+            // and be blocked by SUSPEND_REQUEST flag.
+
+            if (i->IsSuspended()) {
+                // Because of the multi-threads situation, currently thread-I may be in RUNNING state or is goding to
+                // be RUNNING state even inside this branch. In both scenarios, for instance of RUNNING state,
+                // according to the modification order of atomic-variable stateAndFlags_, thread-I will see the
+                // SUSPEND_REQUEST and ACTIVE_BARRIER and act on them before switching to RUNNING. Besides, notice the
+                // using of suspendLock_ inside PassSuspendBarrier(), there is not data-race for passing barrier.
+                i->PassSuspendBarrier();
+            }
         }
     }
+    barrier.Wait();
 }
 
 void Runtime::ResumeAllThreadsImpl(JSThread *current)

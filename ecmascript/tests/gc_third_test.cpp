@@ -201,14 +201,13 @@ HWTEST_F_L0(GCTest, CallbackTask)
         for (int i = 0; i < 10; i++) {
             // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
             void *externalPointer = malloc(10);
-            [[maybe_unused]] JSHandle<JSNativePointer> nativePointer
-                = factory->NewJSNativePointer(externalPointer,
-                                              [](void* pointer, [[maybe_unused]] void* data) {
-                                                  if (pointer != nullptr) {
-                                                      free(pointer);
-                                                  }
-                                              },
-                                              nullptr, false, 10, Concurrent::YES);
+            [[maybe_unused]] JSHandle<JSNativePointer> nativePointer = factory->NewJSNativePointer(
+                externalPointer, []([[maybe_unused]] void *env, void* pointer, [[maybe_unused]] void* data) {
+                if (pointer != nullptr) {
+                    free(pointer);
+                }
+            },
+            nullptr, false, 10, Concurrent::YES);
         }
     }
     size_t number = vm->GetConcurrentNativePointerListSize();

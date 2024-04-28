@@ -151,8 +151,12 @@ uint64_t GetMicrosecondsTimeStamp()
     return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
 }
 
-void BuildCrashInfo()
+void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc)
 {
+    if (JsStackInfo::loader != nullptr && !JsStackInfo::loader->IsEnableAOT() &&
+        JsStackInfo::options != nullptr && !JsStackInfo::options->IsEnableJIT()) {
+        return;
+    }
     std::string realOutPath;
     std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(ohos::AotCrashInfo::GetSandBoxPath());
     if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
@@ -162,7 +166,7 @@ void BuildCrashInfo()
     ohos::AotCrashInfo aotCrashInfo;
     std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
     if (soBuildId == "") {
-        LOG_ECMA(INFO) << "can't get so buildId";
+        LOG_ECMA(ERROR) << "can't get so buildId";
         return;
     }
     realOutPath = realOutPath + "/" + ohos::AotCrashInfo::GetCrashFileName();
@@ -180,7 +184,9 @@ void BuildCrashInfo()
         ifile.close();
     }
     ohos::CrashType type;
-    if (JsStackInfo::loader->IsEnableAOT()) {
+    if (isJsCrash) {
+        type = ohos::CrashType::JS;
+    } else if (pc != 0 && JsStackInfo::loader != nullptr && JsStackInfo::loader->InsideAOT(pc)) {
         type = ohos::CrashType::AOT;
     } else {
         type = ohos::CrashType::OTHERS;
@@ -194,7 +200,7 @@ void BuildCrashInfo()
     file.close();
 }
 
-std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
+std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, bool currentStack)
 {
     std::vector<struct JsFrameInfo> jsFrame;
     uintptr_t *native = nullptr;
@@ -246,7 +252,10 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
                 !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
                 frameInfo.pos = "?";
             }
-            jsFrame.push_back(frameInfo);
+            jsFrame.push_back(std::move(frameInfo));
+            if (currentStack) {
+                return jsFrame;
+            }
         } else {
             JSTaggedValue function = it.GetFunction();
             JSHandle<JSTaggedValue> extraInfoValue(
@@ -282,7 +291,6 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
         return;
     }
     LOG_ECMA(ERROR) << std::hex << "CrashCallback pc:" << pc << " fp:" << fp;
-    BuildCrashInfo();
     FrameIterator frame(reinterpret_cast<JSTaggedType *>(fp));
     bool isBuiltinStub = (frame.GetFrameType() == FrameType::OPTIMIZED_FRAME);
     Method *method = frame.CheckAndGetMethod();
@@ -366,6 +374,10 @@ bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typ
         case FrameType::OPTIMIZED_ENTRY_FRAME:
             typeOffset = OptimizedEntryFrame::GetTypeOffset();
             prevOffset = OptimizedEntryFrame::GetLeaveFrameFpOffset();
+            break;
+        case FrameType::BASELINE_BUILTIN_FRAME:
+            typeOffset = BaselineBuiltinFrame::GetTypeOffset();
+            prevOffset = BaselineBuiltinFrame::GetPrevOffset();
             break;
         case FrameType::ASM_BRIDGE_FRAME:
             typeOffset = AsmBridgeFrame::GetTypeOffset();
@@ -1172,7 +1184,7 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
 }
 #endif
 
-bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, 
+bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp,
     uintptr_t *sp, [[maybe_unused]] char *buf, [[maybe_unused]] size_t buf_sz)
 {
     constexpr size_t FP_SIZE = 8;

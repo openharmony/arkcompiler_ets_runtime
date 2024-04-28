@@ -52,7 +52,7 @@ static size_t MakeArgListWithHole(JSThread *thread, TaggedArray *argv, int lengt
     size_t newlength = static_cast<size_t>(length);
     size_t arryLength = argv->GetLength();
     if (newlength > arryLength) {
-        length = arryLength;
+        length = static_cast<int>(arryLength);
     }
     for (size_t index = 0; index < newlength; ++index) {
         JSTaggedValue value = argv->Get(thread, index);
@@ -280,6 +280,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
             status = JSFunction::SetFunctionName(thread, JSHandle<JSFunctionBase>(boundFunction),
                                                  targetName, boundName);
         }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // Assert: status is not an abrupt completion.
         ASSERT_PRINT(status, "DefinePropertyOr failed");
     }
@@ -339,6 +340,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
         if (method->IsNativeWithCallField()) {
             JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
             JSHandle<EcmaString> methodName(JSObject::GetProperty(thread, thisValue, nameKey).GetValue());
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             std::string nameStr = EcmaStringAccessor(methodName).ToStdString();
             std::string startStr = "function ";
             std::string endStr = "() { [native code] }";

@@ -138,4 +138,10 @@ true
 3
 true
 8
+true
+
 SyntaxError: nothing to repeat
+null
+[object Object]
+false
+false

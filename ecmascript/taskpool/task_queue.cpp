@@ -61,4 +61,14 @@ void TaskQueue::Terminate()
     terminate_ = true;
     cv_.SignalAll();
 }
+
+void TaskQueue::ForEachTask(const std::function<void(Task*)> &f)
+{
+    LockHolder holder(mtx_);
+    for (auto &task : tasks_) {
+        if (task.get() != nullptr) {
+            f(task.get());
+        }
+    }
+}
 }  // namespace panda::ecmascript

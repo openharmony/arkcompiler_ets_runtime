@@ -19,6 +19,7 @@
 #include <atomic>
 #include <sstream>
 #include <string>
+#include <cstdint>
 
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/builtin_entries.h"
@@ -74,10 +75,12 @@ enum class StableArrayChangeKind { PROTO, NOT_PROTO };
 
 enum ThreadFlag : uint16_t {
     NO_FLAGS = 0 << 0,
-    SUSPEND_REQUEST = 1 << 0
+    SUSPEND_REQUEST = 1 << 0,
+    ACTIVE_BARRIER = 1 << 1,
 };
 
 static constexpr uint32_t THREAD_STATE_OFFSET = 16;
+static constexpr uint32_t THREAD_FLAGS_MASK = (0x1 << THREAD_STATE_OFFSET) - 1;
 enum class ThreadState : uint16_t {
     CREATED = 0,
     RUNNING = 1,
@@ -114,9 +117,7 @@ public:
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
-    using VMNeedTerminationBit = VMHasSuspendedBit::NextFlag;
-    using VMHasTerminatedBit = VMNeedTerminationBit::NextFlag;
-    using InstallMachineCodeBit = VMHasTerminatedBit::NextFlag;
+    using InstallMachineCodeBit = VMHasSuspendedBit::NextFlag;
     using PGOStatusBits = BitField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_START, BOOL_BITFIELD_NUM>;
     using BCStubStatusBits = PGOStatusBits::NextField<BCStubStatus, BCSTUBSTATUS_BITFIELD_NUM>;
     using ThreadId = uint32_t;
@@ -128,6 +129,8 @@ public:
     };
 
     explicit JSThread(EcmaVM *vm);
+    // only used in jit thread
+    explicit JSThread(EcmaVM *vm, bool isJit);
 
     PUBLIC_API ~JSThread();
 
@@ -205,6 +208,12 @@ public:
         glueData_.newSpaceAllocationEndAddress_ = end;
     }
 
+    void ReSetSOldSpaceAllocationAddress(const uintptr_t *top, const uintptr_t* end)
+    {
+        glueData_.sOldSpaceAllocationTopAddress_ = top;
+        glueData_.sOldSpaceAllocationEndAddress_ = end;
+    }
+
     uintptr_t GetUnsharedConstpools() const
     {
         return glueData_.unsharedConstpools_;
@@ -262,6 +271,11 @@ public:
     const GlobalEnvConstants *GlobalConstants() const
     {
         return glueData_.globalConst_;
+    }
+
+    void SetGlobalConstants(const GlobalEnvConstants *constants)
+    {
+        glueData_.globalConst_ = const_cast<GlobalEnvConstants*>(constants);
     }
 
     const BuiltinEntries GetBuiltinEntries() const
@@ -362,6 +376,16 @@ public:
         glueData_.bcStubEntries_.Set(id, entry);
     }
 
+    Address GetBaselineStubEntry(uint32_t id) const
+    {
+        return glueData_.baselineStubEntries_.Get(id);
+    }
+
+    void SetBaselineStubEntry(size_t id, Address entry)
+    {
+        glueData_.baselineStubEntries_.Set(id, entry);
+    }
+
     void SetBCDebugStubEntry(size_t id, Address entry)
     {
         glueData_.bcDebuggerStubEntries_.Set(id, entry);
@@ -429,7 +453,7 @@ public:
     {
         PGOProfilerStatus status =
             enable ? PGOProfilerStatus::PGO_PROFILER_ENABLE : PGOProfilerStatus::PGO_PROFILER_DISABLE;
-        PGOStatusBits::Set(status, &glueData_.interruptVector_);
+        SetInterruptValue<PGOStatusBits>(status);
     }
 
     bool IsPGOProfilerEnable() const
@@ -440,7 +464,7 @@ public:
 
     void SetBCStubStatus(BCStubStatus status)
     {
-        BCStubStatusBits::Set(status, &glueData_.interruptVector_);
+        SetInterruptValue<BCStubStatusBits>(status);
     }
 
     BCStubStatus GetBCStubStatus() const
@@ -449,6 +473,10 @@ public:
     }
 
     bool CheckSafepoint();
+
+    void CheckAndPassActiveBarrier();
+
+    bool PassSuspendBarrier();
 
     void SetGetStackSignal(bool isParseStack)
     {
@@ -563,119 +591,65 @@ public:
 
     void SetCheckSafePointStatus()
     {
-        LockHolder lock(interruptMutex_);
         ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
-        CheckSafePointBit::Set(true, &glueData_.interruptVector_);
+        SetInterruptValue<CheckSafePointBit>(true);
     }
 
     void ResetCheckSafePointStatus()
     {
-        LockHolder lock(interruptMutex_);
-        ResetCheckSafePointStatusWithoutLock();
-    }
-
-    inline void ResetCheckSafePointStatusWithoutLock()
-    {
-        // The interruptMutex_ should be locked before calling this function.
         ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
-        CheckSafePointBit::Set(false, &glueData_.interruptVector_);
+        SetInterruptValue<CheckSafePointBit>(false);
     }
 
     void SetVMNeedSuspension(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        VMNeedSuspensionBit::Set(flag, &glueData_.interruptVector_);
+        SetInterruptValue<VMNeedSuspensionBit>(flag);
     }
 
     bool VMNeedSuspension()
     {
-        LockHolder lock(interruptMutex_);
-        return VMNeedSuspensionWithoutLock();
-    }
-
-    inline bool VMNeedSuspensionWithoutLock()
-    {
-        // The interruptMutex_ should be locked before calling this function.
         return VMNeedSuspensionBit::Decode(glueData_.interruptVector_);
     }
 
     void SetVMSuspended(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        VMHasSuspendedBit::Set(flag, &glueData_.interruptVector_);
+        SetInterruptValue<VMHasSuspendedBit>(flag);
     }
 
     bool IsVMSuspended()
     {
-        LockHolder lock(interruptMutex_);
         return VMHasSuspendedBit::Decode(glueData_.interruptVector_);
     }
 
     bool HasTerminationRequest() const
     {
-        LockHolder lock(interruptMutex_);
-        return HasTerminationRequestWithoutLock();
-    }
-
-    inline bool HasTerminationRequestWithoutLock() const
-    {
-        // The interruptMutex_ should be locked before calling this function.
-        return VMNeedTerminationBit::Decode(glueData_.interruptVector_);
+        return needTermination_;
     }
 
     void SetTerminationRequest(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        SetTerminationRequestWithoutLock(flag);
-    }
-
-    inline void SetTerminationRequestWithoutLock(bool flag)
-    {
-        // The interruptMutex_ should be locked before calling this function.
-        VMNeedTerminationBit::Set(flag, &glueData_.interruptVector_);
+        needTermination_ = flag;
     }
 
     void SetVMTerminated(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        SetVMTerminatedWithoutLock(flag);
-    }
-
-    inline void SetVMTerminatedWithoutLock(bool flag)
-    {
-        // The interruptMutex_ should be locked before calling this function.
-        VMHasTerminatedBit::Set(flag, &glueData_.interruptVector_);
+        hasTerminated_ = flag;
     }
 
     bool HasTerminated() const
     {
-        LockHolder lock(interruptMutex_);
-        return VMHasTerminatedBit::Decode(glueData_.interruptVector_);
+        return hasTerminated_;
     }
 
     void TerminateExecution();
 
     void SetInstallMachineCode(bool flag)
     {
-        LockHolder lock(interruptMutex_);
-        SetInstallMachineCodeWithoutLock(flag);
-    }
-
-    inline void SetInstallMachineCodeWithoutLock(bool flag)
-    {
-        // The interruptMutex_ should be locked before calling this function.
-        InstallMachineCodeBit::Set(flag, &glueData_.interruptVector_);
+        SetInterruptValue<InstallMachineCodeBit>(flag);
     }
 
     bool HasInstallMachineCode() const
     {
-        LockHolder lock(interruptMutex_);
-        return HasInstallMachineCodeWithoutLock();
-    }
-
-    inline bool HasInstallMachineCodeWithoutLock() const
-    {
-        // The interruptMutex_ should be locked before calling this function.
         return InstallMachineCodeBit::Decode(glueData_.interruptVector_);
     }
 
@@ -812,6 +786,22 @@ public:
         glueData_.isDebugMode_ = false;
     }
 
+    template<typename T, typename V>
+    void SetInterruptValue(V value)
+    {
+        volatile auto interruptValue =
+            reinterpret_cast<volatile std::atomic<uint64_t> *>(&glueData_.interruptVector_);
+        uint64_t oldValue = interruptValue->load(std::memory_order_relaxed);
+        uint64_t oldValueBeforeCAS;
+        do {
+            auto newValue = oldValue;
+            T::Set(value, &newValue);
+            oldValueBeforeCAS = oldValue;
+            std::atomic_compare_exchange_strong_explicit(interruptValue, &oldValue, newValue,
+                std::memory_order_release, std::memory_order_relaxed);
+        } while (oldValue != oldValueBeforeCAS);
+    }
+
     void InvokeWeakNodeFreeGlobalCallBack();
     void InvokeSharedNativePointerCallbacks();
     void InvokeWeakNodeNativeFinalizeCallback();
@@ -841,6 +831,16 @@ public:
         glueData_.randomStatePtr_ = reinterpret_cast<uintptr_t>(ptr);
     }
 
+    void SetTaskInfo(uintptr_t taskInfo)
+    {
+        glueData_.taskInfo_ = taskInfo;
+    }
+    
+    uintptr_t GetTaskInfo() const
+    {
+        return glueData_.taskInfo_;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -851,11 +851,14 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  RTStubEntries,
                                                  COStubEntries,
                                                  BuiltinStubEntries,
                                                  BuiltinHClassEntries,
                                                  BCDebuggerStubEntries,
+                                                 BaselineStubEntries,
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
@@ -874,6 +877,7 @@ public:
                                                  base::AlignedBool,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  base::AlignedUint32> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -885,11 +889,14 @@ public:
             LastFpIndex,
             NewSpaceAllocationTopAddressIndex,
             NewSpaceAllocationEndAddressIndex,
+            SOldSpaceAllocationTopAddressIndex,
+            SOldSpaceAllocationEndAddressIndex,
             RTStubEntriesIndex,
             COStubEntriesIndex,
             BuiltinsStubEntriesIndex,
             BuiltinHClassEntriesIndex,
             BCDebuggerStubEntriesIndex,
+            BaselineStubEntriesIndex,
             StateBitFieldIndex,
             FrameBaseIndex,
             StackStartIndex,
@@ -909,6 +916,7 @@ public:
             unsharedConstpoolsIndex,
             RandomStatePtrIndex,
             stateAndFlagsIndex,
+            TaskInfoIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -961,6 +969,16 @@ public:
         static size_t GetNewSpaceAllocationEndAddressOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::NewSpaceAllocationEndAddressIndex)>(isArch32);
+        }
+
+        static size_t GetSOldSpaceAllocationTopAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SOldSpaceAllocationTopAddressIndex)>(isArch32);
+        }
+
+        static size_t GetSOldSpaceAllocationEndAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SOldSpaceAllocationEndAddressIndex)>(isArch32);
         }
 
         static size_t GetBCStubEntriesOffset(bool isArch32)
@@ -1099,6 +1117,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::RandomStatePtrIndex)>(isArch32);
         }
 
+        static size_t GetTaskInfoOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::TaskInfoIndex)>(isArch32);
+        }
+        
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1108,11 +1131,14 @@ public:
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationTopAddress_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationEndAddress_ {nullptr};
+        alignas(EAS) const uintptr_t *sOldSpaceAllocationTopAddress_ {nullptr};
+        alignas(EAS) const uintptr_t *sOldSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) RTStubEntries rtStubEntries_;
         alignas(EAS) COStubEntries coStubEntries_;
         alignas(EAS) BuiltinStubEntries builtinStubEntries_;
         alignas(EAS) BuiltinHClassEntries builtinHClassEntries_;
         alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
+        alignas(EAS) BaselineStubEntries baselineStubEntries_;
         alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};
@@ -1132,6 +1158,7 @@ public:
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
         alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
+        alignas(EAS) uintptr_t taskInfo_ {0};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1173,19 +1200,26 @@ public:
         fullMarkRequest_ = true;
     }
 
-    inline bool IsThreadSafe()
+    inline bool IsThreadSafe() const
     {
-        return IsMainThread() || IsSuspended();
+        return IsMainThread() || HasSuspendRequest();
     }
 
-    inline bool IsSuspended()
+    bool IsSuspended() const
+    {
+        bool f = ReadFlag(ThreadFlag::SUSPEND_REQUEST);
+        bool s = (GetState() != ThreadState::RUNNING);
+        return f && s;
+    }
+
+    inline bool HasSuspendRequest() const
     {
         return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
     }
 
     void CheckSafepointIfSuspended()
     {
-        if (IsSuspended()) {
+        if (HasSuspendRequest()) {
             WaitSuspension();
         }
     }
@@ -1202,8 +1236,8 @@ public:
         uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
         return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
     }
-    void UpdateState(ThreadState newState);
-    void SuspendThread(bool internalSuspend);
+    void PUBLIC_API UpdateState(ThreadState newState);
+    void SuspendThread(bool internalSuspend, SuspendBarrier* barrier = nullptr);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
     static bool IsMainThread();
@@ -1217,6 +1251,48 @@ public:
     void SetWeakFinalizeTaskCallback(const WeakFinalizeTaskCallback &callback)
     {
         finalizeTaskCallback_ = callback;
+    }
+
+    static void RegisterThread(JSThread *jsThread);
+
+    static void UnregisterThread(JSThread *jsThread);
+
+    bool IsJitThread() const
+    {
+        return isJitThread_;
+    }
+
+    RecursiveMutex *GetJitLock()
+    {
+        return &jitMutex_;
+    }
+
+    void SetMachineCodeLowMemory(bool isLow)
+    {
+        machineCodeLowMemory_ = isLow;
+    }
+
+    bool IsMachineCodeLowMemory()
+    {
+        return machineCodeLowMemory_;
+    }
+
+    uint64_t GetJobId()
+    {
+        if (jobId_ == UINT64_MAX) {
+            jobId_ = 0;
+        }
+        return ++jobId_;
+    }
+
+    void *GetEnv() const
+    {
+        return env_;
+    }
+
+    void SetEnv(void *env)
+    {
+        env_ = env;
     }
 private:
     NO_COPY_SEMANTIC(JSThread);
@@ -1241,12 +1317,22 @@ private:
     }
 
     void TransferFromRunningToSuspended(ThreadState newState);
+
     void TransferToRunning();
-    void StoreState(ThreadState newState, bool lockMutatorLock);
+
+    inline void StoreState(ThreadState newState);
+
+    void StoreRunningState(ThreadState newState);
+
+    void StoreSuspendedState(ThreadState newState);
+
     bool ReadFlag(ThreadFlag flag) const
     {
-        return (glueData_.stateAndFlags_.asStruct.flags & static_cast<uint16_t>(flag)) != 0;
+        uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
+        uint16_t flags = (stateAndFlags & THREAD_FLAGS_MASK);
+        return (flags & static_cast<uint16_t>(flag)) != 0;
     }
+
     void SetFlag(ThreadFlag flag)
     {
         glueData_.stateAndFlags_.asAtomicInt.fetch_or(flag, std::memory_order_seq_cst);
@@ -1266,6 +1352,7 @@ private:
     GlueData glueData_;
     std::atomic<ThreadId> id_;
     EcmaVM *vm_ {nullptr};
+    void *env_ {nullptr};
     Area *regExpCache_ {nullptr};
 
     // MM: handles, global-handles, and aot-stubs.
@@ -1312,19 +1399,29 @@ private:
 
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};
-    mutable Mutex interruptMutex_;
 
     Mutex suspendLock_;
     int32_t suspendCount_ {0};
     ConditionVariable suspendCondVar_;
+    SuspendBarrier *suspendBarrier_ {nullptr};
+
+    bool isJitThread_ {false};
+    RecursiveMutex jitMutex_;
+    bool machineCodeLowMemory_ {false};
+
+    uint64_t jobId_ {0};
 
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
 #endif
 
+    std::atomic<bool> needTermination_ {false};
+    std::atomic<bool> hasTerminated_ {false};
+
     friend class GlobalHandleCollection;
     friend class EcmaVM;
     friend class EcmaContext;
+    friend class JitVM;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_THREAD_H

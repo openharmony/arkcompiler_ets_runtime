@@ -32,6 +32,7 @@
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
+#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
@@ -45,7 +46,6 @@
 #include "ecmascript/runtime.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #include "ecmascript/template_string.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
 using ArrayHelper = base::ArrayHelper;
@@ -1186,6 +1186,8 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
     if (genObj->IsGeneratorObject()) {
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
+        // set TaskInfo for TaskPool
+        generatorObjectHandle->SetTaskInfo(thread->GetTaskInfo());
         // save stack, should copy cur_frame, function execute over will free cur_frame
         SaveFrameToContext(thread, genContextHandle);
 
@@ -2478,6 +2480,20 @@ JSTaggedValue RuntimeStubs::RuntimeLdBigInt(JSThread *thread, const JSHandle<JST
     return JSTaggedValue::ToBigInt(thread, numberBigInt);
 }
 
+JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsIntN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint)
+{
+    auto biginteger = JSHandle<BigInt>(thread, bigint);
+    JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    return BigInt::AsintN(thread, bitness, biginteger);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsUintN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint)
+{
+    auto biginteger = JSHandle<BigInt>(thread, bigint);
+    JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    return BigInt::AsUintN(thread, bitness, biginteger);
+}
+
 JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -2597,6 +2613,8 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
 
     if (genObj->IsGeneratorObject()) {
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
+        // set TaskInfo for TaskPool
+        generatorObjectHandle->SetTaskInfo(thread->GetTaskInfo());
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
             generatorObjectHandle->SetGeneratorState(JSGeneratorState::SUSPENDED_YIELD);
@@ -2657,7 +2675,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructProxy(JSThread *thread, JSHandle<
     if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor: handler is null", JSTaggedValue::Exception());
     }
-    ASSERT(handler->IsJSObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> target(thread, ctor->GetTarget());
 
     // 5.Let trap be GetMethod(handler, "construct").
@@ -3007,10 +3025,12 @@ JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue o
 JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
     uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ObjectFactory* factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> handleLexicalEnv(thread, lexicalEnv);
     JSHandle<ConstantPool> handleConstpool(thread, constpool);
     JSHandle<JSTaggedValue> handleModule(thread, module);
+    JSHandle<ConstantPool> unsharedConstpoolHandle(
+        thread, thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool));
     CString entry = ModuleManager::GetRecordName(handleModule.GetTaggedValue());
     uint32_t length = handleLexicalEnv->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH;
     uint32_t startIndex = 0;
@@ -3018,17 +3038,27 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         startIndex++;
     }
 
+    JSTaggedValue aotSymbolInfo = unsharedConstpoolHandle->GetAotSymbolInfo();
+    JSHandle<TaggedArray> aotSymbolInfoHandle(thread, aotSymbolInfo);
+    FrameHandler frameHandler(thread);
+    uint32_t abcId = frameHandler.GetAbcId();
     ASSERT(startIndex + count <= length);
     for (uint32_t i = 0; i < count; i++) {
-        JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
-        handleLexicalEnv->SetProperties(thread, startIndex + i, symbol.GetTaggedValue());
+        auto index = startIndex + i;
+        uint64_t id = JSSymbol::GeneratePrivateId(abcId, literalId, index);
+        JSHandle<JSSymbol> symbolHandle;
+        JSTaggedValue symbol = ConstantPool::GetSymbolFromSymbolInfo(aotSymbolInfoHandle, id);
+        if (ConstantPool::IsAotSymbolInfoExist(aotSymbolInfoHandle, symbol)) {
+            symbolHandle = JSHandle<JSSymbol>(thread, symbol);
+        } else {
+            symbolHandle = factory->NewJSSymbol();
+            symbolHandle->SetPrivateId(id);
+        }
+        handleLexicalEnv->SetProperties(thread, index, symbolHandle.GetTaggedValue());
     }
 
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->
-        FindOrCreateUnsharedConstpool(handleConstpool.GetTaggedValue());
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(
-        thread, JSHandle<ConstantPool>(thread, cp), literalId, entry);
-
+    JSTaggedValue literalObj =
+        ConstantPool::GetClassLiteralFromCache(thread, unsharedConstpoolHandle, literalId, entry);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> literalBuffer(thread, classLiteral->GetArray());
     uint32_t literalBufferLength = literalBuffer->GetLength();
@@ -3048,9 +3078,17 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         handleLexicalEnv->SetProperties(thread, startIndex + count + i, literalValue);
     }
     if (instacePropertyCount > 0) {
-        JSHandle<JSSymbol> methodSymbol = factory->NewPublicSymbolWithChar("method");
-        handleLexicalEnv->SetProperties(thread, startIndex + count + literalBufferLength - 1,
-                                        methodSymbol.GetTaggedValue());
+        auto index = startIndex + count + literalBufferLength - 1;
+        uint64_t id = JSSymbol::GeneratePrivateId(abcId, literalId, index);
+        JSHandle<JSSymbol> symbolHandle;
+        JSTaggedValue symbol = ConstantPool::GetSymbolFromSymbolInfo(aotSymbolInfoHandle, id);
+        if (ConstantPool::IsAotSymbolInfoExist(aotSymbolInfoHandle, symbol)) {
+            symbolHandle = JSHandle<JSSymbol>(thread, symbol);
+        } else {
+            symbolHandle = factory->NewPublicSymbolWithChar("method");
+            symbolHandle->SetPrivateId(id);
+        }
+        handleLexicalEnv->SetProperties(thread, index, symbolHandle.GetTaggedValue());
     }
     return JSTaggedValue::Undefined();
 }

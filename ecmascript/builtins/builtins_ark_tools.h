@@ -37,6 +37,8 @@
     V("isNotHoleProperty",              IsNotHoleProperty,              2, INVALID)       \
     V("isPrototype",                    IsPrototype,                    1, INVALID)       \
     V("isRegExpReplaceDetectorValid",   IsRegExpReplaceDetectorValid,   0, INVALID)       \
+    V("isRegExpFlagsDetectorValid",     IsRegExpFlagsDetectorValid,     0, INVALID)       \
+    V("isNumberStringNotRegexpLikeDetectorValid", IsNumberStringNotRegexpLikeDetectorValid, 0, INVALID)      \
     V("isSymbolIteratorDetectorValid",  IsSymbolIteratorDetectorValid,  1, INVALID)       \
     V("isTSHClass",                     IsTSHClass,                     1, INVALID)       \
     V("pgoAssertType",                  PGOAssertType,                  2, INVALID)       \
@@ -121,6 +123,11 @@
     V("isBeingInterpreted",                        IsBeingInterpreted,                        0, INVALID)     \
     V("clearFunctionFeedback",                     ClearFunctionFeedback,                     1, INVALID)
 
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)                                                             \
+    V("jitCompileSync",                            JitCompileSync,                            1, INVALID)     \
+    V("jitCompileAsync",                           JitCompileAsync,                           1, INVALID)     \
+    V("waitJitCompileFinish",                      WaitJitCompileFinish,                      1, INVALID)
+
 
 #ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
@@ -133,7 +140,8 @@
 #define BUILTIN_ARK_TOOLS_FUNCTIONS(V)                  \
     BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)               \
     BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)          \
-    BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)
+    BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)              \
+    BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsArkTools : public base::BuiltinsBase {
@@ -203,6 +211,10 @@ public:
     static JSTaggedValue PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsNumberStringNotRegexpLikeDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info);
 
@@ -341,6 +353,10 @@ public:
     static JSTaggedValue IsBeingInterpreted(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue ClearFunctionFeedback(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue JitCompileSync(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue JitCompileAsync(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue WaitJitCompileFinish(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {

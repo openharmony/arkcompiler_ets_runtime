@@ -106,7 +106,7 @@ void JSSharedMemoryManager::FreeBuffer(void *mem)
     free(mem);
 }
 
-void JSSharedMemoryManager::RemoveSharedMemory(void *pointer, void *data)
+void JSSharedMemoryManager::RemoveSharedMemory([[maybe_unused]] void *env, void *pointer, void *data)
 {
     if (pointer == nullptr || data == nullptr) {
         return;

@@ -49,6 +49,8 @@ class JSPromise;
 class RegExpExecResultCache;
 class EcmaHandleScope;
 class GlobalIndexMap;
+class SustainingJSHandleList;
+class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
 
 template<typename T>
@@ -59,7 +61,6 @@ class JSPromise;
 class JSTaggedValue;
 class EcmaVM;
 class ModuleManager;
-class TSManager;
 class AOTFileManager;
 class QuickFixManager;
 class OptCodeProfiler;
@@ -90,7 +91,6 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              PromiseRejectionEvent operation,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
-using IcuDeleteEntry = void(*)(void *pointer, void *data);
 class EcmaContext {
 public:
     static EcmaContext *CreateAndInitialize(JSThread *thread);
@@ -133,17 +133,10 @@ public:
         return moduleManager_;
     }
 
-    TSManager *GetTSManager() const
-    {
-        return tsManager_;
-    }
-
     kungfu::PGOTypeManager *GetPTManager() const
     {
         return ptManager_;
     }
-
-    void PUBLIC_API SetTSManager(TSManager *set);
 
     ARK_INLINE JSThread *GetJSThread() const
     {
@@ -269,6 +262,7 @@ public:
     // For new version instruction.
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
     JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
+    JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSHandle<ConstantPool> CreateConstpoolPair(JSPandaFile *jsPandaFile, EntityId methodId);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
     void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
@@ -309,7 +303,7 @@ public:
 
     // For icu objects cache
     void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
-                                IcuDeleteEntry deleteEntry = nullptr)
+                                NativePointerCallback deleteEntry = nullptr)
     {
         EcmaContext::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
         icuObjCache_[static_cast<int>(type)] = icuFormatter;
@@ -324,13 +318,13 @@ public:
         return nullptr;
     }
 
-    void ClearIcuCache()
+    void ClearIcuCache(JSThread *thread)
     {
         for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); i++) {
             auto &icuFormatter = icuObjCache_[i];
-            IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
+            NativePointerCallback deleteEntry = icuFormatter.deleteEntry;
             if (deleteEntry != nullptr) {
-                deleteEntry(icuFormatter.icuObj, vm_);
+                deleteEntry(thread->GetEnv(), icuFormatter.icuObj, vm_);
             }
             icuFormatter = EcmaContext::IcuFormatter{};
         }
@@ -506,6 +500,9 @@ public:
     }
 
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+
+    void AddSustainingJSHandle(SustainingJSHandle*);
+    void RemoveSustainingJSHandle(SustainingJSHandle*);
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
@@ -564,7 +561,6 @@ private:
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
-    TSManager *tsManager_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ {nullptr};
     AOTFileManager *aotFileManager_ {nullptr};
 
@@ -587,10 +583,10 @@ private:
     struct IcuFormatter {
         std::string locale;
         void *icuObj {nullptr};
-        IcuDeleteEntry deleteEntry {nullptr};
+        NativePointerCallback deleteEntry {nullptr};
 
         IcuFormatter() = default;
-        IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
+        IcuFormatter(const std::string &locale, void *icuObj, NativePointerCallback deleteEntry = nullptr)
             : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
     IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
@@ -619,6 +615,9 @@ private:
     static constexpr uint32_t STRINGIFY_CACHE_SIZE = 64;
     std::array<CVector<std::pair<CString, int>>, STRINGIFY_CACHE_SIZE> stringifyCache_ {};
     bool isAotEntry_ { false };
+
+    // SustainingJSHandleList for jit compile hold ref
+    SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

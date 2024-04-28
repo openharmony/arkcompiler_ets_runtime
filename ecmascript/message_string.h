@@ -41,6 +41,7 @@ namespace panda::ecmascript {
     V(OPCODE_OVERFLOW, "opcode overflow!")                                                   \
     V(INT32_VALUE, "value: %ld")                                                             \
     V(TargetTypeNotObject, "Type of target is not Object")                                   \
+    V(TargetTypeNotTypedArray, "The O is not a TypedArray.")                                 \
     V(CanNotGetNotEcmaObject, "Can not get Prototype on non ECMA Object")                    \
     V(SendableArrayForJson, "Array not supported for SENDABLE_JSON")                         \
     V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")      \
@@ -58,7 +59,8 @@ namespace panda::ecmascript {
     V(CanNotConvertContainerObject, "Can not delete property in Container Object")           \
     V(InvalidStringLength, "Invalid string length")                                          \
     V(InvalidNewTarget, "new.target is not an object")                                       \
-    V(ObjIsNotCallable, "obj is not Callable")
+    V(ObjIsNotCallable, "obj is not Callable")                                               \
+    V(SharedObjectRefersLocalObject, "shared object refers a local object")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \
@@ -88,7 +90,7 @@ public:
         ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DEF_MESSAGE_ID_DYN)
 #undef DEF_MESSAGE_ID_DYN
 #define DEF_BUILTINS_STUB_MESSAGE_ID(name, type, ...) Message_##type##name,
-        BUILTINS_STUB_LIST(DEF_MESSAGE_ID, DEF_BUILTINS_STUB_MESSAGE_ID)
+        BUILTINS_STUB_LIST(DEF_MESSAGE_ID, DEF_BUILTINS_STUB_MESSAGE_ID, DEF_MESSAGE_ID)
 #undef DEF_BUILTINS_STUB_MESSAGE_ID
         RUNTIME_ASM_STUB_LIST(DEF_MESSAGE_ID)
         DEBUG_CHECK_MESSAGE_STRING_LIST(DEF_MESSAGE_ID)

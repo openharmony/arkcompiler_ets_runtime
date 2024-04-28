@@ -1544,7 +1544,7 @@ GateRef SlowPathLowering::LowerUpdateArrayHClass(GateRef gate, GateRef array)
 {
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     if (!Elements::IsGeneric(kind)) {
-        size_t hclassIndex = static_cast<size_t>(thread_->GetArrayHClassIndexMap().at(kind));
+        size_t hclassIndex = static_cast<size_t>(compilationEnv_->GetArrayHClassIndexMap().at(kind));
         GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
             builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
         GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * hclassIndex);
@@ -1909,7 +1909,7 @@ void SlowPathLowering::LowerCopyDataProperties(GateRef gate)
 void SlowPathLowering::LowerCreateObjectWithExcludedKeys(GateRef gate)
 {
     const int id = RTSTUB_ID(OptCreateObjectWithExcludedKeys);
-    // 3: number of value inputs
+    // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) >= 2);
     size_t numIn = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args;
@@ -2619,6 +2619,12 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
     {
         GateRef resumeResultOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
         result = builder_.Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+        GateRef taskInfoOffset = builder_.IntPtr(JSGeneratorObject::TASK_INFO_OFFSET);
+        GateRef taskInfo = builder_.Load(VariableType::NATIVE_POINTER(), obj, taskInfoOffset);
+        GateRef glueTaskOffset =
+            builder_.IntPtr(JSThread::GlueData::GetTaskInfoOffset(builder_.GetCompilationConfig()->Is32Bit()));
+        builder_.Store(VariableType::NATIVE_POINTER(), glue_, glue_, glueTaskOffset, taskInfo);
+        builder_.Store(VariableType::NATIVE_POINTER(), glue_, obj, taskInfoOffset, builder_.IntPtr(0));
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);

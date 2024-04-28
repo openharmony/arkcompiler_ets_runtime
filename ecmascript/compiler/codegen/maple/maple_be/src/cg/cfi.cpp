@@ -104,8 +104,11 @@ void CFIOpndEmitVisitor::Visit(LabelOperand *v)
 {
     if (emitter.GetCG()->GetMIRModule()->IsCModule()) {
         PUIdx pIdx = emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
-        const char *idx = strdup(std::to_string(pIdx).c_str());
+        char *idx = strdup(std::to_string(pIdx).c_str());
+        CHECK_FATAL(idx != nullptr, "strdup failed");
         emitter.Emit(".label.").Emit(idx).Emit("__").Emit(v->GetIabelIdx());
+        free(idx);
+        idx = nullptr;
     } else {
         emitter.Emit(".label.").Emit(v->GetParentFunc()).Emit(v->GetIabelIdx());
     }

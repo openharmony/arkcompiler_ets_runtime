@@ -179,6 +179,10 @@ void Log::SetLogComponentFromString(const std::vector<std::string>& components)
             components_ |= Component::JIT;
             continue;
         }
+        if (component == "baselinejit") {
+            components_ |= Component::BASELINEJIT;
+            continue;
+        }
         if (component == "trace") {
             components_ |= Component::TRACE;
             continue;

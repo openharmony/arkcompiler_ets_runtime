@@ -483,6 +483,22 @@ JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo
     return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
 }
 
+JSTaggedValue BuiltinsArkTools::IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(PropertyDetector::IsRegExpFlagsDetectorValid(env));
+}
+
+JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env));
+}
+
 JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -495,23 +511,23 @@ JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInf
     }
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<EcmaString> mapString = factory->NewFromUtf8("Map");
+    JSHandle<EcmaString> mapString = factory->NewFromUtf8ReadOnly("Map");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(mapString))) {
         return JSTaggedValue(PropertyDetector::IsMapIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> setString = factory->NewFromUtf8("Set");
+    JSHandle<EcmaString> setString = factory->NewFromUtf8ReadOnly("Set");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(setString))) {
         return JSTaggedValue(PropertyDetector::IsSetIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> stringString = factory->NewFromUtf8("String");
+    JSHandle<EcmaString> stringString = factory->NewFromUtf8ReadOnly("String");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(stringString))) {
         return JSTaggedValue(PropertyDetector::IsStringIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> arrayString = factory->NewFromUtf8("Array");
+    JSHandle<EcmaString> arrayString = factory->NewFromUtf8ReadOnly("Array");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(arrayString))) {
         return JSTaggedValue(PropertyDetector::IsArrayIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8("TypedArray");
+    JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8ReadOnly("TypedArray");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(typedarrayString))) {
         return JSTaggedValue(PropertyDetector::IsTypedArrayIteratorDetectorValid(env));
     }
@@ -1141,5 +1157,60 @@ JSTaggedValue BuiltinsArkTools::ClearFunctionFeedback([[maybe_unused]] EcmaRunti
 {
     LOG_ECMA(DEBUG) << "Enter ClearFunctionFeedback()";
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+
+    auto jit = Jit::GetInstance();
+    if (!jit->IsEnableFastJit()) {
+        return JSTaggedValue::False();
+    }
+    if (jsFunction->GetMachineCode() == JSTaggedValue::Undefined()) {
+        return JSTaggedValue::False();
+    }
+    while (jsFunction->GetMachineCode() == JSTaggedValue::Hole()) {
+        // just spin check
+        thread->CheckSafepoint();
+    }
+    return JSTaggedValue::True();
 }
 }  // namespace panda::ecmascript::builtins

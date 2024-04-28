@@ -29,6 +29,8 @@ public:
     constexpr static const char *const JSENUMSTYLE_ABC_FILE_NAME = "/jsEnumStyle.abc";
     constexpr static const char *const JSUICONTEXT_ABC_FILE_NAME = "/jsUIContext.abc";
     constexpr static const char *const ARKCOMPONENT_ABC_FILE_NAME = "/arkComponent.abc";
+    constexpr static const char *const PRELOAD_PATH_PREFIX = "/system/";
+    constexpr static const char *const PRELOAD_AN_FOLDER = "/ark-cache/";
 
     FrameworkHelper(JSThread *thread)
         : thread_(thread),

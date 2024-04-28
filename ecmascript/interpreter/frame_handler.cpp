@@ -140,6 +140,34 @@ Method *FrameHandler::GetMethod() const
     return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
 }
 
+const JSPandaFile* FrameHandler::GetJSPandaFile() const
+{
+    auto method = GetMethod();
+    return method->GetJSPandaFile();
+}
+
+std::string FrameHandler::GetFileName() const
+{
+    auto pandaFile = GetJSPandaFile();
+    return pandaFile->GetFileName();
+}
+
+uint32_t FrameHandler::GetAbcId() const
+{
+    std::string abcName = GetFileName();
+    pgo::PGOProfilerManager* pm = pgo::PGOProfilerManager::GetInstance();
+    uint32_t abcId;
+    if (!pm->GetPandaFileId(CString(abcName), abcId) && !abcName.empty()) {
+        LOG_ECMA(ERROR) << "Get method abc id failed. abcName: " << abcName;
+    }
+    return abcId;
+}
+
+uint32_t FrameHandler::GetMethodId() const
+{
+    return GetMethod()->GetMethodId().GetOffset();
+}
+
 Method *FrameHandler::CheckAndGetMethod() const
 {
     ASSERT(IsJSFrame());
@@ -381,6 +409,11 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
                 frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor, type);
+                break;
+            }
+            case FrameType::BASELINE_BUILTIN_FRAME: {
+                auto frame = it.GetFrame<BaselineBuiltinFrame>();
+                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
                 break;
             }
             case FrameType::ASM_INTERPRETER_FRAME:

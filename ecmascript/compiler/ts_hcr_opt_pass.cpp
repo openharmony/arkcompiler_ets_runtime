@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/ts_hcr_opt_pass.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -41,8 +42,10 @@ GateRef TSHCROptPass::VisitStringBinOp(GateRef gate)
 {
     TypedBinOp op = acc_.GetTypedBinaryOp(gate);
     switch (op) {
-        case TypedBinOp::TYPED_EQ:
+        case TypedBinOp::TYPED_EQ: {
+            Jit::JitLockHolder lock(compilationEnv_, "VisitStringEqual");
             return VisitStringEqual(gate);
+        }
         default:
             return Circuit::NullGate();
     }
@@ -79,10 +82,9 @@ GateRef TSHCROptPass::ConvertStringEqualToConst(GateRef left, GateRef right)
 
     auto leftMethodOffset = acc_.TryGetMethodOffset(left);
     auto rightMethodOffset = acc_.TryGetMethodOffset(right);
-    JSHandle<EcmaString> leftStr(thread_, GetStringFromConstantPool(leftMethodOffset, leftId));
-    JSHandle<EcmaString> rightStr(thread_, GetStringFromConstantPool(rightMethodOffset, rightId));
-    bool isEqual = EcmaStringAccessor::StringsAreEqual(thread_->GetEcmaVM(), leftStr, rightStr);
-    if (isEqual) {
+    JSTaggedValue leftStr = GetStringFromConstantPool(leftMethodOffset, leftId);
+    JSTaggedValue rightStr = GetStringFromConstantPool(rightMethodOffset, rightId);
+    if (leftStr == rightStr) {
         return builder_.Boolean(true);
     }
     return builder_.Boolean(false);

@@ -224,8 +224,7 @@ public:
 
     bool IsOOMDumpSpace()
     {
-        return spaceType_ == OLD_SPACE || spaceType_ == NON_MOVABLE || spaceType_ == HUGE_OBJECT_SPACE ||
-               spaceType_ == MACHINE_CODE_SPACE;
+        return spaceType_ == OLD_SPACE || spaceType_ == NON_MOVABLE || spaceType_ == HUGE_OBJECT_SPACE;
     }
 
     // methods for allocation inspector

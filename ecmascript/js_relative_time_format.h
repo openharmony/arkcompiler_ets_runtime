@@ -74,7 +74,7 @@ public:
         return reinterpret_cast<icu::RelativeDateTimeFormatter *>(result);
     }
 
-    static void FreeIcuRTFFormatter(void *pointer, void *data)
+    static void FreeIcuRTFFormatter([[maybe_unused]] void *env, void *pointer, void *data)
     {
         if (pointer == nullptr) {
             return;

@@ -19,6 +19,7 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
+#include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -37,7 +38,11 @@
 
 namespace panda::ecmascript {
 using TypedArrayHelper = base::TypedArrayHelper;
+using TypedArrayKind = base::TypedArrayKind;
 using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
+using BuiltinsSendableArrayBuffer = builtins::BuiltinsSendableArrayBuffer;
+template<TypedArrayKind typedArrayKind>
+using BuiltinsArrayBufferType = base::BuiltinsArrayBufferType<typedArrayKind>;
 
 JSTaggedValue JSStableArray::Push(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv)
 {
@@ -1086,13 +1091,21 @@ JSTaggedValue JSStableArray::Concat(JSThread *thread, JSHandle<JSObject> newArra
     return base::BuiltinsBase::GetTaggedDouble(true);
 }
 
+template JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray<TypedArrayKind::SHARED>(
+    JSThread *thread, JSHandle<JSTypedArray> &targetArray, DataViewType targetType,
+    uint64_t targetOffset, uint32_t srcLength, JSHandle<JSObject> &obj);
+template JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray<TypedArrayKind::NON_SHARED>(
+    JSThread *thread, JSHandle<JSTypedArray> &targetArray, DataViewType targetType,
+    uint64_t targetOffset, uint32_t srcLength, JSHandle<JSObject> &obj);
+
+template<TypedArrayKind typedArrayKind>
 JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &targetArray,
                                                            DataViewType targetType, uint64_t targetOffset,
                                                            uint32_t srcLength, JSHandle<JSObject> &obj)
 {
     JSHandle<JSTaggedValue> targetBuffer(thread, targetArray->GetViewedArrayBufferOrByteArray());
     // If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(targetBuffer.GetTaggedValue())) {
+    if (BuiltinsArrayBufferType<typedArrayKind>::Type::IsDetachedBuffer(targetBuffer.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
                                     JSTaggedValue::Exception());
     }
@@ -1117,8 +1130,8 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
             }
             kValue.Update(JSTaggedValue::ToBigInt(thread, elem));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            BuiltinsArrayBuffer::SetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
-                                                  targetType, kValue, true);
+            BuiltinsArrayBufferType<typedArrayKind>::Type::SetValueInBuffer(
+                thread, targetBuffer.GetTaggedValue(), targetByteIndex, targetType, kValue, true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             targetByteIndex += targetElementSize;
         }
@@ -1134,16 +1147,16 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
             } else {
                 val = taggedVal.GetNumber();
             }
-            BuiltinsArrayBuffer::FastSetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
-                                                      targetType, val, true);
+            BuiltinsArrayBufferType<typedArrayKind>::Type::FastSetValueInBuffer(
+                thread, targetBuffer.GetTaggedValue(), targetByteIndex, targetType, val, true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             targetByteIndex += targetElementSize;
         }
 
         for (uint32_t i = copyLen; i < srcLength; i++) {
             val = JSTaggedNumber(base::NAN_VALUE).GetNumber();
-            BuiltinsArrayBuffer::FastSetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
-                                                      targetType, val, true);
+            BuiltinsArrayBufferType<typedArrayKind>::Type::FastSetValueInBuffer(
+                thread, targetBuffer.GetTaggedValue(), targetByteIndex, targetType, val, true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             targetByteIndex += targetElementSize;
         }

@@ -390,7 +390,7 @@ used time is: 0:01:04.439642
 1. 通过方舟前端生成hello-world.abc文件，编译命令：
 
    ```
-   /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc --module --type-extractor --merge-abc hello-world.ts
+   /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc --module --merge-abc hello-world.ts
    ```
 2. 设置搜索路径：
 

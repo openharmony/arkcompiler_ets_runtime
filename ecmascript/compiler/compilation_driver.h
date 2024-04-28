@@ -38,7 +38,7 @@ public:
                       bool outputAsm,
                       size_t maxMethodsInModule,
                       const std::pair<uint32_t, uint32_t> &compilerMethodsRange);
-    virtual ~CompilationDriver();
+    ~CompilationDriver() = default;
 
     NO_COPY_SEMANTIC(CompilationDriver);
     NO_MOVE_SEMANTIC(CompilationDriver);
@@ -154,6 +154,11 @@ public:
         methodInfo.SetResolvedMethod(true);
         panda_file::File::EntityId resolvedMethodId(resolvedMethod);
         UpdateCompileQueue(recordName, resolvedMethodId);
+    }
+
+    uint32_t GetCompilerMethodCount() const
+    {
+        return compiledMethodCnt_;
     }
 protected:
     // add maxMethodsInModule_ functions in a module and when a module is
@@ -357,7 +362,7 @@ protected:
 
     void StoreConstantPoolInfo() const;
 
-    EcmaVM *vm_ {nullptr};
+    CompilationEnv *compilationEnv_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
     PGOProfilerDecoder &pfDecoder_;
     BytecodeInfoCollector* collector_;
@@ -399,14 +404,14 @@ public:
     Module *GetModule();
 
     template <class Callback>
-    void CompileMethod(JSHandle<JSFunction> &jsFunction, const Callback &cb)
+    void CompileMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
+                       JSHandle<ProfileTypeInfo> &profileTypeInfo, const uint8_t *pcStart,
+                       const panda_file::File::Header *header, ApEntityId abcId, const Callback &cb)
     {
+        SetCurrentCompilationFile();
         for (auto mi : bytecodeInfo_.GetMethodList()) {
             bytecodeInfo_.AddSkippedMethod(mi.first);
         }
-        const JSPandaFile *jsPandaFile = Method::Cast(jsFunction->GetMethod().GetTaggedObject())->GetJSPandaFile();
-        Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-        MethodLiteral *methodLiteral = method->GetMethodLiteral();
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
 
         auto &methodList = bytecodeInfo_.GetMethodList();
@@ -418,8 +423,8 @@ public:
         bytecodeInfo_.EraseSkippedMethod(methodOffset);
 
         Module *module = GetModule();
-        cb(bytecodeInfo_.GetRecordName(0), methodName, methodLiteral, methodOffset,
-            methodPcInfo, methodInfo, module);
+        cb(bytecodeInfo_.GetRecordName(0), methodName, methodLiteral, profileTypeInfo, methodOffset, methodPcInfo,
+            methodInfo, module, pcStart, header, abcId);
     }
 };
 } // namespace panda::ecmascript::kungfu

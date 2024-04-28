@@ -94,8 +94,18 @@ function testTypeArrayAt2(ctor) {
     return true;
 }
 
-const v40 = new Uint8ClampedArray(16);
-v40.set(v40);
-const v59 = new Uint8ClampedArray(11);
-v59.set(0);
-print(v59)
+let uint8c = new Uint8ClampedArray(11);
+uint8c.set(uint8c);
+print(uint8c);
+let uint8 = new Uint8Array(11);
+uint8.fill(1);
+uint8.set(uint8);
+print(uint8);
+let uint16 = new Uint16Array(11);
+uint16.fill(513);
+uint16.set(uint16);
+print(uint16);
+let uint32 = new Uint32Array(11);
+uint32.fill(65536);
+uint32.set(uint32);
+print(uint32);

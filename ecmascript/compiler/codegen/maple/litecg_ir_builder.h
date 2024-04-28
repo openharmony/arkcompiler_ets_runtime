@@ -206,6 +206,7 @@ private:
     void SaveJSFuncOnOptJSFuncFrame(maple::litecg::Var &value);
     void SaveFrameTypeOnFrame(FrameType frameType);
     bool IsInterpreted() const;
+    bool IsBaselineBuiltin() const;
     void AddFunc();
     void CollectDerivedRefInfo();
     bool IsLogEnabled() const
