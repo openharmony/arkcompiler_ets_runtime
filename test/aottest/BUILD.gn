@@ -283,6 +283,7 @@ group("ark_aot_ts_test") {
     "sharedarray",
     "sharedcollectionsexception",
     "sharedmap",
+    "sharedJSON",
     "sharedset",
     "definesendableclass",
     "sendablecontext",
