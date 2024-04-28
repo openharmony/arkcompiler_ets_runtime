@@ -1634,7 +1634,6 @@
         "intl/number-format/rounding-mode-table-v3.js",
         "intl/number-format/rounding-increment-value-v3.js",
         "intl/number-format/use-grouping-v3.js",
-        "intl/number-format/check-numbering-system.js",
         "intl/number-format/format-currency.js",
         "intl/number-format/sign-display-v3.js",
         "intl/number-format/resolved-options-order.js",
