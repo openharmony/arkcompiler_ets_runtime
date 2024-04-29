@@ -35,7 +35,6 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-#include <sys/wait.h>
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #endif
@@ -83,7 +82,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress,
-                                  isVmMode, isPrivate, captureNumericValue, isFullGC);
+                                  isVmMode, isPrivate, captureNumericValue, isFullGC, false, true);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
@@ -122,28 +121,6 @@ bool DFXJSNApi::ForceFullGC(const EcmaVM *vm)
     return false;
 }
 
-#if defined(ENABLE_DUMP_IN_FAULTLOG)
-static void WaitProcess(pid_t pid)
-{
-    time_t startTime = time(nullptr);
-    constexpr int DUMP_TIME_OUT = 30;
-    constexpr int DEFAULT_SLEEP_TIME = 100000;
-    while (true) {
-        int status = 0;
-        pid_t p = waitpid(pid, &status, WNOHANG);
-        if (p < 0 || p == pid) {
-            break;
-        }
-        if (time(nullptr) > startTime + DUMP_TIME_OUT) {
-            LOG_GC(ERROR) << "wait " << DUMP_TIME_OUT << " s";
-            kill(pid, SIGTERM);
-            break;
-        }
-        usleep(DEFAULT_SLEEP_TIME);
-    }
-}
-#endif // ENABLE_DUMP_IN_FAULTLOG
-
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
                                  [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
@@ -161,37 +138,19 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
             vm->GetJSThread()->SetStackTraceFd(stackTraceFd);
         }
     }
-    if (isFullGC) {
-        [[maybe_unused]] bool heapClean = ForceFullGC(vm);
-        ASSERT(heapClean);
-    }
-    ecmascript::base::BlockHookScope blockScope;
-    // suspend All.
-    ecmascript::SuspendAllScope suspendScope(vm->GetAssociatedJSThread());
-    if (isFullGC) {
-        DISALLOW_GARBAGE_COLLECTION;
-        const_cast<ecmascript::Heap *>(vm->GetHeap())->Prepare();
-    }
-    // fork
-    pid_t pid = -1;
-    if ((pid = fork()) < 0) {
-        LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
+
+    // Write in faultlog for heap leak.
+    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+    if (fd < 0) {
+        LOG_ECMA(ERROR) << "Write FD failed, fd" << fd;
         return;
     }
-    if (pid == 0) {
-        // Write in faultlog for heap leak.
-        int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
-        if (fd < 0) {
-            LOG_ECMA(ERROR) << "Write FD failed, fd" << fd;
-            return;
-        }
-        FileDescriptorStream stream(fd);
-        DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, false);
-        _exit(0);
-    } else {
-        std::thread thread(&WaitProcess, pid);
-        thread.detach();
-    }
+    FileDescriptorStream stream(fd);
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
+    heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), &stream, nullptr,
+                                  isVmMode, isPrivate, captureNumericValue, isFullGC, false, false);
+
     sem_post(&g_heapdumpCnt);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #else
@@ -213,14 +172,13 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     sem_init(&g_heapdumpCnt, 0, THREAD_COUNT);
     uint32_t curTid = vm->GetTid();
     LOG_ECMA(INFO) << "DumpHeapSnapshot tid " << tid << " curTid " << curTid;
-    if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
-        DumpHeapSnapshotWithVm(vm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
-    }
+    DumpHeapSnapshotWithVm(vm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC, tid);
 }
 
 void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                        [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                                       [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
+                                       [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC,
+                                       [[maybe_unused]] uint32_t tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -243,19 +201,24 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
         return;
     }
 
-    int ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
-        struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
-        DFXJSNApi::GetHeapPrepare(dump->vm);
-        DumpHeapSnapshot(dump->vm, dump->dumpFormat, dump->isVmMode, dump->isPrivate,
-            dump->captureNumericValue, dump->isFullGC);
-        delete dump;
-        delete work;
-    });
+    uint32_t curTid = vm->GetTid();
+    int ret = 0;
+    if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
+        ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
+            struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
+            DFXJSNApi::GetHeapPrepare(dump->vm);
+            DumpHeapSnapshot(dump->vm, dump->dumpFormat, dump->isVmMode, dump->isPrivate,
+                dump->captureNumericValue, dump->isFullGC);
+            delete dump;
+            delete work;
+        });
+    }
+
     // dump worker vm
     const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
         uint32_t curTid = workerVm->GetTid();
         LOG_ECMA(INFO) << "DumpHeapSnapshot workthread curTid " << curTid;
-        DumpHeapSnapshotWithVm(workerVm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
+        DumpHeapSnapshotWithVm(workerVm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC, tid);
         return;
     });
 
