@@ -4629,8 +4629,9 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
                         }
                         Bind(&retValueIsJsArray);
                         {
-                            GateRef arrLen = ZExtInt32ToInt64(GetArrayLength(retValue));
-                            newArrLen = Int64Sub(Int64Add(*newArrLen, arrLen), Int64(1));
+                            GateRef elementsNum =
+                            ZExtInt32ToInt64(GetNumberOfElements(retValue)); // newArray only contains non-hole elements
+                            newArrLen = Int64Sub(Int64Add(*newArrLen, elementsNum), Int64(1));
                             Jump(&loopEnd);
                         }
                     }
@@ -4709,8 +4710,9 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
                     }
                     Bind(&retValueIsJsArray);
                     {
-                        GateRef arrLen = ZExtInt32ToInt64(GetArrayLength(retValue));
-                        newArrLen = Int64Sub(Int64Add(*newArrLen, arrLen), Int64(1));
+                        GateRef elementsNum =
+                            ZExtInt32ToInt64(GetNumberOfElements(retValue)); // newArray only contains non-hole elements
+                        newArrLen = Int64Sub(Int64Add(*newArrLen, elementsNum), Int64(1));
                         Jump(&loopEnd);
                     }
                 }
@@ -4727,6 +4729,7 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
     {
         i = Int64(0);
         DEFVARIABLE(j, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(retValueItem, VariableType::JS_ANY(), Hole());
         GateRef newArray = NewArray(glue, *newArrLen);
         Label loopHead2(env);
         Label loopEnd2(env);
@@ -4750,19 +4753,36 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
                 BRANCH(IsJsArray(retValue), &retValueIsJsArray, &retValueIsNotJsArray);
                 Bind(&retValueIsJsArray);
                 {
+                    Label retValueIsStableArray(env);
+                    Label retValueNotStableArray(env);
+                    GateRef retValueIsStable = IsStableJSArray(glue, retValue);
                     GateRef arrLen = ZExtInt32ToInt64(GetArrayLength(retValue));
                     DEFVARIABLE(k, VariableType::INT64(), Int64(0));
                     Label loopHead3(env);
                     Label loopEnd3(env);
                     Label next3(env);
                     Label loopExit3(env);
+                    Label setValue(env);
+                    Label itemExist(env);
                     Jump(&loopHead3);
                     LoopBegin(&loopHead3);
                     {
                         BRANCH(Int64LessThan(*k, arrLen), &next3, &loopExit3);
                         Bind(&next3);
-                        SetValueWithElementsKind(glue, newArray, GetTaggedValueWithElementsKind(retValue, *k), *j,
-                            Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                        BRANCH(retValueIsStable, &retValueIsStableArray, &retValueNotStableArray);
+                        Bind(&retValueIsStableArray);
+                        retValueItem = GetTaggedValueWithElementsKind(retValue, *k);
+                        BRANCH(TaggedIsHole(*retValueItem), &loopEnd3, &setValue);
+                        Bind(&retValueNotStableArray);
+                        GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { retValue, IntToTaggedInt(*k) });
+                        BRANCH(TaggedIsTrue(hasProp), &itemExist, &loopEnd3);
+                        Bind(&itemExist);
+                        retValueItem =
+                            FastGetPropertyByIndex(glue, retValue, TruncInt64ToInt32(*k), ProfileOperation());
+                        Jump(&setValue);
+                        Bind(&setValue);
+                        SetValueWithElementsKind(glue, newArray, *retValueItem, *j, Boolean(true),
+                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
                         j = Int64Add(*j, Int64(1));
                         Jump(&loopEnd3);
                     }
