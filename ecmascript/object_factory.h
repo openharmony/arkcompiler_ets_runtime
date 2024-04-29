@@ -553,15 +553,19 @@ public:
 
     // ----------------------------------- new string ----------------------------------------
     JSHandle<EcmaString> PUBLIC_API NewFromASCII(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf8WithoutStringTable(std::string_view data);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf8(std::string_view data);
     JSHandle<EcmaString> NewFromUtf8ReadOnly(std::string_view data);
     JSHandle<EcmaString> NewFromASCIISkippingStringTable(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf16WithoutStringTable(std::u16string_view data);
     JSHandle<EcmaString> NewFromUtf16(std::u16string_view data);
 
     JSHandle<EcmaString> NewFromStdString(const std::string &data);
 
+    JSHandle<EcmaString> NewFromUtf8WithoutStringTable(const uint8_t *utf8Data, uint32_t utf8Len);
     JSHandle<EcmaString> NewFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len);
 
+    JSHandle<EcmaString> NewFromUtf16WithoutStringTable(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf16(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16Compress(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16NotCompress(const uint16_t *utf16Data, uint32_t utf16Len);
