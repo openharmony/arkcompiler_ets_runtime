@@ -26,7 +26,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_list.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
@@ -39,28 +39,7 @@ class JSAPILinkedListIteratorTest : public BaseTestWithScope<false> {
 protected:
     JSAPILinkedList *CreateLinkedList()
     {
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSHandle<JSTaggedValue> contianer =
-            JSHandle<JSTaggedValue>(thread, ContainersPrivate::Load(objCallInfo));
-        JSHandle<JSAPILinkedList> linkedList =
-            JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer),
-                                                                              contianer));
-        JSTaggedValue doubleList = TaggedDoubleList::Create(thread);
-        linkedList->SetDoubleList(thread, doubleList);
-        return *linkedList;
+        return EcmaTestCommon::CreateLinkedList(thread);
     }
 };
 

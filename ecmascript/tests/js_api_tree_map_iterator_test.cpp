@@ -19,7 +19,7 @@
 #include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/tagged_tree.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -29,28 +29,20 @@ class JSAPITreeMapIteratorTest : public BaseTestWithScope<false> {
 protected:
     JSHandle<JSAPITreeMap> CreateTreeMap()
     {
+        return EcmaTestCommon::CreateTreeMap(thread);
+    }
+
+    JSHandle<JSAPITreeMap> TestKeyValueCommon(std::vector<JSMutableHandle<JSTaggedValue>>& keyValue,
+        std::vector<std::string>& mapKeyValue, uint32_t len, bool valueNext = false) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(value.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::TreeMap)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPITreeMap> jsTreeMap(
-            factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSTaggedValue internal = TaggedTreeMap::Create(thread);
-        jsTreeMap->SetTreeMap(thread, internal);
+        JSHandle<JSAPITreeMap> jsTreeMap = CreateTreeMap();
+        for (uint32_t i = 0; i < len; i++) {
+            std::string ikey = mapKeyValue[0] + std::to_string(i);
+            std::string ivalue = mapKeyValue[1] + std::to_string(valueNext ? i + 1U : i);
+            keyValue[0].Update(factory->NewFromStdString(ikey).GetTaggedValue());
+            keyValue[1].Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+            JSAPITreeMap::Set(thread, jsTreeMap, keyValue[0], keyValue[1]);
+        }
         return jsTreeMap;
     }
 };
@@ -176,24 +168,19 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, CreateTreeMapIterator)
 HWTEST_F_L0(JSAPITreeMapIteratorTest, KEY_Next)
 {
     constexpr uint32_t DEFAULT_LENGTH = 8;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
-    JSHandle<JSAPITreeMap> jsTreeMap = CreateTreeMap();
+    std::vector<JSMutableHandle<JSTaggedValue>> keyValue {key, value};
     std::string mapKey("mapkey");
     std::string mapValue("mapvalue");
-    for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ikey = mapKey + std::to_string(i);
-        std::string ivalue = mapValue + std::to_string(i);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPITreeMap::Set(thread, jsTreeMap, key, value);
-    }
+    std::vector<std::string> mapKeyValue{mapKey, mapValue};
+    JSHandle<JSAPITreeMap> jsTreeMap = TestKeyValueCommon(keyValue, mapKeyValue, DEFAULT_LENGTH);
     // Create Iterator with KEY
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPITreeMapIterator> treeMapKeyIterator =
         factory->NewJSAPITreeMapIterator(jsTreeMap, IterationKind::KEY);
     // traversal iterator
+    JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
@@ -205,9 +192,9 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, KEY_Next)
 
         JSHandle<JSObject> resultObj(thread, result);
         std::string resultKey = mapKey + std::to_string(i);
-        key.Update(factory->NewFromStdString(resultKey).GetTaggedValue());
+        keyValue[0].Update(factory->NewFromStdString(resultKey).GetTaggedValue());
         EXPECT_EQ(JSTaggedValue::SameValue(
-            JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), key), true);
+            JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), keyValue[0]), true);
         EXPECT_EQ(treeMapKeyIterator->GetNextIndex(), (i + 1U));
     }
 }
@@ -215,24 +202,19 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, KEY_Next)
 HWTEST_F_L0(JSAPITreeMapIteratorTest, VALUE_Next)
 {
     constexpr uint32_t DEFAULT_LENGTH = 8;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
-    JSHandle<JSAPITreeMap> jsTreeMap = CreateTreeMap();
     std::string mapKey("mapkey");
     std::string mapValue("mapvalue");
-    for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ikey = mapKey + std::to_string(i);
-        std::string ivalue = mapValue + std::to_string(i + 1U);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPITreeMap::Set(thread, jsTreeMap, key, value);
-    }
+    std::vector<std::string> mapKeyValue{mapKey, mapValue};
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    std::vector<JSMutableHandle<JSTaggedValue>> keyValue {key, value};
+    JSHandle<JSAPITreeMap> jsTreeMap = TestKeyValueCommon(keyValue, mapKeyValue, DEFAULT_LENGTH, true);
     // Create Iterator with VALUE
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPITreeMapIterator> treeMapKeyIterator =
         factory->NewJSAPITreeMapIterator(jsTreeMap, IterationKind::VALUE);
     // traversal iterator
+    JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
@@ -244,9 +226,9 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, VALUE_Next)
 
         JSHandle<JSObject> resultObj(thread, result);
         std::string resultKey = mapValue + std::to_string(i + 1U);
-        value.Update(factory->NewFromStdString(resultKey).GetTaggedValue());
+        keyValue[1].Update(factory->NewFromStdString(resultKey).GetTaggedValue()); // 1 : value index
         EXPECT_EQ(JSTaggedValue::SameValue(
-            JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), value), true);
+            JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), keyValue[1]), true); // 1 : value index
         EXPECT_EQ(treeMapKeyIterator->GetNextIndex(), (i + 1U));
     }
 }

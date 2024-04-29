@@ -25,7 +25,7 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
@@ -36,32 +36,38 @@ class JSAPIPlainArrayTest : public BaseTestWithScope<false> {
 protected:
     JSAPIPlainArray *CreatePlainArray()
     {
+        return EcmaTestCommon::CreatePlainArray(thread);
+    }
+    JSHandle<JSAPIPlainArray> GetIndexOfKeyAndGeIndexOfValueGetArray(JSMutableHandle<JSTaggedValue>& value,
+        uint32_t numbers)
+    {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
 
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+        JSHandle<JSAPIPlainArray> array(thread, CreatePlainArray());
+        EXPECT_TRUE(array->IsEmpty());
+        std::string myValue("myvalue");
+        for (uint32_t i = 0; i < numbers; i++) {
+            uint32_t ikey = 100 + i;
+            std::string ivalue = myValue + std::to_string(i);
+            key.Update(JSTaggedValue(ikey));
+            value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+            JSAPIPlainArray::Add(thread, array, key, value);
+        }
+        EXPECT_EQ(array->GetSize(), static_cast<int>(numbers));
+        EXPECT_FALSE(array->IsEmpty());
+        return array;
+    }
 
-        auto objCallInfo =
-            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means the value
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::PlainArray)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPIPlainArray> plainArray(
-            factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSHandle<JSTaggedValue> keyArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(8)); // 8 means the value
-        JSHandle<JSTaggedValue> valueArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(8)); // 8 means the value
-        plainArray->SetKeys(thread, keyArray);
-        plainArray->SetValues(thread, valueArray);
-        return *plainArray;
+    JSHandle<JSAPIPlainArray> PropertyCommon(uint32_t elementsNums)
+    {
+        JSHandle<JSAPIPlainArray> plainArray(thread, CreatePlainArray());
+        for (uint32_t i = 0; i < elementsNums; i++) {
+            JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+            JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+            JSAPIPlainArray::Add(thread, plainArray, key, value);
+        }
+        return plainArray;
     }
 };
 
@@ -159,30 +165,16 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_CloneAndHasAndGet)
 HWTEST_F_L0(JSAPIPlainArrayTest, PA_GetIndexOfKeyAndGeIndexOfValueAndIsEmptyAndRemoveRangeFrom)
 {
     constexpr uint32_t NODE_NUMBERS = 8; // 8 means the value
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-
-    JSHandle<JSAPIPlainArray> array(thread, CreatePlainArray());
-    EXPECT_TRUE(array->IsEmpty());
-    std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        uint32_t ikey = 100 + i;
-        std::string ivalue = myValue + std::to_string(i);
-        key.Update(JSTaggedValue(ikey));
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIPlainArray::Add(thread, array, key, value);
-    }
-    EXPECT_EQ(array->GetSize(), static_cast<int>(NODE_NUMBERS));
-    EXPECT_FALSE(array->IsEmpty());
-
+    auto array = GetIndexOfKeyAndGeIndexOfValueGetArray(value, NODE_NUMBERS);
     value.Update(JSTaggedValue(103)); // 103 means the value
     int32_t lvalue = 103;
     JSTaggedValue value2 = array->GetIndexOfKey(lvalue);
     EXPECT_EQ(value2.GetNumber(), 3); // 3 means the value
     EXPECT_EQ(array->GetIndexOfKey(lvalue * 2), JSTaggedValue(-1));
 
-    myValue = "myvalue2";
+    std::string myValue = "myvalue2";
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     value.Update(factory->NewFromStdString(myValue).GetTaggedValue());
     JSTaggedValue value3 = array->GetIndexOfValue(value.GetTaggedValue());
     EXPECT_EQ(value3.GetNumber(), 2); // 2 means the value
@@ -202,25 +194,11 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_GetIndexOfKeyAndGeIndexOfValueAndIsEmptyAndR
 HWTEST_F_L0(JSAPIPlainArrayTest, PA_RemvoeAnrRemvoeAtAndSetValueAtAndGetValueAt)
 {
     constexpr uint32_t NODE_NUMBERS = 8; // 8 means the value
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-
-    JSHandle<JSAPIPlainArray> array(thread, CreatePlainArray());
-    EXPECT_TRUE(array->IsEmpty());
-    std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        uint32_t ikey = 100 + i;
-        std::string ivalue = myValue + std::to_string(i);
-        key.Update(JSTaggedValue(ikey));
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIPlainArray::Add(thread, array, key, value);
-    }
-    EXPECT_EQ(array->GetSize(), static_cast<int>(NODE_NUMBERS));
-    EXPECT_FALSE(array->IsEmpty());
-
+    auto array = GetIndexOfKeyAndGeIndexOfValueGetArray(value, NODE_NUMBERS);
     // test Remove
-    myValue = "myvalue2";
+    std::string myValue = "myvalue2";
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     value.Update(factory->NewFromStdString(myValue).GetTaggedValue());
     JSTaggedValue taggedValue =
         array->Remove(thread, JSTaggedValue(102)); // 102 means the value
@@ -307,13 +285,8 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_ToString)
  */
 HWTEST_F_L0(JSAPIPlainArrayTest, GetProperty)
 {
-    JSHandle<JSAPIPlainArray> plainArray(thread, CreatePlainArray());
     uint32_t elementsNums = 8;
-    for (uint32_t i = 0; i < elementsNums; i++) {
-        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
-        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
-        JSAPIPlainArray::Add(thread, plainArray, key, value);
-    }
+    auto plainArray = PropertyCommon(elementsNums);
     for (uint32_t i = 0; i < elementsNums; i++) {
         JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
         OperationResult getPropertyRes = JSAPIPlainArray::GetProperty(thread, plainArray, key);
@@ -329,13 +302,8 @@ HWTEST_F_L0(JSAPIPlainArrayTest, GetProperty)
  */
 HWTEST_F_L0(JSAPIPlainArrayTest, SetProperty)
 {
-    JSHandle<JSAPIPlainArray> plainArray(thread, CreatePlainArray());
     uint32_t elementsNums = 8;
-    for (uint32_t i = 0; i < elementsNums; i++) {
-        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
-        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
-        JSAPIPlainArray::Add(thread, plainArray, key, value);
-    }
+    auto plainArray = PropertyCommon(elementsNums);
     for (uint32_t i = 0; i < elementsNums; i++) {
         JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i * 2)); // 2 : It means double

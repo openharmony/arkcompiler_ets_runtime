@@ -142,7 +142,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_002)
     EXPECT_EQ(testValue, 0);
 }
 
-HWTEST_F_L0(JSFinalizationRegistryTest, Register_003)
+static void RegisterUnRegisterTestCommon(JSThread *thread, bool testUnRegister = false, bool AddFinReg = false)
 {
     testValue = 0;
     auto vm = thread->GetEcmaVM();
@@ -157,11 +157,27 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_003)
         auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc);
         target = JSHandle<JSTaggedValue>::Cast(obj);
         JSHandle<JSTaggedValue> heldValue(thread, JSTaggedValue(100));
-        JSHandle<JSTaggedValue> unregisterToken(thread, JSTaggedValue::Undefined());
+        JSHandle<JSTaggedValue> unregisterToken = testUnRegister? target : 
+            JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
         JSHandle<JSTaggedValue> constructor = CreateFinalizationRegistry(thread);
         JSHandle<JSFinalizationRegistry> finaRegObj(thread, constructor.GetTaggedValue());
-
-        JSFinalizationRegistry::Register(thread, target, heldValue, unregisterToken, finaRegObj);
+        if (AddFinReg) {
+            JSHandle<CellRecord> cellRecord = factory->NewCellRecord();
+            cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
+            cellRecord->SetHeldValue(thread, heldValue);
+            JSHandle<JSTaggedValue> cell(cellRecord);
+            JSHandle<CellRecordVector> noUnregister(thread, finaRegObj->GetNoUnregister());
+            noUnregister = CellRecordVector::Append(thread, noUnregister, cell);
+            finaRegObj->SetNoUnregister(thread, noUnregister);
+            JSFinalizationRegistry::AddFinRegLists(thread, finaRegObj);
+            JSHandle<JSTaggedValue> finRegLists = env->GetFinRegLists();
+            EXPECT_EQ(finRegLists.GetTaggedValue(), JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue());
+        } else {
+            JSFinalizationRegistry::Register(thread, target, heldValue, unregisterToken, finaRegObj);
+            if (testUnRegister) {
+                JSFinalizationRegistry::Unregister(thread, target, finaRegObj);
+            }
+        }
         EXPECT_EQ(testValue, 0);
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
@@ -169,10 +185,9 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_003)
         job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
-    EXPECT_EQ(testValue, 1);
 }
 
-HWTEST_F_L0(JSFinalizationRegistryTest, Register_004)
+static void RegisterUnRegisterTestCommonTwoTarget(JSThread *thread, bool testUnRegister = false)
 {
     testValue = 0;
     auto vm = thread->GetEcmaVM();
@@ -195,6 +210,9 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_004)
         JSHandle<JSFinalizationRegistry> finaRegObj2(thread, constructor.GetTaggedValue());
 
         JSFinalizationRegistry::Register(thread, target1, heldValue, unregisterToken, finaRegObj1);
+        if (testUnRegister) {
+            JSFinalizationRegistry::Unregister(thread, target1, finaRegObj1);
+        }
         JSFinalizationRegistry::Register(thread, target2, heldValue, unregisterToken, finaRegObj2);
         EXPECT_EQ(testValue, 0);
     }
@@ -203,6 +221,17 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_004)
         job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
+}
+
+HWTEST_F_L0(JSFinalizationRegistryTest, Register_003)
+{
+    RegisterUnRegisterTestCommon(thread);
+    EXPECT_EQ(testValue, 1);
+}
+
+HWTEST_F_L0(JSFinalizationRegistryTest, Register_004)
+{
+    RegisterUnRegisterTestCommonTwoTarget(thread);
     EXPECT_EQ(testValue, 2);
 }
 
@@ -214,69 +243,13 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_004)
  */
 HWTEST_F_L0(JSFinalizationRegistryTest, Unregister_001)
 {
-    testValue = 0;
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
-
-    JSHandle<JSTaggedValue> objectFunc = env->GetObjectFunction();
-    vm->SetEnableForceGC(false);
-    JSHandle<JSTaggedValue> target(thread, JSTaggedValue::Undefined());
-    {
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc);
-        target = JSHandle<JSTaggedValue>::Cast(obj);
-        JSHandle<JSTaggedValue> heldValue(thread, JSTaggedValue(100));
-        JSHandle<JSTaggedValue> unregisterToken = target;
-        JSHandle<JSTaggedValue> constructor = CreateFinalizationRegistry(thread);
-        JSHandle<JSFinalizationRegistry> finaRegObj(thread, constructor.GetTaggedValue());
-
-        JSFinalizationRegistry::Register(thread, target, heldValue, unregisterToken, finaRegObj);
-        JSFinalizationRegistry::Unregister(thread, target, finaRegObj);
-        EXPECT_EQ(testValue, 0);
-    }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
-    if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
-    }
-    vm->SetEnableForceGC(true);
+    RegisterUnRegisterTestCommon(thread, true);
     EXPECT_EQ(testValue, 0);
 }
 
 HWTEST_F_L0(JSFinalizationRegistryTest, Unregister_002)
 {
-    testValue = 0;
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
-
-    JSHandle<JSTaggedValue> objectFunc = env->GetObjectFunction();
-    vm->SetEnableForceGC(false);
-    JSHandle<JSTaggedValue> target1(thread, JSTaggedValue::Undefined());
-    JSHandle<JSTaggedValue> target2(thread, JSTaggedValue::Undefined());
-    {
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc);
-        target1 = JSHandle<JSTaggedValue>::Cast(obj);
-        target2 = JSHandle<JSTaggedValue>::Cast(obj);
-        JSHandle<JSTaggedValue> heldValue(thread, JSTaggedValue(100));
-        JSHandle<JSTaggedValue> unregisterToken = JSHandle<JSTaggedValue>::Cast(obj);
-        JSHandle<JSTaggedValue> constructor = CreateFinalizationRegistry(thread);
-        JSHandle<JSFinalizationRegistry> finaRegObj1(thread, constructor.GetTaggedValue());
-        JSHandle<JSFinalizationRegistry> finaRegObj2(thread, constructor.GetTaggedValue());
-
-        // only second finalization is be registered
-        JSFinalizationRegistry::Register(thread, target1, heldValue, unregisterToken, finaRegObj1);
-        JSFinalizationRegistry::Unregister(thread, target1, finaRegObj1);
-
-        JSFinalizationRegistry::Register(thread, target2, heldValue, unregisterToken, finaRegObj2);
-        EXPECT_EQ(testValue, 0);
-    }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
-    if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
-    }
-    vm->SetEnableForceGC(true);
+    RegisterUnRegisterTestCommonTwoTarget(thread, true);
     // only trigger second finalization callback
     EXPECT_EQ(testValue, 1);
 }
@@ -409,40 +382,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, CleanFinRegLists)
  */
 HWTEST_F_L0(JSFinalizationRegistryTest, AddFinRegLists)
 {
-    testValue = 0;
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
-
-    JSHandle<JSTaggedValue> objectFunc = env->GetObjectFunction();
-    vm->SetEnableForceGC(false);
-    JSHandle<JSTaggedValue> target(thread, JSTaggedValue::Undefined());
-    {
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc);
-        target = JSHandle<JSTaggedValue>::Cast(obj);
-        JSHandle<JSTaggedValue> heldValue(thread, JSTaggedValue(100));
-        JSHandle<JSTaggedValue> unregisterToken(thread, JSTaggedValue::Undefined());
-        JSHandle<JSTaggedValue> constructor = CreateFinalizationRegistry(thread);
-        JSHandle<JSFinalizationRegistry> finaRegObj(thread, constructor.GetTaggedValue());
-
-        JSHandle<CellRecord> cellRecord = factory->NewCellRecord();
-        cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
-        cellRecord->SetHeldValue(thread, heldValue);
-        JSHandle<JSTaggedValue> cell(cellRecord);
-        JSHandle<CellRecordVector> noUnregister(thread, finaRegObj->GetNoUnregister());
-        noUnregister = CellRecordVector::Append(thread, noUnregister, cell);
-        finaRegObj->SetNoUnregister(thread, noUnregister);
-        JSFinalizationRegistry::AddFinRegLists(thread, finaRegObj);
-        JSHandle<JSTaggedValue> finRegLists = env->GetFinRegLists();
-        EXPECT_EQ(finRegLists.GetTaggedValue(), JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue());
-        EXPECT_EQ(testValue, 0);
-    }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
-    if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
-    }
-    vm->SetEnableForceGC(true);
+    RegisterUnRegisterTestCommon(thread, false, true);
     EXPECT_EQ(testValue, 1);
 }
 }  // namespace panda::test

@@ -19,7 +19,7 @@
 #include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/tagged_tree.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -30,27 +30,12 @@ protected:
     JSHandle<JSAPITreeSet> CreateTreeSet()
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::TreeSet)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
+        auto result = TestCommon::CreateContainerTaggedValue(thread, containers::ContainerTag::TreeSet);
         JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPITreeSet> jsSet(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+        JSHandle<JSAPITreeSet> set(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
         JSTaggedValue internal = TaggedTreeSet::Create(thread);
-        jsSet->SetTreeSet(thread, internal);
-        return jsSet;
+        set->SetTreeSet(thread, internal);
+        return set;
     }
 };
 

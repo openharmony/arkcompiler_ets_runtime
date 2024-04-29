@@ -26,7 +26,7 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
@@ -42,33 +42,46 @@ public:
 protected:
     JSAPILightWeightMap *CreateLightWeightMap()
     {
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return EcmaTestCommon::CreateLightWeightMap(thread);
+    }
+
+    JSHandle<JSAPILightWeightMap> TestCommon(JSMutableHandle<JSTaggedValue>& value, std::string& myValue,
+        uint32_t numbers)
+    {
+        JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        std::string myKey("mykey");
+        JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
+        for (uint32_t i = 0; i < numbers; i++) {
+            std::string ikey = myKey + std::to_string(i);
+            std::string ivalue = myValue + std::to_string(i);
+            key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+            value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+            JSAPILightWeightMap::Set(thread, lwm, key, value);
+            EXPECT_TRUE(JSAPILightWeightMap::GetIndexOfKey(thread, lwm, key) != -1);
+            EXPECT_TRUE(JSAPILightWeightMap::GetIndexOfValue(thread, lwm, value) != -1);
+            uint32_t length = lwm->GetLength();
+            EXPECT_EQ(length, i + 1);
+        }
+        return lwm;
+    }
 
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread,
-            JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+    JSHandle<JSAPILightWeightMap> RemoveCommon(std::vector<JSHandle<JSTaggedValue>>& keys, 
+        std::vector<JSHandle<JSTaggedValue>>& values)
+    {
+        JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
+        JSHandle<TaggedArray> valueArray(thread,
+                                        JSTaggedValue(TaggedArray::Cast(lwm->GetValues().GetTaggedObject())));
 
-        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LightWeightMap)));
-
-        auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSHandle<JSTaggedValue> constructor =
-            JSHandle<JSTaggedValue>(thread, containers::ContainersPrivate::Load(objCallInfo));
-        TestHelper::TearDownFrame(thread, prev);
-        JSHandle<JSAPILightWeightMap> lightWeightMap = JSHandle<JSAPILightWeightMap>::
-            Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSHandle<JSTaggedValue> hashArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(DEFAULT_SIZE));
-        JSHandle<JSTaggedValue> keyArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(DEFAULT_SIZE));
-        JSHandle<JSTaggedValue> valueArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(DEFAULT_SIZE));
-        lightWeightMap->SetHashes(thread, hashArray);
-        lightWeightMap->SetKeys(thread, keyArray);
-        lightWeightMap->SetValues(thread, valueArray);
-        lightWeightMap->SetLength(0);
-        return *lightWeightMap;
+        for (int i = 1; i <= 3; i++) // 3: key value count; 1: start key
+        {
+            JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+            JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i+1));
+            JSAPILightWeightMap::Set(thread, lwm, key, value);
+            keys.push_back(key);
+            values.push_back(value);
+        }
+        return lwm;
     }
 };
 
@@ -127,23 +140,10 @@ HWTEST_F_L0(JSAPILightWeightMapTest, SetHasKeyGetHasValue)
 HWTEST_F_L0(JSAPILightWeightMapTest, GetIndexOfKeyAndGetIndexOfValue)
 {
     constexpr uint32_t NODE_NUMBERS = 8;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    std::string myKey("mykey");
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::string myValue("myvalue");
-    JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string ikey = myKey + std::to_string(i);
-        std::string ivalue = myValue + std::to_string(i);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPILightWeightMap::Set(thread, lwm, key, value);
-        EXPECT_TRUE(JSAPILightWeightMap::GetIndexOfKey(thread, lwm, key) != -1);
-        EXPECT_TRUE(JSAPILightWeightMap::GetIndexOfValue(thread, lwm, value) != -1);
-        uint32_t length = lwm->GetLength();
-        EXPECT_EQ(length, i + 1);
-    }
+    auto lwm = TestCommon(value, myValue, NODE_NUMBERS);
     std::string ivalue = myValue + std::to_string(NODE_NUMBERS);
     value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
     EXPECT_TRUE(JSAPILightWeightMap::GetIndexOfValue(thread, lwm, value) == -1);
@@ -187,29 +187,17 @@ HWTEST_F_L0(JSAPILightWeightMapTest, IsEmptyGetKeyAtGetValue)
 
 HWTEST_F_L0(JSAPILightWeightMapTest, Remove)
 {
-    JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
-    JSHandle<TaggedArray> valueArray(thread,
-                                     JSTaggedValue(TaggedArray::Cast(lwm->GetValues().GetTaggedObject())));
-
-    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(2));
-    JSAPILightWeightMap::Set(thread, lwm, key, value);
-
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(3));
-    JSAPILightWeightMap::Set(thread, lwm, key1, value1);
-
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(3));
-    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(4));
-    JSAPILightWeightMap::Set(thread, lwm, key2, value2);
+    std::vector<JSHandle<JSTaggedValue>> keys{};
+    std::vector<JSHandle<JSTaggedValue>> values{};
+    auto lwm = RemoveCommon(keys, values);
 
     JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(4));
 
     JSHandle<JSTaggedValue> result =
-        JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::Remove(thread, lwm, key2));
+        JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::Remove(thread, lwm, keys[2])); // 2 : key index
     JSHandle<JSTaggedValue> resultNoExist =
         JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::Remove(thread, lwm, key3));
-    EXPECT_TRUE(JSTaggedValue::Equal(thread, result, value2));
+    EXPECT_TRUE(JSTaggedValue::Equal(thread, result, values[2])); // 2 : value index
     bool isKeyExist = true;
     if (resultNoExist->IsUndefined()) {
         isKeyExist = false;
@@ -219,31 +207,18 @@ HWTEST_F_L0(JSAPILightWeightMapTest, Remove)
 
 HWTEST_F_L0(JSAPILightWeightMapTest, RemoveAt)
 {
-    JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
-    JSHandle<TaggedArray> valueArray(thread,
-                                     JSTaggedValue(TaggedArray::Cast(lwm->GetValues().GetTaggedObject())));
-
-    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(2));
-    JSAPILightWeightMap::Set(thread, lwm, key, value);
-
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(3));
-    JSAPILightWeightMap::Set(thread, lwm, key1, value1);
-
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(3));
-    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(4));
-    JSAPILightWeightMap::Set(thread, lwm, key2, value2);
-
-    int32_t removeIndex = JSAPILightWeightMap::GetIndexOfKey(thread, lwm, key1);
+    std::vector<JSHandle<JSTaggedValue>> keys{};
+    std::vector<JSHandle<JSTaggedValue>> values{};
+    auto lwm = RemoveCommon(keys, values);
+    int32_t removeIndex = JSAPILightWeightMap::GetIndexOfKey(thread, lwm, keys[1]); // 1 : key
     EXPECT_EQ(JSAPILightWeightMap::RemoveAt(thread, lwm, removeIndex), JSTaggedValue::True());
-    JSHandle<JSTaggedValue> result(thread, JSAPILightWeightMap::Get(thread, lwm, key1));
+    JSHandle<JSTaggedValue> result(thread, JSAPILightWeightMap::Get(thread, lwm, keys[1])); // 1 : key
     bool isSuccessRemove = false;
     if (result->IsUndefined()) {
         isSuccessRemove = true;
     }
     EXPECT_TRUE(isSuccessRemove);
-    EXPECT_EQ(JSAPILightWeightMap::HasValue(thread, lwm, value1), JSTaggedValue::False());
+    EXPECT_EQ(JSAPILightWeightMap::HasValue(thread, lwm, values[1]), JSTaggedValue::False());
     EXPECT_TRUE(lwm->GetLength() == 2);
 
     EXPECT_EQ(JSAPILightWeightMap::RemoveAt(thread, lwm, -1), JSTaggedValue::False());
@@ -317,23 +292,9 @@ HWTEST_F_L0(JSAPILightWeightMapTest, GetStateOfKey)
 HWTEST_F_L0(JSAPILightWeightMapTest, IncreaseCapacityTo)
 {
     constexpr uint32_t NODE_NUMBERS = 10;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    std::string myKey("mykey");
     std::string myValue("myvalue");
-    JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string ikey = myKey + std::to_string(i);
-        std::string ivalue = myValue + std::to_string(i);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPILightWeightMap::Set(thread, lwm, key, value);
-        EXPECT_TRUE(JSAPILightWeightMap::GetIndexOfKey(thread, lwm, key) != -1);
-        EXPECT_TRUE(JSAPILightWeightMap::GetIndexOfValue(thread, lwm, value) != -1);
-        uint32_t length = lwm->GetLength();
-        EXPECT_EQ(length, i + 1);
-    }
+    auto lwm = TestCommon(value, myValue, NODE_NUMBERS);
     EXPECT_EQ(JSAPILightWeightMap::IncreaseCapacityTo(thread, lwm, 15), JSTaggedValue::True());
     EXPECT_EQ(JSAPILightWeightMap::IncreaseCapacityTo(thread, lwm, 9), JSTaggedValue::False());
 }
