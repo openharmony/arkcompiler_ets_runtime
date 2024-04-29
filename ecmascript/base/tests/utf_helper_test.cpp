@@ -21,31 +21,7 @@ using namespace panda::ecmascript::base;
 using namespace panda::ecmascript::base::utf_helper;
 
 namespace panda::test {
-class UtfHelperTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class UtfHelperTest : public BaseTestWithScope<false> {
 };
 
 /*
@@ -511,18 +487,12 @@ HWTEST_F_L0(UtfHelperTest, Utf8ToUtf16Size)
     EXPECT_EQ(length, 6U);
 }
 
-/*
-* @tc.name: ConvertRegionUtf16ToUtf8
-* @tc.desc: Input aUTF16-encoded sequence (thelength is "utf16Len"), convert part of the sequence into a UTF8-encoded
-*           sequence, and save it to "utf8Out"(the maximum length is "utf8Len"). The start parameter indicates the
-*           start position of the conversion. Whether to perform special processing for O in the "modify" parameter.
-* @tc.type: FUNC
-*/
-HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf16ToUtf8)
+static void ConvertRegionUtf16ToUtf8Test(bool isDebugger = false)
 {
     size_t utf16Len = 8;
     size_t utf8Len = 100;
     size_t start = 0;
+    size_t utf8Pos = 0;
     bool modify = false;
     uint16_t utf16Value[8] = {
         0x00, // 0 or 2 (special case for \u0000 ==> C080 - 1100'0000 1000'0000）
@@ -534,40 +504,39 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf16ToUtf8)
         0xD800, 0xDFFF}; // 4 [0x10000, 0x10FFFF]
     const uint16_t *utf16ValuePtr = utf16Value;
     uint8_t *utf8Out = (uint8_t*)malloc(utf8Len);
-    size_t utf8Pos = ConvertRegionUtf16ToUtf8(utf16ValuePtr, utf8Out, utf16Len, utf8Len, start, modify);
+    if (isDebugger) {
+        utf8Pos = DebuggerConvertRegionUtf16ToUtf8(utf16ValuePtr, utf8Out, utf16Len, utf8Len, start, modify);
+    } else {
+        utf8Pos = ConvertRegionUtf16ToUtf8(utf16ValuePtr, utf8Out, utf16Len, utf8Len, start, modify);
+    }
     // 0 + 1 + 2 +(3 *3)+ 4= 16
     EXPECT_EQ(utf8Pos, 16U);
     // 2 + 1 + 2 +(3 * 3)+ 4 = 18
     modify = true;
-    utf8Pos = ConvertRegionUtf16ToUtf8(utf16ValuePtr, utf8Out, utf16Len, utf8Len, start, modify);
+    if (isDebugger) {
+        utf8Pos = DebuggerConvertRegionUtf16ToUtf8(utf16ValuePtr, utf8Out, utf16Len, utf8Len, start, modify);
+    } else {
+        utf8Pos = ConvertRegionUtf16ToUtf8(utf16ValuePtr, utf8Out, utf16Len, utf8Len, start, modify);
+    }
     EXPECT_EQ(utf8Pos, 18U);
     free(utf8Out);
 }
 
+/*
+* @tc.name: ConvertRegionUtf16ToUtf8
+* @tc.desc: Input aUTF16-encoded sequence (thelength is "utf16Len"), convert part of the sequence into a UTF8-encoded
+*           sequence, and save it to "utf8Out"(the maximum length is "utf8Len"). The start parameter indicates the
+*           start position of the conversion. Whether to perform special processing for O in the "modify" parameter.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf16ToUtf8)
+{
+    ConvertRegionUtf16ToUtf8Test();
+}
+
 HWTEST_F_L0(UtfHelperTest, DebuggerConvertRegionUtf16ToUtf8)
 {
-    size_t utf16Len = 8;
-    size_t utf8Len = 100;
-    size_t start = 0;
-    bool modify = false;
-    uint16_t utf16Value[8] = {
-        0x00, // 0 or 2 (special case for \u0000 ==> C080 - 1100'0000 1000'0000）
-        0x7F, // 1(0x00, 0x7F]
-        0x7FF, // 2 [0x80, 0x7FF]
-        0x800, // 3 [0x800, 0xD7FF]
-        0xD800, // 3 [0xD800, 0xDFFF]  ---> replace by 0xFFFD
-        0xFFFF, // 3 [0xE000, 0xFFFF]  ---> replace by 0xFFFD
-        0xD800, 0xDFFF}; // 4 [0x10000, 0x10FFFF]
-    const uint16_t *utf16ValuePtr = utf16Value;
-    uint8_t *utf8Out = (uint8_t*)malloc(utf8Len);
-    size_t utf8Pos = DebuggerConvertRegionUtf16ToUtf8(utf16ValuePtr, utf8Out, utf16Len, utf8Len, start, modify);
-    // 0 + 1 + 2 +(3 * 3)+ 4 = 16
-    EXPECT_EQ(utf8Pos, 16U);
-    // 2 + 1 + 2 +(3 * 3)+ 4 = 18
-    modify = true;
-    utf8Pos = DebuggerConvertRegionUtf16ToUtf8(utf16ValuePtr, utf8Out, utf16Len, utf8Len, start, modify);
-    EXPECT_EQ(utf8Pos, 18U);
-    free(utf8Out);
+    ConvertRegionUtf16ToUtf8Test(true);
 }
 
 /*

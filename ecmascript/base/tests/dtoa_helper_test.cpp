@@ -27,31 +27,7 @@ using namespace panda::ecmascript::base::dtoa;
         EXPECT_EQ(k, e2)
 
 namespace panda::test {
-class DtoaHelperTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class DtoaHelperTest : public BaseTestWithScope<false> {
 protected:
     template <class To, class From>
     inline To MemoryCast(const From &src) noexcept
