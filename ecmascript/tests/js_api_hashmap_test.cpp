@@ -38,7 +38,7 @@ protected:
         return EcmaTestCommon::CreateHashMap(thread);
     }
 
-    void Update(JSHandle<JSAPIHashMap>& hashMap, JSMutableHandle<JSTaggedValue>& key, 
+    void Update(JSHandle<JSAPIHashMap>& hashMap, JSMutableHandle<JSTaggedValue>& key,
         JSMutableHandle<JSTaggedValue>& value, std::pair<std::string, std::string> myKeyVal, uint32_t numbers)
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

@@ -160,7 +160,8 @@ JSHandle<JSArray> FormatCommon(JSThread *thread, std::vector<std::string>& strs)
     return valueArr;
 }
 
-JSHandle<JSListFormat> GetFormatter(JSThread *thread, std::map<std::string, std::string>& options, icu::Locale& icuLocale)
+JSHandle<JSListFormat> GetFormatter(JSThread *thread, std::map<std::string, std::string>& options,
+    icu::Locale& icuLocale)
 {
     auto vm = thread->GetEcmaVM();
     auto factory = vm->GetFactory();

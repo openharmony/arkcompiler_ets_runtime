@@ -542,7 +542,7 @@ ResolvedLocale ResolveLocaleCommon(JSThread *thread, JSHandle<TaggedArray>& avai
     // test locale1
     requestedLocales->Set(thread, 0, testLocale1);
     result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
-                                                    LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
+                                    LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
     return result;
 }
 

@@ -40,6 +40,7 @@ protected:
     {
         return *EcmaTestCommon::CreateJSApiStack(thread);
     }
+
     JSHandle<JSAPIStack> SearchAndEmptyCommon(JSMutableHandle<JSTaggedValue>& value, std::string& myValue,
         uint32_t len, bool search = false)
     {
@@ -60,7 +61,6 @@ protected:
         }
         return toor;
     }
-    
 };
 
 HWTEST_F_L0(JSAPIStackTest, stackCreate)

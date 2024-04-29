@@ -66,17 +66,15 @@ protected:
         return lwm;
     }
 
-    JSHandle<JSAPILightWeightMap> RemoveCommon(std::vector<JSHandle<JSTaggedValue>>& keys, 
+    JSHandle<JSAPILightWeightMap> RemoveCommon(std::vector<JSHandle<JSTaggedValue>>& keys,
         std::vector<JSHandle<JSTaggedValue>>& values)
     {
         JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
-        JSHandle<TaggedArray> valueArray(thread,
-                                        JSTaggedValue(TaggedArray::Cast(lwm->GetValues().GetTaggedObject())));
+        JSHandle<TaggedArray> valueArray(thread, JSTaggedValue(TaggedArray::Cast(lwm->GetValues().GetTaggedObject())));
 
-        for (int i = 1; i <= 3; i++) // 3: key value count; 1: start key
-        {
+        for (int i = 1; i <= 3; i++) {  // 3: key value count; 1: start key
             JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
-            JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i+1));
+            JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i + 1));
             JSAPILightWeightMap::Set(thread, lwm, key, value);
             keys.push_back(key);
             values.push_back(value);

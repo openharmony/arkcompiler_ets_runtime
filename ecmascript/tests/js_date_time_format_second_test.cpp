@@ -177,6 +177,57 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTimeToParts_001)
     EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, day).c_str(), "25");
 }
 
+void CheckOther(JSThread *thread, JSHandle<JSArray>& dateTimeArray, JSHandle<JSTaggedValue>& typeKey,
+    JSHandle<JSTaggedValue>& valueKey)
+{
+    auto month = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 2).GetValue();
+    auto literal2 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 3).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, month).c_str(), "month");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, month).c_str(), "05");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal2).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal2).c_str(), "月");
+
+    auto day = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 4).GetValue();
+    auto literal3 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 5).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, day).c_str(), "day");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, day).c_str(), "25");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal3).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal3).c_str(), "日");
+
+    auto weekday = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 6).GetValue();
+    auto literal4 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 7).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, weekday).c_str(), "weekday");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, weekday).c_str(), "星期三");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal4).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal4).c_str(), " ");
+
+    auto dayPeriod = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 8).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, dayPeriod).c_str(), "dayPeriod");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, dayPeriod).c_str(), "上午");
+
+    auto hour = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 9).GetValue();
+    auto literal5 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 10).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, hour).c_str(), "hour");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, hour).c_str(), "11");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal5).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal5).c_str(), ":");
+    auto minute = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 11).GetValue();
+    auto literal6 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 12).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, minute).c_str(), "minute");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, minute).c_str(), "09");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal6).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal6).c_str(), ":");
+    auto second = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 13).GetValue();
+    auto literal7 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 14).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, second).c_str(), "second");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, second).c_str(), "34");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal7).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal7).c_str(), ".");
+    auto fracSec = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 15).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, fracSec).c_str(), "fractionalSecond");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, fracSec).c_str(), "123");
+}
+
 HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTimeToParts_002)
 {
     auto globalConst = thread->GlobalConstants();
@@ -214,52 +265,11 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTimeToParts_002)
     JSHandle<JSArray> dateTimeArray = JSDateTimeFormat::FormatDateTimeToParts(thread, dtf, timeStamp);
     auto year = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 0).GetValue();
     auto literal1 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 1).GetValue();
-    auto month = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 2).GetValue();
-    auto literal2 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 3).GetValue();
-    auto day = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 4).GetValue();
-    auto literal3 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 5).GetValue();
-    auto weekday = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 6).GetValue();
-    auto literal4 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 7).GetValue();
-    auto dayPeriod = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 8).GetValue();
-    auto hour = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 9).GetValue();
-    auto literal5 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 10).GetValue();
-    auto minute = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 11).GetValue();
-    auto literal6 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 12).GetValue();
-    auto second = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 13).GetValue();
-    auto literal7 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 14).GetValue();
-    auto fracSec = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 15).GetValue();
     EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, year).c_str(), "year");
     EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, year).c_str(), "22");
     EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal1).c_str(), "literal");
     EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal1).c_str(), "年");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, month).c_str(), "month");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, month).c_str(), "05");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal2).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal2).c_str(), "月");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, day).c_str(), "day");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, day).c_str(), "25");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal3).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal3).c_str(), "日");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, weekday).c_str(), "weekday");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, weekday).c_str(), "星期三");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal4).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal4).c_str(), " ");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, dayPeriod).c_str(), "dayPeriod");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, dayPeriod).c_str(), "上午");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, hour).c_str(), "hour");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, hour).c_str(), "11");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal5).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal5).c_str(), ":");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, minute).c_str(), "minute");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, minute).c_str(), "09");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal6).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal6).c_str(), ":");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, second).c_str(), "second");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, second).c_str(), "34");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal7).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal7).c_str(), ".");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, fracSec).c_str(), "fractionalSecond");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, fracSec).c_str(), "123");
+    CheckOther(thread, dateTimeArray, typeKey, valueKey);
 }
 /**
  * @tc.name: GainAvailableLocales

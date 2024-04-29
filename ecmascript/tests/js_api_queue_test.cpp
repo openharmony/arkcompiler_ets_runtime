@@ -39,7 +39,6 @@ protected:
         }
         return jsQueue;
     }
-    
 };
 
 HWTEST_F_L0(JSAPIQueueTest, queueCreate)

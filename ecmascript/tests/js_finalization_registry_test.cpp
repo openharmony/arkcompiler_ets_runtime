@@ -157,7 +157,7 @@ static void RegisterUnRegisterTestCommon(JSThread *thread, bool testUnRegister =
         auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc);
         target = JSHandle<JSTaggedValue>::Cast(obj);
         JSHandle<JSTaggedValue> heldValue(thread, JSTaggedValue(100));
-        JSHandle<JSTaggedValue> unregisterToken = testUnRegister? target : 
+        JSHandle<JSTaggedValue> unregisterToken = testUnRegister? target :
             JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
         JSHandle<JSTaggedValue> constructor = CreateFinalizationRegistry(thread);
         JSHandle<JSFinalizationRegistry> finaRegObj(thread, constructor.GetTaggedValue());
@@ -203,7 +203,7 @@ static void RegisterUnRegisterTestCommonTwoTarget(JSThread *thread, bool testUnR
         auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc);
         target1 = JSHandle<JSTaggedValue>::Cast(obj);
         target2 = JSHandle<JSTaggedValue>::Cast(obj);
-        JSHandle<JSTaggedValue> heldValue(thread, JSTaggedValue(100));
+        JSHandle<JSTaggedValue> heldValue(thread, JSTaggedValue(100)); // 100: held value
         JSHandle<JSTaggedValue> unregisterToken = JSHandle<JSTaggedValue>::Cast(obj);
         JSHandle<JSTaggedValue> constructor = CreateFinalizationRegistry(thread);
         JSHandle<JSFinalizationRegistry> finaRegObj1(thread, constructor.GetTaggedValue());

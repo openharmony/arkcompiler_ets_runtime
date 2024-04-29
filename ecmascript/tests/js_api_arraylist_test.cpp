@@ -64,11 +64,11 @@ public:
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue val;
         if (forEach) {
-            val = JSAPIArrayList::ForEach(thread, callInfo->GetThis(), callInfo->GetFunction(),
-                callInfo->GetCallArg(0));
+            val =
+                JSAPIArrayList::ForEach(thread, callInfo->GetThis(), callInfo->GetFunction(), callInfo->GetCallArg(0));
         } else {
             val = JSAPIArrayList::ReplaceAllElements(thread, callInfo->GetThis(), callInfo->GetFunction(),
-                    callInfo->GetCallArg(0));
+                                                     callInfo->GetCallArg(0));
         }
 
         JSHandle<JSTaggedValue> result(thread, val);
@@ -207,7 +207,7 @@ static uint32_t GetCapacityCommon(JSThread* thread, JSHandle<JSAPIArrayList>& ar
         // After capacity expansion, the capacity will be about 1.5 times that of the original.
         currentCapacity = JSAPIArrayList::DEFAULT_CAPACITY_LENGTH;
         for (uint32_t j = 0; j < growCapacityTimes; j++) {
-            currentCapacity = static_cast<uint32_t>(currentCapacity * 1.5);
+            currentCapacity = static_cast<uint32_t>(currentCapacity * 1.5); // 1.5: cap
         }
         EXPECT_EQ(JSAPIArrayList::GetCapacity(thread, arrayList), currentCapacity);
 

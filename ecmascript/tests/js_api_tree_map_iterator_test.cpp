@@ -33,7 +33,8 @@ protected:
     }
 
     JSHandle<JSAPITreeMap> TestKeyValueCommon(std::vector<JSMutableHandle<JSTaggedValue>>& keyValue,
-        std::vector<std::string>& mapKeyValue, uint32_t len, bool valueNext = false) {
+        std::vector<std::string>& mapKeyValue, uint32_t len, bool valueNext = false)
+    {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSAPITreeMap> jsTreeMap = CreateTreeMap();
         for (uint32_t i = 0; i < len; i++) {

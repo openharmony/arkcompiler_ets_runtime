@@ -894,7 +894,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, IndexOf_004)
     std::vector<uint8_t> arrayU8From{23, 25, 1, 3, 39, 80};
     auto func = std::bind(EcmaStringAccessor::CreateFromUtf8, std::placeholders::_1, std::placeholders::_2,
         std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE, false, 0);
-    EcmaTestCommon::IndexOfCommonCase(thread, instance,ecmaStrU16NotCompTarget, arrayU8From, func);
+    EcmaTestCommon::IndexOfCommonCase(thread, instance, ecmaStrU16NotCompTarget, arrayU8From, func);
 }
 
 /*
@@ -1014,7 +1014,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, Compare_005)
         EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
 
     uint8_t arrayU8No2[4] = {1, 23, 49};
-     uint32_t lengthEcmaStrU8No2 = sizeof(arrayU8No2) - 1;
+    uint32_t lengthEcmaStrU8No2 = sizeof(arrayU8No2) - 1;
     JSHandle<EcmaString> handleEcmaStrU8No2(thread,
         EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No2[0], lengthEcmaStrU8No2, true));
 

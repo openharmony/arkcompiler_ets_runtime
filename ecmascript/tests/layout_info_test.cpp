@@ -26,7 +26,7 @@ class LayoutInfoTest : public BaseTestWithScope<false> {
 HWTEST_F_L0(LayoutInfoTest, SetNumberOfElements)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    int32_t infoLength = 2;
+    int32_t infoLength = 2; // 2: len
     JSHandle<LayoutInfo> layoutInfoHandle = factory->CreateLayoutInfo(infoLength);
     EXPECT_TRUE(*layoutInfoHandle != nullptr);
 
@@ -128,10 +128,9 @@ void GetAllKeysCommon(JSThread *thread, bool enumKeys = false)
         JSHandle<JSTaggedValue> elementsKey(JSTaggedValue::ToString(thread, elements));
         defaultAttr.SetOffset(i);
         if (enumKeys) {
-            if (i != 3) {
+            if (i != 3) { // 3: index
                 defaultAttr.SetEnumerable(false);
-            }
-            else {
+            } else {
                 defaultAttr.SetEnumerable(true);
             }
         }

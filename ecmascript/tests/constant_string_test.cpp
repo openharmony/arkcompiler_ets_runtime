@@ -278,7 +278,7 @@ HWTEST_F_L0(ConstantStringTest, IndexOf_004)
     std::vector<uint8_t> arrayU8From{23, 25, 1, 3, 39, 80};
     auto func = std::bind(EcmaStringAccessor::CreateConstantString, std::placeholders::_1, std::placeholders::_2,
         std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE, 0);
-    EcmaTestCommon::IndexOfCommonCase(thread, instance,ecmaStrU16NotCompTarget, arrayU8From, func);
+    EcmaTestCommon::IndexOfCommonCase(thread, instance, ecmaStrU16NotCompTarget, arrayU8From, func);
 }
 
 /*

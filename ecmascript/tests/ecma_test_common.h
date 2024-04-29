@@ -52,8 +52,12 @@ using namespace panda;
 using namespace panda::ecmascript;
 using ecmascript::base::BuiltinsBase;
 
+constexpr uint32_t g_numberFive = 5;
 constexpr uint32_t g_defaultSize = 8;
-
+constexpr uint32_t g_numberNine = 9;
+constexpr uint32_t g_nintyNine = 99;
+constexpr uint32_t g_hundred = 100;
+constexpr uint32_t g_hundredAndOne = 101;
 class EcmaTestCommon {
 public:
     using CreateStringFunc =
@@ -109,8 +113,8 @@ public:
     {
         EcmaString *frontEcmaStr = createStringFunc(instance, data.data(), data.size(), true);
         JSHandle<EcmaString> handleEcmaStrU8(thread, frontEcmaStr);
-        uint32_t indexStartSubU8 = 2;
-        uint32_t lengthSubU8 = 2;
+        uint32_t indexStartSubU8 = 2; // 2: sub index
+        uint32_t lengthSubU8 = 2; // 2: length
         JSHandle<EcmaString> handleEcmaStrSubU8(
             thread, EcmaStringAccessor::FastSubString(instance, handleEcmaStrU8, indexStartSubU8, lengthSubU8));
         for (uint32_t i = 0; i < lengthSubU8; i++) {
@@ -130,15 +134,15 @@ public:
         JSHandle<EcmaString> ecmaU8(thread, ecmaStr);
 
         int32_t posStart = 0;
-        EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU8, ecmaU16, posStart), 3);
+        EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU8, ecmaU16, posStart), 3); // 3: value
         EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU16, ecmaU8, posStart), -1);
         posStart = -1;
-        EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU8, ecmaU16, posStart), 3);
+        EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU8, ecmaU16, posStart), 3); // 3: value
         posStart = 1;
-        EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU8, ecmaU16, posStart), 3);
-        posStart = 3;
-        EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU8, ecmaU16, posStart), 3);
-        posStart = 4;
+        EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU8, ecmaU16, posStart), 3); // 3: value
+        posStart = 3; // 3: pos start
+        EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU8, ecmaU16, posStart), 3); // 3: value
+        posStart = 4; // 4: pos start
         EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, ecmaU8, ecmaU16, posStart), -1);
     }
 
@@ -276,8 +280,8 @@ public:
         EXPECT_EQ(compare(instance, handleEcmaStrU16CompNo1, handleEcmaStrU8No1), 0);
         EXPECT_EQ(compare(instance, handleEcmaStrU8No1, handleEcmaStrU16CompNo2), -1);
         EXPECT_EQ(compare(instance, handleEcmaStrU16CompNo2, handleEcmaStrU8No1), 1);
-        EXPECT_EQ(compare(instance, handleEcmaStrU8No2, handleEcmaStrU16CompNo3), 49 - 45);
-        EXPECT_EQ(compare(instance, handleEcmaStrU16CompNo3, handleEcmaStrU8No2), 45 - 49);
+        EXPECT_EQ(compare(instance, handleEcmaStrU8No2, handleEcmaStrU16CompNo3), 49 - 45); // 49: value, 45: value
+        EXPECT_EQ(compare(instance, handleEcmaStrU16CompNo3, handleEcmaStrU8No2), 45 - 49); // 49: value, 45: value
     }
 
     static void GcCommonCase(JSThread *thread, Heap *heap, bool nonMovable = true)
@@ -287,28 +291,28 @@ public:
         size_t newNativeSize = heap->GetNativeBindingSize();
         {
             [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-            auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+            auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024); // 1024: value
             [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(
-                newData, NativeAreaAllocator::FreeBufferFunc, nullptr, nonMovable, 1 * 1024 * 1024);
+                newData, NativeAreaAllocator::FreeBufferFunc, nullptr, nonMovable, 1 * 1024 * 1024); // 1024: value
             newNativeSize = heap->GetNativeBindingSize();
-            EXPECT_EQ(newNativeSize - oldNativeSize, 1UL * 1024 * 1024);
+            EXPECT_EQ(newNativeSize - oldNativeSize, 1UL * 1024 * 1024); // 1024: value
 
-            auto newData1 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+            auto newData1 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024); // 1024: value
             [[maybe_unused]] JSHandle<JSNativePointer> obj2 = factory->NewJSNativePointer(
-                newData1, NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024);
+                newData1, NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024); // 1024: value
 
             EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
-            EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 * 1024);
+            EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 * 1024);  // 1024: value, 2: value
             for (int i = 0; i < 2048; i++) {
                 [[maybe_unused]] ecmascript::EcmaHandleScope baseScopeForeach(thread);
-                auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024);
+                auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024); // 1024: value
                 // malloc size is smaller to avoid test fail in the small devices.
                 [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(
-                    newData2, NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1 * 1024 * 1024);
+                    newData2, NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1 * 1024 * 1024); // 1024: value
             }
             newNativeSize = heap->GetNativeBindingSize();
             // Old GC should be trigger here, so the size should be reduced.
-            EXPECT_TRUE(newNativeSize - oldNativeSize < 2048 * 1024 * 1024);
+            EXPECT_TRUE(newNativeSize - oldNativeSize < 2048 * 1024 * 1024); // 2048: value, 1024: value
         }
     }
 
@@ -316,9 +320,9 @@ public:
     {
         {
             [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < g_hundred; i++) { // g_hundred: run count
                 [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
-                    10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+                    10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE); // 10: value, 1024: value
             }
         }
         return thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
@@ -502,7 +506,7 @@ public:
             JSTaggedValue gValue = toor->Get(i);
             EXPECT_EQ(gValue, value.GetTaggedValue());
         }
-        JSTaggedValue gValue = toor->Get(10);
+        JSTaggedValue gValue = toor->Get(10); // 10: index
         EXPECT_EQ(gValue, JSTaggedValue::Undefined());
 
         std::string ivalue = myValue + std::to_string(1);
@@ -521,10 +525,10 @@ public:
             value.Update(JSTaggedValue(i + 1));
             T::Add(thread, toor, value);
         }
-        EXPECT_EQ(toor->GetLast().GetInt(), 9);
+        EXPECT_EQ(toor->GetLast().GetInt(), g_numberNine);
         EXPECT_EQ(toor->GetFirst().GetInt(), 1);
 
-        value.Update(JSTaggedValue(99));
+        value.Update(JSTaggedValue(g_nintyNine));
         int len = toor->Length();
         toor->Insert(thread, toor, value, len);
         return value;
@@ -534,21 +538,21 @@ public:
     static void GetIndexOfAndGetLastIndexOfCommon(JSThread *thread, JSHandle<T> &toor)
     {
         auto value = ListGetLastCommon<T>(thread, toor);
-        EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), 9);
-        EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), 9);
+        EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), g_numberNine);
+        EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), g_numberNine);
         EXPECT_EQ(toor->Length(), 10);
 
-        value.Update(JSTaggedValue(100));
+        value.Update(JSTaggedValue(g_hundred));
         toor->Insert(thread, toor, value, 0);
         EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), 0);
         EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), 0);
-        EXPECT_EQ(toor->Length(), 11);
+        EXPECT_EQ(toor->Length(), 11); // 11: len
 
-        value.Update(JSTaggedValue(101));
-        toor->Insert(thread, toor, value, 5);
-        EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), 5);
-        EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), 5);
-        EXPECT_EQ(toor->Length(), 12);
+        value.Update(JSTaggedValue(g_hundredAndOne));
+        toor->Insert(thread, toor, value, g_numberFive);
+        EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), g_numberFive);
+        EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), g_numberFive);
+        EXPECT_EQ(toor->Length(), 12); // 12: len
 
         toor->Dump();
     }
@@ -557,21 +561,21 @@ public:
     static void InsertAndGetLastCommon(JSThread *thread, JSHandle<T> &toor)
     {
         auto value = ListGetLastCommon<T>(thread, toor);
-        EXPECT_EQ(toor->GetLast().GetInt(), 99);
-        EXPECT_EQ(toor->Length(), 10);
+        EXPECT_EQ(toor->GetLast().GetInt(), g_nintyNine);
+        EXPECT_EQ(toor->Length(), 10); // 10: len
 
-        value.Update(JSTaggedValue(100));
+        value.Update(JSTaggedValue(g_hundred));
         toor->Insert(thread, toor, value, 0);
-        EXPECT_EQ(toor->GetFirst().GetInt(), 100);
-        EXPECT_EQ(toor->Length(), 11);
+        EXPECT_EQ(toor->GetFirst().GetInt(), g_hundred);
+        EXPECT_EQ(toor->Length(), 11); // 11: len
 
         toor->Dump();
 
-        value.Update(JSTaggedValue(101));
-        toor->Insert(thread, toor, value, 5);
-        EXPECT_EQ(toor->Length(), 12);
+        value.Update(JSTaggedValue(g_hundredAndOne));
+        toor->Insert(thread, toor, value, g_numberFive);
+        EXPECT_EQ(toor->Length(), 12); // 12: len
         toor->Dump();
-        EXPECT_EQ(toor->Get(5).GetInt(), 101);
+        EXPECT_EQ(toor->Get(g_numberFive).GetInt(), g_hundredAndOne);
     }
 
     template <class T>
@@ -703,7 +707,7 @@ public:
     static void ArrayKeepGcCommon(JSThread *thread, TriggerGCType type)
     {
         EcmaVM *ecmaVM = thread->GetEcmaVM();
-        JSHandle<TaggedArray> array = ecmaVM->GetFactory()->NewTaggedArray(2);
+        JSHandle<TaggedArray> array = ecmaVM->GetFactory()->NewTaggedArray(2); // 2: len
         EXPECT_TRUE(*array != nullptr);
         JSHandle<JSObject> newObj1(thread, EcmaTestCommon::JSObjectTestCreate(thread));
         array->Set(thread, 0, newObj1.GetTaggedValue());
