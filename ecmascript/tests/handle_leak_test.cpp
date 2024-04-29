@@ -117,6 +117,21 @@ HWTEST_F_L0(HandleLeakTest, InitializeCheckOneProperty)
     ASSERT_TRUE(failCount == 0);
 }
 
+static void HeandleLeakTestCommon(const EcmaVM *instance, JSHandle<TaggedArray>& newArray)
+{
+    size_t failCount = 0;
+    auto ret = sigsetjmp(env, 1);
+    if (ret != SIGSEGV) {
+        VerifyObjectVisitor verifier(instance->GetHeap(), &failCount);
+        verifier(*newArray);
+        ASSERT_TRUE(false);
+    } else {
+        // catch signal SIGSEGV caused by uninitialize
+        EXPECT_TRUE(segmentFaultFlag);
+        ASSERT_TRUE(failCount == 0);
+    }
+}
+
 HWTEST_F_L0(HandleLeakTest, UnInitializeCheckMoreProperty)
 {
     EcmaHandleScope scope(thread);
@@ -130,17 +145,7 @@ HWTEST_F_L0(HandleLeakTest, UnInitializeCheckMoreProperty)
         perror("sigaction error");
         exit(1);
     }
-    size_t failCount = 0;
-    auto ret = sigsetjmp(env, 1);
-    if (ret != SIGSEGV) {
-        VerifyObjectVisitor verifier(instance->GetHeap(), &failCount);
-        verifier(*newArray);
-        ASSERT_TRUE(false);
-    } else {
-        // catch signal SIGSEGV caused by uninitialize
-        EXPECT_TRUE(segmentFaultFlag);
-        ASSERT_TRUE(failCount == 0);
-    }
+    HeandleLeakTestCommon(instance, newArray);
 }
 
 HWTEST_F_L0(HandleLeakTest, PartInitializeCheckMoreProperty)
@@ -160,17 +165,7 @@ HWTEST_F_L0(HandleLeakTest, PartInitializeCheckMoreProperty)
         perror("sigaction error");
         exit(1);
     }
-    size_t failCount = 0;
-    auto ret = sigsetjmp(env, 1);
-    if (ret != SIGSEGV) {
-        VerifyObjectVisitor verifier(instance->GetHeap(), &failCount);
-        verifier(*newArray);
-        ASSERT_TRUE(false);
-    } else {
-        // catch signal SIGSEGV caused by partinitialize
-        EXPECT_TRUE(segmentFaultFlag);
-        ASSERT_TRUE(failCount == 0);
-    }
+    HeandleLeakTestCommon(instance, newArray);
 }
 
 HWTEST_F_L0(HandleLeakTest, InitializeCheckMoreProperty)

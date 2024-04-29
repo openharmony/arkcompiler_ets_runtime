@@ -14,14 +14,14 @@
  */
 
 #include "ecmascript/containers/containers_private.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/tests/test_helper.h"
-#include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -47,33 +47,39 @@ public:
             return JSTaggedValue::True();
         }
     };
-protected:
-    JSAPIArrayList *CreateArrayList()
+
+    static JSHandle<JSTaggedValue> ReplaceOrForEachCommon(JSThread* thread, JSHandle<JSAPIArrayList>& arrayList,
+        bool forEach = false)
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSFunction> func =
+            factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachAndReplaceAllFunc));
+        
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(arrayList.GetTaggedValue());
+        callInfo->SetCallArg(0, func.GetTaggedValue());
 
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue val;
+        if (forEach) {
+            val = JSAPIArrayList::ForEach(thread, callInfo->GetThis(), callInfo->GetFunction(),
+                callInfo->GetCallArg(0));
+        } else {
+            val = JSAPIArrayList::ReplaceAllElements(thread, callInfo->GetThis(), callInfo->GetFunction(),
+                    callInfo->GetCallArg(0));
+        }
 
-        auto objCallInfo =
-            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means the value
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::ArrayList)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
+        JSHandle<JSTaggedValue> result(thread, val);
         TestHelper::TearDownFrame(thread, prev);
+        return result;
+    }
 
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPIArrayList> arrayList(
-            factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(JSAPIArrayList::DEFAULT_CAPACITY_LENGTH);
-        arrayList->SetElements(thread, taggedArray);
-        return *arrayList;
+protected:
+    JSAPIArrayList *CreateArrayList()
+    {
+        return EcmaTestCommon::CreateArrayList(thread);
     }
 };
 
@@ -191,21 +197,10 @@ HWTEST_F_L0(JSAPIArrayListTest, Clone)
     }
 }
 
-/**
- * @tc.name: GetCapacity & IncreaseCapacityTo
- * @tc.desc:
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(JSAPIArrayListTest, GetCapacity_IncreaseCapacityTo)
+static uint32_t GetCapacityCommon(JSThread* thread, JSHandle<JSAPIArrayList>& arrayList, uint32_t addElementNums,
+    uint32_t& currentCapacity)
 {
-    JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
-    uint32_t oldCapacity = JSAPIArrayList::GetCapacity(thread, arrayList);
-    EXPECT_EQ(oldCapacity, JSAPIArrayList::DEFAULT_CAPACITY_LENGTH);
-
-    uint32_t addElementNums = 256;
     uint32_t growCapacityTimes = 0;
-    uint32_t currentCapacity = JSAPIArrayList::DEFAULT_CAPACITY_LENGTH;
     for (uint32_t i = 0; i < addElementNums; i++) {
         JSAPIArrayList::Add(thread, arrayList, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
 
@@ -224,6 +219,23 @@ HWTEST_F_L0(JSAPIArrayListTest, GetCapacity_IncreaseCapacityTo)
 
     // Expand capacity to a specified capacity value
     uint32_t newCapacity = JSAPIArrayList::GetCapacity(thread, arrayList);
+    return newCapacity;
+}
+
+/**
+ * @tc.name: GetCapacity & IncreaseCapacityTo
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIArrayListTest, GetCapacity_IncreaseCapacityTo)
+{
+    JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
+    uint32_t addElementNums = 256;
+    uint32_t currentCapacity = JSAPIArrayList::DEFAULT_CAPACITY_LENGTH;
+    uint32_t oldCapacity = JSAPIArrayList::GetCapacity(thread, arrayList);
+    EXPECT_EQ(oldCapacity, JSAPIArrayList::DEFAULT_CAPACITY_LENGTH);
+    auto newCapacity = GetCapacityCommon(thread, arrayList, addElementNums, currentCapacity);
     EXPECT_EQ(newCapacity, currentCapacity);
 
     JSAPIArrayList::IncreaseCapacityTo(thread, arrayList, currentCapacity + 1230U);
@@ -240,22 +252,10 @@ HWTEST_F_L0(JSAPIArrayListTest, GetCapacity_IncreaseCapacityTo)
 HWTEST_F_L0(JSAPIArrayListTest, TrimToCurrentLength)
 {
     JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
-
     uint32_t addElementNums = 256;
-    uint32_t growCapacityTimes = 0;
     uint32_t currentCapacity = JSAPIArrayList::DEFAULT_CAPACITY_LENGTH;
-    for (uint32_t i = 0; i < addElementNums; i++) {
-        JSAPIArrayList::Add(thread, arrayList, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-        currentCapacity = JSAPIArrayList::DEFAULT_CAPACITY_LENGTH;
-        for (uint32_t j = 0; j < growCapacityTimes; j++) {
-            currentCapacity = static_cast<uint32_t>(currentCapacity * 1.5);
-        }
-        EXPECT_EQ(JSAPIArrayList::GetCapacity(thread, arrayList), currentCapacity);
-        if (i == (currentCapacity - 2U)) {
-            growCapacityTimes++;
-        }
-    }
-    EXPECT_EQ(JSAPIArrayList::GetCapacity(thread, arrayList), currentCapacity);
+    auto newCapacity = GetCapacityCommon(thread, arrayList, addElementNums, currentCapacity);
+    EXPECT_EQ(newCapacity, currentCapacity);
 
     // Cut the excess length to the actual number of elements
     JSAPIArrayList::TrimToCurrentLength(thread, arrayList);
@@ -424,21 +424,9 @@ HWTEST_F_L0(JSAPIArrayListTest, RemoveByRange)
  */
 HWTEST_F_L0(JSAPIArrayListTest, ReplaceAllElements)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> func =
-        factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachAndReplaceAllFunc));
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(arrayList.GetTaggedValue());
-    callInfo->SetCallArg(0, func.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-    JSHandle<JSTaggedValue> result(thread, JSAPIArrayList::ReplaceAllElements(thread,
-        callInfo->GetThis(), callInfo->GetFunction(), callInfo->GetCallArg(0)));
+    auto result = ReplaceOrForEachCommon(thread, arrayList);
     EXPECT_EQ(result.GetTaggedValue(), JSTaggedValue::Undefined());
-    TestHelper::TearDownFrame(thread, prev);
 
     // Recheck the results after replace.
     uint32_t length = arrayList->GetLength().GetArrayLength();
@@ -522,21 +510,9 @@ HWTEST_F_L0(JSAPIArrayListTest, SubArrayList)
  */
 HWTEST_F_L0(JSAPIArrayListTest, ForEach)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> func =
-        factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachAndReplaceAllFunc));
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(arrayList.GetTaggedValue());
-    callInfo->SetCallArg(0, func.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-    JSHandle<JSTaggedValue> result(thread,
-        JSAPIArrayList::ForEach(thread, callInfo->GetThis(), callInfo->GetFunction(), callInfo->GetCallArg(0)));
+    auto result = ReplaceOrForEachCommon(thread, arrayList, true);
     EXPECT_EQ(result.GetTaggedValue(), JSTaggedValue::Undefined());
-    TestHelper::TearDownFrame(thread, prev);
 }
 
 /**

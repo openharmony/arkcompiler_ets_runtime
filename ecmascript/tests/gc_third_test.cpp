@@ -20,7 +20,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
@@ -58,14 +58,7 @@ HWTEST_F_L0(GCTest, HighSensitiveForceExpand)
     }
     size_t expandHeapSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
     const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->NotifyHighSensitive(false);
-    {
-        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-        for (int i = 0; i < 100; i++) {
-            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
-                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
-        }
-    }
-    size_t newSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
+    size_t newSize = EcmaTestCommon::GcCommonCase(thread);
     EXPECT_TRUE(originalHeapSize < expandHeapSize);
     EXPECT_TRUE(expandHeapSize > newSize);
 }

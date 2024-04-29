@@ -21,7 +21,7 @@
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -31,30 +31,7 @@ class JSAPIArrayListIteratorTest :  public BaseTestWithScope<false> {
 protected:
     JSAPIArrayList *CreateArrayList()
     {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo =
-            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means the value
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::ArrayList)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPIArrayList> arrayList(
-            factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(JSAPIArrayList::DEFAULT_CAPACITY_LENGTH);
-        arrayList->SetElements(thread, taggedArray);
-        return *arrayList;
+        return EcmaTestCommon::CreateArrayList(thread);
     }
 };
 

@@ -12,16 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/mem/mem_common.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda::ecmascript;
 
@@ -36,32 +34,20 @@ public:
     }
 };
 
-static JSObject *JSObjectTestCreate(JSThread *thread)
-{
-    [[maybe_unused]] ecmascript::EcmaHandleScope scope(thread);
-    EcmaVM *ecmaVM = thread->GetEcmaVM();
-    auto globalEnv = ecmaVM->GetGlobalEnv();
-    JSHandle<JSTaggedValue> jsFunc = globalEnv->GetObjectFunction();
-    JSHandle<JSObject> newObj =
-        ecmaVM->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(jsFunc), jsFunc);
-    return *newObj;
-}
-
 static TaggedArray *LargeArrayTestCreate(JSThread *thread)
 {
     [[maybe_unused]] ecmascript::EcmaHandleScope scope(thread);
-    static constexpr size_t SIZE = 1_MB;
+    static constexpr size_t SIZE = 1ULL << 20UL;
     JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(SIZE);
     return *array;
 }
-
 
 HWTEST_F_L0(HugeObjectTest, LargeArrayKeep)
 {
     TaggedArray *array = LargeArrayTestCreate(thread);
     EXPECT_TRUE(array != nullptr);
     JSHandle<TaggedArray> arrayHandle(thread, array);
-    JSHandle<JSObject> newObj(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> newObj(thread, EcmaTestCommon::JSObjectTestCreate(thread));
     arrayHandle->Set(thread, 0, newObj.GetTaggedValue());
     auto ecmaVm = thread->GetEcmaVM();
     EXPECT_EQ(*arrayHandle, reinterpret_cast<TaggedObject *>(array));
