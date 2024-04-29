@@ -214,6 +214,12 @@ public:
         glueData_.sOldSpaceAllocationEndAddress_ = end;
     }
 
+    void ReSetSNonMovableSpaceAllocationAddress(const uintptr_t *top, const uintptr_t* end)
+    {
+        glueData_.sNonMovableSpaceAllocationTopAddress_ = top;
+        glueData_.sNonMovableSpaceAllocationEndAddress_ = end;
+    }
+
     uintptr_t GetUnsharedConstpools() const
     {
         return glueData_.unsharedConstpools_;
@@ -853,6 +859,8 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  RTStubEntries,
                                                  COStubEntries,
                                                  BuiltinStubEntries,
@@ -891,6 +899,8 @@ public:
             NewSpaceAllocationEndAddressIndex,
             SOldSpaceAllocationTopAddressIndex,
             SOldSpaceAllocationEndAddressIndex,
+            SNonMovableSpaceAllocationTopAddressIndex,
+            SNonMovableSpaceAllocationEndAddressIndex,
             RTStubEntriesIndex,
             COStubEntriesIndex,
             BuiltinsStubEntriesIndex,
@@ -979,6 +989,16 @@ public:
         static size_t GetSOldSpaceAllocationEndAddressOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::SOldSpaceAllocationEndAddressIndex)>(isArch32);
+        }
+
+        static size_t GetSNonMovableSpaceAllocationTopAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SNonMovableSpaceAllocationTopAddressIndex)>(isArch32);
+        }
+
+        static size_t GetSNonMovableSpaceAllocationEndAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SNonMovableSpaceAllocationEndAddressIndex)>(isArch32);
         }
 
         static size_t GetBCStubEntriesOffset(bool isArch32)
@@ -1133,6 +1153,8 @@ public:
         alignas(EAS) const uintptr_t *newSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) const uintptr_t *sOldSpaceAllocationTopAddress_ {nullptr};
         alignas(EAS) const uintptr_t *sOldSpaceAllocationEndAddress_ {nullptr};
+        alignas(EAS) const uintptr_t *sNonMovableSpaceAllocationTopAddress_ {nullptr};
+        alignas(EAS) const uintptr_t *sNonMovableSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) RTStubEntries rtStubEntries_;
         alignas(EAS) COStubEntries coStubEntries_;
         alignas(EAS) BuiltinStubEntries builtinStubEntries_;

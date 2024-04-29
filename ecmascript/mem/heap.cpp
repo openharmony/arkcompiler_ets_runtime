@@ -341,6 +341,9 @@ void Heap::Initialize()
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
     sOldTlab_ = new ThreadLocalAllocationBuffer(this);
     thread_->ReSetSOldSpaceAllocationAddress(sOldTlab_->GetTopAddress(), sOldTlab_->GetEndAddress());
+    sNonMovableTlab_ = new ThreadLocalAllocationBuffer(this);
+    thread_->ReSetSNonMovableSpaceAllocationAddress(sNonMovableTlab_->GetTopAddress(),
+                                                    sNonMovableTlab_->GetEndAddress());
     inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
 
     // whether should verify heap duration gc
@@ -413,11 +416,13 @@ void Heap::Initialize()
 void Heap::ResetTlab()
 {
     sOldTlab_->Reset();
+    sNonMovableTlab_->Reset();
 }
 
 void Heap::FillBumpPointerForTlab()
 {
     sOldTlab_->FillBumpPointer();
+    sNonMovableTlab_->FillBumpPointer();
 }
 
 void Heap::Destroy()
@@ -426,6 +431,11 @@ void Heap::Destroy()
         sOldTlab_->Reset();
         delete sOldTlab_;
         sOldTlab_ = nullptr;
+    }
+    if (sNonMovableTlab_!= nullptr) {
+        sNonMovableTlab_->Reset();
+        delete sNonMovableTlab_;
+        sNonMovableTlab_= nullptr;
     }
     if (workManager_ != nullptr) {
         delete workManager_;

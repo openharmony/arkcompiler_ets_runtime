@@ -80,25 +80,18 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
     std::vector<GateRef> successBBGates;
     std::vector<GateRef> failBBGates;
     std::vector<GateRef> endBBGates;
-    if (flag == RegionSpaceFlag::IN_YOUNG_SPACE || flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
-        LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
+    LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
 #ifdef ARK_ASAN_ON
-        ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
-        return false;
-#else
-        ReplaceBBState(cfg, bbIdx, currentBBGates, endBBGates);
-        ScheduleEndBB(endBBGates, cfg, bbIdx, instIdx);
-        ScheduleNewBB(successBBGates, cfg, bbIdx);
-        ScheduleNewBB(failBBGates, cfg, bbIdx);
-        ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
-        return true;
-#endif
-    } else if (flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
-        LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
-        ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
-        return false;
-    }
+    ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
     return false;
+#else
+    ReplaceBBState(cfg, bbIdx, currentBBGates, endBBGates);
+    ScheduleEndBB(endBBGates, cfg, bbIdx, instIdx);
+    ScheduleNewBB(successBBGates, cfg, bbIdx);
+    ScheduleNewBB(failBBGates, cfg, bbIdx);
+    ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
+    return true;
+#endif
 }
 
 void PostSchedule::ReplaceGateDirectly(std::vector<GateRef> &gates, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx)
@@ -210,6 +203,9 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
     if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
         topOffset = JSThread::GlueData::GetSOldSpaceAllocationTopAddressOffset(false);
         endOffset = JSThread::GlueData::GetSOldSpaceAllocationEndAddressOffset(false);
+    } else if (flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
+        topOffset = JSThread::GlueData::GetSNonMovableSpaceAllocationTopAddressOffset(false);
+        endOffset = JSThread::GlueData::GetSNonMovableSpaceAllocationEndAddressOffset(false);
     } else {
         ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
         topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
@@ -271,8 +267,18 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
         GateRef taggedIntMask = circuit_->GetConstantGateWithoutCache(
             MachineType::I64, JSTaggedValue::TAG_INT, GateType::NJSValue());
         GateRef taggedSize = builder_.Int64Or(size, taggedIntMask);
-        GateRef target = circuit_->GetConstantGateWithoutCache(
-            MachineType::ARCH, RTSTUB_ID(AllocateInYoung), GateType::NJSValue());
+        GateRef target = Circuit::NullGate();
+        if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
+            target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, RTSTUB_ID(AllocateInSOld),
+                                                           GateType::NJSValue());
+        } else if (flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
+            target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, RTSTUB_ID(AllocateInSNonMovable),
+                                                           GateType::NJSValue());
+        } else {
+            ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
+            target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, RTSTUB_ID(AllocateInYoung),
+                                                           GateType::NJSValue());
+        }
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
         ASSERT(cs->IsRuntimeStub());
         GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());

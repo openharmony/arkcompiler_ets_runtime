@@ -274,7 +274,8 @@ public:
     }
 
     void OnAllocateEvent(EcmaVM *ecmaVm, TaggedObject* address, size_t size);
-    inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass, size_t size);
+    inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
+                                            [[maybe_unused]] size_t size);
     bool CheckCanDistributeTask();
     void IncreaseTaskCount();
     void ReduceTaskCount();
@@ -548,6 +549,8 @@ public:
 
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 
+    inline TaggedObject *AllocateSNonMovableTlab(JSThread *thread, size_t size);
+
     inline TaggedObject *AllocateSOldTlab(JSThread *thread, size_t size);
 
     size_t VerifyHeapObjects(VerifyKind verifyKind) const;
@@ -759,6 +762,9 @@ public:
     inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size);
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
+
+    // shared non movable space tlab
+    inline TaggedObject *AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size);
     // shared old space tlab
     inline TaggedObject *AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size);
 
@@ -1165,6 +1171,8 @@ private:
     HugeMachineCodeSpace *hugeMachineCodeSpace_ {nullptr};
     HugeObjectSpace *hugeObjectSpace_ {nullptr};
     SnapshotSpace *snapshotSpace_ {nullptr};
+    // tlab for shared non movable space
+    ThreadLocalAllocationBuffer *sNonMovableTlab_;
     // tlab for shared old space
     ThreadLocalAllocationBuffer *sOldTlab_;
     /*
