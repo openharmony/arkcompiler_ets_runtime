@@ -492,6 +492,10 @@ public:
     bool IsVector();
     bool IsSharedObject();
     bool IsJSShared();
+    bool IsSharedArray();
+    bool IsSharedTypedArray();
+    bool IsSharedSet();
+    bool IsSharedMap();
     bool IsHeapObject();
 
 private:
