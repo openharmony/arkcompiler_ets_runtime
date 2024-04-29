@@ -3289,5 +3289,44 @@ JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, const JS
     }
     return JSTaggedValue::Cast(static_cast<void *>(str));
 }
+
+uint32_t RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc)
+{
+    // Compute current bytecodePc according to nativePc of returnAddress
+    LOG_BASELINEJIT(DEBUG) << "nativePc address: " << std::hex << nativePc;
+    const MachineCode *machineCode = MachineCode::Cast(func->GetBaselineCode().GetTaggedObject());
+    const uintptr_t nativePcStart = machineCode->GetFuncAddr();
+    LOG_BASELINEJIT(DEBUG) << "baselineCode nativeStart address: " << std::hex << nativePcStart;
+    const Method *thisMethod = Method::Cast(func->GetMethod().GetTaggedObject());
+    const uint8_t *bytecodeStart = thisMethod->GetBytecodeArray();
+    const uint8_t *bytecodeEnd = bytecodeStart + thisMethod->GetCodeSize();
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc start: " << reinterpret_cast<uintptr_t>(bytecodeStart);
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc end: " << reinterpret_cast<uintptr_t>(bytecodeEnd);
+    const uint8_t *offsetTableAddr = machineCode->GetStackMapOrOffsetTableAddress();
+    const uint32_t offsetTableSize = machineCode->GetStackMapOrOffsetTableSize();
+    uintptr_t nativePcEnd = nativePcStart;
+    uint32_t pcOffsetIndex = 0;
+    auto opcode = kungfu::Bytecodes::GetOpcode(bytecodeStart);
+    while (nativePcEnd < nativePc && pcOffsetIndex < offsetTableSize) {
+        nativePcEnd += static_cast<uintptr_t>(offsetTableAddr[pcOffsetIndex++]);
+        opcode = kungfu::Bytecodes::GetOpcode(bytecodeStart);
+        bytecodeStart += BytecodeInstruction::Size(opcode);
+    }
+    // Since the nativePc is returnAddress, we need to take the previous bytecode
+    bytecodeStart -= BytecodeInstruction::Size(opcode);
+    if (nativePcEnd < nativePc) {
+        LOG_ECMA(FATAL) <<
+            "invalid nativePc or pcOffsetTable for getting bytecode pc in baseline code, the nativePcEnd is " <<
+            std::hex << nativePcEnd;
+    }
+    if (bytecodeStart > bytecodeEnd) {
+        LOG_ECMA(FATAL) <<
+            "out of bytecodeArray range for getting bytecode pc in baseline code, the bytecodePc is " <<
+            reinterpret_cast<uintptr_t>(bytecodeStart);
+    }
+    auto bytecodePcOffset = static_cast<uint32_t>(bytecodeStart - thisMethod->GetBytecodeArray());
+    LOG_BASELINEJIT(DEBUG) << "current bytecodePc offset: " << bytecodePcOffset;
+    return bytecodePcOffset;
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

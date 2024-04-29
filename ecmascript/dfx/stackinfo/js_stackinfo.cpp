@@ -26,6 +26,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/ohos/aot_runtime_info.h"
 #include "ecmascript/platform/os.h"
+#include "ecmascript/stubs/runtime_stubs-inl.h"
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
 #endif
@@ -155,7 +156,13 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
     std::string data;
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     FrameIterator it(current, thread);
+    uintptr_t baselineNativePc = 0;
     for (; !it.Done(); it.Advance<GCVisitedFlag::HYBRID_STACK>()) {
+        if (it.GetFrameType() == FrameType::BASELINE_BUILTIN_FRAME) {
+            auto *frame = it.GetFrame<BaselineBuiltinFrame>();
+            baselineNativePc = frame->GetReturnAddr();
+            continue;
+        }
         if (!it.IsJSFrame()) {
             continue;
         }
@@ -164,19 +171,16 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
             continue;
         }
         if (!method->IsNativeWithCallField()) {
-            auto pcOffset = it.GetBytecodeOffset();
-            const JSPandaFile *pf = method->GetJSPandaFile();
-            std::map<uint32_t, uint32_t> methodOffsets = it.GetInlinedMethodInfo();
-            FrameType frameType = it.GetFrameType();
-            if (IsFastJitFunctionFrame(frameType)) {
-                JSFunction *func = static_cast<JSFunction*>(it.GetFunction().GetTaggedObject());
-                auto frame = it.GetFrame<FASTJITFunctionFrame>();
-                uintptr_t pc = frame->GetReturnAddr();
-                PrintJSCrashOffset(pc, func);
-                DumpJitCode(thread);
+            uint32_t pcOffset = 0;
+            if (it.GetFrameType() == FrameType::ASM_INTERPRETER_FRAME && baselineNativePc != 0) {
+                // the pcOffste in baseline frame slot is always uint64::max(), so pcOffset should be computed
+                JSHandle<JSFunction> function(thread, it.GetFunction());
+                pcOffset = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(function, baselineNativePc);
+                baselineNativePc = 0;
+            } else {
+                pcOffset = it.GetBytecodeOffset();
             }
-            data += BuildInlinedMethodTrace(pf, methodOffsets, frameType);
-            data += BuildMethodTrace(method, pcOffset, frameType, thread->GetEnableStackSourceFile());
+            BuildJsStackTraceInfo(thread, method, data, it, pcOffset);
         } else if (needNative) {
             auto addr = method->GetNativePointer();
             std::stringstream strm;
@@ -192,6 +196,23 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
 #endif
     }
     return data;
+}
+
+void JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method, std::string &data,
+                                        FrameIterator &it, uint32_t pcOffset)
+{
+    const JSPandaFile *pf = method->GetJSPandaFile();
+    std::map<uint32_t, uint32_t> methodOffsets = it.GetInlinedMethodInfo();
+    FrameType frameType = it.GetFrameType();
+    if (IsFastJitFunctionFrame(frameType)) {
+        JSFunction *func = static_cast<JSFunction*>(it.GetFunction().GetTaggedObject());
+        auto frame = it.GetFrame<FASTJITFunctionFrame>();
+        uintptr_t pc = frame->GetReturnAddr();
+        PrintJSCrashOffset(pc, func);
+        DumpJitCode(thread);
+    }
+    data += BuildInlinedMethodTrace(pf, methodOffsets, frameType);
+    data += BuildMethodTrace(method, pcOffset, frameType, thread->GetEnableStackSourceFile());
 }
 
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc)

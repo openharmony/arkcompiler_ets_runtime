@@ -447,6 +447,7 @@ private:
     V(JSCallWithArgVAndPushArgv)                \
     V(ResumeRspAndDispatch)                     \
     V(ResumeRspAndReturn)                       \
+    V(ResumeRspAndReturnBaseline)               \
     V(ResumeCaughtFrameAndDispatch)             \
     V(ResumeUncaughtFrameAndReturn)             \
     V(ResumeRspAndRollback)                     \
@@ -586,7 +587,8 @@ private:
     V(CallNewAndCheckToBaselineFromBaseline)         \
     V(SuperCallAndCheckToBaselineFromBaseline)       \
     V(CallThisRangeAndCheckToBaselineFromBaseline)   \
-    V(SameValue)
+    V(SameValue)                                     \
+    V(GetBaselineBuiltinFp)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

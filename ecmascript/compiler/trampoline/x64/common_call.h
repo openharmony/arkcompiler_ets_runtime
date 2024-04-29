@@ -163,6 +163,8 @@ public:
 
     static void ResumeRspAndReturn([[maybe_unused]] ExtendedAssembler *assembler);
 
+    static void ResumeRspAndReturnBaseline([[maybe_unused]] ExtendedAssembler *assembler);
+
     static void CallGetter(ExtendedAssembler *assembler);
 
     static void CallSetter(ExtendedAssembler *assembler);
@@ -255,6 +257,8 @@ public:
     static void CallNewAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
     static void SuperCallAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
     static void CallThisRangeAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    /* get baselineBuiltinFp when baselineBuiltin call the others */
+    static void GetBaselineBuiltinFp(ExtendedAssembler *assembler);
 };
 
 class JsFunctionArgsConfigFrameScope {

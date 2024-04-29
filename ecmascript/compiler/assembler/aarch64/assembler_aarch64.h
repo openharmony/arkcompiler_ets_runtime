@@ -322,6 +322,7 @@ public:
     void Lsl(const Register &rd, const Register &rn, const Register &rm);
     void Lsr(const Register &rd, const Register &rn, const Register &rm);
     void Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
+    void Bfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
 
     void Add(const Register &rd, const Register &rn, const Operand &operand);
     void Adds(const Register &rd, const Register &rn, const Operand &operand);

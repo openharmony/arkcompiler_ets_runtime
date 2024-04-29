@@ -73,50 +73,6 @@ void MacroAssemblerX64::SaveReturnRegister(const StackSlotOperand &dstStackSlot)
     assembler.Movq(RETURN_REGISTER, dstOpnd);
 }
 
-//  ------------------------
-//  |       ......         |
-//  |----------------------|
-//  |        arg(n)        |
-//  |----------------------|
-//  |       arg(n-1)       |
-//  |----------------------|   ===> Attention! The parameters are push on the stack in the reverse order of defination!
-//  |        ......        |
-//  |----------------------|
-//  |        arg(0)        |
-//  |----------------------|   ---> newSP
-void MacroAssemblerX64::MovParameterOnStack(MacroParameter param)
-{
-    // We only implement the stack parameter transfer modes of the following parameters,
-    // because they are 8-byte alignment.
-    if (std::holds_alternative<BaselineSpecialParameter>(param)) {
-        auto specialParam = std::get<BaselineSpecialParameter>(param);
-        switch (specialParam) {
-            case BaselineSpecialParameter::GLUE: {
-                assembler.Pushq(GLUE_REGISTER);
-                break;
-            }
-            case BaselineSpecialParameter::SP: {
-                assembler.Pushq(x64::rbp);
-                break;
-            }
-            default:
-                std::cout << "do not support putting other special parameters on the stack currently" << std::endl;
-                std::abort();
-        }
-        return;
-    }
-    if (std::holds_alternative<StackSlotOperand>(param)) {
-        StackSlotOperand stackSlotOpnd = std::get<StackSlotOperand>(param);
-        x64::Register dstBaseReg = (stackSlotOpnd.IsFrameBase() ? x64::rbp : x64::rsp);
-        x64::Operand paramOpnd(dstBaseReg, stackSlotOpnd.GetOffset());
-        assembler.Movq(paramOpnd, LOCAL_SCOPE_REGISTER);
-        assembler.Pushq(LOCAL_SCOPE_REGISTER);
-        return;
-    }
-    std::cout << "do not support putting other type parameters on the stack currently" << std::endl;
-    std::abort();
-}
-
 void MacroAssemblerX64::MovParameterIntoParamReg(MacroParameter param, x64::Register paramReg)
 {
     if (std::holds_alternative<BaselineSpecialParameter>(param)) {
@@ -186,14 +142,11 @@ void MacroAssemblerX64::MovParameterIntoParamReg(MacroParameter param, x64::Regi
 void MacroAssemblerX64::CallBuiltin(Address funcAddress,
                                     const std::vector<MacroParameter> &parameters)
 {
-    // Push extra parameters on the stack in reverse order
-    for (size_t i = parameters.size() - 1; i >= PARAM_REGISTER_COUNT; --i) {
-        MovParameterOnStack(parameters[i]);
-    }
     for (size_t i = 0; i < parameters.size(); ++i) {
         auto param = parameters[i];
         if (i == PARAM_REGISTER_COUNT) {
-            break;
+            std::cout << "should not pass parameters on the stack" << std::endl;
+            std::abort();
         }
         MovParameterIntoParamReg(param, registerParamVec[i]);
     }

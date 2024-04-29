@@ -1194,6 +1194,21 @@ DEF_CALL_SIGNATURE(CallThisRangeAndCheckToBaselineFromBaseline)
     BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisRangeAndCheckToBaselineFromBaseline)
 }
 
+DEF_CALL_SIGNATURE(GetBaselineBuiltinFp)
+{
+    /* 1 : 1 input parameters */
+    CallSignature getBaselineBuiltinFp("GetBaselineBuiltinFp", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::NATIVE_POINTER());
+    *callSign = getBaselineBuiltinFp;
+    std::array<VariableType, 1> params = { /* 1 : 1 input parameters */
+        VariableType::NATIVE_POINTER(),  // glue
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(GeneratorReEnterAsmInterp)
 {
     /* 2 : 2 input parameters */
@@ -1402,6 +1417,23 @@ DEF_CALL_SIGNATURE(ResumeRspAndReturn)
         VariableType::JS_ANY(),
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::GHCCallConv);
+}
+
+DEF_CALL_SIGNATURE(ResumeRspAndReturnBaseline)
+{
+    // 4 : 4 input parameters
+    CallSignature resumeRspAndReturnBaseline("ResumeRspAndReturnBaseline", 0, 4,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = resumeRspAndReturnBaseline;
+    std::array<VariableType, 4> params = { // 4 : 4 input parameters
+        VariableType::JS_ANY(),            // %r13 - acc
+        VariableType::NATIVE_POINTER(),    // %rbp - prevSp
+        VariableType::NATIVE_POINTER(),    // %r12 - sp
+        VariableType::NATIVE_POINTER(),    // %rbx - jumpSizeAfterCall
     };
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);

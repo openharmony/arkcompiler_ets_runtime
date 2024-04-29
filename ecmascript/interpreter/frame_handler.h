@@ -191,6 +191,11 @@ public:
         return type == FrameType::INTERPRETER_BUILTIN_FRAME;
     }
 
+    bool IsBaselineBuiltinFrame(FrameType type) const
+    {
+        return (type == FrameType::BASELINE_BUILTIN_FRAME);
+    }
+
     JSTaggedType *GetSp() const
     {
         return sp_;
@@ -201,12 +206,20 @@ public:
         return fp_;
     }
 
+    uintptr_t GetBaselineNativePc() const
+    {
+        return baselineNativePc_;
+    }
+
     void PrevJSFrame();
     JSTaggedType *GetPrevJSFrame();
 
     // for InterpretedFrame.
     JSTaggedValue GetVRegValue(size_t index) const;
     void SetVRegValue(size_t index, JSTaggedValue value);
+
+    // for BaselineBuiltinFrame
+    void FindAndSetBaselineNativePc(FrameIterator it);
 
     JSTaggedValue GetEnv() const;
     JSTaggedValue GetAcc() const;
@@ -257,6 +270,7 @@ private:
 private:
     JSTaggedType *sp_ {nullptr};
     JSTaggedType *fp_ {nullptr};
+    uintptr_t baselineNativePc_ {0}; // For baselineJit upFrame
     const JSThread *thread_ {nullptr};
     const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 };

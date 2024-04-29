@@ -739,7 +739,9 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
             __ Movq(methodRegister, rbx);
         }
         const int32_t pcOffsetFromSP = -24; // -24: 3 slots, frameType, prevFrame, pc
-        __ Movq(Immediate(0), Operand(newSpRegister, pcOffsetFromSP));
+        Register temp3Register = r10;
+        __ Movabs(std::numeric_limits<uint64_t>::max(), temp3Register);
+        __ Movq(temp3Register, Operand(newSpRegister, pcOffsetFromSP));
         __ Movq(newSpRegister, rbp);
         __ Jmp(tempRegister);
 
@@ -1216,6 +1218,82 @@ void AsmInterpreterCall::ResumeRspAndReturn(ExtendedAssembler *assembler)
         __ Movq(r13, rax);
         __ Ret();
     }
+}
+
+// ResumeRspAndReturnBaseline(uintptr_t acc)
+// GHC calling convention
+// %r13 - acc
+// %rbp - prevSp
+// %r12 - sp
+// %rbx - jumpSizeAfterCall
+void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndReturnBaseline));
+    Register currentSp = r12;
+    Register fpRegister = r10;
+    intptr_t fpOffset = AsmInterpretedFrame::GetFpOffset(false) - AsmInterpretedFrame::GetSize(false);
+    __ Movq(Operand(currentSp, static_cast<int32_t>(fpOffset)), fpRegister);
+    __ Movq(fpRegister, rsp);
+
+    // Check result
+    Register ret = r13;
+    Register jumpSizeRegister = rbx;
+    Label getThis;
+    Label notUndefined;
+    Label normalReturn;
+    Label newObjectRangeReturn;
+    __ Cmpq(0, jumpSizeRegister);
+    __ Jg(&normalReturn);
+
+    __ Bind(&newObjectRangeReturn);
+    {
+        __ Cmpq(JSTaggedValue::Undefined().GetRawData(), ret);
+        __ Jne(&notUndefined);
+
+        // acc is undefined
+        __ Bind(&getThis);
+        intptr_t thisOffset = AsmInterpretedFrame::GetThisOffset(false) - AsmInterpretedFrame::GetSize(false);
+        __ Movq(Operand(currentSp, static_cast<int32_t>(thisOffset)), ret);
+        __ Jmp(&normalReturn);
+
+        // acc is not undefined
+        __ Bind(&notUndefined);
+        {
+            Register temp = rax;
+            Label notEcmaObject;
+            __ Movabs(JSTaggedValue::TAG_HEAPOBJECT_MASK, temp);
+            __ And(ret, temp);
+            __ Cmpq(0, temp);
+            __ Jne(&notEcmaObject);
+            // acc is heap object
+            __ Movq(Operand(ret, 0), temp);  // hclass
+            __ Movl(Operand(temp, JSHClass::BIT_FIELD_OFFSET), temp);
+            __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST), temp);
+            __ Ja(&notEcmaObject);
+            __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST), temp);
+            __ Jb(&notEcmaObject);
+            // acc is ecma object
+            __ Jmp(&normalReturn);
+
+            __ Bind(&notEcmaObject);
+            {
+                // load constructor
+                intptr_t funcOffset =
+                    AsmInterpretedFrame::GetFunctionOffset(false) - AsmInterpretedFrame::GetSize(false);
+                __ Movq(Operand(currentSp, static_cast<int32_t>(funcOffset)), temp);
+                __ Movq(Operand(temp, JSFunctionBase::METHOD_OFFSET), temp);
+                __ Movq(Operand(temp, Method::EXTRA_LITERAL_INFO_OFFSET), temp);
+                __ Shr(MethodLiteral::FunctionKindBits::START_BIT, temp);
+                __ Andl((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, temp);
+                __ Cmpl(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR), temp);
+                __ Jbe(&getThis);  // constructor is base
+                // fall through
+            }
+        }
+    }
+    __ Bind(&normalReturn);
+    __ Movq(ret, rax);
+    __ Ret();
 }
 
 // ResumeCaughtFrameAndDispatch(uintptr_t glue, uintptr_t sp, uintptr_t pc, uintptr_t constantPool,

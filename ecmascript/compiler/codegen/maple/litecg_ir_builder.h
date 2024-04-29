@@ -174,6 +174,7 @@ private:
     CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
     maple::litecg::Expr GetRTStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetCoStubOffset(maple::litecg::Expr glue, int index) const;
+    maple::litecg::Expr GetBaselineStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetCallee(maple::litecg::BB &bb, const std::vector<GateRef> &inList,
                                   const CallSignature *signature, const std::string &realName);
     maple::litecg::Expr CanonicalizeToPtr(maple::litecg::Expr expr, maple::litecg::Type *type);

@@ -123,6 +123,7 @@ namespace panda::ecmascript::kungfu {
     V(BaselineJeqzImm16)                                                   \
     V(BaselineSetobjectwithprotoImm8V8)                                    \
     V(BaselineDelobjpropV8)                                                \
+    V(BaselineSuspendgeneratorV8)                                          \
     V(BaselineAsyncfunctionawaituncaughtV8)                                \
     V(BaselineCopydatapropertiesV8)                                        \
     V(BaselineStarrayspreadV8V8)                                           \
@@ -183,9 +184,6 @@ namespace panda::ecmascript::kungfu {
     V(BaselineLdlexvarImm8Imm8)                                            \
     V(BaselineStlexvarImm8Imm8)                                            \
     V(BaselineJnstricteqV8Imm16)                                           \
-    V(BaselineMovV4V4)                                                     \
-    V(BaselineMovV8V8)                                                     \
-    V(BaselineMovV16V16)                                                   \
     V(BaselineAsyncgeneratorrejectV8)                                      \
     V(BaselineNop)                                                         \
     V(BaselineSetgeneratorstateImm8)                                       \

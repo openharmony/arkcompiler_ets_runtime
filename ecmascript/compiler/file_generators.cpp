@@ -659,8 +659,8 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     machineCodeDesc.codeSize = textSize;
     machineCodeDesc.funcEntryDesAddr = funcEntryAddr;
     machineCodeDesc.funcEntryDesSize = funcEntrySize;
-    machineCodeDesc.stackMapAddr = stackMapPtr;
-    machineCodeDesc.stackMapSize = stackMapSize;
+    machineCodeDesc.stackMapOrOffsetTableAddr = stackMapPtr;
+    machineCodeDesc.stackMapOrOffsetTableSize = stackMapSize;
     machineCodeDesc.codeType = MachineCodeType::FAST_JIT_CODE;
 }
 

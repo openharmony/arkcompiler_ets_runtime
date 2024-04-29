@@ -43,6 +43,9 @@ ARK_INLINE void FrameHandler::AdvanceToJSFrame()
     FrameIterator it(sp_, thread_);
     for (; !it.Done(); it.Advance()) {
         FrameType t = it.GetFrameType();
+        if (IsBaselineBuiltinFrame(t)) {
+            FindAndSetBaselineNativePc(it);
+        }
         if (IsJSFrame(t) || IsJSEntryFrame(t)) {
             break;
         }
@@ -54,6 +57,9 @@ ARK_INLINE void FrameHandler::PrevJSFrame()
 {
     if (!thread_->IsAsmInterpreter()) {
         FrameIterator it(sp_, thread_);
+        if (IsBaselineBuiltinFrame(it.GetFrameType())) {
+            FindAndSetBaselineNativePc(it);
+        }
         it.Advance();
         sp_ = it.GetSp();
         return;
@@ -110,6 +116,13 @@ void FrameHandler::SetVRegValue(size_t index, JSTaggedValue value)
     ASSERT(IsInterpretedFrame());
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     sp_[index] = value.GetRawData();
+}
+
+void FrameHandler::FindAndSetBaselineNativePc(FrameIterator it)
+{
+    ASSERT(IsBaselineBuiltinFrame(it.GetFrameType()));
+    auto *frame = it.GetFrame<BaselineBuiltinFrame>();
+    baselineNativePc_ = frame->GetReturnAddr();
 }
 
 JSTaggedValue FrameHandler::GetAcc() const

@@ -748,6 +748,16 @@ void AssemblerAarch64::Ubfm(const Register &rd, const Register &rn, unsigned imm
     EmitU32(code);
 }
 
+void AssemblerAarch64::Bfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms)
+{
+    bool sf = !rd.IsW();
+    uint32_t n = (sf << BITWISE_OP_N_LOWBITS) & BITWISE_OP_N_MASK;
+    uint32_t immr_field = (immr << BITWISE_OP_Immr_LOWBITS) & BITWISE_OP_Immr_MASK;
+    uint32_t imms_field = (imms << BITWISE_OP_Imms_LOWBITS) & BITWISE_OP_Imms_MASK;
+    uint32_t code = Sf(sf) | BFM | n | immr_field | imms_field | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, unsigned shift)
 {
     unsigned imms = 0;

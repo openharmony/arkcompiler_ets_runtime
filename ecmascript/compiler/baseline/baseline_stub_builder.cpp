@@ -37,7 +37,7 @@ GateRef BaselineStubBuilder::GetResumeModeFromGeneratorObject(GateRef obj)
     return Int32And(
         Int32LSR(bitfield, Int32(JSGeneratorObject::ResumeModeBits::START_BIT)),
         Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
-    }
+}
 
 GateRef BaselineStubBuilder::GetResumeModeFromAsyncGeneratorObject(GateRef obj)
 {

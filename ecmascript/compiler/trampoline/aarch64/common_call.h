@@ -193,6 +193,8 @@ public:
 
     static void ResumeRspAndReturn([[maybe_unused]] ExtendedAssembler *assembler);
 
+    static void ResumeRspAndReturnBaseline([[maybe_unused]] ExtendedAssembler *assembler);
+
     static void ResumeCaughtFrameAndDispatch(ExtendedAssembler *assembler);
 
     static void ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembler);
@@ -303,6 +305,8 @@ public:
     static void CallNewAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
     static void SuperCallAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
     static void CallThisRangeAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    /* get baselineBuiltinFp when baselineBuiltin call the others */
+    static void GetBaselineBuiltinFp(ExtendedAssembler *assembler);
 };
 
 }  // namespace panda::ecmascript::x64
