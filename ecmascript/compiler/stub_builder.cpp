@@ -2850,6 +2850,26 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 Jump(&exit);
             }
             Bind(&notSpecialContainer);
+
+            Label isString(env);
+            Label notString(env);
+            Label getSubString(env);
+            BRANCH(TaggedIsString(*holder), &isString, &notString);
+            Bind(&isString);
+            {
+                GateRef length = GetLengthFromString(*holder);
+                BRANCH(Int32LessThan(index, length), &getSubString, &notString);
+                Bind(&getSubString);
+                Label flattenFastPath(env);
+                BuiltinsStringStubBuilder stringBuilder(this);
+                FlatStringStubBuilder thisFlat(this);
+                thisFlat.FlattenString(glue, *holder, &flattenFastPath);
+                Bind(&flattenFastPath);
+                StringInfoGateRef stringInfoGate(&thisFlat);
+                result = stringBuilder.FastSubString(glue, *holder, index, Int32(1), stringInfoGate);
+                Jump(&exit);
+            }
+            Bind(&notString);
             {
                 result = Hole();
                 Jump(&exit);
@@ -3077,6 +3097,36 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 BRANCH(TaggedIsHole(*result), &notSIndexObj, &exit);
             }
             Bind(&notFastTypeArray);
+
+            Label isString(env);
+            Label notString(env);
+            Label notJsPrimitiveRef(env);
+            BRANCH(BoolAnd(TaggedIsString(*holder), TaggedIsString(key)), &isString, &notString);
+            Bind(&isString);
+            {
+                Label getStringLength(env);
+                Label getStringPrototype(env);
+                GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                              ConstantIndex::LENGTH_STRING_INDEX);
+                BRANCH(FastStringEqual(glue, key, lengthString), &getStringLength, &getStringPrototype);
+                Bind(&getStringLength);
+                {
+                    result = IntToTaggedPtr(GetLengthFromString(*holder));
+                    Jump(&exit);
+                }
+                Bind(&getStringPrototype);
+                {
+                    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                    GateRef stringPrototype = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                                GlobalEnv::STRING_PROTOTYPE_INDEX);
+                    holder = stringPrototype;
+                    BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &afterLoop);
+                }
+            }
+            Bind(&notString);
+            BRANCH(IsJSPrimitiveRef(*holder), &notSIndexObj, &notJsPrimitiveRef);
+            Bind(&notJsPrimitiveRef);  // not string prototype etc.
             {
                 result = Hole();
                 Jump(&exit);
