@@ -153,11 +153,11 @@ HWTEST_F_L0(TransitionsDictionaryTest, SetEntry)
 
     JSHandle<JSTaggedValue> metaData(thread, JSTaggedValue::Undefined());
     TestCommon(thread, numberOfElements,
-               [&](JSThread *thread, int index, JSHandle<JSTaggedValue> &key, JSHandle<JSTaggedValue> &value) {
+                [&](JSThread *thread, int index, JSHandle<JSTaggedValue> &key, JSHandle<JSTaggedValue> &value) {
                     transDic->SetEntry(thread, index, key.GetTaggedValue(), value.GetTaggedValue(),
-                                      metaData.GetTaggedValue());
+                                       metaData.GetTaggedValue());
                     EXPECT_EQ(transDic->GetKey(index), key.GetTaggedValue());
-               });
+                });
 }
 
 HWTEST_F_L0(TransitionsDictionaryTest, FindEntry)

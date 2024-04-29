@@ -526,14 +526,14 @@ HWTEST_F_L0(JSLocaleTest, GetOptionOfBool)
     EXPECT_FALSE(res);
 }
 
-ResolvedLocale ResolveLocaleCommon(JSThread *thread, JSHandle<TaggedArray>& availableLocales,
-    JSHandle<TaggedArray>& requestedLocales, std::set<std::string>& relevantExtensionKeys,
-    JSHandle<JSTaggedValue>& testLocale1)
+ResolvedLocale ResolveLocaleCommon(JSThread *thread, JSHandle<TaggedArray> &availableLocales,
+                                   JSHandle<TaggedArray> &requestedLocales,
+                                   std::set<std::string> &relevantExtensionKeys, JSHandle<JSTaggedValue> &testLocale1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     ResolvedLocale result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
                                                     LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
-    EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
+    EXPECT_STREQ("en-US", result.locale.c_str());  // default locale
     // availableLocales and requestLocales is not empty
     std::vector<std::string> availableStringLocales =
         intl::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
@@ -541,8 +541,8 @@ ResolvedLocale ResolveLocaleCommon(JSThread *thread, JSHandle<TaggedArray>& avai
     requestedLocales = factory->NewTaggedArray(1);
     // test locale1
     requestedLocales->Set(thread, 0, testLocale1);
-    result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
-                                    LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
+    result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales, LocaleMatcherOption::BEST_FIT,
+                                     relevantExtensionKeys);
     return result;
 }
 

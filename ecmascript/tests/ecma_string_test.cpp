@@ -1308,9 +1308,26 @@ HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf8_003)
 HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf16_001)
 {
     // StringsAreEqualUtf16(). EcmaString made by CreateFromUtf8, Array:U16(1-127).
-    auto func = std::bind(EcmaString::CreateFromUtf8, std::placeholders::_1, std::placeholders::_2,
-        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE, false, 0);
-    EcmaTestCommon::StringsAreEqualUtf16CommonCase(thread, instance, EcmaString::StringsAreEqualUtf16, func);
+    uint8_t arrayU8No1[4] = {45, 92, 78};
+    uint8_t arrayU8No2[5] = {45, 92, 78, 24};
+    uint8_t arrayU8No3[3] = {45, 92};
+    uint16_t arrayU16NotCompNo1[] = {45, 92, 78};
+    uint32_t lengthEcmaStrU8No1 = sizeof(arrayU8No1) - 1;
+    uint32_t lengthEcmaStrU8No2 = sizeof(arrayU8No2) - 1;
+    uint32_t lengthEcmaStrU8No3 = sizeof(arrayU8No3) - 1;
+    uint32_t lengthEcmaStrU16NotCompNo1 = sizeof(arrayU16NotCompNo1) / sizeof(arrayU16NotCompNo1[0]);
+    JSHandle<EcmaString> handleEcmaStrU8No1(thread,
+        EcmaString::CreateFromUtf8(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    JSHandle<EcmaString> handleEcmaStrU8No2(thread,
+        EcmaString::CreateFromUtf8(instance, &arrayU8No2[0], lengthEcmaStrU8No2, true));
+    JSHandle<EcmaString> handleEcmaStrU8No3(thread,
+        EcmaString::CreateFromUtf8(instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
+    EXPECT_TRUE(
+        EcmaString::StringsAreEqualUtf16(*handleEcmaStrU8No1, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
+    EXPECT_FALSE(
+        EcmaString::StringsAreEqualUtf16(*handleEcmaStrU8No2, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
+    EXPECT_FALSE(
+        EcmaString::StringsAreEqualUtf16(*handleEcmaStrU8No3, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
 }
 
 /*
@@ -1358,8 +1375,32 @@ HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf16_002)
  */
 HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf16_003)
 {
-    // StringsAreEqualUtf16(). EcmaString made by CreateFromUtf16( , , , false), Array:U16(0-65535).
-    EcmaTestCommon::StringsAreEqualUtf16CommonCase(thread, instance, EcmaString::StringsAreEqualUtf16);
+    uint16_t arrayU16NotCompNo1[] = {25645, 25692, 25678};
+    uint16_t arrayU16NotCompNo2[] = {25645, 25692, 78}; // 25645 % 256 == 45...
+    uint16_t arrayU16NotCompNo3[] = {25645, 25692, 25678, 65535};
+    uint16_t arrayU16NotCompNo4[] = {25645, 25692};
+    uint32_t lengthEcmaStrU16NotCompNo1 = sizeof(arrayU16NotCompNo1) / sizeof(arrayU16NotCompNo1[0]);
+    uint32_t lengthEcmaStrU16NotCompNo2 = sizeof(arrayU16NotCompNo2) / sizeof(arrayU16NotCompNo2[0]);
+    uint32_t lengthEcmaStrU16NotCompNo3 = sizeof(arrayU16NotCompNo3) / sizeof(arrayU16NotCompNo3[0]);
+    uint32_t lengthEcmaStrU16NotCompNo4 = sizeof(arrayU16NotCompNo4) / sizeof(arrayU16NotCompNo4[0]);
+    JSHandle<EcmaString> handleEcmaStrU16NotCompNo1(thread,
+        EcmaString::CreateFromUtf16(instance, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1, false));
+    JSHandle<EcmaString> handleEcmaStrU16NotCompNo2(thread,
+        EcmaString::CreateFromUtf16(instance, &arrayU16NotCompNo2[0], lengthEcmaStrU16NotCompNo2, false));
+    JSHandle<EcmaString> handleEcmaStrU16NotCompNo3(thread,
+        EcmaString::CreateFromUtf16(instance, &arrayU16NotCompNo3[0], lengthEcmaStrU16NotCompNo3, false));
+    JSHandle<EcmaString> handleEcmaStrU16NotCompNo4(thread,
+        EcmaString::CreateFromUtf16(instance, &arrayU16NotCompNo4[0], lengthEcmaStrU16NotCompNo4, false));
+    EXPECT_TRUE(EcmaString::StringsAreEqualUtf16(*handleEcmaStrU16NotCompNo1, &arrayU16NotCompNo1[0],
+        lengthEcmaStrU16NotCompNo1));
+    EXPECT_FALSE(EcmaString::StringsAreEqualUtf16(*handleEcmaStrU16NotCompNo1, &arrayU16NotCompNo2[0],
+        lengthEcmaStrU16NotCompNo2));
+    EXPECT_FALSE(EcmaString::StringsAreEqualUtf16(*handleEcmaStrU16NotCompNo2, &arrayU16NotCompNo1[0],
+        lengthEcmaStrU16NotCompNo1));
+    EXPECT_FALSE(EcmaString::StringsAreEqualUtf16(*handleEcmaStrU16NotCompNo3, &arrayU16NotCompNo1[0],
+        lengthEcmaStrU16NotCompNo1));
+    EXPECT_FALSE(EcmaString::StringsAreEqualUtf16(*handleEcmaStrU16NotCompNo4, &arrayU16NotCompNo1[0],
+        lengthEcmaStrU16NotCompNo1));
 }
 
 /*

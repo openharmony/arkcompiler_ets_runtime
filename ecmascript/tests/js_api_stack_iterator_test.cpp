@@ -27,7 +27,7 @@ class JSAPIStackIteratorTest : public BaseTestWithScope<false> {
 protected:
     static JSHandle<JSAPIStack> CreateJSApiStack(JSThread *thread)
     {
-        return EcmaTestCommon::CreateJSApiStack(thread);
+        return EcmaContainerCommon::CreateJSApiStack(thread);
     }
 };
 

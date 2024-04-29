@@ -35,7 +35,7 @@ class JSAPILightWeightSetTest : public BaseTestWithScope<false> {
 protected:
     JSAPILightWeightSet *CreateLightWeightSet()
     {
-        return EcmaTestCommon::CreateLightWeightSet(thread);
+        return EcmaContainerCommon::CreateLightWeightSet(thread);
     }
 };
 

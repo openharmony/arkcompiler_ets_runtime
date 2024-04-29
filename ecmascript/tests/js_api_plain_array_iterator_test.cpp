@@ -36,7 +36,7 @@ class JSAPIPlainArrayIteratorTest : public BaseTestWithScope<false> {
 protected:
     JSAPIPlainArray *CreatePlainArray()
     {
-        return EcmaTestCommon::CreatePlainArray(thread);
+        return EcmaContainerCommon::CreatePlainArray(thread);
     }
 };
 

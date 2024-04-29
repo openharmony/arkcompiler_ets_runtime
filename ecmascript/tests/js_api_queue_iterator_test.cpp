@@ -27,7 +27,7 @@ class JSAPIQueueIteratorTest : public BaseTestWithScope<false> {
 protected:
     JSHandle<JSAPIQueue> CreateQueue(int capacaty = JSAPIQueue::DEFAULT_CAPACITY_LENGTH)
     {
-        return EcmaTestCommon::CreateQueue(thread, capacaty);
+        return EcmaContainerCommon::CreateQueue(thread, capacaty);
     }
 };
 

@@ -36,7 +36,7 @@ class JSAPIPlainArrayTest : public BaseTestWithScope<false> {
 protected:
     JSAPIPlainArray *CreatePlainArray()
     {
-        return EcmaTestCommon::CreatePlainArray(thread);
+        return EcmaContainerCommon::CreatePlainArray(thread);
     }
     JSHandle<JSAPIPlainArray> GetIndexOfKeyAndGeIndexOfValueGetArray(JSMutableHandle<JSTaggedValue>& value,
         uint32_t numbers)

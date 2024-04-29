@@ -35,7 +35,7 @@ class JSAPIHashMapIteratorTest : public BaseTestWithScope<false> {
 protected:
     JSAPIHashMap *CreateHashMap()
     {
-        return EcmaTestCommon::CreateHashMap(thread);
+        return EcmaContainerCommon::CreateHashMap(thread);
     }
 };
 

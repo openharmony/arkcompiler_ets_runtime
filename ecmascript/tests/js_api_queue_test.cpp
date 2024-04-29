@@ -25,7 +25,7 @@ class JSAPIQueueTest : public BaseTestWithScope<false> {
 protected:
     JSHandle<JSAPIQueue> CreateQueue(int capacaty = JSAPIQueue::DEFAULT_CAPACITY_LENGTH)
     {
-        return EcmaTestCommon::CreateQueue(thread, capacaty);
+        return EcmaContainerCommon::CreateQueue(thread, capacaty);
     }
 
     JSHandle<JSAPIQueue> TestCommon(JSMutableHandle<JSTaggedValue>& value, std::string& queueValue, uint32_t len)

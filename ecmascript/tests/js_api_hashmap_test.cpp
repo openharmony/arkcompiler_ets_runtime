@@ -35,7 +35,7 @@ class JSAPIHashMapTest : public BaseTestWithScope<false> {
 protected:
     JSAPIHashMap *CreateHashMap()
     {
-        return EcmaTestCommon::CreateHashMap(thread);
+        return EcmaContainerCommon::CreateHashMap(thread);
     }
 
     void Update(JSHandle<JSAPIHashMap>& hashMap, JSMutableHandle<JSTaggedValue>& key,

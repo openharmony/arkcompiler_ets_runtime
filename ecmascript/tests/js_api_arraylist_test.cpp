@@ -79,7 +79,7 @@ public:
 protected:
     JSAPIArrayList *CreateArrayList()
     {
-        return EcmaTestCommon::CreateArrayList(thread);
+        return EcmaContainerCommon::CreateArrayList(thread);
     }
 };
 

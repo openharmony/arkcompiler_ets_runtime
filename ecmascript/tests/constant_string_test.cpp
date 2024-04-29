@@ -159,12 +159,25 @@ HWTEST_F_L0(ConstantStringTest, Compare_005)
  */
 HWTEST_F_L0(ConstantStringTest, Concat_001)
 {
-    std::vector<uint8_t> arrFront{'a', 'b', 'c', 'd', 'e', 'f'};
-    std::vector<uint8_t> arrBack{'A', 'B', 'C', 'D', 'E', 'F'};
-
-    auto func = std::bind(EcmaStringAccessor::CreateConstantString, std::placeholders::_1, std::placeholders::_2,
-        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE, 0);
-    EcmaTestCommon::ConcatCommonCase(thread, instance, arrFront, arrBack, func);
+    // Concat(). EcmaString made by CreateConstantString() and EcmaString made by CreateConstantString().
+    uint8_t arrayFrontU8[] = {"abcdef"};
+    uint8_t arrayBackU8[] = {"ABCDEF"};
+    uint32_t lengthEcmaStrFrontU8 = sizeof(arrayFrontU8) - 1;
+    uint32_t lengthEcmaStrBackU8 = sizeof(arrayBackU8) - 1;
+    JSHandle<EcmaString> handleEcmaStrFrontU8(thread,
+        EcmaStringAccessor::CreateConstantString(instance, &arrayFrontU8[0], lengthEcmaStrFrontU8, true));
+    JSHandle<EcmaString> handleEcmaStrBackU8(thread,
+        EcmaStringAccessor::CreateConstantString(instance, &arrayBackU8[0], lengthEcmaStrBackU8, true));
+    JSHandle<EcmaString> handleEcmaStrConcatU8(thread,
+        EcmaStringAccessor::Concat(instance, handleEcmaStrFrontU8, handleEcmaStrBackU8));
+    EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrConcatU8).IsUtf8());
+    for (uint32_t i = 0; i < lengthEcmaStrFrontU8; i++) {
+        EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8).Get(i), arrayFrontU8[i]);
+    }
+    for (uint32_t i = 0; i < lengthEcmaStrBackU8; i++) {
+        EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8).Get(i + lengthEcmaStrFrontU8), arrayBackU8[i]);
+    }
+    EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8).GetLength(), lengthEcmaStrFrontU8 + lengthEcmaStrBackU8);
 }
 
 /*
@@ -177,11 +190,26 @@ HWTEST_F_L0(ConstantStringTest, Concat_001)
 HWTEST_F_L0(ConstantStringTest, Concat_003)
 {
     // Concat(). EcmaString made by CreateFromUtf8() and EcmaString made by CreateFromUtf16( , , , false).
-    std::vector<uint8_t> arrFront{'a', 'b', 'c', 'd', 'e', 'f'};
-    std::vector<uint16_t> arrBack{88, 768, 1, 270, 345, 333};
-    auto func = std::bind(EcmaStringAccessor::CreateConstantString, std::placeholders::_1, std::placeholders::_2,
-        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE, 0);
-    EcmaTestCommon::ConcatCommonCase(thread, instance, arrFront, arrBack, func);
+    uint8_t arrayFrontU8[] = {"abcdef"};
+    uint16_t arrayBackU16NotComp[] = {88, 768, 1, 270, 345, 333};
+    uint32_t lengthEcmaStrFrontU8 = sizeof(arrayFrontU8) - 1;
+    uint32_t lengthEcmaStrBackU16NotComp = sizeof(arrayBackU16NotComp) / sizeof(arrayBackU16NotComp[0]);
+    JSHandle<EcmaString> handleEcmaStrFrontU8(thread,
+        EcmaStringAccessor::CreateConstantString(instance, &arrayFrontU8[0], lengthEcmaStrFrontU8, true));
+    JSHandle<EcmaString> handleEcmaStrBackU16NotComp(thread,
+        EcmaStringAccessor::CreateFromUtf16(instance, &arrayBackU16NotComp[0], lengthEcmaStrBackU16NotComp, false));
+    JSHandle<EcmaString> handleEcmaStrConcatU8U16NotComp(thread,
+        EcmaStringAccessor::Concat(instance, handleEcmaStrFrontU8, handleEcmaStrBackU16NotComp));
+    EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).IsUtf16());
+    for (uint32_t i = 0; i < lengthEcmaStrFrontU8; i++) {
+        EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).Get(i), arrayFrontU8[i]);
+    }
+    for (uint32_t i = 0; i < lengthEcmaStrBackU16NotComp; i++) {
+        EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).Get(i + lengthEcmaStrFrontU8),
+            arrayBackU16NotComp[i]);
+    }
+    EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).GetLength(),
+        lengthEcmaStrFrontU8 + lengthEcmaStrBackU16NotComp);
 }
 
 /*
@@ -376,9 +404,29 @@ HWTEST_F_L0(ConstantStringTest, StringsAreEqualUtf8_001)
 HWTEST_F_L0(ConstantStringTest, StringsAreEqualUtf16_001)
 {
     // StringsAreEqualUtf16(). EcmaString made by CreateConstantString, Array:U16(1-127).
-    auto func = std::bind(EcmaStringAccessor::CreateConstantString, std::placeholders::_1, std::placeholders::_2,
-        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE, 0);
-    EcmaTestCommon::StringsAreEqualUtf16CommonCase(thread, instance, EcmaStringAccessor::StringsAreEqualUtf16, func);
+    uint8_t arrayU8No3[3] = {45, 92};
+    uint8_t arrayU8No1[4] = {45, 92, 78};
+    uint8_t arrayU8No2[5] = {45, 92, 78, 24};
+    uint16_t arrayU16NotCompNo1[] = {45, 92, 78};
+    uint32_t lengthEcmaStrU8No1 = sizeof(arrayU8No1) - 1;
+    uint32_t lengthEcmaStrU8No2 = sizeof(arrayU8No2) - 1;
+    uint32_t lengthEcmaStrU8No3 = sizeof(arrayU8No3) - 1;
+    uint32_t lengthEcmaStrU16NotCompNo1 = sizeof(arrayU16NotCompNo1) / sizeof(arrayU16NotCompNo1[0]);
+    JSHandle<EcmaString> handleEcmaStrU8No1(thread,
+        EcmaStringAccessor::CreateConstantString(instance, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    JSHandle<EcmaString> handleEcmaStrU8No2(thread,
+        EcmaStringAccessor::CreateConstantString(instance, &arrayU8No2[0], lengthEcmaStrU8No2, true));
+    JSHandle<EcmaString> handleEcmaStrU8No3(thread,
+        EcmaStringAccessor::CreateConstantString(instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
+    EXPECT_TRUE(
+        EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU8No1,
+            &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
+    EXPECT_FALSE(
+        EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU8No2,
+            &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
+    EXPECT_FALSE(
+        EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU8No3,
+            &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
 }
 
 /*

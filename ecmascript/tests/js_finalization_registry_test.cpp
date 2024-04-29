@@ -142,7 +142,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_002)
     EXPECT_EQ(testValue, 0);
 }
 
-static void RegisterUnRegisterTestCommon(JSThread *thread, bool testUnRegister = false, bool AddFinReg = false)
+static void RegisterUnRegisterTestCommon(JSThread *thread, bool testUnRegister = false, bool addFinReg = false)
 {
     testValue = 0;
     auto vm = thread->GetEcmaVM();
@@ -156,12 +156,12 @@ static void RegisterUnRegisterTestCommon(JSThread *thread, bool testUnRegister =
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc);
         target = JSHandle<JSTaggedValue>::Cast(obj);
-        JSHandle<JSTaggedValue> heldValue(thread, JSTaggedValue(100));
+        JSHandle<JSTaggedValue> heldValue(thread, JSTaggedValue(100)); // 100: tag value
         JSHandle<JSTaggedValue> unregisterToken = testUnRegister? target :
             JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
         JSHandle<JSTaggedValue> constructor = CreateFinalizationRegistry(thread);
         JSHandle<JSFinalizationRegistry> finaRegObj(thread, constructor.GetTaggedValue());
-        if (AddFinReg) {
+        if (addFinReg) {
             JSHandle<CellRecord> cellRecord = factory->NewCellRecord();
             cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
             cellRecord->SetHeldValue(thread, heldValue);

@@ -47,7 +47,7 @@ HWTEST_F_L0(HugeObjectTest, LargeArrayKeep)
     TaggedArray *array = LargeArrayTestCreate(thread);
     EXPECT_TRUE(array != nullptr);
     JSHandle<TaggedArray> arrayHandle(thread, array);
-    JSHandle<JSObject> newObj(thread, EcmaTestCommon::JSObjectTestCreate(thread));
+    JSHandle<JSObject> newObj(thread, EcmaContainerCommon::JSObjectTestCreate(thread));
     arrayHandle->Set(thread, 0, newObj.GetTaggedValue());
     auto ecmaVm = thread->GetEcmaVM();
     EXPECT_EQ(*arrayHandle, reinterpret_cast<TaggedObject *>(array));

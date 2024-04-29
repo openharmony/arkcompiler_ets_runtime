@@ -37,7 +37,7 @@ class JSAPITreeMapTest : public BaseTestWithScope<false> {
 protected:
     JSAPITreeMap *CreateTreeMap()
     {
-        return *EcmaTestCommon::CreateTreeMap(thread);
+        return *EcmaContainerCommon::CreateTreeMap(thread);
     }
 };
 

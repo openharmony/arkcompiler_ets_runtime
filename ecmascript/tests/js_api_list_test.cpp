@@ -39,7 +39,7 @@ class JSAPIListTest : public BaseTestWithScope<false> {
 protected:
     JSAPIList *CreateList()
     {
-        return EcmaTestCommon::CreateList(thread);
+        return EcmaContainerCommon::CreateList(thread);
     }
 };
 

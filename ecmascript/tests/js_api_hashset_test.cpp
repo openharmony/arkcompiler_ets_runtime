@@ -35,7 +35,7 @@ class JSAPIHashSetTest : public BaseTestWithScope<false> {
 protected:
     JSAPIHashSet *CreateHashSet()
     {
-        return EcmaTestCommon::CreateHashSet(thread);
+        return EcmaContainerCommon::CreateHashSet(thread);
     }
 
     void Update(JSHandle<JSAPIHashSet>& hashSet, JSMutableHandle<JSTaggedValue> value, std::string& myValue,

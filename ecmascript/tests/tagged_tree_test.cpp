@@ -688,20 +688,20 @@ void TestSetAfterDeleteCheckOther(JSThread* thread, std::vector<JSMutableHandle<
     EXPECT_EQ(tset->NumberOfElements(), NODE_NUMBERS);
     EXPECT_EQ(tset->NumberOfDeletedElements(), 0);
 
-    for (int i = 0; i < NODE_NUMBERS / 2; i++) {
+    for (int i = 0; i < NODE_NUMBERS / 2; i++) { // 2 : half
         keyValue[0].Update(JSTaggedValue(i));
         JSTaggedValue dvalue = TaggedTreeSet::Delete(thread, tset, TaggedTreeSet::FindEntry(thread, tset, keyValue[0]));
         EXPECT_EQ(dvalue, tset.GetTaggedValue());
     }
-    EXPECT_EQ(tset->NumberOfElements(), NODE_NUMBERS / 2);
-    EXPECT_EQ(tset->NumberOfDeletedElements(), NODE_NUMBERS / 2);
+    EXPECT_EQ(tset->NumberOfElements(), NODE_NUMBERS / 2); // 2 : half
+    EXPECT_EQ(tset->NumberOfDeletedElements(), NODE_NUMBERS / 2); // 2 : half
 
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ikey = myKey + std::to_string(i);
         keyValue[0].Update(factory->NewFromStdString(ikey).GetTaggedValue());
         tset.Update(TaggedTreeSet::Add(thread, tset, keyValue[0]));
     }
-    EXPECT_EQ(tset->NumberOfElements(), NODE_NUMBERS + NODE_NUMBERS / 2);
+    EXPECT_EQ(tset->NumberOfElements(), NODE_NUMBERS + NODE_NUMBERS / 2); // 2 : half
     EXPECT_EQ(tset->NumberOfDeletedElements(), 0);
 
     for (uint32_t i = NODE_NUMBERS / 2; i < NODE_NUMBERS; i++) {
@@ -716,7 +716,7 @@ void TestSetAfterDeleteCheckOther(JSThread* thread, std::vector<JSMutableHandle<
         int entry = TaggedTreeSet::FindEntry(thread, tset, keyValue[0]);
         EXPECT_TRUE(entry >= 0);
     }
-    EXPECT_EQ(tset->NumberOfElements(), NODE_NUMBERS + NODE_NUMBERS / 2);
+    EXPECT_EQ(tset->NumberOfElements(), NODE_NUMBERS + NODE_NUMBERS / 2); // 2 : half
     EXPECT_EQ(tset->Capacity(), 31); // 31 means capacity after grow
 }
 

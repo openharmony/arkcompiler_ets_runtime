@@ -46,7 +46,7 @@ HWTEST_F_L0(WeakRefSemiGCTest, ArrayKeep)
 
 HWTEST_F_L0(WeakRefSemiGCTest, ObjectUndefined)
 {
-    JSHandle<JSObject> newObj1(thread, EcmaTestCommon::JSObjectTestCreate(thread));
+    JSHandle<JSObject> newObj1(thread, EcmaContainerCommon::JSObjectTestCreate(thread));
     JSTaggedValue array(ArrayTestCreate(thread));
     array.CreateWeakRef();
     newObj1->SetElements(thread, array);
@@ -57,7 +57,7 @@ HWTEST_F_L0(WeakRefSemiGCTest, ObjectUndefined)
 
 HWTEST_F_L0(WeakRefSemiGCTest, ObjectKeep)
 {
-    JSHandle<JSObject> newObj1(thread, EcmaTestCommon::JSObjectTestCreate(thread));
+    JSHandle<JSObject> newObj1(thread, EcmaContainerCommon::JSObjectTestCreate(thread));
     JSHandle<TaggedArray> array(thread, ArrayTestCreate(thread));
     JSTaggedValue value = array.GetTaggedValue();
     value.CreateWeakRef();

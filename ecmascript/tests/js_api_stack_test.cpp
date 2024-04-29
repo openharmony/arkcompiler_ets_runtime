@@ -38,7 +38,7 @@ class JSAPIStackTest : public BaseTestWithScope<false> {
 protected:
     JSAPIStack *CreateStack()
     {
-        return *EcmaTestCommon::CreateJSApiStack(thread);
+        return *EcmaContainerCommon::CreateJSApiStack(thread);
     }
 
     JSHandle<JSAPIStack> SearchAndEmptyCommon(JSMutableHandle<JSTaggedValue>& value, std::string& myValue,

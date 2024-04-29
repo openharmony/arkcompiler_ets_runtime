@@ -36,7 +36,7 @@ class JSAPIDequeTest : public BaseTestWithScope<false> {
 protected:
     JSAPIDeque *CreateDeque()
     {
-        return EcmaTestCommon::CreateJSApiDeque(thread);
+        return EcmaContainerCommon::CreateJSApiDeque(thread);
     }
 };
 

@@ -145,9 +145,9 @@ void GetPropertyHasOwnPeroperty(JSThread *thread, bool hasOwnProperty = false)
     JSHandle<JSTaggedValue> sonKey(thread->GetEcmaVM()->GetFactory()->NewFromASCII("key1"));
     JSHandle<JSTaggedValue> fatherKey(thread->GetEcmaVM()->GetFactory()->NewFromASCII("key2"));
     JSHandle<JSTaggedValue> grandfatherKey(thread->GetEcmaVM()->GetFactory()->NewFromASCII("key3"));
-    JSHandle<JSTaggedValue> sonValue(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> fatherValue(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> grandfatherValue(thread, JSTaggedValue(3));
+    JSHandle<JSTaggedValue> sonValue(thread, JSTaggedValue(1)); // 1 : value
+    JSHandle<JSTaggedValue> fatherValue(thread, JSTaggedValue(2)); // 2 : value
+    JSHandle<JSTaggedValue> grandfatherValue(thread, JSTaggedValue(3)); // 3 : value
 
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(son), sonKey, sonValue);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(father), fatherKey, fatherValue);
@@ -162,14 +162,15 @@ void GetPropertyHasOwnPeroperty(JSThread *thread, bool hasOwnProperty = false)
         EXPECT_FALSE(flag);
     } else {
         EXPECT_EQ(sonValue.GetTaggedValue(),
-              JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), sonKey).GetValue().GetTaggedValue());
+                  JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), sonKey).GetValue().GetTaggedValue());
         EXPECT_EQ(fatherValue.GetTaggedValue(),
-                JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), fatherKey).GetValue().GetTaggedValue());
-        EXPECT_EQ(grandfatherValue.GetTaggedValue(),
-                JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son),
-                                    grandfatherKey).GetValue().GetTaggedValue());
+                  JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), fatherKey).GetValue().GetTaggedValue());
+        EXPECT_EQ(
+            grandfatherValue.GetTaggedValue(),
+            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), grandfatherKey).GetValue().GetTaggedValue());
     }
 }
+
 HWTEST_F_L0(JSObjectTest, GetPropertyInPrototypeChain)
 {
     GetPropertyHasOwnPeroperty(thread);

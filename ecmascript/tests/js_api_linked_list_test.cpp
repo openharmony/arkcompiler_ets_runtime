@@ -39,7 +39,7 @@ class JSAPILinkedListTest : public BaseTestWithScope<false> {
 protected:
     JSAPILinkedList *CreateLinkedList()
     {
-        return EcmaTestCommon::CreateLinkedList(thread);
+        return EcmaContainerCommon::CreateLinkedList(thread);
     }
 };
 

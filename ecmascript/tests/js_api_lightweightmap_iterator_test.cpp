@@ -42,7 +42,7 @@ public:
 protected:
     JSAPILightWeightMap *CreateLightWeightMap()
     {
-        return EcmaTestCommon::CreateLightWeightMap(thread);
+        return EcmaContainerCommon::CreateLightWeightMap(thread);
     }
 };
 

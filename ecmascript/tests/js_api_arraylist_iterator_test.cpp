@@ -31,7 +31,7 @@ class JSAPIArrayListIteratorTest :  public BaseTestWithScope<false> {
 protected:
     JSAPIArrayList *CreateArrayList()
     {
-        return EcmaTestCommon::CreateArrayList(thread);
+        return EcmaContainerCommon::CreateArrayList(thread);
     }
 };
 

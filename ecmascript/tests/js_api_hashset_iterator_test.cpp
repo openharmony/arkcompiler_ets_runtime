@@ -35,7 +35,7 @@ class JSAPIHashSetIteratorTest : public BaseTestWithScope<false> {
 protected:
     JSAPIHashSet *CreateHashSet()
     {
-        return EcmaTestCommon::CreateHashSet(thread);
+        return EcmaContainerCommon::CreateHashSet(thread);
     }
 };
 

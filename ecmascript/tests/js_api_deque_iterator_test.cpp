@@ -27,7 +27,7 @@ class JSAPIDequeIteratorTest : public BaseTestWithScope<false> {
 protected:
     JSAPIDeque *CreateJSApiDeque()
     {
-        return EcmaTestCommon::CreateJSApiDeque(thread);
+        return EcmaContainerCommon::CreateJSApiDeque(thread);
     }
 };
 
