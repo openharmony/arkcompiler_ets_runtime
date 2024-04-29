@@ -102,3 +102,4 @@ TypeError: The NewTarget is undefined.
 true
 false
 true
+TypeError: cannot Callspread
