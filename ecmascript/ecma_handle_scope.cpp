@@ -45,7 +45,7 @@ void EcmaHandleScope::OpenPrimitiveScope(EcmaContext *context)
     prevPrimitiveStorageIndex_ = context->currentPrimitiveStorageIndex_;
 #ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     context->PrimitiveScopeCountAdd();
-    prevHandleScope_ = context->GetLastPrimitiveScope();
+    prevPrimitiveScope_ = context->GetLastPrimitiveScope();
     context->SetLastPrimitiveScope(this);
 #endif
 }

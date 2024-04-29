@@ -121,6 +121,12 @@ public:
         return Local<T>(from.GetAddress());
     }
 
+    template<typename T>
+    static inline Local<T> ToLocal(ecmascript::JSPrimitiveHandle<ecmascript::JSTaggedValue> from)
+    {
+        return Local<T>(from.GetAddress());
+    }
+
     static inline ecmascript::JSTaggedValue ToJSTaggedValue(JSValueRef *from)
     {
         ASSERT(from != nullptr);

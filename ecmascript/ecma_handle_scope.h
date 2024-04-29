@@ -58,6 +58,7 @@ private:
 #ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     ClockScope scope_;
     EcmaHandleScope *prevHandleScope_ {nullptr};
+    EcmaHandleScope *prevPrimitiveScope_ {nullptr};
 #endif
 
     NO_COPY_SEMANTIC(EcmaHandleScope);

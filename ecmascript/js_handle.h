@@ -81,21 +81,13 @@ public:
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(JSHandle);
     DEFAULT_COPY_SEMANTIC(JSHandle);
 
-    JSHandle(const JSThread *thread, JSTaggedValue value, bool isPrimitive = false)
+    JSHandle(const JSThread *thread, JSTaggedValue value)
     {
-        if (isPrimitive) {
-            address_ = EcmaHandleScope::NewPrimitiveHandle(
-                const_cast<JSThread *>(thread), value.GetRawData());
-        }
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), value.GetRawData());
     }
 
-    JSHandle(const JSThread *thread, const TaggedObject *value, bool isPrimitive = false)
+    JSHandle(const JSThread *thread, const TaggedObject *value)
     {
-        if (isPrimitive) {
-            address_ = EcmaHandleScope::NewPrimitiveHandle(
-                const_cast<JSThread *>(thread), JSTaggedValue(value).GetRawData());
-        }
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), JSTaggedValue(value).GetRawData());
     }
 
@@ -242,6 +234,127 @@ public:
         *addr = handle.GetTaggedValue();
     }
 };
+template <typename T>
+class JSPrimitiveHandle {
+public:
+    inline JSPrimitiveHandle() : address_(reinterpret_cast<uintptr_t>(nullptr)) {}
+    ~JSPrimitiveHandle() = default;
+    DEFAULT_NOEXCEPT_MOVE_SEMANTIC(JSPrimitiveHandle);
+    DEFAULT_COPY_SEMANTIC(JSPrimitiveHandle);
+
+    JSPrimitiveHandle(const JSThread *thread, JSTaggedValue value)
+    {
+        address_ = EcmaHandleScope::NewPrimitiveHandle(
+            const_cast<JSThread *>(thread), value.GetRawData());
+    }
+
+    JSPrimitiveHandle(const JSThread *thread, const TaggedObject *value)
+    {
+        address_ = EcmaHandleScope::NewPrimitiveHandle(
+            const_cast<JSThread *>(thread), JSTaggedValue(value).GetRawData());
+    }
+
+    inline uintptr_t GetAddress() const
+    {
+        return address_;
+    }
+
+    template <typename S>
+    explicit JSPrimitiveHandle(const JSPrimitiveHandle<S> &handle) : address_(handle.GetAddress()) {}
+
+    template <typename S>
+    inline static JSPrimitiveHandle<T> Cast(const JSPrimitiveHandle<S> &handle)
+    {
+        T::Cast(handle.GetTaggedValue().GetTaggedObject());
+        return JSPrimitiveHandle<T>(handle.GetAddress());
+    }
+
+    inline JSTaggedValue GetTaggedValue() const
+    {
+        CHECK_NO_DEREF_HANDLE;
+        if (GetAddress() == 0U) {
+            return JSTaggedValue::Undefined();
+        }
+        return *(reinterpret_cast<JSTaggedValue *>(GetAddress()));  // NOLINT(clang-analyzer-core.NullDereference)
+    }
+
+    inline JSTaggedType GetTaggedType() const
+    {
+        CHECK_NO_DEREF_HANDLE;
+        if (GetAddress() == 0U) {
+            return JSTaggedValue::Undefined().GetRawData();
+        }
+        return *reinterpret_cast<JSTaggedType *>(GetAddress());  // NOLINT(clang-analyzer-core.NullDereference)
+    }
+
+    inline T *operator*() const
+    {
+        return T::Cast(GetTaggedValue().GetTaggedObject());
+    }
+
+    inline T *operator->() const
+    {
+        return T::Cast(GetTaggedValue().GetTaggedObject());
+    }
+
+    inline bool operator==(const JSPrimitiveHandle<T> &other) const
+    {
+        return GetTaggedType() == other.GetTaggedType();
+    }
+
+    inline bool operator!=(const JSPrimitiveHandle<T> &other) const
+    {
+        return GetTaggedType() != other.GetTaggedType();
+    }
+
+    inline bool IsEmpty() const
+    {
+        return GetAddress() == 0U;
+    }
+
+    template <typename R>
+    R *GetObject() const
+    {
+        return reinterpret_cast<R *>(GetTaggedValue().GetTaggedObject());
+    }
+
+    inline explicit JSPrimitiveHandle(uintptr_t slot) : address_(slot)
+    {
+        if (!std::is_convertible<T *, JSTaggedValue *>::value) {
+            ASSERT(slot != 0);
+            if ((*reinterpret_cast<JSTaggedValue *>(slot)).IsHeapObject()) {
+                T::Cast((*reinterpret_cast<JSTaggedValue *>(slot)).GetTaggedObject());
+            }
+        }
+    }
+
+    void Dump() const DUMP_API_ATTR
+    {
+        GetTaggedValue().D();
+    }
+
+private:
+    inline explicit JSPrimitiveHandle(const JSTaggedType *slot) : address_(reinterpret_cast<uintptr_t>(slot)) {}
+    inline explicit JSPrimitiveHandle(const T *const *slot) : address_(reinterpret_cast<uintptr_t>(slot)) {}
+
+    uintptr_t address_;  // NOLINT(misc-non-private-member-variables-in-classes)
+    friend class EcmaVM;
+    friend class GlobalEnv;
+    friend class GlobalHandleCollection;
+    friend class RuntimeStubs;
+};
+
+template <>
+inline JSTaggedValue *JSPrimitiveHandle<JSTaggedValue>::operator->() const
+{
+    return reinterpret_cast<JSTaggedValue *>(GetAddress());
+}
+
+template <>
+inline JSTaggedValue *JSPrimitiveHandle<JSTaggedValue>::operator*() const
+{
+    return reinterpret_cast<JSTaggedValue *>(GetAddress());
+}
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JSHANDLE_H

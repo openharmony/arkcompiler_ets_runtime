@@ -1041,7 +1041,7 @@ void EcmaContext::ShrinkPrimitiveStorage(int prevIndex)
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     uintptr_t size = ToUintPtr(primitiveScopeStorageEnd_) - ToUintPtr(primitiveScopeStorageNext_);
     if (currentPrimitiveStorageIndex_ != -1) {
-        if (memset_s(PrimitiveScopeStorageNext_, size, 0, size) != EOK) {
+        if (memset_s(primitiveScopeStorageNext_, size, 0, size) != EOK) {
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
         }
