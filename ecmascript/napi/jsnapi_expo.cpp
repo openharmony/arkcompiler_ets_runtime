@@ -4213,6 +4213,11 @@ void JSNApi::SetSearchHapPathTracker(EcmaVM *vm,
     vm->SetSearchHapPathCallBack(cb);
 }
 
+void JSNApi::SetMultiThreadCheck(bool multiThreadCheck)
+{
+    EcmaVM::SetMultiThreadCheck(multiThreadCheck);
+}
+
 void JSNApi::SetRequestAotCallback([[maybe_unused]] EcmaVM *vm, const std::function<int32_t
     (const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)> &cb)
 {

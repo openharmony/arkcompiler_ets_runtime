@@ -104,6 +104,8 @@ using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 AOTFileManager *JsStackInfo::loader = nullptr;
 JSRuntimeOptions *JsStackInfo::options = nullptr;
+bool EcmaVM::multiThreadCheck_ = false;
+
 #ifdef JIT_ESCAPE_ENABLE
 static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31
 

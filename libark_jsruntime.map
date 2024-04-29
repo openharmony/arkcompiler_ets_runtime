@@ -138,6 +138,8 @@
       panda::ecmascript::EcmaVM::IsEnableElementsKind*;
       panda::ecmascript::EcmaVM::IsEnablePGOProfiler*;
       panda::ecmascript::EcmaVM::IsEnableJit*;
+      panda::ecmascript::EcmaVM::GetMultiThreadCheck*;
+      panda::ecmascript::EcmaVM::multiThreadCheck_;
       panda::ecmascript::ElementAccessor::ConvertTaggedValueWithElementsKind*;
       panda::ecmascript::ElementAccessor::Get*;
       panda::ecmascript::Elements::FixElementsKind*;

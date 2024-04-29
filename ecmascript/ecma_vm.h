@@ -103,6 +103,7 @@ using SearchHapPathCallBack = std::function<bool(const std::string moduleName, s
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 using NativePointerCallback = void (*)(void *, void *, void *);
+
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options);
@@ -205,7 +206,7 @@ public:
 
     ARK_INLINE JSThread *GetJSThread() const
     {
-        if (options_.EnableThreadCheck()) {
+        if (options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck()) {
             CheckThread();
         }
         return thread_;
@@ -682,6 +683,16 @@ public:
         return isJitCompileVM_;
     }
 
+    static void SetMultiThreadCheck(bool multiThreadCheck)
+    {
+        multiThreadCheck_ = multiThreadCheck;
+    }
+
+    PUBLIC_API static bool GetMultiThreadCheck()
+    {
+        return multiThreadCheck_;
+    }
+
     static void InitializeIcuData(const JSRuntimeOptions &options);
 
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
@@ -709,6 +720,7 @@ private:
     GCStats *gcStats_ {nullptr};
     GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
+    PUBLIC_API static bool multiThreadCheck_;
 
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
