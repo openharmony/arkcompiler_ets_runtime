@@ -69,6 +69,9 @@ uint32_t PGOTypeManager::GetSymbolCountFromHClassData()
     uint32_t count = 0;
     for (auto& root: hcData_) {
         for (auto& child: root.second) {
+            if (!JSTaggedValue(child.second).IsJSHClass()) {
+                continue;
+            }
             JSHClass* hclass = JSHClass::Cast(JSTaggedValue(child.second).GetTaggedObject());
             if (!hclass->HasTransitions()) {
                 LayoutInfo* layoutInfo = LayoutInfo::GetLayoutInfoFromHClass(hclass);
@@ -95,9 +98,11 @@ void PGOTypeManager::GenSymbolInfo()
     for (auto& root: hcData_) {
         ProfileType rootType = root.first;
         for (auto& child: root.second) {
+            if (!JSTaggedValue(child.second).IsJSHClass()) {
+                continue;
+            }
             ProfileType childType = child.first;
             JSHClass* hclass = JSHClass::Cast(JSTaggedValue(child.second).GetTaggedObject());
-
             if (!hclass->HasTransitions()) {
                 LayoutInfo* layoutInfo = LayoutInfo::GetLayoutInfoFromHClass(hclass);
                 uint32_t len = hclass->NumberOfProps();

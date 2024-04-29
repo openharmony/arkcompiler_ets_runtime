@@ -31,6 +31,7 @@ public:
     static constexpr uint32_t IS_INTERESTING_SYMBOL = 1U << 3U;
     static constexpr uint32_t IS_PRIVATE_NAME = 1U << 4U;
     static constexpr uint32_t IS_PRIVATE_BRAND = 1U << 5U;
+    static constexpr uint32_t HAS_ID = 1U << 6U;
 
     static constexpr int SYMBOL_HAS_INSTANCE_TYPE = 0;
     static constexpr int SYMBOL_TO_PRIMITIVE_TYPE = 1;
@@ -54,6 +55,16 @@ public:
         uint32_t hashSeed = static_cast<uint32_t>(LINEAR_SEED + std::time(nullptr));
         uint32_t hash = hashSeed * LINEAR_X + LINEAR_Y;
         return hash;
+    }
+
+    bool HasId() const
+    {
+        return (GetFlags() & HAS_ID) != 0U;
+    }
+
+    void SetHasId()
+    {
+        SetFlags(GetFlags() | HAS_ID);
     }
 
     bool IsPrivate() const
@@ -123,6 +134,7 @@ public:
 
     void SetPrivateId(uint64_t id)
     {
+        SetHasId();
         SetId(id);
     }
 

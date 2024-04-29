@@ -115,7 +115,7 @@ public:
     // symbol
     std::optional<uint64_t> PUBLIC_API GetSymbolIdByProfileType(ProfileTypeTuple type) const;
 
-    void DumpHClassData(std::ostringstream& os) const
+    void DumpHClassData(std::ostream& os) const
     {
         int i = 0;
         for (const auto& root: hcData_) {
@@ -123,8 +123,7 @@ public:
             os << "[" << i << "]" << std::endl;
             os << "RootType: " << root.first << std::endl;
             for (const auto& child: root.second) {
-                os << "[" << i << "]"
-                          << "[" << j << "]" << std::endl;
+                os << "[" << i << "]" << "[" << j << "]" << std::endl;
                 os << "ChildType: " << child.first << std::endl;
                 os << "HClass: " << JSTaggedValue(child.second) << std::endl;
                 j++;
