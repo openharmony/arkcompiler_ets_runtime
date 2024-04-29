@@ -74,6 +74,9 @@ private:
     void LowerNumberParseFloat(GateRef gate);
     void LowerDateGetTime(GateRef gate);
     void LowerBigIntConstructor(GateRef gate);
+    void LowerStringSubstring(GateRef gate);
+    void LowerStringSubStr(GateRef gate);
+    void LowerStringSlice(GateRef gate);
     template <bool IS_SIGNED>
     void LowerBigIntConstructorInt32(GateRef gate);
     GateRef BuiltinIdToSize(GateRef ID);
@@ -110,6 +113,7 @@ private:
     void LowerIntMinMax(GateRef gate);
     template<bool IS_MAX>
     void LowerDoubleMinMax(GateRef gate);
+    GateRef NumberToInt32(GateRef gate);
     void LowerMathImul(GateRef gate);
     void LowerGlobalIsFinite(GateRef gate);
     void LowerGlobalIsNan(GateRef gate);
