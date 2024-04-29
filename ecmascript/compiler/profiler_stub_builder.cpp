@@ -948,7 +948,7 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, OffsetInfo offsetInfo,
     }
     Bind(&incJitHotnessCntAndCmpOpcode);
     {
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
         CallRuntime(glue, RTSTUB_ID(CountInterpExecFuncs), { func });
 #endif
         GateRef newJitHotnessCnt = Int16Add(jitHotnessCnt, Int16(1));

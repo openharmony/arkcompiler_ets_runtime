@@ -18,7 +18,8 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/platform/file.h"
-#include "ecmascript/dfx/vmstat/jit_preheat_profiler.h"
+#include "ecmascript/compiler/aot_file/func_entry_des.h"
+#include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 
 namespace panda::ecmascript {
 void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
@@ -158,9 +159,12 @@ bool Jit::SupportJIT(const Method *method) const
     FunctionKind kind = method->GetFunctionKind();
     switch (kind) {
         case FunctionKind::NORMAL_FUNCTION:
-        case FunctionKind::BASE_CONSTRUCTOR:
+        case FunctionKind::GETTER_FUNCTION:
+        case FunctionKind::SETTER_FUNCTION:
         case FunctionKind::ARROW_FUNCTION:
+        case FunctionKind::BASE_CONSTRUCTOR:
         case FunctionKind::CLASS_CONSTRUCTOR:
+        case FunctionKind::DERIVED_CONSTRUCTOR:
             return true;
         default:
             return false;
@@ -176,11 +180,43 @@ void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
 {
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
-    CString methodInfo = fileDesc + ":" + CString(method->GetMethodName());
-    auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
+    CString methodInfo = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
+    auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
     if (profMap.find(methodInfo) == profMap.end()) {
         profMap.insert({methodInfo, false});
     }
+}
+
+bool Jit::ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &jsFunction)
+{
+    if (!IsEnableFastJit()) {
+        return false;
+    }
+    if (jsFunction->GetMachineCode() != JSTaggedValue::Undefined()) {
+        return false;
+    }
+    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
+    if (method->GetFunctionKind() != FunctionKind::ARROW_FUNCTION) {
+        return false;
+    }
+    auto id = method->GetMethodId();
+    if (thread->GetCurrentEcmaContext()->MatchJitMachineCode(id, method)) {
+        CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
+        CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
+        LOG_JIT(INFO) << "reuse fuction machine code : " << methodName;
+        auto machineCodeObj = thread->GetCurrentEcmaContext()->GetJitMachineCode(id).second;
+        JSHandle<Method> methodHandle(thread, method);
+        JSHandle<Method> newMethodHandle = thread->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
+        jsFunction->SetMethod(thread, newMethodHandle);
+        JSHandle<MachineCode> machineCodeHandle(thread, JSTaggedValue(machineCodeObj).GetTaggedObject());
+        uintptr_t codeAddr = machineCodeHandle->GetFuncAddr();
+        FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes *>(machineCodeHandle->GetFuncEntryDes());
+        jsFunction->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
+        newMethodHandle->SetDeoptThreshold(thread->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
+        jsFunction->SetMachineCode(thread, machineCodeHandle);
+        return true;
+    }
+    return false;
 }
 
 void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
@@ -192,18 +228,19 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         return;
     }
 
+    if (jit->ReuseCompiledFunc(vm->GetJSThread(), jsFunction)) {
+        return;
+    }
+
     if (!vm->IsEnableOsr() && offset != MachineCode::INVALID_OSR_OFFSET) {
         return;
     }
 
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
-    CString methodInfo = fileDesc + ":" + CString(method->GetMethodName());
-#else
+    CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
     uint32_t codeSize = method->GetCodeSize();
-    CString methodInfo = method->GetRecordNameStr() + "." + CString(method->GetMethodName()) + ", at:" + fileDesc +
-        ", code size:" + ToCString(codeSize);
+    CString methodInfo = methodName + ", code size:" + ToCString(codeSize);
     constexpr uint32_t maxSize = 9000;
     if (codeSize > maxSize) {
         if (tier == CompilerTier::BASELINE) {
@@ -214,7 +251,6 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 
         return;
     }
-#endif
     if (vm->GetJSThread()->IsMachineCodeLowMemory()) {
         if (tier == CompilerTier::BASELINE) {
             LOG_BASELINEJIT(DEBUG) << "skip jit task, as low code memory:" << methodInfo;
@@ -230,22 +266,14 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         std::stringstream msgStr;
         msgStr << "method does not support jit:" << methodInfo << ", kind:" << static_cast<int>(kind)
                <<", JSSharedFunction:" << isJSSharedFunction;
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
-        if (tier == CompilerTier::BASELINE) {
-            LOG_BASELINEJIT(ERROR) << msgStr.str();
-        } else {
-            LOG_JIT(ERROR) << msgStr.str();
-        }
-#else
         if (tier == CompilerTier::BASELINE) {
             LOG_BASELINEJIT(INFO) << msgStr.str();
         } else {
             LOG_JIT(INFO) << msgStr.str();
         }
-#endif
         return;
     }
-    bool needCompile = jit->CheckJitCompileStatus(jsFunction, methodInfo, tier);
+    bool needCompile = jit->CheckJitCompileStatus(jsFunction, methodName, tier);
     if (!needCompile) {
         return;
     }
@@ -264,7 +292,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
         EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
         std::shared_ptr<JitTask> jitTask = std::make_shared<JitTask>(vm->GetJSThread(), compilerVm->GetJSThread(),
-            jit, jsFunction, tier, methodInfo, offset, vm->GetJSThread()->GetThreadId(), mode);
+            jit, jsFunction, tier, methodName, offset, vm->GetJSThread()->GetThreadId(), mode);
 
         jitTask->PrepareCompile();
         JitTaskpool::GetCurrentTaskpool()->PostTask(
@@ -295,18 +323,18 @@ bool Jit::CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
     if (tier == CompilerTier::FAST &&
         jsFunction->GetMachineCode() == JSTaggedValue::Hole()) {
         LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodName;
+#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
+        auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
+        if (profMap.find(methodName) != profMap.end()) {
+            profMap.erase(methodName);
+        }
+#endif
         return false;
     }
 
     if (tier == CompilerTier::BASELINE &&
         jsFunction->GetBaselineCode() == JSTaggedValue::Hole()) {
         LOG_BASELINEJIT(DEBUG) << "skip method, as it compiling:" << methodName;
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
-        auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
-        if (profMap.find(methodName) != profMap.end()) {
-            profMap.erase(methodName);
-        }
-#endif
         return false;
     }
 
