@@ -273,6 +273,19 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileByNormalizedName
     return result;
 }
 
+std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileByMapBase(uintptr_t mapBase)
+{
+    std::shared_ptr<JSPandaFile> result;
+    EnumerateJSPandaFiles([&](const std::shared_ptr<JSPandaFile> &file) -> bool {
+        if (reinterpret_cast<uintptr_t>(file->GetHeader()) == mapBase) {
+            result = file;
+            return false;
+        }
+        return true;
+    });
+    return result;
+}
+
 std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFile(const CString &filename)
 {
     LockHolder lock(jsPandaFileLock_);
