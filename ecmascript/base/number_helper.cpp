@@ -172,21 +172,6 @@ JSTaggedValue NumberHelper::Int32ToString(JSThread *thread, int32_t number, uint
     return thread->GetEcmaVM()->GetFactory()->NewFromUtf8(buf).GetTaggedValue();
 }
 
-bool inline IsDenormal(uint64_t x)
-{
-    return (x & kINFINITY) == 0;
-}
-
-int inline Exponent(double x)
-{
-    uint64_t value =  base::bit_cast<uint64_t>(x);
-    if (IsDenormal(value)) {
-        return kDENORMAL;
-    }
-    int biased = static_cast<int>((value & kINFINITY) >> DOUBLE_SIGNIFICAND_SIZE);
-    return biased - EXPONENTBIAS;
-}
-
 JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int radix)
 {
     static constexpr int BUFFER_SIZE = 2240; // 2240: The size of the character array buffer
@@ -265,8 +250,50 @@ JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int 
     return BuiltinsBase::GetTaggedString(thread, result.get());
 }
 
-JSTaggedValue NumberHelper::DoubleToASCII(JSThread *thread, double valueNumber, int digitNumber, int flags)
+JSTaggedValue NumberHelper::DoubleToFixedString(JSThread *thread, double valueNumber, int digitNumber)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    bool negative = false;
+    double absValue = valueNumber;
+    std::string result;
 
+    if (valueNumber < 0) {
+        result += "-";
+        absValue = -valueNumber;
+        negative = true;
+    }
+    int decimalPoint;
+    const int decimalRepCapacity = MAX_DIGITS + MAX_FRACTION + 1; // Add space for the '\0' byte.
+    char decimalRep[decimalRepCapacity];
+    int length;
+    bool isFast = DtoaHelper::FixedDtoa(absValue, digitNumber,
+        BufferVector<char>(decimalRep, decimalRepCapacity), &length, &decimalPoint);
+    if (!isFast) {
+        return DoubleToASCII(thread, absValue, digitNumber, base::FRAC_FORMAT); // slow
+    }
+    int zeroPrefixLen = 0;
+    int zeroPostfixLen = 0;
+    if (decimalPoint <= 0) {
+        zeroPrefixLen = -decimalPoint + 1;
+        decimalPoint = 1;
+    }
+    if (zeroPrefixLen + length < decimalPoint + digitNumber) {
+        zeroPostfixLen = decimalPoint + digitNumber - length - zeroPrefixLen;
+    }
+    result += std::string(zeroPrefixLen, '0');
+    result += decimalRep;
+    result += std::string(zeroPostfixLen, '0');
+    if (digitNumber > 0) {
+        if (negative) {
+            result.insert(decimalPoint + 1, 1, '.');
+        } else {
+            result.insert(decimalPoint, 1, '.');
+        }
+    }
+    return factory->NewFromASCII(result.c_str()).GetTaggedValue();
+}
+
+JSTaggedValue NumberHelper::DoubleToASCII(JSThread *thread, double valueNumber, int digitNumber, int flags)
 {
     std::string buffer(JS_DTOA_BUF_SIZE, '\0');
     DoubleToASCIIWithFlag(buffer, valueNumber, digitNumber, flags);
@@ -637,7 +664,7 @@ JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, do
     char buffer[JS_DTOA_BUF_SIZE] = {0};
     int n; // decimal point
     int k; // length
-    dtoa::DtoaHelper::Dtoa(d, buffer, &n, &k); //Fast Double To Ascii.
+    DtoaHelper::Dtoa(d, buffer, &n, &k); //Fast Double To Ascii.
     std::string base = buffer;
     if (n > 0 && n <= MAX_DIGITS) {
         if (k <= n) {

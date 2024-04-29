@@ -22,14 +22,133 @@
 #include <limits>
 
 #include "ecmascript/common.h"
-namespace panda::ecmascript::base::dtoa {
+
+namespace panda::ecmascript::base {
+
+template <typename T>
+class BufferVector {
+public:
+    BufferVector() : start_(NULL), length_(0) {}
+    BufferVector(T* data, int length) : start_(data), length_(length)
+    {
+        ASSERT(length == 0 || (length > 0 && data != NULL));
+    }
+    int length() const { return length_; }
+    T* start() const { return start_; }
+
+    // Access individual vector elements - checks bounds in debug mode.
+    T& operator[](int index) const
+    {
+        ASSERT(0 <= index && index < length_);
+        return start_[index];
+    }
+
+    T& first() { return start_[0]; }
+
+    T& last() { return start_[length_ - 1]; }
+
+private:
+    T* start_;
+    int length_;
+};
+
+class UInt128 {
+public:
+    UInt128() : high_bits_(0), low_bits_(0) { }
+    UInt128(uint64_t high, uint64_t low) : high_bits_(high), low_bits_(low) { }
+
+    static constexpr int SHIFT_32BIT = 32;
+    static constexpr int SHIFT_64BIT = 64;
+    static constexpr int NEGATIVE_64BIT = -64;
+
+    void Multiply(uint32_t multiplicand)
+    {
+        uint64_t accumulator = (low_bits_ & kMask32) * multiplicand;
+        uint32_t part = static_cast<uint32_t>(accumulator & kMask32);
+        accumulator >>= SHIFT_32BIT;
+        accumulator = accumulator + (low_bits_ >> SHIFT_32BIT) * multiplicand;
+        low_bits_ = (accumulator << SHIFT_32BIT) + part;
+        accumulator >>= SHIFT_32BIT;
+        accumulator = accumulator + (high_bits_ & kMask32) * multiplicand;
+        part = static_cast<uint32_t>(accumulator & kMask32);
+        accumulator >>= SHIFT_32BIT;
+        accumulator = accumulator + (high_bits_ >> SHIFT_32BIT) * multiplicand;
+        high_bits_ = (accumulator << SHIFT_32BIT) + part;
+        ASSERT((accumulator >> SHIFT_32BIT) == 0);
+    }
+
+    void Shift(int shift_amount)
+    {
+        ASSERT(NEGATIVE_64BIT <= shift_amount && shift_amount <= SHIFT_64BIT);
+        if (shift_amount == 0) {
+            return;
+        } else if (shift_amount == NEGATIVE_64BIT) {
+            high_bits_ = low_bits_;
+            low_bits_ = 0;
+        } else if (shift_amount == SHIFT_64BIT) {
+            low_bits_ = high_bits_;
+            high_bits_ = 0;
+        } else if (shift_amount <= 0) {
+            high_bits_ <<= -shift_amount;
+            high_bits_ += low_bits_ >> (SHIFT_64BIT + shift_amount);
+            low_bits_ <<= -shift_amount;
+        } else {
+            low_bits_ >>= shift_amount;
+            low_bits_ += high_bits_ << (SHIFT_64BIT - shift_amount);
+            high_bits_ >>= shift_amount;
+        }
+    }
+
+    // Modifies *this to *this MOD (2^power).
+    // Returns *this DIV (2^power).
+    int DivModPowerOf2(int power)
+    {
+        if (power >= SHIFT_64BIT) {
+            int result = static_cast<int>(high_bits_ >> (power - SHIFT_64BIT));
+            high_bits_ -= static_cast<uint64_t>(result) << (power - SHIFT_64BIT);
+            return result;
+        } else {
+            uint64_t part_low = low_bits_ >> power;
+            uint64_t part_high = high_bits_ << (SHIFT_64BIT - power);
+            int result = static_cast<int>(part_low + part_high);
+            high_bits_ = 0;
+            low_bits_ -= part_low << power;
+            return result;
+        }
+    }
+
+    bool IsZero() const
+    {
+        return high_bits_ == 0 && low_bits_ == 0;
+    }
+
+    int BitAt(int position)
+    {
+        if (position >= SHIFT_64BIT) {
+            return static_cast<int>(high_bits_ >> (position - SHIFT_64BIT)) & 1;
+        } else {
+            return static_cast<int>(low_bits_ >> position) & 1;
+        }
+    }
+
+private:
+    static const uint64_t kMask32 = 0xFFFFFFFF;
+    uint64_t high_bits_;
+    uint64_t low_bits_;
+};
+
 class DtoaHelper {
 public:
+    static const int kDoubleSignificandSize = 53;  // Includes the hidden bit.
+    static const uint32_t kMaxUInt32 = 0xFFFFFFFF;
     static constexpr int CACHED_POWERS_OFFSET = 348;
     static constexpr double kD_1_LOG2_10 = 0.30102999566398114;  //1 / lg(10)
     static constexpr int kQ = -61;
     static constexpr int kIndex = 20;
     static constexpr int MIN_DECIMAL_EXPONENT = -348;
+    static constexpr int EXPONENT_64 = 64;
+    static constexpr int EXPONENT_128 = 128;
+    static constexpr int NEGATIVE_128BIT = -128;
     static constexpr uint64_t POW10[] = { 1ULL, 10ULL, 100ULL, 1000ULL, 10000ULL, 100000ULL, 1000000ULL,
                                           10000000ULL, 100000000ULL, 1000000000ULL, 10000000000ULL, 100000000000ULL,
                                           1000000000000ULL, 10000000000000ULL, 100000000000000ULL, 1000000000000000ULL,
@@ -162,6 +281,16 @@ public:
     static void DigitGen(const DiyFp& W, const DiyFp& Mp, uint64_t delta, char* buffer, int* len, int* K);
     static void Grisu(double value, char* buffer, int* length, int* K);
     static void Dtoa(double value, char* buffer, int* point, int* length);
+    static void FillDigits32FixedLength(uint32_t number, int requested_length, BufferVector<char> buffer, int* length);
+    static void FillDigits32(uint32_t number, BufferVector<char> buffer, int* length);
+    static void FillDigits64FixedLength(uint64_t number, [[maybe_unused]] int requested_length,
+                                        BufferVector<char> buffer, int* length);
+    static void FillDigits64(uint64_t number, BufferVector<char> buffer, int* length);
+    static void RoundUp(BufferVector<char> buffer, int* length, int* decimal_point);
+    static void FillFractionals(uint64_t fractionals, int exponent, int fractional_count, BufferVector<char> buffer,
+                                int* length, int* decimal_point);
+    static void TrimZeros(BufferVector<char> buffer, int* length, int* decimal_point);
+    static bool FixedDtoa(double v, int fractional_count, BufferVector<char> buffer, int* length, int* decimal_point);
 };
 }
 #endif

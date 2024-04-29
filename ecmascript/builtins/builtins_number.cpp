@@ -316,7 +316,7 @@ JSTaggedValue BuiltinsNumber::ToFixed(EcmaRuntimeCallInfo *argv)
     if (std::abs(valueNumber) >= FIRST_NO_FIXED) {
         return value.ToString(thread).GetTaggedValue();
     }
-    return NumberHelper::DoubleToASCII(thread, valueNumber, static_cast<int>(digit), base::FRAC_FORMAT);
+    return NumberHelper::DoubleToFixedString(thread, valueNumber, static_cast<int>(digit));
 }
 
 // 20.1.3.4
