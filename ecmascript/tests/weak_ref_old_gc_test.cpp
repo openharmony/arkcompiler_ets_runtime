@@ -18,7 +18,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda::ecmascript;
 
@@ -66,43 +66,12 @@ HWTEST_F_L0(WeakRefOldGCTest, ArrayNonMovable)
 
 HWTEST_F_L0(WeakRefOldGCTest, ArrayUndefined)
 {
-    EcmaVM *ecmaVM = thread->GetEcmaVM();
-    JSHandle<TaggedArray> array = ecmaVM->GetFactory()->NewTaggedArray(2);
-    EXPECT_TRUE(*array != nullptr);
-    JSHandle<JSObject> newObj1(thread, JSObjectTestCreate(thread));
-    array->Set(thread, 0, newObj1.GetTaggedValue());
-
-    JSObject *newObj2 = JSObjectTestCreate(thread);
-    JSTaggedValue value(newObj2);
-    value.CreateWeakRef();
-    array->Set(thread, 1, value);
-    EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-    EXPECT_EQ(value, array->Get(1));
-    ecmaVM->CollectGarbage(TriggerGCType::OLD_GC);
-    EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-    EXPECT_EQ(JSTaggedValue::Undefined(), array->Get(1));
+    EcmaTestCommon::ArrayUndefinedGcCommon(thread, TriggerGCType::OLD_GC);
 }
 
 HWTEST_F_L0(WeakRefOldGCTest, ArrayKeep)
 {
-    EcmaVM *ecmaVM = thread->GetEcmaVM();
-    JSHandle<TaggedArray> array = ecmaVM->GetFactory()->NewTaggedArray(2);
-    EXPECT_TRUE(*array != nullptr);
-    JSHandle<JSObject> newObj1(thread, JSObjectTestCreate(thread));
-    array->Set(thread, 0, newObj1.GetTaggedValue());
-
-    JSHandle<JSObject> newObj2(thread, JSObjectTestCreate(thread));
-    JSTaggedValue value(newObj2.GetTaggedValue());
-    value.CreateWeakRef();
-    array->Set(thread, 1, value);
-    EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-    EXPECT_EQ(value, array->Get(1));
-    ecmaVM->CollectGarbage(TriggerGCType::OLD_GC);
-    EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-    EXPECT_EQ(true, array->Get(1).IsWeak());
-    value = newObj2.GetTaggedValue();
-    value.CreateWeakRef();
-    EXPECT_EQ(value, array->Get(1));
+    EcmaTestCommon::ArrayKeepGcCommon(thread, TriggerGCType::OLD_GC);
 }
 
 HWTEST_F_L0(WeakRefOldGCTest, ObjectUndefined)

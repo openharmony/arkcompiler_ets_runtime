@@ -38,9 +38,8 @@ protected:
     JSSet *CreateSet()
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
-        JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+        JSHandle<JSTaggedValue> constructor = thread->GetEcmaVM()->GetGlobalEnv()->GetBuiltinsSetFunction();
         JSHandle<JSSet> set =
             JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
         JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);

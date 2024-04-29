@@ -133,6 +133,18 @@ public:
         instance->SetEnableForceGC(false);
         JSNApi::DestroyJSVM(instance);
     }
+
+    static EcmaRuntimeCallInfo* CreateEcmaRuntimeCallInfo(JSThread *thread, std::vector<JSTaggedValue>& args,
+        int32_t maxArgLen, JSTaggedValue thisValue = JSTaggedValue::Undefined())
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), maxArgLen);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(thisValue);
+        for (size_t i = 0; i < args.size(); i++) {
+            ecmaRuntimeCallInfo->SetCallArg(i, args[i]);
+        }
+        return ecmaRuntimeCallInfo;
+    }
 };
 
 class BaseTestWithOutScope : public testing::Test {

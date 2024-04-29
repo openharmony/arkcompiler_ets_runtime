@@ -17,7 +17,7 @@
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_regexp.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
@@ -27,33 +27,13 @@ using BuiltinsRegExp = builtins::BuiltinsRegExp;
 class JSRegexpIteratorTest : public BaseTestWithScope<false> {
 };
 
-static JSTaggedValue CreateJSRegexpByPatternAndFlags(JSThread *thread, const JSHandle<EcmaString> &pattern,
-                                                     const JSHandle<EcmaString> &flags)
-{
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> regexp(env->GetRegExpFunction());
-    JSHandle<JSObject> globalObject(thread, env->GetGlobalObject());
-    // 8 : test case
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*regexp), 8);
-    ecmaRuntimeCallInfo->SetFunction(regexp.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(globalObject.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, pattern.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, flags.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    // call RegExpConstructor method
-    JSTaggedValue result = BuiltinsRegExp::RegExpConstructor(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-    return result;
-}
-
 HWTEST_F_L0(JSRegexpIteratorTest, CreateRegExpStringIterator)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> pattern = factory->NewFromASCII("\\w+");
     JSHandle<EcmaString> flags = factory->NewFromASCII("gim");
 
-    JSHandle<JSTaggedValue> matchHandle(thread, CreateJSRegexpByPatternAndFlags(thread, pattern, flags));
+    JSHandle<JSTaggedValue> matchHandle(thread, TestCommon::CreateJSRegexpByPatternAndFlags(thread, pattern, flags));
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("g");
     JSHandle<JSTaggedValue> regExpIterator =
         JSRegExpIterator::CreateRegExpStringIterator(thread, matchHandle, inputStr, true, false);
@@ -72,7 +52,7 @@ HWTEST_F_L0(JSRegexpIteratorTest, Next)
     JSHandle<JSTaggedValue> zero(factory->NewFromASCII("0"));
     JSHandle<JSTaggedValue> barZero(factory->NewFromASCII("-0"));
 
-    JSTaggedValue jsRegExp = CreateJSRegexpByPatternAndFlags(thread, pattern, flags);
+    JSTaggedValue jsRegExp = TestCommon::CreateJSRegexpByPatternAndFlags(thread, pattern, flags);
     JSHandle<JSRegExp> ObjValue(thread, reinterpret_cast<JSRegExp *>(jsRegExp.GetRawData()));
     // create regExp iterator
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);

@@ -429,6 +429,17 @@ HWTEST_F_L0(JSLocaleTest, DefaultNumberOption)
     EXPECT_EQ(result, 1);
 }
 
+JSHandle<JSObject> GetOptionCommon(JSThread *thread, JSHandle<JSTaggedValue>& languageProperty,
+    JSHandle<JSTaggedValue>& languageValue)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+    // Set key value
+    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSObject::SetProperty(thread, optionsObj, languageProperty, languageValue);
+    return optionsObj;
+}
 /**
  * @tc.name: GetOptionOfString
  * @tc.desc: Call "GetOptionOfString" function get the string from Option value.
@@ -438,16 +449,12 @@ HWTEST_F_L0(JSLocaleTest, DefaultNumberOption)
 HWTEST_F_L0(JSLocaleTest, GetOptionOfString)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-
     JSHandle<JSTaggedValue> languageProperty = thread->GlobalConstants()->GetHandledLanguageString();
     JSHandle<JSTaggedValue> regionProperty = thread->GlobalConstants()->GetHandledRegionString();
-    JSHandle<JSTaggedValue> languageValue(factory->NewFromASCII("zh"));
     JSHandle<JSTaggedValue> regionValue(factory->NewFromASCII("CN"));
+    JSHandle<JSTaggedValue> languageValue(factory->NewFromASCII("zh"));
     // Set key value
-    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSObject::SetProperty(thread, optionsObj, languageProperty, languageValue);
+    JSHandle<JSObject> optionsObj = GetOptionCommon(thread, languageProperty, languageValue);
     JSObject::SetProperty(thread, optionsObj, regionProperty, regionValue);
     std::vector<std::string> stringValues = {"zh", "Hans", "CN"};
     std::string optionValue;
@@ -470,17 +477,12 @@ HWTEST_F_L0(JSLocaleTest, GetOptionOfString)
 HWTEST_F_L0(JSLocaleTest, GetOption)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-
     JSHandle<JSTaggedValue> languageProperty = thread->GlobalConstants()->GetHandledLanguageString();
     JSHandle<JSTaggedValue> regionProperty = thread->GlobalConstants()->GetHandledRegionString();
-    JSHandle<JSTaggedValue> languageValue(factory->NewFromASCII("zh"));
     JSHandle<JSTaggedValue> regionValue(factory->NewFromASCII("CN"));
+    JSHandle<JSTaggedValue> languageValue(factory->NewFromASCII("zh"));
     // Set key value
-    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSObject::SetProperty(thread, optionsObj, languageProperty, languageValue);
-
+    JSHandle<JSObject> optionsObj = GetOptionCommon(thread, languageProperty, languageValue);
     JSHandle<TaggedArray> stringValues = factory->NewTaggedArray(3);
     stringValues->Set(thread, 0, languageValue);
     stringValues->Set(thread, 1, regionValue);
@@ -524,6 +526,26 @@ HWTEST_F_L0(JSLocaleTest, GetOptionOfBool)
     EXPECT_FALSE(res);
 }
 
+ResolvedLocale ResolveLocaleCommon(JSThread *thread, JSHandle<TaggedArray>& availableLocales,
+    JSHandle<TaggedArray>& requestedLocales, std::set<std::string>& relevantExtensionKeys,
+    JSHandle<JSTaggedValue>& testLocale1)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ResolvedLocale result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
+                                                    LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
+    EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
+    // availableLocales and requestLocales is not empty
+    std::vector<std::string> availableStringLocales =
+        intl::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
+    availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
+    requestedLocales = factory->NewTaggedArray(1);
+    // test locale1
+    requestedLocales->Set(thread, 0, testLocale1);
+    result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
+                                                    LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
+    return result;
+}
+
 /**
  * @tc.name: ResolveLocale
  * @tc.desc: Resolve Locale and return from available locale through "ResolveLocale" function.
@@ -539,18 +561,7 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_001)
     JSHandle<JSTaggedValue> testLocale1(factory->NewFromASCII("id-u-co-pinyin-ca-gregory-de-ID"));
     JSHandle<JSTaggedValue> testLocale2(factory->NewFromASCII("en-Latn-US-u-co-phonebk-ca-ethioaa"));
     // availableLocales and requestLocales is empty
-    ResolvedLocale result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
-                                                    LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
-    EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
-    // availableLocales and requestLocales is not empty
-    std::vector<std::string> availableStringLocales =
-        intl::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
-    availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
-    requestedLocales = factory->NewTaggedArray(1);
-    // test locale1
-    requestedLocales->Set(thread, 0, testLocale1);
-    result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
-                                                    LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
+    auto result = ResolveLocaleCommon(thread, availableLocales, requestedLocales, relevantExtensionKeys, testLocale1);
     EXPECT_STREQ("id-u-ca-gregory-co-pinyin-de-id", result.locale.c_str());
     result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
                                                     LocaleMatcherOption::LOOKUP, relevantExtensionKeys);
@@ -580,18 +591,7 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_002)
     JSHandle<JSTaggedValue> testLocale1(factory->NewFromASCII("id-u-kn-false-kf-yes-de-ID"));
     JSHandle<JSTaggedValue> testLocale2(factory->NewFromASCII("en-US-u-hc-h24-lb-strict"));
     // availableLocales and requestLocales is empty
-    ResolvedLocale result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
-                                                    LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
-    EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
-    // availableLocales and requestLocales is not empty
-    std::vector<std::string> availableStringLocales =
-        intl::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
-    availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
-    requestedLocales = factory->NewTaggedArray(1);
-    // test locale1
-    requestedLocales->Set(thread, 0, testLocale1);
-    result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
-                                                    LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
+    auto result = ResolveLocaleCommon(thread, availableLocales, requestedLocales, relevantExtensionKeys, testLocale1);
     EXPECT_STREQ("id-u-de-id-kf-kn-false", result.locale.c_str());
     result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
                                                     LocaleMatcherOption::LOOKUP, relevantExtensionKeys);

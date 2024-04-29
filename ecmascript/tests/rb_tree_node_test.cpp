@@ -35,6 +35,38 @@ public:
     }
     uint32_t NODE_NUMBERS = 8;
     uint32_t TREE_NODE_NUMBERS = 32;
+
+    void RBTreeNodeInit(JSHandle<RBTreeNode>& rootNode, std::string& myKey, std::string& myValue,
+    uint32_t nums)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        for (uint32_t i = 0; i < nums; i++) {
+            std::string iKey = myKey + std::to_string(i);
+            std::string iValue = myValue + std::to_string(i);
+            JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(iKey).GetTaggedValue());
+            JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(iValue).GetTaggedValue());
+            int hash = TaggedNode::Hash(thread, factory->NewFromStdString(iKey).GetTaggedValue());
+            rootNode = RBTreeNode::Set(thread, rootNode, hash, key, value);
+            rootNode->SetIsRed(thread, JSTaggedValue(false));
+        }
+    }
+
+    void RBTreeValueCheck(JSHandle<RBTreeNode>& rootNode, std::string& myKey, std::string& myValue,
+        uint32_t startNum, uint32_t nums)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        for (uint32_t i = startNum; i < nums; i++) {
+            std::string iKey = myKey + std::to_string(i);
+            std::string iValue = myValue + std::to_string(i);
+            JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(iKey).GetTaggedValue());
+            JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(iValue).GetTaggedValue());
+            int hash = TaggedNode::Hash(thread, key.GetTaggedValue());
+            JSHandle<JSTaggedValue> rootNodeVa(thread, rootNode.GetTaggedValue());
+            JSTaggedValue gValue = RBTreeNode::GetTreeNode(thread, rootNodeVa, hash, key);
+            JSTaggedValue resValue = RBTreeNode::Cast(gValue.GetTaggedObject())->GetValue();
+            EXPECT_EQ(resValue, value.GetTaggedValue());
+        }
+    }
 };
 
 HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeCreate)
@@ -53,34 +85,14 @@ HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeCreate)
 
 HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeSetAndGet)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // test RBTreeNode
     JSHandle<RBTreeNode> rootNode(thread, JSTaggedValue::Hole());
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        int hash = TaggedNode::Hash(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        rootNode = RBTreeNode::Set(thread, rootNode, hash, key, value);
-        rootNode->SetIsRed(thread, JSTaggedValue(false));
-    }
+    RBTreeNodeInit(rootNode, myKey, myValue, NODE_NUMBERS);
     EXPECT_EQ(rootNode->GetCount(), NODE_NUMBERS);
 
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        int hash = TaggedNode::Hash(thread, key.GetTaggedValue());
-        // test get
-        JSHandle<JSTaggedValue> rootNodeVa(thread, rootNode.GetTaggedValue());
-        JSTaggedValue gValue = RBTreeNode::GetTreeNode(thread, rootNodeVa, hash, key);
-        JSTaggedValue resValue = RBTreeNode::Cast(gValue.GetTaggedObject())->GetValue();
-        EXPECT_EQ(resValue, value.GetTaggedValue());
-    }
+    RBTreeValueCheck(rootNode, myKey, myValue, 0, NODE_NUMBERS);
 }
 
 HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeDelete)
@@ -90,15 +102,7 @@ HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeDelete)
     JSHandle<RBTreeNode> rootNode(thread, JSTaggedValue::Hole());
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        int hash = TaggedNode::Hash(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        rootNode = RBTreeNode::Set(thread, rootNode, hash, key, value);
-        rootNode->SetIsRed(thread, JSTaggedValue(false));
-    }
+    RBTreeNodeInit(rootNode, myKey, myValue, NODE_NUMBERS);
     EXPECT_EQ(rootNode->GetCount(), NODE_NUMBERS);
 
     for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {
@@ -121,34 +125,15 @@ HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeDelete)
         EXPECT_EQ(gValue, JSTaggedValue::Hole());
     }
 
-    for (uint32_t i = NODE_NUMBERS / 2; i < NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        int hash = TaggedNode::Hash(thread, key.GetTaggedValue());
-        JSHandle<JSTaggedValue> rootNodeVa(thread, rootNode.GetTaggedValue());
-        JSTaggedValue gValue = RBTreeNode::GetTreeNode(thread, rootNodeVa, hash, key);
-        JSTaggedValue resValue = RBTreeNode::Cast(gValue.GetTaggedObject())->GetValue();
-        EXPECT_EQ(resValue, value.GetTaggedValue());
-    }
+    RBTreeValueCheck(rootNode, myKey, myValue, NODE_NUMBERS / 2, NODE_NUMBERS);
 }
 
 HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeDivide)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<RBTreeNode> rootNode(thread, JSTaggedValue::Hole());
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < TREE_NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        int hash = TaggedNode::Hash(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        rootNode = RBTreeNode::Set(thread, rootNode, hash, key, value);
-        rootNode->SetIsRed(thread, JSTaggedValue(false));
-    }
+    RBTreeNodeInit(rootNode, myKey, myValue, TREE_NODE_NUMBERS);
     EXPECT_EQ(rootNode->GetCount(), TREE_NODE_NUMBERS);
 
     uint32_t count = rootNode->GetCount();
@@ -187,19 +172,10 @@ HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeDivide)
 
 HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeUntreeify)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<RBTreeNode> rootNode(thread, JSTaggedValue::Hole());
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        int hash = TaggedNode::Hash(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        rootNode = RBTreeNode::Set(thread, rootNode, hash, key, value);
-        rootNode->SetIsRed(thread, JSTaggedValue(false));
-    }
+    RBTreeNodeInit(rootNode, myKey, myValue, NODE_NUMBERS);
     EXPECT_EQ(rootNode->GetCount(), NODE_NUMBERS);
 
     JSHandle<LinkedNode> head = RBTreeNode::Detreeing(thread, rootNode);

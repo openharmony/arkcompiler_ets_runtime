@@ -110,7 +110,7 @@ HWTEST_F_L0(LayoutInfoTest, FindElementWithCache)
     EXPECT_EQ(result, -1); // -1: not find
 }
 
-HWTEST_F_L0(LayoutInfoTest, GetAllKeys)
+void GetAllKeysCommon(JSThread *thread, bool enumKeys = false)
 {
     int infoLength = 5;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -127,46 +127,40 @@ HWTEST_F_L0(LayoutInfoTest, GetAllKeys)
         JSHandle<JSTaggedValue> elements(thread, JSTaggedValue(i));
         JSHandle<JSTaggedValue> elementsKey(JSTaggedValue::ToString(thread, elements));
         defaultAttr.SetOffset(i);
+        if (enumKeys) {
+            if (i != 3) {
+                defaultAttr.SetEnumerable(false);
+            }
+            else {
+                defaultAttr.SetEnumerable(true);
+            }
+        }
         layoutInfoHandle->AddKey(thread, i, elementsKey.GetTaggedValue(), defaultAttr);
     }
-    layoutInfoHandle->GetAllKeys(thread, infoLength, 0, *keyArray, objectHandle); // 0: offset
-    layoutInfoHandle->GetAllKeysForSerialization(infoLength, keyVector);
-    EXPECT_EQ(keyArray->GetLength(), keyVector.size());
+    if (enumKeys) {
+        uint32_t keys = 0;
+        layoutInfoHandle->GetAllEnumKeys(thread, infoLength, 0, keyArray, &keys, objectHandle); // 0: offset
+        EXPECT_EQ(keyArray->Get(0), key3.GetTaggedValue());
+        EXPECT_EQ(keys, 1U);
+    } else {
+        layoutInfoHandle->GetAllKeys(thread, infoLength, 0, *keyArray, objectHandle); // 0: offset
+        layoutInfoHandle->GetAllKeysForSerialization(infoLength, keyVector);
+        EXPECT_EQ(keyArray->GetLength(), keyVector.size());
 
-    for (int i = 0;i < infoLength; i++) {
-        bool result = JSTaggedValue::SameValue(keyArray->Get(i), keyVector[i]);
-        EXPECT_TRUE(result);
+        for (int i = 0;i < infoLength; i++) {
+            bool result = JSTaggedValue::SameValue(keyArray->Get(i), keyVector[i]);
+            EXPECT_TRUE(result);
+        }
     }
+}
+
+HWTEST_F_L0(LayoutInfoTest, GetAllKeys)
+{
+    GetAllKeysCommon(thread);
 }
 
 HWTEST_F_L0(LayoutInfoTest, GetAllEnumKeys)
 {
-    int infoLength = 5;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    PropertyAttributes defaultAttr = PropertyAttributes::Default();
-    JSHandle<JSTaggedValue> key3(factory->NewFromASCII("3"));
-
-    JSHandle<JSObject> objectHandle = factory->NewEmptyJSObject();
-    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(infoLength);
-    JSHandle<LayoutInfo> layoutInfoHandle = factory->CreateLayoutInfo(infoLength);
-    EXPECT_TRUE(*layoutInfoHandle != nullptr);
-    std::vector<JSTaggedValue> keyVector;
-    // Add key to layout info
-    for (int i = 0; i < infoLength; i++) {
-        JSHandle<JSTaggedValue> elements(thread, JSTaggedValue(i));
-        JSHandle<JSTaggedValue> elementsKey(JSTaggedValue::ToString(thread, elements));
-        defaultAttr.SetOffset(i);
-        if (i != 3) {
-            defaultAttr.SetEnumerable(false);
-        }
-        else {
-            defaultAttr.SetEnumerable(true);
-        }
-        layoutInfoHandle->AddKey(thread, i, elementsKey.GetTaggedValue(), defaultAttr);
-    }
-    uint32_t keys = 0;
-    layoutInfoHandle->GetAllEnumKeys(thread, infoLength, 0, keyArray, &keys, objectHandle); // 0: offset
-    EXPECT_EQ(keyArray->Get(0), key3.GetTaggedValue());
-    EXPECT_EQ(keys, 1U);
+    GetAllKeysCommon(thread, true);
 }
 }  // namespace panda::ecmascript
