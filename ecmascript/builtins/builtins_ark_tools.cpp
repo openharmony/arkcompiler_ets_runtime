@@ -202,9 +202,11 @@ JSTaggedValue BuiltinsArkTools::GetLexicalEnv(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
-    const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap())->CollectGarbage(
+    auto heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
+    heap->CollectGarbage(
         TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
     SharedHeap::GetInstance()->CollectGarbage(info->GetThread(), TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER);
+    heap->GetHeapPrepare();
     return JSTaggedValue::True();
 }
 
