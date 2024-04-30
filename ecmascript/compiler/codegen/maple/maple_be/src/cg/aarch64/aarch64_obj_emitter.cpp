@@ -511,6 +511,7 @@ uint32 AArch64ObjEmitter::GetOpndMachineValue(const Operand &opnd) const
             if (regOpnd.GetRegisterNumber() == RSP) {
                 return regNO - R0 - 1;
             }
+            CHECK_FATAL(regNO > 1 && regNO < UINT32_MAX, "value overflow");
             return regNO - R0;
         }
         return regNO - V0;
@@ -880,12 +881,14 @@ uint32 AArch64ObjEmitter::GenBitfieldInsn(const Insn &insn) const
         uint32 immr = -shift % mod;
         opnd |= immr << kShiftSixteen;
         uint32 width = GetOpndMachineValue(insn.GetOperand(kInsnFourthOpnd));
+        CHECK_FATAL(width > 1 && width < UINT32_MAX, "value overflow");
         uint32 imms = width - 1;
         opnd |= imms << kShiftTen;
     } else if (insn.GetOperandSize() == operandSize) {
         uint32 lab = GetOpndMachineValue(insn.GetOperand(kInsnThirdOpnd));
         opnd |= lab << kShiftSixteen;
         uint32 width = GetOpndMachineValue(insn.GetOperand(kInsnFourthOpnd));
+        CHECK_FATAL(lab + width > 1 && static_cast<uint64>(lab) + width < UINT64_MAX, "value overflow");
         opnd |= (lab + width - 1) << kShiftTen;
     } else if (insn.GetMachineOpcode() == MOP_xlslrri6 || insn.GetMachineOpcode() == MOP_wlslrri5) {
         uint32 mod = insn.GetDesc()->GetOpndDes(kInsnFirstOpnd)->GetSize(); /* 64 & 32 from ARMv8 manual C5.6.114 */
@@ -1380,7 +1383,7 @@ uint32 AArch64ObjEmitter::GenLoadPairInsn(const Insn &insn) const
         divisor = k4ByteSize;
     }
     uint32 imm7Mask = 0x7f;
-    opnd |= (static_cast<uint32>((offsetValue / divisor) & imm7Mask) << kShiftFifteen);
+    opnd |= (((static_cast<uint32>(offsetValue / divisor) & imm7Mask)) << kShiftFifteen);
 
     uint32 specialOpCode = 0;
     if (memOpnd.IsPostIndexed()) {
@@ -1417,7 +1420,7 @@ uint32 AArch64ObjEmitter::GenStorePairInsn(const Insn &insn) const
         divisor = k4ByteSize;
     }
     uint32 imm7Mask = 0x7f;
-    opnd |= (static_cast<uint32>(offsetValue / divisor) & imm7Mask) << kShiftFifteen;
+    opnd |= ((static_cast<uint32>(offsetValue / divisor) & imm7Mask) << kShiftFifteen);
 
     uint32 specialOpCode = 0;
     if (memOpnd.IsPostIndexed()) {
@@ -1696,9 +1699,9 @@ uint32 AArch64ObjEmitter::EncodeLogicaImm(uint64 imm, uint32 size) const
     } else { /* for 0+1+0+ pattern */
         immr = elementSize - trailCount;
     }
-
+    CHECK_FATAL(elementSize > 1 && elementSize < UINT32_MAX, "value overflow");
     uint32 imms = ~(elementSize - 1) << 1;
-    imms |= oneNum - 1;
+    imms |= oneNum - 1u;
     uint32 n = (elementSize == k64BitSize) ? 1 : 0;
     return (n << kShiftTwelve) | (immr << kShiftSix) | (imms & 0x3f);
 }

@@ -126,7 +126,7 @@ void AArch64CGPeepHole::Run()
                 continue;
             }
             if (ssaInfo != nullptr) {
-                optSuccess |= DoSSAOptimize(*bb, *insn);
+                optSuccess = optSuccess || DoSSAOptimize(*bb, *insn);
             } else {
                 DoNormalOptimize(*bb, *insn);
             }
@@ -8576,6 +8576,7 @@ void DeleteAndBeforeRevStrPattern::Run(BB &bb, Insn &insn)
     }
     auto &insnUseOpnd = insn.GetOperand(kInsnSecondOpnd);
     Insn *nextInsn = insn.GetNextMachineInsn();
+    CHECK_FATAL(nextInsn != nullptr, "null pointer");
     nextInsn->SetOperand(kInsnSecondOpnd, insnUseOpnd);
     bb.RemoveInsn(insn);
 }

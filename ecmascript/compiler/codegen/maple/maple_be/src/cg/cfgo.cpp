@@ -213,6 +213,7 @@ bool ChainingPattern::ClearCurBBAndResetTargetBB(BB &curBB, BB &sucBB)
     if (last1 == nullptr) {
         return false;
     }
+    ASSERT_NOT_NULL(brInsn);
     if (brInsn->GetPreviousMachineInsn() &&
         !DoSameThing(*newTarget, *last1, curBB, *brInsn->GetPreviousMachineInsn())) {
         return false;
@@ -702,6 +703,7 @@ bool FlipBRPattern::Optimize(BB &curBB)
             DEBUG_ASSERT(brInsn != nullptr, "FlipBRPattern: ftBB has no branch");
 
             /* Reverse the branch */
+            ASSERT_NOT_NULL(curBBBranchInsn);
             uint32 targetIdx = GetJumpTargetIdx(*curBBBranchInsn);
             MOperator mOp = FlipConditionOp(curBBBranchInsn->GetMachineOpcode());
             if (mOp == 0) {
@@ -713,6 +715,7 @@ bool FlipBRPattern::Optimize(BB &curBB)
                 (ftBB->IsSoloGoto() ||
                  (!IsLabelInLSDAOrSwitchTable(tgtBB->GetLabIdx()) && cgFunc->GetTheCFG()->CanMerge(*ftBB, *tgtBB)))) {
                 curBBBranchInsn->SetMOP(cgFunc->GetCG()->GetTargetMd(mOp));
+                ASSERT_NOT_NULL(brInsn);
                 Operand &brTarget = brInsn->GetOperand(GetJumpTargetIdx(*brInsn));
                 curBBBranchInsn->SetOperand(targetIdx, brTarget);
                 /* Insert ftBB's insn at the beginning of tgtBB. */
@@ -1332,8 +1335,8 @@ bool CrossJumpBBPattern::Optimize(BB &curBB)
     bool optimized = false;
     do {
         cfgChanged = false;
-        cfgChanged |= OptimizeOnce(curBB);
-        optimized |= cfgChanged;
+        cfgChanged = OptimizeOnce(curBB) || cfgChanged;
+        optimized = cfgChanged || optimized;
     } while (cfgChanged);
 
     return optimized;

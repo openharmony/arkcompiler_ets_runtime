@@ -3655,6 +3655,7 @@ StmtNode *CGLowerer::LowerDefaultIntrinsicCall(IntrinsiccallNode &intrincall, MI
 StmtNode *CGLowerer::LowerIntrinsicMplCleanupLocalRefVarsSkip(IntrinsiccallNode &intrincall)
 {
     MIRFunction *mirFunc = mirModule.CurFunction();
+    CHECK_FATAL(intrincall.NumOpnds() > 0, "must not be zero");
     BaseNode *skipExpr = intrincall.Opnd(intrincall.NumOpnds() - 1);
 
     CHECK_FATAL(skipExpr != nullptr, "should be dread");

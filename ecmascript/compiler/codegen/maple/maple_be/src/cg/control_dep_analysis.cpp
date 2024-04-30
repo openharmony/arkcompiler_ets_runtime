@@ -805,6 +805,7 @@ bool ControlDepAnalysis::IsInDifferentSCCNode(CDGRegion &region, std::vector<BB 
         }
     }
     if (allSuccOfBackBBInRegion) {
+        CHECK_FATAL(uniformedRegionCFG.size() > 1, "must not be zero");
         BB *commonEntryBB = static_cast<BB *>(uniformedRegionCFG[uniformedRegionCFG.size() - 2]);
         BB *commonExitBB = static_cast<BB *>(uniformedRegionCFG[uniformedRegionCFG.size() - 1]);
         ASSERT_NOT_NULL(region.GetRegionRoot());

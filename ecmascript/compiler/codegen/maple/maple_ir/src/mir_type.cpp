@@ -839,6 +839,7 @@ void MIRFuncType::Dump(int indent, bool dontUseName) const
 static constexpr uint64 RoundUpConst(uint64 offset, uint32 align)
 {
     uint64 tempFirst = static_cast<uint64>(-align);
+    CHECK_FATAL((offset <= UINT64_MAX - align), "must not be zero");
     uint64 tempSecond = static_cast<uint64>(offset + align - 1);
     return tempFirst & tempSecond;
 }
@@ -1309,6 +1310,7 @@ static void DumpConstructorsAsCxx(MethodVector methods, int indent)
         size_t paramTypeListSize = funcType->GetParamTypeList().size();
         for (auto &p : funcType->GetParamTypeList()) {
             GlobalTables::GetTypeTable().GetTypeFromTyIdx(p)->Dump(indent + 1);
+            CHECK_FATAL(paramTypeListSize > 0, "must not be zero");
             if (j != paramTypeListSize - 1) {
                 LogInfo::MapleLogger() << ", ";
             }
@@ -1401,6 +1403,7 @@ size_t MIRStructType::GetSize() const
                 bitOfst = RoundUp(bitOfst, GetPrimTypeBitSize(bitfType->GetPrimType()));
                 byteOfst = bitOfst >> shiftNum;
             } else {
+                CHECK_FATAL((bitOfst <= UINT32_MAX - bitfType->GetFieldSize()), "must not be zero");
                 if (RoundDown(bitOfst + bitfType->GetFieldSize() - 1, GetPrimTypeBitSize(bitfType->GetPrimType())) !=
                     RoundDown(bitOfst, GetPrimTypeBitSize(bitfType->GetPrimType()))) {
                     bitOfst = RoundUp(bitOfst, GetPrimTypeBitSize(bitfType->GetPrimType()));
@@ -2131,6 +2134,7 @@ FieldPair MIRStructType::TraverseToField(FieldID fieldID) const
     if (parentFields.empty() || parentFieldIdx > parentFields.size()) {
         return {GStrIdx(0), TyIdxFieldAttrPair(TyIdx(0), FieldAttrs())};
     }
+    CHECK_FATAL(parentFieldIdx > 0, "must not be zero");
     return parentFields[parentFieldIdx - 1];
 }
 
@@ -2270,6 +2274,7 @@ int64 MIRStructType::GetBitOffsetFromStructBaseAddr(FieldID fieldID)
             //     int32      : 0 // force the next field to be aligned on int32 align boundary
             //     int32 fld3 : 4
             // }
+            CHECK_FATAL((allocedBitSize <= UINT32_MAX - fieldBitSize), "must not be zero");
             if ((!GetTypeAttrs().IsPacked() && ((allocedBitSize / fieldTypeSizeBits) !=
                                                 ((allocedBitSize + fieldBitSize - 1u) / fieldTypeSizeBits))) ||
                 fieldBitSize == 0) {
@@ -2297,6 +2302,7 @@ int64 MIRStructType::GetBitOffsetFromStructBaseAddr(FieldID fieldID)
             allocedSize = RoundUp(allocedSize, fieldAlign);
             offset = allocedSize;
         } else {
+            CHECK_FATAL((allocedBitSize <= UINT32_MAX - fieldTypeSizeBits), "must not be zero");
             // still some leftover bits on allocated words, we calculate things based on bits then.
             if (allocedBitSize / fieldAlignBits != (allocedBitSize + fieldTypeSizeBits - 1) / fieldAlignBits) {
                 // the field is crossing the align boundary of its base type
@@ -2484,6 +2490,7 @@ void MIRStructType::ComputeLayout()
             fieldBitSize = static_cast<MIRBitFieldType *>(fieldType)->GetFieldSize();
             fieldTypeSizeBits = static_cast<uint32>(GetPrimTypeSize(fieldType->GetPrimType())) * bitsPerByte;
             // zero bit field
+            CHECK_FATAL((allocedBitSize <= UINT32_MAX - fieldBitSize), "must not be zero");
             if (fieldAttr.HasAligned()) {
                 if ((fieldAttr.GetAlign() < fieldAlign &&
                      fieldAttr.GetAlign() <= ((fieldTypeSizeBits - fieldBitSize) / bitsPerByte))) {
@@ -2516,6 +2523,7 @@ void MIRStructType::ComputeLayout()
             allocedSize = RoundUp(allocedSize, fieldAlign);
             offset = allocedSize;
         } else {
+            CHECK_FATAL((allocedBitSize <= UINT32_MAX - fieldTypeSizeBits), "must not be zero");
             // still some leftover bits on allocated words, we calculate things based on bits then.
             if ((allocedBitSize / fieldAlignBits != (allocedBitSize + fieldTypeSizeBits - 1) / fieldAlignBits) ||
                 fieldTypeSize == 0) {

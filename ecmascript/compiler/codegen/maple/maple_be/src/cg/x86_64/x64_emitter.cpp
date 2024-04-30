@@ -1835,6 +1835,7 @@ uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, 
             MIRSymbol *symAddrSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
 
             uint32 symIdx = symAddrSym->GetNameStrIdx();
+            ASSERT_NOT_NULL(symAddrSym);
             const string &name = symAddrSym->GetName();
             assmbler.StoreNameIntoSymMap(symIdx, name);
             assmbler.EmitAddrOfFuncValue(symIdx, belongsToDataSec);

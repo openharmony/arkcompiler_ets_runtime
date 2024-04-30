@@ -757,7 +757,8 @@ void EHFunc::CreateLSDAAction()
                 actionTable->PushBack(*lsdaAction);
             }
         }
-
+        
+        CHECK_FATAL(actionTable->Size(), "must not be zero");
         /* record actionTable group offset, per LSDAAction object in actionTable occupy 2 bytes */
         ehTry->SetCSAction((actionTable->Size() - 1) * 2 + 1);
     }

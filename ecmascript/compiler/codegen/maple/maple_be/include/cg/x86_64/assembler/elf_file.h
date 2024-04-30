@@ -169,7 +169,7 @@ public:
     void AppendData(int64 value, size_t size)
     {
         for (size_t i = 0; i < size; i++) {
-            auto pdata = static_cast<uint8>(value >> (i * k8Bits));
+            auto pdata = static_cast<uint8>(static_cast<uint64>(value) >> (i * k8Bits));
             data.push_back(pdata);
         }
     }
@@ -281,6 +281,7 @@ public:
 
     void AppendIdxInSymbols(int64 symIdx)
     {
+        CHECK_FATAL(GetSymbolsSize() > 0, "must not be zero");
         symbolIdxMap[symIdx] = static_cast<uint64>(GetSymbolsSize() - 1);
     }
 

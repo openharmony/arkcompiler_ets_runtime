@@ -1482,6 +1482,7 @@ void Emitter::EmitIntConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst, ui
         std::string reflectStrTabPrefix = isHotReflectStr ? hotStr : kReflectionStrtabPrefixStr;
         std::string strTabName = reflectStrTabPrefix + cg->GetMIRModule()->GetFileNameAsPostfix();
         /* left shift 2 bit to get low 30 bit data for MIRIntConst */
+        ASSERT_NOT_NULL(elemConst);
         elemConst = GlobalTables::GetIntConstTable().GetOrCreateIntConst(index >> 2, elemConst->GetType());
         intConst = safe_cast<MIRIntConst>(elemConst);
         aggConst.SetItem(static_cast<uint32>(idx), intConst, aggConst.GetFieldIdItem(idx));
@@ -1804,6 +1805,7 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
             DEBUG_ASSERT(false, "should not run here");
         }
     }
+    CHECK_FATAL(static_cast<int64>(arrayType.GetSizeArrayItem(0)) + 1 > uNum, "must not be zero");
     int64 iNum = (arrayType.GetSizeArrayItem(0) > 0) ? (static_cast<int64>(arrayType.GetSizeArrayItem(0)) - uNum) : 0;
     if (iNum > 0) {
         if (!cg->GetMIRModule()->IsCModule()) {
@@ -1950,6 +1952,7 @@ void Emitter::EmitStructConstant(MIRConst &mirConst, uint32 &subStructFieldCount
     }
     if (structType.GetKind() == kTypeStruct) {
         /* The reason of subtracting one is that fieldIdx adds one at the end of the cycle. */
+        CHECK_FATAL(fieldIdx > 0, "must not be zero");
         subStructFieldCounts = fieldIdx - 1;
     } else if (structType.GetKind() == kTypeUnion) {
         subStructFieldCounts = static_cast<uint32>(beCommon->GetStructFieldCount(structType.GetTypeIndex()));
@@ -2211,6 +2214,7 @@ void Emitter::MarkVtabOrItabEndFlag(const std::vector<MIRSymbol *> &mirSymbolVec
             continue;
         }
         size_t size = aggConst->GetConstVec().size();
+        CHECK_FATAL(size > 0, "must not be zero");
         MIRConst *elemConst = aggConst->GetConstVecItem(size - 1);
         DEBUG_ASSERT(elemConst != nullptr, "null ptr check");
         if (elemConst->GetKind() == kConstAddrofFunc) {
@@ -2230,6 +2234,8 @@ void Emitter::MarkVtabOrItabEndFlag(const std::vector<MIRSymbol *> &mirSymbolVec
             tabConst = GlobalTables::GetIntConstTable().GetOrCreateIntConst(
                 tabConst->GetExtValue() | 0X4000000000000000, tabConst->GetType());
 #endif
+            CHECK_FATAL(size > 0, "must not be zero");
+            CHECK_FATAL(static_cast<uint32>(size) > 0, "must not be zero");
             aggConst->SetItem(static_cast<uint32>(size) - 1, tabConst, aggConst->GetFieldIdItem(size - 1));
         }
     }

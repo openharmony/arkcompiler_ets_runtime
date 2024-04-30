@@ -77,6 +77,7 @@ void AArch64LiveIntervalAnalysis::SetupLiveIntervalByOp(Operand &op, Insn &insn,
         return;
     }
     LiveInterval *lr = GetOrCreateLiveInterval(regNO);
+    CHECK_FATAL(insn.GetId() > 1 && insn.GetId() < UINT32_MAX, "value overflow");
     uint32 point = isDef ? insn.GetId() : (insn.GetId() - 1);
     lr->AddRange(insn.GetBB()->GetId(), point, vregLive.find(regNO) != vregLive.end());
     if (lr->GetRegType() == kRegTyUndef) {

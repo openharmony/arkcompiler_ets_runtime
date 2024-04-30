@@ -264,6 +264,7 @@ void DebugInfo::SetupCU()
     GStrIdx strIdx = module->GetMIRBuilder()->GetOrCreateStringIndex(producer);
     delete producer;
     producer = nullptr;
+    ASSERT_NOT_NULL(producer);
     compUnit->AddAttr(DW_AT_producer, DW_FORM_strp, strIdx.GetIdx());
 
     /* Source Languate  */
@@ -472,6 +473,7 @@ DBGDie *DebugInfo::CreateFormalParaDie(MIRFunction *func, MIRType *type, MIRSymb
     DBGDie *die = module->GetMemPool()->New<DBGDie>(module, DW_TAG_formal_parameter);
 
     (void)GetOrCreateTypeDie(type);
+    ASSERT_NOT_NULL(type);
     die->AddAttr(DW_AT_type, DW_FORM_ref4, type->GetTypeIndex().GetIdx());
 
     /* var Name */
@@ -575,6 +577,7 @@ DBGDie *DebugInfo::CreateVarDie(MIRSymbol *sym, GStrIdx strIdx)
 
     MIRType *type = sym->GetType();
     (void)GetOrCreateTypeDie(type);
+    ASSERT_NOT_NULL(type);
     die->AddAttr(DW_AT_type, DW_FORM_ref4, type->GetTypeIndex().GetIdx());
 
     return die;
@@ -654,6 +657,7 @@ DBGDie *DebugInfo::GetOrCreateFuncDefDie(MIRFunction *func, uint32 lnum)
     if (!func->IsReturnVoid()) {
         auto returnType = func->GetReturnType();
         (void)GetOrCreateTypeDie(returnType);
+        ASSERT_NOT_NULL(returnType);
         die->AddAttr(DW_AT_type, DW_FORM_ref4, returnType->GetTypeIndex().GetIdx());
     }
 
@@ -828,6 +832,7 @@ DBGDie *DebugInfo::GetOrCreatePointTypeDie(const MIRPtrType *ptrtype)
     }
 
     (void)GetOrCreateTypeDie(type);
+    ASSERT_NOT_NULL(type);
     if (typeDefTyIdxMap.find(type->GetTypeIndex().GetIdx()) != typeDefTyIdxMap.end()) {
         uint32 tyIdx = typeDefTyIdxMap[type->GetTypeIndex().GetIdx()];
         if (pointedPointerMap.find(tyIdx) != pointedPointerMap.end()) {
@@ -907,6 +912,7 @@ DBGDie *DebugInfo::CreateFieldDie(maple::FieldPair pair, uint32 lnum)
     (void)GetOrCreateTypeDie(type);
     // fill with type idx instead of typedie->id to avoid nullptr typedie of
     // forward reference of class types
+    ASSERT_NOT_NULL(type);
     die->AddAttr(DW_AT_type, DW_FORM_ref4, type->GetTypeIndex().GetIdx());
 
     die->AddAttr(DW_AT_data_member_location, DW_FORM_data4, kDbgDefaultVal);
@@ -924,6 +930,7 @@ DBGDie *DebugInfo::CreateBitfieldDie(const MIRBitFieldType *type, GStrIdx sidx, 
 
     MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(type->GetPrimType());
     (void)GetOrCreateTypeDie(ty);
+    ASSERT_NOT_NULL(ty);
     die->AddAttr(DW_AT_type, DW_FORM_ref4, ty->GetTypeIndex().GetIdx());
 
     die->AddAttr(DW_AT_byte_size, DW_FORM_data4, GetPrimTypeSize(type->GetPrimType()));

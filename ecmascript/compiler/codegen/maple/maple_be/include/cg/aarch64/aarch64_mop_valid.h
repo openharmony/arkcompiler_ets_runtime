@@ -63,7 +63,7 @@ inline bool StrLdr32Valid(Operand *o)
 // Immediate verification: value range -256 ~ 252, multiple of 4.
 inline bool StrLdr32PairValid(Operand *o)
 {
-    constexpr int sImmValidOffset = 3;
+    constexpr uint64 sImmValidOffset = 3;
     int64 value = AArch64isa::GetMemOpndOffsetValue(o);
     if ((value <= kMaxSimm32Pair) && (value >= kMinSimm32)) {
         return (static_cast<uint64>(value) & sImmValidOffset) > 0 ? false : true;
@@ -90,7 +90,7 @@ inline bool StrLdr64Valid(Operand *o)
 // Immediate verification: value range -512 ~ 504, multiple of 8.
 inline bool StrLdr64PairValid(Operand *o)
 {
-    constexpr int sImmValidOffset = 7;
+    constexpr uint64 sImmValidOffset = 7;
     int64 value = AArch64isa::GetMemOpndOffsetValue(o);
     if (value <= kMaxSimm64Pair && (value >= kMinSimm64)) {
         return (static_cast<uint64>(value) & sImmValidOffset) > 0 ? false : true;
