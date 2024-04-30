@@ -263,3 +263,10 @@ try {
 } catch (e) {
     print(e.name);
 }
+
+try {
+    const vSort = new Float64Array(Float64Array);
+    vSort.__proto__.sort();
+} catch (e) {
+    print(e.message);
+}
