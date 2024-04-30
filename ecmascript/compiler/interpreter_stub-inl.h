@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_INTERPRETER_STUB_INL_H
 
 #include "ecmascript/compiler/interpreter_stub.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_arguments.h"
@@ -624,6 +625,12 @@ GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
 {
     GateRef x = Load(VariableType::INT16(), method, IntPtr(Method::LITERAL_INFO_OFFSET));
     return GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
+}
+
+GateRef InterpreterStubBuilder::GetColdReloadStage(GateRef glue)
+{
+    GateRef offset = IntPtr(JSThread::GlueData::GetIsColdReloadOffSet(GetEnvironment()->Is32Bit()));
+    return Load(VariableType::BOOL(), glue, offset);
 }
 
 void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,

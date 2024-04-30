@@ -4569,6 +4569,8 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     NewObjectStubBuilder newBuilder(this);
     GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
+    Label isColdReload(env);
+    Label isNotColdReload(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
     {
@@ -4578,6 +4580,15 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         SetLexicalEnvToFunction(glue, result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
+
+        GateRef coldReloadStage = GetColdReloadStage(glue);
+        BRANCH(Equal(coldReloadStage, True()), &isColdReload, &isNotColdReload);
+        Bind(&isColdReload);
+        {
+            CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
+            Jump(&isNotColdReload);
+        }
+        Bind(&isNotColdReload);
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         callback.ProfileDefineClass(result);
         varAcc = result;
@@ -4594,6 +4605,8 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     NewObjectStubBuilder newBuilder(this);
     GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
+    Label isColdReload(env);
+    Label isNotColdReload(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
     {
@@ -4604,6 +4617,15 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
+
+        GateRef coldReloadStage = GetColdReloadStage(glue);
+        BRANCH(Equal(coldReloadStage, True()), &isColdReload, &isNotColdReload);
+        Bind(&isColdReload);
+        {
+            CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
+            Jump(&isNotColdReload);
+        }
+        Bind(&isNotColdReload);
         varAcc = result;
         callback.ProfileDefineClass(result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);

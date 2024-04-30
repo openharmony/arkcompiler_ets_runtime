@@ -15,6 +15,7 @@
 #ifndef ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H
 #define ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H
 
+#include "ecmascript/js_function.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/patch/patch_loader.h"
 
@@ -39,7 +40,17 @@ public:
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
     JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId);
-
+    inline static void SetPatchModule(JSThread *thread, const JSHandle<Method> &methodHandle,
+                                      const JSHandle<JSFunction> &func)
+    {
+        auto coldReloadRecordName =
+            MethodLiteral::GetRecordName(methodHandle->GetJSPandaFile(), methodHandle->GetMethodId());
+        const JSHandle<JSTaggedValue> resolvedModule =
+            thread->GetCurrentEcmaContext()->FindPatchModule(coldReloadRecordName);
+        if (!resolvedModule->IsHole()) {
+            func->SetModule(thread, resolvedModule.GetTaggedValue());
+        }
+    }
 private:
     // check whether the callback is registered.
     bool HasQueryQuickFixInfoFunc() const

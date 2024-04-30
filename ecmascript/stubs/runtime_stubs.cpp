@@ -2462,6 +2462,14 @@ DEF_RUNTIME_STUBS(DefineMethod)
     return RuntimeDefineMethod(thread, method, homeObject, length, env, module).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SetPatchModule)
+{
+    RUNTIME_STUBS_HEADER(SetPatchModule);
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    RuntimeSetPatchModule(thread, func);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CallSpread)
 {
     RUNTIME_STUBS_HEADER(CallSpread);
