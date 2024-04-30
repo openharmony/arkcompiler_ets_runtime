@@ -177,18 +177,51 @@ print(1283326536000 == Date.parse("2010-08-31T22:35:36-0900"));
 print(1283261736000 == Date.parse("2010-08-31T22:35:36+0900"));
 
 //mjsunit/compiler/regress-5538.js
+// ArkTools.optimize callback for
+function aa(x, y=-1) {
+  x = x | 0;
+  if (y == -1) {
+    return Number.parseInt(x + 1);
+  } else {
+    return Number.parseInt(x + 1, y);
+  }  
+}
+
+// ArkTools.optimize
+function jj(foo) {
+  ArkTools.prepareFunctionForOptimization(foo);
+  print(1 == foo(0));
+  print(2 == foo(1));
+  ArkTools.optimizeFunctionOnNextCall(foo);
+  print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
+}
+
 (function() {
     function foo(x) {
-      x = x | 0;
-      return Number.parseInt(x + 1);
+      return aa(x);
+      // x = x | 0;
+      // return Number.parseInt(x + 1);
     }
-  
-    ArkTools.prepareFunctionForOptimization(foo);
-    print(1 == foo(0));
-    print(2 == foo(1));
-    ArkTools.optimizeFunctionOnNextCall(foo);
-    print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
+    // foo()
+    jj(foo);
+    // ArkTools.prepareFunctionForOptimization(foo);
+    // print(1 == foo(0));
+    // print(2 == foo(1));
+    // ArkTools.optimizeFunctionOnNextCall(foo);
+    // print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
   })();
+// (function() {
+//     function foo(x) {
+//       x = x | 0;
+//       return Number.parseInt(x + 1);
+//     }
+  
+//     ArkTools.prepareFunctionForOptimization(foo);
+//     print(1 == foo(0));
+//     print(2 == foo(1));
+//     ArkTools.optimizeFunctionOnNextCall(foo);
+//     print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
+//   })();
   
   (function() {
     function foo(x) {
