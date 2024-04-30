@@ -184,7 +184,7 @@ function callbackParseInt(x, y=-1) {
     return Number.parseInt(x + 1);
   } else {
     return Number.parseInt(x + 1, y);
-  }  
+  }
 }
 
 // ArkTools.optimize
@@ -196,38 +196,6 @@ function arkOptimize(foo) {
   print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
 }
 
-// function aa(x, y=-1) {
-//   x = x | 0;
-//   if (y == -1) {
-//     return Number.parseInt(x + 1);
-//   } else {
-//     return Number.parseInt(x + 1, y);
-//   }  
-// }
-
-// // ArkTools.optimize
-// function jj(foo) {
-//   ArkTools.prepareFunctionForOptimization(foo);
-//   print(1 == foo(0));
-//   print(2 == foo(1));
-//   ArkTools.optimizeFunctionOnNextCall(foo);
-//   print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-// }
-
-// (function() {
-//     function foo(x) {
-//       return aa(x);
-//       // x = x | 0;
-//       // return Number.parseInt(x + 1);
-//     }
-//     // foo()
-//     jj(foo);
-//     // ArkTools.prepareFunctionForOptimization(foo);
-//     // print(1 == foo(0));
-//     // print(2 == foo(1));
-//     // ArkTools.optimizeFunctionOnNextCall(foo);
-//     // print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-//   })();
 // case1: parseInt(x + 1)
 (function() {
   function foo(x) {
@@ -239,98 +207,26 @@ function arkOptimize(foo) {
 // case2: parseInt(x + 1, 0)
 (function() {
   function callbackfunc2(x) {
-    // x = x | 0;
-    // return Number.parseInt(x + 1, 0);
     return callbackParseInt(x, 0);
   }
   arkOptimize(callbackfunc2);
-  // ArkTools.prepareFunctionForOptimization(foo);
-  // print(1 == foo(0));
-  // print(2 == foo(1));
-  // ArkTools.optimizeFunctionOnNextCall(foo);
-  // print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
 })();
 
 // case3: parseInt(x + 1, 10)
 (function() {
   function callbackfunc3(x) {
     return callbackParseInt(x, 10);
-    // x = x | 0;
-    // return Number.parseInt(x + 1, 10);
   }
   arkOptimize(callbackfunc3);
-  // ArkTools.prepareFunctionForOptimization(foo);
-  // print(1 == foo(0));
-  // print(2 == foo(1));
-  // ArkTools.optimizeFunctionOnNextCall(foo);
-  // print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
 })();
 
 // case4: parseInt(x + 1, undefined)
 (function() {
   function callbackfunc4(x) {
     return callbackParseInt(x, undefined);
-    // x = x | 0;
-    // return Number.parseInt(x + 1, undefined);
   }
   arkOptimize(callbackfunc4);
-  // ArkTools.prepareFunctionForOptimization(foo);
-  // print(1 == foo(0));
-  // print(2 == foo(1));
-  // ArkTools.optimizeFunctionOnNextCall(foo);
-  // print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
 })();
-
-// (function() {
-//     function foo(x) {
-//       x = x | 0;
-//       return Number.parseInt(x + 1);
-//     }
-  
-//     ArkTools.prepareFunctionForOptimization(foo);
-//     print(1 == foo(0));
-//     print(2 == foo(1));
-//     ArkTools.optimizeFunctionOnNextCall(foo);
-//     print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-//   })();
-  
-  // (function() {
-  //   function foo(x) {
-  //     x = x | 0;
-  //     return Number.parseInt(x + 1, 0);
-  //   }
-  
-  //   ArkTools.prepareFunctionForOptimization(foo);
-  //   print(1 == foo(0));
-  //   print(2 == foo(1));
-  //   ArkTools.optimizeFunctionOnNextCall(foo);
-  //   print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-  // })();
-  
-  // (function() {
-  //   function foo(x) {
-  //     x = x | 0;
-  //     return Number.parseInt(x + 1, 10);
-  //   }
-  
-  //   ArkTools.prepareFunctionForOptimization(foo);
-  //   print(1 == foo(0));
-  //   print(2 == foo(1));
-  //   ArkTools.optimizeFunctionOnNextCall(foo);
-  //   print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-  // })();
-  
-  // (function() {
-  //   function foo(x) {
-  //     x = x | 0;
-  //     return Number.parseInt(x + 1, undefined);
-  //   }
-  //   ArkTools.prepareFunctionForOptimization(foo);
-  //   print(1 == foo(0));
-  //   print(2 == foo(1));
-  //   ArkTools.optimizeFunctionOnNextCall(foo);
-  //   print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-  // })();
 
   // mjsunit/regress/regress-12256.js
   const datesList = [{ year: '2021', month: '10', day: '22', hour: '10', minute: '12', second: '32' },
