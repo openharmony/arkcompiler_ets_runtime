@@ -23,3 +23,9 @@ NaN
 NaN
 NaN
 0
+465
+NaN
+NaN
+-34.444
+NaN
+NaN
