@@ -138,6 +138,8 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 JSThread::JSThread(EcmaVM *vm, bool isJit) : id_(os::thread::GetCurrentThreadId()), vm_(vm), isJitThread_(isJit)
 {
     ASSERT(isJit);
+    // jit thread no need GCIterating
+    readyForGCIterating_ = false;
     RegisterThread(this);
 };
 
