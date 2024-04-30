@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Shenzhen Kaihong Digital Industry Development Co., Ltd.
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,8 +19,6 @@
  * @tc.type: FUNC
  * @tc.require: 
  */
-import testCommon  from "./utility";
-
 var fastmap = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     fastmap = ArkPrivate.Load(ArkPrivate.HashMap);
@@ -132,7 +130,32 @@ if (globalThis["ArkPrivate"] != undefined) {
             proxy.hasValue("bb") && !proxy.hasKey("c") && !proxy.hasValue("cc"));
 
     proxy.set("c", "cc");
-    testCommon(proxy, res);
+    // test keys: true
+    let iteratorKey1 = proxy.keys();
+    res.set("test keys:", iteratorKey1.next().value == "a" && iteratorKey1.next().value == "b" &&
+            iteratorKey1.next().value == "c" && iteratorKey1.next().value == undefined);
+    // test values: true
+    let iteratorValues1 = proxy.values();
+    res.set("test values:", iteratorValues1.next().value == "aa" && iteratorValues1.next().value == "bb" &&
+            iteratorValues1.next().value == "cc" && iteratorValues1.next().value == undefined);
+    // test entries: [c,cc], undefined
+    let iteratorEntries1 = proxy.entries();
+    iteratorEntries1.next().value;
+    iteratorEntries1.next().value;
+    res.set("test entries1:", iteratorEntries1.next().value != undefined);
+    res.set("itest entries2:", iteratorEntries1.next().value == undefined);
+
+    // test forof: [a, aa], [b, bb], [c, cc]
+    let arr1 = ["aa", "bb", "cc"];
+    let j = 0;
+    for (const item of proxy) {
+        res.set(arr1[j], item[1] == arr1[j]);
+        j++;
+    }
+    // test forin:
+    for (const item in proxy) {
+        res.set("test forin", false);
+    }
     // test forEach:
     flag = false;
     function TestForEach1(value, key, proxy) {
