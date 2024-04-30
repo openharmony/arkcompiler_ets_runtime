@@ -11,26 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_jit_ts_test") {
-  testonly = true
-  test_list = [
-    "for_loop",
-    "while_loop",
-    "exception",
-    "addition_assignment",
-  ]
-
-  deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}JitAction" ]
-  }
-}
-
-group("ark_jit_test") {
-  testonly = true
-  deps = [ ":ark_jit_ts_test" ]
-
-  if (is_mac) {
-    deps -= [ ":ark_jit_ts_test" ]
-  }
-}
+true
+一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一二二二二二二二二二二二二二二二二二二二二二二二二二二二二二二二二
