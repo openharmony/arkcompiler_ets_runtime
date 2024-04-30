@@ -276,7 +276,7 @@ public:
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = JsonStringify,
         TYPED_BUILTINS_LAST = IteratorProtoReturn,
-        INVALID = 0xFF,
+        INVALID = 0xFFFF,
     };
     static_assert(ID::NONE == 0);
 

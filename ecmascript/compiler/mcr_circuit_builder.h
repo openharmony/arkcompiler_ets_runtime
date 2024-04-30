@@ -579,7 +579,7 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vect
 
     std::vector<GateRef> inList { currentControl, currentDepend };
     inList.insert(inList.end(), args.begin(), args.end());
-    inList.push_back(Int8(static_cast<int8_t>(id)));
+    inList.push_back(Int8(static_cast<int16_t>(id)));
     AppendFrameArgs(inList, hirGate);
 
     auto builtinOp = TypedCallOperator(hirGate, MachineType::I64, inList, isSideEffect);
