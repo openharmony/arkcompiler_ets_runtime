@@ -3354,10 +3354,12 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (handler.IsValid()) {
+        LOG_ECMA(ERROR) << "[StartDebugger] handler has already loaded";
         return false;
     }
 
     if (option.libraryPath == nullptr) {
+        LOG_ECMA(ERROR) << "[StartDebugger] option.libraryPath is nullptr";
         return false;
     }
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
@@ -3473,23 +3475,37 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused
     LOG_ECMA(INFO) << "JSNApi::StartDebuggerForSocketPair, tid = " << tid << ", socketfd = " << socketfd;
     JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
     if (jsDebuggerManager == nullptr) {
-        return false;
-    }
-    const auto &handle = jsDebuggerManager->GetDebugLibraryHandle();
-    if (!handle.IsValid()) {
-        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail";
+        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] jsDebuggerManager is nullptr";
         return false;
     }
 
-    using StartDebugForSocketpair = bool (*)(int, int);
+    auto &handler = jsDebuggerManager->GetDebugLibraryHandle();
+    if (!handler.IsValid()) {
+        auto libraryPath = jsDebuggerManager->GetLibraryPath();
+        if (libraryPath == nullptr) {
+            LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] libraryPath is nullptr";
+            return false;
+        }
 
-    auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebugForSocketpair");
+        auto handle = panda::os::library_loader::Load(std::string(libraryPath));
+        if (!handle) {
+            LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Load library fail: " << libraryPath << " " << errno;
+            return false;
+        }
+        handler = std::move(handle.Value());
+    }
+
+    EcmaVM *vm = jsDebuggerManager->GetEcmaVM();
+    DebuggerPostTask debuggerPostTask = jsDebuggerManager->GetDebuggerPostTask();
+    using StartDebugForSocketpair = bool (*)(int, int, EcmaVM *, const DebuggerPostTask &);
+
+    auto sym = panda::os::library_loader::ResolveSymbol(handler, "StartDebugForSocketpair");
     if (!sym) {
         LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
 
-    bool ret = reinterpret_cast<StartDebugForSocketpair>(sym.Value())(tid, socketfd);
+    bool ret = reinterpret_cast<StartDebugForSocketpair>(sym.Value())(tid, socketfd, vm, debuggerPostTask);
     if (!ret) {
         // Reset the config
         jsDebuggerManager->SetDebugMode(false);
@@ -3524,17 +3540,24 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
 
+    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
+    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
+    jsDebuggerManager->SetDebuggerPostTask(debuggerPostTask);
+    jsDebuggerManager->SetLibraryPath(option.libraryPath);
     bool ret = false;
     if (!debugApp) {
         return true;
     }
-    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
+
+    if (option.libraryPath == nullptr) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] option.libraryPath is nullptr";
+        return false;
+    }
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
         LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
-    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
@@ -3597,6 +3620,7 @@ bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
                             [[maybe_unused]] bool debugApp)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    LOG_ECMA(INFO) << "JSNApi::StoreDebugInfo, tid = " << tid;
     if (vm == nullptr) {
         return false;
     }
@@ -3605,12 +3629,17 @@ bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
     const auto &handler = jsDebuggerManager->GetDebugLibraryHandle();
     if (handler.IsValid()) {
+        LOG_ECMA(ERROR) << "[StoreDebugInfo] handler has already loaded";
         return false;
     }
 
+    if (option.libraryPath == nullptr) {
+        LOG_ECMA(ERROR) << "[StoreDebugInfo] option.libraryPath is nullptr";
+        return false;
+    }
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
-        LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << option.libraryPath << " " << errno;
+        LOG_ECMA(ERROR) << "[StoreDebugInfo] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
     JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
