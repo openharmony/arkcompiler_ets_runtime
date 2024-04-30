@@ -288,10 +288,12 @@ bool JSThread::IsInRunningStateOrProfiling() const
 {
     bool result = IsInRunningState();
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    return result || vm_->GetHeapProfile() != nullptr;
-#else
-    return result;
+    result |= vm_->GetHeapProfile() != nullptr;
 #endif
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    result |= GetIsProfiling();
+#endif
+    return result;
 }
 
 void JSThread::WriteToStackTraceFd(std::ostringstream &buffer) const
@@ -939,7 +941,35 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterat
     glueData_.stackStart_ = currentContext->GetStackStart();
     if (!currentContext->GlobalEnvIsHole()) {
         SetGlueGlobalEnv(*(currentContext->GetGlobalEnv()));
-        SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
+        /**
+         * GlobalObject has two copies, one in GlueData and one in Context.GlobalEnv, when switch context, will save
+         * GlobalObject in GlueData to CurrentContext.GlobalEnv(is this nessary?), and then switch to new context,
+         * save the GlobalObject in NewContext.GlobalEnv to GlueData.
+         * The initial value of GlobalObject in Context.GlobalEnv is Undefined, but in GlueData is Hole,
+         * so if two SharedGC happened during the builtins initalization like this, maybe will cause incorrect scene:
+         *
+         * Default:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                 Undefined                   Hole
+         *
+         * First SharedGC(JSThread::SwitchCurrentContext), Set GlobalObject from Context.GlobalEnv to GlueData:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                 Undefined                 Undefined
+         *
+         * Builtins Initialize, Create GlobalObject and Set to Context.GlobalEnv:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                    Obj                    Undefined
+         *
+         * Second SharedGC(JSThread::SwitchCurrentContext), Set GlobalObject from GlueData to Context.GlobalEnv:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                 Undefined                 Undefined
+         *
+         * So when copy values between Context.GlobalEnv and GlueData, need to check if the value is Hole in GlueData,
+         * and if is Undefined in Context.GlobalEnv, because the initial value is different.
+        */
+        if (!currentContext->GetGlobalEnv()->GetGlobalObject().IsUndefined()) {
+            SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
+        }
     }
     if (!isInIterate) {
         // If isInIterate is true, it means it is in GC iterate and global variables are no need to change.

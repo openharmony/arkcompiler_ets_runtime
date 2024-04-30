@@ -667,7 +667,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
     Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
-        ASSERT(thread_->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+        if (UNLIKELY(!thread_->IsInRunningStateOrProfiling())) {
+            LOG_ECMA(FATAL) << "Local GC must be in jsthread running state";
+            UNREACHABLE();
+        }
+#endif
         RecursionScope recurScope(this);
         if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent() ||
             (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {

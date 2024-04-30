@@ -413,7 +413,12 @@ EcmaVM::~EcmaVM()
         thread_ = nullptr;
         return;
     }
-    ASSERT(thread_->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread_->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Destruct VM must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread_->isProfiling_) {

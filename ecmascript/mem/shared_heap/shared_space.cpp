@@ -62,7 +62,12 @@ uintptr_t SharedSparseSpace::AllocateWithoutGC(JSThread *thread, size_t size)
 
 uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowGC)
 {
-    ASSERT(thread->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     thread->CheckSafepointIfSuspended();
     // jit thread no heap
     allowGC = allowGC && (!thread->IsJitThread());
@@ -92,8 +97,12 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
 
 uintptr_t SharedSparseSpace::AllocateNoGCAndExpand(JSThread *thread, size_t size)
 {
-    ASSERT(thread->IsInRunningStateOrProfiling());
-    thread->CheckSafepointIfSuspended();
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     uintptr_t object = TryAllocate(thread, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (sweepState_ == SweepState::SWEEPING) {
@@ -165,7 +174,7 @@ uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(JSThread *thread, si
         }
     }
     // Parallel sweep and fill
-    sHeap_->GetSweeper()->EnsureTaskFinished(thread, spaceType_);
+    sHeap_->GetSweeper()->EnsureTaskFinished(spaceType_);
     return allocator_->Allocate(size);
 }
 
@@ -407,7 +416,12 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
 
 uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
 {
-    ASSERT(thread->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     thread->CheckSafepointIfSuspended();
     LockHolder holder(allocateLock_);
     auto object = allocator_.Allocate(size);
@@ -428,10 +442,17 @@ SharedHugeObjectSpace::SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator
 }
 
 
-uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize)
+uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, AllocateEventType allocType)
 {
-    ASSERT(thread->IsInRunningStateOrProfiling());
-    thread->CheckSafepointIfSuspended();
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
+    if (allocType == AllocateEventType::NORMAL) {
+        thread->CheckSafepointIfSuspended();
+    }
     LockHolder lock(allocateLock_);
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.

@@ -50,6 +50,12 @@ EcmaHandleScope::~EcmaHandleScope()
 uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
 {
     CHECK_NO_HANDLE_ALLOC;
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "New handle must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     auto context = thread->GetCurrentEcmaContext();
 #ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     // Each Handle must be managed by HandleScope, otherwise it may cause Handle leakage.
