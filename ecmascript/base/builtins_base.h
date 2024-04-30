@@ -58,7 +58,7 @@ private:
 class BuiltinFunctionEntry {
 public:
     static constexpr int LENGTH_BITS_SIZE = 8;
-    static constexpr int BUILTIN_ID_BITS_SIZE = 8;
+    static constexpr int BUILTIN_ID_BITS_SIZE = 16;
     // Assures the bits are enough to represent all builtin stubs.
     static_assert(kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS <= (1u << BUILTIN_ID_BITS_SIZE));
 
