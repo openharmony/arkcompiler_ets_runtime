@@ -753,7 +753,6 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
 
     GateRef argHandle = GetCallArg1(numArgs);
     GateRef newArray = NewArray(glue, len);
-    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Label stableJSArray(env);
     Label notStableJSArray(env);
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
@@ -837,28 +836,10 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
     }
     Bind(&notStableJSArray);
     {
-        Label finish(env);
-        Label callRT(env);
-        GateRef newArrayEles = GetElementsArray(newArray);
-        BRANCH(Int32LessThan(*i, len), &callRT, &finish);
-        Bind(&callRT);
-        {
-            CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, newArrayEles, *i});
-            GateRef ret = CallRuntime(glue, RTSTUB_ID(JSArrayMapUnStable), { argHandle, thisValue,
-                IntToTaggedInt(*i), IntToTaggedInt(len), newArray, callbackFnHandle });
-            result->WriteVariable(ret);
-            Jump(exit);
-        }
-        Bind(&finish);
-        {
-            result->WriteVariable(newArray);
-            Label needTrim(env);
-            BRANCH(Int64LessThan(*i, len), &needTrim, exit);
-            Bind(&needTrim);
-            CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, newArrayEles, *i});
-            Store(VariableType::INT32(), glue, newArray, lengthOffset, TruncInt64ToInt32(*i));
-            Jump(exit);
-        }
+        GateRef ret = CallRuntime(glue, RTSTUB_ID(JSArrayMapUnStable), { argHandle, thisValue,
+            IntToTaggedInt(*i), IntToTaggedInt(len), newArray, callbackFnHandle });
+        result->WriteVariable(ret);
+        Jump(exit);
     }
 }
 
