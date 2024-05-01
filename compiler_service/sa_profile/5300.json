@@ -1,0 +1,12 @@
+{
+    "process": "compiler_service",
+    "systemability": [
+        {
+            "name": 5300,
+            "libpath": "libcompiler_service.z.so",
+            "run-on-create": false,
+            "distributed": false,
+            "dump-level": 1
+        }
+    ]
+}

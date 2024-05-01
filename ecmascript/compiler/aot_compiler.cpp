@@ -36,6 +36,13 @@
 
 namespace panda::ecmascript::kungfu {
 namespace {
+enum ErrCode {
+    ERR_OK = (0),
+    ERR_FAIL = (-1),
+    ERR_HELP = (1),
+    ERR_NO_AP = (2),
+};
+
 void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bool &ret,
                        const CVector<AbcFileInfo> &fileInfos, AotCompilerStats &compilerStats)
 {
@@ -72,14 +79,14 @@ int Main(const int argc, const char **argv)
 {
     if (argc < 2) { // 2: at least have two arguments
         LOG_COMPILER(ERROR) << AotCompilerPreprocessor::GetHelper();
-        return -1;
+        return ERR_FAIL;
     }
 
     JSRuntimeOptions runtimeOptions;
     bool retOpt = runtimeOptions.ParseCommand(argc, argv);
     if (!retOpt) {
         LOG_COMPILER(ERROR) << AotCompilerPreprocessor::GetHelper();
-        return 1;
+        return ERR_HELP;
     }
 
     if (runtimeOptions.WasSetDeviceState()) {
@@ -97,7 +104,7 @@ int Main(const int argc, const char **argv)
     EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot Create vm";
-        return -1;
+        return ERR_FAIL;
     }
 
     {
@@ -115,11 +122,11 @@ int Main(const int argc, const char **argv)
 
         AotCompilerPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgsMap, profilerDecoder, pandaFileNames);
         if (!cPreprocessor.HandleTargetCompilerMode(cOptions) || !cPreprocessor.HandlePandaFileNames(argc, argv)) {
-            return 1;
+            return ERR_HELP;
         }
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
             // no need to compile in partial mode without any ap files.
-            return 0;
+            return ERR_NO_AP;
         }
 
         AotCompilerStats compilerStats;
@@ -210,7 +217,7 @@ int Main(const int argc, const char **argv)
 
     LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");
     JSNApi::DestroyJSVM(vm);
-    return ret ? 0 : -1;
+    return ret ? ERR_OK : ERR_FAIL;
 }
 } // namespace panda::ecmascript::kungfu
 

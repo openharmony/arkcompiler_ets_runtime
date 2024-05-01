@@ -78,8 +78,8 @@ JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue d
 bool PUBLIC_API FileExist(const char *filename);
 int PUBLIC_API Unlink(const char *filename);
 bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module);
-void *PUBLIC_API LoadLib(const std::string &libname);
-void *PUBLIC_API FindSymbol(void *handle, const char *symbol);
-int PUBLIC_API CloseLib(void *handle);
+void *LoadLib(const std::string &libname);
+void *FindSymbol(void *handle, const char *symbol);
+int CloseLib(void *handle);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H
