@@ -636,6 +636,21 @@ bool JSLocale::IsWellFormedCurrencyCode(const std::string &currency)
     return (IsAToZ(currency[INTL_INDEX_ZERO]) && IsAToZ(currency[INTL_INDEX_ONE]) && IsAToZ(currency[INTL_INDEX_TWO]));
 }
 
+bool JSLocale::IsWellFormedCalendarCode(const std::string& calendar)
+{
+    std::string value = calendar;
+    while (true) {
+        std::size_t found_dash = value.find('-');
+        if (found_dash == std::string::npos) {
+            return IsAlphanum(value, INTL_INDEX_THREE, INTL_INDEX_EIGHT);
+        }
+        if (!IsAlphanum(value.substr(0, found_dash), INTL_INDEX_THREE, INTL_INDEX_EIGHT)) {
+            return false;
+        }
+        value = value.substr(found_dash + 1);
+    }
+}
+
 JSHandle<JSObject> JSLocale::PutElement(JSThread *thread, int index, const JSHandle<JSArray> &array,
                                         const JSHandle<JSTaggedValue> &fieldTypeString,
                                         const JSHandle<JSTaggedValue> &value)

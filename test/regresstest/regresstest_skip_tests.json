@@ -1571,8 +1571,6 @@
         "intl/localematcher/bestfit-supplemental-files.js",
         "intl/relative-time-format/resolved-options-nu.js",
         "intl/relative-time-format/format-en.js",
-        "intl/displaynames/calendar-v2.js",
-        "intl/displaynames/date-time-field-v2.js",
         "intl/locale/locale-info-gettextinfo.js",
         "intl/locale/locale-numberingSystems.js",
         "intl/locale/locale-getCalendars.js",
