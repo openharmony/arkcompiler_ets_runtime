@@ -191,3 +191,17 @@ create from sharedMapper.values(): 1,2
 Start test arrayFromNotArray
 NotArray called with length undefined
 Create array from notArray failed. err: TypeError: Failed to construct the array., code: undefined
+Start Test derivedSlice
+instanceOf slice result: true
+Start Test derivedSort
+instanceOf derived sort result: true
+Start Test derivedForEach
+a[0] = March, true
+a[1] = Jan, true
+a[2] = Feb, true
+a[3] = Dec, true
+Start derivedMap
+instanceOf derived map result: true
+Start Test derivedFill
+1,2,0,0
+instanceOf derived fill result: true
