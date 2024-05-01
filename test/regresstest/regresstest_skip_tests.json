@@ -1600,7 +1600,6 @@
         "intl/enumeration/collation-sorted.js",
         "intl/overrides/caching.js",
         "intl/overrides/security.js",
-        "intl/bigint/tolocalestring.js",
         "intl/temporal/calendar/fields.js",
         "intl/plural-rules/select-range.js",
         "intl/break-iterator/zh-break.js",
