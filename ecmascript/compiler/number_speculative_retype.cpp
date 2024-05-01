@@ -285,6 +285,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TYPE_OF_CHECK:
         case OpCode::ARRAY_CONSTRUCTOR:
         case OpCode::OBJECT_CONSTRUCTOR:
+        case OpCode::BOOLEAN_CONSTRUCTOR:
         case OpCode::LD_LOCAL_MODULE_VAR:
         case OpCode::STORE_MODULE_VAR:
         case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
@@ -302,6 +303,19 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::SET_ADD:
         case OpCode::LOAD_BUILTIN_OBJECT:
         case OpCode::CREATE_ARRAY:
+        case OpCode::OBJECT_IS:
+        case OpCode::OBJECT_GET_PROTOTYPE_OF:
+        case OpCode::OBJECT_CREATE:
+        case OpCode::OBJECT_IS_PROTOTYPE_OF:
+        case OpCode::OBJECT_HAS_OWN_PROPERTY:
+        case OpCode::REFLECT_GET_PROTOTYPE_OF:
+        case OpCode::REFLECT_GET:
+        case OpCode::REFLECT_HAS:
+        case OpCode::REFLECT_CONSTRUCT:
+        case OpCode::REFLECT_APPLY:
+        case OpCode::FUNCTION_PROTOTYPE_APPLY:
+        case OpCode::FUNCTION_PROTOTYPE_BIND:
+        case OpCode::FUNCTION_PROTOTYPE_CALL:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();

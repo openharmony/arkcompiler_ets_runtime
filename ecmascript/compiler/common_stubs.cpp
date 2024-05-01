@@ -1252,6 +1252,15 @@ void JSSetAddStubBuilder::GenerateCircuit()
     Return(obj);
 }
 
+void SameValueStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef left = TaggedArgument(1);
+    GateRef right = TaggedArgument(2U);
+    GateRef result = SameValue(glue, left, right);
+    Return(result);
+}
+
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()

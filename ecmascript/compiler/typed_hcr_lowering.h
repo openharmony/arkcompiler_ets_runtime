@@ -211,6 +211,8 @@ private:
     void LowerArrayConstructor(GateRef gate, GateRef glue);
     void LowerObjectConstructorCheck(GateRef gate, GateRef glue);
     void LowerObjectConstructor(GateRef gate, GateRef glue);
+    void LowerBooleanConstructorCheck(GateRef gate, GateRef glue);
+    void LowerBooleanConstructor(GateRef gate, GateRef glue);
     GateRef NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value);
     void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
     void LowerOrdinaryHasInstance(GateRef gate, GateRef glue);

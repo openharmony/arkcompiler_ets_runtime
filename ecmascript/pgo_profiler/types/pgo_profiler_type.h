@@ -938,6 +938,11 @@ public:
         return GetPGOSampleType()->IsString();
     }
 
+    bool IsHeapObject() const
+    {
+        return GetPGOSampleType()->IsHeapObject();
+    }
+
     const PGORWOpType* GetPGORWOpType()
     {
         if (type_ == nullptr) {

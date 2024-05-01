@@ -219,77 +219,6 @@ void BuiltinsObjectStubBuilder::ToString(Variable *result, Label *exit, Label *s
     }
 }
 
-GateRef BuiltinsObjectStubBuilder::TransProtoWithoutLayout(GateRef hClass, GateRef proto)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-
-    GateRef key = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-        ConstantIndex::PROTOTYPE_STRING_INDEX);
-    GateRef newClass = CallNGCRuntime(glue_, RTSTUB_ID(JSHClassFindProtoTransitions), { hClass, key, proto });
-    Label undef(env);
-    Label find(env);
-    BRANCH(IntPtrEqual(TaggedCastToIntPtr(newClass), IntPtr(0)), &undef, &find);
-    Bind(&find);
-    {
-        result = newClass;
-        Jump(&exit);
-    }
-    Bind(&undef);
-    {
-        result = CallRuntime(glue_, RTSTUB_ID(HClassCloneWithAddProto), { hClass, key, proto });
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef BuiltinsObjectStubBuilder::OrdinaryNewJSObjectCreate(GateRef proto)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-
-    GateRef hClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-        ConstantIndex::OBJECT_HCLASS_INDEX);
-    GateRef newClass = TransProtoWithoutLayout(hClass, proto);
-    Label exception(env);
-    Label noexception(env);
-    BRANCH(TaggedIsException(newClass), &exception, &noexception);
-    Bind(&exception);
-    {
-        result = Exception();
-        Jump(&exit);
-    }
-    Bind(&noexception);
-    NewObjectStubBuilder newBuilder(this);
-    GateRef newObj = newBuilder.NewJSObject(glue_, newClass);
-    Label exceptionNewObj(env);
-    Label noexceptionNewObj(env);
-    BRANCH(TaggedIsException(newObj), &exceptionNewObj, &noexceptionNewObj);
-    Bind(&exceptionNewObj);
-    {
-        result = Exception();
-        Jump(&exit);
-    }
-    Bind(&noexceptionNewObj);
-    {
-        SetExtensibleToBitfield(glue_, newObj, True());
-        result = newObj;
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
 
 void BuiltinsObjectStubBuilder::Create(Variable *result, Label *exit, Label *slowPath)
 {
@@ -309,7 +238,7 @@ void BuiltinsObjectStubBuilder::Create(Variable *result, Label *exit, Label *slo
         Bind(&noProperties);
         {
             // OrdinaryNewJSObjectCreate
-            *result = OrdinaryNewJSObjectCreate(proto);
+            *result = OrdinaryNewJSObjectCreate(glue_, proto);
             Jump(exit);
         }
     }
@@ -712,14 +641,20 @@ void BuiltinsObjectStubBuilder::Assign(Variable *result, Label *exit, Label *slo
 
 void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, Label *slowPath)
 {
+    GateRef prop = GetCallArg0(numArgs_);
+    HasOwnProperty(result, exit, slowPath, thisValue_, prop);
+}
+
+void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, Label *slowPath, GateRef thisValue,
+                                               GateRef prop, GateRef hir)
+{
     auto env = GetEnvironment();
     Label keyIsString(env);
     Label valid(env);
     Label isHeapObject(env);
-    GateRef prop = GetCallArg0(numArgs_);
-    BRANCH(TaggedIsHeapObject(thisValue_), &isHeapObject, slowPath);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(TaggedIsRegularObject(thisValue_), &valid, slowPath);
+    BRANCH(TaggedIsRegularObject(thisValue), &valid, slowPath);
     Bind(&valid);
     {
         Label isIndex(env);
@@ -733,7 +668,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
             {
                 GateRef index = NumberGetInt(glue_, res);
                 Label findByIndex(env);
-                GateRef elements = GetElementsArray(thisValue_);
+                GateRef elements = GetElementsArray(thisValue);
                 GateRef len = GetLengthOfTaggedArray(elements);
                 BRANCH(Int32Equal(len, Int32(0)), exit, &findByIndex);
                 Bind(&findByIndex);
@@ -749,7 +684,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
                         Bind(&lessThanLength);
                         {
                             Label notHole(env);
-                            GateRef value = GetTaggedValueWithElementsKind(thisValue_, index);
+                            GateRef value = GetTaggedValueWithElementsKind(thisValue, index);
                             BRANCH(TaggedIsNotHole(value), &notHole, exit);
                             Bind(&notHole);
                             {
@@ -779,14 +714,14 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
                 {
                     Label isDicMode(env);
                     Label notDicMode(env);
-                    GateRef hclass = LoadHClass(thisValue_);
+                    GateRef hclass = LoadHClass(thisValue);
                     BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
                     Bind(&notDicMode);
                     {
                         GateRef layOutInfo = GetLayoutFromHClass(hclass);
                         GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
                         // int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber)
-                        GateRef entryA = FindElementWithCache(glue_, layOutInfo, hclass, res, propsNum);
+                        GateRef entryA = FindElementWithCache(glue_, layOutInfo, hclass, res, propsNum, hir);
                         Label hasEntry(env);
                         // if branch condition : entry != -1
                         BRANCH(Int32NotEqual(entryA, Int32(-1)), &hasEntry, exit);
@@ -798,9 +733,9 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
                     }
                     Bind(&isDicMode);
                     {
-                        GateRef array = GetPropertiesArray(thisValue_);
+                        GateRef array = GetPropertiesArray(thisValue);
                         // int entry = dict->FindEntry(key)
-                        GateRef entryB = FindEntryFromNameDictionary(glue_, array, res);
+                        GateRef entryB = FindEntryFromNameDictionary(glue_, array, res, hir);
                         Label notNegtiveOne(env);
                         // if branch condition : entry != -1
                         BRANCH(Int32NotEqual(entryB, Int32(-1)), &notNegtiveOne, exit);
@@ -944,7 +879,7 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromDictionary(GateRef array)
     }
     Bind(&afterLoop);
     Jump(&exit);
-    
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();

@@ -126,6 +126,20 @@ private:
     GateRef LowerGlobalTNumberIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsNan(GateRef value);
 
+    void LowerObjectIs(GateRef gate);
+    void LowerObjectGetPrototypeOf(GateRef gate);
+    void LowerObjectCreate(GateRef gate);
+    void LowerObjectIsPrototypeOf(GateRef gate);
+    void LowerObjectHasOwnProperty(GateRef gate);
+    void LowerReflectGetPrototypeOf(GateRef gate);
+    void LowerReflectGet(GateRef gate);
+    void LowerReflectHas(GateRef gate);
+    void LowerReflectConstruct(GateRef gate);
+    void LowerReflectApply(GateRef gate);
+    void LowerFunctionPrototypeApply(GateRef gate);
+    void LowerFunctionPrototypeBind(GateRef gate);
+    void LowerFunctionPrototypeCall(GateRef gate);
+
     void LowerToCommonStub(GateRef gate, CommonStubCSigns::ID id);
     void LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id);
 

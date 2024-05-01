@@ -54,7 +54,7 @@
     /* Object.hasOwn ( O, P ) */                                                                    \
     V("hasOwn",                   HasOwn,                   2, INVALID)                             \
     /* Object.is ( value1, value2 ) */                                                              \
-    V("is",                       Is,                       2, INVALID)                             \
+    V("is",                       Is,                       2, ObjectIs)                             \
     /* Object.isExtensible ( O ) */                                                                 \
     V("isExtensible",             IsExtensible,             1, INVALID)                             \
     /* Object.isFrozen ( O ) */                                                                     \
@@ -80,7 +80,7 @@
     /* Object.prototype.hasOwnProperty ( V ) */                                     \
     V("hasOwnProperty",       HasOwnProperty,       1, ObjectHasOwnProperty)        \
     /* Object.prototype.isPrototypeOf ( V ) */                                      \
-    V("isPrototypeOf",        IsPrototypeOf,        1, INVALID)                     \
+    V("isPrototypeOf",        IsPrototypeOf,        1, ObjectIsPrototypeOf)         \
     /* Object.prototype.propertyIsEnumerable ( V ) */                               \
     V("propertyIsEnumerable", PropertyIsEnumerable, 1, INVALID)                     \
     /* Object.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */         \
@@ -137,11 +137,13 @@ public:
     static JSTaggedValue Seal(EcmaRuntimeCallInfo *argv);
     // 19.1.2.18 Object.setPrototypeOf(O, proto)
     static JSTaggedValue SetPrototypeOf(EcmaRuntimeCallInfo *argv);
-    
+
     static JSTaggedValue GetOwnPropertyDescriptors(EcmaRuntimeCallInfo *argv);
 
     // 19.1.3.2 Object.prototype.hasOwnProperty(V)
     static JSTaggedValue HasOwnProperty(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue HasOwnPropertyInternal(JSThread *thread, JSHandle<JSTaggedValue> thisValue,
+                                                JSHandle<JSTaggedValue> prop);
     // 19.1.3.3 Object.prototype.isPrototypeOf(V)
     static JSTaggedValue IsPrototypeOf(EcmaRuntimeCallInfo *argv);
     // 19.1.3.4 Object.prototype.propertyIsEnumerable(V)
@@ -190,7 +192,7 @@ public:
     {
         return Span<const std::pair<std::string_view, bool>>(OBJECT_PROPERTIES);
     }
-    
+
 private:
 #define BUILTIN_OBJECT_FUNCTION_ENTRY(name, func, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsObject::func, length, kungfu::BuiltinsStubCSigns::id),

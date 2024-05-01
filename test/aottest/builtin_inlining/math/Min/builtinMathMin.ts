@@ -125,21 +125,27 @@ print(Math.min(Infinity, NaN)); //: NaN
 // Check 0 and -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
 //aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMin
 printZero(Math.min(0, -0));  //: -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
 //aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMin
 printZero(Math.min(-0, 0));  //: -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
 //aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMin
 printZero(Math.min(0, 0));   //: 0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
 //aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMin
 printZero(Math.min(-0, -0)); //: -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
 //aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMin
 printZero(Math.min(5, -0)); //: -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
 //aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMin
 printZero(Math.min(5, 0)); //: 0
 
 // Check with int and float param

@@ -452,6 +452,7 @@ public:
     GateId GetId(GateRef gate) const;
     GateRef GetValueIn(GateRef gate, size_t idx = 0) const;
     size_t GetNumValueIn(GateRef gate) const;
+    std::vector<GateRef> GetValueIns(GateRef gate) const;
     GateRef GetIn(GateRef gate, size_t idx) const;
     GateRef GetState(GateRef gate, size_t idx = 0) const;
     GateRef GetDep(GateRef gate, size_t idx = 0) const;

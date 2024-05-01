@@ -34,6 +34,7 @@
     V(JSTaggedValue, DateFunction, DATE_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, DatePrototype, DATE_PROTOTYPE_INDEX)                                           \
     V(JSTaggedValue, BooleanFunction, BOOLEAN_FUNCTION_INDEX)                                       \
+    V(JSTaggedValue, BooleanPrototype, BOOLEAN_PROTOTYPE_INDEX)                                     \
     V(JSTaggedValue, ErrorFunction, ERROR_FUNCTION_INDEX)                                           \
     V(JSTaggedValue, ArrayFunction, ARRAY_FUNCTION_INDEX)                                           \
     V(JSTaggedValue, ArrayPrototype, ARRAY_PROTOTYPE_INDEX)                                         \

@@ -430,7 +430,7 @@ public:
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
     GateRef GetStoreTSHandlerHolder(GateRef object);
     GateRef GetStoreTSHandlerHandlerInfo(GateRef object);
-    GateRef GetPrototype(GateRef glue, GateRef object);
+    inline GateRef GetPrototype(GateRef glue, GateRef object);
     GateRef GetHasChanged(GateRef object);
     GateRef HclassIsPrototypeHandler(GateRef hClass);
     GateRef HclassIsTransitionHandler(GateRef hClass);
@@ -463,7 +463,7 @@ public:
     GateRef CalcHashcodeForInt(GateRef value);
     void CalcHashcodeForDouble(GateRef value, Variable *res, Label *exit);
     void CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit);
-    GateRef GetHashcodeFromString(GateRef glue, GateRef value);
+    GateRef GetHashcodeFromString(GateRef glue, GateRef value, GateRef hir = Circuit::NullGate());
     inline GateRef IsIntegerString(GateRef string);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     inline GateRef GetRawHashFromString(GateRef value);
@@ -542,9 +542,9 @@ public:
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
     void MatchFieldType(GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
-        GateRef key, GateRef propsNum);
+        GateRef key, GateRef propsNum, GateRef hir = Circuit::NullGate());
     GateRef FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index);
-    GateRef FindEntryFromNameDictionary(GateRef glue, GateRef elements, GateRef key);
+    GateRef FindEntryFromNameDictionary(GateRef glue, GateRef elements, GateRef key, GateRef hir = Circuit::NullGate());
     GateRef IsMatchInTransitionDictionary(GateRef element, GateRef key, GateRef metaData, GateRef attr);
     GateRef FindEntryFromTransitionDictionary(GateRef glue, GateRef elements, GateRef key, GateRef metaData);
     GateRef JSObjectGetProperty(GateRef obj, GateRef hClass, GateRef propAttr);
@@ -602,9 +602,10 @@ public:
     GateRef ChangeFloat64ToInt32(GateRef x);
     GateRef TruncDoubleToFloat32(GateRef x);
     GateRef DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef value);
-    GateRef ToObject(GateRef glue, GateRef obj);
+    inline GateRef ToObject(GateRef glue, GateRef obj);
     GateRef DeleteProperty(GateRef glue, GateRef obj, GateRef value);
-    GateRef NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj);
+    inline GateRef OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto);
+    inline GateRef NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj);
     GateRef ModuleNamespaceDeleteProperty(GateRef glue, GateRef obj, GateRef value);
     GateRef Int64ToTaggedPtr(GateRef x);
     GateRef TruncInt16ToInt8(GateRef x);
@@ -882,15 +883,18 @@ public:
     GateRef ChangeTaggedPointerToInt64(GateRef x);
     GateRef GetLastLeaveFrame(GateRef glue);
     inline GateRef GetPropertiesCache(GateRef glue);
-    GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key);
-    inline void SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result);
-    GateRef HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key);
-    GateRef GetKeyHashCode(GateRef glue, GateRef key);
+    GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key,
+                                        GateRef hir = Circuit::NullGate());
+    inline void SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result,
+                                     GateRef hir = Circuit::NullGate());
+    GateRef HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key, GateRef hir = Circuit::NullGate());
+    GateRef GetKeyHashCode(GateRef glue, GateRef key, GateRef hir = Circuit::NullGate());
     inline GateRef GetSortedKey(GateRef layoutInfo, GateRef index);
     inline GateRef GetSortedIndex(GateRef layoutInfo, GateRef index);
     inline GateRef GetSortedIndex(GateRef attr);
     inline void StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
-    GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum);
+    GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum,
+                         GateRef hir = Circuit::NullGate());
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

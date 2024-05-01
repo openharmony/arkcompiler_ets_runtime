@@ -64,6 +64,11 @@ GateRef CircuitBuilder::IntPtrNot(GateRef x)
     return env_->Is32Bit() ? Int32Not(x) : Int64Not(x);
 }
 
+GateRef CircuitBuilder::IntPtrEqual(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32Equal(x, y) : Int64Equal(x, y);
+}
+
 GateRef CircuitBuilder::IntPtrLSR(GateRef x, GateRef y)
 {
     auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
@@ -146,8 +151,7 @@ GateRef CircuitBuilder::GetInt32OfTInt(GateRef x)
 
 GateRef CircuitBuilder::TaggedCastToIntPtr(GateRef x)
 {
-    ASSERT(cmpCfg_ != nullptr);
-    return cmpCfg_->Is32Bit() ? GetInt32OfTInt(x) : GetInt64OfTInt(x);
+    return env_->Is32Bit() ? GetInt32OfTInt(x) : GetInt64OfTInt(x);
 }
 
 GateRef CircuitBuilder::GetDoubleOfTInt(GateRef x)

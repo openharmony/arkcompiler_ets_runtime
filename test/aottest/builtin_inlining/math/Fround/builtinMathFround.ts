@@ -68,23 +68,30 @@ print(Math.fround(-1073741804)) //: -1073741824
 print(Math.fround(1.9e80)); //: Infinity
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
 //aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathFround
 printZero(Math.fround(2.5)); //: 2.5
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
 //aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathFround
 printZero(Math.fround(1.5)); //: 1.5
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
 //aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathFround
 printZero(Math.fround(0.5)); //: 0.5
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
 //aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathFround
 printZero(Math.fround(0.2)); //: 0.20000000298023224
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
 //aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathFround
 printZero(Math.fround(-0)); //: -0
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
 //aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathFround
 printZero(Math.fround(-1.9e-80)); //: -0
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathFround
 printZero(Math.fround(-0.1)); //: -0.10000000149011612
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
 print(Math.fround(-0.5)); //: -0.5

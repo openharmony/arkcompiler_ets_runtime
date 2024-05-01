@@ -643,7 +643,8 @@ void Builtins::InitializeFunctionPrototype(const JSHandle<GlobalEnv> &env, JSHan
     SetInlineFunction(env, funcFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
                       Function::FunctionPrototypeToString, fieldIndex++, FunctionLength::ZERO);
     SetInlineFunction(env, funcFuncPrototypeObj, "[Symbol.hasInstance]",
-                      Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE);
+                      Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE,
+                      BUILTINS_STUB_ID(FunctionPrototypeHasInstance));
 }
 
 void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
@@ -717,6 +718,9 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     JSHandle<JSTaggedValue> protoGetter = CreateGetter(env, Object::ProtoGetter, "__proto__", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> protoSetter = CreateSetter(env, Object::ProtoSetter, "__proto__", FunctionLength::ONE);
     SetAccessor(objFuncPrototype, protoKey, protoGetter, protoSetter);
+
+    GlobalEnvConstants *globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    globalConst->SetConstant(ConstantIndex::OBJECT_GET_PROTO_INDEX, protoGetter);
 
     GlobalIndex globalIndex;
     globalIndex.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::OBJECT_FUNCTION_INDEX));
@@ -1019,6 +1023,7 @@ void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<
                 Boolean::BooleanPrototypeValueOf, FunctionLength::ZERO);
 
     env->SetBooleanFunction(thread_, booleanFunction);
+    env->SetBooleanPrototype(thread_, booleanFuncPrototype);
 }
 
 void Builtins::InitializeProxy(const JSHandle<GlobalEnv> &env)
@@ -1855,7 +1860,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
 
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::ITERATOR, nullptr,
         *iteratorFuncClass, iteratorPrototype->GetJSHClass());
-    
+
     // iteratorPrototype hclass
     JSHandle<JSHClass> iteratorPrototypeHClass(thread_, iteratorPrototype->GetJSHClass());
 
