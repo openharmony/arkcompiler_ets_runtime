@@ -82,7 +82,7 @@ private:
     }
 
     CUnorderedMultiMap<uint32_t, EcmaString *> table_;
-    RecursiveMutex mutex_;
+    Mutex mutex_;
     friend class SnapshotProcessor;
     friend class BaseDeserializer;
 };
