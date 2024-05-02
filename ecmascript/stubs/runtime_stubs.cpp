@@ -3163,6 +3163,23 @@ void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
     region->AtomicInsertLocalToShareRSet(slotAddr);
 }
 
+void RuntimeStubs::SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
+                                GCBitset::GCBitsetWord oldValue)
+{
+    volatile auto atomicWord = reinterpret_cast<volatile std::atomic<GCBitset::GCBitsetWord> *>(word);
+    GCBitset::GCBitsetWord oldValueBeforeCAS = oldValue;
+    std::atomic_compare_exchange_strong_explicit(atomicWord, &oldValue, oldValue | mask,
+        std::memory_order_release, std::memory_order_relaxed);
+    while (oldValue != oldValueBeforeCAS) {
+        if (oldValue & mask) {
+            return;
+        }
+        oldValueBeforeCAS = oldValue;
+        std::atomic_compare_exchange_strong_explicit(atomicWord, &oldValue, oldValue | mask,
+            std::memory_order_release, std::memory_order_relaxed);
+    }
+}
+
 void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset, TaggedObject *value)
 {
