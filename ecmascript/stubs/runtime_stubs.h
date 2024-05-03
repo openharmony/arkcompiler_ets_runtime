@@ -79,19 +79,43 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallContainersArgs3)                   \
     V(CallReturnWithArgv)
 
-#define BASELINE_TRAMPOLINE_LIST(V)          \
-    V(BaselineCallArg0)                      \
-    V(BaselineCallArg1)                      \
-    V(BaselineCallArgs2)                     \
-    V(BaselineCallArgs3)                     \
-    V(BaselineCallThisArg0)                  \
-    V(BaselineCallThisArg1)                  \
-    V(BaselineCallThisArgs2)                 \
-    V(BaselineCallThisArgs3)                 \
-    V(BaselineCallRange)                     \
-    V(BaselineCallNew)                       \
-    V(BaselineSuperCall)                     \
-    V(BaselineCallThisRange)
+#define BASELINE_TRAMPOLINE_LIST(V)                   \
+    V(CallArg0AndCheckToBaseline)                     \
+    V(CallArg1AndCheckToBaseline)                     \
+    V(CallArgs2AndCheckToBaseline)                    \
+    V(CallArgs3AndCheckToBaseline)                    \
+    V(CallThisArg0AndCheckToBaseline)                 \
+    V(CallThisArg1AndCheckToBaseline)                 \
+    V(CallThisArgs2AndCheckToBaseline)                \
+    V(CallThisArgs3AndCheckToBaseline)                \
+    V(CallRangeAndCheckToBaseline)                    \
+    V(CallNewAndCheckToBaseline)                      \
+    V(SuperCallAndCheckToBaseline)                    \
+    V(CallThisRangeAndCheckToBaseline)                \
+    V(CallArg0AndDispatchFromBaseline)                \
+    V(CallArg1AndDispatchFromBaseline)                \
+    V(CallArgs2AndDispatchFromBaseline)               \
+    V(CallArgs3AndDispatchFromBaseline)               \
+    V(CallThisArg0AndDispatchFromBaseline)            \
+    V(CallThisArg1AndDispatchFromBaseline)            \
+    V(CallThisArgs2AndDispatchFromBaseline)           \
+    V(CallThisArgs3AndDispatchFromBaseline)           \
+    V(CallRangeAndDispatchFromBaseline)               \
+    V(CallNewAndDispatchFromBaseline)                 \
+    V(SuperCallAndDispatchFromBaseline)               \
+    V(CallThisRangeAndDispatchFromBaseline)           \
+    V(CallArg0AndCheckToBaselineFromBaseline)         \
+    V(CallArg1AndCheckToBaselineFromBaseline)         \
+    V(CallArgs2AndCheckToBaselineFromBaseline)        \
+    V(CallArgs3AndCheckToBaselineFromBaseline)        \
+    V(CallThisArg0AndCheckToBaselineFromBaseline)     \
+    V(CallThisArg1AndCheckToBaselineFromBaseline)     \
+    V(CallThisArgs2AndCheckToBaselineFromBaseline)    \
+    V(CallThisArgs3AndCheckToBaselineFromBaseline)    \
+    V(CallRangeAndCheckToBaselineFromBaseline)        \
+    V(CallNewAndCheckToBaselineFromBaseline)          \
+    V(SuperCallAndCheckToBaselineFromBaseline)        \
+    V(CallThisRangeAndCheckToBaselineFromBaseline)
 
 #define JS_CALL_TRAMPOLINE_LIST(V)           \
     V(CallRuntime)                           \

@@ -130,6 +130,41 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
 #define DISPATCH_BASE(...)                                                                \
     Dispatch(glue, sp, pc, constpool, __VA_ARGS__)
 
+#define DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineBianryOP)                              \
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineBianryOP, GLUE));                              \
+    GateRef sp = PtrArgument(PARAM_INDEX(BaselineBianryOP, SP));                                  \
+    GateRef left = TaggedArgument(PARAM_INDEX(BaselineBianryOP, LEFT));                           \
+    GateRef slotId = Int32Argument(PARAM_INDEX(BaselineBianryOP, SLOT_ID));                       \
+                                                                                                  \
+    GateRef frame = GetFrame(sp);                                                                 \
+    GateRef acc = GetAccFromFrame(frame);                                                         \
+    GateRef func = GetFunctionFromFrame(frame);                                                   \
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);                               \
+                                                                                                  \
+    ProfileOperation callback(                                                                    \
+        [this, glue, func, slotId, profileTypeInfo](const std::initializer_list<GateRef> &values, \
+                                                    OperationType type) {                         \
+            ProfilerStubBuilder profiler(this);                                                   \
+            profiler.PGOProfiler(glue, func, profileTypeInfo, slotId, values, type);              \
+        }, nullptr)
+
+#define DEFINE_SINGLEOP_PARAM_AND_PROFILE_CALLBACK(BaselineBianryOP)                              \
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineBianryOP, GLUE));                              \
+    GateRef sp = PtrArgument(PARAM_INDEX(BaselineBianryOP, SP));                                  \
+    GateRef slotId = Int32Argument(PARAM_INDEX(BaselineBianryOP, SLOT_ID));                       \
+                                                                                                  \
+    GateRef frame = GetFrame(sp);                                                                 \
+    GateRef acc = GetAccFromFrame(frame);                                                         \
+    GateRef func = GetFunctionFromFrame(frame);                                                   \
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);                               \
+                                                                                                  \
+    ProfileOperation callback(                                                                    \
+        [this, glue, func, slotId, profileTypeInfo](const std::initializer_list<GateRef> &values, \
+                                                    OperationType type) {                         \
+            ProfilerStubBuilder profiler(this);                                                   \
+            profiler.PGOProfiler(glue, func, profileTypeInfo, slotId, values, type);              \
+        }, nullptr)
+
 void BaselineStubCSigns::Initialize()
 {
 #define INIT_SIGNATURES(name)                                                              \
@@ -844,11 +879,7 @@ void BaselineNewlexenvwithnameImm8Id16StubBuilder::GenerateCircuit()
 
 void BaselineAdd2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineAdd2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineAdd2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineAdd2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineAdd2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Add(glue, left, acc, callback);
     Return(result);
@@ -856,11 +887,7 @@ void BaselineAdd2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineSub2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineSub2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineSub2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineSub2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineSub2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Sub(glue, left, acc, callback);
     Return(result);
@@ -868,11 +895,7 @@ void BaselineSub2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineMul2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineMul2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineMul2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineMul2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineMul2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Mul(glue, left, acc, callback);
     Return(result);
@@ -880,11 +903,7 @@ void BaselineMul2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineDiv2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineDiv2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineDiv2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineDiv2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineDiv2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Div(glue, left, acc, callback);
     Return(result);
@@ -892,11 +911,7 @@ void BaselineDiv2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineMod2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineMod2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineMod2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineMod2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineMod2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Mod(glue, left, acc, callback);
     Return(result);
@@ -904,11 +919,7 @@ void BaselineMod2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineEqImm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineEqImm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineEqImm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineEqImm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineEqImm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Equal(glue, left, acc, callback);
     Return(result);
@@ -916,11 +927,7 @@ void BaselineEqImm8V8StubBuilder::GenerateCircuit()
 
 void BaselineNoteqImm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineNoteqImm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineNoteqImm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineNoteqImm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineNoteqImm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.NotEqual(glue, left, acc, callback);
     Return(result);
@@ -928,11 +935,7 @@ void BaselineNoteqImm8V8StubBuilder::GenerateCircuit()
 
 void BaselineLessImm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineLessImm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineLessImm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineLessImm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineLessImm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Less(glue, left, acc, callback);
     Return(result);
@@ -940,11 +943,7 @@ void BaselineLessImm8V8StubBuilder::GenerateCircuit()
 
 void BaselineLesseqImm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineLesseqImm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineLesseqImm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineLesseqImm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineLesseqImm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.LessEq(glue, left, acc, callback);
     Return(result);
@@ -952,11 +951,7 @@ void BaselineLesseqImm8V8StubBuilder::GenerateCircuit()
 
 void BaselineGreaterImm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineGreaterImm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineGreaterImm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineGreaterImm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineGreaterImm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Greater(glue, left, acc, callback);
     Return(result);
@@ -964,11 +959,7 @@ void BaselineGreaterImm8V8StubBuilder::GenerateCircuit()
 
 void BaselineGreatereqImm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineGreatereqImm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineGreatereqImm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineGreatereqImm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineGreatereqImm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.GreaterEq(glue, left, acc, callback);
     Return(result);
@@ -976,11 +967,7 @@ void BaselineGreatereqImm8V8StubBuilder::GenerateCircuit()
 
 void BaselineShl2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineShl2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineShl2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineShl2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineShl2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Shl(glue, left, acc, callback);
     Return(result);
@@ -988,11 +975,7 @@ void BaselineShl2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineShr2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineShr2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineShr2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineShr2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineShr2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Shr(glue, left, acc, callback);
     Return(result);
@@ -1000,11 +983,7 @@ void BaselineShr2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineAshr2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineAshr2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineAshr2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineAshr2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineAshr2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Ashr(glue, left, acc, callback);
     Return(result);
@@ -1012,11 +991,7 @@ void BaselineAshr2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineAnd2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineAnd2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineAnd2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineAnd2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineAnd2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.And(glue, left, acc, callback);
     Return(result);
@@ -1024,11 +999,7 @@ void BaselineAnd2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineOr2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineOr2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineOr2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineOr2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineOr2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Or(glue, left, acc, callback);
     Return(result);
@@ -1036,11 +1007,7 @@ void BaselineOr2Imm8V8StubBuilder::GenerateCircuit()
 
 void BaselineXor2Imm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineXor2Imm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineXor2Imm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineXor2Imm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineXor2Imm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Xor(glue, left, acc, callback);
     Return(result);
@@ -1049,9 +1016,21 @@ void BaselineXor2Imm8V8StubBuilder::GenerateCircuit()
 void BaselineExpImm8V8StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineExpImm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineExpImm8V8, ACC));
+    GateRef sp = PtrArgument(PARAM_INDEX(BaselineExpImm8V8, SP));
     GateRef base = TaggedArgument(PARAM_INDEX(BaselineExpImm8V8, BASE));
-    ProfileOperation callback;
+    GateRef slotId = Int32Argument(PARAM_INDEX(BaselineExpImm8V8, SLOT_ID));
+
+    GateRef frame = GetFrame(sp);
+    GateRef acc = GetAccFromFrame(frame);
+    GateRef func = GetFunctionFromFrame(frame);
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);
+
+    ProfileOperation callback(
+        [this, glue, func, slotId, profileTypeInfo](const std::initializer_list<GateRef> &values,
+                                                    OperationType type) {
+            ProfilerStubBuilder profiler(this);
+            profiler.PGOProfiler(glue, func, profileTypeInfo, slotId, values, type);
+        }, nullptr);
 
     GateRef result = CallRuntime(glue, RTSTUB_ID(Exp), { base, acc });
     Return(result);
@@ -1121,10 +1100,7 @@ void BaselineTonumericImm8StubBuilder::GenerateCircuit()
 
 void BaselineNegImm8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineNegImm8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineNegImm8, ACC));
-    ProfileOperation callback;
-
+    DEFINE_SINGLEOP_PARAM_AND_PROFILE_CALLBACK(BaselineNegImm8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Neg(glue, acc, callback);
     Return(result);
@@ -1132,10 +1108,7 @@ void BaselineNegImm8StubBuilder::GenerateCircuit()
 
 void BaselineNotImm8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineNotImm8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineNotImm8, ACC));
-    ProfileOperation callback;
-
+    DEFINE_SINGLEOP_PARAM_AND_PROFILE_CALLBACK(BaselineNotImm8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Not(glue, acc, callback);
     Return(result);
@@ -1143,10 +1116,7 @@ void BaselineNotImm8StubBuilder::GenerateCircuit()
 
 void BaselineIncImm8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineIncImm8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineIncImm8, ACC));
-    ProfileOperation callback;
-
+    DEFINE_SINGLEOP_PARAM_AND_PROFILE_CALLBACK(BaselineIncImm8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Inc(glue, acc, callback);
     Return(result);
@@ -1154,9 +1124,7 @@ void BaselineIncImm8StubBuilder::GenerateCircuit()
 
 void BaselineDecImm8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineDecImm8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineDecImm8, ACC));
-    ProfileOperation callback;
+    DEFINE_SINGLEOP_PARAM_AND_PROFILE_CALLBACK(BaselineDecImm8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Dec(glue, acc, callback);
     Return(result);
@@ -1190,11 +1158,7 @@ void BaselineInstanceofImm8V8StubBuilder::GenerateCircuit()
 
 void BaselineStrictnoteqImm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineStrictnoteqImm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineStrictnoteqImm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineStrictnoteqImm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineStrictnoteqImm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.StrictNotEqual(glue, left, acc, callback);
     Return(result);
@@ -1202,11 +1166,7 @@ void BaselineStrictnoteqImm8V8StubBuilder::GenerateCircuit()
 
 void BaselineStricteqImm8V8StubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(PARAM_INDEX(BaselineStricteqImm8V8, GLUE));
-    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineStricteqImm8V8, ACC));
-    GateRef left = TaggedArgument(PARAM_INDEX(BaselineStricteqImm8V8, LEFT));
-    ProfileOperation callback;
-
+    DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineStricteqImm8V8);
     OperationsStubBuilder builder(this);
     GateRef result = builder.StrictEqual(glue, left, acc, callback);
     Return(result);
@@ -1398,6 +1358,7 @@ void BaselineDefinefuncImm8Id16Imm8StubBuilder::GenerateCircuit()
         GateRef envHandle = GetEnvFromFrame(frame);
         SetLexicalEnvToFunction(glue, result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
+        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         callback.ProfileDefineClass(result);
         varAcc = result;
@@ -1431,6 +1392,7 @@ void BaselineDefinefuncImm16Id16Imm8StubBuilder::GenerateCircuit()
         GateRef envHandle = GetEnvFromFrame(frame);
         SetLexicalEnvToFunction(glue, result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
+        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         varAcc = result;
         callback.ProfileDefineClass(result);
@@ -2387,7 +2349,6 @@ void BaselineStsuperbyvalueImm16V8V8StubBuilder::GenerateCircuit()
     Return();
 }
 
-
 void BaselineLdobjbyindexImm8Imm16StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineLdobjbyindexImm8Imm16, GLUE));
@@ -2786,10 +2747,10 @@ void BaselineStglobalvarImm16Id16StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineStglobalvarImm16Id16, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineStglobalvarImm16Id16, SP));
-    GateRef profileTypeInfo = TaggedPointerArgument(PARAM_INDEX(BaselineStglobalvarImm16Id16, PROFILE_TYPE_INFO));
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineStglobalvarImm16Id16, ACC));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStglobalvarImm16Id16, SLOTID));
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineStglobalvarImm16Id16, STRING_ID));
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(GetFunctionFromFrame(GetFrame(sp)));
     ProfileOperation callback;
 
     GateRef func = GetFunctionFromFrame(GetFrame(sp));
@@ -3713,8 +3674,7 @@ void BaselineGetasynciteratorImm8StubBuilder::GenerateCircuit()
 
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(GetAsyncIterator), { *varAcc });
-    CHECK_PENDING_EXCEPTION(res, INT_PTR(GETASYNCITERATOR_IMM8));
-    (void)acc;
+    Return(res);
 }
 
 void BaselineLdPrivatePropertyImm8Imm16Imm16StubBuilder::GenerateCircuit()
@@ -4741,7 +4701,7 @@ void BaselineDeprecatedCallspreadPrefV8V8V8StubBuilder::GenerateCircuit()
     GateRef array = GetVregValue(sp, ZExtInt8ToPtr(v2));
 
     GateRef res = CallRuntime(glue, RTSTUB_ID(CallSpread), { func, obj, array });
-    CHECK_PENDING_EXCEPTION(res, INT_PTR(DEPRECATED_CALLSPREAD_PREF_V8_V8_V8));
+    Return(res);
 }
 
 void BaselineWideLdlocalmodulevarPrefImm16StubBuilder::GenerateCircuit()

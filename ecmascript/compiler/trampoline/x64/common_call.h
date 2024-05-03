@@ -22,9 +22,11 @@
 
 namespace panda::ecmascript::x64 {
 
-enum class CompilerTierCheck : uint8_t {
-    CHECK_BASELINE_CODE,
-    NOT_CHECK_BASELINE_CODE,
+enum class FrameTransitionType : uint8_t {
+    BASELINE_TO_OTHER,
+    BASELINE_TO_BASELINE_CHECK,
+    OTHER_TO_BASELINE_CHECK,
+    OTHER_TO_OTHER
 };
 
 class CommonCall {
@@ -188,17 +190,17 @@ private:
         Register op);
     static void HasPendingException(ExtendedAssembler *assembler, Register threadRegister);
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
-                             Label *stackOverflow, CompilerTierCheck tierCheck);
+                             Label *stackOverflow, FrameTransitionType type);
     static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
     static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
-    static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow, CompilerTierCheck tierCheck);
+    static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow, FrameTransitionType type);
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister,
                              Register callTargetRegister, Register methodRegister, Register accRegister = rInvalid);
     static void CallNativeEntry(ExtendedAssembler *assemblSer);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
     static void PushBuiltinFrame(ExtendedAssembler *assembler, Register glue, FrameType type);
-    static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode, CompilerTierCheck tierCheck);
+    static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode, FrameTransitionType type);
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
     static void JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
         Label *fastPathEntry, Label *pushCallThis, Label *stackOverflow);
@@ -208,18 +210,45 @@ private:
 
 class BaselineCall : public CommonCall {
 public:
-    static void BaselineCallArg0(ExtendedAssembler *assembler);
-    static void BaselineCallArg1(ExtendedAssembler *assembler);
-    static void BaselineCallArgs2(ExtendedAssembler *assembler);
-    static void BaselineCallArgs3(ExtendedAssembler *assembler);
-    static void BaselineCallThisArg0(ExtendedAssembler *assembler);
-    static void BaselineCallThisArg1(ExtendedAssembler *assembler);
-    static void BaselineCallThisArgs2(ExtendedAssembler *assembler);
-    static void BaselineCallThisArgs3(ExtendedAssembler *assembler);
-    static void BaselineCallRange(ExtendedAssembler *assembler);
-    static void BaselineCallNew(ExtendedAssembler *assembler);
-    static void BaselineSuperCall(ExtendedAssembler *assembler);
-    static void BaselineCallThisRange(ExtendedAssembler *assembler);
+    /* other call baseline: need to check whether baseline code exists */
+    static void CallArg0AndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallArg1AndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallArgs2AndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallArgs3AndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallThisArg0AndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallThisArg1AndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallThisArgs2AndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallThisArgs3AndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallRangeAndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallNewAndCheckToBaseline(ExtendedAssembler *assembler);
+    static void SuperCallAndCheckToBaseline(ExtendedAssembler *assembler);
+    static void CallThisRangeAndCheckToBaseline(ExtendedAssembler *assembler);
+    /* baseline call other: need to save fp and lr */
+    static void CallArg0AndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallArg1AndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallArgs2AndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallArgs3AndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisArg0AndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisArg1AndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisArgs2AndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisArgs3AndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallRangeAndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallNewAndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void SuperCallAndDispatchFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisRangeAndDispatchFromBaseline(ExtendedAssembler *assembler);
+    /* baseline call baseline: need to check whether baseline code exists and save fp and lr */
+    static void CallArg0AndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallArg1AndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallArgs2AndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallArgs3AndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisArg0AndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisArg1AndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisArgs2AndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisArgs3AndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallRangeAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallNewAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void SuperCallAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    static void CallThisRangeAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
 };
 
 class JsFunctionArgsConfigFrameScope {

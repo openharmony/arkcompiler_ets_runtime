@@ -160,6 +160,7 @@ public:
                                              JSTaggedValue::Undefined().GetRawData());
         SetPeriodIndex(INITIAL_PEROID_INDEX);
         SetJitHotnessThreshold(JIT_DISABLE_FLAG);
+        SetBaselineJitHotnessThreshold(JIT_DISABLE_FLAG);
         SetOsrHotnessThreshold(INITIAL_OSR_HOTNESS_THRESHOLD);
         SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
     }
