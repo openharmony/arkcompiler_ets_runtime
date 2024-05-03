@@ -1000,7 +1000,9 @@ std::pair<JSTaggedValue, JSTaggedValue> EcmaInterpreter::GetCurrentEntryPoint(JS
         }
         return std::make_pair(recordName.GetTaggedValue(), fileName.GetTaggedValue());
     }
-    UNREACHABLE();
+    CString msg = "Unable to get recordName and fileName due to failure in getting current entry point.";
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), std::make_pair(JSTaggedValue::Undefined(),
+        JSTaggedValue::Undefined()));
 }
 
 #ifndef EXCLUDE_C_INTERPRETER
