@@ -436,19 +436,14 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
     CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
-    EcmaVM *vm = thread->GetEcmaVM();
-    CString newFileName = ModulePathHelper::ParseUrl(vm, recordName);
-    if (newFileName.empty()) {
-        newFileName = filename;
-    }
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, newFileName, recordName);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, recordName);
     if (jsPandaFile == nullptr) {
 #ifdef FUZZ_TEST
         CString msg = "jsPandaFile is nullptr";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
 #else
-        LOG_FULL(FATAL) << "Load file with filename '" << newFileName << "' failed, ";
+        LOG_FULL(FATAL) << "Load file with filename '" << filename << "' failed, ";
 #endif
     }
 
@@ -461,22 +456,21 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     }
 
     if (isMergedAbc && !jsPandaFile->HasRecord(recordName)) {
-        CString msg = "cannot find record '" + recordName + "', in lazy load abc: " + newFileName;
+        CString msg = "cannot find record '" + recordName + "', in lazy load abc: " + filename;
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
 
     const JSRecordInfo &recordInfo = jsPandaFile->GetRecordInfo(recordName);
     if (!jsPandaFile->IsModule(recordInfo)) {
-        return JSPandaFileExecutor::ExecuteSpecialModule(thread, recordName, newFileName, jsPandaFile.get(),
-            recordInfo);
+        return JSPandaFileExecutor::ExecuteSpecialModule(thread, recordName, filename, jsPandaFile.get(), recordInfo);
     }
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // The first js file should execute at current vm.
     JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
     if (isMergedAbc) {
-        moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(newFileName, recordName);
+        moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(filename, recordName);
     } else {
-        moduleRecord = moduleManager->HostResolveImportedModule(newFileName);
+        moduleRecord = moduleManager->HostResolveImportedModule(filename);
     }
     SourceTextModule::Instantiate(thread, moduleRecord);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
