@@ -4560,6 +4560,11 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
     } else {
         // need get moduleName from stack
         std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
+        if (thread->HasPendingException()) {
+            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            return JSValueRef::Undefined(vm);
+        }
         std::string path = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
             moduleInfo.first;
         abcFilePath = moduleInfo.second;
