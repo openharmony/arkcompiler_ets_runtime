@@ -2120,6 +2120,22 @@ DEF_CALL_SIGNATURE(InsertLocalToShareRSet)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(SetBitAtomic)
+{
+    // 3 : 3 input parameters
+    CallSignature index("SetBitAtomic", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = index;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32(),
+        VariableType::INT32()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 #define DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(NAME)                                               \
     DEF_CALL_SIGNATURE(NAME)                                                                       \
     {                                                                                              \

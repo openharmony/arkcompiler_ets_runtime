@@ -152,6 +152,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
     V(InsertLocalToShareRSet)                  \
+    V(SetBitAtomic)                            \
     V(MarkingBarrier)                          \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
@@ -530,6 +531,8 @@ public:
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
+    static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
+                             GCBitset::GCBitsetWord oldValue);
     static int32_t DoubleToInt(double x, size_t bits);
     static JSTaggedType DoubleToLength(double x);
     static double FloatMod(double x, double y);

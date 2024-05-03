@@ -466,6 +466,7 @@ private:
     V(GetActualArgvNoGC)                        \
     V(InsertOldToNewRSet)                       \
     V(InsertLocalToShareRSet)                   \
+    V(SetBitAtomic)                             \
     V(DoubleToInt)                              \
     V(DoubleToLength)                           \
     V(FloatMod)                                 \

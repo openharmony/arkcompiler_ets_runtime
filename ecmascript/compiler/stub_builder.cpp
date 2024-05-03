@@ -1576,9 +1576,40 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     BRANCH(BoolAnd(objectNotInShare, valueRegionInShare), &shareBarrier, &shareBarrierExit);
     Bind(&shareBarrier);
     {
-        // todo(lukai) fastpath
-        CallNGCRuntime(glue, RTSTUB_ID(InsertLocalToShareRSet), { glue, obj, offset });
-        Jump(&shareBarrierExit);
+        Label callSharedBarrier(env);
+        Label storeToSharedRSet(env);
+        GateRef loadOffset = IntPtr(Region::PackedData::GetLocalToShareSetOffset(env_->Is32Bit()));
+        auto localToShareSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
+        BRANCH(IntPtrEqual(localToShareSet, IntPtr(0)), &callSharedBarrier, &storeToSharedRSet);
+        Bind(&storeToSharedRSet);
+        {
+            // (slotAddr - this) >> TAGGED_TYPE_SIZE_LOG
+            GateRef bitOffsetPtr = IntPtrLSR(PtrSub(slotAddr, objectRegion), IntPtr(TAGGED_TYPE_SIZE_LOG));
+            GateRef bitOffset = TruncPtrToInt32(bitOffsetPtr);
+            GateRef bitPerWordLog2 = Int32(GCBitset::BIT_PER_WORD_LOG2);
+            GateRef bytePerWord = Int32(GCBitset::BYTE_PER_WORD);
+            // bitOffset >> BIT_PER_WORD_LOG2
+            GateRef index = Int32LSR(bitOffset, bitPerWordLog2);
+            GateRef byteIndex = Int32Mul(index, bytePerWord);
+            // bitset_[index] |= mask;
+            GateRef bitsetData = PtrAdd(localToShareSet, IntPtr(RememberedSet::GCBITSET_DATA_OFFSET));
+            GateRef oldsetValue = Load(VariableType::INT32(), bitsetData, byteIndex);
+            GateRef mask = GetBitMask(bitOffset);
+            GateRef flag = Int32And(oldsetValue, mask);
+            // Load the bit using relaxed memory order.
+            // If the bit is set, do nothing (local->shared barrier is done).
+            // Else call runtime.
+            Label atomicSet(env);
+            BRANCH(Int32NotEqual(flag, Int32(0)), &notValidIndex, &atomicSet);
+            Bind(&atomicSet);
+            CallNGCRuntime(glue, RTSTUB_ID(SetBitAtomic), { PtrAdd(bitsetData, byteIndex), mask, oldsetValue });
+            Jump(&notValidIndex);
+        }
+        Bind(&callSharedBarrier);
+        {
+            CallNGCRuntime(glue, RTSTUB_ID(InsertLocalToShareRSet), { glue, obj, offset });
+            Jump(&notValidIndex);
+        }
     }
     Bind(&shareBarrierExit);
     GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
