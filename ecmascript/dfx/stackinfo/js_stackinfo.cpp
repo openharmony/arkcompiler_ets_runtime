@@ -480,7 +480,7 @@ CVector<MethodInfo> JSStackTrace::ReadAllMethodInfos(std::shared_ptr<JSPandaFile
 {
     CVector<MethodInfo> result;
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(DEBUG) << "Read all methods info in file failed, file is nullptr.";
+        LOG_ECMA(ERROR) << "Failed to read all methods info.";
         return result;
     }
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -739,7 +739,7 @@ uintptr_t ArkCheckAndGetMethod(void *ctx, ReadMemFunc readMem, uintptr_t value)
     return 0;
 }
 
-bool ArkGetMethodIdandJSPandaFileAddr(void *ctx, ReadMemFunc readMem, uintptr_t method, uintptr_t &methodId)
+bool ArkGetMethodIdFromMethod(void *ctx, ReadMemFunc readMem, uintptr_t method, uintptr_t &methodId)
 {
     uintptr_t methodLiteralAddr = method + Method::LITERAL_INFO_OFFSET;
     uintptr_t methodLiteral = 0;
@@ -764,7 +764,7 @@ bool ArkGetMethodId(void *ctx, ReadMemFunc readMem, uintptr_t frameType, uintptr
         return false;
     }
 
-    if (!ArkGetMethodIdandJSPandaFileAddr(ctx, readMem, method, methodId)) {
+    if (!ArkGetMethodIdFromMethod(ctx, readMem, method, methodId)) {
         LOG_ECMA(DEBUG) << std::hex << "ArkGetJsFrameDebugInfo failed, method: " << method;
         return false;
     }
@@ -1156,28 +1156,22 @@ void ArkParseJsFrameDebugInfos([[maybe_unused]] const std::vector<JsFrameDebugIn
     jsFrameIndex = 0;
     size = JsFrameDebugInfos.size() > size ? size : JsFrameDebugInfos.size();
     std::unordered_map<std::string, std::shared_ptr<JSPandaFile>> jsPandaFileTable;
-    std::unordered_map<std::string, std::shared_ptr<SourceMap>> sourceMapTable;
     for (size_t i = 0; i < size; ++i) {
         auto fileIter = jsPandaFileTable.find(JsFrameDebugInfos[i].hapPath);
         if (fileIter == jsPandaFileTable.end()) {
             auto jsPandaFile = OpenJSPandaFileByReadData(JsFrameDebugInfos[i].hapPath, JsFrameDebugInfos[i].filePath);
             if (jsPandaFile != nullptr) {
                 jsPandaFileTable.emplace(JsFrameDebugInfos[i].hapPath, jsPandaFile);
-                auto sourceMap = std::make_shared<SourceMap>();
-                sourceMap->Init(JsFrameDebugInfos[i].hapPath);
-                sourceMapTable.emplace(JsFrameDebugInfos[i].hapPath, sourceMap);
                 auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
                 ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(), JsFrameDebugInfos[i].methodId,
-                    JsFrameDebugInfos[i].offset, jsFrame[jsFrameIndex], sourceMap.get());
+                    JsFrameDebugInfos[i].offset, jsFrame[jsFrameIndex]);
                 jsFrameIndex++;
             }
         } else {
             auto jsPandaFile = fileIter->second;
-            auto sourceIter = sourceMapTable.find(JsFrameDebugInfos[i].hapPath);
-            auto sourceMap = sourceIter->second;
             auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
             ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(), JsFrameDebugInfos[i].methodId,
-                JsFrameDebugInfos[i].offset, jsFrame[jsFrameIndex], sourceMap.get());
+                JsFrameDebugInfos[i].offset, jsFrame[jsFrameIndex]);
             jsFrameIndex++;
         }
     }
@@ -1317,13 +1311,13 @@ bool JSSymbolExtractor::ParseHapFileData([[maybe_unused]] std::string& hapName)
         return false;
     }
     auto zipFile = std::make_unique<ZipFile>(hapName);
-    if (zipFile == nullptr && !zipFile->Open()) {
+    if (zipFile == nullptr || !zipFile->Open()) {
         return false;
     }
     auto &entrys = zipFile->GetAllEntries();
     for (const auto &entry : entrys) {
         std::string fileName = entry.first;
-        if (hapName.rfind(".abc") == std::string::npos) {
+        if (fileName.rfind(".abc") == std::string::npos) {
             continue;
         }
 
@@ -1361,6 +1355,7 @@ bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] 
     if (extractor->GetJSPandaFile() == nullptr) {
         std::string hapName = std::string(filePath);
         extractor->ParseHapFileData(hapName);
+        extractor->CreateJSPandaFile();
     }
     ret = ArkParseJsFrameInfo(byteCodePc, methodId, mapBase, extractor->GetLoadOffset(),
             extractor->GetData(), extractor->GetDataSize(), extractorptr, jsFunction);
