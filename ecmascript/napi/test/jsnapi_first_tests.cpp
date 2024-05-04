@@ -625,6 +625,23 @@ HWTEST_F_L0(JSNApiTests, PromiseCatch)
     vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
+HWTEST_F_L0(JSNApiTests, PromiseCatchUintPtr)
+{
+    LocalScope scope(vm_);
+    Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm_);
+
+    Local<PromiseRef> promise = capability->GetPromise(vm_);
+    Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
+    Local<PromiseRef> catchPromise = promise->Catch(vm_, reject);
+    ASSERT_TRUE(promise->IsPromise());
+    ASSERT_TRUE(catchPromise->IsPromise());
+
+    Local<StringRef> reason = StringRef::NewFromUtf8(vm_, "Reject");
+    ASSERT_TRUE(capability->Reject(vm_, reinterpret_cast<uintptr_t>(*reason)));
+
+    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+}
+
 /*
  * @tc.number: ffi_interface_api_013
  * @tc.name: CheckResolve_New_Reject
@@ -667,6 +684,22 @@ HWTEST_F_L0(JSNApiTests, PromiseThen)
     vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
+HWTEST_F_L0(JSNApiTests, PromiseThenUintPtr)
+{
+    LocalScope scope(vm_);
+    Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm_);
+
+    Local<PromiseRef> promise = capability->GetPromise(vm_);
+    Local<FunctionRef> resolve = FunctionRef::New(vm_, ResolvedCallback);
+    Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
+    Local<PromiseRef> thenPromise = promise->Then(vm_, resolve, reject);
+    ASSERT_TRUE(promise->IsPromise());
+    ASSERT_TRUE(thenPromise->IsPromise());
+
+    Local<StringRef> value = NumberRef::New(vm_, 300.3); // 300.3 : test case of input
+    ASSERT_TRUE(capability->Resolve(vm_, reinterpret_cast<uintptr_t>(*value)));
+    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+}
 
 /**
  * @tc.number: ffi_interface_api_014

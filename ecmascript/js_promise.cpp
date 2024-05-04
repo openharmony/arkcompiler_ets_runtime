@@ -70,9 +70,9 @@ JSTaggedValue JSPromise::FulfillPromise(JSThread *thread, const JSHandle<JSPromi
     // 3. Set the value of promise's [[PromiseResult]] internal slot to value.
     promise->SetPromiseResult(thread, value);
     // 4. Set the value of promise's [[PromiseFulfillReactions]] internal slot to undefined.
-    promise->SetPromiseFulfillReactions(thread, globalConst->GetHandledUndefined());
+    promise->SetPromiseFulfillReactions(thread, globalConst->GetHandledUndefined(), SKIP_BARRIER);
     // 5. Set the value of promise's [[PromiseRejectReactions]] internal slot to undefined.
-    promise->SetPromiseRejectReactions(thread, globalConst->GetHandledUndefined());
+    promise->SetPromiseRejectReactions(thread, globalConst->GetHandledUndefined(), SKIP_BARRIER);
     // 6. Set the value of promise's [[PromiseState]] internal slot to "fulfilled".
     promise->SetPromiseState(PromiseState::FULFILLED);
     // 7. Return TriggerPromiseReactions(reactions, reason).
@@ -147,9 +147,9 @@ JSTaggedValue JSPromise::RejectPromise(JSThread *thread, const JSHandle<JSPromis
     // 3. Set the value of promise's [[PromiseResult]] internal slot to reason.
     promise->SetPromiseResult(thread, reason);
     // 4. Set the value of promise's [[PromiseFulfillReactions]] internal slot to undefined.
-    promise->SetPromiseFulfillReactions(thread, globalConst->GetHandledUndefined());
+    promise->SetPromiseFulfillReactions(thread, globalConst->GetHandledUndefined(), SKIP_BARRIER);
     // 5. Set the value of promise's [[PromiseRejectReactions]] internal slot to undefined.
-    promise->SetPromiseRejectReactions(thread, globalConst->GetHandledUndefined());
+    promise->SetPromiseRejectReactions(thread, globalConst->GetHandledUndefined(), SKIP_BARRIER);
     // 6. Set the value of promise's [[PromiseState]] internal slot to "rejected".
     promise->SetPromiseState(PromiseState::REJECTED);
     // 7. When a promise is rejected without any handlers, it is called with its operation argument set to "reject".
