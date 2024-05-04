@@ -408,19 +408,22 @@ public:
         return !pkgContextInfoList_.empty();
     }
 
-    void SetPkgNameList(const std::map<std::string, std::string> &list)
+    void SetPkgNameList(const CMap<CString, CString> &list)
     {
-        for (auto it = list.begin(); it != list.end(); ++it) {
-            pkgNameList_.emplace(it->first.c_str(), it->second.c_str());
-        }
+        pkgNameList_ = list;
+    }
+
+    CMap<CString, CString> GetPkgNameList() const
+    {
+        return pkgNameList_;
     }
 
     inline CString GetPkgName(const CString &moduleName) const
     {
         auto it = pkgNameList_.find(moduleName);
         if (it == pkgNameList_.end()) {
-            LOG_ECMA(ERROR) << " Get Pkg Name failed";
-            return "";
+            LOG_ECMA(INFO) << " Get Pkg Name failed";
+            return moduleName;
         }
         return it->second;
     }
@@ -439,11 +442,14 @@ public:
         return it->second;
     }
 
-    void SetPkgAliasList(const std::map<std::string, std::string> &list)
+    void SetPkgAliasList(const CMap<CString, CString> &list)
     {
-        for (auto it = list.begin(); it != list.end(); ++it) {
-            pkgAliasList_.emplace(it->first.c_str(), it->second.c_str());
-        }
+        pkgAliasList_ = list;
+    }
+
+    CMap<CString, CString> GetPkgAliasList() const
+    {
+        return pkgAliasList_;
     }
 
     void SetMockModuleList(const std::map<std::string, std::string> &list)
@@ -526,7 +532,7 @@ public:
 
     CString GetHmsModule(const CString &module) const;
 
-    void SetpkgContextInfoList(const std::map<std::string, std::vector<std::vector<std::string>>> &list);
+    void SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list);
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const

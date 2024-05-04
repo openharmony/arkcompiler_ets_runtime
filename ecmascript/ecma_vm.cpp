@@ -1007,19 +1007,19 @@ std::pair<std::string, std::string> EcmaVM::GetCurrentModuleInfo(bool needRecord
     CString recordName = ConvertToString(moduleInfo.first);
     CString fileName = ConvertToString(moduleInfo.second);
     LOG_FULL(INFO) << "Current recordName is " << recordName <<", current fileName is " << fileName;
+    if (needRecordName) {
+        if (fileName.length() > ModulePathHelper::BUNDLE_INSTALL_PATH_LEN &&
+            fileName.find(ModulePathHelper::BUNDLE_INSTALL_PATH) == 0) {
+            fileName = fileName.substr(ModulePathHelper::BUNDLE_INSTALL_PATH_LEN);
+        } else {
+            LOG_FULL(ERROR) << " GetCurrentModuleName Fail, fileName is " << fileName;
+        }
+        return std::make_pair(recordName.c_str(), fileName.c_str());
+    }
     CString moduleName;
     if (IsNormalizedOhmUrlPack()) {
         moduleName = ModulePathHelper::GetModuleNameWithNormalizedName(recordName);
     } else {
-        if (needRecordName) {
-            if (fileName.length() > ModulePathHelper::BUNDLE_INSTALL_PATH_LEN &&
-                fileName.find(ModulePathHelper::BUNDLE_INSTALL_PATH) == 0) {
-                fileName = fileName.substr(ModulePathHelper::BUNDLE_INSTALL_PATH_LEN);
-            } else {
-                LOG_FULL(ERROR) << " GetCurrentModuleName Fail, fileName is " << fileName;
-            }
-            return std::make_pair(recordName.c_str(), fileName.c_str());
-        }
         moduleName = ModulePathHelper::GetModuleName(recordName);
     }
     if (moduleName.empty()) {
@@ -1058,21 +1058,9 @@ bool EcmaVM::IsHmsModule(const CString &moduleStr) const
     return true;
 }
 
-void EcmaVM::SetpkgContextInfoList(const std::map<std::string, std::vector<std::vector<std::string>>> &list)
+void EcmaVM::SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list)
 {
-    for (auto it = list.begin(); it != list.end(); it++) {
-        const std::vector<std::vector<std::string>> vec = it->second;
-        CMap<CString, CVector<CString>> map;
-        for (size_t i = 0; i < vec.size(); i++) {
-            CString pkgName = vec[i][0].c_str();
-            CVector<CString> pkgContextInfo;
-            for (size_t j = 1; j < vec[i].size(); j++) {
-                pkgContextInfo.emplace_back(vec[i][j].c_str());
-            }
-            map.emplace(pkgName, pkgContextInfo);
-        }
-        pkgContextInfoList_.emplace(it->first.c_str(), map);
-    }
+    pkgContextInfoList_ = list;
 }
 
 // Initialize IcuData Path
