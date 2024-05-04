@@ -637,7 +637,7 @@ inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
     GateRef isHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
     BRANCH(isHeapObject, &heapObj, &exit);
     Bind(&heapObj);
-    result = env_->GetBuilder()->TaggedObjectBothAreString(x, y);;
+    result = env_->GetBuilder()->TaggedObjectBothAreString(x, y);
     Jump(&exit);
     Bind(&exit);
     auto ret = *result;

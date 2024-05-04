@@ -824,7 +824,7 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     BRANCH(TaggedIsString(obj), &isString, &isNotString);
     Bind(&isString);
     {
-        object = CallRuntime(glue, RTSTUB_ID(PrimitiveStringCreate), { obj });;
+        object = CallRuntime(glue, RTSTUB_ID(PrimitiveStringCreate), { obj });
         Jump(&afterObjectTransform);
     }
     Bind(&isNotString);

@@ -244,7 +244,7 @@ public:
 
     void SetSensitiveStatus(AppSensitiveStatus status)
     {
-        sensitiveStatus_.store(status, std::memory_order_release);;
+        sensitiveStatus_.store(status, std::memory_order_release);
     }
 
     bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
