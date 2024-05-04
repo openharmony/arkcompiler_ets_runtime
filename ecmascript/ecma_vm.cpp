@@ -906,9 +906,8 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         return;
     }
     JSHandle<JSFunction> functionInfo(functionValue);
-    JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo();
-    if (!extraInfoValue.IsJSNativePointer()) {
-        LOG_ECMA(INFO) << "FunctionExtraInfo is not JSNativePointer";
+    if (!functionInfo->GetTaskConcurrentFuncFlag()) {
+        LOG_ECMA(INFO) << "Function is not Concurrent Function";
         return;
     }
 
