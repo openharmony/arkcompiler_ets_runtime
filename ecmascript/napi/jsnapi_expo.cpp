@@ -3151,8 +3151,8 @@ void JSNApi::GetStackBeforeCallNapiSuccess([[maybe_unused]] EcmaVM *vm,
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
     if (thread->GetIsProfiling()) {
+        ecmascript::ThreadManagedScope managedScope(thread);
         getStackBeforeCallNapiSuccess = vm->GetProfiler()->GetStackBeforeCallNapi(thread);
     }
 #endif
@@ -3162,8 +3162,8 @@ void JSNApi::GetStackAfterCallNapi([[maybe_unused]] EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
     if (thread->GetIsProfiling()) {
+        ecmascript::ThreadManagedScope managedScope(thread);
         vm->GetProfiler()->GetStackAfterCallNapi(thread);
     }
 #endif
