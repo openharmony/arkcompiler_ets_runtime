@@ -516,7 +516,7 @@ public:
     BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *jsPandaFile,
                           PGOProfilerDecoder &pfDecoder);
 
-    ~BytecodeInfoCollector() = default;;
+    ~BytecodeInfoCollector() = default;
     NO_COPY_SEMANTIC(BytecodeInfoCollector);
     NO_MOVE_SEMANTIC(BytecodeInfoCollector);
 

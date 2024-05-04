@@ -195,7 +195,7 @@ namespace panda::ecmascript::kungfu {
     V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)   \
     V(TypeOfCheck, TYPE_OF_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                           \
     V(TypeOf, TYPE_OF, GateFlags::NO_WRITE, 1, 1, 0)                                       \
-    V(TypedCallTargetCheckOp, TYPED_CALLTARGETCHECK_OP, GateFlags::CHECKABLE, 1, 1, 2 )
+    V(TypedCallTargetCheckOp, TYPED_CALLTARGETCHECK_OP, GateFlags::CHECKABLE, 1, 1, 2)
 
 // NOTICE-PGO: wx typedcalltargetcheckop can adopt different number of valueIn
 
