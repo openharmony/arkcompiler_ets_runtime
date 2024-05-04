@@ -90,3 +90,8 @@ function testTypeArrayToSorted2(ctor) {
     }
     return true;
 }
+
+var arr = new Float64Array(["aaa", 10, 20, 30]);
+var arrSorted = arr.toSorted();
+print(arrSorted);
+print(arr);
