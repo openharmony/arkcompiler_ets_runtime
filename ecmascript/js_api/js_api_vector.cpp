@@ -195,7 +195,7 @@ JSTaggedValue JSAPIVector::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIV
 
     if (index >= 0) {
         JSHandle<TaggedArray> elements(thread, vector->GetElements());
-        ASSERT(!elements->IsDictionaryMode());
+        ASSERT(!elements->IsDictionaryMode() && length > 0);
         TaggedArray::RemoveElementByIndex(thread, elements, index, length);
         vector->SetLength(length - 1);
     }

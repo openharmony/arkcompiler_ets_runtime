@@ -103,7 +103,7 @@ void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
         ", funcEntry addr:" << reinterpret_cast<void*>(GetFuncEntryDesAddress()) << ", count:" << cnt;
 
     //todo
-    size_t pageSize = 4096;
+    size_t pageSize = 4096; // 4096 : pageSize
     uintptr_t startPage = reinterpret_cast<uintptr_t>(textStart) & ~(pageSize - 1);
     uintptr_t endPage = (reinterpret_cast<uintptr_t>(textStart) + dataSize) & ~(pageSize - 1);
     size_t protSize = (endPage == startPage) ? ((dataSize + pageSize - 1U) & (~(pageSize - 1))) :

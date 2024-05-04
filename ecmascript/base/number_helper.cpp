@@ -157,6 +157,7 @@ JSTaggedValue NumberHelper::Int32ToString(JSThread *thread, int32_t number, uint
     }
     std::string buf;
     buf.resize(length);
+    ASSERT(length > 0);
     uint32_t index = length - 1;
     uint32_t digit = 0;
     while (n > 0) {

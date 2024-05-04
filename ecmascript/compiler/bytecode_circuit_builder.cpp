@@ -36,6 +36,7 @@ void BytecodeCircuitBuilder::BytecodeToCircuit()
 void BytecodeCircuitBuilder::BuildRegionInfo()
 {
     uint32_t size = pcOffsets_.size();
+    ASSERT(size > 0);
     uint32_t end = size - 1;  // 1: end
     BytecodeIterator iterator(this, 0, end);
 
@@ -173,6 +174,7 @@ void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException
         curBlock.start = item.GetStartBcIndex();
         if (blockId != 1) {
             auto &prevBlock = RegionAt(blockId - 1);
+            ASSERT(curBlock.start >= 1);
             prevBlock.end = curBlock.start - 1;
             prevBlock.bytecodeIterator_.Reset(this, prevBlock.start, prevBlock.end);
             // fall through

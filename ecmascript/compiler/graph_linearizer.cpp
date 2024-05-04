@@ -451,7 +451,7 @@ public:
                 if (succ->IsUnvisited(acc_)) {
                     currentDepth = Push(succ, currentDepth);
                 } else {
-                    ASSERT(succ->IsVisited(acc_));
+                    ASSERT(succ->IsVisited(acc_) && index > 0);
                     loopbacks_.emplace_back(DFSState(curRegion, index - 1)); // -1: for prev
                     if (!succ->HasLoopNumber()) {
                         succ->SetLoopNumber(numLoops_++);

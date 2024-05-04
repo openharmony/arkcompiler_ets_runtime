@@ -270,7 +270,7 @@ public:
         if (dk - k > 0.0) {
             k++;
         }
-        unsigned index = static_cast<unsigned>((k >> 3) + 1); // 3: parameter
+        unsigned index = static_cast<unsigned>((static_cast<unsigned>(k) >> 3) + 1); // 3: parameter
         *K = -(MIN_DECIMAL_EXPONENT + static_cast<int>(index << 3)); // 3: parameter
         return GetCachedPowerByIndex(index);
     }

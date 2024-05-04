@@ -819,6 +819,7 @@ void HeapSnapshot::AddTraceNodeId(MethodLiteral *methodLiteral)
     uint32_t traceNodeId = 0;
     auto result = methodToTraceNodeId_.find(methodLiteral);
     if (result == methodToTraceNodeId_.end()) {
+        ASSERT(traceInfoStack_.size() > 0);
         traceNodeId = traceInfoStack_.size() - 1;
         methodToTraceNodeId_.emplace(methodLiteral, traceNodeId);
     } else {
