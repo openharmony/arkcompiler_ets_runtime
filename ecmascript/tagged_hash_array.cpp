@@ -93,6 +93,7 @@ JSHandle<RBTreeNode> TaggedHashArray::CreateTreeNodeFrom(JSThread *thread, JSHan
 void TaggedHashArray::TreeingBin(JSThread *thread, const JSHandle<TaggedHashArray> &tab, int hash)
 {
     uint32_t length = tab->GetLength();
+    ASSERT(length > 0);
     uint32_t index = (length - 1) & hash;
     JSTaggedValue nodeVa = tab->Get(index);
     if (!nodeVa.IsHole()) {

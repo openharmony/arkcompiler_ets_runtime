@@ -44,7 +44,7 @@ public:
 
     static inline bool DefineSemantics(Status status)
     {
-        return (static_cast<int32_t>(status) & static_cast<int32_t>(Status::DefineSemantics)) > 0;
+        return (static_cast<uint32_t>(status) & static_cast<int32_t>(Status::DefineSemantics)) > 0;
     }
 
     static inline std::pair<JSTaggedValue, bool> HasOwnProperty(JSThread *thread,

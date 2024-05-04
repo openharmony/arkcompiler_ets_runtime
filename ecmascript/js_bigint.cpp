@@ -704,6 +704,7 @@ JSHandle<BigInt> BigInt::Subtract(JSThread *thread, JSHandle<BigInt> x, JSHandle
     // (-x) - (-y) == y - x == -(x - y)
     uint32_t xLength = x->GetLength();
     uint32_t yLength = y->GetLength();
+    ASSERT(xLength > 0);
     uint32_t i = xLength - 1;
     int subSize = static_cast<int>(xLength - yLength);
     if (subSize > 0) {

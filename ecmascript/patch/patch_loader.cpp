@@ -534,6 +534,7 @@ CString PatchLoader::GetRealName(const JSPandaFile *jsPandaFile, EntityId entity
 {
     std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, entityId));
     size_t poiIndex = methodName.find_last_of('#');
+    ASSERT(methodName.size() > 0);
     if (poiIndex != std::string::npos && poiIndex < methodName.size() - 1 && className != "default") {
         methodName = methodName.substr(poiIndex + 1);
     }
