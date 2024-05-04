@@ -1905,6 +1905,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
+    function->SetTaskConcurrentFuncFlag(0); // 0 : default value
     if (method->IsJitCompiledCode()) {
         // jit install code also set aot callfield, should clear flag when new function
         method->ClearJitCompiledCodeFlags();
