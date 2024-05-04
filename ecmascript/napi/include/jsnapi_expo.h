@@ -1275,7 +1275,8 @@ public:
     static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
                                  bool needUpdate = false);
     // JS code
-    static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate = false);
+    static bool Execute(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
+                        bool needUpdate = false, bool executeFromJob = false);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
                         const std::string &filename = "", bool needUpdate = false);
     static int ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
@@ -1293,8 +1294,6 @@ public:
                                                        const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
                                                              const std::string &module_path);
-    // secure memory check
-    static bool CheckSecureMem(uintptr_t mem);
 
     /*
      * Execute panda file from secure mem. secure memory lifecycle managed externally.
@@ -1405,6 +1404,7 @@ public:
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
     static std::string GetModuleName(EcmaVM *vm);
     static std::pair<std::string, std::string> GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName = false);
+    static std::string NormalizePath(const std::string &string);
     static void AllowCrossThreadExecution(EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
     static void *GetEnv(EcmaVM *vm);

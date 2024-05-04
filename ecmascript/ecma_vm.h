@@ -390,6 +390,11 @@ public:
         return options_.IsWorker();
     }
 
+    bool IsRestrictedWorkerThread() const
+    {
+        return options_.IsRestrictedWorker();
+    }
+
     bool IsBundlePack() const
     {
         return isBundlePack_;

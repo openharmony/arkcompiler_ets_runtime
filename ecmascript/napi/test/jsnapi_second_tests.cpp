@@ -915,22 +915,6 @@ HWTEST_F_L0(JSNApiTests, JSNApi_ExecutePendingJob)
 }
 
 /**
- * @tc.number: ffi_interface_api_094
- * @tc.name: CheckSecureMem
- * @tc.desc: Check if the given memory address is safe memory.
- * @tc.type: FUNC
- * @tc.require:  parameter
- */
-HWTEST_F_L0(JSNApiTests, JSNAPI_CheckSecureMem)
-{
-    LocalScope scope(vm_);
-    uint8_t *data = nullptr;
-    uintptr_t value = reinterpret_cast<uintptr_t>(data);
-    bool res = JSNApi::CheckSecureMem(value);
-    EXPECT_TRUE(res);
-}
-
-/**
  * @tc.number: ffi_interface_api_096
  * @tc.name: IsRegExp
  * @tc.desc: Used to determine whether a given object is a regular expression.
