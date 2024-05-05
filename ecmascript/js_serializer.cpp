@@ -1385,6 +1385,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSFunction()
     JSHandle<JSTaggedValue> methodVal = DeserializeJSTaggedValue();
     JSHandle<Method> method = JSHandle<Method>::Cast(methodVal);
     func->SetMethod(thread_, method);
+    func->SetTaskConcurrentFuncFlag(0); // 0 : default value
     func->InitializeForConcurrentFunction(thread_);
     if (method->IsAotWithCallField()) {
         uintptr_t codeEntry;
