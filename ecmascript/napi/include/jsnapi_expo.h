@@ -1189,7 +1189,9 @@ public:
 class ECMA_PUBLIC_API PromiseCapabilityRef : public ObjectRef {
 public:
     static Local<PromiseCapabilityRef> New(const EcmaVM *vm);
+    bool Resolve(const EcmaVM *vm, uintptr_t value);
     bool Resolve(const EcmaVM *vm, Local<JSValueRef> value);
+    bool Reject(const EcmaVM *vm, uintptr_t reason);
     bool Reject(const EcmaVM *vm, Local<JSValueRef> reason);
     Local<PromiseRef> GetPromise(const EcmaVM *vm);
 };

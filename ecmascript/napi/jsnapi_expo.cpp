@@ -1266,6 +1266,30 @@ Local<PromiseRef> PromiseCapabilityRef::GetPromise(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, capacity->GetPromise()));
 }
 
+bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, uintptr_t value)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    const GlobalEnvConstants *constants = thread->GlobalConstants();
+
+    JSHandle<JSTaggedValue> arg(value);
+    JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(capacity, FATAL);
+    JSHandle<JSTaggedValue> resolve(thread, capacity->GetResolve());
+    JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
+    EcmaRuntimeCallInfo *info =
+        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    info->SetCallArg(arg.GetTaggedValue());
+    JSFunction::Call(info);
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+
+    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    vm->GetHeap()->ClearKeptObjects();
+    return true;
+}
+
 bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -1279,6 +1303,31 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
     JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    info->SetCallArg(arg.GetTaggedValue());
+    JSFunction::Call(info);
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+
+    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    vm->GetHeap()->ClearKeptObjects();
+    return true;
+}
+
+bool PromiseCapabilityRef::Reject(const EcmaVM *vm, uintptr_t reason)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    const GlobalEnvConstants *constants = thread->GlobalConstants();
+
+    JSHandle<JSTaggedValue> arg(reason);
+    JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(capacity, FATAL);
+    JSHandle<JSTaggedValue> reject(thread, capacity->GetReject());
+    JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
+
+    EcmaRuntimeCallInfo *info =
+        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     info->SetCallArg(arg.GetTaggedValue());
     JSFunction::Call(info);
