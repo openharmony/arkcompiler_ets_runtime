@@ -26,50 +26,50 @@
 // where BuiltinsObject::func refers to the native implementation of Object[name].
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
 
-#define BUILTIN_OBJECT_FUNCTIONS(V)                                                 \
-    /* Object.assign ( target, ...sources ) */                                      \
-    V("assign",                   Assign,                   2, ObjectAssign)        \
-    /* Object.create ( O, Properties ) */                                           \
-    V("create",                   Create,                   2, ObjectCreate)        \
-    /* Object.defineProperties ( O, Properties ) */                                 \
-    V("defineProperties",         DefineProperties,         2, INVALID)             \
-    /* Object.defineProperty ( O, P, Attributes ) */                                \
-    V("defineProperty",           DefineProperty,           3, INVALID)             \
-    /* Object.entries ( O ) */                                                      \
-    V("entries",                  Entries,                  1, INVALID)             \
-    /* Object.freeze ( O ) */                                                       \
-    V("freeze",                   Freeze,                   1, INVALID)             \
-    /* Object.fromEntries ( iterable ) */                                           \
-    V("fromEntries",              FromEntries,              1, INVALID)             \
-    /* Object.getOwnPropertyDescriptor ( O, P ) */                                  \
-    V("getOwnPropertyDescriptor", GetOwnPropertyDescriptor, 2, INVALID)             \
-    /* Object.getOwnPropertyDescriptors ( O ) */                                    \
-    V("getOwnPropertyDescriptors", GetOwnPropertyDescriptors, 1, INVALID)           \
-    /* Object.getOwnPropertyNames ( O ) */                                          \
-    V("getOwnPropertyNames",      GetOwnPropertyNames,      1, INVALID)             \
-    /* Object.getOwnPropertySymbols ( O ) */                                        \
-    V("getOwnPropertySymbols",    GetOwnPropertySymbols,    1, INVALID)             \
-    /* Object.getPrototypeOf ( O ) */                                               \
-    V("getPrototypeOf",           GetPrototypeOf,           1, INVALID)             \
-    /* Object.hasOwn ( O, P ) */                                                    \
-    V("hasOwn",                   HasOwn,                   2, INVALID)             \
-    /* Object.is ( value1, value2 ) */                                              \
-    V("is",                       Is,                       2, INVALID)             \
-    /* Object.isExtensible ( O ) */                                                 \
-    V("isExtensible",             IsExtensible,             1, INVALID)             \
-    /* Object.isFrozen ( O ) */                                                     \
-    V("isFrozen",                 IsFrozen,                 1, INVALID)             \
-    /* Object.isSealed ( O ) */                                                     \
-    V("isSealed",                 IsSealed,                 1, INVALID)             \
-    /* Object.keys ( O ) */                                                         \
-    V("keys",                     Keys,                     1, ObjectKeys)          \
-    /* Object.preventExtensions ( O ) */                                            \
-    V("preventExtensions",        PreventExtensions,        1, INVALID)             \
-    /* Object.seal ( O ) */                                                         \
-    V("seal",                     Seal,                     1, INVALID)             \
-    /* Object.setPrototypeOf ( O, proto ) */                                        \
-    V("setPrototypeOf",           SetPrototypeOf,           2, INVALID)             \
-    /* Object.values ( O ) */                                                       \
+#define BUILTIN_OBJECT_FUNCTIONS(V)                                                                 \
+    /* Object.assign ( target, ...sources ) */                                                      \
+    V("assign",                   Assign,                   2, ObjectAssign)                        \
+    /* Object.create ( O, Properties ) */                                                           \
+    V("create",                   Create,                   2, ObjectCreate)                        \
+    /* Object.defineProperties ( O, Properties ) */                                                 \
+    V("defineProperties",         DefineProperties,         2, INVALID)                             \
+    /* Object.defineProperty ( O, P, Attributes ) */                                                \
+    V("defineProperty",           DefineProperty,           3, INVALID)                             \
+    /* Object.entries ( O ) */                                                                      \
+    V("entries",                  Entries,                  1, ObjectEntries)                       \
+    /* Object.freeze ( O ) */                                                                       \
+    V("freeze",                   Freeze,                   1, INVALID)                             \
+    /* Object.fromEntries ( iterable ) */                                                           \
+    V("fromEntries",              FromEntries,              1, INVALID)                             \
+    /* Object.getOwnPropertyDescriptor ( O, P ) */                                                  \
+    V("getOwnPropertyDescriptor", GetOwnPropertyDescriptor, 2, INVALID)                             \
+    /* Object.getOwnPropertyDescriptors ( O ) */                                                    \
+    V("getOwnPropertyDescriptors", GetOwnPropertyDescriptors, 1, ObjectGetOwnPropertyDescriptors)   \
+    /* Object.getOwnPropertyNames ( O ) */                                                          \
+    V("getOwnPropertyNames",      GetOwnPropertyNames,      1, ObjectGetOwnPropertyNames)           \
+    /* Object.getOwnPropertySymbols ( O ) */                                                        \
+    V("getOwnPropertySymbols",    GetOwnPropertySymbols,    1, ObjectGetOwnPropertySymbols)         \
+    /* Object.getPrototypeOf ( O ) */                                                               \
+    V("getPrototypeOf",           GetPrototypeOf,           1, ObjectGetPrototypeOf)                \
+    /* Object.hasOwn ( O, P ) */                                                                    \
+    V("hasOwn",                   HasOwn,                   2, INVALID)                             \
+    /* Object.is ( value1, value2 ) */                                                              \
+    V("is",                       Is,                       2, INVALID)                             \
+    /* Object.isExtensible ( O ) */                                                                 \
+    V("isExtensible",             IsExtensible,             1, INVALID)                             \
+    /* Object.isFrozen ( O ) */                                                                     \
+    V("isFrozen",                 IsFrozen,                 1, ObjectIsFrozen)                      \
+    /* Object.isSealed ( O ) */                                                                     \
+    V("isSealed",                 IsSealed,                 1, ObjectIsSealed)                      \
+    /* Object.keys ( O ) */                                                                         \
+    V("keys",                     Keys,                     1, ObjectKeys)                          \
+    /* Object.preventExtensions ( O ) */                                                            \
+    V("preventExtensions",        PreventExtensions,        1, INVALID)                             \
+    /* Object.seal ( O ) */                                                                         \
+    V("seal",                     Seal,                     1, INVALID)                             \
+    /* Object.setPrototypeOf ( O, proto ) */                                                        \
+    V("setPrototypeOf",           SetPrototypeOf,           2, INVALID)                             \
+    /* Object.values ( O ) */                                                                       \
     V("values",                   Values,                   1, INVALID)
 
 // List of functions in Object.prototype, excluding the constructor and '@@' properties.

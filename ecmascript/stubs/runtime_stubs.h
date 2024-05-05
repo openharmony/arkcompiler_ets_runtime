@@ -216,6 +216,10 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(RegularJSObjDeletePrototype)        \
     V(CallJSObjDeletePrototype)           \
     V(ToPropertyKey)                      \
+    V(ToPropertyKeyValue)                 \
+    V(ToPropertyKeyWritable)              \
+    V(ToPropertyKeyEnumerable)            \
+    V(ToPropertyKeyConfigurable)          \
     V(NewJSPrimitiveRef)                  \
     V(ThrowTypeError)                     \
     V(GetHash32)                          \
