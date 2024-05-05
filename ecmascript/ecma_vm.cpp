@@ -371,7 +371,7 @@ bool EcmaVM::Initialize()
         LOG_FULL(FATAL) << "alloc factory_ failed";
         UNREACHABLE();
     }
-    debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
+    debuggerManager_ = new tooling::JsDebuggerManager(this);
     aotFileManager_ = new AOTFileManager(this);
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
@@ -485,7 +485,7 @@ EcmaVM::~EcmaVM()
     }
 
     if (debuggerManager_ != nullptr) {
-        chunk_.Delete(debuggerManager_);
+        delete debuggerManager_;
         debuggerManager_ = nullptr;
     }
 
