@@ -1018,6 +1018,7 @@ void MemEntry::ExpandMemsetLowLevel(int64 byte, uint64 size, MIRFunction &func, 
         auto *iassignoff = mirBuilder->CreateStmtIassignoff(constType, offset, realDstExpr, rhsExpr);
         InsertAndMayPrintStmt(block, stmt, debug, iassignoff);
         if (debug) {
+            ASSERT_NOT_NULL(iassignoff);
             iassignoff->Dump(0);
         }
         offset += static_cast<int32>(curSize);

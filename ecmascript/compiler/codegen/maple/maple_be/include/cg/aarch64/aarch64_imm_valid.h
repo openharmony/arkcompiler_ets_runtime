@@ -282,7 +282,7 @@ inline bool StrLdr32ImmValid(int64 value)
 
 inline bool StrLdr32PairImmValid(int64 value)
 {
-    constexpr int immValidOffset = 3;
+    constexpr uint64 immValidOffset = 3;
     if ((value <= kMaxSimm32Pair) && (value >= kMinSimm32)) {
         return (static_cast<uint64>(value) & immValidOffset) > 0 ? false : true;
     }
@@ -296,7 +296,7 @@ inline bool StrLdr64ImmValid(int64 value)
 
 inline bool StrLdr64PairImmValid(int64 value)
 {
-    constexpr int immValidOffset = 7;
+    constexpr uint64 immValidOffset = 7;
     if (value <= kMaxSimm64Pair && (value >= kMinSimm64)) {
         return (static_cast<uint64>(value) & immValidOffset) > 0 ? false : true;
     }

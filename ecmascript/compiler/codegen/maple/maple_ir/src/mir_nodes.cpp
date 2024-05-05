@@ -1680,6 +1680,7 @@ void AsmNode::Dump(int32 indent) const
     for (size_t i = 0; i < gotoLabels.size(); i++) {
         LabelIdx offset = gotoLabels[i];
         LogInfo::MapleLogger() << " @" << theMIRModule->CurFunction()->GetLabelName(offset);
+        CHECK_FATAL(gotoLabels.size() > 0, "must not be zero");
         if (i != gotoLabels.size() - 1) {
             LogInfo::MapleLogger() << ',';
         }

@@ -2707,6 +2707,7 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
         GateRef frameValues = acc_.GetValueIn(frameState, 1);  // 1: frame values
         const size_t numValueIn = acc_.GetNumValueIn(frameValues);
         const size_t envIndex = numValueIn - 2;  // 2: env valueIn index
+        CHECK_FATAL(numValueIn > 0, "must not be zero");
         const size_t accIndex = numValueIn - 1;  // 1: acc valueIn index
         GateRef env = acc_.GetValueIn(frameValues, envIndex);
         GateRef acc = acc_.GetValueIn(frameValues, accIndex);

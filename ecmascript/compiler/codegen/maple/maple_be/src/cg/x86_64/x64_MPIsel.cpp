@@ -33,7 +33,7 @@ MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, Fie
         DEBUG_ASSERT((mirType->IsMIRStructType() || mirType->IsMIRUnionType()), "non-structure");
         MIRStructType *structType = static_cast<MIRStructType *>(mirType);
         symType = structType->GetFieldType(fieldId)->GetPrimType();
-        fieldOffset = static_cast<uint32>(cgFunc->GetBecommon().GetFieldOffset(*structType, fieldId).first);
+        fieldOffset = static_cast<int32>(cgFunc->GetBecommon().GetFieldOffset(*structType, fieldId).first);
     }
     uint32 opndSz = (symType == PTY_agg) ? k64BitSize : GetPrimTypeBitSize(symType);
     return GetOrCreateMemOpndFromSymbol(symbol, opndSz, fieldOffset);
@@ -147,7 +147,7 @@ void X64MPIsel::SelectReturn()
 
 void X64MPIsel::CreateCallStructParamPassByStack(MemOperand &memOpnd, int32 symSize, int32 baseOffset)
 {
-    int32 copyTime = RoundUp(symSize, GetPointerSize()) / GetPointerSize();
+    int32 copyTime = static_cast<int32>(RoundUp(symSize, GetPointerSize()) / GetPointerSize());
     for (int32 i = 0; i < copyTime; ++i) {
         MemOperand &addrMemOpnd = cgFunc->GetOpndBuilder()->CreateMem(k64BitSize);
         addrMemOpnd.SetBaseRegister(*memOpnd.GetBaseRegister());
@@ -756,7 +756,7 @@ void X64MPIsel::GenCVaStartIntrin(RegOperand &opnd, uint32 stkOffset)
 
     /* __vr_top */
     int32 grAreaSize = static_cast<int32>(static_cast<X64MemLayout *>(cgFunc->GetMemlayout())->GetSizeOfGRSaveArea());
-    stkOffset += grAreaSize;
+    stkOffset += static_cast<uint32>(grAreaSize);
     stkOffset += k8BitSize;
     ImmOperand &vaListVRTopOffset = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, stkOffset);
     SelectSub(vReg, fpOpnd, vaListVRTopOffset, PTY_a64);

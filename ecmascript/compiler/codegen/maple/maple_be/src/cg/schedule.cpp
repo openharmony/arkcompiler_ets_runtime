@@ -82,6 +82,7 @@ void RegPressureSchedule::InitPartialSplitters(const MapleVector<DepNode *> &nod
     }
     /* Add first and last node as split point if needed */
     if (addFirstAndLastNodeIndex) {
+        CHECK_FATAL(nodes.size() > 0, "must not be zero");
         splitterIndexes.emplace_back(nodes.size() - kLastNodeIndexFromBack);
         splitterIndexes.emplace_back(kFirstNodeIndex);
     }
@@ -775,6 +776,7 @@ int RegPressureSchedule::CalculateRegisterPressure(MapleVector<DepNode *> &nodes
  */
 void RegPressureSchedule::PartialScheduling(MapleVector<DepNode *> &nodes)
 {
+    CHECK_FATAL(splitterIndexes.size() > 0, "must not be zero");
     for (size_t i = 0; i < splitterIndexes.size() - 1; ++i) {
         constexpr uint32 lastTwoNodeIndex = 2;
         auto begin = static_cast<uint32>(splitterIndexes.at(i));

@@ -777,6 +777,7 @@ void CallGraph::HandleICall(BlockNode &body, CGNode &node, StmtNode *stmt, uint3
     // Add a fake callsite here, need to fix it after all the function is visited.
     CallInfo *callInfo = GenCallInfo(kCallTypeIcall, nullptr, stmt, loopDepth, stmt->GetStmtID());
     node.AddCallsite(*callInfo, nullptr);
+    ASSERT_NOT_NULL(funcType);
     if (icallToFix.find(funcType->GetTypeIndex()) == icallToFix.end()) {
         auto *tempSet = tempAlloc.GetMemPool()->New<MapleSet<Caller2Cands>>(tempAlloc.Adapter());
         icallToFix.insert({funcType->GetTypeIndex(), tempSet});
@@ -1502,6 +1503,7 @@ void DoDevirtual(const Klass &klass, const KlassHierarchy &klassh)
                                         << "Error: func " << calleeFunc->GetName() << " is not found!" << std::endl;
                                     DEBUG_ASSERT(tmpMethod != nullptr, "Must not be null");
                                 }
+                                ASSERT_NOT_NULL(tmpMethod);
                                 calleeNode->SetPUIdx(tmpMethod->GetPuidx());
                                 if (op == OP_virtualcall || op == OP_interfacecall) {
                                     calleeNode->SetOpCode(OP_call);

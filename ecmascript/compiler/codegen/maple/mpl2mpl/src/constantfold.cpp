@@ -1915,7 +1915,7 @@ std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode
         if (op == OP_add) {
             result = NewBinaryNode(node, op, primType, l, r);
             sum = lp.second + rp.second;
-        } else if (node->Opnd(1)->GetOpCode() == OP_sub && r->GetOpCode() == OP_neg) {
+        } else if (r != nullptr && node->Opnd(1)->GetOpCode() == OP_sub && r->GetOpCode() == OP_neg) {
             // if fold is (x - (y - z))    ->     (x - neg(z)) - y
             // (x - neg(z)) Could cross the int limit
             // return node

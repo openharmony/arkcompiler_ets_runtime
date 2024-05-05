@@ -527,6 +527,7 @@ void ListScheduler::DumpWaitingQueue() const
         Insn *waitInsn = waitingQueue[i]->GetInsn();
         DEBUG_ASSERT(waitInsn != nullptr, "get insn from depNode failed");
         LogInfo::MapleLogger() << "insn_" << waitInsn->GetId();
+        CHECK_FATAL(waitingQueue.size() > 0, "must not be zero");
         if (i != waitingQueue.size() - 1) {
             LogInfo::MapleLogger() << ", ";
         }
@@ -545,6 +546,7 @@ void ListScheduler::DumpReadyList() const
             LogInfo::MapleLogger() << "insn_" << readyInsn->GetId() << "(EStart = " << readyList[i]->GetEStart()
                                    << ", LStart = " << readyList[i]->GetLStart() << ")";
         }
+        CHECK_FATAL(readyList.size() > 0, "must not be zero");
         if (i != readyList.size() - 1) {
             LogInfo::MapleLogger() << ", ";
         }
@@ -559,6 +561,7 @@ void ListScheduler::DumpScheduledResult() const
         Insn *schedInsn = commonSchedInfo->GetSchedResults()[i]->GetInsn();
         DEBUG_ASSERT(schedInsn != nullptr, "get insn from depNode failed");
         LogInfo::MapleLogger() << "insn_" << schedInsn->GetId();
+        CHECK_FATAL(commonSchedInfo->GetSchedResultsSize() > 0, "must not be zero");
         if (i != commonSchedInfo->GetSchedResultsSize() - 1) {
             LogInfo::MapleLogger() << ", ";
         }

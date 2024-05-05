@@ -86,6 +86,7 @@ void DataDepAnalysis::BuildDepsForPrevSeparator(CDGNode &cdgNode, DepNode &depNo
     }
     DepNode *prevSepNode = nullptr;
     MapleVector<DepNode *> &dataNodes = cdgNode.GetAllDataNodes();
+    CHECK_FATAL(dataNodes.size() > 0, "must not be zero");
     for (auto i = static_cast<int32>(dataNodes.size() - 1); i >= 0; --i) {
         if (dataNodes[static_cast<uint32>(i)]->GetType() == kNodeTypeSeparator) {
             prevSepNode = dataNodes[static_cast<uint32>(i)];

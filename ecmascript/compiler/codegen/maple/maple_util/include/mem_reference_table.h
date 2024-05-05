@@ -66,7 +66,7 @@ public:
         }
         defSet.insert(rhs.defSet.begin(), rhs.defSet.end());
         useSet.insert(rhs.useSet.begin(), rhs.useSet.end());
-        isIndependent |= rhs.isIndependent;
+        isIndependent = rhs.isIndependent || isIndependent;
     }
 
 private:
