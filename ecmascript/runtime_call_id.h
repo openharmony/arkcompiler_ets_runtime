@@ -206,6 +206,7 @@ namespace panda::ecmascript {
     V(SuperCall)                     \
     V(SuperCallSpread)               \
     V(DefineMethod)                  \
+    V(SetPatchModule)                \
     V(LdSuperByValue)                \
     V(StSuperByValue)                \
     V(ThrowDeleteSuperProperty)      \

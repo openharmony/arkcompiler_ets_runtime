@@ -387,6 +387,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CreateObjectHavingMethod)           \
     V(CreateObjectWithExcludedKeys)       \
     V(DefineMethod)                       \
+    V(SetPatchModule)                     \
     V(ThrowSetterIsUndefinedException)    \
     V(ThrowNotCallableException)          \
     V(ThrowCallConstructorException)      \
@@ -930,6 +931,7 @@ private:
                                           const JSHandle<JSTaggedValue> &chc,
                                           const JSHandle<ClassLiteral> &classLiteral);
     static inline JSTaggedType RuntimeTryGetInternString(uintptr_t argGlue, const JSHandle<EcmaString> &string);
+    static inline void RuntimeSetPatchModule(JSThread *thread, const JSHandle<JSFunction> &func);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

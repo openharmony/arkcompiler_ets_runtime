@@ -108,6 +108,10 @@ void PatchLoader::ExecuteFuncOrPatchMain(
 
     if (loadPatch) {
         context->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+        if (context->GetStageOfColdReload() == StageOfColdReload::IS_COLD_RELOAD) {
+            context->SetStageOfColdReload(StageOfColdReload::COLD_RELOADING);
+            thread->SetColdReload(true);
+        }
     } else {
         context->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
     }

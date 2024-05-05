@@ -305,6 +305,9 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     JSHandle<JSTaggedValue> module = SharedModuleManager::GetInstance()->GenerateFuncModule(thread, jsPandaFile,
                                                                                             entryPoint, classKind);
     jsFunc->SetModule(thread, module.GetTaggedValue());
+    if (thread->GetCurrentEcmaContext()->GetStageOfColdReload() == StageOfColdReload::COLD_RELOADING) {
+        QuickFixManager::SetPatchModule(thread, method, jsFunc);
+    }
     jsFunc->SetLength(length);
     return jsFunc;
 }

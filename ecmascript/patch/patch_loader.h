@@ -90,6 +90,12 @@ enum class StageOfHotReload : int32_t {
     UNLOAD_END_EXECUTE_PATCHMAIN // 2 :for execute abc normally
 };
 
+enum class StageOfColdReload : int32_t {
+    NOT_COLD_RELOAD,
+    IS_COLD_RELOAD,
+    COLD_RELOADING
+};
+
 class PatchLoader {
 public:
     PatchLoader() = default;

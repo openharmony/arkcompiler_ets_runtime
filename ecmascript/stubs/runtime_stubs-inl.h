@@ -42,6 +42,7 @@
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
@@ -918,6 +919,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
 
     cls->SetLexicalEnv(thread, lexenv.GetTaggedValue());
     cls->SetModule(thread, module.GetTaggedValue());
+    if (thread->GetCurrentEcmaContext()->GetStageOfColdReload() == StageOfColdReload::COLD_RELOADING) {
+        const JSHandle<Method> methodHandle(thread, methodObj);
+        QuickFixManager::SetPatchModule(thread, methodHandle, cls);
+    }
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), length.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -2145,7 +2150,9 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     result->SetLexicalEnv(thread, envHandle.GetTaggedValue());
     result->SetHomeObject(thread, homeObject.GetTaggedValue());
     result->SetModule(thread, module.GetTaggedValue());
-
+    if (thread->GetCurrentEcmaContext()->GetStageOfColdReload() == StageOfColdReload::COLD_RELOADING) {
+        QuickFixManager::SetPatchModule(thread, methodHandle, result);
+    }
     return result.GetTaggedValue();
 }
 
@@ -2276,6 +2283,9 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
     func->SetLength(length);
     func->SetLexicalEnv(thread, env);
     func->SetModule(thread, module);
+    if (thread->GetCurrentEcmaContext()->GetStageOfColdReload() == StageOfColdReload::COLD_RELOADING) {
+        QuickFixManager::SetPatchModule(thread, methodHandle, func);
+    }
     return func.GetTaggedValue();
 }
 
@@ -2307,6 +2317,17 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(length, coretypesArray);
     return EcmaInterpreter::Execute(info);
+}
+
+void RuntimeStubs::RuntimeSetPatchModule(JSThread *thread, const JSHandle<JSFunction> &func)
+{
+    JSHandle<Method> methodHandle(thread, Method::Cast(func->GetMethod()));
+    const JSHandle<JSTaggedValue> coldReloadRecordName =
+            thread->GetCurrentEcmaContext()->FindPatchModule(MethodLiteral::GetRecordName(
+                methodHandle->GetJSPandaFile(), methodHandle->GetMethodId()));
+    if (!coldReloadRecordName->IsHole()) {
+        func->SetModule(thread, coldReloadRecordName.GetTaggedValue());
+    }
 }
 
 JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, const JSHandle<JSObject> &obj,

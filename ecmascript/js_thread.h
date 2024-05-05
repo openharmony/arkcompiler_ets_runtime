@@ -847,6 +847,15 @@ public:
         return glueData_.taskInfo_;
     }
 
+    void SetColdReload(bool coldReload)
+    {
+        glueData_.isColdReload_ = coldReload;
+    }
+
+    bool GetColdReload()
+    {
+        return glueData_.isColdReload_;
+    }
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -886,6 +895,7 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
+                                                 base::AlignedBool,
                                                  base::AlignedUint32> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -927,6 +937,7 @@ public:
             RandomStatePtrIndex,
             stateAndFlagsIndex,
             TaskInfoIndex,
+            IsColdReloadIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1141,7 +1152,11 @@ public:
         {
             return GetOffset<static_cast<size_t>(Index::TaskInfoIndex)>(isArch32);
         }
-        
+
+        static size_t GetIsColdReloadOffSet(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::IsColdReloadIndex)>(isArch32);
+        }
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1181,6 +1196,7 @@ public:
         alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
         alignas(EAS) uintptr_t taskInfo_ {0};
+        alignas(EAS) bool isColdReload_ {false};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
