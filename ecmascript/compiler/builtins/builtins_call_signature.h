@@ -62,11 +62,18 @@ namespace panda::ecmascript::kungfu {
     V(GetStringIterator,  String,   Undefined())
 
 #define BUILTINS_WITH_OBJECT_STUB_BUILDER(V)                                      \
-    V(ToString,        Object,   Undefined())                                     \
-    V(Create,          Object,   Undefined())                                     \
-    V(Assign,          Object,   Undefined())                                     \
-    V(HasOwnProperty,  Object,   TaggedFalse())                                   \
-    V(Keys,            Object,   Undefined())
+    V(ToString,                    Object,   Undefined())                         \
+    V(Create,                      Object,   Undefined())                         \
+    V(Assign,                      Object,   Undefined())                         \
+    V(HasOwnProperty,              Object,   TaggedFalse())                       \
+    V(Keys,                        Object,   Undefined())                         \
+    V(GetPrototypeOf,              Object,   Undefined())                         \
+    V(GetOwnPropertyNames,         Object,   Undefined())                         \
+    V(GetOwnPropertySymbols,       Object,   Undefined())                         \
+    V(Entries,                     Object,   Undefined())                         \
+    V(IsFrozen,                    Object,   Undefined())                         \
+    V(IsSealed,                    Object,   Undefined())                         \
+    V(GetOwnPropertyDescriptors,   Object,   Undefined())
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V)         \
     V(With,          Array,   Undefined())          \

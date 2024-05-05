@@ -46,6 +46,11 @@ private:
     GateRef CopyFromEnumCache(GateRef glue, GateRef elements);
     GateRef GetAllEnumKeys(GateRef glue, GateRef obj);
     GateRef GetEnumElementKeys(GateRef glue, GateRef obj);
+    GateRef GetAllElementKeys(GateRef glue, GateRef obj, GateRef offset, GateRef array);
+    GateRef GetAllPropertyKeys(GateRef glue, GateRef obj, GateRef offset, GateRef array);
+    GateRef GetEnumPropertyEntries(GateRef glue, GateRef obj, Label *slowPath);
+    GateRef GetEnumElementPropertyEntries(GateRef glue, GateRef obj, Label *slowPath);
+    GateRef TestIntegrityLevel(GateRef glue, GateRef obj, GateRef level, Label *slowPath);
     void LayoutInfoGetAllEnumKeys(GateRef end, GateRef offset, GateRef array, GateRef object, GateRef layoutInfo);
     void AssignEnumElementProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
     void LayoutInfoAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);

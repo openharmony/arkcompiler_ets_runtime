@@ -56,3 +56,24 @@ var obj3 = {
 for (const [key, value] of Object.entries(obj3)) {
     print(key + "," + value);
 }
+
+const objectEntries1 = {
+    a: 'somestring',
+    3:30,
+    b: 42,
+    5:50,
+  };
+
+  print(Object.entries(objectEntries1))
+
+  const objectEntries2 = {
+    a: 'somestring',
+    3:30,
+    b: 42,
+    5:50,
+  };
+  objectEntries2[1] = 10;
+  objectEntries2[4] = 40;
+  print(Object.entries(objectEntries2))
+
+  print(Object.entries("test"));

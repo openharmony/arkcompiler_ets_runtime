@@ -958,6 +958,46 @@ DEF_RUNTIME_STUBS(ToPropertyKey)
     return res.GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ToPropertyKeyValue)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyValue);
+    std::string string_key = "value";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyWritable)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyWritable);
+    std::string string_key = "writable";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyEnumerable)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyEnumerable);
+    std::string string_key = "enumerable";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyConfigurable)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyConfigurable);
+    std::string string_key = "configurable";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(Exp)
 {
     RUNTIME_STUBS_HEADER(Exp);
