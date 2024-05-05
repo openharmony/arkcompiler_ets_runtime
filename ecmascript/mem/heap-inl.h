@@ -403,7 +403,11 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
 void Heap::SwapNewSpace()
 {
     activeSemiSpace_->Stop();
-    inactiveSemiSpace_->Restart();
+    size_t newOverShootSize = 0;
+    if (!inBackground_ && gcType_ != TriggerGCType::FULL_GC && gcType_ != TriggerGCType::APPSPAWN_FULL_GC) {
+        newOverShootSize = activeSemiSpace_->CalculateNewOverShootSize();
+    }
+    inactiveSemiSpace_->Restart(newOverShootSize);
 
     SemiSpace *newSpace = inactiveSemiSpace_;
     inactiveSemiSpace_ = activeSemiSpace_;

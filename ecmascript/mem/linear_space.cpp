@@ -178,12 +178,23 @@ void SemiSpace::Initialize()
     allocator_.Reset(region->GetBegin(), region->GetEnd());
 }
 
-void SemiSpace::Restart()
+void SemiSpace::Restart(size_t overShootSize)
 {
-    overShootSize_ = 0;
+    overShootSize_ = overShootSize;
     survivalObjectSize_ = 0;
     allocateAfterLastGC_ = 0;
     Initialize();
+}
+
+size_t SemiSpace::CalculateNewOverShootSize()
+{
+    return committedSize_ <= maximumCapacity_ ?
+           0 : AlignUp((committedSize_ - maximumCapacity_) / 2, DEFAULT_REGION_SIZE); // 2 is the half.
+}
+
+bool SemiSpace::CommittedSizeIsLarge()
+{
+    return committedSize_ >= maximumCapacity_ * 2; // 2 is the half.
 }
 
 uintptr_t SemiSpace::AllocateSync(size_t size)
