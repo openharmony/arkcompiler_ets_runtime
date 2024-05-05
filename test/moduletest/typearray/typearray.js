@@ -610,3 +610,177 @@ let res9 = arr1.reduceRight(fun1, null);
 print(res3);
 let res10 = arr2.reduceRight(fun1, null);
 print(res4);
+
+// Test case for findLastIndex()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayfindLastIndex(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function func(element, Last, array) {
+    return element >= 0;
+}
+
+function testTypeArrayfindLastIndex(ctor) {
+    let obj = new ctor([5, 10, 20, 30, 40, 50, 60])
+    let result = obj.findLastIndex(func);
+    return result != -1;
+}
+
+[
+    BigInt64Array,
+    BigUint64Array
+].forEach(function(ctor, i) {
+    if (testTypeArrayfindLastIndex1(ctor) ) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayfindLastIndex1(ctor) {
+    let obj = new ctor([5n, 10n, 20n, 30n, 40n, 50n, 60n])
+    let result = obj.findLastIndex(func);
+    return result != -1;
+}
+
+// Test case for of()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayOf1(ctor) && testTypeArrayOf2(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayOf1(ctor) {
+    let arr1 = ctor.of("1", 2, undefined);
+    let arr2 = new ctor([1, 2, undefined])
+    return typedArraysEqual(arr1, arr2);
+}
+
+function testTypeArrayOf2(ctor) {
+    var obj1 = {
+        valueOf() {
+          return 41;
+        }
+      };
+      var obj2 = {
+        valueOf() {
+          return 42;
+        }
+      };
+    let arr1 = ctor.of(obj1, obj2, obj1);
+    let arr2 = new ctor([41, 42, 41])
+    return typedArraysEqual(arr1, arr2);
+}
+
+function typedArraysEqual(typedArr1, typedArr2) {
+    if (typedArr1.length !== typedArr2.length) return false;
+    for (let i = 0; i < typedArr1.length; i++) {
+      if (typedArr1[i] !== typedArr2[i]) return false;
+    }
+    return true;
+}
+
+// typedArray.map()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArray1(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+  
+function testTypeArray1(ctor) {
+    let obj = new ctor([2]);
+    let result = obj.map(function (num) {
+        return num * 2;
+    });
+    return result[0] == 4;
+}
+
+// test case for toReversed()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayToReversed1(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayToReversed1(ctor) {
+    let arr1 = new ctor([1, 2, 3, 4, 5]);
+    let arr2 = arr1.toReversed();
+    let arr3 = new ctor([5, 4, 3, 2, 1]);
+    if (arr2.length !== arr3.length) return false;
+    for (let i = 0; i < arr2.length; i++) {
+        if (arr2[i] !== arr3[i]) return false;
+    }
+    return true;
+}
+
+[
+    BigInt64Array,
+    BigUint64Array
+].forEach(function(ctor, i) {
+    if (testTypeArrayToReversed2(ctor) ) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayToReversed2(ctor) {
+    let arr1 = new ctor([1n, 2n, 3n, 4n, 5n]);
+    let arr2 = arr1.toReversed();
+    let arr3 = new ctor([5n, 4n, 3n, 2n, 1n]);
+    if (arr2.length !== arr3.length) return false;
+    for (let i = 0; i < arr2.length; i++) {
+        if (arr2[i] !== arr3[i]) return false;
+    }
+    return true;
+}

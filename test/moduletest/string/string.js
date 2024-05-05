@@ -319,3 +319,47 @@ class C4 {
 new C4();
 
 print("abcd汉字".startsWith("abcd"));
+
+let greeting = "          Hello World!          ";
+let fooStr = "foo     ";
+let barStr = "     bar";
+let chinese = "          我，是一个中文句子    我前面有一些空格，我中间有一些空格。     我后面也有一些空格。          ";
+// test for trimStart()
+print(greeting.trimStart());
+print(fooStr.trimStart());
+print(barStr.trimStart());
+print(chinese.trimStart());
+// test for trimEnd()
+print(greeting.trimEnd());
+print(fooStr.trimEnd());
+print(barStr.trimEnd());
+print(chinese.trimEnd());
+// test for trimLeft()
+print(greeting.trimLeft());
+print(fooStr.trimLeft());
+print(barStr.trimLeft());
+print(chinese.trimLeft());
+// test for trimRight()
+print(greeting.trimRight());
+print(fooStr.trimRight());
+print(barStr.trimRight());
+print(chinese.trimRight());
+
+// Test case for padStart()
+let start_str = "abc";
+print(start_str.padStart(10, "123"));
+print(start_str.padStart(5.666, "123"));
+print(start_str.padStart(NaN, "123"));
+print(start_str.padStart(-Infinity, "123"));
+print(start_str.padStart(0, "123"));
+print(start_str.padStart(10, ""));
+
+// test for padEnd()
+print("abc".padEnd(5, 'abc'));
+print('abc'.padEnd(undefined, 'def'));
+print('abc'.padEnd(null, 'def') );
+print('abc'.padEnd(NaN, 'def') );
+print('abc'.padEnd(-Infinity, 'def') );
+print('abc'.padEnd(0, 'def') );
+print('abc'.padEnd(-1, 'def') );
+print('abc'.padEnd(5, ''))
