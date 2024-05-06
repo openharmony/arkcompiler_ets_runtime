@@ -138,3 +138,70 @@ let o1 = {
     [o](a, b) { }
 }
 print("test privateproperty class sucecess")
+
+
+try {
+    const v13 = new ArrayBuffer(1073741824);
+    function F14(a16, a17) {
+        if (!new.target) { throw 'must be called with new'; }
+        function f18(a19, a20, a21) {
+        }
+        const v23 = `-2`;
+        async function f25(a26, a27, a28, a29) {
+            return v23;
+        }
+        f25();
+        const v33 = new BigUint64Array(34815);
+        const o34 = {
+            ...v33,
+            ...v33,
+        };
+        Object.defineProperty(o34, 4, { set: f18 });
+    }
+    const v35 = new F14(ArrayBuffer);
+    const t33 = 64n;
+    new t33(v35, v13);
+} catch(err) {
+    print(err.name);
+}
+
+try {
+    class C0 {
+        constructor(a2) {
+            const v5 = new ArrayBuffer(1073741824);
+            function F6(a8, a9) {
+                if (!new.target) { throw 'must be called with new'; }
+                const v12 = new BigUint64Array(34815);
+                const o13 = {
+                    ...v12,
+                };
+                Object.defineProperty(o13, 4, { set: F6 });
+            }
+            new F6(ArrayBuffer, v5);
+            new a2();
+        }
+    }
+    new C0(C0);
+} catch(err) {
+    print(err.name);
+}
+
+try {
+    const v1 = new WeakSet();
+    function f2() {
+        return v1;
+    }
+    new SharedArrayBuffer(2143786842);
+    const o8 = {
+    };
+    for (let i11 = -57109n, i12 = 10; i11 < i12; i12--) {
+        o8[i12] >>= i12;
+    }
+    class C20 extends f2 {
+    }
+    new C20(803754.1443936096, 803754.1443936096, -7.505335968901483);
+    C20(803754.1443936096);
+    BigUint64Array();
+} catch(err) {
+    print(err.name);
+}
