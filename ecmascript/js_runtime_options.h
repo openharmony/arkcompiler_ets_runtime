@@ -49,7 +49,8 @@ enum ArkProperties {
     CPU_PROFILER_ANY_TIME_MAIN_THREAD = 1 << 17,
     CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
     ENABLE_HEAP_VERIFY = 1 << 19,
-    ENABLE_MICROJOB_TRACE = 1 << 20
+    ENABLE_MICROJOB_TRACE = 1 << 20,
+    ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21
 };
 
 // asm interpreter control parsed option
@@ -546,6 +547,11 @@ public:
     bool EnableMicroJobTrace() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MICROJOB_TRACE) != 0;
+    }
+
+    bool EnableInitOldSocketSession() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_INIT_OLD_SOCKET_SESSION) != 0;
     }
 
     void DisableReportModuleResolvingFailure()

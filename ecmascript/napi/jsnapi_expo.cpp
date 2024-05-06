@@ -3567,7 +3567,11 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
 #ifdef PANDA_TARGET_ARM32
     ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
 #else
-    ret = true;
+    if (vm->GetJSOptions().EnableInitOldSocketSession()) {
+        ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+    } else {
+        ret = true;
+    }
 #endif
 
     // store debugger postTask in inspector.
