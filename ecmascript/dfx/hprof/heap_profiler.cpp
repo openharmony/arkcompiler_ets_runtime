@@ -14,6 +14,7 @@
  */
 
 #include <sys/wait.h>
+#include <sys/prctl.h>
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
@@ -232,6 +233,8 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
             return false;
         }
         if (pid == 0) {
+            vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
+            prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
             res = DoDump(dumpFormat, stream, progress, isVmMode, isPrivate, captureNumericValue, isFullGC, isSimplify);
             _exit(0);
         }
