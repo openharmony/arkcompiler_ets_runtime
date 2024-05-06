@@ -44,7 +44,8 @@
               "ipc",
               "safwk",
               "samgr",
-              "common_event_service"
+              "common_event_service",
+              "ffrt"
             ],
             "third_party": [
             ]

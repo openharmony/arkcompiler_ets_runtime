@@ -102,6 +102,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
 
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
+    jsThread->SetThreadId();
 
     RegisterThread(jsThread);
     return jsThread;
@@ -775,15 +776,33 @@ size_t JSThread::GetAsmStackLimit()
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     // js stack limit
     size_t result = GetCurrentStackPosition() - EcmaParamConfiguration::GetDefalutStackSize();
+    int ret = -1;
+    void *stackAddr = nullptr;
+    size_t size = 0;
+#if defined(ENABLE_FFRT_INTERFACES)
+    if (!ffrt_get_current_coroutine_stack(&stackAddr, &size)) {
+        pthread_attr_t attr;
+        ret = pthread_getattr_np(pthread_self(), &attr);
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "Get current thread attr failed";
+            return result;
+        }
+        ret = pthread_attr_getstack(&attr, &stackAddr, &size);
+        if (pthread_attr_destroy(&attr) != 0) {
+            LOG_ECMA(ERROR) << "Destroy current thread attr failed";
+        }
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "Get current thread stack size failed";
+            return result;
+        }
+    }
+#else
     pthread_attr_t attr;
-    int ret = pthread_getattr_np(pthread_self(), &attr);
+    ret = pthread_getattr_np(pthread_self(), &attr);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Get current thread attr failed";
         return result;
     }
-
-    void *stackAddr = nullptr;
-    size_t size = 0;
     ret = pthread_attr_getstack(&attr, &stackAddr, &size);
     if (pthread_attr_destroy(&attr) != 0) {
         LOG_ECMA(ERROR) << "Destroy current thread attr failed";
@@ -792,6 +811,7 @@ size_t JSThread::GetAsmStackLimit()
         LOG_ECMA(ERROR) << "Get current thread stack size failed";
         return result;
     }
+#endif
 
     bool isMainThread = IsMainThread();
     uintptr_t threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr);
