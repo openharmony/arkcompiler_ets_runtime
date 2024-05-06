@@ -3839,7 +3839,8 @@ bool JSNApi::IsAotEscape()
 {
     auto escapeMap = CollectCrashSum();
     return escapeMap[CrashType::AOT] >= CrashInfo::GetAotCrashCount() ||
-        escapeMap[CrashType::OTHERS] >= CrashInfo::GetOthersCrashCount();
+        escapeMap[CrashType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
+        escapeMap[CrashType::JS] >= CrashInfo::GetJsCrashCount();
 }
 
 bool JSNApi::IsJitEscape()
