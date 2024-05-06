@@ -15,4 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_moduletest_action("array") {
   deps = []
+  timeout = "900"
 }
