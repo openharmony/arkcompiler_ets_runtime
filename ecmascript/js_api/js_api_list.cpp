@@ -164,9 +164,7 @@ JSTaggedValue JSAPIList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPILis
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    if (index != (nodeLength - 1)) {
-        list->SetIsOrderedList(false);
-    }
+    list->SetIsOrderedList(false);
     return singleList->RemoveByIndex(thread, index);
 }
 
