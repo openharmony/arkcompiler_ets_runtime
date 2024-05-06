@@ -142,6 +142,14 @@ template("libark_jsruntime_common_set") {
   forward_variables_from(invoker, "*")
 
   ohos_source_set(target_name) {
+    if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
+        is_standard_system && !is_arkui_x) {
+      include_dirs = [
+        "$js_root",
+        "$js_root/ecmascript/napi/include",
+      ]
+    }
+
     stack_protector_ret = false
 
     if (is_ohos && is_standard_system) {
@@ -186,6 +194,13 @@ template("libark_jsruntime_common_set") {
       external_deps += [ "libuv:uv" ]
     }
 
+    if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
+        is_standard_system && !is_arkui_x) {
+      external_deps += [
+        "ffrt:libffrt",
+        "hilog:libhilog",
+      ]
+    }
     deps = []
     if (!is_arkui_x) {
       external_deps += [ "runtime_core:arkfile_header_deps" ]

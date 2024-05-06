@@ -35,6 +35,10 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
 
+#if defined(ENABLE_FFRT_INTERFACES)
+#include "ffrt.h"
+#endif
+
 namespace panda::ecmascript {
 class EcmaContext;
 class EcmaVM;
@@ -415,7 +419,16 @@ public:
 
     static ThreadId GetCurrentThreadId()
     {
+#if defined(ENABLE_FFRT_INTERFACES)
+        JSThread::ThreadId id = ffrt_this_task_get_id();
+        if (id != 0) {
+            return id;
+        } else {
+            return os::thread::GetCurrentThreadId();
+        }
+#else
         return os::thread::GetCurrentThreadId();
+#endif
     }
 
     void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
