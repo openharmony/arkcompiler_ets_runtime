@@ -2877,21 +2877,22 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     newArray->SetExtraLength(old->GetExtraLength());
 
     uint32_t oldLength = old->GetLength();
-    for (uint32_t i = 0; i < oldLength; i++) {
-        JSTaggedValue value = old->Get(i);
-        if (old->GetClass()->IsMutantTaggedArray()) {
-            newArray->Set<false>(thread_, i, value);
+    uint32_t index = 0;
+    auto isMutantTaggedArray = old->GetClass()->IsMutantTaggedArray();
+    for (; index < oldLength; ++index) {
+        if (isMutantTaggedArray) {
+            newArray->Set<false>(thread_, index, old->Get(index));
         } else {
-            newArray->Set(thread_, i, value);
+            newArray->Set(thread_, index, old->Get(index));
         }
     }
-
-    for (uint32_t i = oldLength; i < length; i++) {
-        if (initVal.IsHole() && old->GetClass()->IsMutantTaggedArray()) {
-            JSTaggedValue specialHole = JSTaggedValue(base::SPECIAL_HOLE);
-            newArray->Set<false>(thread_, i, specialHole);
+    auto isSpecialHole = initVal.IsHole() && isMutantTaggedArray;
+    JSTaggedValue specialHole = JSTaggedValue(base::SPECIAL_HOLE);
+    for (; index < length; ++index) {
+        if (isSpecialHole) {
+            newArray->Set<false>(thread_, index, specialHole);
         } else {
-            newArray->Set(thread_, i, initVal);
+            newArray->Set(thread_, index, initVal);
         }
     }
 
