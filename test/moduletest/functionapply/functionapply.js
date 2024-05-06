@@ -39,3 +39,44 @@ function f2() {
 }
 f2(1,2);
 f0.apply(null,v38);
+
+
+try {
+    const v3 = new ArrayBuffer(1073741824);
+    function F4(a6, a7) {
+        if (!new.target) { throw 'must be called with new'; }
+        function f8(a9, a10, a11) {
+        }
+        const v14 = new BigUint64Array(34815);
+        const o15 = {
+            ...v14,
+            ...v14,
+        };
+        Object.defineProperty(o15, 4, { set: f8 });
+    }
+    const v16 = new F4();
+    F4(v16, v3);
+} catch (error) {
+    print(error.name)
+}
+
+try {
+    const v3 = [10000,Int8Array];
+    const v6 = new ArrayBuffer(1073741824);
+    function F7(a9, a10) {
+        if (!new.target) { throw 'must be called with new'; }
+        function f11(a12, a13, a14) {
+        }
+        const v17 = new BigUint64Array(34815);
+        const o18 = {
+            ...v17,
+            ...v17,
+        };
+        Object.defineProperty(o18, 4, { set: f11 });
+    }
+    const v19 = new F7();
+    F7(v19, v6);
+    JSON.stringify(6, v3);
+} catch (error) {
+    print(error.name)
+}

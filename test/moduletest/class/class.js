@@ -205,3 +205,114 @@ try {
 } catch(err) {
     print(err.name);
 }
+
+{
+    function arkPrint(d) { print(JSON.stringify(d)); }
+    function f6() {
+        return -2524;
+    }
+    let v7 = undefined;
+    class C8 {
+        constructor(a10, a11, a12, a13) {
+            const v16 = new Uint32Array(9);
+            v7 = arkPrint(v16);
+            new Uint32Array(57);
+            new Float32Array(1050);
+            new BigInt64Array(2700);
+            new Int32Array(564);
+            new Int32Array(512);
+        }
+        static 1073741824 = -2524;
+    }
+    new C8(0.6175556940690433, f6, -4096, -2524, -2524, C8);
+    new C8(0.38965183341374976, v7, -2524, -2524);
+    new C8(0.38965183341374976, 0.6175556940690433, -2524, -1640852885);
+    [];
+    const v38 = [-1.0,4.0,1.525682610468294e+308];
+    [Uint8Array,Uint8Array];
+    const o43 = {
+    };
+    for (const v44 in o43) {
+    }
+    let v45 = new Float32Array();
+    v38[536870887] = 6;
+    let v47 = o43[536870888];
+    let v55 = --v47;
+    Math.pow(v55);
+    v55--;
+    11741 >>> -7.003996815099174;
+    new Uint8Array(6);
+    const v65 = [-2147483647,1073741824,268435456];
+    function f67(a68, a69, a70, a71) {
+        const v75 = --v45;
+        !-7.003996815099174;
+        -7.003996815099174 >>> v45;
+        Math.pow(1790022700, v75);
+        !1790022700;
+        return 9223372036854775807n;
+    }
+    f67(-7.003996815099174, Uint8Array, v47, v65);
+    class C81 {
+    }
+    class C84 {
+        179;
+    }
+    const v85 = new C84();
+    function f86(a87, a88) {
+        const o93 = {
+            [v85]: Map,
+            p(a90, a91, a92) {
+                return a87;
+            },
+            "a": a87,
+        };
+        return o93;
+    }
+    function f94() {
+    }
+    class C96 {
+    }
+    for (let v97 = 0; v97 < 25; v97++) {
+        const v99 = new WeakSet();
+        const o105 = {
+            m(a101, a102, a103, a104) {
+            },
+            ...v99,
+            ...C96,
+        };
+        new Float64Array(9);
+        [268435441,7,-1965278381,2852,268435439,-29684,57326];
+        function f110(a111, a112) {
+        }
+        function F113() {
+            if (!new.target) { throw 'must be called with new'; }
+            this.a = 10;
+        }
+        class C117 {
+            #p(a119, a120, a121) {
+                for (let v122 = 0; v122 < 86; v122++) {
+                    const o123 = {
+                    };
+                    const o124 = {
+                    };
+                    o124.f = -2147483649;
+                    const o125 = {
+                    };
+                    const o126 = {
+                    };
+                    o126.h = v122;
+                }
+            }
+        }
+        new C117();
+        class C129 {
+            constructor(a131) {
+                new Boolean(-681667533n);
+                try { new a131(a131); } catch (e) {}
+            }
+        }
+        new C129(C129);
+    }
+    const o138 = {
+    };
+}

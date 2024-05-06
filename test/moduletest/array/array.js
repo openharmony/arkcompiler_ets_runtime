@@ -778,3 +778,12 @@ try {
 } catch(err) {
     print(err.name);
 }
+
+try {
+    const v1 = new Uint16Array();
+    for (let i4 = 0, i5 = 10; i5; i5--) {
+    }
+    undefined instanceof v1.values();
+} catch (error) {
+    print(error.name);
+}
