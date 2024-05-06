@@ -22,6 +22,13 @@
 #include "iremote_object.h"
 #include "system_ability_definition.h"
 
+#include "power_disconnected_listener.h"
+
+#include "common_event_data.h"
+#include "common_event_manager.h"
+#include "common_event_support.h"
+#include "common_event_subscriber.h"
+
 namespace OHOS::ArkCompiler {
 namespace {
 const std::string TASK_ID = "UnLoadSA";
@@ -61,6 +68,7 @@ void AotCompilerService::OnStart()
         return;
     }
     state_ = ServiceRunningState::STATE_RUNNING;
+    RegisterPowerDisconnectedListener();
 }
 
 bool AotCompilerService::Init()
@@ -95,6 +103,7 @@ void AotCompilerService::OnStop()
 {
     HiviewDFX::HiLog::Info(LABEL, "aot compiler service has been onStop");
     state_ = ServiceRunningState::STATE_NOT_START;
+    UnRegisterPowerDisconnectedListener();
 }
 
 int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
@@ -113,5 +122,35 @@ int32_t AotCompilerService::StopAotCompiler()
     int32_t ret = AotCompilerImpl::GetInstance().StopAotCompiler();
     DelayUnloadTask();
     return ret;
+}
+
+void AotCompilerService::RegisterPowerDisconnectedListener()
+{
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::RegisterPowerDisconnectedListener");
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    powerDisconnectedListener_ = std::make_shared<PowerDisconnectedListener>(subscribeInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(powerDisconnectedListener_)) {
+        HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::RegisterPowerDisconnectedListener failed");
+        powerDisconnectedListener_ = nullptr;
+    } else {
+        HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::RegisterPowerDisconnectedListener success");
+        isPowerEventSubscribered_ = true;
+    }
+}
+
+void AotCompilerService::UnRegisterPowerDisconnectedListener()
+{
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::UnRegisterPowerDisconnectedListener");
+    if (!isPowerEventSubscribered_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(powerDisconnectedListener_)) {
+        HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::UnRegisterPowerDisconnectedListener failed");
+    }
+    powerDisconnectedListener_ = nullptr;
+    isPowerEventSubscribered_ = false;
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::UnRegisterPowerDisconnectedListener done");
 }
 } // namespace OHOS::ArkCompiler

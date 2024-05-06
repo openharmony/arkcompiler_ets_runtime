@@ -35,6 +35,8 @@ public:
                                   std::vector<int16_t> &sigData);
     int32_t StopAotCompiler();
 
+    void HandlePowerDisconnected();
+
 private:
     void PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap);
     void DropCapabilities(const int32_t &bundleUid, const int32_t &bundleGid) const;
@@ -44,6 +46,9 @@ private:
                              std::vector<int16_t> &sigData);
     void InitState(const pid_t childPid);
     void ResetState();
+    void PauseAotCompiler();
+    void AllowAotCompiler();
+
     AotCompilerImpl() = default;
     ~AotCompilerImpl() = default;
 
@@ -65,6 +70,7 @@ private:
         bool running = false;
         pid_t childPid = -1;
     } state_;
+    bool allowAotCompiler_ {true};
 };
 } // namespace OHOS::ArkCompiler
 #endif  // OHOS_ARKCOMPILER_AOTCOMPILER_IMPL_H
