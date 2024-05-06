@@ -935,6 +935,7 @@ static void AsmStringOutputRegNum(bool isInt, uint32 regno, uint32 intBase, uint
 {
     regno_t newRegno;
     if (isInt) {
+        CHECK_FATAL(regno >= intBase, "value overflow");
         newRegno = regno - intBase;
     } else {
         newRegno = regno - fpBase;

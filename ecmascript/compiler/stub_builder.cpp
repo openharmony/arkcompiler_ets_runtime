@@ -1576,9 +1576,40 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     BRANCH(BoolAnd(objectNotInShare, valueRegionInShare), &shareBarrier, &shareBarrierExit);
     Bind(&shareBarrier);
     {
-        // todo(lukai) fastpath
-        CallNGCRuntime(glue, RTSTUB_ID(InsertLocalToShareRSet), { glue, obj, offset });
-        Jump(&shareBarrierExit);
+        Label callSharedBarrier(env);
+        Label storeToSharedRSet(env);
+        GateRef loadOffset = IntPtr(Region::PackedData::GetLocalToShareSetOffset(env_->Is32Bit()));
+        auto localToShareSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
+        BRANCH(IntPtrEqual(localToShareSet, IntPtr(0)), &callSharedBarrier, &storeToSharedRSet);
+        Bind(&storeToSharedRSet);
+        {
+            // (slotAddr - this) >> TAGGED_TYPE_SIZE_LOG
+            GateRef bitOffsetPtr = IntPtrLSR(PtrSub(slotAddr, objectRegion), IntPtr(TAGGED_TYPE_SIZE_LOG));
+            GateRef bitOffset = TruncPtrToInt32(bitOffsetPtr);
+            GateRef bitPerWordLog2 = Int32(GCBitset::BIT_PER_WORD_LOG2);
+            GateRef bytePerWord = Int32(GCBitset::BYTE_PER_WORD);
+            // bitOffset >> BIT_PER_WORD_LOG2
+            GateRef index = Int32LSR(bitOffset, bitPerWordLog2);
+            GateRef byteIndex = Int32Mul(index, bytePerWord);
+            // bitset_[index] |= mask;
+            GateRef bitsetData = PtrAdd(localToShareSet, IntPtr(RememberedSet::GCBITSET_DATA_OFFSET));
+            GateRef oldsetValue = Load(VariableType::INT32(), bitsetData, byteIndex);
+            GateRef mask = GetBitMask(bitOffset);
+            GateRef flag = Int32And(oldsetValue, mask);
+            // Load the bit using relaxed memory order.
+            // If the bit is set, do nothing (local->shared barrier is done).
+            // Else call runtime.
+            Label atomicSet(env);
+            BRANCH(Int32NotEqual(flag, Int32(0)), &notValidIndex, &atomicSet);
+            Bind(&atomicSet);
+            CallNGCRuntime(glue, RTSTUB_ID(SetBitAtomic), { PtrAdd(bitsetData, byteIndex), mask, oldsetValue });
+            Jump(&notValidIndex);
+        }
+        Bind(&callSharedBarrier);
+        {
+            CallNGCRuntime(glue, RTSTUB_ID(InsertLocalToShareRSet), { glue, obj, offset });
+            Jump(&notValidIndex);
+        }
     }
     Bind(&shareBarrierExit);
     GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
@@ -2850,6 +2881,26 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 Jump(&exit);
             }
             Bind(&notSpecialContainer);
+
+            Label isString(env);
+            Label notString(env);
+            Label getSubString(env);
+            BRANCH(TaggedIsString(*holder), &isString, &notString);
+            Bind(&isString);
+            {
+                GateRef length = GetLengthFromString(*holder);
+                BRANCH(Int32LessThan(index, length), &getSubString, &notString);
+                Bind(&getSubString);
+                Label flattenFastPath(env);
+                BuiltinsStringStubBuilder stringBuilder(this);
+                FlatStringStubBuilder thisFlat(this);
+                thisFlat.FlattenString(glue, *holder, &flattenFastPath);
+                Bind(&flattenFastPath);
+                StringInfoGateRef stringInfoGate(&thisFlat);
+                result = stringBuilder.FastSubString(glue, *holder, index, Int32(1), stringInfoGate);
+                Jump(&exit);
+            }
+            Bind(&notString);
             {
                 result = Hole();
                 Jump(&exit);
@@ -3077,6 +3128,36 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 BRANCH(TaggedIsHole(*result), &notSIndexObj, &exit);
             }
             Bind(&notFastTypeArray);
+
+            Label isString(env);
+            Label notString(env);
+            Label notJsPrimitiveRef(env);
+            BRANCH(BoolAnd(TaggedIsString(*holder), TaggedIsString(key)), &isString, &notString);
+            Bind(&isString);
+            {
+                Label getStringLength(env);
+                Label getStringPrototype(env);
+                GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                              ConstantIndex::LENGTH_STRING_INDEX);
+                BRANCH(FastStringEqual(glue, key, lengthString), &getStringLength, &getStringPrototype);
+                Bind(&getStringLength);
+                {
+                    result = IntToTaggedPtr(GetLengthFromString(*holder));
+                    Jump(&exit);
+                }
+                Bind(&getStringPrototype);
+                {
+                    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                    GateRef stringPrototype = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                                GlobalEnv::STRING_PROTOTYPE_INDEX);
+                    holder = stringPrototype;
+                    BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &afterLoop);
+                }
+            }
+            Bind(&notString);
+            BRANCH(IsJSPrimitiveRef(*holder), &notSIndexObj, &notJsPrimitiveRef);
+            Bind(&notJsPrimitiveRef);  // not string prototype etc.
             {
                 result = Hole();
                 Jump(&exit);
@@ -7934,64 +8015,64 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
             SaveHotnessCounterIfNeeded(glue, sp, hotnessCounter, mode);
             switch (mode) {
                 case JSCallMode::CALL_THIS_ARG0:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArg0),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArg0AndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_ARG0:
                 case JSCallMode::DEPRECATED_CALL_ARG0:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArg0),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallArg0AndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG1:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArg1),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArg1AndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_ARG1:
                 case JSCallMode::DEPRECATED_CALL_ARG1:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArg1),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallArg1AndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG2:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArgs2),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArgs2AndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_ARG2:
                 case JSCallMode::DEPRECATED_CALL_ARG2:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArgs2),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallArgs2AndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG3:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArgs3),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArgs3AndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2], data[3] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_ARG3:
                 case JSCallMode::DEPRECATED_CALL_ARG3:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArgs3),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallArgs3AndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2] }); // 2: args2
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_WITH_ARGV:
                 case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallRange),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallRangeAndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_WITH_ARGV:
                 case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisRange),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisRangeAndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2] });
                     Jump(&exit);
                     break;
                 case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
                 case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallNew),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallNewAndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2] });
                     Jump(&exit);
                     break;
@@ -8009,7 +8090,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                     break;
                 case JSCallMode::SUPER_CALL_WITH_ARGV:
                 case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineSuperCall),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(SuperCallAndCheckToBaselineFromBaseline),
                                             { glue, sp, func, method, callField, data[2], data[3], data[4], data[5] });
                     Jump(&exit);
                     break;
@@ -8026,64 +8107,64 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
         SaveHotnessCounterIfNeeded(glue, sp, hotnessCounter, mode);
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg0AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArg0AndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0] });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_ARG0:
             case JSCallMode::DEPRECATED_CALL_ARG0:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg0AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallArg0AndDispatchFromBaseline),
                                         { glue, sp, func, method, callField });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_THIS_ARG1:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg1AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArg1AndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0], data[1] });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_ARG1:
             case JSCallMode::DEPRECATED_CALL_ARG1:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg1AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallArg1AndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0] });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_THIS_ARG2:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs2AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArgs2AndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0], data[1], data[2] });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_ARG2:
             case JSCallMode::DEPRECATED_CALL_ARG2:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs2AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallArgs2AndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0], data[1] });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_THIS_ARG3:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs3AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArgs3AndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0], data[1], data[2], data[3] });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_ARG3:
             case JSCallMode::DEPRECATED_CALL_ARG3:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs3AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallArgs3AndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0], data[1], data[2] }); // 2: args2
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_WITH_ARGV:
             case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallRangeAndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0], data[1] });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_THIS_WITH_ARGV:
             case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisRangeAndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallThisRangeAndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0], data[1], data[2] });
                 Jump(&exit);
                 break;
             case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallNewAndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[0], data[1], data[2] });
                 Jump(&exit);
                 break;
@@ -8109,7 +8190,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                 break;
             case JSCallMode::SUPER_CALL_WITH_ARGV:
             case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushSuperCallAndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(SuperCallAndDispatchFromBaseline),
                                         { glue, sp, func, method, callField, data[2], data[3], data[4], data[5] });
                 Jump(&exit);
                 break;
@@ -8695,64 +8776,64 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             SaveHotnessCounterIfNeeded(glue, sp, hotnessCounter, mode);
             switch (mode) {
                 case JSCallMode::CALL_THIS_ARG0:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArg0),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArg0AndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0] });
                     Return();
                     break;
                 case JSCallMode::CALL_ARG0:
                 case JSCallMode::DEPRECATED_CALL_ARG0:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArg0),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallArg0AndCheckToBaseline),
                                             { glue, sp, func, method, callField });
                     Return();
                     break;
                 case JSCallMode::CALL_THIS_ARG1:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArg1),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArg1AndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1] });
                     Return();
                     break;
                 case JSCallMode::CALL_ARG1:
                 case JSCallMode::DEPRECATED_CALL_ARG1:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArg1),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallArg1AndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0] });
                     Return();
                     break;
                 case JSCallMode::CALL_THIS_ARG2:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArgs2),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArgs2AndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2] });
                     Return();
                     break;
                 case JSCallMode::CALL_ARG2:
                 case JSCallMode::DEPRECATED_CALL_ARG2:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArgs2),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallArgs2AndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1] });
                     Return();
                     break;
                 case JSCallMode::CALL_THIS_ARG3:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArgs3),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisArgs3AndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2], data[3] });
                     Return();
                     break;
                 case JSCallMode::CALL_ARG3:
                 case JSCallMode::DEPRECATED_CALL_ARG3:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArgs3),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallArgs3AndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2] }); // 2: args2
                     Return();
                     break;
                 case JSCallMode::CALL_WITH_ARGV:
                 case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallRange),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallRangeAndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1] });
                     Return();
                     break;
                 case JSCallMode::CALL_THIS_WITH_ARGV:
                 case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisRange),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallThisRangeAndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2] });
                     Return();
                     break;
                 case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
                 case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallNew),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(CallNewAndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[0], data[1], data[2] });
                     Return();
                     break;
@@ -8770,7 +8851,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     break;
                 case JSCallMode::SUPER_CALL_WITH_ARGV:
                 case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineSuperCall),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(SuperCallAndCheckToBaseline),
                                             { glue, sp, func, method, callField, data[2], data[3], data[4], data[5] });
                     Return();
                     break;

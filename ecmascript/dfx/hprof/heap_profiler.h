@@ -78,10 +78,10 @@ public:
      */
     bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
                           bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
-                          bool isFullGC = true, bool isSimplify = false) override;
+                          bool isFullGC = true, bool isSimplify = false, bool isSync = true) override;
     void DumpHeapSnapshot(DumpFormat dumpFormat, bool isVmMode = true, bool isPrivate = false,
                           bool captureNumericValue = false, bool isFullGC = true,
-                          bool isSimplify = false) override;
+                          bool isSimplify = false, bool isSync = true) override;
     void AddSnapshot(HeapSnapshot *snapshot);
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
@@ -120,8 +120,9 @@ private:
      */
     HeapSnapshot *MakeHeapSnapshot(SampleType sampleType, bool isVmMode = true,
                                    bool isPrivate = false, bool captureNumericValue = false,
-                                   bool traceAllocation = false, bool isFullGC = true,
-                                   bool isSimplify = false);
+                                   bool traceAllocation = false, bool isFullGC = true, bool isSimplify = false);
+    bool DoDump(DumpFormat dumpFormat, Stream *stream, Progress *progress,
+                bool isVmMode, bool isPrivate, bool captureNumericValue, bool isFullGC, bool isSimplify);
     std::string GenDumpFileName(DumpFormat dumpFormat);
     CString GetTimeStamp();
     void UpdateHeapObjects(HeapSnapshot *snapshot);

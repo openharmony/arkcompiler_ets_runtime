@@ -108,6 +108,10 @@ void PatchLoader::ExecuteFuncOrPatchMain(
 
     if (loadPatch) {
         context->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+        if (context->GetStageOfColdReload() == StageOfColdReload::IS_COLD_RELOAD) {
+            context->SetStageOfColdReload(StageOfColdReload::COLD_RELOADING);
+            thread->SetColdReload(true);
+        }
     } else {
         context->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
     }
@@ -534,6 +538,7 @@ CString PatchLoader::GetRealName(const JSPandaFile *jsPandaFile, EntityId entity
 {
     std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, entityId));
     size_t poiIndex = methodName.find_last_of('#');
+    ASSERT(methodName.size() > 0);
     if (poiIndex != std::string::npos && poiIndex < methodName.size() - 1 && className != "default") {
         methodName = methodName.substr(poiIndex + 1);
     }

@@ -637,7 +637,7 @@ inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
     GateRef isHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
     BRANCH(isHeapObject, &heapObj, &exit);
     Bind(&heapObj);
-    result = env_->GetBuilder()->TaggedObjectBothAreString(x, y);;
+    result = env_->GetBuilder()->TaggedObjectBothAreString(x, y);
     Jump(&exit);
     Bind(&exit);
     auto ret = *result;
@@ -2266,8 +2266,8 @@ inline GateRef StubBuilder::IsSharedArray(GateRef jsType)
 inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
 {
     return BoolAnd(
-            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
-            Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))));
+        Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+        Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))));
 }
 
 inline GateRef StubBuilder::IsAccessorInternal(GateRef value)

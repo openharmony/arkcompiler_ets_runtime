@@ -40,3 +40,15 @@ for (let i = 0; i < 5; i++) {
     a.bar();
     print(a.foo());
 }
+
+// hcdata with object (phc)
+class B {}
+B.prototype.foo = function () {
+    return 1;
+};
+
+// primitive symbol no pgo
+const symbol = Symbol();
+const namedSymbol = Symbol("symbol");
+print(symbol.toString());
+print(namedSymbol.toString());

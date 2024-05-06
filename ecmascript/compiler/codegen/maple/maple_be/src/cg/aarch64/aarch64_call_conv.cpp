@@ -35,6 +35,7 @@ uint32 AArch64CallConvImpl::FloatParamRegRequired(const MIRStructType &structTyp
 static void AllocateHomogeneousAggregatesRegister(CCLocInfo &pLoc, std::vector<AArch64reg> &regList, uint32 maxRegNum,
                                                   PrimType baseType, uint32 allocNum, [[maybe_unused]] uint32 begin = 0)
 {
+    CHECK_FATAL(allocNum + begin > 1 && static_cast<uint64>(allocNum) + begin < UINT64_MAX, "value overflow");
     CHECK_FATAL(allocNum + begin - 1 < maxRegNum, "NIY, out of range.");
     if (allocNum >= kOneRegister) {
         pLoc.reg0 = regList[begin++];
@@ -115,6 +116,7 @@ uint64 AArch64CallConvImpl::AllocateRegisterForAgg(const MIRType &mirType, CCLoc
     size_t elemNum = 0;
     if (IsHomogeneousAggregates(mirType, baseType, elemNum)) {
         align = GetPrimTypeSize(baseType);
+        CHECK_FATAL(nextFloatRegNO < UINT32_MAX && nextFloatRegNO > 1, "value overflow");
         if ((nextFloatRegNO + elemNum - 1) < AArch64Abi::kNumFloatParmRegs) {
             // C.2  If the argument is an HFA or an HVA and there are sufficient unallocated SIMD and
             //      Floating-point registers (NSRN + number of members <= 8), then the argument is
@@ -197,6 +199,7 @@ void AArch64CallConvImpl::AllocateGPRegister(const MIRType &mirType, CCLocInfo &
         //       The argument has now been allocated.
         DEBUG_ASSERT(mirType.GetPrimType() == PTY_agg, "NIY, primType must be PTY_agg.");
         auto regNum = (size <= k8ByteSize) ? kOneRegister : kTwoRegister;
+        CHECK_FATAL(nextGeneralRegNO < UINT32_MAX - 1 && nextGeneralRegNO > 0, "value overflow");
         if (nextGeneralRegNO + regNum - 1 < AArch64Abi::kNumIntParmRegs) {
             pLoc.reg0 = AllocateGPRegister();
             pLoc.primTypeOfReg0 = (size <= k4ByteSize && !CGOptions::IsBigEndian()) ? PTY_u32 : PTY_u64;
@@ -292,10 +295,10 @@ uint64 AArch64CallConvImpl::LocateNextParm(const MIRType &mirType, CCLocInfo &pL
     if (pLoc.reg0 == kRinvalid) {
         // being passed in memory
         typeAlign = (typeAlign <= k8ByteSize) ? k8ByteSize : typeAlign;
-        nextStackArgAdress = RoundUp(nextStackArgAdress, typeAlign);
+        nextStackArgAdress = static_cast<int32>(RoundUp(nextStackArgAdress, typeAlign));
         pLoc.memOffset = static_cast<int32>(nextStackArgAdress);
         // large struct, passed with pointer
-        nextStackArgAdress += (aggCopySize != 0 ? k8ByteSize : typeSize);
+        nextStackArgAdress += static_cast<int32>(aggCopySize != 0 ? k8ByteSize : typeSize);
     }
     return aggCopySize;
 }

@@ -62,13 +62,13 @@ inline RememberedSet *Region::GetOrCreateOldToNewRememberedSet()
 
 inline RememberedSet *Region::GetOrCreateLocalToShareRememberedSet()
 {
-    if (UNLIKELY(localToShareSet_ == nullptr)) {
+    if (UNLIKELY(packedData_.localToShareSet_ == nullptr)) {
         LockHolder lock(*lock_);
-        if (localToShareSet_ == nullptr) {
-            localToShareSet_ = CreateRememberedSet();
+        if (packedData_.localToShareSet_ == nullptr) {
+            packedData_.localToShareSet_ = CreateRememberedSet();
         }
     }
-    return localToShareSet_;
+    return packedData_.localToShareSet_;
 }
 
 inline void Region::MergeRSetForConcurrentSweeping()
@@ -130,10 +130,10 @@ inline bool Region::TestLocalToShare(uintptr_t addr)
 {
     ASSERT(InRange(addr));
     // Only used for heap verification, so donot need to use lock
-    if (localToShareSet_ == nullptr) {
+    if (packedData_.localToShareSet_ == nullptr) {
         return false;
     }
-    return localToShareSet_->TestBit(ToUintPtr(this), addr);
+    return packedData_.localToShareSet_->TestBit(ToUintPtr(this), addr);
 }
 
 template <typename Visitor>
@@ -164,7 +164,7 @@ inline void Region::AtomicInsertCrossRegionRSet(uintptr_t addr)
 
 inline bool Region::HasLocalToShareRememberedSet() const
 {
-    return localToShareSet_ != nullptr;
+    return packedData_.localToShareSet_ != nullptr;
 }
 
 inline void Region::InsertLocalToShareRSet(uintptr_t addr)
@@ -181,24 +181,24 @@ inline void Region::AtomicInsertLocalToShareRSet(uintptr_t addr)
 
 inline void Region::AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
 {
-    if (localToShareSet_ != nullptr) {
-        localToShareSet_->AtomicClearRange(ToUintPtr(this), start, end);
+    if (packedData_.localToShareSet_ != nullptr) {
+        packedData_.localToShareSet_->AtomicClearRange(ToUintPtr(this), start, end);
     }
 }
 
 inline void Region::DeleteLocalToShareRSet()
 {
-    if (localToShareSet_ != nullptr) {
-        nativeAreaAllocator_->Free(localToShareSet_, localToShareSet_->Size());
-        localToShareSet_ = nullptr;
+    if (packedData_.localToShareSet_ != nullptr) {
+        nativeAreaAllocator_->Free(packedData_.localToShareSet_, packedData_.localToShareSet_->Size());
+        packedData_.localToShareSet_ = nullptr;
     }
 }
 
 template <typename Visitor>
 inline void Region::AtomicIterateAllLocalToShareBits(Visitor visitor)
 {
-    if (localToShareSet_ != nullptr) {
-        localToShareSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
+    if (packedData_.localToShareSet_ != nullptr) {
+        packedData_.localToShareSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
     }
 }
 

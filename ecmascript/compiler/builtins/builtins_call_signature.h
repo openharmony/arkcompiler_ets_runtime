@@ -54,6 +54,12 @@ namespace panda::ecmascript::kungfu {
     V(Substring,          String,   IntToTaggedPtr(Int32(-1)))                          \
     V(Replace,            String,   Undefined())                                        \
     V(Trim,               String,   Undefined())                                        \
+    V(TrimStart,          String,   Undefined())                                        \
+    V(TrimEnd,            String,   Undefined())                                        \
+    V(TrimLeft,           String,   Undefined())                                        \
+    V(TrimRight,          String,   Undefined())                                        \
+    V(PadStart,           String,   Undefined())                                        \
+    V(PadEnd,             String,   Undefined())                                        \
     V(Concat,             String,   Undefined())                                        \
     V(Slice,              String,   Undefined())                                        \
     V(ToLowerCase,        String,   Undefined())                                        \
@@ -62,11 +68,18 @@ namespace panda::ecmascript::kungfu {
     V(GetStringIterator,  String,   Undefined())
 
 #define BUILTINS_WITH_OBJECT_STUB_BUILDER(V)                                      \
-    V(ToString,        Object,   Undefined())                                     \
-    V(Create,          Object,   Undefined())                                     \
-    V(Assign,          Object,   Undefined())                                     \
-    V(HasOwnProperty,  Object,   TaggedFalse())                                   \
-    V(Keys,            Object,   Undefined())
+    V(ToString,                    Object,   Undefined())                         \
+    V(Create,                      Object,   Undefined())                         \
+    V(Assign,                      Object,   Undefined())                         \
+    V(HasOwnProperty,              Object,   TaggedFalse())                       \
+    V(Keys,                        Object,   Undefined())                         \
+    V(GetPrototypeOf,              Object,   Undefined())                         \
+    V(GetOwnPropertyNames,         Object,   Undefined())                         \
+    V(GetOwnPropertySymbols,       Object,   Undefined())                         \
+    V(Entries,                     Object,   Undefined())                         \
+    V(IsFrozen,                    Object,   Undefined())                         \
+    V(IsSealed,                    Object,   Undefined())                         \
+    V(GetOwnPropertyDescriptors,   Object,   Undefined())
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V)         \
     V(With,          Array,   Undefined())          \
@@ -148,7 +161,12 @@ namespace panda::ecmascript::kungfu {
     V(GetByteLength,   TypedArray,  Undefined())    \
     V(GetByteOffset,   TypedArray,  Undefined())    \
     V(Set,             TypedArray,  Undefined())    \
-    V(FindIndex,       TypedArray,  Undefined())
+    V(FindIndex,       TypedArray,  Undefined())    \
+    V(FindLastIndex,   TypedArray,  Undefined())    \
+    V(ToSorted,        TypedArray,  Undefined())    \
+    V(Of,              TypedArray,  Undefined())    \
+    V(Map,             TypedArray,  Undefined())    \
+    V(ToReversed,      TypedArray,  Undefined())
 
 #define BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)                           \
     V(SetInt32,     DataView,  INT32,     SetTypedValue, Undefined())    \
@@ -277,7 +295,7 @@ public:
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = JsonStringify,
         TYPED_BUILTINS_LAST = IteratorProtoReturn,
-        INVALID = 0xFF,
+        INVALID = 0xFFFF,
     };
     static_assert(ID::NONE == 0);
 

@@ -102,6 +102,7 @@ public:
         if (pos == CString::npos) {
             LOG_FULL(FATAL) << "Unknown format " << moduleRequestName;
         }
+        ASSERT(pos != 0);
         return moduleRequestName.substr(1, pos - 1);
     }
 };

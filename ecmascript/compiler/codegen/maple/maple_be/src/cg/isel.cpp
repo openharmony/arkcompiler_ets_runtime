@@ -1437,6 +1437,7 @@ Operand *MPISel::SelectAlloca(UnaryNode &node, Operand &opnd0)
     uint32 stackPtrAlignment = cgFunc->GetMemlayout()->GetStackPtrAlignment();
     RegOperand &aliOp =
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(PTY_u64), cgFunc->GetRegTyFromPrimTy(PTY_u64));
+    CHECK_FATAL(stackPtrAlignment > 0, "must not be zero");
     SelectAdd(aliOp, sizeOpnd, cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, stackPtrAlignment - 1), PTY_u64);
     ImmOperand &shiftOpnd = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, __builtin_ctz(stackPtrAlignment));
     SelectShift(aliOp, aliOp, shiftOpnd, OP_lshr, PTY_u64, PTY_u64);

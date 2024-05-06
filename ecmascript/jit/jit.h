@@ -66,6 +66,7 @@ public:
     void ClearTaskWithVm(EcmaVM *vm);
     void Destroy();
     void CheckMechineCodeSpaceMemory(JSThread *thread, int remainSize);
+    void ChangeTaskPoolState(bool inBackground);
 
     // dfx for jit preheat compile
     static void CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction);

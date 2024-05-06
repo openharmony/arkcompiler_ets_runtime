@@ -373,7 +373,7 @@ std::string JSLocale::UnicodeExtensionValue(const std::string extension, const s
 {
     // 1. Assert: The number of elements in key is 2.
     // 2. Let size be the number of elements in extension.
-    ASSERT(key.size() == INTL_INDEX_TWO);
+    ASSERT(key.size() == INTL_INDEX_TWO || key.size() == INTL_INDEX_ZERO);
     size_t size = extension.size();
     // 3. Let searchValue be the concatenation of "-" , key, and "-".
     std::string searchValue = "-" + key + "-";
@@ -494,6 +494,9 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
         // e. Let value be keyLocaleData[0].
         if ((key != "ca") && (key != "co") && (key != "nu")) {
             keyLocaleData = localeMap[key];
+            if (key == "") {
+                keyLocaleData = localeMap["lb"];
+            }
             value = *keyLocaleData.begin();
         }
 
@@ -633,6 +636,21 @@ bool JSLocale::IsWellFormedCurrencyCode(const std::string &currency)
     return (IsAToZ(currency[INTL_INDEX_ZERO]) && IsAToZ(currency[INTL_INDEX_ONE]) && IsAToZ(currency[INTL_INDEX_TWO]));
 }
 
+bool JSLocale::IsWellFormedCalendarCode(const std::string& calendar)
+{
+    std::string value = calendar;
+    while (true) {
+        std::size_t found_dash = value.find('-');
+        if (found_dash == std::string::npos) {
+            return IsAlphanum(value, INTL_INDEX_THREE, INTL_INDEX_EIGHT);
+        }
+        if (!IsAlphanum(value.substr(0, found_dash), INTL_INDEX_THREE, INTL_INDEX_EIGHT)) {
+            return false;
+        }
+        value = value.substr(found_dash + 1);
+    }
+}
+
 JSHandle<JSObject> JSLocale::PutElement(JSThread *thread, int index, const JSHandle<JSArray> &array,
                                         const JSHandle<JSTaggedValue> &fieldTypeString,
                                         const JSHandle<JSTaggedValue> &value)
@@ -678,12 +696,12 @@ bool JSLocale::GetOptionOfBool(JSThread *thread, const JSHandle<JSObject> &optio
 
 JSHandle<JSTaggedValue> JSLocale::GetNumberFieldType(JSThread *thread, JSTaggedValue x, int32_t fieldId)
 {
-    ASSERT(x.IsNumber());
+    ASSERT(x.IsNumber() || x.IsBigInt());
     double number = 0;
     auto globalConst = thread->GlobalConstants();
     if (static_cast<UNumberFormatFields>(fieldId) == UNUM_INTEGER_FIELD) {
-        number = x.GetNumber();
-        if (std::isfinite(number)) {
+        number = x.IsBigInt() ? number : x.GetNumber();
+        if (x.IsBigInt() || std::isfinite(number)) {
             return globalConst->GetHandledIntegerString();
         }
         if (std::isnan(number)) {
@@ -701,6 +719,13 @@ JSHandle<JSTaggedValue> JSLocale::GetNumberFieldType(JSThread *thread, JSTaggedV
     } else if (static_cast<UNumberFormatFields>(fieldId) == UNUM_PERCENT_FIELD) {
         return globalConst->GetHandledPercentSignString();
     } else if (static_cast<UNumberFormatFields>(fieldId) == UNUM_SIGN_FIELD) {
+        if (x.IsBigInt()) {
+            JSHandle<JSTaggedValue> bigint(thread, x);
+            JSHandle<BigInt> value(thread, JSTaggedValue::ToBigInt(thread, bigint));
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+            return value->GetSign() ? globalConst->GetHandledMinusSignString()
+                                    : globalConst->GetHandledPlusSignString();
+        }
         number = x.GetNumber();
         return std::signbit(number) ? globalConst->GetHandledMinusSignString()
                                     : globalConst->GetHandledPlusSignString();

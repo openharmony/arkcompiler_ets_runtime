@@ -22,20 +22,6 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void JSNApiCheckSecureMemFuzzTest(const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
-    uintptr_t value = reinterpret_cast<uintptr_t>(data);
-    JSNApi::CheckSecureMem(value);
-    JSNApi::DestroyJSVM(vm);
-}
-
 void JSNApiCreateEcmaVMFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
@@ -110,7 +96,6 @@ void JSNApiNotifyNativeCallingFuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSNApiCheckSecureMemFuzzTest(data, size);
     OHOS::JSNApiCreateEcmaVMFuzzTest(data, size);
     OHOS::JSNApiEnableUserUncaughtErrorHandlerFuzzTest(data, size);
     OHOS::JSNApiFunctionFuzzTest(data, size);

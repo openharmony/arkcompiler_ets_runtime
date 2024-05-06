@@ -124,6 +124,7 @@ void MIRLexer::GenName()
 {
     uint32 startIdx = curIdx;
     char c = GetNextCurrentCharWithUpperCheck();
+    CHECK_FATAL(curIdx > 0, "must not be zero");
     char cp = GetCharAt(curIdx - 1);
     if (c == '@' && (cp == 'h' || cp == 'f')) {
         // special pattern for exception handling labels: catch or finally
@@ -392,6 +393,7 @@ TokenKind MIRLexer::GetTokenWithPrefixAmpersand()
     }
     // for error reporting.
     constexpr uint32 printLength = 2;
+    CHECK_FATAL(curIdx > 0, "must not be zero");
     name = line.substr(curIdx - 1, printLength);
     return TK_invalid;
 }
@@ -420,6 +422,7 @@ TokenKind MIRLexer::GetTokenWithPrefixExclamation()
     }
     // for error reporting.
     const uint32 printLength = 2;
+    CHECK_FATAL(curIdx > 0, "must not be zero");
     name = line.substr(curIdx - 1, printLength);
     return TK_invalid;
 }
@@ -442,8 +445,10 @@ TokenKind MIRLexer::GetTokenWithPrefixDoubleQuotation()
     // for \", skip the \ to leave " only internally
     // and also for the pair of chars \ and n become '\n' etc.
     char c = GetCurrentCharWithUpperCheck();
+    CHECK_FATAL(curIdx > 0, "must not be zero");
     while ((c != 0) && (c != '\"' || GetCharAtWithLowerCheck(curIdx - 1) == '\\')) {
         if (GetCharAtWithLowerCheck(curIdx - 1) == '\\') {
+            CHECK_FATAL(curIdx >= shift, "must bigger than shift");
             shift++;
             switch (c) {
                 case '"':

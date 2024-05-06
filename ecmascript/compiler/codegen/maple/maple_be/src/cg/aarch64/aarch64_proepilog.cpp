@@ -642,11 +642,11 @@ void AArch64GenProEpilog::GeneratePushRegs()
         offset = static_cast<int32>((memLayout->RealStackFrameSize() - aarchCGFunc.SizeOfCalleeSaved()) -
                                     memLayout->GetSizeOfLocals());
     } else {
-        offset = (static_cast<int32>(memLayout->RealStackFrameSize() -
-            (static_cast<int32>(aarchCGFunc.SizeOfCalleeSaved()) -
-            (kDivide2 * static_cast<int32>(kAarch64IntregBytelen)))) - /* for FP/LR */
-            static_cast<int32>(memLayout->SizeOfArgsToStackPass()) -
-            static_cast<int32>(cgFunc.GetFunction().GetFrameReseverdSlot()));
+        offset = (static_cast<int32>(memLayout->RealStackFrameSize()) -
+                  static_cast<int32>(aarchCGFunc.SizeOfCalleeSaved()) -
+                  (kDivide2 * static_cast<int32>(kAarch64IntregBytelen)) - /* for FP/LR */
+                  static_cast<int32>(memLayout->SizeOfArgsToStackPass()) -
+                  static_cast<int32>(cgFunc.GetFunction().GetFrameReseverdSlot()));
     }
 
     if (cgFunc.GetCG()->IsStackProtectorStrong() || cgFunc.GetCG()->IsStackProtectorAll()) {
@@ -824,6 +824,7 @@ void AArch64GenProEpilog::GenerateProlog(BB &bb)
         MIRSymbol *fSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
         if (currCG->GetCGOptions().WithSrc()) {
             uint32 tempmaxsize = static_cast<uint32>(currCG->GetMIRModule()->GetSrcFileInfo().size());
+            CHECK_FATAL(tempmaxsize > 1 && tempmaxsize < UINT32_MAX, "value overflow");
             uint32 endfilenum = currCG->GetMIRModule()->GetSrcFileInfo()[tempmaxsize - 1].second;
             if (fSym->GetSrcPosition().FileNum() != 0 && fSym->GetSrcPosition().FileNum() <= endfilenum) {
                 int64_t lineNum = fSym->GetSrcPosition().LineNum();

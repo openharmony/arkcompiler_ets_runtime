@@ -46,7 +46,7 @@ class SendableClassA {
         class InnerClass {
             static innerStaticField: string = "innerStaticField";
             innerFunc() {
-                let x: number = 0;;
+                let x: number = 0;
                 (()=>{
                     print(SendableClassA.staticField);
                     print("closureVariable y = " + y);

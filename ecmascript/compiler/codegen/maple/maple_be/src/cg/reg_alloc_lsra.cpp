@@ -148,6 +148,7 @@ void LSRALinearScanRegAllocator::PrintLiveRangesGraph() const
             maxY = regNO;
         }
         uint32 n;
+        CHECK_FATAL(li->GetFirstDef() > 0, "must not be zero");
         for (n = 0; n <= (li->GetFirstDef() - 1); ++n) {
             graph[regNO - minVregNum][n] = 0;
         }

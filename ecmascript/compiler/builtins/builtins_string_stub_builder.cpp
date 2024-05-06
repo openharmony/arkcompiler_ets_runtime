@@ -2685,4 +2685,314 @@ void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRe
         }
     }
 }
+
+void BuiltinsStringStubBuilder::TrimStart(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label objNotUndefinedAndNull(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Label thisIsHeapObj(env);
+        Label thisIsString(env);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        Bind(&thisIsHeapObj);
+        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        Bind(&thisIsString);
+        GateRef result = EcmaStringTrim(glue, thisValue, Int32(1)); // 1: mode = TrimMode::start
+        res->WriteVariable(result);
+        Jump(exit);
+    }
+}
+
+void BuiltinsStringStubBuilder::TrimEnd(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label objNotUndefinedAndNull(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Label thisIsHeapObj(env);
+        Label thisIsString(env);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        Bind(&thisIsHeapObj);
+        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        Bind(&thisIsString);
+        GateRef result = EcmaStringTrim(glue, thisValue, Int32(-1)); // -1: mode = TrimMode::end
+        res->WriteVariable(result);
+        Jump(exit);
+    }
+}
+
+void BuiltinsStringStubBuilder::TrimLeft(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label objNotUndefinedAndNull(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Label thisIsHeapObj(env);
+        Label thisIsString(env);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        Bind(&thisIsHeapObj);
+        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        Bind(&thisIsString);
+        GateRef result = EcmaStringTrim(glue, thisValue, Int32(1)); // 1: mode = TrimMode::start
+        res->WriteVariable(result);
+        Jump(exit);
+    }
+}
+
+void BuiltinsStringStubBuilder::TrimRight(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label objNotUndefinedAndNull(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Label thisIsHeapObj(env);
+        Label thisIsString(env);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        Bind(&thisIsHeapObj);
+        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        Bind(&thisIsString);
+        GateRef result = EcmaStringTrim(glue, thisValue, Int32(-1)); // -1: mode = TrimMode::end
+        res->WriteVariable(result);
+        Jump(exit);
+    }
+}
+
+void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(tempStringLength, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(newStringLength, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(tempStr, VariableType::JS_ANY(), Undefined());
+
+    Label objNotUndefinedAndNull(env);
+    Label isString(env);
+    Label isPanString(env);
+    Label next(env);
+    Label padTagIsHeapObject(env);
+    Label padStringNotUndefined(env);
+    Label lengthIsInt(env);
+    Label lengthNotInt(env);
+    Label lengthIsDouble(env);
+    Label thisIsHeapobject(env);
+    Label newLengthIsNotNaN(env);
+    Label newLengthIsNotINF(env);
+    Label isSelf(env);
+    Label isNotSelf(env);
+    Label padStringNotEmpty(env);
+    Label fillLessThanPad(env);
+    Label fillNotLessThanPad(env);
+    Label resultString(env);
+
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        Bind(&thisIsHeapobject);
+        BRANCH(IsString(thisValue), &isString, slowPath);
+        Bind(&isString);
+        {
+            GateRef newLength = GetCallArg0(numArgs);
+            BRANCH(TaggedIsInt(newLength), &lengthIsInt, &lengthNotInt);
+            Bind(&lengthIsInt);
+            {
+                newStringLength = GetInt32OfTInt(newLength);
+                Jump(&next);
+            }
+            Bind(&lengthNotInt);
+            {
+                BRANCH(TaggedIsDouble(newLength), &lengthIsDouble, slowPath);
+                Bind(&lengthIsDouble);
+                BRANCH(DoubleIsNAN(GetDoubleOfTDouble(newLength)), slowPath, &newLengthIsNotNaN);
+                Bind(&newLengthIsNotNaN);
+                BRANCH(DoubleIsINF(GetDoubleOfTDouble(newLength)), slowPath, &newLengthIsNotINF);
+                Bind(&newLengthIsNotINF);
+                newStringLength = DoubleToInt(glue, GetDoubleOfTDouble(newLength));
+                Jump(&next);
+            }
+            Bind(&next);
+            GateRef thisLen = GetLengthFromString(thisValue);
+            BRANCH(Int32GreaterThanOrEqual(thisLen, *newStringLength), &isSelf, &isNotSelf);
+            Bind(&isSelf);
+            {
+                res->WriteVariable(thisValue);
+                Jump(exit);
+            }
+            Bind(&isNotSelf);
+            {
+                BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), slowPath, &padStringNotUndefined);
+                Bind(&padStringNotUndefined);
+                {
+                    GateRef panTag = GetCallArg1(numArgs);
+                    BRANCH(TaggedIsHeapObject(panTag), &padTagIsHeapObject, slowPath);
+                    Bind(&padTagIsHeapObject);
+                    BRANCH(IsString(panTag), &isPanString, slowPath);
+                    Bind(&isPanString);
+                    GateRef padStringLen = GetLengthFromString(panTag);
+                    BRANCH(Int32LessThanOrEqual(padStringLen, Int32(0)), slowPath, &padStringNotEmpty);
+                    Bind(&padStringNotEmpty);
+                    {
+                        GateRef fillStringLen = Int32Sub(*newStringLength, thisLen);
+                        BRANCH(Int32LessThan(fillStringLen, padStringLen), &fillLessThanPad, &fillNotLessThanPad);
+                        Bind(&fillLessThanPad);
+                        {
+                            tempStr = GetSubString(glue, panTag, Int32(0), fillStringLen);
+                            Jump(&resultString);
+                        }
+                        Bind(&fillNotLessThanPad);
+                        {
+                            tempStr = panTag;
+                            tempStringLength = Int32Add(padStringLen, padStringLen);
+                            Label loopHead(env);
+                            Label loopEnd(env);
+                            Label loopNext(env);
+                            Label loopExit(env);
+                            Jump(&loopHead);
+
+                            LoopBegin(&loopHead);
+                            {
+                                BRANCH(Int32GreaterThan(*tempStringLength, fillStringLen), &loopExit, &loopNext);
+                                Bind(&loopNext);
+                                {
+                                    tempStr = StringConcat(glue, panTag, *tempStr);
+                                    Jump(&loopEnd);
+                                }
+                            }
+                            Bind(&loopEnd);
+                            tempStringLength = Int32Add(*tempStringLength, padStringLen);
+                            LoopEnd(&loopHead, env, glue);
+                            Bind(&loopExit);
+                            GateRef lastLen = Int32Sub(padStringLen, Int32Sub(*tempStringLength, fillStringLen));
+                            GateRef lastPadString = GetSubString(glue, panTag, Int32(0), lastLen);
+                            tempStr = StringConcat(glue, *tempStr, lastPadString);
+                            Jump(&resultString);
+                        }
+                        Bind(&resultString);
+                        {
+                            tempStr = StringConcat(glue, *tempStr, thisValue);
+                            res->WriteVariable(*tempStr);
+                            Jump(exit);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(tempStringLength, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(newStringLength, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(tempStr, VariableType::JS_ANY(), Undefined());
+
+    Label objNotUndefinedAndNull(env);
+    Label isString(env);
+    Label isPanString(env);
+    Label next(env);
+    Label padTagIsHeapObject(env);
+    Label padStringNotUndefined(env);
+    Label lengthIsInt(env);
+    Label lengthNotInt(env);
+    Label lengthIsDouble(env);
+    Label thisIsHeapobject(env);
+    Label newLenthGreatZero(env);
+    Label isSelf(env);
+    Label isNotSelf(env);
+    Label padLengthIsNotNaN(env);
+    Label padLengthIsNotINF(env);
+
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        Bind(&thisIsHeapobject);
+        BRANCH(IsString(thisValue), &isString, slowPath);
+        Bind(&isString);
+        {
+            GateRef newLength = GetCallArg0(numArgs);
+            BRANCH(TaggedIsInt(newLength), &lengthIsInt, &lengthNotInt);
+            Bind(&lengthIsInt);
+            {
+                newStringLength = GetInt32OfTInt(newLength);
+                Jump(&next);
+            }
+            Bind(&lengthNotInt);
+            {
+                BRANCH(TaggedIsDouble(newLength), &lengthIsDouble, slowPath);
+                Bind(&lengthIsDouble);
+                BRANCH(DoubleIsNAN(GetDoubleOfTDouble(newLength)), slowPath, &padLengthIsNotNaN);
+                Bind(&padLengthIsNotNaN);
+                BRANCH(DoubleIsINF(GetDoubleOfTDouble(newLength)), slowPath, &padLengthIsNotINF);
+                Bind(&padLengthIsNotINF);
+                newStringLength = DoubleToInt(glue, GetDoubleOfTDouble(newLength));
+                Jump(&next);
+            }
+            Bind(&next);
+            GateRef thisLen = GetLengthFromString(thisValue);
+            BRANCH(Int32GreaterThanOrEqual(thisLen, *newStringLength), &isSelf, &isNotSelf);
+            Bind(&isSelf);
+            {
+                res->WriteVariable(thisValue);
+                Jump(exit);
+            }
+            Bind(&isNotSelf);
+            {
+                tempStr = thisValue;
+                BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), slowPath, &padStringNotUndefined);
+                Bind(&padStringNotUndefined);
+                {
+                    GateRef panTag = GetCallArg1(numArgs);
+                    BRANCH(TaggedIsHeapObject(panTag), &padTagIsHeapObject, slowPath);
+                    Bind(&padTagIsHeapObject);
+                    BRANCH(IsString(panTag), &isPanString, slowPath);
+                    Bind(&isPanString);
+                    {
+                        GateRef padStringLen = GetLengthFromString(panTag);
+                        BRANCH(Int32GreaterThanOrEqual(Int32(0), padStringLen), slowPath, &newLenthGreatZero);
+                        Bind(&newLenthGreatZero);
+                        {
+                            tempStringLength = Int32Add(thisLen, padStringLen);
+                            Label loopHead(env);
+                            Label loopEnd(env);
+                            Label loopNext(env);
+                            Label loopExit(env);
+                            Jump(&loopHead);
+
+                            LoopBegin(&loopHead);
+                            {
+                                BRANCH(Int32GreaterThan(*tempStringLength, *newStringLength), &loopExit, &loopNext);
+                                Bind(&loopNext);
+                                {
+                                    tempStr = StringConcat(glue, *tempStr, panTag);
+                                    Jump(&loopEnd);
+                                }
+                            }
+                            Bind(&loopEnd);
+                            tempStringLength = Int32Add(*tempStringLength, padStringLen);
+                            LoopEnd(&loopHead, env, glue);
+                            Bind(&loopExit);
+                            GateRef lastLen = Int32Sub(padStringLen, Int32Sub(*tempStringLength, *newStringLength));
+                            GateRef lastPadString = GetSubString(glue, panTag, Int32(0), lastLen);
+                            tempStr = StringConcat(glue, *tempStr, lastPadString);
+                            res->WriteVariable(*tempStr);
+                            Jump(exit);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 }  // namespace panda::ecmascript::kungfu

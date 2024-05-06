@@ -163,7 +163,20 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                 } else if (UNLIKELY(!res.IsHole())) {
                     return res;
                 }
-            } else {
+            } else if (IsString(jsType) && key.IsString()) {
+                auto vm = thread->GetEcmaVM();
+                JSTaggedValue lenKey = thread->GlobalConstants()->GetLengthString();
+                bool isLenKey = EcmaStringAccessor::StringsAreEqual(vm,
+                    JSHandle<EcmaString>(thread, key), JSHandle<EcmaString>(thread, lenKey));
+                if (isLenKey) {  // get string length
+                    return JSTaggedValue(EcmaStringAccessor(holder).GetLength());
+                } else {  // get string prototype
+                    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+                    JSHandle<JSTaggedValue> stringPrototype = env->GetStringPrototype();
+                    holder = stringPrototype.GetTaggedValue();
+                    continue;
+                }
+            } else if (!IsJSPrimitiveRef(jsType)) {  // not string prototype etc.
                 return JSTaggedValue::Hole();
             }
         }
@@ -422,6 +435,13 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
             }
             if (IsSpecialContainer(jsType)) {
                 return GetContainerProperty(thread, holder, index, jsType);
+            }
+            if (IsString(jsType)) {
+                if (index < EcmaStringAccessor(holder).GetLength()) {
+                    EcmaString *subStr = EcmaStringAccessor::FastSubString(thread->GetEcmaVM(),
+                        JSHandle<EcmaString>(thread, holder), index, 1);
+                    return JSTaggedValue(subStr);
+                }
             }
             return JSTaggedValue::Hole();
         }
@@ -831,6 +851,16 @@ bool ObjectFastOperator::IsJSSharedArray(JSType jsType)
 bool ObjectFastOperator::IsFastTypeArray(JSType jsType)
 {
     return jsType >= JSType::JS_TYPED_ARRAY_FIRST && jsType <= JSType::JS_TYPED_ARRAY_LAST;
+}
+
+bool ObjectFastOperator::IsString(JSType jsType)
+{
+    return JSType::STRING_FIRST <= jsType && jsType <= JSType::STRING_LAST;
+}
+
+bool ObjectFastOperator::IsJSPrimitiveRef(JSType jsType)
+{
+    return jsType == JSType::JS_PRIMITIVE_REF;
 }
 
 JSTaggedValue ObjectFastOperator::FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver,

@@ -3832,8 +3832,10 @@ void AArch64CGFunc::SelectMpy(Operand &resOpnd, Operand &opnd0, Operand &opnd1, 
              * otherOp * immVal = (otherOp * (immVal >> zeroNum) * (1 << zeroNum)
              * = (otherOp * ((immVal >> zeroNum) - 1) + otherOp) * (1 << zeroNum)
              */
-            if (((static_cast<uint64>(headVal) - 1) & (static_cast<uint64>(headVal) - 2)) ==
-                0) {  // 2 see comment above
+            CHECK_FATAL(static_cast<uint64>(headVal) > 2 && static_cast<uint64>(headVal) < UINT64_MAX,
+                        "value overflow");
+            // 2 see comment above
+            if (((static_cast<uint64>(headVal) - 1) & (static_cast<uint64>(headVal) - 2)) == 0) {
                 if (otherOp->GetKind() != Operand::kOpdRegister) {
                     otherOp = &SelectCopy(*otherOp, primType, primType);
                 }

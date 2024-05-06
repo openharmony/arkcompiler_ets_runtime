@@ -76,7 +76,7 @@ public:
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
                                  bool captureNumericValue, bool isFullGC, uint32_t tid);
     static void DumpHeapSnapshotWithVm(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
-                                 bool captureNumericValue, bool isFullGC);
+                                       bool captureNumericValue, bool isFullGC, uint32_t tid);
     static void TriggerGC(const EcmaVM *vm, uint32_t tid);
     static bool ForceFullGC(const EcmaVM *vm);
     static void TriggerGCWithVm(const EcmaVM *vm);

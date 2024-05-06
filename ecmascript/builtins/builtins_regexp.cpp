@@ -999,6 +999,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
         }
     } else {
         // 9. ReturnIfAbrupt(global).
+        useCache = false;
         isGlobal = GetFlag(thread, thisObj, RegExpParser::FLAG_GLOBAL, isFastPath);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // 10. If global is true, then

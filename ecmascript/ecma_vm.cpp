@@ -104,6 +104,8 @@ using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 AOTFileManager *JsStackInfo::loader = nullptr;
 JSRuntimeOptions *JsStackInfo::options = nullptr;
+bool EcmaVM::multiThreadCheck_ = false;
+
 #ifdef JIT_ESCAPE_ENABLE
 static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31
 
@@ -371,7 +373,7 @@ bool EcmaVM::Initialize()
         LOG_FULL(FATAL) << "alloc factory_ failed";
         UNREACHABLE();
     }
-    debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
+    debuggerManager_ = new tooling::JsDebuggerManager(this);
     aotFileManager_ = new AOTFileManager(this);
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
@@ -485,7 +487,7 @@ EcmaVM::~EcmaVM()
     }
 
     if (debuggerManager_ != nullptr) {
-        chunk_.Delete(debuggerManager_);
+        delete debuggerManager_;
         debuggerManager_ = nullptr;
     }
 
@@ -904,9 +906,8 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         return;
     }
     JSHandle<JSFunction> functionInfo(functionValue);
-    JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo();
-    if (!extraInfoValue.IsJSNativePointer()) {
-        LOG_ECMA(INFO) << "FunctionExtraInfo is not JSNativePointer";
+    if (!functionInfo->GetTaskConcurrentFuncFlag()) {
+        LOG_ECMA(INFO) << "Function is not Concurrent Function";
         return;
     }
 
@@ -1001,6 +1002,7 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
 std::pair<std::string, std::string> EcmaVM::GetCurrentModuleInfo(bool needRecordName)
 {
     std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread_);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, std::make_pair("", ""));
     CString recordName = ConvertToString(moduleInfo.first);
     CString fileName = ConvertToString(moduleInfo.second);
     LOG_FULL(INFO) << "Current recordName is " << recordName <<", current fileName is " << fileName;

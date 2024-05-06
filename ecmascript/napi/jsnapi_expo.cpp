@@ -19,9 +19,6 @@
 #include <array>
 #include <cstdint>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <utility>
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/json_parser.h"
@@ -211,9 +208,6 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
 static Mutex *mutex = new panda::Mutex();
-
-#define XPM_PROC_LENGTH 50
-#define PROC_SELF_XPM_REGION_PATH "/proc/self/xpm_region"
 
 // ----------------------------------- JSValueRef --------------------------------------
 Local<PrimitiveRef> JSValueRef::Undefined(const EcmaVM *vm)
@@ -1272,6 +1266,30 @@ Local<PromiseRef> PromiseCapabilityRef::GetPromise(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, capacity->GetPromise()));
 }
 
+bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, uintptr_t value)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    const GlobalEnvConstants *constants = thread->GlobalConstants();
+
+    JSHandle<JSTaggedValue> arg(value);
+    JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(capacity, FATAL);
+    JSHandle<JSTaggedValue> resolve(thread, capacity->GetResolve());
+    JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
+    EcmaRuntimeCallInfo *info =
+        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    info->SetCallArg(arg.GetTaggedValue());
+    JSFunction::Call(info);
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+
+    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    vm->GetHeap()->ClearKeptObjects();
+    return true;
+}
+
 bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -1285,6 +1303,31 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
     JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    info->SetCallArg(arg.GetTaggedValue());
+    JSFunction::Call(info);
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+
+    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    vm->GetHeap()->ClearKeptObjects();
+    return true;
+}
+
+bool PromiseCapabilityRef::Reject(const EcmaVM *vm, uintptr_t reason)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    const GlobalEnvConstants *constants = thread->GlobalConstants();
+
+    JSHandle<JSTaggedValue> arg(reason);
+    JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(capacity, FATAL);
+    JSHandle<JSTaggedValue> reject(thread, capacity->GetReject());
+    JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
+
+    EcmaRuntimeCallInfo *info =
+        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     info->SetCallArg(arg.GetTaggedValue());
     JSFunction::Call(info);
@@ -3047,7 +3090,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         LOG_ECMA(ERROR) << "Function is not concurrent";
         return false;
     }
-    transFunc->SetFunctionExtraInfo(thread, nullptr, nullptr, taskInfo);
+    transFunc->SetTaskConcurrentFuncFlag(1); // 1 : concurrent function flag
     thread->SetTaskInfo(reinterpret_cast<uintptr_t>(taskInfo));
     return true;
 }
@@ -3090,6 +3133,11 @@ std::string JSNApi::GetModuleName(EcmaVM *vm)
 std::pair<std::string, std::string> JSNApi::GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName)
 {
     return vm->GetCurrentModuleInfo(needRecordName);
+}
+
+std::string JSNApi::NormalizePath(const std::string &string)
+{
+    return PathHelper::NormalizePath(string.c_str()).c_str();
 }
 
 // Enable cross thread execution.
@@ -3151,8 +3199,8 @@ void JSNApi::GetStackBeforeCallNapiSuccess([[maybe_unused]] EcmaVM *vm,
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
     if (thread->GetIsProfiling()) {
+        ecmascript::ThreadManagedScope managedScope(thread);
         getStackBeforeCallNapiSuccess = vm->GetProfiler()->GetStackBeforeCallNapi(thread);
     }
 #endif
@@ -3162,57 +3210,11 @@ void JSNApi::GetStackAfterCallNapi([[maybe_unused]] EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
     if (thread->GetIsProfiling()) {
+        ecmascript::ThreadManagedScope managedScope(thread);
         vm->GetProfiler()->GetStackAfterCallNapi(thread);
     }
 #endif
-}
-
-bool JSNApi::CheckSecureMem(uintptr_t mem)
-{
-    static bool hasOpen = false;
-    static uintptr_t secureMemStart = 0;
-    static uintptr_t secureMemEnd = 0;
-    if (!hasOpen) {
-        int fd = open(PROC_SELF_XPM_REGION_PATH, O_RDONLY);
-        if (fd < 0) {
-            LOG_ECMA(ERROR) << "Can not open xpm proc file, do not check secure memory anymore.";
-            // No verification is performed when a file fails to be opened.
-            hasOpen = true;
-            return true;
-        }
-
-        char xpmValidateRegion[XPM_PROC_LENGTH] = {0};
-        int ret = read(fd, xpmValidateRegion, sizeof(xpmValidateRegion));
-        if (ret <= 0) {
-            LOG_ECMA(ERROR) << "Read xpm proc file failed";
-            close(fd);
-            return false;
-        }
-        close(fd);
-
-        if (sscanf_s(xpmValidateRegion, "%lx-%lx", &secureMemStart, &secureMemEnd) <= 0) {
-            LOG_ECMA(ERROR) << "sscanf_s xpm validate region failed";
-            return false;
-        }
-        // The check is not performed when the file is already opened.
-        hasOpen = true;
-    }
-
-    // xpm proc does not exist, the read value is 0, and the check is not performed.
-    if (secureMemStart == 0 && secureMemEnd == 0) {
-        LOG_ECMA(ERROR) << "Secure memory check: xpm proc does not exist, do not check secure memory anymore.";
-        return true;
-    }
-
-    LOG_ECMA(DEBUG) << "Secure memory check in memory start: " << std::hex << secureMemStart
-                   << " memory end: " << secureMemEnd;
-    if (mem < secureMemStart || mem >= secureMemEnd) {
-        LOG_ECMA(ERROR) << "Secure memory check failed, mem out of secure memory, mem: " << std::hex << mem;
-        return false;
-    }
-    return true;
 }
 
 EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
@@ -3224,6 +3226,7 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetLongPauseTime(option.GetLongPauseTime());
     runtimeOptions.SetGcThreadNum(option.GetGcThreadNum());
     runtimeOptions.SetIsWorker(option.GetIsWorker());
+    runtimeOptions.SetIsRestrictedWorker(option.GetIsRestrictedWorker());
     // Mem
     runtimeOptions.SetHeapSizeLimit(option.GetGcPoolSize());
 // Disable the asm-interpreter of ark-engine for ios-platform temporarily.
@@ -3354,10 +3357,12 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (handler.IsValid()) {
+        LOG_ECMA(ERROR) << "[StartDebugger] handler has already loaded";
         return false;
     }
 
     if (option.libraryPath == nullptr) {
+        LOG_ECMA(ERROR) << "[StartDebugger] option.libraryPath is nullptr";
         return false;
     }
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
@@ -3473,23 +3478,37 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused
     LOG_ECMA(INFO) << "JSNApi::StartDebuggerForSocketPair, tid = " << tid << ", socketfd = " << socketfd;
     JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
     if (jsDebuggerManager == nullptr) {
-        return false;
-    }
-    const auto &handle = jsDebuggerManager->GetDebugLibraryHandle();
-    if (!handle.IsValid()) {
-        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail";
+        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] jsDebuggerManager is nullptr";
         return false;
     }
 
-    using StartDebugForSocketpair = bool (*)(int, int);
+    auto &handler = jsDebuggerManager->GetDebugLibraryHandle();
+    if (!handler.IsValid()) {
+        auto libraryPath = jsDebuggerManager->GetLibraryPath();
+        if (libraryPath == nullptr) {
+            LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] libraryPath is nullptr";
+            return false;
+        }
 
-    auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebugForSocketpair");
+        auto handle = panda::os::library_loader::Load(std::string(libraryPath));
+        if (!handle) {
+            LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Load library fail: " << libraryPath << " " << errno;
+            return false;
+        }
+        handler = std::move(handle.Value());
+    }
+
+    EcmaVM *vm = jsDebuggerManager->GetEcmaVM();
+    DebuggerPostTask debuggerPostTask = jsDebuggerManager->GetDebuggerPostTask();
+    using StartDebugForSocketpair = bool (*)(int, int, EcmaVM *, const DebuggerPostTask &);
+
+    auto sym = panda::os::library_loader::ResolveSymbol(handler, "StartDebugForSocketpair");
     if (!sym) {
         LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
 
-    bool ret = reinterpret_cast<StartDebugForSocketpair>(sym.Value())(tid, socketfd);
+    bool ret = reinterpret_cast<StartDebugForSocketpair>(sym.Value())(tid, socketfd, vm, debuggerPostTask);
     if (!ret) {
         // Reset the config
         jsDebuggerManager->SetDebugMode(false);
@@ -3524,17 +3543,24 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
 
+    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
+    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
+    jsDebuggerManager->SetDebuggerPostTask(debuggerPostTask);
+    jsDebuggerManager->SetLibraryPath(option.libraryPath);
     bool ret = false;
     if (!debugApp) {
         return true;
     }
-    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
+
+    if (option.libraryPath == nullptr) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] option.libraryPath is nullptr";
+        return false;
+    }
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
         LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
-    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
@@ -3597,6 +3623,7 @@ bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
                             [[maybe_unused]] bool debugApp)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    LOG_ECMA(INFO) << "JSNApi::StoreDebugInfo, tid = " << tid;
     if (vm == nullptr) {
         return false;
     }
@@ -3605,12 +3632,17 @@ bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
     const auto &handler = jsDebuggerManager->GetDebugLibraryHandle();
     if (handler.IsValid()) {
+        LOG_ECMA(ERROR) << "[StoreDebugInfo] handler has already loaded";
         return false;
     }
 
+    if (option.libraryPath == nullptr) {
+        LOG_ECMA(ERROR) << "[StoreDebugInfo] option.libraryPath is nullptr";
+        return false;
+    }
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
-        LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << option.libraryPath << " " << errno;
+        LOG_ECMA(ERROR) << "[StoreDebugInfo] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
     JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
@@ -3921,12 +3953,14 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
     return true;
 }
 
-bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
+bool JSNApi::Execute(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
+                     bool needUpdate, bool executeFromJob)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
     ecmascript::ThreadManagedScope scope(thread);
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(
+        thread, fileName.c_str(), entry, needUpdate, executeFromJob)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(true);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
@@ -4008,10 +4042,6 @@ bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::s
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(INFO) << "start to execute ark buffer with secure memory: " << filename;
-    if (!CheckSecureMem(reinterpret_cast<uintptr_t>(data))) {
-        LOG_ECMA(ERROR) << "Secure memory check failed, please execute in srcure memory.";
-        return false;
-    }
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBufferSecure(thread, data, size, entry, filename.c_str(),
                                                                   needUpdate)) {
@@ -4031,10 +4061,6 @@ bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, 
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(INFO) << "start to execute module buffer with secure memory: " << filename;
-    if (!CheckSecureMem(reinterpret_cast<uintptr_t>(data))) {
-        LOG_ECMA(ERROR) << "Secure memory check failed, please execute in srcure memory.";
-        return false;
-    }
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, data, size, filename.c_str(),
                                                                     needUpdate)) {
@@ -4358,6 +4384,11 @@ void JSNApi::SetSearchHapPathTracker(EcmaVM *vm,
     vm->SetSearchHapPathCallBack(cb);
 }
 
+void JSNApi::SetMultiThreadCheck(bool multiThreadCheck)
+{
+    EcmaVM::SetMultiThreadCheck(multiThreadCheck);
+}
+
 void JSNApi::SetRequestAotCallback([[maybe_unused]] EcmaVM *vm, const std::function<int32_t
     (const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)> &cb)
 {
@@ -4526,6 +4557,11 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
     } else {
         // need get moduleName from stack
         std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
+        if (thread->HasPendingException()) {
+            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            return JSValueRef::Undefined(vm);
+        }
         std::string path = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
             moduleInfo.first;
         abcFilePath = moduleInfo.second;

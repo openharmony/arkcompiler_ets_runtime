@@ -94,6 +94,7 @@ void TypeTable::UpdateMIRType(const MIRType &pType, const TyIdx tyIdx)
 {
     MIRType *nType = pType.CopyMIRTypeNode();
     nType->SetTypeIndex(tyIdx);
+    ASSERT_NOT_NULL(nType);
     SetTypeWithTyIdx(tyIdx, *nType);
 }
 

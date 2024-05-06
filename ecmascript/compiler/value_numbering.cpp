@@ -34,7 +34,7 @@ GateRef ValueNumbering::VisitGate(GateRef gate)
         entriesSize_++;
         return Circuit::NullGate();
     }
-    ASSERT(entriesSize_ + entriesSize_ / LOAD_FACTOR_THRESHOLD < entriesLength_);
+    ASSERT(entriesSize_ + entriesSize_ / LOAD_FACTOR_THRESHOLD < entriesLength_ && entriesLength_ >= 1);
     const size_t mask = entriesLength_ - 1;
     size_t dead = entriesLength_;
     for (size_t i = hash & mask;; i = (i + 1) & mask) {

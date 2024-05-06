@@ -21,6 +21,7 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto valuesIn = acc_.GetNumValueIn(gate);
+    ASSERT(valuesIn >= 1);
     auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
     auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {

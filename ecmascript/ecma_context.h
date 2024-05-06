@@ -479,6 +479,15 @@ public:
         stageOfHotReload_ = stageOfHotReload;
     }
 
+    StageOfColdReload GetStageOfColdReload() const
+    {
+        return stageOfColdReload_;
+    }
+    void SetStageOfColdReload(StageOfColdReload stageOfColdReload)
+    {
+        stageOfColdReload_ = stageOfColdReload;
+    }
+
     bool JoinStackPushFastPath(JSHandle<JSTaggedValue> receiver);
     bool JoinStackPush(JSHandle<JSTaggedValue> receiver);
     void JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver);
@@ -558,6 +567,7 @@ private:
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};
     StageOfHotReload stageOfHotReload_ = StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD;
+    StageOfColdReload stageOfColdReload_ = StageOfColdReload::NOT_COLD_RELOAD;
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};

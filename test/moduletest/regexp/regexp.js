@@ -615,3 +615,12 @@ delete e.exec;
     print(v2.test(-194290175n));
   }
 }
+
+function f(...args) {
+  return {};
+}
+let reg51 = new RegExp("a");
+f.exec = f;
+let relpfun = reg51[Symbol.replace];
+relpfun.apply(f, [1, 2, 3, 4]);
+print("success");

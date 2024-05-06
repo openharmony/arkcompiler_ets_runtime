@@ -272,6 +272,7 @@ private:
         PostOrderWalk(commonEntryNode, postOrderID, visitedMap);
         // initialize reversePostOrder
         reversePostOrder.resize(postOrderID);
+        CHECK_FATAL(postOrderID > 0, "must not be zero");
         auto maxPostOrderID = postOrderID - 1;
         for (size_t i = 0; i < postOrderIDVec.size(); ++i) {
             auto postOrderNo = postOrderIDVec[i];

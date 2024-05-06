@@ -276,7 +276,7 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
     __ Bind(&target);
     {
         AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT,
-                                              CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
+                                              FrameTransitionType::OTHER_TO_OTHER);
     }
 }
 

@@ -384,6 +384,7 @@ CString ModulePathHelper::FindOhpmEntryPoint(const JSPandaFile *jsPandaFile,
 {
     CVector<CString> vec;
     StringHelper::SplitString(requestName, vec, 0);
+    ASSERT(vec.size() > 0);
     size_t maxIndex = vec.size() - 1;
     CString ohpmKey;
     size_t index = 0;
@@ -505,7 +506,9 @@ CString ModulePathHelper::ParseThirdPartyPackage(const JSPandaFile *jsPandaFile,
             if (!entryPoint.empty()) {
                 return entryPoint;
             }
-            pos = packageName.rfind(packagePath) - 1;
+            size_t index = packageName.rfind(packagePath);
+            ASSERT(index > 0);
+            pos = index - 1;
             if (pos == CString::npos || pos < 0) {
                 break;
             }

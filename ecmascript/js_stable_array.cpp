@@ -209,6 +209,7 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     uint32_t oldCapacity = ElementAccessor::GetElementsLength(thisObjHandle);
+    ASSERT(len + insertCount >= actualDeleteCount);
     uint32_t newCapacity = len - actualDeleteCount + insertCount;
     if (newCapacity > oldCapacity) {
         srcElementsHandle.Update(JSObject::GrowElementsCapacity(thread, thisObjHandle, newCapacity));
@@ -236,6 +237,7 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
             }
         }
     } else {
+        ASSERT(len >= actualDeleteCount);
         for (uint32_t idx = len - actualDeleteCount; idx > start; idx--) {
             JSHandle<JSTaggedValue> element(thread, ElementAccessor::Get(thisObjHandle, idx + actualDeleteCount - 1));
             ElementAccessor::Set(thread, thisObjHandle, idx + insertCount - 1, element, needTransition);

@@ -238,6 +238,7 @@ BaseNode *ExtConstantFold::ExtFoldXand(BinaryNode *node)
     }
 
     // Check if it is of the form of (x & m) == c cand (x & m') == c'
+    ASSERT_NOT_NULL(rnode);
     if ((lnode->GetOpCode() == OP_eq) && (rnode->GetOpCode() == OP_eq) && (lnode->Opnd(0)->GetOpCode() == OP_band) &&
         (lnode->Opnd(0)->Opnd(1)->GetOpCode() == OP_constval) &&
         (IsPrimitiveInteger(lnode->Opnd(0)->Opnd(1)->GetPrimType())) && (lnode->Opnd(1)->GetOpCode() == OP_constval) &&

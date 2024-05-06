@@ -117,6 +117,7 @@ public:
         MIRSymbol *st = func.GetSymTab()->CreateSymbol(kScopeLocal);
         std::string lblStr(".LB_");
         MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
+        CHECK_FATAL(funcSt != nullptr, "must not be null pointer");
         std::string funcName = funcSt->GetName();
         (void)lblStr.append(funcName).append(std::to_string(labelIdx));
         st->SetNameStrIdx(lblStr);

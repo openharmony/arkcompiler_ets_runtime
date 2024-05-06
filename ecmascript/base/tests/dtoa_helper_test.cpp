@@ -18,7 +18,6 @@
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
-using namespace panda::ecmascript::base::dtoa;
 
 #define TEST_DTOA(d, str, buffer, n, k, e1, e2)         \
         DtoaHelper::Dtoa(d, buffer, &(n), &(k));        \

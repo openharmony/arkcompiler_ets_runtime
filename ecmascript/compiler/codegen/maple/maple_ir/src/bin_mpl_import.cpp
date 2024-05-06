@@ -1466,6 +1466,7 @@ EACGBaseNode &BinaryMplImport::InEaCgNode(EAConnectionGraph &newEaCg)
     node->SetEACG(&newEaCg);
     eaCgTab.push_back(node);
     InEaCgBaseNode(*node, newEaCg, true);
+    CHECK_FATAL(node->id > 0, "must not be zero");
     newEaCg.SetNodeAt(node->id - 1, node);
     if (node->IsActualNode()) {
         CHECK_FATAL(ReadNum() == kBinEaCgActNode, "must be");
