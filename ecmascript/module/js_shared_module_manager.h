@@ -70,6 +70,9 @@ public:
 
     JSHandle<JSTaggedValue> GenerateFuncModule(JSThread *thread, const JSPandaFile *jsPandaFile,
         const CString &entryPoint, ClassKind classKind = ClassKind::NON_SENDABLE);
+
+    JSHandle<ModuleNamespace> SModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,
+                                                            const JSHandle<TaggedArray> &exports);
 private:
     SharedModuleManager() = default;
     ~SharedModuleManager() = default;
@@ -89,7 +92,11 @@ private:
 
     JSHandle<SourceTextModule> GetSModuleUnsafe(JSThread *thread, const CString &recordName);
 
+    JSHandle<SourceTextModule> GetSModuleUnsafe(JSThread *thread, JSTaggedValue recordName);
+
     JSHandle<SourceTextModule> GetSModule(JSThread *thread, const CString &recordName);
+
+    JSHandle<SourceTextModule> GetSModule(JSThread *thread, JSTaggedValue recordName);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
     JSTaggedValue resolvedSharedModules_ {JSTaggedValue::Hole()};

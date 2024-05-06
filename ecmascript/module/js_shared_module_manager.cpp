@@ -206,7 +206,21 @@ JSHandle<SourceTextModule> SharedModuleManager::GetSModuleUnsafe(JSThread *threa
     return JSHandle<SourceTextModule>(thread, dict->GetValue(entry));
 }
 
+JSHandle<SourceTextModule> SharedModuleManager::GetSModuleUnsafe(JSThread *thread, JSTaggedValue recordName)
+{
+    NameDictionary *dict = NameDictionary::Cast(resolvedSharedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(recordName);
+    ASSERT(entry != -1);
+    return JSHandle<SourceTextModule>(thread, dict->GetValue(entry));
+}
+
 JSHandle<SourceTextModule> SharedModuleManager::GetSModule(JSThread *thread, const CString &recordName)
+{
+    RuntimeLockHolder locker(thread, mutex_);
+    return GetSModuleUnsafe(thread, recordName);
+}
+
+JSHandle<SourceTextModule> SharedModuleManager::GetSModule(JSThread *thread, JSTaggedValue recordName)
 {
     RuntimeLockHolder locker(thread, mutex_);
     return GetSModuleUnsafe(thread, recordName);
@@ -246,6 +260,7 @@ void SharedModuleManager::TransferSModule(JSThread *thread)
         InsertInSModuleManager(thread, requireModule, module);
         moduleManager->RemoveModuleFromCache(requireModule.GetTaggedValue());
     }
+    moduleManager->ClearInstantiatingSModuleList();
 }
 
 StateVisit &SharedModuleManager::findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module)
@@ -264,7 +279,6 @@ bool SharedModuleManager::IsInstaniatedSModule(JSThread *thread, const JSHandle<
     RuntimeLockHolder locker(thread, mutex_);
     return (module->GetStatus() >= ModuleStatus::INSTANTIATED);
 }
-
 
 JSHandle<JSTaggedValue> SharedModuleManager::GenerateFuncModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                                 const CString &entryPoint, ClassKind classKind)
@@ -290,5 +304,12 @@ JSHandle<JSTaggedValue> SharedModuleManager::GenerateFuncModule(JSThread *thread
         }
     }
     return JSHandle<JSTaggedValue>(vm->GetFactory()->NewFromUtf8(recordName));
+}
+
+JSHandle<ModuleNamespace> SharedModuleManager::SModuleNamespaceCreate(JSThread *thread,
+    const JSHandle<JSTaggedValue> &module, const JSHandle<TaggedArray> &exports)
+{
+    RuntimeLockHolder locker(thread, mutex_);
+    return JSSharedModule::SModuleNamespaceCreate(thread, module, exports);
 }
 } // namespace panda::ecmascript

@@ -17,13 +17,29 @@
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_record.h"
 #include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/base/string_helper.h"
+#include "ecmascript/module/js_shared_module_manager.h"
+#include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {
+JSHandle<JSTaggedValue> ModuleNamespace::CreateSortedExports(JSThread *thread, const JSHandle<TaggedArray> &exports)
+{
+    auto globalConst = thread->GlobalConstants();
+    // 7. Let sortedExports be a new List containing the same values as the list exports where the values
+    // are ordered as if an Array of the same values had been sorted using
+    // Array.prototype.sort using undefined as comparefn.
+    JSHandle<JSArray> exportsArray = JSArray::CreateArrayFromList(thread, exports);
+    JSHandle<JSTaggedValue> sortedExports = JSHandle<JSTaggedValue>::Cast(exportsArray);
+    JSHandle<JSTaggedValue> fn = globalConst->GetHandledUndefined();
+    JSArray::Sort(thread, sortedExports, fn);
+    return sortedExports;
+}
+
 JSHandle<ModuleNamespace> ModuleNamespace::ModuleNamespaceCreate(JSThread *thread,
                                                                  const JSHandle<JSTaggedValue> &module,
                                                                  const JSHandle<TaggedArray> &exports)
@@ -31,6 +47,10 @@ JSHandle<ModuleNamespace> ModuleNamespace::ModuleNamespaceCreate(JSThread *threa
     auto globalConst = thread->GlobalConstants();
     // 1. Assert: module is a Module Record.
     ASSERT(module->IsModuleRecord());
+    if (SourceTextModule::IsSharedModule(JSHandle<SourceTextModule>::Cast(module))) {
+        return SharedModuleManager::GetInstance()->SModuleNamespaceCreate(thread, module, exports);
+    }
+
     // 2. Assert: module.[[Namespace]] is undefined.
     JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
     ASSERT(ModuleRecord::GetNamespace(moduleRecord.GetTaggedValue()).IsUndefined());
@@ -41,13 +61,8 @@ JSHandle<ModuleNamespace> ModuleNamespace::ModuleNamespaceCreate(JSThread *threa
     JSHandle<ModuleNamespace> mNp = factory->NewModuleNamespace();
     // 6. Set M.[[Module]] to module.
     mNp->SetModule(thread, module);
-    // 7. Let sortedExports be a new List containing the same values as the list exports where the values
-    // are ordered as if an Array of the same values had been sorted using
-    // Array.prototype.sort using undefined as comparefn.
-    JSHandle<JSArray> exportsArray = JSArray::CreateArrayFromList(thread, exports);
-    JSHandle<JSTaggedValue> sortedExports = JSHandle<JSTaggedValue>::Cast(exportsArray);
-    JSHandle<JSTaggedValue> fn = globalConst->GetHandledUndefined();
-    JSArray::Sort(thread, sortedExports, fn);
+
+    JSHandle<JSTaggedValue> sortedExports = CreateSortedExports(thread, exports);
     // 8. Set M.[[Exports]] to sortedExports.
     mNp->SetExports(thread, sortedExports);
     // 9. Create own properties of M corresponding to the definitions in 26.3.
@@ -81,7 +96,10 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     if (exports->IsUndefined()) {
         return OperationResult(thread, thread->GlobalConstants()->GetUndefined(), PropertyMetaData(false));
     }
-    if (!JSArray::IncludeInSortedValue(thread, exports, key)) {
+    if (exports->IsJSArray()) {
+        if (!JSArray::IncludeInSortedValue(thread, exports, key))
+        return OperationResult(thread, thread->GlobalConstants()->GetUndefined(), PropertyMetaData(false));
+    } else if (exports->IsJSSharedArray() && !JSSharedArray::IncludeInSortedValue(thread, exports, key)) {
         return OperationResult(thread, thread->GlobalConstants()->GetUndefined(), PropertyMetaData(false));
     }
     // 5. Let m be O.[[Module]].
@@ -91,33 +109,47 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolveSet);
     // 7. Assert: binding is a ResolvedBinding Record.
     // Adapter new module
-    ASSERT(binding->IsResolvedBinding() || binding->IsResolvedIndexBinding());
+    ASSERT(binding->IsModuleBinding());
     JSTaggedValue result;
     // 8. Let targetModule be binding.[[Module]].
-    if (binding->IsResolvedBinding()) {
-        JSHandle<ResolvedBinding> resolvedBind = JSHandle<ResolvedBinding>::Cast(binding);
-        JSTaggedValue targetModule = resolvedBind->GetModule();
-        // 9. Assert: targetModule is not undefined.
-        ASSERT(!targetModule.IsUndefined());
-        if (UNLIKELY(SourceTextModule::IsNativeModule(mm->GetTypes()))) {
-            result = SourceTextModule::Cast(mm.GetTaggedValue())->
-                                            GetNativeModuleValue(thread, resolvedBind);
-        } else {
-            result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
-                                            GetModuleValue(thread, resolvedBind->GetBindingName(), true);
+    JSType type = binding->GetTaggedObject()->GetClass()->GetObjectType();
+    switch (type) {
+        case JSType::RESOLVEDBINDING_RECORD: {
+            JSHandle<ResolvedBinding> resolvedBind = JSHandle<ResolvedBinding>::Cast(binding);
+            JSTaggedValue targetModule = resolvedBind->GetModule();
+            // 9. Assert: targetModule is not undefined.
+            ASSERT(!targetModule.IsUndefined());
+            if (UNLIKELY(SourceTextModule::IsNativeModule(mm->GetTypes()))) {
+                result = SourceTextModule::Cast(mm.GetTaggedValue())->
+                                                GetNativeModuleValue(thread, resolvedBind);
+            } else {
+                result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
+                                                GetModuleValue(thread, resolvedBind->GetBindingName(), true);
+            }
+            break;
         }
-    } else {
-        JSHandle<ResolvedIndexBinding> resolvedBind = JSHandle<ResolvedIndexBinding>::Cast(binding);
-        JSTaggedValue targetModule = resolvedBind->GetModule();
-        // 9. Assert: targetModule is not undefined.
-        ASSERT(!targetModule.IsUndefined());
-        if (UNLIKELY(SourceTextModule::IsNativeModule(mm->GetTypes()))) {
-            result = SourceTextModule::Cast(mm.GetTaggedValue())->
-                                            GetNativeModuleValue(thread, resolvedBind);
-        } else {
-            result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
-                                            GetModuleValue(thread, resolvedBind->GetIndex(), true);
+        case JSType::RESOLVEDINDEXBINDING_RECORD: {
+            JSHandle<ResolvedIndexBinding> resolvedBind = JSHandle<ResolvedIndexBinding>::Cast(binding);
+            JSTaggedValue targetModule = resolvedBind->GetModule();
+            // 9. Assert: targetModule is not undefined.
+            ASSERT(!targetModule.IsUndefined());
+            if (UNLIKELY(SourceTextModule::IsNativeModule(mm->GetTypes()))) {
+                result = SourceTextModule::Cast(mm.GetTaggedValue())->
+                                                GetNativeModuleValue(thread, resolvedBind);
+            } else {
+                result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
+                                                GetModuleValue(thread, resolvedBind->GetIndex(), true);
+            }
+            break;
         }
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
+            LOG_FULL(INFO) << "RESOLVEDRECORDINDEXBINDING_RECORD";
+            break;
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
+            LOG_FULL(INFO) << "RESOLVEDRECORDINDEXBINDING_RECORD";
+            break;
+        default:
+            LOG_FULL(FATAL) << "UNREACHABLE";
     }
     return OperationResult(thread, result, PropertyMetaData(true));
 }

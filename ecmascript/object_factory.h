@@ -779,6 +779,8 @@ public:
 
     JSHandle<SourceTextModule> NewSSourceTextModule();
 
+    JSHandle<ModuleNamespace> NewSModuleNamespace();
+
     JSHandle<ImportEntry> NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                          const JSHandle<JSTaggedValue> &importName,
                                          const JSHandle<JSTaggedValue> &localName);

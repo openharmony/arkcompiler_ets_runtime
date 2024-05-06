@@ -26,7 +26,10 @@ namespace panda::ecmascript {
 class ModuleManager {
 public:
     explicit ModuleManager(EcmaVM *vm);
-    ~ModuleManager() = default;
+    ~ModuleManager()
+    {
+        InstantiatingSModuleList_.clear();
+    }
 
     JSTaggedValue GetModuleValueInner(int32_t index);
     JSTaggedValue GetModuleValueInner(int32_t index, JSTaggedValue jsFunc);
@@ -52,10 +55,14 @@ public:
     JSTaggedValue GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule);
     // deprecated end
 
+    JSHandle<SourceTextModule> GetImportedModule(JSTaggedValue referencing);
     JSHandle<SourceTextModule> PUBLIC_API HostGetImportedModule(const CString &referencingModule);
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
     JSTaggedValue HostGetImportedModule(void *src);
-    bool IsImportedModuleLoaded(JSTaggedValue referencing);
+    bool IsLocalModuleLoaded(JSTaggedValue referencing);
+    bool IsSharedModuleLoaded(JSTaggedValue referencing);
+    bool IsModuleLoaded(JSTaggedValue referencing);
+
     bool IsEvaluatedModule(JSTaggedValue referencing);
 
     JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, const CString &baseFileName,
@@ -135,6 +142,8 @@ private:
     void AddToInstantiatingSModuleList(const CString &record);
 
     CVector<CString> GetInstantiatingSModuleList();
+
+    void ClearInstantiatingSModuleList();
 
     void RemoveModuleFromCache(JSTaggedValue recordName);
 
