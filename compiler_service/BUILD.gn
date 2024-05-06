@@ -34,12 +34,14 @@ ohos_shared_library("libcompiler_service") {
     "src/aot_compiler_impl.cpp",
     "src/aot_compiler_load_callback.cpp",
     "src/aot_compiler_service.cpp",
+    "src/power_disconnected_listener.cpp",
   ]
   external_deps = [
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
     "c_utils:utils",
     "code_signature:liblocal_code_sign_sdk",
+    "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "hisysevent:libhisysevent",

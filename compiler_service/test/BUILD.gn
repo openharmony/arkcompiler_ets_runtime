@@ -48,6 +48,7 @@ ohos_unittest("AotCompilerServiceTest") {
     "access_token:libtokenid_sdk",
     "c_utils:utils",
     "code_signature:liblocal_code_sign_sdk",
+    "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "hisysevent:libhisysevent",

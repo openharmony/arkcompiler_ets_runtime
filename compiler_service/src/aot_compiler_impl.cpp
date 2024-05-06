@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <thread>
 
 #include "aot_compiler_constants.h"
 #include "aot_compiler_error_utils.h"
@@ -155,6 +156,9 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
 int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                                                std::vector<int16_t> &sigData)
 {
+    if (!allowAotCompiler_) {
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
     if (argsMap.empty()) {
         HiviewDFX::HiLog::Error(LABEL, "aot compiler arguments error");
         return ERR_AOT_COMPILER_PARAM_FAILED;
@@ -209,9 +213,38 @@ int32_t AotCompilerImpl::StopAotCompiler()
         return ERR_AOT_COMPILER_STOP_FAILED;
     }
     HiviewDFX::HiLog::Info(LABEL, "begin to kill child process : %{public}d", state_.childPid);
-    (void)kill(state_.childPid, SIGKILL);
+    auto result = kill(state_.childPid, SIGKILL);
+    if (result != 0) {
+        HiviewDFX::HiLog::Info(LABEL, "kill child process failed: %{public}d", result);
+    } else {
+        HiviewDFX::HiLog::Info(LABEL, "kill child process success");
+    }
     ResetState();
     return ERR_OK;
+}
+
+void AotCompilerImpl::HandlePowerDisconnected()
+{
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::HandlePowerDisconnected");
+    PauseAotCompiler();
+    auto task = []() {
+        AotCompilerImpl::GetInstance().StopAotCompiler();
+        sleep(30);
+        AotCompilerImpl::GetInstance().AllowAotCompiler();
+    };
+    std::thread(task).detach();
+}
+
+void AotCompilerImpl::PauseAotCompiler()
+{
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::PauseAotCompiler");
+    allowAotCompiler_ = false;
+}
+
+void AotCompilerImpl::AllowAotCompiler()
+{
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::AllowAotCompiler");
+    allowAotCompiler_ = true;
 }
 
 void AotCompilerImpl::InitState(const pid_t childPid)

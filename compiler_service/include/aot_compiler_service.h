@@ -26,6 +26,8 @@
 #include "singleton.h"
 #include "system_ability.h"
 
+#include "power_disconnected_listener.h"
+
 namespace OHOS::ArkCompiler {
 enum class ServiceRunningState {
     STATE_NOT_START,
@@ -45,8 +47,13 @@ protected:
     void OnStop() override;
 private:
     bool Init();
+    void RegisterPowerDisconnectedListener();
+    void UnRegisterPowerDisconnectedListener();
+
     std::shared_ptr<AppExecFwk::EventHandler> unLoadHandler_;
     ServiceRunningState state_;
+    std::shared_ptr<PowerDisconnectedListener> powerDisconnectedListener_;
+    bool isPowerEventSubscribered_ = false;
 };
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOTCOMPILER_SERVICE_H
