@@ -1172,9 +1172,9 @@ private:
     HugeObjectSpace *hugeObjectSpace_ {nullptr};
     SnapshotSpace *snapshotSpace_ {nullptr};
     // tlab for shared non movable space
-    ThreadLocalAllocationBuffer *sNonMovableTlab_;
+    ThreadLocalAllocationBuffer *sNonMovableTlab_ {nullptr};
     // tlab for shared old space
-    ThreadLocalAllocationBuffer *sOldTlab_;
+    ThreadLocalAllocationBuffer *sOldTlab_ {nullptr};
     /*
      * Garbage collectors collecting garbage in different scopes.
      */

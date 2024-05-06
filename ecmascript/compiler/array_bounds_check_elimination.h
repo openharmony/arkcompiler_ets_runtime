@@ -98,10 +98,10 @@ private:
         }
 
     private:
-        int upper_;
-        GateRef upperGate_;
-        int lower_;
-        GateRef lowerGate_;
+        int upper_ = 0;
+        GateRef upperGate_ {Circuit::NullGate()};
+        int lower_ = 0;
+        GateRef lowerGate_ {Circuit::NullGate()};
 
         friend ArrayBoundsCheckElimination;
     };
