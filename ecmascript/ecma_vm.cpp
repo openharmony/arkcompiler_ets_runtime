@@ -205,6 +205,7 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
     Taskpool::GetCurrentTaskpool()->Initialize();
+    LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
 #ifdef JIT_ESCAPE_ENABLE
     SignalReg(SIGABRT);
     SignalReg(SIGBUS);
@@ -258,6 +259,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
       ecmaParamConfiguration_(std::move(config))
 {
     options_ = std::move(options);
+    LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
