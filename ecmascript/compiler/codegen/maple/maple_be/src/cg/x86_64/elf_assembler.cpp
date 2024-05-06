@@ -949,16 +949,22 @@ void ElfAssembler::WriteElfFile()
         DEBUG_ASSERT(textSection != nullptr, "textSection has not been initialized");
         uint8 *codeSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
             textSection->GetSectionSize(), textSection->GetAlign(), textSection->GetName());
-        memcpy_s(codeSpace, textSection->GetSectionSize(), textSection->GetData().data(), textSection->GetDataSize());
+        auto res = memcpy_s(codeSpace, textSection->GetSectionSize(), textSection->GetData().data(),
+                            textSection->GetDataSize());
+        CHECK_FATAL(res == EOK, "memcpy failed");
         if (CGOptions::addFuncSymbol()) {
-            uint8 *symtabSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
-                symbolTabSection->GetDataSize(), symbolTabSection->GetAlign(), symbolTabSection->GetName().c_str());
-            memcpy_s(symtabSpace, symbolTabSection->GetDataSize(), symbolTabSection->GetAddr(),
-                     symbolTabSection->GetDataSize());
-            uint8 *stringTabSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
-                strTabSection->GetDataSize(), strTabSection->GetAlign(), strTabSection->GetName().c_str());
-            memcpy_s(stringTabSpace, strTabSection->GetDataSize(), strTabSection->GetData().data(),
-                     strTabSection->GetDataSize());
+            uint8 *symtabSpace = emitMemoryManager.allocateDataSection(
+                emitMemoryManager.codeSpace, symbolTabSection->GetDataSize(), symbolTabSection->GetAlign(),
+                symbolTabSection->GetName().c_str());
+            res = memcpy_s(symtabSpace, symbolTabSection->GetDataSize(), symbolTabSection->GetAddr(),
+                           symbolTabSection->GetDataSize());
+            CHECK_FATAL(res == EOK, "memcpy failed");
+            uint8 *stringTabSpace =
+                emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace, strTabSection->GetDataSize(),
+                                                      strTabSection->GetAlign(), strTabSection->GetName().c_str());
+            res = memcpy_s(stringTabSpace, strTabSection->GetDataSize(), strTabSection->GetData().data(),
+                           strTabSection->GetDataSize());
+            CHECK_FATAL(res == EOK, "memcpy failed");
         }
         return;
     }

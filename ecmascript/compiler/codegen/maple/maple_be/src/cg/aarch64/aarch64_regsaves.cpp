@@ -401,7 +401,6 @@ void AArch64RegSavesOpt::DetermineCalleeSaveLocationsPre()
                 pe.push_back(reg);
             }
             if (RS_DUMP) {
-                CHECK_FATAL(reg > 1 && reg < UINT32_MAX, "value overflow");
                 mLog << "Save R" << (reg - 1) << " n/a, do in Pro/Epilog\n";
             }
             continue;
@@ -410,7 +409,6 @@ void AArch64RegSavesOpt::DetermineCalleeSaveLocationsPre()
             for (uint32 entBB : wkCand.saveAtEntryBBs) {
                 if (RS_DUMP) {
                     std::string r = reg <= R28 ? "r" : "v";
-                    CHECK_FATAL(reg > 1 && reg < UINT32_MAX, "value overflow");
                     mLog << "BB " << entBB << " save: " << r << (reg - 1) << "\n";
                 }
                 GetbbSavedRegsEntry(entBB)->InsertSaveReg(reg);
@@ -492,7 +490,6 @@ bool AArch64RegSavesOpt::DetermineCalleeRestoreLocations()
                 pe.push_back(reg);
             }
             if (RS_DUMP) {
-                CHECK_FATAL(reg > 1 && reg < UINT32_MAX, "value overflow");
                 mLog << "Restore R" << (reg - 1) << " n/a, do in Pro/Epilog\n";
             }
             continue;
@@ -501,7 +498,6 @@ bool AArch64RegSavesOpt::DetermineCalleeRestoreLocations()
             for (uint32 entBB : wkCand.restoreAtEntryBBs) {
                 if (RS_DUMP) {
                     std::string r = reg <= R28 ? "r" : "v";
-                    CHECK_FATAL(reg > 1 && reg < UINT32_MAX, "value overflow");
                     mLog << "BB " << entBB << " restore: " << r << (reg - 1) << "\n";
                 }
                 GetbbSavedRegsEntry(entBB)->InsertEntryReg(reg);
@@ -536,7 +532,6 @@ bool AArch64RegSavesOpt::DetermineCalleeRestoreLocations()
                 }
                 if (RS_DUMP) {
                     std::string r = reg <= R28 ? "R" : "V";
-                    CHECK_FATAL(reg > 1 && reg < UINT32_MAX, "value overflow");
                     mLog << "BB " << exitBB << " restore: " << r << (reg - 1) << "\n";
                 }
             }
@@ -616,7 +611,6 @@ void AArch64RegSavesOpt::InsertCalleeSaveCode()
                     }
                     firstHalf = kRinvalid;
                     if (RS_DUMP) {
-                        CHECK_FATAL(reg > 1 && reg < UINT32_MAX, "value overflow");
                         mLog << r << (reg - 1) << " save in BB" << bid << "  Offset = " << regOffset[reg] << "\n";
                     }
                 }
@@ -747,7 +741,6 @@ void AArch64RegSavesOpt::InsertCalleeRestoreCode()
                 offset = static_cast<int32>(regOffset[areg]);
                 if (RS_DUMP) {
                     std::string r = reg <= R28 ? "R" : "V";
-                    CHECK_FATAL(reg > 1 && reg < UINT32_MAX, "value overflow");
                     mLog << r << (reg - 1) << " entry restore in BB " << bid << "  Saved Offset = " << offset << "\n";
                     if (RS_EXTRA) {
                         mLog << "  for save @BB [ ";
@@ -776,7 +769,6 @@ void AArch64RegSavesOpt::InsertCalleeRestoreCode()
                 offset = static_cast<int32>(regOffset[areg]);
                 if (RS_DUMP) {
                     std::string r = reg <= R28 ? "R" : "V";
-                    CHECK_FATAL(reg > 1 && reg < UINT32_MAX, "value overflow");
                     mLog << r << (reg - 1) << " exit restore in BB " << bid << " Offset = " << offset << "\n";
                     mLog << "  for save @BB [ ";
                     for (size_t b = 1; b < bbSavedRegs.size(); ++b) {

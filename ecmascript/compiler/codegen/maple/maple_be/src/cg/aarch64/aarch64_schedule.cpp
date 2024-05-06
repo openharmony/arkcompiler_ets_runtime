@@ -263,7 +263,7 @@ void AArch64Schedule::ClinitPairOpt()
 /* Return the next node's index who is kNodeTypeSeparator. */
 uint32 AArch64Schedule::GetNextSepIndex() const
 {
-    CHECK_FATAL(nodes.size() > 1 && nodes.size() < UINT32_MAX, "value overflow");
+    CHECK_FATAL(nodes.size() >= 1, "value overflow");
     return ((lastSeparatorIndex + kMaxDependenceNum) < nodeSize) ? (lastSeparatorIndex + kMaxDependenceNum)
                                                                  : (nodes.size() - 1);
 }
