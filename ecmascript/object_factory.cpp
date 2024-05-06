@@ -647,14 +647,20 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object,
     for (uint32_t i = 0; i < length; i++) {
         auto layout = LayoutInfo::Cast(klass->GetLayout().GetTaggedObject());
         JSTaggedValue value = object->GetPropertyInlinedProps(i);
-        if (!layout->GetAttr(i).IsTaggedRep() || !value.IsJSFunction()) {
+        if (!layout->GetAttr(i).IsTaggedRep() || (!value.IsJSFunction() && !value.IsAccessorData())) {
             cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, value);
-        } else {
+        } else if (value.IsJSFunction()) {
             JSHandle<JSFunction> valueHandle(thread_, value);
             JSHandle<JSFunction> newFunc = CloneJSFunction(valueHandle);
             newFunc->SetLexicalEnv(thread_, env);
             newFunc->SetHomeObject(thread_, cloneObject);
             cloneObject->SetPropertyInlinedProps(thread_, i, newFunc.GetTaggedValue());
+        } else {
+            if (value.IsAccessorData()) {
+                JSHandle<AccessorData> accessor = NewAccessorData();
+                value = accessor.GetTaggedValue();
+            }
+            cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, value);
         }
     }
     return cloneObject;
