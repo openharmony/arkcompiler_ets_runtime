@@ -1,0 +1,76 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/ohos/sa_profile/sa_profile.gni")
+
+config("aot_compiler_service_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "include",
+    "interface",
+  ]
+}
+
+ohos_shared_library("libcompiler_service") {
+  public_configs = [ ":aot_compiler_service_config" ]
+  shlib_type = "sa"
+  version_script = "libaot_compiler_service.map"
+  sources = [
+    "interface/aot_compiler_interface_proxy.cpp",
+    "interface/aot_compiler_interface_stub.cpp",
+    "src/aot_compiler_client.cpp",
+    "src/aot_compiler_error_utils.cpp",
+    "src/aot_compiler_impl.cpp",
+    "src/aot_compiler_load_callback.cpp",
+    "src/aot_compiler_service.cpp",
+  ]
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "access_token:libtokenid_sdk",
+    "c_utils:utils",
+    "code_signature:liblocal_code_sign_sdk",
+    "eventhandler:libeventhandler",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+  install_enable = true
+  install_images = [ "system" ]
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_prebuilt_etc("compiler_service_cfg") {
+  source = "compiler_service.cfg"
+  relative_install_dir = "init"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_sa_profile("compiler_sa_profile") {
+  sources = [ "sa_profile/5300.json" ]
+  part_name = "ets_runtime"
+}
+
+group("compiler_service") {
+  deps = [
+    ":compiler_sa_profile",
+    ":compiler_service_cfg",
+    ":libcompiler_service",
+  ]
+}
