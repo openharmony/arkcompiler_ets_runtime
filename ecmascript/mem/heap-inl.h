@@ -742,13 +742,7 @@ TaggedObject *SharedHeap::AllocateSOldTlab(JSThread *thread, size_t size)
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return nullptr;
     }
-    TaggedObject *object = nullptr;
-    if (sOldSpace_->GetCommittedSize() > sOldSpace_->GetInitialCapacity() / 2) { // 2: half
-        object = reinterpret_cast<TaggedObject *>(sOldSpace_->AllocateNoGCAndExpand(thread, size));
-    } else {
-        object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
-    }
-    return object;
+    return reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
 }
 
 TaggedObject *SharedHeap::AllocateSNonMovableTlab(JSThread *thread, size_t size)
