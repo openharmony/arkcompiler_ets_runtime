@@ -78,9 +78,9 @@ public:
         return map;
     }
 
-    static bool InitFuzzTest(const uint8_t *data, size_t &size, int32_t &key, RuntimeOption &option, EcmaVM *&vm,
-                             JSThread *&thread)
+    static bool InitFuzzTest(const uint8_t *data, size_t &size, int32_t &key, EcmaVM *&vm, JSThread *&thread)
     {
+        RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         vm = JSNApi::CreateJSVM(option);
         thread = vm->GetJSThread();
@@ -101,11 +101,10 @@ public:
 
     static void ContainersTreeMapClearFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -127,11 +126,10 @@ public:
 
     static void ContainersTreeMapConstructorFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -146,11 +144,10 @@ public:
 
     static void ContainersTreeMapEntriesFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -177,11 +174,10 @@ public:
 
     static void ContainersTreeMapForEachFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -209,11 +205,10 @@ public:
 
     static void ContainersTreeMapGetFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -229,11 +224,10 @@ public:
 
     static void ContainersTreeMapGetFirstKeyFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -255,11 +249,10 @@ public:
 
     static void ContainersTreeMapGetHigherKeyFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -282,11 +275,10 @@ public:
 
     static void ContainersTreeMapGetLastKeyFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -308,11 +300,10 @@ public:
 
     static void ContainersTreeMapGetLengthFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -335,11 +326,10 @@ public:
 
     static void ContainersTreeMapGetLowerKeyFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -362,11 +352,10 @@ public:
 
     static void ContainersTreeMapCheckKeyFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -382,11 +371,10 @@ public:
 
     static void ContainersTreeMapCheckValueFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -402,11 +390,10 @@ public:
 
     static void ContainersTreeMapIsEmptyFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -423,11 +410,10 @@ public:
 
     static void ContainersTreeMapKeysFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -448,11 +434,10 @@ public:
 
     static void ContainersTreeMapRemoveFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -476,11 +461,10 @@ public:
 
     static void ContainersTreeMapReplaceFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -506,11 +490,10 @@ public:
 
     static void ContainersTreeMapSetFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -527,11 +510,10 @@ public:
 
     static void ContainersTreeMapSetAllFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
@@ -555,11 +537,10 @@ public:
 
     static void ContainersTreeMapValuesFuzzTest(const uint8_t *data, size_t size)
     {
-        RuntimeOption option;
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
+        EcmaVM *vm = nullptr;
+        JSThread *thread = nullptr;
         int32_t key = 0;
-        if (!InitFuzzTest(data, size, key, option, vm, thread)) {
+        if (!InitFuzzTest(data, size, key, vm, thread)) {
             return;
         }
 
