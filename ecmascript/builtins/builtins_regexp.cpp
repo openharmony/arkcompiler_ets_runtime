@@ -333,26 +333,29 @@ JSTaggedValue BuiltinsRegExp::ToString(EcmaRuntimeCallInfo *argv)
     const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
     JSMutableHandle<JSTaggedValue> getSource(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> getFlags(thread, JSTaggedValue::Undefined());
+    JSHandle<EcmaString> sourceStrHandle;
+    JSHandle<EcmaString> flagsStrHandle;
     if (IsFastRegExp(thread, thisObj)) {
         JSHandle<JSRegExp> regexp(thread, JSRegExp::Cast(thisObj->GetTaggedObject()));
         // 3. Let pattern be ToString(Get(R, "source")).
         getSource.Update(regexp->GetOriginalSource());
+        sourceStrHandle = JSTaggedValue::ToString(thread, getSource);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         uint8_t flagsBits = static_cast<uint8_t>(regexp->GetOriginalFlags().GetInt());
         getFlags.Update(FlagsBitsToString(thread, flagsBits));
+        flagsStrHandle = JSTaggedValue::ToString(thread, getFlags);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
         JSHandle<JSTaggedValue> sourceString(globalConstants->GetHandledSourceString());
         JSHandle<JSTaggedValue> flagsString(globalConstants->GetHandledFlagsString());
         // 3. Let pattern be ToString(Get(R, "source")).
         getSource.Update(JSObject::GetProperty(thread, thisObj, sourceString).GetValue());
+        sourceStrHandle = JSTaggedValue::ToString(thread, getSource);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         getFlags.Update(JSObject::GetProperty(thread, thisObj, flagsString).GetValue());
+        flagsStrHandle = JSTaggedValue::ToString(thread, getFlags);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    JSHandle<EcmaString> sourceStrHandle = JSTaggedValue::ToString(thread, getSource);
-    // 4. ReturnIfAbrupt(pattern).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 5. Let flags be ToString(Get(R, "flags")).
-    JSHandle<EcmaString> flagsStrHandle = JSTaggedValue::ToString(thread, getFlags);
-    // 4. ReturnIfAbrupt(flags).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> slashStr = JSHandle<EcmaString>::Cast(globalConstants->GetHandledBackslashString());
     // 7. Let result be the String value formed by concatenating "/", pattern, and "/", and flags.
     ObjectFactory *factory = ecmaVm->GetFactory();
