@@ -262,10 +262,10 @@ try {
     class C84 {
         179;
     }
-    const v85 = new C84();
+    const v58 = new C84();
     function f86(a87, a88) {
         const o93 = {
-            [v85]: Map,
+            [v58]: Map,
             p(a90, a91, a92) {
                 return a87;
             },
