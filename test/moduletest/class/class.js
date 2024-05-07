@@ -139,9 +139,9 @@ let o1 = {
 }
 print("test privateproperty class sucecess")
 
-
+// TypeError
 try {
-    const v13 = new ArrayBuffer(1073741824);
+    const v13 = new ArrayBuffer(16);
     function F14(a16, a17) {
         if (!new.target) { throw 'must be called with new'; }
         function f18(a19, a20, a21) {
@@ -151,7 +151,7 @@ try {
             return v23;
         }
         f25();
-        const v33 = new BigUint64Array(34815);
+        const v33 = new BigUint64Array(31);
         const o34 = {
             ...v33,
             ...v33,
@@ -165,13 +165,14 @@ try {
     print(err.name);
 }
 
+// TypeError
 try {
     class C0 {
         constructor(a2) {
-            const v5 = new ArrayBuffer(1073741824);
+            const v5 = new ArrayBuffer(10);
             function F6(a8, a9) {
                 if (!new.target) { throw 'must be called with new'; }
-                const v12 = new BigUint64Array(34815);
+                const v12 = new BigUint64Array(32);
                 const o13 = {
                     ...v12,
                 };
@@ -186,30 +187,34 @@ try {
     print(err.name);
 }
 
+// TypeError
 try {
     const v1 = new WeakSet();
     function f2() {
         return v1;
     }
-    new SharedArrayBuffer(2143786842);
+    new SharedArrayBuffer(24);
     const o8 = {
     };
-    for (let i11 = -57109n, i12 = 10; i11 < i12; i12--) {
+    for (let i11 = -57, i12 = 10; i11 < i12; i12--) {
         o8[i12] >>= i12;
     }
     class C20 extends f2 {
     }
-    new C20(803754.1443936096, 803754.1443936096, -7.505335968901483);
-    C20(803754.1443936096);
+    new C20(83.14, 4.14, -7.50);
+    C20(54.1);
     BigUint64Array();
 } catch(err) {
     print(err.name);
 }
 
+// {"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0}
+// {"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0}
+// {"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0}
 {
     function arkPrint(d) { print(JSON.stringify(d)); }
     function f6() {
-        return -2524;
+        return -24;
     }
     let v7 = undefined;
     class C8 {
@@ -217,41 +222,41 @@ try {
             const v16 = new Uint32Array(9);
             v7 = arkPrint(v16);
             new Uint32Array(57);
-            new Float32Array(1050);
-            new BigInt64Array(2700);
-            new Int32Array(564);
-            new Int32Array(512);
+            new Float32Array(10);
+            new BigInt64Array(27);
+            new Int32Array(54);
+            new Int32Array(51);
         }
-        static 1073741824 = -2524;
+        static 10 = -25;
     }
-    new C8(0.6175556940690433, f6, -4096, -2524, -2524, C8);
-    new C8(0.38965183341374976, v7, -2524, -2524);
-    new C8(0.38965183341374976, 0.6175556940690433, -2524, -1640852885);
+    new C8(0.61, f6, -4, -4, -2, C8);
+    new C8(0.38, v7, -24, -25);
+    new C8(0.39, 0.61, -25, -16);
     [];
-    const v38 = [-1.0,4.0,1.525682610468294e+308];
+    const v38 = [-1.0,4.0,1.52];
     [Uint8Array,Uint8Array];
     const o43 = {
     };
     for (const v44 in o43) {
     }
     let v45 = new Float32Array();
-    v38[536870887] = 6;
-    let v47 = o43[536870888];
+    v38[53] = 6;
+    let v47 = o43[53];
     let v55 = --v47;
     Math.pow(v55);
     v55--;
-    11741 >>> -7.003996815099174;
+    11 >>> -7.0;
     new Uint8Array(6);
-    const v65 = [-2147483647,1073741824,268435456];
+    const v65 = [-21,10,26];
     function f67(a68, a69, a70, a71) {
         const v75 = --v45;
-        !-7.003996815099174;
-        -7.003996815099174 >>> v45;
-        Math.pow(1790022700, v75);
-        !1790022700;
-        return 9223372036854775807n;
+        !-7.0;
+        -7.0 >>> v45;
+        Math.pow(17, v75);
+        !179;
+        return 92;
     }
-    f67(-7.003996815099174, Uint8Array, v47, v65);
+    f67(-7.0, Uint8Array, v47, v65);
     class C81 {
     }
     class C84 {
@@ -281,7 +286,7 @@ try {
             ...C96,
         };
         new Float64Array(9);
-        [268435441,7,-1965278381,2852,268435439,-29684,57326];
+        [26,7,-19,28,26,-29,5];
         function f110(a111, a112) {
         }
         function F113() {
@@ -295,7 +300,7 @@ try {
                     };
                     const o124 = {
                     };
-                    o124.f = -2147483649;
+                    o124.f = -2;
                     const o125 = {
                     };
                     const o126 = {
@@ -307,7 +312,7 @@ try {
         new C117();
         class C129 {
             constructor(a131) {
-                new Boolean(-681667533n);
+                new Boolean(-6);
                 try { new a131(a131); } catch (e) {}
             }
         }

@@ -40,14 +40,14 @@ function f2() {
 f2(1,2);
 f0.apply(null,v38);
 
-
+// undefined
 try {
-    const v3 = new ArrayBuffer(1073741824);
+    const v3 = new ArrayBuffer(17);
     function F4(a6, a7) {
         if (!new.target) { throw 'must be called with new'; }
         function f8(a9, a10, a11) {
         }
-        const v14 = new BigUint64Array(34815);
+        const v14 = new BigUint64Array(31);
         const o15 = {
             ...v14,
             ...v14,
@@ -60,14 +60,15 @@ try {
     print(error.name)
 }
 
+// undefined
 try {
-    const v3 = [10000,Int8Array];
-    const v6 = new ArrayBuffer(1073741824);
+    const v3 = [100,Int8Array];
+    const v6 = new ArrayBuffer(13);
     function F7(a9, a10) {
         if (!new.target) { throw 'must be called with new'; }
         function f11(a12, a13, a14) {
         }
-        const v17 = new BigUint64Array(34815);
+        const v17 = new BigUint64Array(35);
         const o18 = {
             ...v17,
             ...v17,

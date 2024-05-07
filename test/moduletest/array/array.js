@@ -637,15 +637,15 @@ const mapEd = v0.map(() => {
 });
 print(new Uint16Array(v0).length);
 
-
+// TypeError
 try {
-    const v2 = new ArrayBuffer(1073741824);
+    const v2 = new ArrayBuffer(103);
     function F3(a5, a6) {
         if (!new.target) { throw 'must be called with new'; }
         function f7(a8, a9, a10) {
             return v2;
         }
-        const v13 = new BigUint64Array(34815);
+        const v13 = new BigUint64Array(35);
         const o14 = {
             ...v13,
         };
@@ -658,14 +658,15 @@ try {
     print(err.name);
 }
 
+// ReferenceError
 try {
-    const v3 = new ArrayBuffer(1073741824);
+    const v3 = new ArrayBuffer(45);
     function F4(a6, a7) {
         if (!new.target) { throw 'must be called with new'; }
         function f8(a9, a10, a11) {
             return F4;
         }
-        const v14 = new BigUint64Array(34815);
+        const v14 = new BigUint64Array(15);
         const o20 = {
             [v0](a16, a17, a18, a19) {
                 return a6;
@@ -674,29 +675,30 @@ try {
         };
         Object.defineProperty(o20, 4, { set: f8 });
     }
-    new F4(v0, 1073741824);
+    new F4(v0, 101);
     new F4();
     v3.transfer();
 } catch(err) {
     print(err.name);
 }
 
+// TypeError
 try {
     function F6(a8, a9, a10) {
         if (!new.target) { throw 'must be called with new'; }
         const v14 = new Date(-10, 16);
         v14.toDateString();
     }
-    const v16 = new F6(2111972939n);
-    new F6(2064306316n);
+    const v16 = new F6(11);
+    new F6(2064);
     function f18() {
         return v16;
     }
     new BigUint64Array();
-    const v23 = [-4294967296,4,4];
+    const v23 = [-42,4,4];
     const o24 = {
     };
-    const v25 = [5.0,-5.112845800864314,1e-15,-0.05356170593161025,5.0,2.2250738585072014e-308,-1000.0,1000000000.0,5.0,-5.0];
+    const v25 = [5.0,-5.12,1e-15,-0.05,5.0,2.22e-38,-10.0,10.0,5.0,-5.0];
     function f26() {
         return v25;
     }
@@ -708,12 +710,12 @@ try {
     new Int8Array();
     new Int8Array();
     v23.filter(Array);
-    new ArrayBuffer(268435441);
+    new ArrayBuffer(26);
     const v44 = new Uint8Array();
     v44.toString();
     const o46 = {
     };
-    for (let i49 = -57109n, i50 = 10; i49 < i50; i50--) {
+    for (let i49 = -51, i50 = 10; i49 < i50; i50--) {
         o46[i50] >>= i50;
     }
     /c/iusg;
@@ -723,11 +725,12 @@ try {
     print(err.name);
 }
 
+// TypeError
 try {
-    const v3 = new ArrayBuffer(1073741824);
+    const v3 = new ArrayBuffer(19);
     function F4(a6, a7) {
         if (!new.target) { throw 'must be called with new'; }
-        const v10 = new BigUint64Array(34815);
+        const v10 = new BigUint64Array(34);
         const o11 = {
             ...v10,
         };
@@ -739,14 +742,15 @@ try {
     print(err.name);
 }
 
+// TypeError
 try {
-    const v3 = new ArrayBuffer(1073741824);
+    const v3 = new ArrayBuffer(10);
     function F4(a6, a7) {
         if (!new.target) { throw 'must be called with new'; }
         function f8(a9, a10, a11) {
             return a11;
         }
-        const v14 = new BigUint64Array(34815);
+        const v14 = new BigUint64Array(34);
         const o15 = {
             ...v14,
         };
@@ -759,26 +763,28 @@ try {
     print(err.name);
 }
 
+// TypeError
 try {
-    const v2 = new ArrayBuffer(1073741824);
+    const v2 = new ArrayBuffer(10);
     function F3(a5, a6) {
         if (!new.target) { throw 'must be called with new'; }
         function f7(a8, a9, a10) {
             return a9;
         }
-        const v13 = new BigUint64Array(34815);
+        const v13 = new BigUint64Array(35);
         const o14 = {
             ...v13,
         };
         Object.defineProperty(o14, 4, { set: f7 });
     }
     new F3(ArrayBuffer, v2);
-    new F3(1073741824, F3);
+    new F3(10, F3);
     v2.transfer();
 } catch(err) {
     print(err.name);
 }
 
+// TypeError
 try {
     const v1 = new Uint16Array();
     for (let i4 = 0, i5 = 10; i5; i5--) {
