@@ -19,6 +19,8 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+import testCommon  from "./utility";
+
 var fastmap = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     fastmap = ArkPrivate.Load(ArkPrivate.LightWeightMap);
@@ -42,33 +44,33 @@ if (globalThis["ArkPrivate"] != undefined) {
     res.set("test getIndexOfKey and getIndexOfValue:", proxy.getIndexOfKey("a") === 0 && proxy.getIndexOfValue("bb") === 1);
     // test getKeyAt: true
     res.set("test getKeyAt:", proxy.getKeyAt(1) == "b");
+    testCommon(proxy, res);
+    // // test keys: true
+    // let iteratorKey1 = proxy.keys();
+    // res.set("test keys:", iteratorKey1.next().value == "a" && iteratorKey1.next().value == "b" &&
+    //         iteratorKey1.next().value == "c" && iteratorKey1.next().value == undefined);
+    // // test values: true
+    // let iteratorValues1 = proxy.values();
+    // res.set("test values:", iteratorValues1.next().value == "aa" && iteratorValues1.next().value == "bb" &&
+    //         iteratorValues1.next().value == "cc" && iteratorValues1.next().value == undefined);
+    // // test entries: [c,cc], undefined
+    // let iteratorEntries1 = proxy.entries();
+    // iteratorEntries1.next().value;
+    // iteratorEntries1.next().value;
+    // res.set("test entries1:", iteratorEntries1.next().value != undefined);
+    // res.set("itest entries2:", iteratorEntries1.next().value == undefined);
 
-    // test keys: true
-    let iteratorKey1 = proxy.keys();
-    res.set("test keys:", iteratorKey1.next().value == "a" && iteratorKey1.next().value == "b" &&
-            iteratorKey1.next().value == "c" && iteratorKey1.next().value == undefined);
-    // test values: true
-    let iteratorValues1 = proxy.values();
-    res.set("test values:", iteratorValues1.next().value == "aa" && iteratorValues1.next().value == "bb" &&
-            iteratorValues1.next().value == "cc" && iteratorValues1.next().value == undefined);
-    // test entries: [c,cc], undefined
-    let iteratorEntries1 = proxy.entries();
-    iteratorEntries1.next().value;
-    iteratorEntries1.next().value;
-    res.set("test entries1:", iteratorEntries1.next().value != undefined);
-    res.set("itest entries2:", iteratorEntries1.next().value == undefined);
-
-    // test forof: [a, aa], [b, bb], [c, cc]
-    let arr1 = ["aa", "bb", "cc"];
-    let j = 0;
-    for (const item of proxy) {
-        res.set(arr1[j], item[1] == arr1[j]);
-        j++;
-    }
-    // test forin:
-    for (const item in proxy) {
-        res.set("test forin", false);
-    }
+    // // test forof: [a, aa], [b, bb], [c, cc]
+    // let arr1 = ["aa", "bb", "cc"];
+    // let j = 0;
+    // for (const item of proxy) {
+    //     res.set(arr1[j], item[1] == arr1[j]);
+    //     j++;
+    // }
+    // // test forin:
+    // for (const item in proxy) {
+    //     res.set("test forin", false);
+    // }
     // test forEach:
     let flag = false;
     function TestForEach(value, key, proxy) {

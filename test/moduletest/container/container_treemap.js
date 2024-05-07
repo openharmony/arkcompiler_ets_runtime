@@ -19,6 +19,8 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+import testCommon  from "./utility";
+
 var fastmap = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     fastmap = ArkPrivate.Load(ArkPrivate.TreeMap);
@@ -40,32 +42,33 @@ if (globalThis["ArkPrivate"] != undefined) {
     // test getLowerKey and getHigherKey: true
     res.set("test getLowerKey and getHigherKey:", map.getLowerKey("b") == "a" && map.getLowerKey("a") == undefined &&
             map.getHigherKey("b") == "c" && map.getHigherKey("c") == undefined);
-    // test keys: true
-    let iteratorKey = map.keys();
-    res.set("test keys:", iteratorKey.next().value == "a" && iteratorKey.next().value == "b" &&
-            iteratorKey.next().value == "c" && iteratorKey.next().value == undefined);
-    // test values: true
-    let iteratorValues = map.values();
-    res.set("test values:", iteratorValues.next().value == "aa" && iteratorValues.next().value == "bb" &&
-            iteratorValues.next().value == "cc" && iteratorValues.next().value == undefined);
-    // test entries: [c,cc], undefined
-    let iteratorEntries = map.entries();
-    iteratorEntries.next().value;
-    iteratorEntries.next().value;
-    res.set("test entries1:", iteratorEntries.next().value != undefined);
-    res.set("itest entries2:", iteratorEntries.next().value == undefined);
+    // // test keys: true
+    // let iteratorKey = map.keys();
+    // res.set("test keys:", iteratorKey.next().value == "a" && iteratorKey.next().value == "b" &&
+    //         iteratorKey.next().value == "c" && iteratorKey.next().value == undefined);
+    // // test values: true
+    // let iteratorValues = map.values();
+    // res.set("test values:", iteratorValues.next().value == "aa" && iteratorValues.next().value == "bb" &&
+    //         iteratorValues.next().value == "cc" && iteratorValues.next().value == undefined);
+    // // test entries: [c,cc], undefined
+    // let iteratorEntries = map.entries();
+    // iteratorEntries.next().value;
+    // iteratorEntries.next().value;
+    // res.set("test entries1:", iteratorEntries.next().value != undefined);
+    // res.set("itest entries2:", iteratorEntries.next().value == undefined);
 
-    // test forof: [a, aa], [b, bb], [c, cc]
-    let arr = ["aa", "bb", "cc"];
-    let i = 0;
-    for (const item of map) {
-        res.set(arr[i], item[1] == arr[i]);
-        i++;
-    }
-    // test forin:
-    for (const item in map) {
-        res.set("test forin", false);
-    }
+    // // test forof: [a, aa], [b, bb], [c, cc]
+    // let arr = ["aa", "bb", "cc"];
+    // let i = 0;
+    // for (const item of map) {
+    //     res.set(arr[i], item[1] == arr[i]);
+    //     i++;
+    // }
+    // // test forin:
+    // for (const item in map) {
+    //     res.set("test forin", false);
+    // }
+    testCommon(proxy, res);
     // test forEach:
     let flag = false;
     function TestForEach(value, key, map) {
