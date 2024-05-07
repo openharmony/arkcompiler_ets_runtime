@@ -3352,6 +3352,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     LOG_ECMA(INFO) << "JSNApi::StartDebugger, isDebugMode = " << option.isDebugMode
         << ", port = " << option.port << ", instanceId = " << instanceId;
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "[StartDebugger] vm is nullptr";
         return false;
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -3423,6 +3424,7 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
     LOG_ECMA(INFO) << "JSNApi::StartDebuggerForOldProcess, isDebugMode = " << option.isDebugMode
         << ", instanceId = " << instanceId;
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "[StartDebuggerForOldProcess] vm is nullptr";
         return false;
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -3452,6 +3454,7 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
     return ret;
 #else
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "[StartDebuggerForOldProcess] vm is nullptr";
         return false;
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -3481,34 +3484,21 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused
         LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] jsDebuggerManager is nullptr";
         return false;
     }
-
-    auto &handler = jsDebuggerManager->GetDebugLibraryHandle();
-    if (!handler.IsValid()) {
-        auto libraryPath = jsDebuggerManager->GetLibraryPath();
-        if (libraryPath == nullptr) {
-            LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] libraryPath is nullptr";
-            return false;
-        }
-
-        auto handle = panda::os::library_loader::Load(std::string(libraryPath));
-        if (!handle) {
-            LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Load library fail: " << libraryPath << " " << errno;
-            return false;
-        }
-        handler = std::move(handle.Value());
+    const auto &handle = jsDebuggerManager->GetDebugLibraryHandle();
+    if (!handle.IsValid()) {
+        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail";
+        return false;
     }
 
-    EcmaVM *vm = jsDebuggerManager->GetEcmaVM();
-    DebuggerPostTask debuggerPostTask = jsDebuggerManager->GetDebuggerPostTask();
-    using StartDebugForSocketpair = bool (*)(int, int, EcmaVM *, const DebuggerPostTask &);
+    using StartDebugForSocketpair = bool (*)(int, int);
 
-    auto sym = panda::os::library_loader::ResolveSymbol(handler, "StartDebugForSocketpair");
+    auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebugForSocketpair");
     if (!sym) {
         LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
 
-    bool ret = reinterpret_cast<StartDebugForSocketpair>(sym.Value())(tid, socketfd, vm, debuggerPostTask);
+    bool ret = reinterpret_cast<StartDebugForSocketpair>(sym.Value())(tid, socketfd);
     if (!ret) {
         // Reset the config
         jsDebuggerManager->SetDebugMode(false);
@@ -3539,14 +3529,11 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     LOG_ECMA(INFO) << "JSNApi::NotifyDebugMode, tid = " << tid << ", debugApp = " << debugApp
         << ", isDebugMode = " << option.isDebugMode << ", instanceId = " << instanceId;
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] vm is nullptr";
         return false;
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
 
-    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
-    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
-    jsDebuggerManager->SetDebuggerPostTask(debuggerPostTask);
-    jsDebuggerManager->SetLibraryPath(option.libraryPath);
     bool ret = false;
     if (!debugApp) {
         return true;
@@ -3556,11 +3543,13 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         LOG_ECMA(ERROR) << "[NotifyDebugMode] option.libraryPath is nullptr";
         return false;
     }
+    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
         LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
+    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
@@ -3629,6 +3618,7 @@ bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     LOG_ECMA(INFO) << "JSNApi::StoreDebugInfo, tid = " << tid;
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "[StoreDebugInfo] vm is nullptr";
         return false;
     }
 
@@ -3658,7 +3648,7 @@ bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
     auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
         jsDebuggerManager->GetDebugLibraryHandle(), "StoreDebuggerInfo");
     if (!symOfStoreDebuggerInfo) {
-        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve StoreDebuggerInfo symbol fail: " <<
+        LOG_ECMA(ERROR) << "[StoreDebugInfo] Resolve StoreDebuggerInfo symbol fail: " <<
             symOfStoreDebuggerInfo.Error().ToString();
         return false;
     }
@@ -3689,6 +3679,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 #if !defined(PANDA_TARGET_IOS)
     LOG_ECMA(INFO) << "JSNApi::StopDebugger";
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "[StopDebugger] vm is nullptr";
         return false;
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -3711,6 +3702,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     return true;
 #else
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "[StopDebugger] vm is nullptr";
         return false;
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -3731,6 +3723,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] int tid)
     LOG_ECMA(INFO) << "JSNApi::StopDebugger, tid = " << tid;
     JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
     if (jsDebuggerManager == nullptr) {
+        LOG_ECMA(ERROR) << "[StopDebugger] jsDebuggerManager is nullptr";
         return false;
     }
 
