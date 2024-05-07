@@ -482,13 +482,13 @@ std::string GetModuleNameFromDesc(const std::string &desc)
         LOG_ECMA(DEBUG) << "GetModuleNameFromDesc can't find fisrt /: " << desc;
         return "";
     }
-
+    ASSERT(lastSlash > 0);
     auto secondLastSlash = desc.rfind("/", lastSlash - 1);
     if (secondLastSlash == std::string::npos) {
         LOG_ECMA(DEBUG) << "GetModuleNameFromDesc can't find second /: " << desc;
         return "";
     }
-
+    ASSERT(secondLastSlash > 0);
     auto thirdLastSlash = desc.rfind("/", secondLastSlash - 1);
     if (thirdLastSlash == std::string::npos) {
         LOG_ECMA(DEBUG) << "GetModuleNameFromDesc can't find third /: " << desc;

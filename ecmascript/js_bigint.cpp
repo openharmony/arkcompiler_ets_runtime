@@ -897,6 +897,7 @@ void BigInt::JudgeRoundDown(JSHandle<BigInt> x, uint32_t digitMove, uint32_t bit
     }
 
     if (roundDown && bitsMove == 0) {
+        ASSERT(x->GetLength() > 0);
         uint32_t highBits = x->GetDigit(x->GetLength() - 1);
         // If all the most significant bits are 1, we think that carry will cause overflow,
         // and needLen needs to be increased by 1
@@ -1360,6 +1361,7 @@ JSHandle<BigInt> BigInt::DivideAndRemainderWithBigintDivisor(JSThread *thread, J
     }
     // format the divisor and dividend so that the highest order of the divisor is
     // greater than or equal to half of uint32_t
+    ASSERT(divisorLen > 0);
     uint32_t leadingZeros = base::CountLeadingZeros(divisor->GetDigit(divisorLen - 1));
     JSHandle<BigInt> v = FormatLeftShift(thread, leadingZeros, divisor, false);
     JSHandle<BigInt> u = FormatLeftShift(thread, leadingZeros, dividend, true);
@@ -1598,6 +1600,7 @@ JSTaggedNumber BigInt::BigIntToNumber(JSHandle<BigInt> bigint)
     uint64_t mantissa = (needMoveBit == 64) ? 0 :
         ((static_cast<uint64_t>(BigintHead) << needMoveBit) >> 12); // 12 mantissa// just has 52 bits
     int remainMantissaBits = needMoveBit - 12;
+    ASSERT(bigintBitLen > 0);
     uint64_t exponent = static_cast<uint64_t>(bigintBitLen - 1);
     int index = static_cast<int>(bigintLen - 1);
     uint32_t digit = 0;
@@ -1650,6 +1653,7 @@ JSTaggedNumber BigInt::BigIntToNumber(JSHandle<BigInt> bigint)
 static int CompareToBitsLen(JSHandle<BigInt> bigint, int numBitLen, int &leadingZeros)
 {
     uint32_t bigintLen = bigint->GetLength();
+    ASSERT(bigintLen > 0);
     uint32_t BigintHead = bigint->GetDigit(bigintLen - 1);
     leadingZeros = static_cast<int>(base::CountLeadingZeros(BigintHead));
     int bigintBitLen = static_cast<int>(bigintLen * BigInt::DATEBITS) - leadingZeros;
@@ -1715,6 +1719,7 @@ ComparisonResult BigInt::CompareWithNumber(JSHandle<BigInt> bigint, JSHandle<JST
     uint32_t bigintLen = bigint->GetLength();
     int leftover = 0;
     bool IsFirstInto = true;
+    ASSERT(bigintLen > 0);
     for (int index = static_cast<int>(bigintLen - 1); index >= 0; --index) {
         uint32_t doubleNum = 0;
         uint32_t BigintNum = bigint->GetDigit(index);

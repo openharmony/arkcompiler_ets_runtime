@@ -252,6 +252,7 @@ bool JSAPIDeque::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIDeque> &de
 
     uint32_t length = deque->GetSize();
     if (index >= length) {
+        ASSERT(length > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
             << ". Received value is: " << index;

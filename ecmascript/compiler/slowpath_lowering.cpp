@@ -852,6 +852,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate)
             builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, taggedArray, builder_.Int32(idx), tmpGate);
         }
     }
+    ASSERT(numVreg > 0);
     GateRef lexicalEnvGate = acc_.GetValueIn(saveRegister, numVreg - 1);
     acc_.DeleteGate(saveRegister);
 
@@ -1051,6 +1052,7 @@ void SlowPathLowering::LowerCallrangeImm8Imm8V8(GateRef gate)
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLRANGE_IMM8_IMM8_V8));
     const size_t callTargetIndex = 1; // acc
+    ASSERT(numArgs > 0);
     GateRef callTarget = acc_.GetValueIn(gate, numArgs - callTargetIndex);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();

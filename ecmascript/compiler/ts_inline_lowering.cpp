@@ -247,6 +247,7 @@ bool TSInlineLowering::CheckParameter(GateRef gate, InlineTypeInfoAccessor &info
     size_t fixedInputsNum = info.IsCallThis() ? 2 : 1; // 2: calltarget and this
 
     uint32_t declaredNumArgs = method->GetNumArgsWithCallField();
+    ASSERT(numIns >= fixedInputsNum);
     return declaredNumArgs == (numIns - fixedInputsNum);
 }
 
@@ -256,6 +257,7 @@ void TSInlineLowering::ReplaceCallInput(InlineTypeInfoAccessor &info, GateRef gl
     bool isCallThis = info.IsCallThis();
     std::vector<GateRef> vec;
     size_t numIns = acc_.GetNumValueIn(gate);
+    ASSERT(numIns > 0);
     // 1: last one elem is function
     GateRef callTarget = acc_.GetValueIn(gate, numIns - 1);
     GateRef thisObj = Circuit::NullGate();
@@ -504,6 +506,7 @@ void TSInlineLowering::InlineFuncCheck(const InlineTypeInfoAccessor &info)
     GateRef callDepend = acc_.GetDep(gate);
     ASSERT(acc_.HasFrameState(gate));
     GateRef frameState = acc_.GetFrameState(gate);
+    ASSERT(acc_.GetNumValueIn(gate) > 0);
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     GateRef inlineFunc =  acc_.GetValueIn(gate, funcIndex);
     // Do not load from inlineFunc because type in inlineFunc could be modified by others
@@ -653,6 +656,7 @@ void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfo
 
 void TSInlineLowering::CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
 {
+    ASSERT(acc_.GetNumValueIn(gate) > 0);
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     auto func = acc_.GetValueIn(gate, funcIndex);
     InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, func, kind);

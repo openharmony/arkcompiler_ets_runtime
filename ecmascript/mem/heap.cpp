@@ -638,6 +638,7 @@ void Heap::EnableParallelGC()
         workManager_ = new WorkManager(this, maxEvacuateTaskCount_ + 1);
         UpdateWorkManager(workManager_);
     }
+    ASSERT(maxEvacuateTaskCount_ > 0);
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
                                          maxEvacuateTaskCount_ - 1);
     bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
@@ -1048,6 +1049,7 @@ std::string FormatCmdLine(const std::string& cmdLine)
             break;
         }
     }
+    ASSERT(endPos >= startPos);
     return cmdLine.substr(startPos, endPos - startPos);
 }
 

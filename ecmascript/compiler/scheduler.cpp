@@ -81,6 +81,7 @@ void Scheduler::CalculateDominatorTree(const Circuit *circuit,
         };
         std::iota(semiDom.begin(), semiDom.end(), 0);
         semiDom[0] = semiDom.size();
+        ASSERT(bbGatesList.size() > 0);
         for (size_t idx = bbGatesList.size() - 1; idx >= 1; idx--) {
             std::vector<GateRef> preGates;
             acc.GetInStates(bbGatesList[idx], preGates);
