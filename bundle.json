@@ -73,15 +73,6 @@
                     }
                 },
                 {
-                  "name": "//arkcompiler/ets_runtime:libark_jsruntime_test"
-                },
-                {
-                  "name": "//arkcompiler/ets_runtime:ark_jsruntime_public_config"
-                },
-                {
-                  "name": "//arkcompiler/ets_runtime:ark_js_host_linux_tools_packages"
-                },
-                {
                     "name": "//arkcompiler/ets_runtime:libark_jsruntime_static",
                     "header": {
                       "header_files": [
