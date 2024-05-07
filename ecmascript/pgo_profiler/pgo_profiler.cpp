@@ -1664,6 +1664,7 @@ void PGOProfiler::Iterate(const RootVisitor &visitor)
         visitor(Root::ROOT_VM, ObjectSlot(node->GetValueAddr()));
         node->IterateExtraProfileTypeInfo(visitor);
     });
+    preDumpWorkList_.Iterate([&visitor](WorkNode* node) { node->IterateExtraProfileTypeInfo(visitor); });
 }
 
 PGOProfiler::PGOProfiler(EcmaVM *vm, bool isEnable) : vm_(vm), isEnable_(isEnable)
