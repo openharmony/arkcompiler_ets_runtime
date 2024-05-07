@@ -50,7 +50,8 @@ private:
     bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject);
     bool IsInternalJSType(JSType type)
     {
-        if (type >= JSType::JS_RECORD_FIRST && type <= JSType::JS_RECORD_LAST) {
+        if ((type >= JSType::JS_RECORD_FIRST && type <= JSType::JS_RECORD_LAST) ||
+            (type == JSType::JS_NATIVE_POINTER && !supportJSNativePointer_)) {
             return false;
         }
         return type >= JSType::HCLASS && type <= JSType::TYPE_LAST && type != JSType::SYMBOL;
@@ -60,6 +61,7 @@ private:
     bool defaultTransfer_ {false};
     bool defaultCloneShared_ {false};
     bool notSupport_ {false};
+    bool supportJSNativePointer_ {false};
     CUnorderedSet<uintptr_t> transferDataSet_;
     CUnorderedSet<uintptr_t> cloneArrayBufferSet_;
     CUnorderedSet<uintptr_t> cloneSharedSet_;

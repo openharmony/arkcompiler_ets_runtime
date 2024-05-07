@@ -933,6 +933,24 @@ public:
         Destroy();
     }
 
+    void TransferJSArrayBufferTest5(SerializeData *data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize TransferJSArrayBuffer5 fail";
+        EXPECT_TRUE(res->IsArrayBuffer()) << "[NotJSArrayBuffer] Deserialize TransferJSArrayBuffer5 fail";
+
+        JSHandle<JSArrayBuffer> arrBuf = JSHandle<JSArrayBuffer>::Cast(res);
+        EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 5); // 5: bufferLength
+        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData());
+        EXPECT_TRUE(reinterpret_cast<JSNativePointer *>(nativePtr->GetTaggedObject())->GetDeleter());
+        Destroy();
+    }
+
     void SerializeCloneListTest1(SerializeData *data)
     {
         Init();
@@ -1837,6 +1855,41 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer4)
     free(buffer);
 };
 
+void ArrayBufferDeleter([[maybe_unused]] void *env, void *buf, [[maybe_unused]] void *data)
+{
+    free(buf);
+}
+
+// Test serialize JSArrayBuffer with external native buffer that transfer
+HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer5)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    // create a JSArrayBuffer
+    size_t length = 5;
+    uint8_t value = 100;
+    void *buffer = reinterpret_cast<void *>(malloc(length));
+    if (memset_s(buffer, length, value, length) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    JSHandle<JSArrayBuffer> arrBuf = factory->NewJSArrayBuffer(buffer, length, ArrayBufferDeleter, nullptr);
+    JSHandle<JSTaggedValue> arrBufTag = JSHandle<JSTaggedValue>::Cast(arrBuf);
+
+    ValueSerializer *serializer = new ValueSerializer(thread, true);
+    bool res = serializer->WriteValue(thread, arrBufTag,
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(res) << "serialize JSArrayBuffer with external pointer fail";
+    EXPECT_TRUE(arrBuf->IsDetach());
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::TransferJSArrayBufferTest5, jsDeserializerTest, data.release());
+    ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+};
+
 HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared2)
 {
     std::string msg = "hello world";
@@ -1910,6 +1963,21 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared3)
     data.reset();
     EXPECT_TRUE(JSHandle<JSTaggedValue>(jsArrayBuffer)->IsSharedArrayBuffer());
 };
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSNativePointer)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSNativePointer> np = factory->NewJSNativePointer(nullptr);
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(np),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    // Don't support serialize JSNativePointer directly
+    EXPECT_TRUE(!success);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    EXPECT_TRUE(data->IsIncompleteData());
+    delete serializer;
+}
 
 JSArrayBuffer *CreateTestJSArrayBuffer(JSThread *thread)
 {
