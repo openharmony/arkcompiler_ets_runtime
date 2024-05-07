@@ -114,10 +114,10 @@ public:
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);
     static bool CpuProfilerSamplingAnyTime(const EcmaVM *vm);
-    static void StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName,
+    static bool StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static void StopCpuProfilerForFile(const EcmaVM *vm);
-    static void StartCpuProfilerForInfo(const EcmaVM *vm,
+    static bool StartCpuProfilerForInfo(const EcmaVM *vm,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static std::unique_ptr<ProfileInfo> StopCpuProfilerForInfo(const EcmaVM *vm);
     static void EnableSeriliazationTimeoutCheck(const EcmaVM *ecmaVM, int32_t threshhold);

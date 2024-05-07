@@ -572,40 +572,50 @@ bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
-void DFXJSNApi::StartCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm,
+bool DFXJSNApi::StartCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm,
                                         [[maybe_unused]] const std::string &fileName,
                                         [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (interval < 0) {
-        LOG_ECMA(ERROR) << "Sampling interval is illegal";
-        return;
+    LOG_ECMA(INFO) << "DFXJSNApi::StartCpuProfilerForFile, vm = " << vm;
+    if (interval <= 0) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StartCpuProfilerForFile, interval <= 0";
+        return false;
     }
     if (vm == nullptr) {
-        return;
+        LOG_ECMA(ERROR) << "DFXJSNApi::StartCpuProfilerForFile, vm == nullptr";
+        return false;
     }
     CpuProfiler *profiler = vm->GetProfiler();
     if (profiler == nullptr) {
         profiler = new CpuProfiler(vm, interval);
         const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
     }
-    profiler->StartCpuProfilerForFile(fileName);
+    return profiler->StartCpuProfilerForFile(fileName);
 #else
-    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+    LOG_ECMA(ERROR) << "DFXJSNApi::StartCpuProfilerForFile, not support cpu profiler";
+    return false;
 #endif
 }
 
 void DFXJSNApi::StopCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    LOG_ECMA(INFO) << "DFXJSNApi::StopCpuProfilerForFile, vm = " << vm;
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForFile, vm == nullptr";
         return;
     }
     CpuProfiler *profiler = vm->GetProfiler();
     if (profiler == nullptr) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForFile, profiler == nullptr";
         return;
     }
-    profiler->StopCpuProfilerForFile();
+    bool result = profiler->StopCpuProfilerForFile();
+    if (!result) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForFile failed";
+        return;
+    }
     delete profiler;
     profiler = nullptr;
     const_cast<EcmaVM *>(vm)->SetProfiler(nullptr);
@@ -614,24 +624,27 @@ void DFXJSNApi::StopCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
-void DFXJSNApi::StartCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
+bool DFXJSNApi::StartCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (interval < 0) {
-        LOG_ECMA(ERROR) << "Sampling interval is illegal";
-        return;
+    LOG_ECMA(INFO) << "DFXJSNApi::StartCpuProfilerForInfo, vm = " << vm;
+    if (interval <= 0) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StartCpuProfilerForInfo, interval <= 0";
+        return false;
     }
     if (vm == nullptr) {
-        return;
+        LOG_ECMA(ERROR) << "DFXJSNApi::StartCpuProfilerForInfo, vm == nullptr";
+        return false;
     }
     CpuProfiler *profiler = vm->GetProfiler();
     if (profiler == nullptr) {
         profiler = new CpuProfiler(vm, interval);
         const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
     }
-    profiler->StartCpuProfilerForInfo();
+    return profiler->StartCpuProfilerForInfo();
 #else
-    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+    LOG_ECMA(ERROR) << "DFXJSNApi::StartCpuProfilerForInfo, not support cpu profiler";
+    return false;
 #endif
 }
 
@@ -648,14 +661,16 @@ std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo([[maybe_unused]] 
         LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForInfo, profiler == nullptr";
         return nullptr;
     }
-    auto profile = profiler->StopCpuProfilerForInfo();
-    if (profile == nullptr) {
-        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForInfo, CpuProfiler::StopCpuProfilerForInfo failed";
+    std::unique_ptr<ProfileInfo> profileInfo;
+    bool result = profiler->StopCpuProfilerForInfo(profileInfo);
+    if (!result) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForInfo failed";
+        return nullptr;
     }
     delete profiler;
     profiler = nullptr;
     const_cast<EcmaVM *>(vm)->SetProfiler(nullptr);
-    return profile;
+    return profileInfo;
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
     return nullptr;
@@ -816,10 +831,9 @@ bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, int tid,
     if (option.profilerType == ProfilerType::CPU_PROFILER) {
         debugOption.isDebugMode = false;
         if (JSNApi::NotifyDebugMode(tid, vm, debugOption, instanceId, debuggerPostTask, isDebugApp)) {
-            StartCpuProfilerForInfo(vm, option.interval);
-            return true;
+            return StartCpuProfilerForInfo(vm, option.interval);
         } else {
-            LOG_ECMA(ERROR) << "DFXJSNApi:Failed to StartDebugger";
+            LOG_ECMA(ERROR) << "DFXJSNApi::StartProfiler, NotifyDebugMode failed";
             return false;
         }
     } else {

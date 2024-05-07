@@ -416,12 +416,16 @@ EcmaVM::~EcmaVM()
     ASSERT(thread_->IsInRunningStateOrProfiling());
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (thread_->isProfiling_) {
+    if (profiler_ != nullptr) {
         if (profiler_->GetOutToFile()) {
             DFXJSNApi::StopCpuProfilerForFile(this);
         } else {
             DFXJSNApi::StopCpuProfilerForInfo(this);
         }
+    }
+    if (profiler_ != nullptr) {
+        delete profiler_;
+        profiler_ = nullptr;
     }
 #endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
