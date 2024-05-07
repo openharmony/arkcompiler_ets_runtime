@@ -1272,15 +1272,15 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, uintptr_t value)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
-    JSHandle<JSTaggedValue> arg(value);
+    JSTaggedValue arg = *reinterpret_cast<JSTaggedValue *>(value);
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(capacity, FATAL);
-    JSHandle<JSTaggedValue> resolve(thread, capacity->GetResolve());
-    JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
+    JSTaggedValue resolve = capacity->GetResolve();
+    JSTaggedValue undefined = constants->GetUndefined();
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    info->SetCallArg(arg.GetTaggedValue());
+    info->SetCallArg(arg);
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
@@ -1320,16 +1320,16 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, uintptr_t reason)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
-    JSHandle<JSTaggedValue> arg(reason);
+    JSTaggedValue arg = *reinterpret_cast<JSTaggedValue *>(reason);
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(capacity, FATAL);
-    JSHandle<JSTaggedValue> reject(thread, capacity->GetReject());
-    JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
+    JSTaggedValue reject = capacity->GetReject();
+    JSTaggedValue undefined = constants->GetUndefined();
 
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    info->SetCallArg(arg.GetTaggedValue());
+    info->SetCallArg(arg);
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
