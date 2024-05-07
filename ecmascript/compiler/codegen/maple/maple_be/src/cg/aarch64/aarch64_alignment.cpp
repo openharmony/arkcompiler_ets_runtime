@@ -155,7 +155,6 @@ uint32 AArch64AlignAnalysis::GetAlignRange(uint32 alignedVal, uint32 addr) const
         return addr;
     }
     CHECK_FATAL(alignedVal > 0, "must not be zero");
-    CHECK_FATAL(addr > 0, "must not be zero");
     uint32 range = (alignedVal - (((addr - 1) * kInsnSize) & (alignedVal - 1))) / kInsnSize - 1;
     return range;
 }

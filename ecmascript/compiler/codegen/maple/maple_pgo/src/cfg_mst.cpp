@@ -39,11 +39,10 @@ void CFGMST<Edge, BB>::BuildEdges(BB *commonEntry, BB *commonExit)
             AddEdge(curbb, succBB, kNormalEdgeWeight);
         }
     }
-
+    ASSERT_NOT_NULL(commonExit);
     for (BB *bb : commonExit->GetPreds()) {
         AddEdge(bb, commonExit, kFakeExitEdgeWeight, false, true);
     }
-    ASSERT_NOT_NULL(commonExit);
     bbGroups[commonExit->GetId()] = commonExit->GetId();
     // insert fake edge to keep consistent
     AddEdge(commonExit, commonEntry, UINT64_MAX, false, true);
