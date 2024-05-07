@@ -1019,7 +1019,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 19;
+    constexpr size_t numCallRuntimeOps = 21;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -3817,6 +3817,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
         DISPATCH(ISTRUE);
     }
+    HANDLE_OPCODE(CALLRUNTIME_ISTRUE_PREF_IMM8) {
+        LOG_INST() << "intrinsics::callruntime.istrue";
+        if (GET_ACC().ToBoolean()) {
+            SET_ACC(JSTaggedValue::True());
+        } else {
+            SET_ACC(JSTaggedValue::False());
+        }
+        DISPATCH(CALLRUNTIME_ISTRUE_PREF_IMM8);
+    }
     HANDLE_OPCODE(ISFALSE) {
         LOG_INST() << "intrinsics::isfalse";
         if (!GET_ACC().ToBoolean()) {
@@ -3825,6 +3834,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SET_ACC(JSTaggedValue::False());
         }
         DISPATCH(ISFALSE);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_ISFALSE_PREF_IMM8) {
+        LOG_INST() << "intrinsics::callruntime.isfalse";
+        if (!GET_ACC().ToBoolean()) {
+            SET_ACC(JSTaggedValue::True());
+        } else {
+            SET_ACC(JSTaggedValue::False());
+        }
+        DISPATCH(CALLRUNTIME_ISFALSE_PREF_IMM8);
     }
     NOPRINT_HANDLE_OPCODE(EXCEPTION) {
         FrameHandler frameHandler(thread);

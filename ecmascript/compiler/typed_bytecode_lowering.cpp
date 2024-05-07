@@ -229,9 +229,11 @@ void TypedBytecodeLowering::Lower(GateRef gate)
             LowerTypedEqOrNotEq<TypedBinOp::TYPED_STRICTEQ>(gate);
             break;
         case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
             LowerTypedIsTrueOrFalse(gate, true);
             break;
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
             LowerTypedIsTrueOrFalse(gate, false);
             break;
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
@@ -1364,13 +1366,22 @@ void TypedBytecodeLowering::LowerTypedStObjByValue(GateRef gate)
     }
 }
 
+bool TypedBytecodeLowering::IsTrueOrFalseHasProfileType(GateRef gate) const
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::JS_BYTECODE);
+    return acc_.GetByteCodeOpcode(gate) == EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8 ||
+           acc_.GetByteCodeOpcode(gate) == EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8;
+}
+
 void TypedBytecodeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
 {
     UnOpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     ParamType paramType;
-    if (TypeInfoAccessor::IsTrustedBooleanType(acc_, tacc.GetValue())) {
+    if (TypeInfoAccessor::IsTrustedBooleanType(acc_, tacc.GetValue()) ||
+    (IsTrueOrFalseHasProfileType(gate) && tacc.IsBooleanType())) {
         paramType = ParamType::BooleanType();
-    } else if (TypeInfoAccessor::IsTrustedNumberType(acc_, tacc.GetValue())) {
+    } else if (TypeInfoAccessor::IsTrustedNumberType(acc_, tacc.GetValue()) ||
+    (IsTrueOrFalseHasProfileType(gate) && tacc.HasNumberType())) {
         paramType = ParamType::NumberType();
     } else {
         return;

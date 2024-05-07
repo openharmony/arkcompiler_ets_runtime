@@ -1181,6 +1181,15 @@ void BaselineIstrueStubBuilder::GenerateCircuit()
     Return(*varAcc);
 }
 
+void BaselineCallRuntimeIstruePrefImm8StubBuilder::GenerateCircuit()
+{
+    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineCallRuntimeIstruePrefImm8, ACC));
+
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    varAcc = FastToBooleanBaseline(*varAcc, true);
+    Return(*varAcc);
+}
+
 void BaselineIsfalseStubBuilder::GenerateCircuit()
 {
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineIsfalse, ACC));
@@ -1189,6 +1198,16 @@ void BaselineIsfalseStubBuilder::GenerateCircuit()
     varAcc = FastToBooleanBaseline(*varAcc, false);
     Return(*varAcc);
 }
+
+void BaselineCallRuntimeIsfalsePrefImm8StubBuilder::GenerateCircuit()
+{
+    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineCallRuntimeIsfalsePrefImm8, ACC));
+
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    varAcc = FastToBooleanBaseline(*varAcc, false);
+    Return(*varAcc);
+}
+
 
 void BaselineCallthis3Imm8V8V8V8V8StubBuilder::GenerateCircuit()
 {

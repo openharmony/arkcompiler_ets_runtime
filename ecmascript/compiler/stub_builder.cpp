@@ -5903,6 +5903,126 @@ GateRef StubBuilder::FastToBooleanBaseline(GateRef value, bool flag)
     return ret;
 }
 
+GateRef StubBuilder::FastToBooleanWithProfile(GateRef value, ProfileOperation callback, bool flag)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+
+    Label isSpecial(env);
+    Label notSpecial(env);
+    Label isNumber(env);
+    Label isInt(env);
+    Label isDouble(env);
+    Label notNumber(env);
+    Label notNan(env);
+    Label isString(env);
+    Label notString(env);
+    Label isBigint(env);
+    Label lengthIsOne(env);
+    Label returnTrue(env);
+    Label returnFalse(env);
+    Label isTrue(env);
+    Label isNotTrue(env);
+    Label isFalse(env);
+    Label isNotFalse(env);
+
+    BRANCH(TaggedIsSpecial(value), &isSpecial, &notSpecial);
+    Bind(&isSpecial);
+    {
+        BRANCH(TaggedIsTrue(value), &isTrue, &isNotTrue);
+        Bind(&isTrue);
+        {
+            callback.ProfileOpType(Int32(PGOSampleType::BooleanType()));
+            Jump(&returnTrue);
+        }
+        Bind(&isNotTrue);
+        {
+            BRANCH(TaggedIsFalse(value), &isFalse, &isNotFalse);
+            Bind(&isFalse);
+            {
+                callback.ProfileOpType(Int32(PGOSampleType::BooleanType()));
+                Jump(&returnFalse);
+            }
+        }
+        Bind(&isNotFalse);
+        Jump(&returnFalse);
+    }
+    Bind(&notSpecial);
+    {
+        BRANCH(TaggedIsNumber(value), &isNumber, &notNumber);
+        Bind(&notNumber);
+        {
+            BRANCH(IsString(value), &isString, &notString);
+            Bind(&isString);
+            {
+                auto len = GetLengthFromString(value);
+                BRANCH(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
+            }
+            Bind(&notString);
+            BRANCH(TaggedObjectIsBigInt(value), &isBigint, &returnTrue);
+            Bind(&isBigint);
+            {
+                auto len = Load(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));
+                BRANCH(Int32Equal(len, Int32(1)), &lengthIsOne, &returnTrue);
+                Bind(&lengthIsOne);
+                {
+                    auto data = PtrAdd(value, IntPtr(BigInt::DATA_OFFSET));
+                    auto data0 = Load(VariableType::INT32(), data, Int32(0));
+                    BRANCH(Int32Equal(data0, Int32(0)), &returnFalse, &returnTrue);
+                }
+            }
+        }
+        Bind(&isNumber);
+        {
+            callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
+            BRANCH(TaggedIsInt(value), &isInt, &isDouble);
+            Bind(&isInt);
+            {
+                auto intValue = GetInt32OfTInt(value);
+                BRANCH(Int32Equal(intValue, Int32(0)), &returnFalse, &returnTrue);
+            }
+            Bind(&isDouble);
+            {
+                auto doubleValue = GetDoubleOfTDouble(value);
+                BRANCH(DoubleIsNAN(doubleValue), &returnFalse, &notNan);
+                Bind(&notNan);
+                BRANCH(DoubleEqual(doubleValue, Double(0.0)), &returnFalse, &returnTrue);
+            }
+        }
+    }
+    if (flag == 1) {
+        Bind(&returnTrue);
+        {
+            result = TaggedTrue();
+            Jump(&exit);
+        }
+        Bind(&returnFalse);
+        {
+            result = TaggedFalse();
+            Jump(&exit);
+        }
+    } else {
+        Bind(&returnFalse);
+        {
+            result = TaggedTrue();
+            Jump(&exit);
+        }
+        Bind(&returnTrue);
+        {
+            result = TaggedFalse();
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::FastDiv(GateRef left, GateRef right, ProfileOperation callback)
 {
     auto env = GetEnvironment();

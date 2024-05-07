@@ -591,6 +591,10 @@ DEFINE_PARAMETER_INDEX(BaselineCallRuntimeDefineSendableClassPrefImm16Id16Id16Im
     GLUE, SP, METHOD_ID, LITERAL_ID, LENGTH, V0)
 DEFINE_PARAMETER_INDEX(BaselineCallRuntimeLdSendableClassPrefImm16,
     GLUE, SP, ACC, LEVEL)
+DEFINE_PARAMETER_INDEX(BaselineCallRuntimeIstruePrefImm8,
+    GLUE, SP, ACC, V0)
+DEFINE_PARAMETER_INDEX(BaselineCallRuntimeIsfalsePrefImm8,
+    GLUE, SP, ACC, V0)
 DEFINE_PARAMETER_INDEX(BaselineReturnundefined, GLUE, ACC, SP)
 DEFINE_PARAMETER_INDEX(BaselineExceptionHandler,
     GLUE, ACC, SP, PROFILE_TYPE_INFO, HOTNESS_COUNTER, FRAME)
