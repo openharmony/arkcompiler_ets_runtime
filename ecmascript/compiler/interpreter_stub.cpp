@@ -4569,8 +4569,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     NewObjectStubBuilder newBuilder(this);
     GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
-    Label isColdReload(env);
-    Label isNotColdReload(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
     {
@@ -4580,15 +4578,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         SetLexicalEnvToFunction(glue, result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
-
-        GateRef coldReloadStage = GetColdReloadStage(glue);
-        BRANCH(Equal(coldReloadStage, True()), &isColdReload, &isNotColdReload);
-        Bind(&isColdReload);
-        {
-            CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
-            Jump(&isNotColdReload);
-        }
-        Bind(&isNotColdReload);
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         callback.ProfileDefineClass(result);
         varAcc = result;
@@ -4605,8 +4594,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     NewObjectStubBuilder newBuilder(this);
     GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
-    Label isColdReload(env);
-    Label isNotColdReload(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
     {
@@ -4617,15 +4604,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
-
-        GateRef coldReloadStage = GetColdReloadStage(glue);
-        BRANCH(Equal(coldReloadStage, True()), &isColdReload, &isNotColdReload);
-        Bind(&isColdReload);
-        {
-            CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
-            Jump(&isNotColdReload);
-        }
-        Bind(&isNotColdReload);
         varAcc = result;
         callback.ProfileDefineClass(result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
@@ -5163,6 +5141,58 @@ DECLARE_ASM_HANDLER(ThrowStackOverflowException)
 {
     CallRuntime(glue, RTSTUB_ID(ThrowStackOverflowException), {});
     DISPATCH_LAST();
+}
+
+DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8ColdReload)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef methodId = ReadInst16_1(pc);
+    GateRef length = ReadInst8_3(pc);
+    NewObjectStubBuilder newBuilder(this);
+    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
+    Bind(&notException);
+    {
+        SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
+        auto frame = GetFrame(sp);
+        GateRef envHandle = GetEnvFromFrame(frame);
+        SetLexicalEnvToFunction(glue, result, envHandle);
+        GateRef currentFunc = GetFunctionFromFrame(frame);
+        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
+        CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
+        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+        callback.ProfileDefineClass(result);
+        varAcc = result;
+        DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
+    }
+}
+
+DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8ColdReload)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef methodId = ReadInst16_2(pc);
+    GateRef length = ReadInst8_4(pc);
+    NewObjectStubBuilder newBuilder(this);
+    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
+    Bind(&notException);
+    {
+        SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
+        auto frame = GetFrame(sp);
+        GateRef envHandle = GetEnvFromFrame(frame);
+        SetLexicalEnvToFunction(glue, result, envHandle);
+        GateRef currentFunc = GetFunctionFromFrame(frame);
+        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
+        CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
+        varAcc = result;
+        callback.ProfileDefineClass(result);
+        DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleWideLdpatchvarPrefImm16)

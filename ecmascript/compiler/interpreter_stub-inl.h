@@ -627,12 +627,6 @@ GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
     return GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
 }
 
-GateRef InterpreterStubBuilder::GetColdReloadStage(GateRef glue)
-{
-    GateRef offset = IntPtr(JSThread::GlueData::GetIsColdReloadOffSet(GetEnvironment()->Is32Bit()));
-    return Load(VariableType::BOOL(), glue, offset);
-}
-
 void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
     GateRef profileTypeInfo, GateRef acc,
     GateRef hotnessCounter, GateRef index)
