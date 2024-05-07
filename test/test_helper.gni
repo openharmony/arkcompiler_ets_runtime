@@ -4568,16 +4568,19 @@ template("host_jit_test_action") {
     _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
     _host_jsoptimizer_lib_ = "//arkcompiler/ets_runtime/ecmascript/compiler:libark_jsoptimizer(${host_toolchain})"
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
-    _osr_run_options_ =
+    _jit_run_options_ =
         " --asm-interpreter=true" + " --compiler-enable-jit=true" +
         " --compiler-enable-jit-pgo=true" +
         " --compiler-jit-hotness-threshold=5" + " --enable-pgo-profiler=true" +
         " --compiler-enable-litecg=true" + " --entry-point=${_target_name_} "
-    _osr_run_options_ += common_options
+    _jit_run_options_ += common_options
 
     if (defined(invoker.enable_osr) && invoker.enable_osr) {
-      _osr_run_options_ += " --compiler-enable-osr=true "
-      _osr_run_options_ += " --compiler-osr-hotness-threshold=1 "
+      _jit_run_options_ += " --compiler-enable-osr=true "
+      _jit_run_options_ += " --compiler-osr-hotness-threshold=1 "
+    }
+    if (defined(invoker.extra_option)) {
+      _jit_run_options_ += invoker.extra_option
     }
 
     deps = [
@@ -4591,7 +4594,7 @@ template("host_jit_test_action") {
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
-      _osr_run_options_,
+      _jit_run_options_,
       "--script-args",
       _script_args_,
       "--expect-file",

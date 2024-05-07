@@ -1378,6 +1378,11 @@ public:
         return &jitMutex_;
     }
 
+    RecursiveMutex &GetProfileTypeAccessorLock()
+    {
+        return profileTypeAccessorLockMutex_;
+    }
+
     void SetMachineCodeLowMemory(bool isLow)
     {
         machineCodeLowMemory_ = isLow;
@@ -1564,6 +1569,7 @@ private:
     ThreadType threadType_ {ThreadType::JS_THREAD};
     RecursiveMutex jitMutex_;
     bool machineCodeLowMemory_ {false};
+    RecursiveMutex profileTypeAccessorLockMutex_;
 
     uint64_t jobId_ {0};
 

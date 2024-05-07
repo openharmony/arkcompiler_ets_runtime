@@ -11,32 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_jit_ts_test") {
-  testonly = true
-  test_list = [
-    "create_arguments",
-    "ldobjbyname",
-    "for_loop",
-    "typed_array",
-    "while_loop",
-    "exception",
-    "construct_with_normal_function",
-    "addition_assignment",
-    "catch_with_osr",
-    "ts_inline",
-  ]
-
-  deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}JitAction" ]
-  }
-}
-
-group("ark_jit_test") {
-  testonly = true
-  deps = [ ":ark_jit_ts_test" ]
-
-  if (is_mac) {
-    deps -= [ ":ark_jit_ts_test" ]
-  }
-}
+[trace] aot inline function name: #*#func@ts_inline caller function name: #*#Test@ts_inline
+28
+true

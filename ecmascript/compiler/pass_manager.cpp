@@ -90,7 +90,9 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         }
         if (compilationEnv_->GetJSOptions().IsEnableJITPGO()) {
             jitProfiler_ = compilationEnv_->GetPGOProfiler()->GetJITProfile();
-            jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo,
+            static_cast<JitCompilationEnv*>(compilationEnv_)->SetProfileTypeInfo(profileTypeInfo);
+            jitProfiler_->SetCompilationEnv(compilationEnv_);
+            jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo, nullptr,
                                           methodLiteral->GetMethodId(), abcId, pcStart,
                                           methodLiteral->GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),
                                           header);
@@ -117,8 +119,9 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             builder_->BytecodeToCircuit();
         }
 
+        CallMethodFlagMap methodFlagMap;
         data_ = new PassData(builder_, circuit_, ctx_, log_, fullName, &methodInfo, hasTypes, recordName,
-            methodLiteral, methodOffset, nullptr, CVector<AbcFileInfo> {},
+            methodLiteral, methodOffset, &methodFlagMap, CVector<AbcFileInfo> {},
             compilationEnv_->GetNativeAreaAllocator(), decoder, passOptions_);
         PassRunner<PassData> pipeline(data_);
 

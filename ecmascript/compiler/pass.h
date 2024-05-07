@@ -71,7 +71,7 @@ public:
     PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassContext *ctx, CompilerLog *log,
              std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
-             uint32_t methodOffset = 0, const CallMethodFlagMap *callMethodFlagMap = nullptr,
+             uint32_t methodOffset = 0, CallMethodFlagMap *callMethodFlagMap = nullptr,
              const CVector<AbcFileInfo> &fileInfos = CVector<AbcFileInfo>{}, NativeAreaAllocator *allocator = nullptr,
              PGOProfilerDecoder *decoder = nullptr, PassOptions *passOptions = nullptr,
              std::string optBCRange = "")
@@ -190,7 +190,7 @@ public:
         return optBCRange_;
     }
 
-    const CallMethodFlagMap *GetCallMethodFlagMap() const
+    CallMethodFlagMap *GetCallMethodFlagMap()
     {
         return callMethodFlagMap_;
     }
@@ -240,7 +240,7 @@ private:
     const CString &recordName_;
     MethodLiteral *methodLiteral_ {nullptr};
     uint32_t methodOffset_;
-    const CallMethodFlagMap *callMethodFlagMap_ {nullptr};
+    CallMethodFlagMap *callMethodFlagMap_ {nullptr};
     const CVector<AbcFileInfo> &fileInfos_;
     NativeAreaAllocator *allocator_ {nullptr};
     PGOProfilerDecoder *decoder_ {nullptr};
@@ -515,7 +515,8 @@ public:
         TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
-                                  data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset());
+                                  data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset(),
+                                  data->GetCallMethodFlagMap());
         inlining.RunTSInlineLowering();
         Chunk chunk(data->GetNativeAreaAllocator());
         if (passOptions->EnableLexenvSpecialization()) {

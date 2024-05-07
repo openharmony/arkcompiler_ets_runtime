@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_JIT_COMPILATION_ENV_H
 
 #include "ecmascript/compiler/compilation_env.h"
+#include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript {
 class JitCompilationEnv final : public CompilationEnv {
@@ -83,6 +84,25 @@ public:
     {
         return abcId_;
     }
+
+    void SetProfileTypeInfo(const JSHandle<ProfileTypeInfo> &info)
+    {
+        profileTypeInfo_ = info;
+    }
+
+    void UpdateFuncSlotIdMap(uint32_t calleeOffset, uint32_t callerOffset, uint32_t slotId)
+    {
+        if (functionSlotIdMap_.find(calleeOffset) != functionSlotIdMap_.end()) {
+            return;
+        }
+        if (callee2CallerMap_.find(calleeOffset) != callee2CallerMap_.end()) {
+            return;
+        }
+        functionSlotIdMap_[calleeOffset] = slotId;
+        callee2CallerMap_[calleeOffset] = callerOffset;
+    }
+
+    JSFunction *GetJsFunctionByMethodOffset(uint32_t methodOffset) const;
 private:
     JSThread *hostThread_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
@@ -90,6 +110,9 @@ private:
     MethodLiteral *methodLiteral_ {nullptr};
     const uint8_t* pcStart_ {nullptr};
     pgo::ApEntityId abcId_ {0};
+    JSHandle<ProfileTypeInfo> profileTypeInfo_;
+    std::map<uint32_t, uint32_t> functionSlotIdMap_;
+    std::map<uint32_t, uint32_t> callee2CallerMap_;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_JIT_COMPILATION_ENV_H

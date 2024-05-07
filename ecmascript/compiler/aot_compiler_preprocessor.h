@@ -42,9 +42,12 @@ public:
     bool IsFastCall(CString fileDesc, uint32_t methodOffset) const;
     void SetIsAotCompile(CString fileDesc, uint32_t methodOffset, bool isAotCompile);
     bool IsAotCompile(CString fileDesc, uint32_t methodOffset) const;
+    void SetIsJitCompile(CString fileDesc, uint32_t methodOffset, bool isAotCompile);
+    bool IsJitCompile(CString fileDesc, uint32_t methodOffset) const;
 private:
     std::map<std::pair<CString, uint32_t>, bool> abcIdMethodIdToIsFastCall_ {};
     std::map<std::pair<CString, uint32_t>, bool> abcIdMethodIdToIsAotCompile_ {};
+    std::map<std::pair<CString, uint32_t>, bool> abcIdMethodIdToIsJitCompile_ {};
 };
 
 struct CompilationOptions {
@@ -172,7 +175,7 @@ public:
     {
         return pkgsArgs_;
     }
-    const CallMethodFlagMap *GetCallMethodFlagMap()
+    CallMethodFlagMap *GetCallMethodFlagMap()
     {
         return &callMethodFlagMap_;
     }

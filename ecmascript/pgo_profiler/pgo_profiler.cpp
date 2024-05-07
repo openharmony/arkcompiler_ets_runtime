@@ -1264,10 +1264,11 @@ void PGOProfiler::DumpCall(ApEntityId abcId, const CString &recordName, EntityId
             return;
         }
         kind = ProfileType::Kind::BuiltinFunctionId;
-    } else if (slotValue.IsMethod()) {
-        Method *calleeMethod = Method::Cast(slotValue);
+    } else if (slotValue.IsJSFunction()) {
+        JSFunction *callee = JSFunction::Cast(slotValue);
+        Method *calleeMethod = Method::Cast(callee->GetMethod());
         calleeMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
-        calleeAbcId = GetMethodAbcId(slotValue);
+        calleeAbcId = GetMethodAbcId(callee->GetMethod());
         kind = ProfileType::Kind::MethodId;
     } else {
         return;
@@ -1302,8 +1303,9 @@ void PGOProfiler::DumpNewObjRange(ApEntityId abcId, const CString &recordName, E
     int ctorMethodId = 0;
     if (slotValue.IsInt()) {
         ctorMethodId = slotValue.GetInt();
-    } else if (slotValue.IsMethod()) {
-        Method *calleeMethod = Method::Cast(slotValue);
+    } else if (slotValue.IsJSFunction()) {
+        JSFunction *callee = JSFunction::Cast(slotValue);
+        Method *calleeMethod = Method::Cast(callee->GetMethod());
         ctorMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
     } else {
         return;

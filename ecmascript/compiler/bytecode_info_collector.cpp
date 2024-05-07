@@ -50,7 +50,7 @@ BytecodeInfoCollector::BytecodeInfoCollector(CompilationEnv *env, JSPandaFile *j
       snapshotCPData_(nullptr) // jit no need
 {
     ASSERT(env->IsJitCompiler());
-    ProcessMethod();
+    ProcessCurrMethod();
 }
 
 void BytecodeInfoCollector::ProcessClasses()
@@ -133,35 +133,38 @@ void BytecodeInfoCollector::ProcessClasses()
                        << methodIdx;
 }
 
-void BytecodeInfoCollector::ProcessMethod()
+void BytecodeInfoCollector::ProcessCurrMethod()
 {
+    ProcessMethod(compilationEnv_->GetMethodLiteral());
+}
+
+void BytecodeInfoCollector::ProcessMethod(MethodLiteral *methodLiteral)
+{
+    panda_file::File::EntityId methodIdx = methodLiteral->GetMethodId();
+    auto methodOffset = methodIdx.GetOffset();
+    if (processedMethod_.find(methodOffset) != processedMethod_.end()) {
+        return;
+    }
+
     auto &recordNames = bytecodeInfo_.GetRecordNames();
     auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
-    MethodLiteral *methodLiteral = compilationEnv_->GetMethodLiteral();
-
-    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
-    panda_file::File::EntityId methodIdx = methodLiteral->GetMethodId();
-    panda_file::MethodDataAccessor mda(*pf, methodIdx);
     const CString recordName = jsPandaFile_->GetRecordNameWithBundlePack(methodIdx);
     recordNames.emplace_back(recordName);
-    auto methodId = mda.GetMethodId();
-
     ASSERT(jsPandaFile_->IsNewVersion());
 
-    auto methodOffset = methodId.GetOffset();
+    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodIdx);
     auto codeId = mda.GetCodeId();
     ASSERT(codeId.has_value());
     panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
     uint32_t codeSize = codeDataAccessor.GetCodeSize();
     const uint8_t *insns = codeDataAccessor.GetInstructions();
-
-    std::map<uint32_t, std::pair<size_t, uint32_t>> processedMethod;
     std::vector<panda_file::File::EntityId> classConstructIndexes;
 
     CollectMethodPcsFromBC(codeSize, insns, methodLiteral,
         recordName, methodOffset, classConstructIndexes);
-    processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
-    SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
+    SetMethodPcInfoIndex(methodOffset, {methodPcInfos.size() - 1, methodOffset});
+    processedMethod_.emplace(methodOffset);
 }
 
 void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,

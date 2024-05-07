@@ -22,6 +22,7 @@
 namespace panda::ecmascript {
 void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
+    ProfileTypeAccessorLockScope accessorLockScope(thread_);
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     if (!IsICSlotValid()) {
         return;
@@ -44,8 +45,34 @@ void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHa
     AddHandlerWithoutKey(hclass, handler);
 }
 
+void ProfileTypeAccessor::AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler,
+                                            uint32_t index, JSTaggedValue profileData) const
+{
+    ASSERT(profileTypeInfo_->Get(index + 1).IsHole());
+    JSHandle<TaggedArray> arr(thread_, profileData);
+    const uint32_t step = 2;
+    uint32_t newLen = arr->GetLength() + step;
+    if (newLen > CACHE_MAX_LEN) {
+        profileTypeInfo_->Set(thread_, index, JSTaggedValue::Hole());
+        profileTypeInfo_->Set(thread_, index + 1, JSTaggedValue::Hole());
+        return;
+    }
+    auto factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> newArr = factory->NewTaggedArray(newLen);
+    uint32_t i = 0;
+    for (; i < arr->GetLength(); i += step) {
+        newArr->Set(thread_, i, arr->Get(i));
+        newArr->Set(thread_, i + 1, arr->Get(i + 1));
+    }
+    newArr->Set(thread_, i, GetWeakRef(hclass.GetTaggedValue()));
+    newArr->Set(thread_, i + 1, handler.GetTaggedValue());
+    profileTypeInfo_->Set(thread_, index, newArr.GetTaggedValue());
+    profileTypeInfo_->Set(thread_, index + 1, JSTaggedValue::Hole());
+}
+
 void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
+    ProfileTypeAccessorLockScope accessorLockScope(thread_);
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     if (!IsICSlotValid()) {
         return;
@@ -64,26 +91,7 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, J
         return;
     }
     if (!profileData.IsWeak() && profileData.IsTaggedArray()) {  // POLY
-        ASSERT(profileTypeInfo_->Get(index + 1).IsHole());
-        JSHandle<TaggedArray> arr(thread_, profileData);
-        const uint32_t step = 2;
-        uint32_t newLen = arr->GetLength() + step;
-        if (newLen > CACHE_MAX_LEN) {
-            profileTypeInfo_->Set(thread_, index, JSTaggedValue::Hole());
-            profileTypeInfo_->Set(thread_, index + 1, JSTaggedValue::Hole());
-            return;
-        }
-        auto factory = thread_->GetEcmaVM()->GetFactory();
-        JSHandle<TaggedArray> newArr = factory->NewTaggedArray(newLen);
-        uint32_t i = 0;
-        for (; i < arr->GetLength(); i += step) {
-            newArr->Set(thread_, i, arr->Get(i));
-            newArr->Set(thread_, i + 1, arr->Get(i + 1));
-        }
-        newArr->Set(thread_, i, GetWeakRef(hclass.GetTaggedValue()));
-        newArr->Set(thread_, i + 1, handler.GetTaggedValue());
-        profileTypeInfo_->Set(thread_, index, newArr.GetTaggedValue());
-        profileTypeInfo_->Set(thread_, index + 1, JSTaggedValue::Hole());
+        AddWithoutKeyPoly(hclass, handler, index, profileData);
         return;
     }
     // MONO to POLY
@@ -102,6 +110,7 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, J
 void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
                                             JSHandle<JSTaggedValue> handler) const
 {
+    ProfileTypeAccessorLockScope accessorLockScope(thread_);
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     if (!IsICSlotValid()) {
         return;
@@ -165,6 +174,7 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
 
 void ProfileTypeAccessor::AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> handler) const
 {
+    ProfileTypeAccessorLockScope accessorLockScope(thread_);
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     if (!IsICSlotValid()) {
         return;
