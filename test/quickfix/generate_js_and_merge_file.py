@@ -36,6 +36,9 @@ replace_config3 = [
     {"id": "REPLACE_FUNC_FOO1", "start": 0, "end": 65488},
     {"id": "REPLACE_FUNC_FOO2", "start": 65489, "end": 65536},
 ]
+replace_config4 = [
+    {"id": "REPLACE_FUNC_FOO", "start": 35004, "end": 40153},
+]
 
 aot_multi_constantpool_test_path = "ets_runtime/test/aottest/aot_multi_constantpool_test/"
 
@@ -79,6 +82,14 @@ file_list = [
     {
         "file_name": "ets_runtime/test/quickfix/multi_classconstpool/base.js",
         "replace_config": replace_config2,
+    },
+    {
+        "file_name": "ets_runtime/test/quickfix/multiconstpool_multifunc/base.js",
+        "replace_config": replace_config4,
+    },
+    {
+        "file_name": "ets_runtime/test/quickfix/multiconstpool_multifunc/base_modify.js",
+        "replace_config": replace_config4,
     },
     {
         "file_name": "ets_runtime/test/moduletest/multiconstpoolobj/multiconstpoolobj.js",
