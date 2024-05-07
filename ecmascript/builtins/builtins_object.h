@@ -36,7 +36,7 @@
     /* Object.defineProperty ( O, P, Attributes ) */                                                \
     V("defineProperty",           DefineProperty,           3, INVALID)                             \
     /* Object.entries ( O ) */                                                                      \
-    V("entries",                  Entries,                  1, ObjectEntries)                       \
+    V("entries",                  Entries,                  1, INVALID)                             \
     /* Object.freeze ( O ) */                                                                       \
     V("freeze",                   Freeze,                   1, INVALID)                             \
     /* Object.fromEntries ( iterable ) */                                                           \
