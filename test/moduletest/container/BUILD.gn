@@ -48,7 +48,7 @@ host_moduletest_action("container_treemap") {
   deps = []
   entry_point = "--entry-point=container_treemap"
   is_merge = true
-  is_merge_abc = true  
+  is_merge_abc = true
 }
 
 host_moduletest_action("container_treeset") {
@@ -71,7 +71,7 @@ host_moduletest_action("container_lightweightmap") {
   deps = []
   entry_point = "--entry-point=container_lightweightmap"
   is_merge = true
-  is_merge_abc = true  
+  is_merge_abc = true
 }
 
 host_moduletest_action("container_lightweightset") {
