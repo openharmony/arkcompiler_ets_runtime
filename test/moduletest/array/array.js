@@ -637,7 +637,6 @@ const mapEd = v0.map(() => {
 });
 print(new Uint16Array(v0).length);
 
-// TypeError
 try {
     const v2 = new ArrayBuffer(103);
     function F3(a5, a6) {
@@ -658,9 +657,9 @@ try {
     print(err.name);
 }
 
-// ReferenceError
 try {
     const v3 = new ArrayBuffer(45);
+    const v0 = new Boolean;
     function F4(a6, a7) {
         if (!new.target) { throw 'must be called with new'; }
         function f8(a9, a10, a11) {
@@ -682,7 +681,6 @@ try {
     print(err.name);
 }
 
-// TypeError
 try {
     function F6(a8, a9, a10) {
         if (!new.target) { throw 'must be called with new'; }
@@ -725,7 +723,6 @@ try {
     print(err.name);
 }
 
-// TypeError
 try {
     const v3 = new ArrayBuffer(19);
     function F4(a6, a7) {
@@ -742,7 +739,6 @@ try {
     print(err.name);
 }
 
-// TypeError
 try {
     const v3 = new ArrayBuffer(10);
     function F4(a6, a7) {
@@ -763,7 +759,6 @@ try {
     print(err.name);
 }
 
-// TypeError
 try {
     const v2 = new ArrayBuffer(10);
     function F3(a5, a6) {
@@ -784,7 +779,6 @@ try {
     print(err.name);
 }
 
-// TypeError
 try {
     const v1 = new Uint16Array();
     for (let i4 = 0, i5 = 10; i5; i5--) {
