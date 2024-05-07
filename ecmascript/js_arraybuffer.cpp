@@ -18,6 +18,7 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/platform/os.h"
@@ -59,7 +60,7 @@ void JSArrayBuffer::Attach(JSThread *thread, uint32_t arrayBufferByteLength,
     SetArrayBufferData(thread, arrayBufferData);
 }
 
-void JSArrayBuffer::Detach(JSThread *thread, bool transferWithNativeAreaAllocator)
+void JSArrayBuffer::Detach(JSThread *thread, bool transferWithNativeAreaAllocator, bool isSerialize)
 {
     JSTaggedValue arrayBufferData = GetArrayBufferData();
     // already detached.
@@ -74,6 +75,9 @@ void JSArrayBuffer::Detach(JSThread *thread, bool transferWithNativeAreaAllocato
         NativeAreaAllocator *allocator = thread->GetEcmaVM()->GetNativeAreaAllocator();
         allocator->DecreaseNativeMemoryUsage(MallocUsableSize(np->GetExternalPointer()));
         np->SetData(nullptr);
+    }
+    if (isSerialize && arrayBufferData.IsJSNativePointer()) {
+        reinterpret_cast<JSNativePointer *>(arrayBufferData.GetTaggedObject())->SetDeleter(nullptr);
     }
     SetArrayBufferData(thread, JSTaggedValue::Null());
     SetArrayBufferByteLength(0);
