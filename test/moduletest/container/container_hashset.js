@@ -59,8 +59,8 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     // test forEach:
     set.forEach((i, d) => {
-    })
-    map.set("test forEach:", true)
+    });
+    map.set("test forEach:", true);
     // test isEmpty: false
     map.set("test isEmpty:", !set.isEmpty());
 
@@ -117,7 +117,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     // test forEach:
     proxy.forEach((i, d) => {
     })
-    map.set("test forEach:", true)
+    map.set("test forEach:", true);
 
     // test isEmpty: false
     map.set("test isEmpty:", !proxy.isEmpty());
