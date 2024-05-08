@@ -120,6 +120,7 @@ void DtoaHelper::DigitGen(const DiyFp &W, const DiyFp &Mp, uint64_t delta, char 
     const DiyFp one(uint64_t(1) << -Mp.e, Mp.e);
     const DiyFp distance = Mp - W;
     uint32_t p1 = static_cast<uint32_t>(Mp.f >> -one.e);
+    ASSERT(one.f > 0);
     uint64_t p2 = Mp.f & (one.f - 1);
     int kappa = CountDecimalDigit32(p1); // kappa in [0, 9]
     *len = 0;

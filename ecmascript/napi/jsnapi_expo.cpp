@@ -1617,6 +1617,7 @@ void BigIntRef::GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words)
     uint32_t len = bigintVal->GetLength();
     uint32_t count = 0;
     uint32_t index = 0;
+    ASSERT(wordCount > 0);
     for (; index < wordCount - 1; ++index) {
         words[index] = static_cast<uint64_t>(bigintVal->GetDigit(count++));
         words[index] |= static_cast<uint64_t>(bigintVal->GetDigit(count++)) << 32; // 32 : int32_t bits

@@ -425,6 +425,7 @@ public:
 
     uint32_t GetLastBcIndex() const
     {
+        ASSERT(pcOffsets_.size() > 0);
         return static_cast<uint32_t>(pcOffsets_.size() - 1);
     }
 

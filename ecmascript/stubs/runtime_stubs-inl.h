@@ -951,6 +951,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     auto literalLength = arrayHandle->GetLength();
+    ASSERT(literalLength > 0);
     // fieldTypeId is the last element in literal buffer
     auto fieldTypeId = static_cast<uint32_t>(arrayHandle->Get(literalLength - 1).GetInt());
     // Don't trim array, because define class maybe called on muilt-time in the same vm or diferrent vm

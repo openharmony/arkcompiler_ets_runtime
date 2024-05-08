@@ -345,11 +345,13 @@ protected:
 
     inline static uint32_t GetFirstPosition(uint32_t hash, uint32_t size)
     {
+        ASSERT(size > 0);
         return hash & (size - 1);
     }
 
     inline static uint32_t GetNextPosition(uint32_t last, uint32_t number, uint32_t size)
     {
+        ASSERT(size > 0);
         return (last + (number * (number + 1)) / 2) & (size - 1);  // 2 : half
     }
 

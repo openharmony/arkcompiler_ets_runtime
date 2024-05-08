@@ -178,6 +178,7 @@ void TaggedArray::RemoveElementByIndex(const JSThread *thread, JSHandle<TaggedAr
                                        uint32_t index, uint32_t effectiveLength, bool noNeedBarrier)
 {
     ASSERT(0 <= index || index < effectiveLength);
+    ASSERT(effectiveLength > 0);
     if (noNeedBarrier) {
         size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
         size_t offset = taggedTypeSize * index;
