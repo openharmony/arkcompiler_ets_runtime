@@ -1317,7 +1317,7 @@ bool JSSymbolExtractor::ParseHapFileData([[maybe_unused]] std::string& hapName)
     auto &entrys = zipFile->GetAllEntries();
     for (const auto &entry : entrys) {
         std::string fileName = entry.first;
-        if (fileName.rfind(".abc") == std::string::npos) {
+        if (fileName.rfind("modules.abc") == std::string::npos) {
             continue;
         }
 
