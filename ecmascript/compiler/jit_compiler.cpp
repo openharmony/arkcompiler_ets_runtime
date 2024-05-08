@@ -33,6 +33,15 @@ JitCompiler *JitCompiler::GetInstance(JSRuntimeOptions *options)
     return &instance;
 }
 
+void JitCompiler::UpdatePassOptions(CompilationEnv *env)
+{
+    EcmaVM *vm = env->GetHostThread()->GetEcmaVM();
+    bool builtinsLazyEnabled = vm->GetJSOptions().IsWorker() && vm->GetJSOptions().GetEnableBuiltinsLazy();
+    if (builtinsLazyEnabled) {
+        passOptions_.SetLoweringBuiltin(false);
+    }
+}
+
 JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
 {
 #if defined(PANDA_TARGET_AMD64)
@@ -120,6 +129,7 @@ bool JitCompilerTask::Compile()
     }
 
     JitCompiler *jitCompiler = JitCompiler::GetInstance();
+    jitCompiler->UpdatePassOptions(jitCompilationEnv_.get());
     auto jitPassManager = new (std::nothrow) JitPassManager(jitCompilationEnv_.get(),
                                                             jitCompiler->GetJitOptions().triple_,
                                                             jitCompiler->GetJitOptions().optLevel_,
