@@ -39,6 +39,10 @@ replace_config3 = [
 replace_config4 = [
     {"id": "REPLACE_FUNC_FOO", "start": 35004, "end": 40153},
 ]
+replace_config5 = [
+    {"id": "REPLACE_FUNC_FOO1", "start": 35004, "end": 40153},
+    {"id": "REPLACE_FUNC_FOO2", "start": 1, "end": 34999, "isFunc": True, "msg": "patch"},
+]
 
 aot_multi_constantpool_test_path = "ets_runtime/test/aottest/aot_multi_constantpool_test/"
 
@@ -89,7 +93,7 @@ file_list = [
     },
     {
         "file_name": "ets_runtime/test/quickfix/multiconstpool_multifunc/base_modify.js",
-        "replace_config": replace_config4,
+        "replace_config": replace_config5,
     },
     {
         "file_name": "ets_runtime/test/moduletest/multiconstpoolobj/multiconstpoolobj.js",
@@ -147,6 +151,14 @@ def generate_var(var_begin, var_end):
             str_var_list.append("\n")
     return ''.join(str_var_list)
 
+def generate_funcs(var_begin, var_end, msg):
+    str_func_list = []
+    for i in range(var_begin, var_end + 1):
+        str_func_list.append('function foo{0}()'.format(i))
+        str_func_list.append('{\n\t')
+        str_func_list.append('var a{0} = "{1}";\n\tprint("{2} foo{3}")\n'.format(i, i, msg, i))
+        str_func_list.append('}\n')
+    return ''.join(str_func_list)
 
 def read_file_content(input_file):
     input_fd = os.open(input_file, os.O_RDONLY, 0o755)
@@ -164,8 +176,12 @@ def write_file_content(output_file, data):
 def replace_in_data(data, replace_config):
     for cfg in replace_config:
         if cfg["id"] in data:
-            str_var = generate_var(cfg["start"], cfg["end"])
-            data = data.replace(cfg["id"], str_var)
+            if "isFunc" in cfg:
+                str_func = generate_funcs(cfg["start"], cfg["end"], cfg["msg"])
+                data = data.replace(cfg["id"], str_func)
+            else:
+                str_var = generate_var(cfg["start"], cfg["end"])
+                data = data.replace(cfg["id"], str_var)
     return data
 
 
