@@ -4277,6 +4277,8 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
         auto threshold = std::chrono::duration_cast<std::chrono::milliseconds>
             (std::chrono::milliseconds(vm->GetJsDebuggerManager()->GetSerializationCheckThreshold())).count();
+        LOG_ECMA(DEBUG) << "JSNAPI::SerializeValue tid: " << thread->GetThreadId()
+            << " threshold: " << threshold << " duration: " << duration;
         if (duration >= threshold) {
             std::stringstream tagMsg;
             tagMsg << "SerializationTimeout::tid=" << thread->GetThreadId();
@@ -4322,6 +4324,8 @@ Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
         auto threshold = std::chrono::duration_cast<std::chrono::milliseconds>
             (std::chrono::milliseconds(vm->GetJsDebuggerManager()->GetSerializationCheckThreshold())).count();
+        LOG_ECMA(DEBUG) << "JSNAPI::DeserializeValue tid: " << thread->GetThreadId()
+            << " threshold: " << threshold << " duration: " << duration;
         if (duration >= threshold) {
             std::stringstream tagMsg;
             tagMsg << "DeserializationTimeout::tid=" << thread->GetThreadId();
