@@ -388,6 +388,11 @@ public:
     int64_t IntegerValue(const EcmaVM *vm);
     uint32_t Uint32Value(const EcmaVM *vm);
     int32_t Int32Value(const EcmaVM *vm);
+    double GetValueDouble(bool &isNumber);
+    int32_t GetValueInt32(bool &isNumber);
+    uint32_t GetValueUint32(bool &isNumber);
+    int64_t GetValueInt64(bool &isNumber);
+    bool GetValueBool(bool &isBool);
 
     Local<NumberRef> ToNumber(const EcmaVM *vm);
     Local<BooleanRef> ToBoolean(const EcmaVM *vm);

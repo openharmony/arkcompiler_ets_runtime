@@ -308,6 +308,76 @@ int32_t JSValueRef::Int32Value(const EcmaVM *vm)
     return number;
 }
 
+double JSValueRef::GetValueDouble(bool &isNumber)
+{
+    JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
+    if (value.IsInt()) {
+        isNumber = true;
+        return static_cast<double>(value.GetInt());
+    }
+    if (value.IsDouble()) {
+        isNumber = true;
+        return value.GetDouble();
+    }
+    isNumber = false;
+    return 0.0;
+}
+
+int32_t JSValueRef::GetValueInt32(bool &isNumber)
+{
+    JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
+    if (value.IsInt()) {
+        isNumber = true;
+        return value.GetInt();
+    }
+    if (value.IsDouble()) {
+        isNumber = true;
+        return static_cast<int32_t>(ecmascript::base::NumberHelper::DoubleToInt(value.GetDouble(),
+            ecmascript::base::INT32_BITS));
+    }
+    isNumber = false;
+    return 0;
+}
+
+uint32_t JSValueRef::GetValueUint32(bool &isNumber)
+{
+    return static_cast<uint32_t>(GetValueInt32(isNumber));
+}
+
+int64_t JSValueRef::GetValueInt64(bool &isNumber)
+{
+    JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
+    if (value.IsInt()) {
+        isNumber = true;
+        return static_cast<int64_t>(value.GetInt());
+    }
+    if (value.IsDouble()) {
+        isNumber = true;
+        double getVale = value.GetDouble();
+        if (!std::isfinite(getVale) || std::isnan(getVale)) {
+            return 0;
+        }
+        return NumberHelper::DoubleToInt64(getVale);
+    }
+    isNumber = false;
+    return 0;
+}
+
+bool JSValueRef::GetValueBool(bool &isBool)
+{
+    JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
+    if (value.IsTrue()) {
+        isBool = true;
+        return true;
+    }
+    if (value.IsFalse()) {
+        isBool = true;
+        return false;
+    }
+    isBool = false;
+    return false;
+}
+
 Local<BooleanRef> JSValueRef::ToBoolean(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
