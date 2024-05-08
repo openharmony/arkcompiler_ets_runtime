@@ -593,7 +593,7 @@ action("gen_stub_file") {
     "--expect-output",
     "0",
     "--timeout-limit",
-    "500",
+    "1200",
     "--env-path",
     rebase_path(root_out_dir_with_host_toolchain) +
         "/arkcompiler/ets_runtime:" +
