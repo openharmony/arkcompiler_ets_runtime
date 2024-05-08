@@ -517,7 +517,7 @@ public:
         isProfiling_ = isProfiling;
     }
 
-    bool GetIsProfiling()
+    bool GetIsProfiling() const
     {
         return isProfiling_;
     }

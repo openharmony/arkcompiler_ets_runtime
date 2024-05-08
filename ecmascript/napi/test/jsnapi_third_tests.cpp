@@ -1147,4 +1147,26 @@ HWTEST_F_L0(JSNApiTests, NewObjectWithPropertiesDuplicateWithKeyNotFromStringTab
     EXPECT_TRUE(obj.GetTaggedValue() == JSTaggedValue::Undefined());
     thread_->ClearException();
 }
+
+HWTEST_F_L0(JSNApiTests, EcmaObjectToInt)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> toPrimitiveFunc = FunctionRef::New(vm_,
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            return JSValueRef::True(vm);
+        });
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    PropertyAttribute attribute(toPrimitiveFunc, true, true, true);
+    Local<JSValueRef> toPrimitiveKey = JSNApiHelper::ToLocal<JSValueRef>(vm_->GetGlobalEnv()->GetToPrimitiveSymbol());
+    obj->DefineProperty(vm_, toPrimitiveKey, attribute);
+    {
+        // Test that Uint32Value and Int32Value should transition to Running if needed.
+        ThreadNativeScope nativeScope(thread_);
+        uint32_t res = obj->Uint32Value(vm_);
+        EXPECT_TRUE(res == 1);
+        res = obj->Int32Value(vm_);
+        EXPECT_TRUE(res == 1);
+    }
+}
 } // namespace panda::test

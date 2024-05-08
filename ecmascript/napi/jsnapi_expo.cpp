@@ -295,7 +295,15 @@ int64_t JSValueRef::IntegerValue(const EcmaVM *vm)
 uint32_t JSValueRef::Uint32Value(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
-    uint32_t number = JSTaggedValue::ToUint32(thread, JSNApiHelper::ToJSHandle(this));
+    JSHandle<JSTaggedValue> tagged = JSNApiHelper::ToJSHandle(this);
+    uint32_t number = 0;
+    if (!tagged->IsECMAObject()) {
+        number = JSTaggedValue::ToUint32(thread, tagged);
+    } else {
+        // EcmaObject may call [Symbol.toPrimitive].
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+        number = JSTaggedValue::ToUint32(thread, tagged);
+    }
     RETURN_VALUE_IF_ABRUPT(thread, 0);
     return number;
 }
@@ -303,7 +311,15 @@ uint32_t JSValueRef::Uint32Value(const EcmaVM *vm)
 int32_t JSValueRef::Int32Value(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
-    int32_t number = JSTaggedValue::ToInt32(thread, JSNApiHelper::ToJSHandle(this));
+    JSHandle<JSTaggedValue> tagged = JSNApiHelper::ToJSHandle(this);
+    int32_t number = 0;
+    if (!tagged->IsECMAObject()) {
+        number = JSTaggedValue::ToInt32(thread, tagged);
+    } else {
+        // EcmaObject may call [Symbol.toPrimitive].
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+        number = JSTaggedValue::ToInt32(thread, tagged);
+    }
     RETURN_VALUE_IF_ABRUPT(thread, 0);
     return number;
 }
@@ -1034,15 +1050,16 @@ Local<JSValueRef> MapIteratorRef::GetKind(const EcmaVM *vm)
     LOG_IF_SPECIAL(jsMapIter, FATAL);
     IterationKind iterKind = jsMapIter->GetIterationKind();
     Local<JSValueRef> result;
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     switch (iterKind) {
         case IterationKind::KEY:
-            result = StringRef::NewFromUtf8(vm, "keys");
+            result = JSNApiHelper::ToLocal<JSValueRef>(globalConst->GetHandledKeysString());
             break;
         case IterationKind::VALUE:
-            result = StringRef::NewFromUtf8(vm, "values");
+            result = JSNApiHelper::ToLocal<JSValueRef>(globalConst->GetHandledValuesString());
             break;
         case IterationKind::KEY_AND_VALUE:
-            result = StringRef::NewFromUtf8(vm, "entries");
+            result = JSNApiHelper::ToLocal<JSValueRef>(globalConst->GetHandledEntriesString());
             break;
         default:
             break;
@@ -1053,6 +1070,7 @@ Local<JSValueRef> MapIteratorRef::GetKind(const EcmaVM *vm)
 Local<MapIteratorRef> MapIteratorRef::New(const EcmaVM *vm, Local<MapRef> map)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSMap> jsMap(JSNApiHelper::ToJSHandle(map));
     IterationKind iterKind = IterationKind::KEY_AND_VALUE;
     JSHandle<JSTaggedValue> mapIteratorKeyAndValue =
@@ -1076,6 +1094,7 @@ ecmascript::EcmaRuntimeCallInfo *MapIteratorRef::GetEcmaRuntimeCallInfo(const Ec
 Local<ArrayRef> MapIteratorRef::Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSTaggedValue> nextTagValResult(vm->GetJSThread(), JSMapIterator::Next(ecmaRuntimeCallInfo));
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> iteratorVal(vm->GetJSThread(),
@@ -1098,15 +1117,16 @@ Local<JSValueRef> SetIteratorRef::GetKind(const EcmaVM *vm)
     LOG_IF_SPECIAL(jsSetIter, FATAL);
     IterationKind iterKind = jsSetIter->GetIterationKind();
     Local<JSValueRef> result;
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     switch (iterKind) {
         case IterationKind::KEY:
-            result = StringRef::NewFromUtf8(vm, "keys");
+            result = JSNApiHelper::ToLocal<JSValueRef>(globalConst->GetHandledKeysString());
             break;
         case IterationKind::VALUE:
-            result = StringRef::NewFromUtf8(vm, "values");
+            result = JSNApiHelper::ToLocal<JSValueRef>(globalConst->GetHandledValuesString());
             break;
         case IterationKind::KEY_AND_VALUE:
-            result = StringRef::NewFromUtf8(vm, "entries");
+            result = JSNApiHelper::ToLocal<JSValueRef>(globalConst->GetHandledEntriesString());
             break;
         default:
             break;
@@ -1261,6 +1281,7 @@ Local<PromiseCapabilityRef> PromiseCapabilityRef::New(const EcmaVM *vm)
 Local<PromiseRef> PromiseCapabilityRef::GetPromise(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(capacity, FATAL);
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, capacity->GetPromise()));
@@ -1785,6 +1806,7 @@ Local<ObjectRef> ObjectRef::CreateSendableAccessorData(const EcmaVM *vm,
                                                        Local<FunctionRef> setter)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSTaggedValue> getterValue = JSNApiHelper::ToJSHandle(getter);
     JSHandle<JSTaggedValue> setterValue = JSNApiHelper::ToJSHandle(setter);
     JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewSAccessorData();
@@ -2219,6 +2241,7 @@ Local<NativePointerRef> NativePointerRef::NewConcurrent(
     const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSNativePointer> obj =
         factory->NewJSNativePointer(nativePointer, callBack, data, false, nativeBindingsize, Concurrent::YES);
@@ -2390,6 +2413,7 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, FunctionCallback nativ
     NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
@@ -2433,6 +2457,7 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, InternalFunctionCallba
     NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
@@ -2933,8 +2958,7 @@ void *JsiRuntimeCallInfo::GetData()
     if (!extraInfoValue.IsJSNativePointer()) {
         return nullptr;
     }
-    JSHandle<JSNativePointer> extraInfo(thread_, extraInfoValue);
-    return extraInfo->GetData();
+    return JSNativePointer::Cast(extraInfoValue.GetTaggedObject())->GetData();
 }
 
 EcmaVM *JsiRuntimeCallInfo::GetVM() const
@@ -2979,6 +3003,7 @@ bool JSNApi::IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, c
         return false;
     }
     CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSHandle<JSTaggedValue> exceptionInfo = JSNApiHelper::ToJSHandle(exception);
     return quickFixManager->IsQuickFixCausedException(thread, exceptionInfo, patchFileName);
