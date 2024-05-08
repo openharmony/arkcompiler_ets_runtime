@@ -152,7 +152,7 @@ public:
     }
 
 protected:
-    GateRef value_;
+    GateRef value_ {Circuit::NullGate()};
 };
 
 class ConditionJumpTypeInfoAccessor final : public UnOpTypeInfoAccessor {
@@ -1228,7 +1228,7 @@ public:
     }
 
 private:
-    GateRef value_;
+    GateRef value_ {Circuit::NullGate()};
 };
 
 class GlobalObjAccTypeInfoAccessor : public ObjectAccessTypeInfoAccessor {

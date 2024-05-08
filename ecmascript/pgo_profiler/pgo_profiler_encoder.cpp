@@ -186,6 +186,9 @@ bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
         LOG_ECMA(ERROR) << "The file path(" << tmpOutPath << ") open failure! errno: " << errno;
         return false;
     }
+    if (header_ == nullptr) {
+        LOG_ECMA(FATAL) << "PGOProfilerEncoder::SaveAndRename:header_ is nullptr";
+    }
     pandaFileInfos_->ProcessToBinary(fileStream, header_->GetPandaInfoSection());
     globalRecordInfos_->ProcessToBinary(task, fileStream, header_);
     {

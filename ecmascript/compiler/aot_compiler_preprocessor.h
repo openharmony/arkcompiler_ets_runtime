@@ -80,7 +80,7 @@ struct CompilationOptions {
     bool isEnableOptConstantFolding_;
     bool isEnableLexenvSpecialization_;
     bool isEnableNativeInline_;
-    bool isEnablePGOHCRLowering_;
+    bool isEnablePGOHCRLowering_ {false};
     bool isEnableLoweringBuiltin_;
     bool isEnableOptBranchProfiling_;
     bool isEnableEscapeAnalysis_;

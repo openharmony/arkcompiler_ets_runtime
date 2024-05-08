@@ -82,6 +82,9 @@ bool EntryIdMap::Move(JSTaggedType oldAddr, JSTaggedType forwardAddr)
 
 void EntryIdMap::UpdateEntryIdMap(HeapSnapshot *snapshot)
 {
+    if (snapshot == nullptr) {
+        LOG_ECMA(FATAL) << "EntryIdMap::UpdateEntryIdMap:snapshot is nullptr";
+    }
     auto nodes = snapshot->GetNodes();
     CUnorderedMap<JSTaggedType, uint32_t> newIdMap;
     for (auto node : *nodes) {
