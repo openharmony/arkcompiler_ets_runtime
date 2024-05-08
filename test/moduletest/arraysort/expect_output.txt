@@ -50,3 +50,4 @@ TypeError
 6
 RangeError
 This is not a TypedArray.
+This is not a TypedArray.

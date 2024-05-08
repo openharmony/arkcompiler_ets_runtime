@@ -778,10 +778,10 @@ void BuiltinsTypedArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, Ga
     Label isHeapObject(env);
     Label notFound(env);
     Label thisLenNotZero(env);
-    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
-    Bind(&typedArray);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
     GateRef thisLen = GetArrayLength(thisValue);
     BRANCH(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
     Bind(&thisLenNotZero);
