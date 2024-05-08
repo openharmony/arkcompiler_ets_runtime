@@ -470,6 +470,27 @@ public:
         cachedPatchModules_.clear();
     }
 
+    void AddJitMachineCode(panda_file::File::EntityId id, std::pair<JSTaggedType, JSTaggedType> machineCode)
+    {
+        // replace the old one from some abcfile with the latest one
+        jitMachineCodeCache_.at(GetJitMachineCodeHash(id)) = machineCode;
+    }
+    bool MatchJitMachineCode(panda_file::File::EntityId id, const Method *method) const
+    {
+        auto methodCode = jitMachineCodeCache_.at(GetJitMachineCodeHash(id));
+        if (methodCode.first == 0) {
+            return false;
+        }
+        ASSERT(method != nullptr);
+        Method *methodCache = Method::Cast(JSTaggedValue(methodCode.first).GetTaggedObject());
+        return method == methodCache;
+    }
+    std::pair<JSTaggedType, JSTaggedType> GetJitMachineCode(panda_file::File::EntityId id) const
+    {
+        ASSERT(jitMachineCodeCache_.at(GetJitMachineCodeHash(id)).first != 0);
+        return jitMachineCodeCache_.at(GetJitMachineCodeHash(id));
+    }
+
     StageOfHotReload GetStageOfHotReload() const
     {
         return stageOfHotReload_;
@@ -513,6 +534,11 @@ public:
     void AddSustainingJSHandle(SustainingJSHandle*);
     void RemoveSustainingJSHandle(SustainingJSHandle*);
 private:
+    void IterateJitMachineCodeCache(const RootVisitor &v);
+    uint32_t GetJitMachineCodeHash(panda_file::File::EntityId id) const
+    {
+        return id.GetOffset() % JIT_MACHINE_CODE_CACHE_SIZE;
+    }
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
@@ -628,6 +654,8 @@ private:
 
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
+    static constexpr uint32_t JIT_MACHINE_CODE_CACHE_SIZE = 263;
+    std::array<std::pair<JSTaggedType, JSTaggedType>, JIT_MACHINE_CODE_CACHE_SIZE> jitMachineCodeCache_ {};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

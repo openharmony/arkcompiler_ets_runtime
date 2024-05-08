@@ -871,6 +871,22 @@ void EcmaContext::SetupStringToListResultCache()
     stringToListResultCache_ = builtins::StringToListResultCache::CreateCacheTable(thread_);
 }
 
+void EcmaContext::IterateJitMachineCodeCache(const RootVisitor &v)
+{
+    if (thread_->IsMachineCodeLowMemory()) {
+        jitMachineCodeCache_ = {};
+        LOG_JIT(DEBUG) << "clear jit machine code, as low code memory";
+    } else {
+        for (auto &iter : jitMachineCodeCache_) {
+            if (iter.first == 0) {
+                continue;
+            }
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter.first))));
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter.second))));
+        }
+    }
+}
+
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     // visit global Constant
@@ -920,6 +936,10 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
             rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
+    }
+
+    if (vm_->IsEnableFastJit()) {
+        IterateJitMachineCodeCache(v);
     }
 
     if (sustainingJSHandleList_) {

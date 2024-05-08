@@ -12,25 +12,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ECMASCRIPT_DFX_VMSTAT_JIT_PREHEAT_PROFILER_H
-#define ECMASCRIPT_DFX_VMSTAT_JIT_PREHEAT_PROFILER_H
+#ifndef ECMASCRIPT_DFX_VMSTAT_JIT_WARMUP_PROFILER_H
+#define ECMASCRIPT_DFX_VMSTAT_JIT_WARMUP_PROFILER_H
 
 #include <unordered_map>
 #include "ecmascript/mem/c_string.h"
 
 namespace panda::ecmascript {
-class JitPreheatProfiler {
+class JitWarmupProfiler {
 public:
-    static JitPreheatProfiler* GetInstance()
+    static JitWarmupProfiler* GetInstance()
     {
-        static JitPreheatProfiler profiler;
+        static JitWarmupProfiler profiler;
         return &profiler;
     }
-    ~JitPreheatProfiler() {}
+    ~JitWarmupProfiler() {}
     
     std::unordered_map<CString, bool> profMap_;
 private:
-    JitPreheatProfiler() {}
+    JitWarmupProfiler() {}
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_DFX_VMSTAT_JIT_PREHEAT_PROFILER_H
+#endif  // ECMASCRIPT_DFX_VMSTAT_JIT_WARMUP_PROFILER_H

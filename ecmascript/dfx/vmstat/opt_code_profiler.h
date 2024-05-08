@@ -197,7 +197,7 @@ private:
         methodIdToRecord_.clear();
         methodIdToName_.clear();
     }
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER == 0
+#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER == 0
     int printMehodCount_ {10};
 #endif
     std::map<EcmaOpcode, Value> profMap_;
