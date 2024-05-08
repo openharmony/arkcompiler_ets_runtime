@@ -467,6 +467,30 @@ uint32_t InlineTypeInfoAccessor::GetCallMethodId() const
     return methodOffset;
 }
 
+bool InlineTypeInfoAccessor::FindHClass() const
+{
+    auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+    if (!sampleType->IsProfileType()) {
+        return false;
+    }
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+    hclassIndex_ = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
+    if (hclassIndex_ == -1) {
+        return false;
+    }
+    return ptManager_->QueryHClass(type.first, type.second).IsJSHClass();
+}
+
+JSTaggedValue InlineTypeInfoAccessor::GetHClass() const
+{
+    auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+    ASSERT(sampleType->IsProfileType());
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+    hclassIndex_ = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
+    ASSERT(hclassIndex_ != -1);
+    return ptManager_->QueryHClass(type.first, type.second);
+}
+
 JSTaggedValue ObjectAccessTypeInfoAccessor::GetKeyTaggedValue() const
 {
     uint16_t index = acc_.GetConstantValue(key_);
