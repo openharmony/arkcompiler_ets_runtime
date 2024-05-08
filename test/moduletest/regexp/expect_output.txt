@@ -146,3 +146,6 @@ null
 false
 false
 success
+text/html
+text/plain
+text/html
