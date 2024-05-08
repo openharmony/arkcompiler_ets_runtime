@@ -71,49 +71,6 @@ function testTypeArrayWithInt(ctor, arr, flagBig) {
     return true;
 }
 
-// function testTypeArrayWith1(ctor) {
-//     let arr = [1, 2, 3, 4, 5];
-//     let obj = new ctor(arr);
-//     let result = [];
-//     let arr2 = obj.with(-2, 40);
-//     result.push(arr2[3] == 40);
-//     try {
-//         arr2 = obj.with(10, 10);
-//     } catch (err) {
-//         result.push(err.name == "RangeError");
-//     }
-//     for (let i = 0; i < result.length; i++) {
-//         if (!result[i]) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
-// function testTypeArrayWith2(ctor) {
-//     let result = [];
-//     let obj = new ctor(5);
-//     obj[0] = 10n;
-//     obj[1] = 11n;
-//     obj[2] = 12n;
-//     obj[3] = 13n;
-//     obj[4] = 9017199254740995n;
-//     let arr2 = obj.with(-2, 40n);
-//     result.push(arr2[3] == 40n);
-//     try {
-//         arr2 = obj.with(10, 10n);
-//     } catch (err) {
-//         result.push(err.name == "RangeError");
-//     }
-//     for (let i = 0; i < result.length; i++) {
-//         if (!result[i]) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
-
 const with_arr1 = new Uint8Array([1, 2, 3, 4, 5]);
 print(with_arr1.with(2, 6));
 

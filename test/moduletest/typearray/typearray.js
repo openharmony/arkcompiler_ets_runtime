@@ -28,7 +28,6 @@ const typedArrayConstructors = [
 typedArrayConstructors.forEach(function(ctor, i) {
     if (testTypeArray1(ctor) && testTypeArray2(ctor) &&
         testTypeArray3(ctor) && testTypeArray4(ctor) &&
-        //testTypeArray6(ctor) && testTypeArray7(ctor) &&
         testTypeArrayWithSize(ctor, 10) && testTypeArrayWithSize(ctor, 50) &&
         testTypeArrayIC(ctor)) {
         print(ctor.name + " test success !!!")
@@ -146,42 +145,6 @@ function testTypeArrayWithSize(ctor, size) {
     }
     return true;
 }
-
-// function testTypeArray6(ctor) {
-//     let result = []
-//     let test = new Array(10);
-//     for (var i = 0; i < 10; i++) {
-//         test[i] = i;
-//     }
-//     let obj = new ctor(test);
-//     for (var i = 0; i < 10; i++) {
-//         result.push(obj[i] == i);
-//     }
-//     for (let i = 0; i < result.length; i++) {
-//         if (!result[i]) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
-// function testTypeArray7(ctor) {
-//     let result = []
-//     let test = new Array(50);
-//     for (var i = 0; i < 10; i++) {
-//         test[i] = i;
-//     }
-//     let obj = new ctor(test);
-//     for (var i = 0; i < 10; i++) {
-//         result.push(obj[i] == i);
-//     }
-//     for (let i = 0; i < result.length; i++) {
-//         if (!result[i]) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
 
 function testTypeArrayIC(ctor) {
     let result = []

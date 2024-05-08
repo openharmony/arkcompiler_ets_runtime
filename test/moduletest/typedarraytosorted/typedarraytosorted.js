@@ -65,48 +65,6 @@ function testTypeArrayToSorted(ctor, arr) {
     return true;
 }
 
-// function testTypeArrayToSorted1(ctor) {
-//     let arr = [10, 3, 8, 5, 30, 100, 6, 7, 100, 3];
-//     let obj = new ctor(arr);
-//     let arr2 = obj.toSorted();
-//     let result = [];
-//     result.push(arr2.toString() == "3,3,5,6,7,8,10,30,100,100");
-//     arr2 = obj.toSorted((x, y) => { return x < y });
-//     result.push(arr2.toString() == "100,100,30,10,8,7,6,5,3,3");
-//     try {
-//         arr2 = obj.toSorted(true);
-//     } catch (err) {
-//         result.push(err.name == "TypeError");
-//     }
-//     for (let i = 0; i < result.length; i++) {
-//         if (!result[i]) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
-// function testTypeArrayToSorted2(ctor) {
-//     let arr = [10n, 3n, 8n, 5n, 30n, 100n, 6n, 7n, 100n, 3n];
-//     let obj = new ctor(arr);
-//     let arr2 = obj.toSorted();
-//     let result = [];
-//     result.push(arr2.toString() == "3,3,5,6,7,8,10,30,100,100");
-//     arr2 = obj.toSorted((x, y) => { return x < y });
-//     result.push(arr2.toString() == "100,100,30,10,8,7,6,5,3,3");
-//     try {
-//         arr2 = obj.toSorted(true);
-//     } catch (err) {
-//         result.push(err.name == "TypeError");
-//     }
-//     for (let i = 0; i < result.length; i++) {
-//         if (!result[i]) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
 var arr = new Float64Array(["aaa", 10, 20, 30]);
 var arrSorted = arr.toSorted();
 print(arrSorted);
