@@ -19,20 +19,17 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-[
-    Float64Array,
-    Float32Array,
-    Int32Array,
-    Int16Array,
-    Int8Array,
-    Uint32Array,
-    Uint16Array,
-    Uint8Array,
+
+const typedArrayConstructors = [
+    Float64Array, Float32Array, Int32Array, Int16Array, Int8Array, Uint32Array, Uint16Array, Uint8Array,
     Uint8ClampedArray
-].forEach(function(ctor, i) {
+];
+
+typedArrayConstructors.forEach(function(ctor, i) {
     if (testTypeArray1(ctor) && testTypeArray2(ctor) &&
         testTypeArray3(ctor) && testTypeArray4(ctor) &&
-        testTypeArray6(ctor) && testTypeArray7(ctor) &&
+        //testTypeArray6(ctor) && testTypeArray7(ctor) &&
+        testTypeArrayWithSize(ctor, 10) && testTypeArrayWithSize(ctor, 50) &&
         testTypeArrayIC(ctor)) {
         print(ctor.name + " test success !!!")
     } else {
@@ -132,9 +129,9 @@ function testTypeArray5(ctor) {
     return true;
 }
 
-function testTypeArray6(ctor) {
+function testTypeArrayWithSize(ctor, size) {
     let result = []
-    let test = new Array(10);
+    let test = new Array(size);
     for (var i = 0; i < 10; i++) {
         test[i] = i;
     }
@@ -150,23 +147,41 @@ function testTypeArray6(ctor) {
     return true;
 }
 
-function testTypeArray7(ctor) {
-    let result = []
-    let test = new Array(50);
-    for (var i = 0; i < 10; i++) {
-        test[i] = i;
-    }
-    let obj = new ctor(test);
-    for (var i = 0; i < 10; i++) {
-        result.push(obj[i] == i);
-    }
-    for (let i = 0; i < result.length; i++) {
-        if (!result[i]) {
-            return false;
-        }
-    }
-    return true;
-}
+// function testTypeArray6(ctor) {
+//     let result = []
+//     let test = new Array(10);
+//     for (var i = 0; i < 10; i++) {
+//         test[i] = i;
+//     }
+//     let obj = new ctor(test);
+//     for (var i = 0; i < 10; i++) {
+//         result.push(obj[i] == i);
+//     }
+//     for (let i = 0; i < result.length; i++) {
+//         if (!result[i]) {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
+
+// function testTypeArray7(ctor) {
+//     let result = []
+//     let test = new Array(50);
+//     for (var i = 0; i < 10; i++) {
+//         test[i] = i;
+//     }
+//     let obj = new ctor(test);
+//     for (var i = 0; i < 10; i++) {
+//         result.push(obj[i] == i);
+//     }
+//     for (let i = 0; i < result.length; i++) {
+//         if (!result[i]) {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
 
 function testTypeArrayIC(ctor) {
     let result = []

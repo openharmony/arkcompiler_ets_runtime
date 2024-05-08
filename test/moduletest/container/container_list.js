@@ -400,15 +400,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     res = proxy1.remove(888)
     map.set("test list remove:", !res)
     flag = undefined;
-    function elements(value, key, map) {
-        if (!value) {
+    function elementsList(valueList, keyList, map) {
+        if (!valueList) {
             if (!flag) {
                 flag = [];
             }
-            flag.push(key);
+            flag.push(keyList);
         }
     }
-    map.forEach(elements);
+    map.forEach(elementsList);
 
     let de = new List();
     try {

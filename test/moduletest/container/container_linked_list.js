@@ -324,15 +324,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test linkedlist convertToArray:", res)
 
     flag = undefined;
-    function elements(value, key, map) {
-        if (!value) {
+    function elementsLinkedList(valueLinkedList, keyLinkedList, map) {
+        if (!valueLinkedList) {
             if (!flag) {
                 flag = [];
             }
-            flag.push(key);
+            flag.push(keyLinkedList);
         }
     }
-    map.forEach(elements);
+    map.forEach(elementsLinkedList);
 
     let de = new LinkedList();
     try {

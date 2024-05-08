@@ -19,19 +19,14 @@
  * @tc.type: FUNC
  * @tc.require: issueI7MUIL
  */
-
-[
-    Float64Array,
-    Float32Array,
-    Int32Array,
-    Int16Array,
-    Int8Array,
-    Uint32Array,
-    Uint16Array,
-    Uint8Array,
+const typedArrayWithConstructors = [
+    Float64Array, Float32Array, Int32Array, Int16Array, Int8Array, Uint32Array, Uint16Array, Uint8Array,
     Uint8ClampedArray
-].forEach(function (ctor, i) {
-    if (testTypeArrayWith1(ctor)) {
+];
+
+typedArrayWithConstructors.forEach(function (ctor, i) {
+    let arr = [1, 2, 3, 4, 5];
+    if (testTypeArrayWithInt(ctor, arr, false)) {
         print(ctor.name + " test success !!!");
     } else {
         print(ctor.name + " test fail !!!");
@@ -42,21 +37,29 @@
     BigInt64Array,
     BigUint64Array
 ].forEach(function (ctor, i) {
-    if (testTypeArrayWith2(ctor)) {
+    let arr = [10n, 11n, 12n, 13n, 9017199254740995n];
+    if (testTypeArrayWithInt(ctor, arr, true)) {
         print(ctor.name + " test success !!!");
     } else {
         print(ctor.name + " test fail !!!");
     }
 });
 
-function testTypeArrayWith1(ctor) {
-    let arr = [1, 2, 3, 4, 5];
+function testTypeArrayWithInt(ctor, arr, flagBig) {
     let obj = new ctor(arr);
     let result = [];
-    let arr2 = obj.with(-2, 40);
-    result.push(arr2[3] == 40);
+    let value1 = 40;
+    let value2 = 10;
+
+    if (flagBig) {
+        value1 = 40n;
+        value2 = 10n;
+    }
+
+    let arr2 = obj.with(-2, value1);
+    result.push(arr2[3] == value1);
     try {
-        arr2 = obj.with(10, 10);
+        arr2 = obj.with(10, value2);
     } catch (err) {
         result.push(err.name == "RangeError");
     }
@@ -68,28 +71,47 @@ function testTypeArrayWith1(ctor) {
     return true;
 }
 
-function testTypeArrayWith2(ctor) {
-    let result = [];
-    let obj = new ctor(5);
-    obj[0] = 10n;
-    obj[1] = 11n;
-    obj[2] = 12n;
-    obj[3] = 13n;
-    obj[4] = 9017199254740995n;
-    let arr2 = obj.with(-2, 40n);
-    result.push(arr2[3] == 40n);
-    try {
-        arr2 = obj.with(10, 10n);
-    } catch (err) {
-        result.push(err.name == "RangeError");
-    }
-    for (let i = 0; i < result.length; i++) {
-        if (!result[i]) {
-            return false;
-        }
-    }
-    return true;
-}
+// function testTypeArrayWith1(ctor) {
+//     let arr = [1, 2, 3, 4, 5];
+//     let obj = new ctor(arr);
+//     let result = [];
+//     let arr2 = obj.with(-2, 40);
+//     result.push(arr2[3] == 40);
+//     try {
+//         arr2 = obj.with(10, 10);
+//     } catch (err) {
+//         result.push(err.name == "RangeError");
+//     }
+//     for (let i = 0; i < result.length; i++) {
+//         if (!result[i]) {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
+
+// function testTypeArrayWith2(ctor) {
+//     let result = [];
+//     let obj = new ctor(5);
+//     obj[0] = 10n;
+//     obj[1] = 11n;
+//     obj[2] = 12n;
+//     obj[3] = 13n;
+//     obj[4] = 9017199254740995n;
+//     let arr2 = obj.with(-2, 40n);
+//     result.push(arr2[3] == 40n);
+//     try {
+//         arr2 = obj.with(10, 10n);
+//     } catch (err) {
+//         result.push(err.name == "RangeError");
+//     }
+//     for (let i = 0; i < result.length; i++) {
+//         if (!result[i]) {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
 
 
 const with_arr1 = new Uint8Array([1, 2, 3, 4, 5]);
