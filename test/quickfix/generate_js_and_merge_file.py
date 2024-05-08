@@ -37,7 +37,8 @@ replace_config3 = [
     {"id": "REPLACE_FUNC_FOO2", "start": 65489, "end": 65536},
 ]
 replace_config4 = [
-    {"id": "REPLACE_FUNC_FOO", "start": 35004, "end": 40153},
+    {"id": "REPLACE_FUNC_FOO1", "start": 35004, "end": 40153},
+    {"id": "REPLACE_FUNC_FOO2", "start": 1, "end": 34999, "isFunc": True, "msg": "base"},
 ]
 replace_config5 = [
     {"id": "REPLACE_FUNC_FOO1", "start": 35004, "end": 40153},
