@@ -273,6 +273,7 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
             LowerTypedStObjByName(gate);
             break;
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
@@ -672,7 +673,8 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                opcode == EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8 ||
                opcode == EcmaOpcode::STTHISBYNAME_IMM8_ID16 ||
                opcode == EcmaOpcode::STTHISBYNAME_IMM16_ID16 ||
-               opcode == EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8) {
+               opcode == EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8 ||
+               opcode == EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8) {
         frameState = acc_.GetFrameState(gate);
     } else {
         UNREACHABLE();

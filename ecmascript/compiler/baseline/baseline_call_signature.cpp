@@ -4009,6 +4009,23 @@ DEF_CALL_SIGNATURE(BaselineDefineFieldByNameImm8Id16V8)
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
 }
 
+DEF_CALL_SIGNATURE(BaselineDefinePropertyByNameImm8Id16V8)
+{
+    // 5 : 5 input parameters
+    CallSignature signature("BaselineDefinePropertyByNameImm8Id16V8", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT8(),
+        VariableType::INT16(),
+        VariableType::INT8(),
+    };
+    BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
+}
+
 // GLUE, SP, ACC, V0, V1
 DEF_CALL_SIGNATURE(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8)
 {

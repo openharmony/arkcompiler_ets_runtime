@@ -5181,6 +5181,28 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINEFIELDBYNAME_IMM8_ID16_V8)
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
+// GLUE, SP, ACC, PROFILE_TYPE_INFO, SLOT_ID_I8, STRING_ID, V0
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINEPROPERTYBYNAME_IMM8_ID16_V8)
+{
+    uint8_t slotIdI8 = READ_INST_8_0();
+    int16_t stringId = READ_INST_16_1();
+    uint8_t v0 = READ_INST_8_3();
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDefinePropertyByNameImm8Id16V8);
+    LOG_INST() << "    BaselineDefinePropertyByNameImm8Id16V8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(slotIdI8);
+    parameters.emplace_back(stringId);
+    parameters.emplace_back(v0);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE)
 {
     (void)bytecodeArray;

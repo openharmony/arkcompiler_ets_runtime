@@ -292,6 +292,7 @@ void SnapshotConstantPoolData::Record(const BytecodeInstruction &bcIns, int32_t 
         case BytecodeInstruction::Opcode::STOBJBYNAME_IMM8_ID16_V8:
         case BytecodeInstruction::Opcode::STOBJBYNAME_IMM16_ID16_V8:
         case BytecodeInstruction::Opcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case BytecodeInstruction::Opcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case BytecodeInstruction::Opcode::LDSUPERBYNAME_IMM8_ID16:
         case BytecodeInstruction::Opcode::LDSUPERBYNAME_IMM16_ID16:
         case BytecodeInstruction::Opcode::STSUPERBYNAME_IMM8_ID16_V8:

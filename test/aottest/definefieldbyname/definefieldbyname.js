@@ -26,3 +26,8 @@ class B {
 }
 const b = new B();
 print(b.x);
+
+
+for (let i = 0; i < 400; i ++){
+}
+print(new B().x);

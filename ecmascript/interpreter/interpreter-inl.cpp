@@ -7475,6 +7475,26 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         RESTORE_ACC();
         DISPATCH(DEFINEFIELDBYNAME_IMM8_ID16_V8);
     }
+    HANDLE_OPCODE(DEFINEPROPERTYBYNAME_IMM8_ID16_V8) {
+        uint16_t stringId = READ_INST_16_1();
+        uint32_t v0 = READ_INST_8_3();
+
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
+        JSTaggedValue value = GET_ACC();
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
+        LOG_INST() << "intrinsics::callruntime.definepropertybyname "
+                   << "v" << v0 << " stringId:" << stringId << ", "
+                   << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData()
+                   << ", value:" << value.GetRawData();
+
+        JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+        DISPATCH(DEFINEPROPERTYBYNAME_IMM8_ID16_V8);
+    }
     HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8) {
         uint32_t v0 = READ_INST_8_2();
         uint32_t v1 = READ_INST_8_3();

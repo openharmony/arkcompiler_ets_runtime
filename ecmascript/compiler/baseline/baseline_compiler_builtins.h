@@ -167,7 +167,6 @@ namespace panda::ecmascript::kungfu {
     V(BaselineStsuperbynameImm16Id16V8)                                    \
     V(BaselineLdlocalmodulevarImm8)                                        \
     V(BaselineStconsttoglobalrecordImm16Id16)                              \
-    \
     V(BaselineJeqzImm32)                                                   \
     V(BaselineJnezImm8)                                                    \
     V(BaselineJnezImm16)                                                   \
@@ -274,6 +273,7 @@ namespace panda::ecmascript::kungfu {
     V(BaselineDeprecatedDynamicimportPrefV8)                               \
     V(BaselineCallRuntimeNotifyConcurrentResultPrefNone)                   \
     V(BaselineDefineFieldByNameImm8Id16V8)                                 \
+    V(BaselineDefinePropertyByNameImm8Id16V8)                              \
     V(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8)                   \
     V(BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8)                \
     V(BaselineCallRuntimeToPropertyKeyPrefNone)                            \

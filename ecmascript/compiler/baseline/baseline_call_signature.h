@@ -575,6 +575,8 @@ DEFINE_PARAMETER_INDEX(BaselineCallRuntimeNotifyConcurrentResultPrefNone,
     GLUE, SP, ACC)
 DEFINE_PARAMETER_INDEX(BaselineDefineFieldByNameImm8Id16V8,
     GLUE, SP, SLOT_ID_I8, STRING_ID, V0)
+DEFINE_PARAMETER_INDEX(BaselineDefinePropertyByNameImm8Id16V8,
+    GLUE, SP, SLOT_ID_I8, STRING_ID, V0)
 DEFINE_PARAMETER_INDEX(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8,
     GLUE, SP, ACC, V0, V1)
 DEFINE_PARAMETER_INDEX(BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8,

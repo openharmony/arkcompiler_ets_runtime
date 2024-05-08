@@ -342,6 +342,88 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     }                                                                                                                \
     Bind(&executeBCByInterpreter)
 
+#define DEFINE_BY_NAME(newIc)                                                                                        \
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));                                                               \
+    GateRef stringId = ReadInst16_1(pc);                                                                             \
+    GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));                           \
+    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));                                             \
+    DEFVARIABLE(holder, VariableType::JS_ANY(), receiver);                                                           \
+    Label icPath(env);                                                                                               \
+    Label whichPath(env);                                                                                            \
+    Label slowPath(env);                                                                                             \
+    Label exit(env);                                                                                                 \
+    Label isEcmaObj(env);                                                                                            \
+    /*hclass hit -> ic path*/                                                                                        \
+    Label tryGetHclass(env);                                                                                         \
+    Label firstValueHeapObject(env);                                                                                 \
+    Label hclassNotHit(env);                                                                                         \
+    BRANCH(IsEcmaObject(receiver), &isEcmaObj, &slowPath);                                                           \
+    Bind(&isEcmaObj);                                                                                                \
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &hclassNotHit, &tryGetHclass);                                        \
+    Bind(&tryGetHclass);                                                                                             \
+    {                                                                                                                \
+        GateRef firstValue = GetValueFromTaggedArray(profileTypeInfo, slotId);                                       \
+        BRANCH(TaggedIsHeapObject(firstValue), &firstValueHeapObject, &hclassNotHit);                                \
+        Bind(&firstValueHeapObject);                                                                                 \
+        GateRef hclass = LoadHClass(*holder);                                                                        \
+        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &whichPath, &hclassNotHit);                         \
+    }                                                                                                                \
+    Bind(&hclassNotHit);                                                                                             \
+    /* found entry -> slow path*/                                                                                    \
+    Label loopHead(env);                                                                                             \
+    Label loopEnd(env);                                                                                              \
+    Label loopExit(env);                                                                                             \
+    Jump(&loopHead);                                                                                                 \
+    LoopBegin(&loopHead);                                                                                            \
+    {                                                                                                                \
+        GateRef hclass = LoadHClass(*holder);                                                                        \
+        GateRef jsType = GetObjectType(hclass);                                                                      \
+        Label findProperty(env);                                                                                     \
+        BRANCH(IsSpecialIndexedObj(jsType), &slowPath, &findProperty);                                               \
+        Bind(&findProperty);                                                                                         \
+        Label isDicMode(env);                                                                                        \
+        Label notDicMode(env);                                                                                       \
+        BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);                                           \
+        Bind(&isDicMode);                                                                                            \
+        {                                                                                                            \
+            GateRef array = GetPropertiesArray(*holder);                                                             \
+            GateRef entry = FindEntryFromNameDictionary(glue, array, propKey);                                       \
+            BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);                                           \
+        }                                                                                                            \
+        Bind(&notDicMode);                                                                                           \
+        {                                                                                                            \
+            GateRef layOutInfo = GetLayoutFromHClass(hclass);                                                        \
+            GateRef propsNum = GetNumberOfPropsFromHClass(hclass);                                                   \
+            GateRef entry = FindElementWithCache(glue, layOutInfo, hclass, propKey, propsNum);                       \
+            BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);                                           \
+        }                                                                                                            \
+        Bind(&loopExit);                                                                                             \
+        {                                                                                                            \
+            holder = GetPrototypeFromHClass(LoadHClass(*holder));                                                    \
+            BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &whichPath);                                               \
+        }                                                                                                            \
+        Bind(&loopEnd);                                                                                              \
+        LoopEnd(&loopHead, env, glue);                                                                               \
+    }                                                                                                                \
+    Bind(&whichPath);                                                                                                \
+    {                                                                                                                \
+        BRANCH(newIc, &icPath, &slowPath);                                                                           \
+    }                                                                                                                \
+    Bind(&icPath);                                                                                                   \
+    {                                                                                                                \
+        /* IC do the same thing as stobjbyname */                                                                    \
+        AccessObjectStubBuilder builder(this);                                                                       \
+        StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);               \
+        result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);            \
+        Jump(&exit);                                                                                                 \
+    }                                                                                                                \
+    Bind(&slowPath);                                                                                                 \
+    {                                                                                                                \
+        result = CallRuntime(glue, RTSTUB_ID(DefineField), {receiver, propKey, acc});                                \
+        Jump(&exit);                                                                                                 \
+    }                                                                                                                \
+    Bind(&exit)
+
 template <bool needPrint>
 void InterpreterStubBuilder::DebugPrintInstruction()
 {
@@ -5225,76 +5307,18 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeNotifyConcurrentResultPrefNone)
 DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
 {
     auto env = GetEnvironment();
-    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
-    GateRef stringId = ReadInst16_1(pc);
-    GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    DEFVARIABLE(holder, VariableType::JS_ANY(), receiver);
-
-    Label slowPath(env);
-    Label exit(env);
-    Label isEcmaObj(env);
-    // hclass hit -> ic path
-    Label tryGetHclass(env);
-    Label firstValueHeapObject(env);
-    Label hclassNotHit(env);
-    BRANCH(IsEcmaObject(receiver), &isEcmaObj, &slowPath);
-    Bind(&isEcmaObj);
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &hclassNotHit, &tryGetHclass);
-    Bind(&tryGetHclass);
-    {
-        GateRef firstValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        BRANCH(TaggedIsHeapObject(firstValue), &firstValueHeapObject, &hclassNotHit);
-        Bind(&firstValueHeapObject);
-        GateRef hclass = LoadHClass(*holder);
-        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &slowPath, &hclassNotHit);
-    }
-    Bind(&hclassNotHit);
-    // found entry -> slow path
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label loopExit(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        GateRef hclass = LoadHClass(*holder);
-        GateRef jsType = GetObjectType(hclass);
-        Label findProperty(env);
-        BRANCH(IsSpecialIndexedObj(jsType), &slowPath, &findProperty);
-        Bind(&findProperty);
-        Label isDicMode(env);
-        Label notDicMode(env);
-        BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
-        Bind(&isDicMode);
-        {
-            GateRef array = GetPropertiesArray(*holder);
-            GateRef entry = FindEntryFromNameDictionary(glue, array, propKey);
-            BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);
-        }
-        Bind(&notDicMode);
-        {
-            GateRef layOutInfo = GetLayoutFromHClass(hclass);
-            GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
-            GateRef entry = FindElementWithCache(glue, layOutInfo, hclass, propKey, propsNum);
-            BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);
-        }
-        Bind(&loopExit);
-        {
-            holder = GetPrototypeFromHClass(LoadHClass(*holder));
-            BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &slowPath);
-        }
-        Bind(&loopEnd);
-        LoopEnd(&loopHead, env, glue);
-    }
-    Bind(&slowPath);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(DefineField), {receiver, propKey, acc});  // acc as value
-        Jump(&exit);
-    }
-    Bind(&exit);
+    DEFINE_BY_NAME(Boolean(false));
     CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(DEFINEFIELDBYNAME_IMM8_ID16_V8));
 }
+DECLARE_ASM_HANDLER(HandleDefinePropertyByNameImm8Id16V8)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFINE_BY_NAME(Boolean(true));
+    CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(DEFINEPROPERTYBYNAME_IMM8_ID16_V8));
+}
+
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByValuePrefImm8V8V8)
 {

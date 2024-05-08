@@ -125,6 +125,7 @@ namespace panda::ecmascript::kungfu {
     V(STOBJBYNAME_IMM8_ID16_V8)                                            \
     V(STOBJBYNAME_IMM16_ID16_V8)                                           \
     V(DEFINEFIELDBYNAME_IMM8_ID16_V8)                                      \
+    V(DEFINEPROPERTYBYNAME_IMM8_ID16_V8)                                   \
     V(LDTHISBYVALUE_IMM8)                                                  \
     V(LDTHISBYVALUE_IMM16)                                                 \
     V(LDOBJBYVALUE_IMM8_V8)                                                \

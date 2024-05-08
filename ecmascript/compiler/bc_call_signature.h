@@ -22,7 +22,6 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
-    T(HandleOverflowDC)                                 \
     T(HandleOverflowDD)                                 \
     T(HandleOverflowDE)                                 \
     T(HandleOverflowDF)                                 \
@@ -277,6 +276,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleStPrivatePropertyImm8Imm16Imm16V8)                            \
     T(HandleTestInImm8Imm16Imm16)                                         \
     T(HandleDefineFieldByNameImm8Id16V8)                                  \
+    T(HandleDefinePropertyByNameImm8Id16V8)                               \
     ASM_UNUSED_BC_STUB_LIST(T)                                            \
     T(HandleCallRuntime)                                                  \
     T(HandleDeprecated)                                                   \
@@ -533,6 +533,7 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleStobjbynameImm8Id16V8, V)                           \
     APPEND_SUFFIX_IMM16(HandleStobjbynameImm16Id16V8, V)                    \
     APPEND_SUFFIX(HandleDefineFieldByNameImm8Id16V8, V)                     \
+    APPEND_SUFFIX(HandleDefinePropertyByNameImm8Id16V8, V)                  \
     APPEND_SUFFIX(HandleLdPrivatePropertyImm8Imm16Imm16, V)                 \
     APPEND_SUFFIX(HandleStPrivatePropertyImm8Imm16Imm16V8, V)               \
     APPEND_SUFFIX(HandleStobjbyvalueImm8V8V8, V)                            \

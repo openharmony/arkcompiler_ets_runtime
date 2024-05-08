@@ -5507,6 +5507,100 @@ void BaselineDefineFieldByNameImm8Id16V8StubBuilder::GenerateCircuit()
     Return(*result);
 }
 
+
+// GLUE, SP, SLOT_ID_I8, STRING_ID, V0
+void BaselineDefinePropertyByNameImm8Id16V8StubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineDefinePropertyByNameImm8Id16V8, GLUE));
+    GateRef sp = PtrArgument(PARAM_INDEX(BaselineDefinePropertyByNameImm8Id16V8, SP));
+    GateRef slotIdI8 = Int32Argument(PARAM_INDEX(BaselineDefinePropertyByNameImm8Id16V8, SLOT_ID_I8));
+    GateRef stringId = Int32Argument(PARAM_INDEX(BaselineDefinePropertyByNameImm8Id16V8, STRING_ID));
+    GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDefinePropertyByNameImm8Id16V8, V0));
+
+    GateRef frame = GetFrame(sp);
+    GateRef func = GetFunctionFromFrame(frame);
+    GateRef acc = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(func);
+    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);
+    GateRef slotId = ZExtInt8ToInt32(slotIdI8);
+    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
+
+    auto env = GetEnvironment();
+    GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(holder, VariableType::JS_ANY(), receiver);
+    Label icPath(env);
+    Label slowPath(env);
+    Label exit(env);
+    // hclass hit -> ic path
+    Label tryGetHclass(env);
+    Label firstValueHeapObject(env);
+    Label hclassNotHit(env);
+    Branch(TaggedIsUndefined(profileTypeInfo), &hclassNotHit, &tryGetHclass);
+    Bind(&tryGetHclass);
+    {
+        GateRef firstValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        Branch(TaggedIsHeapObject(firstValue), &firstValueHeapObject, &hclassNotHit);
+        Bind(&firstValueHeapObject);
+        GateRef hclass = LoadHClass(*holder);
+        Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass), &icPath, &hclassNotHit);
+    }
+    Bind(&hclassNotHit);
+    // found entry -> slow path
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        GateRef hclass = LoadHClass(*holder);
+        GateRef jsType = GetObjectType(hclass);
+        Label findProperty(env);
+        Branch(IsSpecialIndexedObj(jsType), &slowPath, &findProperty);
+        Bind(&findProperty);
+        Label isDicMode(env);
+        Label notDicMode(env);
+        Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
+        Bind(&isDicMode);
+        {
+            GateRef array = GetPropertiesArray(*holder);
+            GateRef entry = FindEntryFromNameDictionary(glue, array, propKey);
+            Branch(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);
+        }
+        Bind(&notDicMode);
+        {
+            GateRef layOutInfo = GetLayoutFromHClass(hclass);
+            GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
+            GateRef entry = FindElementWithCache(glue, layOutInfo, hclass, propKey, propsNum);
+            Branch(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);
+        }
+        Bind(&loopExit);
+        {
+            holder = GetPrototypeFromHClass(LoadHClass(*holder));
+            Branch(TaggedIsHeapObject(*holder), &loopEnd, &icPath);
+        }
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
+    }
+    Bind(&icPath);
+    {
+        // IC do the same thing as stobjbyname
+        AccessObjectStubBuilder builder(this);
+        ProfileOperation callback;
+        StringIdInfo stringIdInfo(constpool, stringId);
+        result = builder.StoreObjByName(glue, receiver, 0, stringIdInfo, acc, profileTypeInfo, slotId, callback);
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(DefineField), {receiver, propKey, acc});  // acc as value
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*result);
+}
+
 void BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8, GLUE));

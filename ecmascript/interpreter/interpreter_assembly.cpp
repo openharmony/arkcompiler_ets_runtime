@@ -6015,6 +6015,13 @@ void InterpreterAssembly::HandleDefineFieldByNameImm8Id16V8(
     DISPATCH(DEFINEFIELDBYNAME_IMM8_ID16_V8);
 }
 
+void InterpreterAssembly::HandleDefinePropertyByNameImm8Id16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(DEFINEPROPERTYBYNAME_IMM8_ID16_V8);
+}
+
 void InterpreterAssembly::HandleCallRuntimeDefineFieldByValuePrefImm8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
