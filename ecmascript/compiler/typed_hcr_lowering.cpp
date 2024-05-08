@@ -2006,8 +2006,9 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                                     GateRef leftDst = builder_.TaggedPointerToInt64(
                                         builder_.PtrAdd(newBackingStore,
                                         builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
-                                    GateRef rightDst = builder_.TaggedPointerToInt64(
-                                        builder_.PtrAdd(leftDst, builder_.ZExtInt32ToPtr(leftLength)));
+                                    GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
+                                        builder_.PtrMul(builder_.ZExtInt32ToPtr(leftLength),
+                                        builder_.IntPtr(sizeof(uint16_t)))));
                                     builder_.CopyChars(glue, leftDst, leftSource, leftLength,
                                         builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
                                     builder_.CopyChars(glue, rightDst, rightSource, rightLength,

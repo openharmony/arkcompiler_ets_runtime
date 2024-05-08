@@ -34,7 +34,7 @@ public:
           circuit_(circuit),
           acc_(circuit),
           builder_(circuit, cmpCfg),
-          vm_(ctx->GetCompilationEnv()->GetEcmaVM()),
+          compilationEnv_(ctx->GetCompilationEnv()),
           isLiteCG_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerEnableLiteCG()) {}
     ~TypedNativeInlineLowering() = default;
     GateRef VisitGate(GateRef gate) override;
@@ -130,7 +130,7 @@ private:
     Circuit* circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
-    EcmaVM *vm_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
     bool isLiteCG_ {false};
 };
 }

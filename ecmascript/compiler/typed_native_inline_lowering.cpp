@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/share_opcodes.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_dataview.h"
@@ -1047,9 +1048,11 @@ void TypedNativeInlineLowering::LowerMathSqrt(GateRef gate)
 }
 
 
-GateRef AllocateNewNumber(EcmaVM *vm, CircuitBuilder *builder, GateAccessor acc, GateRef protoOrHclass, GateRef result)
+GateRef AllocateNewNumber(const CompilationEnv *compilationEnv, CircuitBuilder *builder, GateAccessor acc,
+                          GateRef protoOrHclass, GateRef result)
 {
-    JSHandle<JSFunction> numberFunctionCT(vm->GetGlobalEnv()->GetNumberFunction());
+    Jit::JitLockHolder lock(compilationEnv, "AllocateNewNumber");
+    JSHandle<JSFunction> numberFunctionCT(compilationEnv->GetGlobalEnv()->GetNumberFunction());
     JSTaggedValue protoOrHClassCT = numberFunctionCT->GetProtoOrHClass();
     JSHClass *numberHClassCT = JSHClass::Cast(protoOrHClassCT.GetTaggedObject());
     size_t objectSize = numberHClassCT->GetObjectSize();
@@ -1114,7 +1117,7 @@ void TypedNativeInlineLowering::LowerNewNumber(GateRef gate)
     auto protoOrHclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), numberFunction,
                                                   JSFunction::PROTO_OR_DYNCLASS_OFFSET);
 
-    GateRef ret = AllocateNewNumber(vm_, &builder_, acc_, protoOrHclass, *result);
+    GateRef ret = AllocateNewNumber(compilationEnv_, &builder_, acc_, protoOrHclass, *result);
     
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
