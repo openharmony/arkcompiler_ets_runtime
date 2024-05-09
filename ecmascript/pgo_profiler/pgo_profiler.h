@@ -78,12 +78,12 @@ public:
     void PGOPreDump(JSTaggedType func);
     void PGODump(JSTaggedType func);
 
-    void WaitPGODumpPause();
-    void WaitPGODumpResume();
+    void WaitPGODumpPauseForGC();
+    void WaitPGODumpResumeForGC();
     void WaitPGODumpFinish();
 
     void HandlePGOPreDump();
-    void HandlePGODump(bool force);
+    void HandlePGODumpByDumpThread(bool force);
 
     void ProcessReferences(const WeakRootVisitor &visitor);
     void Iterate(const RootVisitor &visitor);
@@ -117,7 +117,14 @@ private:
     };
 
     void ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue);
-    bool PausePGODump();
+    void NotifyGC()
+    {
+        condition_.SignalAll();
+    }
+    void StopPGODump();
+    void StartPGODump();
+    bool IsGCWaitingWithLock();
+    bool IsGCWaiting();
 
     void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
                       ProfileTypeInfo *profileTypeInfo, BCType type);
@@ -178,7 +185,7 @@ private:
     class WorkNode;
     void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString& recordName, EntityId methodId, WorkNode* current);
     WorkNode* PopFromProfileQueue();
-    void SaveProfiler(bool force);
+    void MergeProfilerAndDispatchAsyncSaveTask(bool force);
     bool IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
                             JSHClass *exceptRecvHClassOnHeap, JSHClass *exceptHoldHClass,
                             JSHClass *exceptPrototypeOfPrototypeHClass);
@@ -191,7 +198,7 @@ private:
 
         bool Run([[maybe_unused]] uint32_t threadIndex) override
         {
-            profiler_->HandlePGODump(profiler_->isForce_);
+            profiler_->HandlePGODumpByDumpThread(profiler_->isForce_);
             return true;
         }
 
@@ -464,6 +471,8 @@ private:
         return false;
     }
 
+    ConcurrentGuardValues v_;
+    std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     EcmaVM *vm_ { nullptr };
     bool isEnable_ { false };
     bool isForce_ {false};
