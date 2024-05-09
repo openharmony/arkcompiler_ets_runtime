@@ -2093,6 +2093,16 @@ bool ObjectRef::Has(const EcmaVM *vm, uint32_t key)
     return JSTaggedValue::HasProperty(thread, object, key);
 }
 
+bool ObjectRef::HasOwnProperty(const EcmaVM *vm, Local<JSValueRef> key)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, ERROR);
+    JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
+    return JSTaggedValue::HasOwnProperty(thread, object, keyValue);
+}
+
 bool ObjectRef::Delete(const EcmaVM *vm, Local<JSValueRef> key)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);

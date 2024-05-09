@@ -678,6 +678,8 @@ public:
     bool Has(const EcmaVM *vm, Local<JSValueRef> key);
     bool Has(const EcmaVM *vm, uint32_t key);
 
+    bool HasOwnProperty(const EcmaVM *vm, Local<JSValueRef> key);
+
     bool Delete(const EcmaVM *vm, Local<JSValueRef> key);
     bool Delete(const EcmaVM *vm, uint32_t key);
 
