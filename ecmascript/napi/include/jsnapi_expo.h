@@ -646,6 +646,7 @@ public:
     enum class SendableType {
         NONE,
         OBJECT,
+        GENERIC,
     };
     struct SendablePropertiesInfo {
         std::vector<Local<JSValueRef>> keys;

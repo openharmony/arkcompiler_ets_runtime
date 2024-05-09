@@ -111,6 +111,8 @@ SharedFieldType JSNapiSendable::GetSharedFieldType(JSThread *thread,
     switch (type) {
         case FunctionRef::SendableType::OBJECT:
             return SharedFieldType::SENDABLE;
+        case FunctionRef::SendableType::GENERIC:
+            return SharedFieldType::GENERIC;
         case FunctionRef::SendableType::NONE: {
             auto valueHandle = JSNApiHelper::ToJSHandle(value);
             if (valueHandle->IsUndefined()) {
