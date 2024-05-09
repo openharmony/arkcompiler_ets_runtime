@@ -14,8 +14,9 @@
  */
 
 function createArray(len) {
-    return Array.apply(null, {length: len});
+    return Array.apply(null, { length: len });
 }
+
 let arr = createArray(10);
 let a1 = createArray(23.2);
 let a2 = createArray();
@@ -25,28 +26,36 @@ print(a2.length);
 const v1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const v4 = Int8Array.from(v1, v5 => v5.charCodeAt(0));
 Object.defineProperty(v4, "length", {
-    value:0
+    value: 0
 });
 print(String.fromCharCode.apply(null, v4));
+
 function f0(a, b) {
-    print(a,b);
+    print(a, b);
 }
 
 let v38;
+
 function f2() {
     arguments.length = -1;
     v38 = arguments;
 }
-f2(1,2);
-f0.apply(null,v38);
+
+f2(1, 2);
+f0.apply(null, v38);
 
 // undefined
 try {
     const v3 = new ArrayBuffer(17);
+
     function F4(a6, a7) {
-        if (!new.target) { throw 'must be called with new'; }
+        if (!new.target) {
+            throw 'must be called with new';
+        }
+
         function f8(a9, a10, a11) {
         }
+
         const v14 = new BigUint64Array(31);
         const o15 = {
             ...v14,
@@ -54,6 +63,7 @@ try {
         };
         Object.defineProperty(o15, 4, { set: f8 });
     }
+
     const v16 = new F4();
     F4(v16, v3);
 } catch (error) {
@@ -62,12 +72,17 @@ try {
 
 // undefined
 try {
-    const v3 = [100,Int8Array];
+    const v3 = [100, Int8Array];
     const v6 = new ArrayBuffer(13);
+
     function F7(a9, a10) {
-        if (!new.target) { throw 'must be called with new'; }
+        if (!new.target) {
+            throw 'must be called with new';
+        }
+
         function f11(a12, a13, a14) {
         }
+
         const v17 = new BigUint64Array(35);
         const o18 = {
             ...v17,
@@ -75,6 +90,7 @@ try {
         };
         Object.defineProperty(o18, 4, { set: f11 });
     }
+
     const v19 = new F7();
     F7(v19, v6);
     JSON.stringify(6, v3);

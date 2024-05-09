@@ -61,15 +61,15 @@ print(arr6);
 
 var arr7 = [];
 arr7[2] = 10;
-print(arr7.pop());  // 10
-print(arr7.pop());  // undefined
-print(arr7.pop());  // undefined
+print(arr7.pop()); // 10
+print(arr7.pop()); // undefined
+print(arr7.pop()); // undefined
 
 var arr8 = [];
 arr8[1] = 8;
-print(arr8.shift());  // undefined
-print(arr8.shift());  // 8
-print(arr8.shift());  // undefined
+print(arr8.shift()); // undefined
+print(arr8.shift()); // 8
+print(arr8.shift()); // undefined
 
 // Test on Array::Splice
 var arr9 = new Array(9);
@@ -156,7 +156,9 @@ print(sortedMonths); // ['Dec', 'Feb', 'Jan', 'Mar']
 print(months); // ['Mar', 'Jan', 'Feb', 'Dec']
 
 const values = [1, 10, 21, 2];
-const sortedValues = values.toSorted((a, b) => { return a - b });
+const sortedValues = values.toSorted((a, b) => {
+    return a - b
+});
 print(sortedValues); // [1, 2, 10, 21]
 print(values); // [1, 10, 21, 2]
 
@@ -193,12 +195,12 @@ function handleUnexpectedErrorCaught(prompt, e) {
 print("======== Begin: Array.prototype.reverse() ========");
 try {
     const arr0 = [];
-    print(`arr0.reverse() === arr0 ? ${arr0.reverse() === arr0}`);  // true
-    print(`arr0.length after reverse() called = ${arr0.length}`);   // 0
+    print(`arr0.reverse() === arr0 ? ${arr0.reverse() === arr0}`); // true
+    print(`arr0.length after reverse() called = ${arr0.length}`); // 0
 
     const arr1 = [1];
-    print(`arr1.reverse() === arr1 ? ${arr1.reverse() === arr1}`);  // true
-    print(`arr1 after reverse() called = ${arr1}`);                 // 1
+    print(`arr1.reverse() === arr1 ? ${arr1.reverse() === arr1}`); // true
+    print(`arr1 after reverse() called = ${arr1}`); // 1
 
     const arrWithHoles = [];
     arrWithHoles[1] = 1;
@@ -206,9 +208,9 @@ try {
     arrWithHoles[6] = undefined;
     arrWithHoles.length = 10;
     // arrWithHoles = [Hole, 1, Hole, Hole, 4, Hole, undefined, Hole, Hole, Hole]
-    print(`arrWithHoles before reverse() called = ${arrWithHoles}`);            // ,1,,,4,,,,,
-    print(`arrWithHoles.reverse()               = ${arrWithHoles.reverse()}`);  // ,,,,,4,,,1,
-    print(`arrWithHoles after reverse() called  = ${arrWithHoles}`);            // ,,,,,4,,,1,
+    print(`arrWithHoles before reverse() called = ${arrWithHoles}`); // ,1,,,4,,,,,
+    print(`arrWithHoles.reverse()               = ${arrWithHoles.reverse()}`); // ,,,,,4,,,1,
+    print(`arrWithHoles after reverse() called  = ${arrWithHoles}`); // ,,,,,4,,,1,
 } catch (e) {
     handleUnexpectedErrorCaught(e);
 }
@@ -228,71 +230,75 @@ try {
     // prompt1, results1, prompt2, results2, ...
     const resultGroups = [
         "Group 1: 0 <= fromIndex < arr.length", [
-            arr.indexOf(40),                        // 4
-            arr.indexOf(40, 5),                     // -1
-            arr.indexOf(10),                        // 1
-            arr.indexOf(10, 2),                     // 7
-            arr.lastIndexOf(40),                    // 4
-            arr.lastIndexOf(40, 3),                 // -1
-            arr.lastIndexOf(10),                    // 7
-            arr.lastIndexOf(10, 6),                 // 1
-        ],
+    arr.indexOf(40), // 4
+    arr.indexOf(40, 5), // -1
+    arr.indexOf(10), // 1
+    arr.indexOf(10, 2), // 7
+    arr.lastIndexOf(40), // 4
+    arr.lastIndexOf(40, 3), // -1
+    arr.lastIndexOf(10), // 7
+    arr.lastIndexOf(10, 6), // 1
+    ],
         "Group 2: -arr.length <= fromIndex < 0", [
-            arr.indexOf(40, -4),                    // -1
-            arr.indexOf(40, -8),                    // 4
-            arr.indexOf(10, -4),                    // 7
-            arr.indexOf(10, -10),                   // 1
-            arr.lastIndexOf(40, -4),                // 4
-            arr.lastIndexOf(40, -8),                // -1
-            arr.lastIndexOf(10, -4),                // 1
-            arr.lastIndexOf(10, -10),               // -1
-            arr.indexOf(0, -arr.length),            // 0
-            arr.indexOf(10, -arr.length),           // 1
-            arr.lastIndexOf(0, -arr.length),        // 0
-            arr.lastIndexOf(10, -arr.length),       // -1
-        ],
+    arr.indexOf(40, -4), // -1
+    arr.indexOf(40, -8), // 4
+    arr.indexOf(10, -4), // 7
+    arr.indexOf(10, -10), // 1
+    arr.lastIndexOf(40, -4), // 4
+    arr.lastIndexOf(40, -8), // -1
+    arr.lastIndexOf(10, -4), // 1
+    arr.lastIndexOf(10, -10), // -1
+    arr.indexOf(0, -arr.length), // 0
+    arr.indexOf(10, -arr.length), // 1
+    arr.lastIndexOf(0, -arr.length), // 0
+    arr.lastIndexOf(10, -arr.length), // -1
+    ],
         "Group 3: fromIndex >= arr.length", [
-            arr.indexOf(0, arr.length),             // -1
-            arr.indexOf(0, arr.length + 10),        // -1
-            arr.indexOf(10, arr.length),
-            arr.indexOf(10, arr.length + 10),
-            arr.lastIndexOf(0, arr.length),         // 0
-            arr.lastIndexOf(0, arr.length + 10),    // 0
-        ],
+    arr.indexOf(0, arr.length), // -1
+    arr.indexOf(0, arr.length + 10), // -1
+    arr.indexOf(10, arr.length),
+    arr.indexOf(10, arr.length + 10),
+    arr.lastIndexOf(0, arr.length), // 0
+    arr.lastIndexOf(0, arr.length + 10), // 0
+    ],
         "Group 4: fromIndex < -arr.length", [
-            arr.indexOf(0, -arr.length - 10),       // 0
-            arr.lastIndexOf(0, -arr.length - 10)    // -1
-        ],
+    arr.indexOf(0, -arr.length - 10), // 0
+    arr.lastIndexOf(0, -arr.length - 10) // -1
+    ],
         "Group 5: fromIndex in [Infinity, -Infinity]", [
-            arr.indexOf(10, -Infinity),             // 1
-            arr.indexOf(10, +Infinity),             // -1
-            arr.lastIndexOf(10, -Infinity),         // -1
-            arr.lastIndexOf(10, +Infinity)          // 7
-        ],
+    arr.indexOf(10, -Infinity), // 1
+    arr.indexOf(10, +Infinity), // -1
+    arr.lastIndexOf(10, -Infinity), // -1
+    arr.lastIndexOf(10, +Infinity) // 7
+    ],
         "Group 6: fromIndex is NaN", [
-            arr.indexOf(0, NaN),                    // 0
-            arr.indexOf(10, NaN),                   // 1
-            arr.lastIndexOf(0, NaN),                // 0
-            arr.lastIndexOf(10, NaN),               // -1
-        ],
+    arr.indexOf(0, NaN), // 0
+    arr.indexOf(10, NaN), // 1
+    arr.lastIndexOf(0, NaN), // 0
+    arr.lastIndexOf(10, NaN), // -1
+    ],
         "Group 7: fromIndex is not of type 'number'", [
-            arr.indexOf(10, '2'),                           // 7
-            arr.lastIndexOf(10, '2'),                       // 1
-            arr.indexOf(10, { valueOf() { return 3; } }),   // 7
-            arr.indexOf(10, { valueOf() { return 3; } }),   // 1
-        ],
+    arr.indexOf(10, '2'), // 7
+    arr.lastIndexOf(10, '2'), // 1
+    arr.indexOf(10, { valueOf() {
+        return 3;
+    } }), // 7
+    arr.indexOf(10, { valueOf() {
+        return 3;
+    } }), // 1
+    ],
         "Group 8: Strict equality checking", [
-            arr.indexOf("80"),                      // 8
-            arr.lastIndexOf(80),                    // 3
-        ],
+    arr.indexOf("80"), // 8
+    arr.lastIndexOf(80), // 3
+    ],
         "Group 9: Searching undefined and null", [
-            arr.indexOf(),                          // 6
-            arr.indexOf(undefined),                 // 6
-            arr.indexOf(null),                      // -1
-            arr.lastIndexOf(),                      // 6
-            arr.lastIndexOf(undefined),             // 6
-            arr.lastIndexOf(null)                   // -1
-        ]
+    arr.indexOf(), // 6
+    arr.indexOf(undefined), // 6
+    arr.indexOf(null), // -1
+    arr.lastIndexOf(), // 6
+    arr.lastIndexOf(undefined), // 6
+    arr.lastIndexOf(null) // -1
+    ]
     ];
     for (let i = 0; i < resultGroups.length; i += 2) {
         print(`${resultGroups[i]}: ${resultGroups[i + 1]}`);
@@ -312,10 +318,10 @@ try {
     const arr2 = new Proxy([10, 20, 30, 40, 50, 60], arrProxyHandler);
     const result2 = arr2.indexOf(30, {
         valueOf() {
-            arr2.length = 2;    // Side effects to arr2
+            arr2.length = 2; // Side effects to arr2
             return 0;
         }
-    });                         // Expected: -1 (with accessCount = 6)
+    }); // Expected: -1 (with accessCount = 6)
     print(`  - indexOf:     result = ${result2}, accessCount = ${accessCount}`);
     // Details on why accessCount = 6 can be seen in ECMAScript specifications:
     // https://tc39.es/ecma262/multipage/indexed-collections.html#sec-array.prototype.lastindexof
@@ -323,10 +329,10 @@ try {
     const arr3 = new Proxy([15, 25, 35, 45, 55, 65], arrProxyHandler);
     const result3 = arr3.lastIndexOf(45, {
         valueOf() {
-            arr3.length = 2;    // Side effects to arr3
+            arr3.length = 2; // Side effects to arr3
             return 5;
         }
-    });                         // Expected: -1 (with accessCount = 6)
+    }); // Expected: -1 (with accessCount = 6)
     print(`  - lastIndexOf: result = ${result3}, accesscount = ${accessCount}`);
 
     print("Group 11: fromIndex that triggers exceptions:");
@@ -335,7 +341,7 @@ try {
             try {
                 const result = method.call(arr, 10, fromIndex);
                 print(`ERROR: Unexpected result (which is ${result}) returned by method '${method.name}': ` +
-                    `Expects a TypeError thrown for fromIndex type '${prompt}'.`);
+                `Expects a TypeError thrown for fromIndex type '${prompt}'.`);
             } catch (e) {
                 // Expects a TypeError thrown and caught here.
                 handleExpectedErrorCaught(`${method.name} when fromIndex is ${prompt}`, e);
@@ -355,7 +361,9 @@ try {
 }
 
 var getTrap = function (t, key) {
-    if (key === "length") return { [Symbol.toPrimitive]() { return 3 } };
+    if (key === "length") return { [Symbol.toPrimitive]() {
+        return 3
+    } };
     if (key === "2") return "baz";
     if (key === "3") return "bar";
 };
@@ -366,23 +374,28 @@ print(Array.prototype.concat.apply(obj))
 
 const v55 = new Float64Array();
 const v98 = [-5.335880620598348e+307, 1.0, 1.0, 2.220446049250313e-16, -1.6304390272817058e+308];
+
 function f99(a100) {
 }
+
 function f110() {
     v98[2467] = v55;
 }
+
 Object.defineProperty(f99, Symbol.species, { configurable: true, enumerable: true, value: f110 });
 v98.constructor = f99;
 print(JSON.stringify(v98.splice(4)));
 
 var count;
 var params;
+
 class MyObserveArrray extends Array {
     constructor(...args) {
         super(...args);
         print("constructor")
         params = args;
     }
+
     static get [Symbol.species]() {
         print("get [Symbol.species]")
         count++;
@@ -392,25 +405,29 @@ class MyObserveArrray extends Array {
 
 count = 0;
 params = undefined;
-new MyObserveArrray().filter(() => { });
+new MyObserveArrray().filter(() => {
+});
 print(count, 1);
 print(params, [0]);
 
 count = 0;
 params = undefined;
-new MyObserveArrray().concat(() => { });
+new MyObserveArrray().concat(() => {
+});
 print(count, 1);
 print(params, [0]);
 
 count = 0;
 params = undefined;
-new MyObserveArrray().slice(() => { });
+new MyObserveArrray().slice(() => {
+});
 print(count, 1);
 print(params, [0]);
 
 count = 0;
 params = undefined;
-new MyObserveArrray().splice(() => { });
+new MyObserveArrray().splice(() => {
+});
 print(count, 1);
 print(params, [0]);
 
@@ -440,42 +457,45 @@ print(arr25.includes({}, 26));
 
 function fun1(obj, name, type) {
     return typeof type === 'undefined' || typeof desc.value === type;
-  }
-  function fun2(obj, type) {
+}
+
+function fun2(obj, type) {
     let properties = [];
     let proto = Object.getPrototypeOf(obj);
     while (proto && proto != Object.prototype) {
-      Object.getOwnPropertyNames(proto).forEach(name => {
-        if (name !== 'constructor') {
-          if (fun1(proto, name, type)) properties.push(name);
-        }
-      });
-      proto = Object.getPrototypeOf(proto);
+        Object.getOwnPropertyNames(proto).forEach(name => {
+            if (name !== 'constructor') {
+                if (fun1(proto, name, type)) properties.push(name);
+            }
+        });
+        proto = Object.getPrototypeOf(proto);
     }
     return properties;
-  }
-  function fun4(seed) {
+}
+
+function fun4(seed) {
     let objects = [Object, Error, AggregateError, EvalError, RangeError, ReferenceError, SyntaxError, TypeError, URIError, String, BigInt, Function, Number, Boolean, Date, RegExp, Array, ArrayBuffer, DataView, Int8Array, Int16Array, Int32Array, Uint8Array, Uint8ClampedArray, Uint16Array, Uint32Array, Float32Array, Float64Array, BigInt64Array, BigUint64Array, Set, Map, WeakMap, WeakSet, Symbol, Proxy];
     return objects[seed % objects.length];
-  }
-  function fun8(obj, seed) {
+}
+
+function fun8(obj, seed) {
     let properties = fun2(obj);
-  }
+}
 
-  fun4(694532)[fun8(fun4(694532), 527224)];
-  Object.freeze(Object.prototype);
+fun4(694532)[fun8(fun4(694532), 527224)];
+Object.freeze(Object.prototype);
 
-  Array.prototype.length = 3000;
-  print(Array.prototype.length)
+Array.prototype.length = 3000;
+print(Array.prototype.length)
 
 let unscopables1 = Array.prototype[Symbol.unscopables];
 let unscopables2 = Array.prototype[Symbol.unscopables];
 print(unscopables1 == unscopables2)
 
-arr=[]
-let index=4294967291;
-arr[index]=0;
-arr.length=10;
+arr = []
+let index = 4294967291;
+arr[index] = 0;
+arr.length = 10;
 arr.fill(10);
 print(arr)
 
@@ -485,10 +505,10 @@ var arr_copywithin2 = new Array();
 for (let i = 0; i < 10; i++) arr_copywithin2[i] = i;
 var arr_copywithin3 = new Array();
 for (let i = 0; i < 10; i++) {
-  if (i == 2) {
-    continue;
-  }
-  arr_copywithin3[i] = i;
+    if (i == 2) {
+        continue;
+    }
+    arr_copywithin3[i] = i;
 }
 var arr_copywithin4 = new Array();
 for (let i = 0; i < 10; i++) arr_copywithin4[i] = i;
@@ -504,25 +524,28 @@ print(arr_copywithin4);
 // Test case for every()
 var arr_every1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 var arr_every2 = new Array();
+
 function testEvery(element, index, array) {
     if (index == 0) {
         array.length = 6;
     }
     return element < 6;
 }
+
 function testEvery4(element, index, array) {
-  array.pop();
-  array.pop();
-  array.pop();
-  return element < 6;
+    array.pop();
+    array.pop();
+    array.pop();
+    return element < 6;
 }
+
 for (let i = 0; i < 10; i++) arr_every2[i] = i;
 var arr_every3 = new Array();
 for (let i = 0; i < 10; i++) {
-  if (i == 2) {
-    continue;
-  }
-  arr_every3[i] = i;
+    if (i == 2) {
+        continue;
+    }
+    arr_every3[i] = i;
 }
 var arr_every4 = new Array();
 for (let i = 0; i < 10; i++) arr_every4[i] = i;
@@ -538,24 +561,27 @@ print(result_every4);
 // Test case for reduceRight()
 var arr_reduceRight1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 var arr_reduceRight2 = new Array();
+
 function testReduceRight(accumulator, element, index, array) {
     if (index == 0) {
         array.length = 6;
     }
     return accumulator + element;
 }
+
 function testReduceRight4(accumulator, element, index, array) {
-  array.pop();
-  array.pop();
-  return accumulator + element;
+    array.pop();
+    array.pop();
+    return accumulator + element;
 }
+
 for (let i = 0; i < 10; i++) arr_reduceRight2[i] = i;
 var arr_reduceRight3 = new Array();
 for (let i = 0; i < 10; i++) {
-  if (i < 9) {
-    continue;
-  }
-  arr_reduceRight3[i] = i;
+    if (i < 9) {
+        continue;
+    }
+    arr_reduceRight3[i] = i;
 }
 var arr_reduceRight4 = new Array();
 for (let i = 0; i < 10; i++) arr_reduceRight4[i] = i;
@@ -571,19 +597,21 @@ print(result_reduceRight4);
 // Test case for some()
 var arr_some1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 var arr_some2 = new Array();
+
 function testSome(element, index, array) {
     if (index == 0) {
         array.length = 6;
     }
     return element > 8;
 }
+
 for (let i = 0; i < 10; i++) arr_some2[i] = i;
 var arr_some3 = new Array();
 for (let i = 0; i < 10; i++) {
-  if (i < 9) {
-    continue;
-  }
-  arr_some3[i] = i;
+    if (i < 9) {
+        continue;
+    }
+    arr_some3[i] = i;
 }
 var result_some1 = arr_some1.some(testSome);
 print(result_some1);
@@ -603,9 +631,14 @@ print(result_unshift2);
 
 class C3 {
     constructor(a5) {
-        try { a5(this, this, ..."895053461", ..."p"); } catch (e) {}
+        try {
+            a5(this, this, ..."895053461", ..."p");
+        } catch (e) {
+        }
     }
+
     a;
+
     valueOf(a9) {
         const v10 = a9?.[this];
         -718821.501160539 !== a9;
@@ -614,6 +647,7 @@ class C3 {
         return v10;
     }
 }
+
 const v12 = new C3("p");
 new C3(v12);
 new C3(C3);
@@ -633,38 +667,49 @@ print(result_toSorted2);
 
 const v0 = [0, 1];
 const mapEd = v0.map(() => {
-  v0["pop"]();
+    v0["pop"]();
 });
 print(new Uint16Array(v0).length);
 
 try {
     const v2 = new ArrayBuffer(103);
+
     function F3(a5, a6) {
-        if (!new.target) { throw 'must be called with new'; }
+        if (!new.target) {
+            throw 'must be called with new';
+        }
+
         function f7(a8, a9, a10) {
             return v2;
         }
+
         const v13 = new BigUint64Array(35);
         const o14 = {
             ...v13,
         };
         Object.defineProperty(o14, 4, { set: f7 });
     }
+
     new F3();
     new F3();
     v2();
-} catch(err) {
+} catch (err) {
     print(err.name);
 }
 
 try {
     const v3 = new ArrayBuffer(45);
     const v0 = new Boolean;
+
     function F4(a6, a7) {
-        if (!new.target) { throw 'must be called with new'; }
+        if (!new.target) {
+            throw 'must be called with new';
+        }
+
         function f8(a9, a10, a11) {
             return F4;
         }
+
         const v14 = new BigUint64Array(15);
         const o20 = {
             [v0](a16, a17, a18, a19) {
@@ -674,108 +719,133 @@ try {
         };
         Object.defineProperty(o20, 4, { set: f8 });
     }
+
     new F4(v0, 101);
     new F4();
     v3.transfer();
-} catch(err) {
+} catch (err) {
     print(err.name);
 }
 
 try {
+
     function F6(a8, a9, a10) {
-        if (!new.target) { throw 'must be called with new'; }
+        if (!new.target) {
+            throw 'must be called with new';
+        }
         const v14 = new Date(-10, 16);
         v14.toDateString();
     }
+
     const v16 = new F6(11);
     new F6(2064);
+
     function f18() {
         return v16;
     }
+
     new BigUint64Array();
-    const v23 = [-42,4,4];
-    const o24 = {
-    };
-    const v25 = [5.0,-5.12,1e-15,-0.05,5.0,2.22e-38,-10.0,10.0,5.0,-5.0];
+    const v23 = [-42, 4, 4];
+    const o24 = {};
+    const v25 = [5.0, -5.12, 1e-15, -0.05, 5.0, 2.22e-38, -10.0, 10.0, 5.0, -5.0];
+
     function f26() {
         return v25;
     }
+
     class C28 extends Date {
         constructor(a30, a31) {
             super();
         }
     }
+
     new Int8Array();
     new Int8Array();
     v23.filter(Array);
     new ArrayBuffer(26);
     const v44 = new Uint8Array();
     v44.toString();
-    const o46 = {
-    };
+    const o46 = {};
     for (let i49 = -51, i50 = 10; i49 < i50; i50--) {
         o46[i50] >>= i50;
     }
-    /c/iusg;
+    /
+    c / iusg;
     const v58 = new Int16Array();
     v58.forEach();
-} catch(err) {
+} catch (err) {
     print(err.name);
 }
 
 try {
     const v3 = new ArrayBuffer(19);
+
     function F4(a6, a7) {
-        if (!new.target) { throw 'must be called with new'; }
+        if (!new.target) {
+            throw 'must be called with new';
+        }
         const v10 = new BigUint64Array(34);
         const o11 = {
             ...v10,
         };
         Object.defineProperty(o11, 4, { set: a6 });
     }
+
     const v12 = new F4();
     new F4(v12, v3);
-} catch(err) {
+} catch (err) {
     print(err.name);
 }
 
 try {
     const v3 = new ArrayBuffer(10);
+
     function F4(a6, a7) {
-        if (!new.target) { throw 'must be called with new'; }
+        if (!new.target) {
+            throw 'must be called with new';
+        }
+
         function f8(a9, a10, a11) {
             return a11;
         }
+
         const v14 = new BigUint64Array(34);
         const o15 = {
             ...v14,
         };
         Object.defineProperty(o15, 4, { set: f8 });
     }
+
     const v16 = new F4();
     new F4(v16, v3);
     Int32Array();
-} catch(err) {
+} catch (err) {
     print(err.name);
 }
 
 try {
     const v2 = new ArrayBuffer(10);
+
     function F3(a5, a6) {
-        if (!new.target) { throw 'must be called with new'; }
+        if (!new.target) {
+            throw 'must be called with new';
+        }
+
         function f7(a8, a9, a10) {
             return a9;
         }
+
         const v13 = new BigUint64Array(35);
         const o14 = {
             ...v13,
         };
         Object.defineProperty(o14, 4, { set: f7 });
     }
+
     new F3(ArrayBuffer, v2);
     new F3(10, F3);
     v2.transfer();
-} catch(err) {
+} catch (err) {
     print(err.name);
 }
 
