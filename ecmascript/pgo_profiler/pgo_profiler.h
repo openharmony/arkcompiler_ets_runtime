@@ -294,7 +294,7 @@ private:
 
         bool IsHole() const
         {
-            return receiver.IsHole() && holder.IsHole();
+            return receiver.IsHole();
         }
 
         void ProcessReceiver(const WeakRootVisitor& visitor)
@@ -308,20 +308,6 @@ private:
                 ClearReceiver();
             } else if (fwd != obj) {
                 SetReceiver(fwd);
-            }
-        }
-
-        void ProcessHolder(const WeakRootVisitor& visitor)
-        {
-            if (!holder.IsHeapObject()) {
-                return;
-            }
-            auto obj = holder.GetTaggedObject();
-            auto fwd = visitor(obj);
-            if (fwd == nullptr) {
-                ClearHolder();
-            } else if (fwd != obj) {
-                SetHolder(fwd);
             }
         }
 
@@ -409,7 +395,6 @@ private:
             for (auto& iter: map_) {
                 auto& info = iter.second;
                 info.ProcessReceiver(visitor);
-                info.ProcessHolder(visitor);
             }
         }
 
@@ -418,7 +403,6 @@ private:
             if (HasExtraProfileTypeInfo()) {
                 for (auto& iter: map_) {
                     auto& info = iter.second;
-                    visitor(Root::ROOT_VM, ObjectSlot(info.GetReceiverAddr()));
                     visitor(Root::ROOT_VM, ObjectSlot(info.GetHolderAddr()));
                 }
             }
