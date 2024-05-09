@@ -429,6 +429,11 @@ size_t DFXJSNApi::GetHeapLimitSize(const EcmaVM *vm)
     return vm->GetHeap()->GetHeapLimitSize();
 }
 
+size_t DFXJSNApi::GetProcessHeapLimitSize()
+{
+    return ecmascript::MemMapAllocator::GetInstance()->GetCapacity();
+}
+
 bool DFXJSNApi::isOverLimit(const EcmaVM *vm)
 {
     return vm->isOverLimit();
