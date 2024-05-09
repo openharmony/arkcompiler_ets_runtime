@@ -60,7 +60,7 @@ if (globalThis["ArkPrivate"] != undefined) {
       j++;
     }
     map.set("test queue for of:", res)
-    testdProxyArray1(proxy, res);
+    testdProxyArray1(proxy, res, testArray);
     // let itr = proxy[Symbol.iterator]();
     // let tmp = undefined;
     // let testArray1 = []

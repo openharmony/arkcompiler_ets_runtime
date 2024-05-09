@@ -1,2 +1,0 @@
-container_lightweightmap.js;container_lightweightmap;esm;container_lightweightmap.js;xxcontainer_lightweightmapxx
-utility.js;utility;esm;utility.js;xxutilityxx

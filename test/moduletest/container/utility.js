@@ -85,15 +85,15 @@ export function testdProxyIterator(map, res) {
     let flag = false;
     function TestForEach(value, key, map) {
         flag = map.get(key) === value;
-        res.set("test forEach" + key, flag)
+        res.set("test forEach" + key, flag);
     }
     map.forEach(TestForEach);
 }
 
-export function testdProxyArray1(proxy, res) {
+export function testdProxyArray1(proxy, res, testArray) {
     let itr = proxy[Symbol.iterator]();
-    let tmp = undefined;
-    let testArray1 = []
+    let tmp = undefined;    
+    let testArray1 = [];
     do {
         tmp = itr.next().value;
         testArray1.push(tmp);
@@ -101,7 +101,7 @@ export function testdProxyArray1(proxy, res) {
 
     for (let k = 0; k < proxy.length; k++) {
         if (testArray1[k] !== testArray[k]) {
-            res = false
+            res = false;
         }
     }
 }

@@ -90,7 +90,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     dmap.clear();
     res.set("test clear:", dmap.length == 0);
 
-    flag = false;
+    let flag = false;
     try {
         map["aa"] = 3;
     } catch (e) {

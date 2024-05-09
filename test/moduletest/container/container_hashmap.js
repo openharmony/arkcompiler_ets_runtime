@@ -78,7 +78,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     // }
     // map.forEach(TestForEach);
 
-    flag = false;
+    let flag = false;
     let doublemap = new fastmap();
     for (let i = 0; i < 10; i++) {
         doublemap.set(i, i);
