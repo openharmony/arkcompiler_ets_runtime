@@ -3183,17 +3183,41 @@ void JSNApi::SetHmsModuleList(EcmaVM *vm, const std::vector<panda::HmsMap> &list
 
 void JSNApi::SetPkgAliasList(EcmaVM *vm, const std::map<std::string, std::string> &list)
 {
-    vm->SetPkgAliasList(list);
+    ecmascript::CMap<ecmascript::CString, ecmascript::CString> pkgAliasList;
+    for (auto it = list.begin(); it != list.end(); ++it) {
+        pkgAliasList.emplace(it->first.c_str(), it->second.c_str());
+    }
+    vm->SetPkgAliasList(pkgAliasList);
 }
 
 void JSNApi::SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list)
 {
-    vm->SetPkgNameList(list);
+    ecmascript::CMap<ecmascript::CString, ecmascript::CString> pkgNameList;
+    for (auto it = list.begin(); it != list.end(); ++it) {
+        pkgNameList.emplace(it->first.c_str(), it->second.c_str());
+    }
+    vm->SetPkgNameList(pkgNameList);
 }
 
-void JSNApi::SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string, std::vector<std::vector<std::string>>> &list)
+void JSNApi::SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
+    std::vector<std::vector<std::string>>> &list)
 {
-    vm->SetpkgContextInfoList(list);
+    ecmascript::CMap<ecmascript::CString, ecmascript::CMap<ecmascript::CString,
+        ecmascript::CVector<ecmascript::CString>>> pkgContextInfoList;
+    for (auto it = list.begin(); it != list.end(); it++) {
+        const std::vector<std::vector<std::string>> vec = it->second;
+        ecmascript::CMap<ecmascript::CString, ecmascript::CVector<ecmascript::CString>> map;
+        for (size_t i = 0; i < vec.size(); i++) {
+            ecmascript::CString pkgName = vec[i][0].c_str();
+            ecmascript::CVector<ecmascript::CString> pkgContextInfo;
+            for (size_t j = 1; j < vec[i].size(); j++) {
+                pkgContextInfo.emplace_back(vec[i][j].c_str());
+            }
+            map.emplace(pkgName, pkgContextInfo);
+        }
+        pkgContextInfoList.emplace(it->first.c_str(), map);
+    }
+    vm->SetpkgContextInfoList(pkgContextInfoList);
 }
 
 bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data)
@@ -3289,6 +3313,9 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
     vm->SetModuleName(hostVM->GetModuleName());
     vm->SetAssetPath(hostVM->GetAssetPath());
     vm->SetIsBundlePack(hostVM->IsBundlePack());
+    vm->SetPkgNameList(hostVM->GetPkgNameList());
+    vm->SetPkgAliasList(hostVM->GetPkgAliasList());
+    vm->SetpkgContextInfoList(hostVM->GetPkgContextInfoLit());
 
     ecmascript::ModuleManager *vmModuleManager =
         vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
