@@ -202,6 +202,7 @@ template("libark_jsruntime_common_set") {
 
     if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
         is_standard_system && !is_arkui_x && target_cpu == "arm64") {
+      defines += [ "ENABLE_FFRT_INTERFACES" ]
       external_deps += [
         "ffrt:libffrt",
         "hilog:libhilog",
