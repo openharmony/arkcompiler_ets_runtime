@@ -69,19 +69,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test stack for of:", res);
     
     testdProxyArray1(proxy, res, testArray);
-    // let itr = proxy[Symbol.iterator]();
-    // let tmp = undefined;
-    // let testArray1 = []
-    // do {
-    //   tmp = itr.next().value;
-    //   testArray1.push(tmp);
-    // } while (tmp != undefined);
 
-    // for (let k = 0; k < proxy.length; k++) {
-    //   if (testArray1[k] !== testArray[k]) {
-    //     res = false
-    //   }
-    // }
     map.set("test stack Symbol.iterator:", res)
 
     map.set("test stack peek:",  proxy.peek() === 9)
