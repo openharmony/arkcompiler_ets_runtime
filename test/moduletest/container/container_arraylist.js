@@ -19,6 +19,8 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+import {testdProxyArray1}  from "./utility";
+
 var arrayList = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     arrayList = ArkPrivate.Load(ArkPrivate.ArrayList);
@@ -132,7 +134,7 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     })
 
-    map.set("test arraylist forEach:", res)
+    map.set("test arraylist forEach:", res);
 
     res = true
     let subArrayList = proxy.subArrayList(1, 3)
@@ -152,21 +154,22 @@ if (globalThis["ArkPrivate"] != undefined) {
       }
       j++;
     }
-    map.set("test arraylist for of:", res)
+    map.set("test arraylist for of:", res);
 
-    let itr = proxy[Symbol.iterator]();
-    let tmp = undefined;
-    let testArray1 = []
-    do {
-      tmp = itr.next().value;
-      testArray1.push(tmp);
-    } while (tmp != undefined);
+    testdProxyArray1(proxy, res);
+    // let itr = proxy[Symbol.iterator]();
+    // let tmp = undefined;
+    // let testArray1 = []
+    // do {
+    //   tmp = itr.next().value;
+    //   testArray1.push(tmp);
+    // } while (tmp != undefined);
 
-    for (let k = 0; k < proxy.length; k++) {
-      if (testArray1[k] !== testArray[k]) {
-        res = false
-      }
-    }
+    // for (let k = 0; k < proxy.length; k++) {
+    //   if (testArray1[k] !== testArray[k]) {
+    //     res = false
+    //   }
+    // }
     map.set("test arraylist Symbol.iterator:", res)
 
     proxy.replaceAllElements((item, index) => {

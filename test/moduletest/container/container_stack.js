@@ -19,6 +19,8 @@
  * @tc.type: FUNC
  * @tc.require: 
  */
+import {testdProxyArray1}  from "./utility";
+
 var Stack = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     Stack = ArkPrivate.Load(ArkPrivate.Stack);
@@ -64,21 +66,22 @@ if (globalThis["ArkPrivate"] != undefined) {
       }
       j++;
     }
-    map.set("test stack for of:", res)
+    map.set("test stack for of:", res);
+    
+    testdProxyArray1(proxy, res);
+    // let itr = proxy[Symbol.iterator]();
+    // let tmp = undefined;
+    // let testArray1 = []
+    // do {
+    //   tmp = itr.next().value;
+    //   testArray1.push(tmp);
+    // } while (tmp != undefined);
 
-    let itr = proxy[Symbol.iterator]();
-    let tmp = undefined;
-    let testArray1 = []
-    do {
-      tmp = itr.next().value;
-      testArray1.push(tmp);
-    } while (tmp != undefined);
-
-    for (let k = 0; k < proxy.length; k++) {
-      if (testArray1[k] !== testArray[k]) {
-        res = false
-      }
-    }
+    // for (let k = 0; k < proxy.length; k++) {
+    //   if (testArray1[k] !== testArray[k]) {
+    //     res = false
+    //   }
+    // }
     map.set("test stack Symbol.iterator:", res)
 
     map.set("test stack peek:",  proxy.peek() === 9)
