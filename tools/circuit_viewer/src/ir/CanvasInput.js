@@ -41,7 +41,7 @@ class CanvasInput {
     ci.focus();
 
     ci.addEventListener('keydown', (e) => {
-      if (e.key == 'Enter') {
+      if (e.key === 'Enter') {
         console.log(e);
         e.preventDefault();
         if (cb3) {

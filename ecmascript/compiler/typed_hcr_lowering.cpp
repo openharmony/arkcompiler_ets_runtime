@@ -2118,7 +2118,8 @@ GateRef TypedHCRLowering::AllocateLineString(GateRef glue, GateRef length, GateR
     GateRef stringClass = builder_.GetGlobalConstantValue(ConstantIndex::LINE_STRING_CLASS_INDEX);
 
     builder_.StartAllocate();
-    GateRef lineString = builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
+    GateRef lineString =
+        builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), lineString, 0, stringClass,
         MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);

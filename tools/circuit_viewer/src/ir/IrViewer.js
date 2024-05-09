@@ -78,7 +78,7 @@ class IrViewer {
         btn.name_ = INTYPE_STR[btn.inTypeId_] + (btn.inTypeMask_ === 1 ? '✔️' : '❌');
         this.mask_ = (this.mask_ & ~(1 << btn.inTypeId_)) | (btn.inTypeMask_ << btn.inTypeId_);
         this.changeVisable();
-      }
+      };
       this.btnGo_.push(btn);
       tx += bw + 10;
     }
@@ -102,7 +102,7 @@ class IrViewer {
     this.btnGo_.push(this.selectFile_, this.selectFunc_, this.selectMethod_);
     this.btnGo_.sort((a, b) => {
       return b.posY_ - a.posY_;
-    })
+    });
 
     this.scrollY_ = new XScroll({ type: 'right' });
     this.scrollX_ = new XScroll({ type: 'button' });
@@ -478,7 +478,7 @@ class IrViewer {
       x2: x2,
       y1: y1,
       y2: y2,
-    }
+    };
     let scrollW = x2 - x1;
     let scrollH = y2 - y1;
     this.dragScoll.hh = scrollH - Scr.logich;
@@ -804,7 +804,7 @@ class IrViewer {
             y: y,
             dx: 0,
             dy: 0,
-          }
+          };
           return true;
         }
       }
@@ -815,7 +815,7 @@ class IrViewer {
       this.drapBackground_ = {
         x: x,
         y: y,
-      }
+      };
     }
     return false;
   }
@@ -907,4 +907,4 @@ class IrViewer {
 
 module.exports = {
   IrViewer
-}
+};
