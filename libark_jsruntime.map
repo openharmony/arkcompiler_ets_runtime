@@ -50,6 +50,12 @@
       panda::RegExpRef::*;
       panda::SetIteratorRef::*;
       panda::SetRef::*;
+      panda::SharedInt8ArrayRef::*;
+      panda::SharedUint8ArrayRef::*;
+      panda::SharedInt16ArrayRef::*;
+      panda::SharedUint16ArrayRef::*;
+      panda::SharedInt32ArrayRef::*;
+      panda::SharedUint32ArrayRef::*;
       panda::ProxyRef::*;
       panda::StringRef::*;
       panda::SymbolRef::*;

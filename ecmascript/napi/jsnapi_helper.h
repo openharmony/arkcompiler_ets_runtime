@@ -97,7 +97,13 @@
     V(Float32Array)        \
     V(Float64Array)        \
     V(BigInt64Array)       \
-    V(BigUint64Array)
+    V(BigUint64Array)      \
+    V(SharedInt8Array)     \
+    V(SharedUint8Array)    \
+    V(SharedInt16Array)    \
+    V(SharedUint16Array)   \
+    V(SharedInt32Array)    \
+    V(SharedUint32Array)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define EXCEPTION_ERROR_ALL(V)         \
