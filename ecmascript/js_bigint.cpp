@@ -77,7 +77,7 @@ JSHandle<BigInt> BigInt::GetUint64MaxBigint(JSThread *thread)
 
 JSHandle<BigInt> BigInt::GetInt64MaxBigint(JSThread *thread)
 {
-    JSHandle<BigInt> bigint = CreateBigint(thread, 2);
+    JSHandle<BigInt> bigint = CreateBigint(thread, 2); // 2:The number of digits in an object of type BigInt
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0x80000000); // 0x80000000:Int MAX

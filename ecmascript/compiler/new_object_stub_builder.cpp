@@ -653,7 +653,7 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
             Bind(&isAOTLiteral);
             // Avoiding shareobj references to unshareobj.
             GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
-            GateRef unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env->Is32Bit());
+            GateId unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env->Is32Bit());
             GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
             GateRef unshareCp = GetUnsharedConstpool(unshareCpAddr, unshareIdx);
             val = GetValueFromTaggedArray(unshareCp, index);

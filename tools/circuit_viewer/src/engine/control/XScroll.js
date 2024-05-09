@@ -128,7 +128,7 @@ class XScroll {
           this.touchPos_ = {
             x: x,
             y: y,
-          }
+          };
         }
         break;
       case 2:

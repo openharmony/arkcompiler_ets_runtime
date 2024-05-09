@@ -30,7 +30,7 @@ export class XTools {
   static CONFIG = null;
   static LoadConfig() {
     const xhr = new XMLHttpRequest();
-    xhr.open('GET', "config.json");
+    xhr.open('GET', 'config.json');
     xhr.onreadystatechange = () => {
       if (xhr.readyState === XMLHttpRequest.DONE) {
         if (xhr.status === 200) {
