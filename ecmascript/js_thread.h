@@ -1345,6 +1345,17 @@ public:
     {
         env_ = env;
     }
+
+    void SetIsInConcurrentScope(bool flag)
+    {
+        isInConcurrentScope_ = flag;
+    }
+
+    bool IsInConcurrentScope()
+    {
+        return isInConcurrentScope_;
+    }
+
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -1468,6 +1479,8 @@ private:
 
     std::atomic<bool> needTermination_ {false};
     std::atomic<bool> hasTerminated_ {false};
+
+    bool isInConcurrentScope_ {false};
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;

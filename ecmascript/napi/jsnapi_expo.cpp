@@ -3310,6 +3310,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     }
     transFunc->SetTaskConcurrentFuncFlag(1); // 1 : concurrent function flag
     thread->SetTaskInfo(reinterpret_cast<uintptr_t>(taskInfo));
+    thread->SetIsInConcurrentScope(true);
     return true;
 }
 
@@ -3323,6 +3324,7 @@ void JSNApi::ClearCurrentTaskInfo(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     thread->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
+    thread->SetIsInConcurrentScope(false);
 }
 
 void JSNApi::SetBundleName(EcmaVM *vm, const std::string &bundleName)
