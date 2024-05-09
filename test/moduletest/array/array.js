@@ -433,6 +433,7 @@ print(arr.toSpliced(0, 0, 0, 0)[0])
 var arr25 = []
 arr25[1025] = 0;
 print(arr25.includes({}, 414));
+print(arr25.includes(1025,109));
 
 var arr26 = []
 arr25[100] = 0;

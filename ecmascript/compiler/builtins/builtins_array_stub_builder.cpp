@@ -2469,12 +2469,15 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
     Label isDictMode(env);
     Label isHeapObject(env);
     Label isJsArray(env);
+    Label isStableJsArray(env);
     Label notFound(env);
     Label thisLenNotZero(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStableJsArray, slowPath);
+    Bind(&isStableJsArray);
     GateRef thisLen = GetArrayLength(thisValue);
     BRANCH(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
     Bind(&thisLenNotZero);
