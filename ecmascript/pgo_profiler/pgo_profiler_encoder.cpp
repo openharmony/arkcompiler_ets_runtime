@@ -18,6 +18,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <sys/stat.h>
 
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
@@ -178,6 +179,7 @@ void PGOProfilerEncoder::MergeWithExistProfile(PGOProfilerEncoder &runtimeEncode
 
 bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
 {
+    umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
     static const char *tempSuffix = ".tmp";
     auto tmpOutPath = realOutPath_ + "." + std::to_string(getpid()) + tempSuffix;
     std::fstream fileStream(tmpOutPath.c_str(),
