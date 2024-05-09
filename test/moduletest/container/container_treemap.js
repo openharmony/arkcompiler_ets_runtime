@@ -20,7 +20,7 @@
  * @tc.require: issueI5NO8G
  */
 import {testCommon, testdProxySet, testdProxyIterator}  from "./utility";
-
+export let treemapRes = "Test TreeMap done";
 var fastmap = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     fastmap = ArkPrivate.Load(ArkPrivate.TreeMap);

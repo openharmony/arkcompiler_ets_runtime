@@ -152,3 +152,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test Deque fail: " + flag);
     }
 }
+export let dequeRes = "Test Deque done";

@@ -133,3 +133,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test Stack fail: " + flag);
     }
 }
+export let stackRes = "Test Stack done";

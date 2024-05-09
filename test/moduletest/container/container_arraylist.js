@@ -259,4 +259,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test ArrayList fail: " + flag);
     }
 }
-
+export let arraylistRes = "Test ArrayList";

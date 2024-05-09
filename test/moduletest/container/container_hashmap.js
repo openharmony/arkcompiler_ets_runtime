@@ -238,3 +238,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test HashMap fail: " + flag);
     }
 }
+export let hashmapRes = "Test hashmap done";

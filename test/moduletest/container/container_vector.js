@@ -325,3 +325,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test Vector fail: " + flag);
     }
 }
+export let vectorRes = "Test Vector done";

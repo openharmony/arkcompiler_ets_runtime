@@ -1,0 +1,16 @@
+container_arraylist.js;container_arraylist;esm;container_arraylist.js;xxcontainer_arraylistxx
+container_deque.js;container_deque;esm;container_deque.js;xxcontainer_dequexx
+container_hashmap.js;container_hashmap;esm;container_hashmap.js;xxcontainer_hashmapxx
+container_hashset.js;container_hashset;esm;container_hashset.js;xxcontainer_hashsetxx
+container_lightweightmap.js;container_lightweightmap;esm;container_lightweightmap.js;xxcontainer_lightweightmapxx
+container_lightweightset.js;container_lightweightset;esm;container_lightweightset.js;xxcontainer_lightweightsetxx
+container_linked_list.js;container_linked_list;esm;container_linked_list.js;xxcontainer_linked_listsetxx
+container_list.js;container_list;esm;container_list.js;xxcontainer_listxx
+container_plainarray.js;container_plainarray;esm;container_plainarray.js;xxcontainer_plainarrayxx
+container_queue.js;container_queue;esm;container_queue.js;xxcontainer_queuexx
+container_stack.js;container_stack;esm;container_stack.js;xxcontainer_stackxx
+container_treemap.js;container_treemap;esm;container_treemap.js;xxcontainer_treemapxx
+container_treeset.js;container_treeset;esm;container_treeset.js;xxcontainer_treesetxx
+container_vector.js;container_vector;esm;container_vector.js;xxcontainer_vectorxx
+container.js;container;esm;container.js;xxcontainerxx
+utility.js;utility;esm;utility.js;xxutilityxx

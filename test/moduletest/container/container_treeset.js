@@ -201,3 +201,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test TreeSet fail: " + flag);
     }
 }
+export let treesetRes = "Test TreeSet done";

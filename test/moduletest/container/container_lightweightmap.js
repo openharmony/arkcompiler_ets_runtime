@@ -19,7 +19,7 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-import testCommon  from "./utility";
+import {testCommon}  from "./utility";
 
 var fastmap = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
@@ -139,3 +139,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test LightWeightMap fail: " + flag);
     }
 }
+export let lightweightmapRes = "Test LightWeightMap done";

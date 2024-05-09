@@ -134,3 +134,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test Queue fail: " + flag);
     }
 }
+export let queueRes = "Test Queue done";
