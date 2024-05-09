@@ -52,8 +52,8 @@ void GCStats::PrintGCStatistic()
                         << GetConcurrrentMarkDuration()
                         << ")ms, " << GCReasonToString();
         LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground() << "; "
-            << "InSensitiveStatus: " << heap_->GetSensitiveStatus() << "; "
-            << "onStartUpEvent: " << heap_->OnStartupEvent() << "; "
+            << "SensitiveStatus: " << heap_->GetSensitiveStatus() << "; "
+            << "OnStartupEvent: " << heap_->OnStartupEvent() << "; "
             << "BundleName: " << heap_->GetEcmaVM()->GetBundleName() << ";";
         // print verbose gc statsistics
         PrintVerboseGCStatistic();
@@ -370,6 +370,11 @@ void GCStats::PrintGCSummaryStatistic(GCType type)
     }
 }
 
+size_t GCStats::GetAccumulatedAllocateSize()
+{
+    return accumulatedFreeSize_ + heap_->GetHeapObjectSize();
+}
+
 void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
 {
     SetRecordData(RecordData::START_OBJ_SIZE, heap_->GetHeapObjectSize());
@@ -494,6 +499,13 @@ void GCStats::RecordStatisticAfterGC()
             break;
     }
     RecordGCSpeed();
+
+    if (gcType_ == GCType::COMPRESS_GC && scopeDuration_[Scope::ScopeId::TotalGC] > longPauseTime_) {
+        IncreaseFullGCLongTimeCount();
+    }
+    IncreaseTotalDuration(scopeDuration_[Scope::ScopeId::TotalGC]);
+    IncreaseAccumulatedFreeSize(GetRecordData(RecordData::START_OBJ_SIZE) -
+                                GetRecordData(RecordData::END_OBJ_SIZE));
 }
 
 void GCStats::RecordGCSpeed()
@@ -662,6 +674,11 @@ void SharedGCStats::PrintSharedGCDuration()
         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ResumeAll]) << "ms";
 }
 
+size_t SharedGCStats::GetAccumulatedAllocateSize()
+{
+    return accumulatedFreeSize_ + sHeap_->GetHeapObjectSize();
+}
+
 void SharedGCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
 {
     size_t commitSize = sHeap_->GetCommittedSize();
@@ -693,5 +710,9 @@ void SharedGCStats::RecordStatisticAfterGC()
     size_t heapAliveSize = sHeap_->GetHeapObjectSize();
     SetRecordData(RecordData::SHARED_ALIVE_SIZE, heapAliveSize);
     IncreaseRecordData(RecordData::SHARED_TOTAL_ALIVE, heapAliveSize);
+
+    IncreaseTotalDuration(scopeDuration_[Scope::ScopeId::TotalGC]);
+    IncreaseAccumulatedFreeSize(GetRecordDataIndex(RecordData::START_OBJ_SIZE) -
+                                GetRecordDataIndex(RecordData::END_OBJ_SIZE));
 }
 }  // namespace panda::ecmascript

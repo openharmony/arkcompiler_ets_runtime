@@ -169,6 +169,39 @@ public:
         return scopeDuration_[pos];
     }
 
+    void IncreaseTotalDuration(float duration)
+    {
+        gcDuration_ += duration;
+    }
+
+    size_t GetGCCount()
+    {
+        return GetRecordData(RecordData::SEMI_COUNT) + GetRecordData(RecordData::YOUNG_COUNT) +
+            GetRecordData(RecordData::OLD_COUNT) + GetRecordData(RecordData::COMPRESS_COUNT) +
+            GetRecordData(RecordData::SHARED_COUNT);
+    }
+
+    size_t GetGCDuration() const
+    {
+        return static_cast<size_t>(gcDuration_);
+    }
+
+    virtual size_t GetAccumulatedAllocateSize();
+    size_t GetAccumulatedFreeSize() const
+    {
+        return accumulatedFreeSize_;
+    }
+
+    void IncreaseFullGCLongTimeCount()
+    {
+        fullGCLongTimeCount_ += 1;
+    }
+
+    size_t GetFullGCLongTimeCount() const
+    {
+        return fullGCLongTimeCount_;
+    }
+
 protected:
     bool CheckIfNeedPrint(GCType type);
     void PrintVerboseGCStatistic();
@@ -218,6 +251,11 @@ protected:
         concurrentMark_ = true;
     }
 
+    void IncreaseAccumulatedFreeSize(size_t size)
+    {
+        accumulatedFreeSize_ += size;
+    }
+
     size_t TimeToMicroseconds(Duration time)
     {
         return std::chrono::duration_cast<std::chrono::microseconds>(time).count();
@@ -239,7 +277,10 @@ protected:
     }
 
     const Heap *heap_ {nullptr};
+    float gcDuration_ = 0;
     size_t longPauseTime_ = 0;
+    size_t fullGCLongTimeCount_ = 0;
+    size_t accumulatedFreeSize_ = 0;
 
     static constexpr size_t DEFAULT_UPDATE_REFERENCE_SPEED = 10_MB;
     static constexpr size_t DEFAULT_OLD_CLEAR_NATIVE_OBJ_SPEED = 1_KB;
@@ -277,6 +318,7 @@ public:
 
     void RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason) override;
     void RecordStatisticAfterGC() override;
+    size_t GetAccumulatedAllocateSize() override;
 private:
     void PrintSharedGCDuration();
     void PrintSharedGCSummaryStatistic();
