@@ -287,8 +287,7 @@ config("ark_jsruntime_common_config") {
     "-Wno-unused-but-set-variable",
   ]
 
-  if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64") &&
-      enhanced_opt) {
+  if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64")) {
     if (js_runtime_feature_enable_pgo) {
       cflags = [
         "-fprofile-use=" + rebase_path(
