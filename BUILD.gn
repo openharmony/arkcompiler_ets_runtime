@@ -287,6 +287,20 @@ config("ark_jsruntime_common_config") {
     "-Wno-unused-but-set-variable",
   ]
 
+  if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64") &&
+      enhanced_opt) {
+    if (js_runtime_feature_enable_pgo) {
+      cflags = [
+        "-fprofile-use=" + rebase_path(
+                "${js_runtime_feature_pgo_path}/libark_jsruntime.profdata",
+                root_build_dir),
+        "-Wno-error=backend-plugin",
+        "-Wno-profile-instr-out-of-date",
+        "-Wno-profile-instr-unprofiled",
+      ]
+    }
+  }
+
   if (use_musl) {
     defines += [ "PANDA_USE_MUSL" ]
   }
