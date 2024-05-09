@@ -497,6 +497,15 @@ public:
     bool IsSharedSet();
     bool IsSharedMap();
     bool IsHeapObject();
+    void *GetNativePointerValue(const EcmaVM *vm, bool &isNativePointer);
+    bool IsDetachedArraybuffer(bool &isArrayBuffer);
+    void DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
+    void GetDataViewInfo(const EcmaVM *vm,
+                         bool &isDataView,
+                         size_t *byteLength,
+                         void **data,
+                         JSValueRef **arrayBuffer,
+                         size_t *byteOffset);
 
 private:
     JSTaggedType value_;
@@ -505,6 +514,7 @@ private:
     friend class Global;
     template<typename T>
     friend class Local;
+    void *GetNativePointerValueImpl(const EcmaVM *vm, bool &isNativePointer);
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)

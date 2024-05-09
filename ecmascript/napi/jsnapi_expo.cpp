@@ -263,7 +263,7 @@ Local<StringRef> JSValueRef::ToString(const EcmaVM *vm)
 Local<NativePointerRef> JSValueRef::ToNativePointer(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    // The function just get handle' value, and will not read and write js object. Don't need to switch state.
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     return JSNApiHelper::ToLocal<NativePointerRef>(obj);
@@ -343,6 +343,7 @@ Local<NumberRef> JSValueRef::ToNumber(const EcmaVM *vm)
 bool JSValueRef::IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> xValue = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(xValue, ERROR);
     JSHandle<JSTaggedValue> yValue = JSNApiHelper::ToJSHandle(value);
@@ -848,6 +849,92 @@ bool JSValueRef::IsSharedMap()
 bool JSValueRef::IsHeapObject()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsHeapObject();
+}
+
+void *JSValueRef::GetNativePointerValue(const EcmaVM* vm, bool &isNativePointer)
+{
+    if (IsJSShared()) {
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+        return GetNativePointerValueImpl(vm, isNativePointer);
+    } else {
+        return GetNativePointerValueImpl(vm, isNativePointer);
+    }
+}
+
+// private
+void *JSValueRef::GetNativePointerValueImpl(const EcmaVM* vm, bool &isNativePointer)
+{
+    if (!IsNativePointer()) {
+        isNativePointer = false;
+        return nullptr;
+    }
+    isNativePointer = true;
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
+    JSHandle<JSTaggedValue> nativePointer = JSNApiHelper::ToJSHandle(this);
+    return JSHandle<JSNativePointer>(nativePointer)->GetExternalPointer();
+}
+
+bool JSValueRef::IsDetachedArraybuffer(bool &isArrayBuffer)
+{
+    // arraybuffer is not shared. Do not need to switch state
+    if (!IsArrayBuffer()) {
+        isArrayBuffer = false;
+        return false;
+    }
+    isArrayBuffer = true;
+    JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    return arrayBuffer->IsDetach();
+}
+
+void JSValueRef::DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer)
+{
+    if (!IsArrayBuffer()) {
+        isArrayBuffer = false;
+        return;
+    }
+    isArrayBuffer = true;
+    JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    if (arrayBuffer->IsDetach()) {
+        return;
+    }
+    arrayBuffer->Detach(vm->GetJSThread());
+}
+
+void JSValueRef::GetDataViewInfo(const EcmaVM *vm,
+                                 bool &isDataView,
+                                 size_t *byteLength,
+                                 void **data,
+                                 JSValueRef **arrayBuffer,
+                                 size_t *byteOffset)
+{
+    if (!IsDataView()) {
+        isDataView = false;
+        return;
+    }
+    isDataView = true;
+    JSHandle<JSDataView> dataView(JSNApiHelper::ToJSHandle(this));
+
+    if (byteLength) {
+        *byteLength = dataView->GetByteLength();
+    }
+    if (data || arrayBuffer) {
+        JSThread* thread = vm->GetJSThread();
+        ecmascript::ThreadManagedScope managedScope(thread);
+        JSHandle<JSArrayBuffer> retArrayBuffer(thread, dataView->GetViewedArrayBuffer());
+        if (data) {
+            JSTaggedValue bufferData = retArrayBuffer->GetArrayBufferData();
+            if (!bufferData.IsJSNativePointer()) {
+                *data = nullptr;
+            }
+            *data = JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
+        }
+        if (arrayBuffer) {
+            *arrayBuffer = reinterpret_cast<JSValueRef*>(retArrayBuffer.GetAddress());
+        }
+    }
+    if (byteOffset) {
+        *byteOffset = dataView->GetByteOffset();
+    }
 }
 
 // ---------------------------------- DataView -----------------------------------
@@ -1641,7 +1728,7 @@ uint32_t BigIntRef::GetWordsArraySize()
 // ----------------------------------- HandleScope -------------------------------------
 LocalScope::LocalScope(const EcmaVM *vm) : thread_(vm->GetJSThread())
 {
-    ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
+    // Only get handle ptr here. Do not need to swtich state.
     auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
     prevNext_ = context->GetHandleScopeStorageNext();
     prevEnd_ = context->GetHandleScopeStorageEnd();
@@ -2185,6 +2272,7 @@ void ObjectRef::SetConcurrentNativePointerField(const EcmaVM *vm, int32_t index,
     NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     // ObjectRef::New may return special value if exception occurs.
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
@@ -2286,7 +2374,7 @@ void *ArrayBufferRef::GetBuffer()
 void ArrayBufferRef::Detach(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    // arraybuffer is not shared. Do not need to switch state
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     arrayBuffer->Detach(thread);
 }
@@ -4126,6 +4214,9 @@ Local<ObjectRef> JSNApi::GetUncaughtException(const EcmaVM *vm)
 
 Local<ObjectRef> JSNApi::GetAndClearUncaughtException(const EcmaVM *vm)
 {
+    if (!HasPendingException(vm)) {
+        return Local<ObjectRef>();
+    }
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToLocal<ObjectRef>(vm->GetAndClearEcmaUncaughtException());
 }
