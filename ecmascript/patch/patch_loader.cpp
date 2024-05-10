@@ -43,6 +43,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 
     if (!thread->GetCurrentEcmaContext()->HasCachedConstpool(baseFile)) {
         LOG_ECMA(INFO) << "cold patch!";
+        vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile, patchFile);
         return PatchErrorCode::SUCCESS;
     }
 
