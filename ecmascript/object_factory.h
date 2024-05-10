@@ -704,14 +704,16 @@ public:
 
     TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
 
+    JSHandle<JSTaggedValue> CreateSObjectWithProperties(std::vector<PropertyDescriptor> &descs);
+
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
 
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
         uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    
+
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
         const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout);
-    
+
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClassDictMode(uint32_t size, uint32_t inlinedProps, JSType type,
                                               const JSHandle<JSTaggedValue> &prototype);
 

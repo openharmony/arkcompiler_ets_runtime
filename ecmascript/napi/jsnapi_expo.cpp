@@ -942,6 +942,11 @@ bool JSValueRef::IsSharedObject()
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedObject();
 }
 
+bool JSValueRef::IsSharedFunction()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedFunction();
+}
+
 bool JSValueRef::IsJSShared()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSShared();
@@ -1934,6 +1939,17 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
+Local<ObjectRef> ObjectRef::NewS(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSFunction> constructor(globalEnv->GetSObjectFunction());
+    JSHandle<JSTaggedValue> object(factory->NewJSObjectByConstructor(constructor));
+    return JSNApiHelper::ToLocal<ObjectRef>(object);
+}
+
 Local<ObjectRef> ObjectRef::NewWithProperties(const EcmaVM *vm, size_t propertyCount,
                                               const Local<JSValueRef> *keys,
                                               const PropertyAttribute *attributes)
@@ -1964,6 +1980,19 @@ Local<ObjectRef> ObjectRef::NewWithProperties(const EcmaVM *vm, size_t propertyC
         obj = CreateObjImpl(reinterpret_cast<uintptr_t>(desc));
         free(desc);
     }
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
+}
+
+Local<ObjectRef> ObjectRef::NewSWithProperties(const EcmaVM *vm, SendablePropertiesInfo &info)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    EscapeLocalScope scope(vm);
+    ObjectFactory *factory = vm->GetFactory();
+    std::vector<PropertyDescriptor> descs;
+    JSNapiSendable::InitWithPropertiesInfo(thread, info, descs);
+    auto obj = factory->CreateSObjectWithProperties(descs);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
 }
@@ -2818,9 +2847,8 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
         reinterpret_cast<void *>(nativeFunc), constructorHClass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
 
     sendable.SetSConstructor(constructor);
-    JSObject::SetSProperties(thread, prototype, prototypeHClass, sendable.GetNonStaticDescs());
-    JSObject::SetSProperties(thread, JSHandle<JSObject>::Cast(constructor), constructorHClass,
-                             sendable.GetStaticDescs());
+    JSObject::SetSProperties(thread, prototype, sendable.GetNonStaticDescs());
+    JSObject::SetSProperties(thread, JSHandle<JSObject>::Cast(constructor), sendable.GetStaticDescs());
 
     if (!parent->IsNull()) {
         auto parentPrototype = parent->GetFunctionPrototype(vm);

@@ -347,4 +347,19 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionGetterSetter)
     ASSERT_EQ("getterSetter0", constructor->Get(vm_, staticKey)->ToString(vm_)->ToString());
 }
 
+HWTEST_F_L0(JSNApiTests, NewObjectWithProperties)
+{
+    LocalScope scope(vm_);
+
+    FunctionRef::SendablePropertiesInfo info;
+    Local<StringRef> str = StringRef::NewFromUtf8(vm_, "str");
+    info.keys.push_back(str);
+    info.types.push_back(FunctionRef::SendableType::NONE);
+    info.attributes.push_back(PropertyAttribute(str, true, true, true));
+
+    Local<ObjectRef> object = ObjectRef::NewSWithProperties(vm_, info);
+    Local<JSValueRef> value = object->Get(vm_, str);
+    EXPECT_TRUE(str->IsStrictEquals(vm_, value));
+}
+
 }  // namespace panda::test
