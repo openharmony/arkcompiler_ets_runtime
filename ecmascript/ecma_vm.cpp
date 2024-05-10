@@ -350,6 +350,9 @@ void EcmaVM::EnableJit()
     bool jitEnableLitecg = panda::ecmascript::ohos::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
     LOG_JIT(INFO) << "jit enable litecg: " << jitEnableLitecg;
     options_.SetCompilerEnableLiteCG(jitEnableLitecg);
+    uint8_t jitCallThreshold = panda::ecmascript::ohos::GetJitCallThreshold(options_.GetJitCallThreshold());
+    LOG_JIT(INFO) << "jit call threshold: " << std::to_string(jitCallThreshold);
+    options_.SetJitCallThreshold(jitCallThreshold);
 }
 
 Jit *EcmaVM::GetJit() const

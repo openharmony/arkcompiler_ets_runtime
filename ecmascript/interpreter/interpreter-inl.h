@@ -7805,11 +7805,16 @@ bool EcmaInterpreter::IsFastNewFrameExit(JSTaggedType *sp)
     return GET_FRAME(sp)->base.type == FrameType::INTERPRETER_FAST_NEW_FRAME;
 }
 
-int16_t EcmaInterpreter::GetHotnessCounter(uint32_t codeSize)
+int16_t EcmaInterpreter::GetHotnessCounter(uint32_t codeSize, bool cancelThreshold)
 {
     auto result = codeSize * METHOD_HOTNESS_THRESHOLD_FACTOR;
-    return (result > METHOD_HOTNESS_THRESHOLD) ?
-        METHOD_HOTNESS_THRESHOLD : static_cast<int16_t>(result);
+    if (cancelThreshold) {
+        return CANCEL_METHOD_HOTNESS_THRESHOLD;
+    } else if (result > METHOD_HOTNESS_THRESHOLD) {
+        return METHOD_HOTNESS_THRESHOLD;
+    } else {
+        return static_cast<int16_t>(result);
+    }
 }
 
 #undef LOG_INST

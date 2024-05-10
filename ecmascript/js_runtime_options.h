@@ -161,6 +161,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_JIT,
     OPTION_COMPILER_ENABLE_OSR,
     OPTION_COMPILER_JIT_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_JIT_CALL_THRESHOLD,
     OPTION_COMPILER_OSR_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
@@ -1127,6 +1128,16 @@ public:
         return jitHotnessThreshold_;
     }
 
+    void SetJitCallThreshold(uint8_t value)
+    {
+        jitCallThreshold_ = value;
+    }
+
+    uint8_t GetJitCallThreshold() const
+    {
+        return jitCallThreshold_;
+    }
+
     void SetOsrHotnessThreshold(uint16_t value)
     {
         osrHotnessThreshold_ = value;
@@ -1788,6 +1799,7 @@ private:
     bool enableAPPJIT_{false};
     bool enableOSR_{false};
     uint16_t jitHotnessThreshold_ {2};
+    uint8_t jitCallThreshold_ {0};
     uint16_t osrHotnessThreshold_ {2};
     bool forceJitCompileMain_{false};
     bool enableBaselineJIT_{false};

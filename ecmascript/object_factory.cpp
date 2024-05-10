@@ -3266,6 +3266,8 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
         array->SetJitHotnessThreshold(threshold);
         threshold = vm_->GetJSOptions().GetOsrHotnessThreshold();
         array->SetOsrHotnessThreshold(threshold);
+        uint8_t jitCallThreshold = vm_->GetJSOptions().GetJitCallThreshold();
+        array->SetJitCallThreshold(jitCallThreshold);
     }
     if (vm_->IsEnableBaselineJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetBaselineJitHotnessThreshold();

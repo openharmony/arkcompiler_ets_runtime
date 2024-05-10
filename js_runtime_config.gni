@@ -226,7 +226,7 @@ template("libark_jsruntime_common_set") {
         is_ohos && is_standard_system) {
       external_deps += [ "init:libbegetutil" ]
       defines += [
-        "JIT_SWITCH_COMPILE_MODE",
+        "GET_PARAMETER_FOR_JIT",
         "JIT_ESCAPE_ENABLE",
       ]
     }
