@@ -470,6 +470,7 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
     size_t newTlabSize = sOldTlab_->ComputeSize();
     object = SharedHeap::GetInstance()->AllocateSOldTlab(thread, newTlabSize);
     if (object == nullptr) {
+        sOldTlab_->DisableNewTlab();
         return nullptr;
     }
     uintptr_t begin = reinterpret_cast<uintptr_t>(object);
@@ -742,7 +743,13 @@ TaggedObject *SharedHeap::AllocateSOldTlab(JSThread *thread, size_t size)
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return nullptr;
     }
-    return reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    TaggedObject *object = nullptr;
+    if (sOldSpace_->GetCommittedSize() > sOldSpace_->GetInitialCapacity() / 2) { // 2: half
+        object = reinterpret_cast<TaggedObject *>(sOldSpace_->AllocateNoGCAndExpand(thread, size));
+    } else {
+        object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    }
+    return object;
 }
 
 TaggedObject *SharedHeap::AllocateSNonMovableTlab(JSThread *thread, size_t size)
