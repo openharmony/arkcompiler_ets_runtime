@@ -700,6 +700,41 @@ bool JSValueRef::IsBigUint64Array()
     return JSNApiHelper::ToJSTaggedValue(this).IsJSBigUint64Array();
 }
 
+bool JSValueRef::IsJSSharedInt8Array()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt8Array();
+}
+
+bool JSValueRef::IsJSSharedUint8Array()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint8Array();
+}
+
+bool JSValueRef::IsJSSharedUint8ClampedArray()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint8ClampedArray();
+}
+
+bool JSValueRef::IsJSSharedInt16Array()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt16Array();
+}
+
+bool JSValueRef::IsJSSharedUint16Array()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint16Array();
+}
+
+bool JSValueRef::IsJSSharedInt32Array()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt32Array();
+}
+
+bool JSValueRef::IsJSSharedUint32Array()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint32Array();
+}
+
 bool JSValueRef::IsJSPrimitiveRef()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSPrimitiveRef();
@@ -2490,6 +2525,42 @@ bool ArrayBufferRef::IsDetach()
     return arrayBuffer->IsDetach();
 }
 
+Local<ArrayBufferRef> ArrayBufferRef::NewSendable(const EcmaVM *vm, int32_t length)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer = static_cast<JSHandle<ecmascript::JSSendableArrayBuffer>>
+                                                              (factory->NewJSSharedArrayBuffer(length));
+    return JSNApiHelper::ToLocal<ArrayBufferRef>(JSHandle<JSTaggedValue>(arrayBuffer));
+}
+
+void ArrayBufferRef::SendableDetach(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    arrayBuffer->Detach(thread);
+}
+
+bool ArrayBufferRef::SendableIsDetach()
+{
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
+    JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    return arrayBuffer->IsDetach();
+}
+
+void *ArrayBufferRef::SendableGetBuffer()
+{
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
+    JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue bufferData = arrayBuffer->GetArrayBufferData();
+    if (!bufferData.IsJSNativePointer()) {
+        return nullptr;
+    }
+    return JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
+}
+
 // ---------------------------------- DateRef -----------------------------------
 Local<DateRef> DateRef::New(const EcmaVM *vm, double time)
 {
@@ -2560,6 +2631,40 @@ Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
     JSHandle<JSTypedArray> typeArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typeArray, ERROR);
     JSHandle<JSTaggedValue> arrayBuffer(thread, JSTypedArray::GetOffHeapBuffer(thread, typeArray));
+    return JSNApiHelper::ToLocal<ArrayBufferRef>(arrayBuffer);
+}
+
+uint32_t TypedArrayRef::SendableByteLength([[maybe_unused]] const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    JSHandle<ecmascript::JSSharedTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typedArray, FATAL);
+    return typedArray->GetByteLength();
+}
+
+uint32_t TypedArrayRef::SendableByteOffset([[maybe_unused]] const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    JSHandle<ecmascript::JSSharedTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typedArray, FATAL);
+    return typedArray->GetByteOffset();
+}
+
+uint32_t TypedArrayRef::SendableArrayLength([[maybe_unused]] const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    JSHandle<ecmascript::JSSharedTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typedArray, FATAL);
+    return typedArray->GetArrayLength();
+}
+
+Local<ArrayBufferRef> TypedArrayRef::SendableGetArrayBuffer(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSHandle<JSTypedArray> typeArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typeArray, ERROR);
+    JSHandle<JSTaggedValue> arrayBuffer(thread, ecmascript::JSSharedTypedArray::GetOffHeapBuffer(thread, typeArray));
     return JSNApiHelper::ToLocal<ArrayBufferRef>(arrayBuffer);
 }
 
@@ -3012,6 +3117,16 @@ Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSTaggedNumber arrayLen(length);
     JSHandle<JSTaggedValue> array = JSArray::ArrayCreate(thread, arrayLen);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    return JSNApiHelper::ToLocal<ArrayRef>(array);
+}
+
+Local<ArrayRef> ArrayRef::NewSendable(const EcmaVM *vm, uint32_t length)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSTaggedNumber arrayLen(length);
+    JSHandle<JSTaggedValue> array = ecmascript::JSSharedArray::ArrayCreate(thread, arrayLen);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<ArrayRef>(array);
 }
