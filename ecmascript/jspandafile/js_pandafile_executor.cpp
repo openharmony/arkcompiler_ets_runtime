@@ -269,7 +269,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     if (context->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
         result = context->InvokeEcmaEntrypointForHotReload(jsPandaFile, entryPoint, executeFromJob);
     } else {
-        context->SetStageOfColdReload(StageOfColdReload::IS_COLD_RELOAD);
         QuickFixManager *quickFixManager = thread->GetEcmaVM()->GetQuickFixManager();
         quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
 

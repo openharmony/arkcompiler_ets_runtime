@@ -389,7 +389,9 @@ namespace panda::ecmascript::kungfu {
     V(BCDebuggerEntry)                                  \
     V(BCDebuggerExceptionEntry)                         \
     V(NewObjectRangeThrowException)                     \
-    V(ThrowStackOverflowException)
+    V(ThrowStackOverflowException)                      \
+    V(HandleDefinefuncImm8Id16Imm8ColdReload)           \
+    V(HandleDefinefuncImm16Id16Imm8ColdReload)
 
 #define APPEND_JIT_SUFFIX(name, V) \
     V(name##WithJitProf, name, SlotIDFormat::IMM8)
