@@ -41,7 +41,7 @@ public:
 
 private:
     static JSHandle<Program> GenerateProgramInternal(EcmaVM *vm, MethodLiteral *mainMethodLiteral,
-                                                     JSHandle<ConstantPool> constpool);
+                                                     JSHandle<ConstantPool> constpool, const JSPandaFile *jsPandaFile);
     static void TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t insSz, const uint8_t *insArr,
         const MethodLiteral *methodLiteral, const CString &methodName = JSPandaFile::ENTRY_FUNCTION_NAME);
     static void FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder = 0);
