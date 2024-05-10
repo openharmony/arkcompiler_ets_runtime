@@ -28,6 +28,7 @@ JSNapiSendable::JSNapiSendable(JSThread *thread, FunctionRef::SendableProperties
 {
     InitStaticDescription(thread, staticDescs_, name);
     InitNonStaticDescription(thread, nonStaticDescs_);
+    InitInstanceDescription(thread, instanceDescs_);
     InitWithPropertiesInfo(thread, infos.staticPropertiesInfo, staticDescs_);
     InitWithPropertiesInfo(thread, infos.nonStaticPropertiesInfo, nonStaticDescs_);
     InitWithPropertiesInfo(thread, infos.instancePropertiesInfo, instanceDescs_);
@@ -69,6 +70,18 @@ void JSNapiSendable::InitNonStaticDescription(JSThread *thread, std::vector<Prop
     constructorDesc.SetSharedFieldType(SharedFieldType::SENDABLE);
     constructorDesc.SetValue(globalConst->GetHandledNull());
     descs.push_back(constructorDesc);
+}
+
+void JSNapiSendable::InitInstanceDescription(JSThread *thread, std::vector<PropertyDescriptor> &descs)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+
+    JSHandle<JSTaggedValue> napiWrapperKey = globalConst->GetHandledNapiWrapperString();
+    PropertyDescriptor napiWrapperDesc(thread, true, false, false);
+    napiWrapperDesc.SetKey(napiWrapperKey);
+    napiWrapperDesc.SetSharedFieldType(SharedFieldType::SENDABLE);
+    napiWrapperDesc.SetValue(globalConst->GetHandledNull());
+    descs.push_back(napiWrapperDesc);
 }
 
 void JSNapiSendable::InitWithPropertiesInfo(JSThread *thread,

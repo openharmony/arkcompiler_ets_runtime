@@ -334,16 +334,13 @@ void JSObject::OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObjec
     obj->SetProperties(thread, array);
 }
 
-void JSObject::SetSProperties(JSThread *thread,
-                              JSHandle<JSObject> obj,
-                              JSHandle<JSHClass> hclass,
-                              const std::vector<PropertyDescriptor> &descs)
+void JSObject::SetSProperties(JSThread *thread, JSHandle<JSObject> obj, const std::vector<PropertyDescriptor> &descs)
 {
     uint32_t length = descs.size();
     JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> propValue(thread, JSTaggedValue::Undefined());
 
-    if (LIKELY(!hclass->IsDictionaryMode())) {
+    if (LIKELY(!obj->GetJSHClass()->IsDictionaryMode())) {
         for (uint32_t i = 0; i < length; ++i) {
             propValue.Update(descs[i].GetValue());
             // note(lzl): IsSAccessor?

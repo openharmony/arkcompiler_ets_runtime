@@ -491,6 +491,7 @@ public:
     bool IsTreeSet();
     bool IsVector();
     bool IsSharedObject();
+    bool IsSharedFunction();
     bool IsJSShared();
     bool IsSharedArray();
     bool IsSharedTypedArray();
@@ -642,14 +643,25 @@ public:
 
 class ECMA_PUBLIC_API ObjectRef : public JSValueRef {
 public:
+    enum class SendableType {
+        NONE,
+        OBJECT,
+    };
+    struct SendablePropertiesInfo {
+        std::vector<Local<JSValueRef>> keys;
+        std::vector<SendableType> types;
+        std::vector<PropertyAttribute> attributes;
+    };
     static constexpr int MAX_PROPERTIES_ON_STACK = 32;
     static inline ObjectRef *Cast(JSValueRef *value)
     {
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
+    static Local<ObjectRef> NewS(const EcmaVM *vm);
     static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
                                               const PropertyAttribute *attributes);
+    static Local<ObjectRef> NewSWithProperties(const EcmaVM *vm, SendablePropertiesInfo &info);
     static Local<ObjectRef> NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount, const char **keys,
                                                    const Local<JSValueRef> *values);
     static Local<ObjectRef> CreateAccessorData(const EcmaVM *vm, Local<FunctionRef> getter, Local<FunctionRef> setter);
@@ -703,15 +715,6 @@ using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 using InternalFunctionCallback = JSValueRef(*)(JsiRuntimeCallInfo*);
 class ECMA_PUBLIC_API FunctionRef : public ObjectRef {
 public:
-    enum class SendableType {
-        NONE,
-        OBJECT,
-    };
-    struct SendablePropertiesInfo {
-        std::vector<Local<JSValueRef>> keys;
-        std::vector<SendableType> types;
-        std::vector<PropertyAttribute> attributes;
-    };
     struct SendablePropertiesInfos {
         SendablePropertiesInfo instancePropertiesInfo;
         SendablePropertiesInfo staticPropertiesInfo;

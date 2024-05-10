@@ -291,6 +291,18 @@ JSHandle<JSObject> ObjectFactory::NewSharedOldSpaceJSObject(const JSHandle<JSHCl
     return obj;
 }
 
+JSHandle<JSTaggedValue> ObjectFactory::CreateSObjectWithProperties(std::vector<PropertyDescriptor> &descs)
+{
+    JSHandle<JSHClass> hclass = JSHClass::CreateSHClass(thread_, descs);
+    JSHandle<JSObject> object = NewSharedOldSpaceJSObject(hclass);
+    JSObject::SetSProperties(thread_, object, descs);
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFuncProto = env->GetSObjectFunctionPrototype();
+    hclass->SetPrototype(thread_, objFuncProto);
+    hclass->SetExtensible(false);
+    return JSHandle<JSTaggedValue>(object);
+}
+
 JSHandle<TaggedArray> ObjectFactory::SharedEmptyArray() const
 {
     return JSHandle<TaggedArray>(thread_->GlobalConstants()->GetHandledEmptyArray());
