@@ -807,6 +807,7 @@ JSTaggedValue RuntimeStubs::RuntimeResolveClass(JSThread *thread, const JSHandle
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     uint32_t literalBufferLength = literal->GetLength();
+    ASSERT(literalBufferLength > 0);
 
     // only traverse the value of key-value pair
     for (uint32_t index = 1; index < literalBufferLength - 1; index += 2) {  // 2: key-value pair
@@ -2880,6 +2881,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t ar
     JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     const size_t firstArgOffset = 1;
+    ASSERT(argc > 0);
     size_t arrLength = argc - firstArgOffset;
     JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(arrLength);
     for (size_t i = 0; i < arrLength; ++i) {

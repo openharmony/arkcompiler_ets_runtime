@@ -185,6 +185,7 @@ void DtoaHelper::DigitGen(const DiyFp &W, const DiyFp &Mp, uint64_t delta, char 
         if (d || *len) {
             buffer[(*len)++] = static_cast<char>('0' + d);
         }
+        ASSERT(one.f > 0);
         p2 &= one.f - 1;
         kappa--;
         if (p2 < delta) {

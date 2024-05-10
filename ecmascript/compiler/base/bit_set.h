@@ -172,6 +172,7 @@ private:
     };
     static size_t SizeOf(size_t bitSize)
     {
+        ASSERT(bitSize > 0);
         // +1: for word 1
         return ((bitSize - 1) >> BIT_PER_WORD_LOG2) + 1;
     }

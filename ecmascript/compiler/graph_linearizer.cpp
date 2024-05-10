@@ -793,7 +793,7 @@ public:
             GateRegion* useRegion = useInfo.region;
             if (useInfo.IsSelector()) {
                 GateRef state = acc_.GetState(useGate);
-                ASSERT(acc_.IsCFGMerge(state));
+                ASSERT(acc_.IsCFGMerge(state) && useIt.GetIndex() > 0);
                 useGate = acc_.GetIn(state, useIt.GetIndex() - 1); // -1: for state
                 useRegion = linearizer_->FindPredRegion(useGate);
             } else if (acc_.IsCFGMerge(useGate)) {
@@ -974,6 +974,7 @@ size_t GraphLinearizer::OptimizeCFG()
         GateRegion* src = regionList_[i];
         if (!src->IsDead() && src->IsSimple(&acc_)) {
             size_t dead = OptimizeControls(src);
+            ASSERT(liveNum >= dead);
             liveNum -= dead;
         }
     }

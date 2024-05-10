@@ -802,6 +802,7 @@ JSHandle<BigInt> BigInt::BigintSubOne(JSThread *thread, JSHandle<BigInt> x)
 
 inline uint32_t BigIntHelper::SubHelper(uint32_t x, uint32_t y, uint32_t &bigintCarry)
 {
+    ASSERT(x - y >= 0);
     uint32_t minuSub = x - y;
     if (minuSub > x) {
         bigintCarry += 1;
