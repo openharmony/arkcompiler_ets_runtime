@@ -56,6 +56,15 @@ JSTaggedValue ElementAccessor::Get(JSObject *receiver, uint32_t idx)
     return GetTaggedValueWithElementsKind(rawValue, kind);
 }
 
+JSTaggedValue ElementAccessor::FastGet(JSHandle<TaggedArray> elements, uint32_t idx, ElementsKind kind)
+{
+    ASSERT(idx < elements->GetLength());
+    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
+    JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
+    return GetTaggedValueWithElementsKind(rawValue, kind);
+}
+
 bool ElementAccessor::IsDictionaryMode(JSHandle<JSObject> receiver)
 {
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());

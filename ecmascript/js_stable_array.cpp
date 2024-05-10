@@ -1048,23 +1048,32 @@ JSTaggedValue JSStableArray::Reverse(JSThread *thread, JSHandle<JSObject> thisOb
     if (thisObjHandle->IsJSArray()) {
         JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObjHandle));
     }
-    JSMutableHandle<JSTaggedValue> lowerP(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> upperP(thread, JSTaggedValue::Undefined());
+    ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
+    JSHandle<TaggedArray> elements(thread, thisObjHandle->GetElements());
+    if (kind == ElementsKind::INT || kind == ElementsKind::HOLE_INT) {
+        return FastReverse(thread, elements, lower, len, ElementsKind::INT);
+    } else if (kind == ElementsKind::NUMBER || kind == ElementsKind::HOLE_NUMBER) {
+        return FastReverse(thread, elements, lower, len, ElementsKind::NUMBER);
+    } else {
+        return FastReverse(thread, elements, lower, len, ElementsKind::TAGGED);
+    }
+}
+
+JSTaggedValue JSStableArray::FastReverse(JSThread *thread, JSHandle<TaggedArray> elements,
+                                         int64_t &lower, uint32_t len, ElementsKind kind)
+{
     JSMutableHandle<JSTaggedValue> lowerValueHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> upperValueHandle(thread, JSTaggedValue::Undefined());
     int64_t middle = std::floor(len / 2);
-    bool needTransition = true;
     while (lower != middle) {
-        if (ElementAccessor::GetElementsLength(thisObjHandle) != len) {
+        if (elements->GetLength() != len) {
             break;
         }
         int64_t upper = static_cast<int64_t>(len) - lower - 1;
-        lowerP.Update(JSTaggedValue(lower));
-        upperP.Update(JSTaggedValue(upper));
-        lowerValueHandle.Update(ElementAccessor::Get(thisObjHandle, lower));
-        upperValueHandle.Update(ElementAccessor::Get(thisObjHandle, upper));
-        ElementAccessor::Set(thread, thisObjHandle, lower, upperValueHandle, needTransition);
-        ElementAccessor::Set(thread, thisObjHandle, upper, lowerValueHandle, needTransition);
+        lowerValueHandle.Update(ElementAccessor::FastGet(elements, lower, kind));
+        upperValueHandle.Update(ElementAccessor::FastGet(elements, upper, kind));
+        ElementAccessor::FastSet(thread, elements, lower, upperValueHandle, kind);
+        ElementAccessor::FastSet(thread, elements, upper, lowerValueHandle, kind);
         lower++;
     }
     return base::BuiltinsBase::GetTaggedDouble(true);

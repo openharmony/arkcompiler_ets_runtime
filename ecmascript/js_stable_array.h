@@ -63,6 +63,8 @@ public:
                                  EcmaRuntimeCallInfo *argv, uint32_t &k, uint32_t len);
     static JSTaggedValue Reverse(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                  int64_t &lower, uint32_t len);
+    static JSTaggedValue FastReverse(JSThread *thread, JSHandle<TaggedArray> elements,
+                                     int64_t &lower, uint32_t len, ElementsKind kind);
     static JSTaggedValue Concat(JSThread *thread, JSHandle<JSObject> newArrayHandle,
                                 JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &n);
     template<base::TypedArrayKind typedArrayKind = base::TypedArrayKind::NON_SHARED>

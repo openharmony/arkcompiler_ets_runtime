@@ -9834,6 +9834,55 @@ GateRef StubBuilder::SetValueWithElementsKind(GateRef glue, GateRef receiver, Ga
     return ret;
 }
 
+GateRef StubBuilder::FastGetValueWithElementsKind(GateRef elements, GateRef index, ElementsKind kind)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    if (kind == ElementsKind::INT || kind == ElementsKind::NUMBER) {
+        result = GetValueFromTaggedArray(elements, index);
+        Jump(&exit);
+    } else {
+        result = GetValueFromTaggedArray(elements, index);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void StubBuilder::FastSetValueWithElementsKind(GateRef glue, GateRef elements, GateRef rawValue,
+                                               GateRef index, ElementsKind kind)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    Label exit(env);
+    if (kind == ElementsKind::INT || kind == ElementsKind::NUMBER) {
+        SetValueToTaggedArray(VariableType::INT64(), glue, elements, index, rawValue);
+        Jump(&exit);
+    } else {
+        Label storeToNormalArray(env);
+        Label storeToMutantArray(env);
+        BRANCH(TaggedIsHeapObject(rawValue), &storeToNormalArray, &storeToMutantArray);
+        Bind(&storeToNormalArray);
+        {
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, rawValue);
+            Jump(&exit);
+        }
+        Bind(&storeToMutantArray);
+        {
+            SetValueToTaggedArray(VariableType::INT64(), glue, elements, index, rawValue);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
 GateRef StubBuilder::CopyJSArrayToTaggedArrayArgs(GateRef glue, GateRef srcObj)
 {
     auto env = GetEnvironment();
