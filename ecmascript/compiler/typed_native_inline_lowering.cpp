@@ -1369,13 +1369,13 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
     switch (builtinsID) {
         case BuiltinsStubCSigns::ID::DataViewGetUint8: {
             GateRef uint8Res = builder_.Load(VariableType::INT8(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
-            finalResult = builder_.ZExtInt8ToInt64(uint8Res);
+            finalResult = builder_.ZExtInt8ToInt32(uint8Res);
             builder_.Jump(&exit);
             break;
         }
         case BuiltinsStubCSigns::ID::DataViewGetInt8: {
             GateRef int8res = builder_.Load(VariableType::INT8(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
-            finalResult = builder_.SExtInt8ToInt64(int8res);
+            finalResult = builder_.SExtInt8ToInt32(int8res);
             builder_.Jump(&exit);
             break;
         }
