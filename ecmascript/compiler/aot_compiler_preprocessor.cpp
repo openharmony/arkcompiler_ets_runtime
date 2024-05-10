@@ -63,6 +63,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     optBCRange_ = runtimeOptions.GetOptCodeRange();
     isEnableEscapeAnalysis_ = runtimeOptions.IsEnableEscapeAnalysis();
     isEnableInductionVariableAnalysis_ = runtimeOptions.IsEnableInductionVariableAnalysis();
+    isEnableVerifierPass_ = !runtimeOptions.IsTargetCompilerMode();
 
     std::string optionSelectMethods = runtimeOptions.GetCompilerSelectMethods();
     std::string optionSkipMethods = runtimeOptions.GetCompilerSkipMethods();

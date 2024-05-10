@@ -180,6 +180,7 @@ int Main(const int argc, const char **argv)
                 .EnableOptBranchProfiling(cOptions.isEnableOptBranchProfiling_)
                 .EnableEscapeAnalysis(cOptions.isEnableEscapeAnalysis_)
                 .EnableInductionVariableAnalysis(cOptions.isEnableInductionVariableAnalysis_)
+                .EnableVerifierPass(cOptions.isEnableVerifierPass_)
                 .Build();
 
         PassManager passManager(&aotCompilationEnv,
