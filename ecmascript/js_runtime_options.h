@@ -185,6 +185,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_BASELINEJIT,
     OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
+    OPTION_ENABLE_AOT_CRASH_ESCAPE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -990,6 +991,16 @@ public:
     bool IsEnablePGOProfiler() const
     {
         return enablePGOProfiler_;
+    }
+
+    void SetEnableAotCrashEscape(bool value)
+    {
+        enableAotCrashEscape_ = value;
+    }
+
+    bool IsEnableAotCrashEscape() const
+    {
+        return enableAotCrashEscape_;
     }
 
     uint32_t GetPGOHotnessThreshold() const
@@ -1812,6 +1823,7 @@ private:
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
+    bool enableAotCrashEscape_ {true};
     bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};

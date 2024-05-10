@@ -141,6 +141,18 @@ void SignalReg(int signo)
     newAction.sa_sigaction = GetSignalHandler;
     sigaction(signo, &newAction, nullptr);
 }
+
+void SignalAllReg()
+{
+    SignalReg(SIGABRT);
+    SignalReg(SIGBUS);
+    SignalReg(SIGSEGV);
+    SignalReg(SIGILL);
+    SignalReg(SIGKILL);
+    SignalReg(SIGSTKFLT);
+    SignalReg(SIGFPE);
+    SignalReg(SIGTRAP);
+}
 #endif
 
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
@@ -207,14 +219,7 @@ void EcmaVM::PostFork()
     Taskpool::GetCurrentTaskpool()->Initialize();
     LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
 #ifdef JIT_ESCAPE_ENABLE
-    SignalReg(SIGABRT);
-    SignalReg(SIGBUS);
-    SignalReg(SIGSEGV);
-    SignalReg(SIGILL);
-    SignalReg(SIGKILL);
-    SignalReg(SIGSTKFLT);
-    SignalReg(SIGFPE);
-    SignalReg(SIGTRAP);
+    SignalAllReg();
 #endif
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     heap_->EnableParallelGC();
@@ -225,8 +230,10 @@ void EcmaVM::PostFork()
     } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
+    if (JSNApi::IsAotEscape(this)) {
+        options_.SetEnablePGOProfiler(false);
+    }
     ResetPGOProfiler();
-
     bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
     bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
     if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
@@ -289,6 +296,11 @@ void EcmaVM::InitializePGOProfiler()
         pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
     }
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
+}
+
+void EcmaVM::InitializeEnableAotCrash()
+{
+    SetEnableAotCrashEscapeVM(options_.IsEnableAotCrashEscape());
 }
 
 void EcmaVM::ResetPGOProfiler()
@@ -365,6 +377,7 @@ bool EcmaVM::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
+    InitializeEnableAotCrash();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);
