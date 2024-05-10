@@ -4094,7 +4094,6 @@ bool JSNApi::StopDebugger([[maybe_unused]] int tid)
 bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     return vm->GetJsDebuggerManager()->IsMixedDebugEnabled();
 #else
     return false;

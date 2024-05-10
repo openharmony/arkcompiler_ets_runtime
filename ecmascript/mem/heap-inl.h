@@ -445,7 +445,6 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
     size_t newTlabSize = sNonMovableTlab_->ComputeSize();
     object = SharedHeap::GetInstance()->AllocateSNonMovableTlab(thread, newTlabSize);
     if (object == nullptr) {
-        LOG_ECMA_MEM(WARN) << "allocate shared non movable space tlab failed";
         return nullptr;
     }
     uintptr_t begin = reinterpret_cast<uintptr_t>(object);
@@ -471,7 +470,6 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
     size_t newTlabSize = sOldTlab_->ComputeSize();
     object = SharedHeap::GetInstance()->AllocateSOldTlab(thread, newTlabSize);
     if (object == nullptr) {
-        LOG_ECMA_MEM(WARN) << "allocate shared old space tlab failed";
         return nullptr;
     }
     uintptr_t begin = reinterpret_cast<uintptr_t>(object);
