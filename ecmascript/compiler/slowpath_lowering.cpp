@@ -23,6 +23,7 @@
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;
@@ -2389,10 +2390,28 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
 
 void SlowPathLowering::LowerDefineFunc(GateRef gate)
 {
+    Jit::JitLockHolder lock(compilationEnv_, "SlowPathLowering");
     Environment env(gate, circuit_, &builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = acc_.GetValueIn(gate, 0);
+
+    FunctionKind kind = FunctionKind::LAST_FUNCTION_KIND;
+    if (acc_.IsConstantNumber(methodId)) {
+        // try to speed up the kind checking
+        JSTaggedValue unsharedCp;
+        if (compilationEnv_->IsJitCompiler()) {
+            unsharedCp = compilationEnv_->FindConstpool(compilationEnv_->GetJSPandaFile(), 0);
+        } else {
+            auto methodOffset = acc_.TryGetMethodOffset(gate);
+            unsharedCp = compilationEnv_->FindOrCreateUnsharedConstpool(methodOffset);
+        }
+        auto obj = compilationEnv_->GetMethodFromCache(unsharedCp, acc_.GetConstantValue(methodId));
+        if (obj != JSTaggedValue::Undefined()) {
+            kind = Method::Cast(obj)->GetFunctionKind();
+        }
+    }
+
     GateRef length = acc_.GetValueIn(gate, 1);
     GateRef lexEnv = acc_.GetValueIn(gate, 2); // 2: Get current env
     StateDepend successControl;
@@ -2401,7 +2420,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     Label failed(&builder_);
     NewObjectStubBuilder newBuilder(&env);
     newBuilder.NewJSFunction(glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), length, lexEnv, &result, &success,
-                             &failed);
+                             &failed, kind);
     builder_.Bind(&failed);
     {
         failControl.SetState(builder_.GetState());
