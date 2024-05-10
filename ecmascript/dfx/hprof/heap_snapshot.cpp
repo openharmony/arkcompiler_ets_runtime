@@ -1114,7 +1114,8 @@ const CString HeapSnapshot::ParseObjectName(TaggedObject *obj)
 {
     ASSERT(JSTaggedValue(obj).IsJSObject());
     JSThread *thread = vm_->GetJSThread();
-    return JSObject::ExtractConstructorAndRecordName(thread, obj);
+    bool isCallGetter = false;
+    return JSObject::ExtractConstructorAndRecordName(thread, obj, true, &isCallGetter);
 }
 
 Node *HeapSnapshot::InsertNodeUnique(Node *node)

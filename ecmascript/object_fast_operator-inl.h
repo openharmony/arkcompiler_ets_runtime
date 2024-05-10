@@ -146,7 +146,8 @@ JSTaggedValue ObjectFastOperator::TryGetPropertyByNameThroughCacheAtLocal(JSThre
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
-                                                    JSTaggedValue key)
+                                                    JSTaggedValue key, [[maybe_unused]]bool noAllocate,
+                                                    [[maybe_unused]]bool *isCallGetter)
 {
     INTERPRETER_TRACE(thread, GetPropertyByName);
     // no gc when return hole
@@ -194,6 +195,10 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                     if (GetInternal(status)) {
                         return value;
                     }
+                    if (noAllocate) {
+                        *isCallGetter = true;
+                        return value;
+                    }
                     return CallGetter(thread, receiver, holder, value);
                 }
                 ASSERT(!value.IsAccessor());
@@ -211,6 +216,10 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                 auto attr = dict->GetAttributes(entry);
                 if (UNLIKELY(attr.IsAccessor())) {
                     if (GetInternal(status)) {
+                        return value;
+                    }
+                    if (noAllocate) {
+                        *isCallGetter = true;
                         return value;
                     }
                     return CallGetter(thread, receiver, holder, value);
