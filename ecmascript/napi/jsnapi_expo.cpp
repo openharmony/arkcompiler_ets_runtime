@@ -192,8 +192,6 @@ using ecmascript::base::NumberHelper;
 template <typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 template <typename T>
-using JSPrimitiveHandle = ecmascript::JSPrimitiveHandle<T>;
-template <typename T>
 using JSMutableHandle = ecmascript::JSMutableHandle<T>;
 
 using PathHelper = ecmascript::base::PathHelper;
@@ -900,7 +898,7 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, double input)
     if (std::isnan(input)) {
         input = ecmascript::base::NAN_VALUE;
     }
-    JSPrimitiveHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
+    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input), true);
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
@@ -909,7 +907,7 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, int32_t input)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
-    JSPrimitiveHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
+    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input), true);
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
@@ -918,7 +916,7 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, uint32_t input)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
-    JSPrimitiveHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
+    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input), true);
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
@@ -927,7 +925,7 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, int64_t input)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
-    JSPrimitiveHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
+    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input), true);
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
