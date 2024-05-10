@@ -748,6 +748,9 @@ public:
         GateRef charSize, VariableType type);
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
+    GateRef StringSubstring(GateRef thisValue, GateRef startTag, GateRef endTag);
+    GateRef StringSubStr(GateRef thisValue, GateRef intStart, GateRef lengthTag);
+    GateRef StringSlice(GateRef thisValue, GateRef startTag, GateRef endTag);
     GateRef NumberIsNaN(GateRef gate);
     GateRef NumberParseFloat(GateRef gate, GateRef frameState);
     GateRef NumberIsFinite(GateRef gate);
