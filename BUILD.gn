@@ -617,6 +617,7 @@ ecma_source = [
   "ecmascript/compiler/aot_file/an_file_info.cpp",
   "ecmascript/compiler/aot_file/aot_file_info.cpp",
   "ecmascript/compiler/aot_file/stub_file_info.cpp",
+  "ecmascript/compiler/aot_file/gdb_jit.cpp",
   "ecmascript/compiler/aot_file/binary_buffer_parser.cpp",
   "ecmascript/compiler/aot_file/module_section_des.cpp",
   "ecmascript/compiler/aot_file/aot_file_manager.cpp",

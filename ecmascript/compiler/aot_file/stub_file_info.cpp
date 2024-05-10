@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/aot_file/aot_version.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
+#include "ecmascript/compiler/aot_file/gdb_jit.h"
 #include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/platform/file.h"
@@ -84,6 +85,7 @@ bool StubFileInfo::MmapLoad(const std::string &fileName)
         return false;
     }
     PagePreRead(fileMapMem_.GetOriginAddr(), fileMapMem_.GetSize());
+    jit_debug::RegisterStubAnToDebugger((const char *)fileMapMem_.GetOriginAddr());
 
     ElfReader reader(fileMapMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
@@ -136,6 +138,7 @@ bool StubFileInfo::Load()
     ElfReader reader(stubsMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
     reader.ParseELFSections(binBufparser, des_, secs);
+    jit_debug::RegisterStubAnToDebugger((const char *)stubsMem_.addr_);
 
     ModuleSectionDes &des = des_[0];
     uint64_t funcEntryAddr = des.GetSecAddr(ElfSecName::ARK_FUNCENTRY);
