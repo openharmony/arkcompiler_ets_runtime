@@ -723,63 +723,66 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
         }
         gcType_ = gcType;
-        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpPauseForGC();
-        switch (gcType) {
-            case TriggerGCType::YOUNG_GC:
-                // Use partial GC for young generation.
-                if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
-                    SetMarkType(MarkType::MARK_YOUNG);
-                }
-                if (markType_ == MarkType::MARK_FULL) {
-                    // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
-                    gcType_ = TriggerGCType::OLD_GC;
-                }
-                partialGC_->RunPhases();
-                break;
-            case TriggerGCType::OLD_GC: {
-                bool fullConcurrentMarkRequested = false;
-                // Check whether it's needed to trigger full concurrent mark instead of trigger old gc
-                if (concurrentMarker_->IsEnabled() && (thread_->IsReadyToMark() || markType_ == MarkType::MARK_YOUNG) &&
-                    reason == GCReason::ALLOCATION_LIMIT) {
-                    fullConcurrentMarkRequested = true;
-                }
-                if (concurrentMarker_->IsEnabled() && markType_ == MarkType::MARK_YOUNG) {
-                    // Wait for existing concurrent marking tasks to be finished (if any),
-                    // and reset concurrent marker's status for full mark.
-                    bool concurrentMark = CheckOngoingConcurrentMarking();
-                    if (concurrentMark) {
-                        concurrentMarker_->Reset();
+        {
+            pgo::PGODumpPauseScope pscope(GetEcmaVM()->GetPGOProfiler());
+            switch (gcType) {
+                case TriggerGCType::YOUNG_GC:
+                    // Use partial GC for young generation.
+                    if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
+                        SetMarkType(MarkType::MARK_YOUNG);
                     }
+                    if (markType_ == MarkType::MARK_FULL) {
+                        // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
+                        gcType_ = TriggerGCType::OLD_GC;
+                    }
+                    partialGC_->RunPhases();
+                    break;
+                case TriggerGCType::OLD_GC: {
+                    bool fullConcurrentMarkRequested = false;
+                    // Check whether it's needed to trigger full concurrent mark instead of trigger old gc
+                    if (concurrentMarker_->IsEnabled() &&
+                        (thread_->IsReadyToMark() || markType_ == MarkType::MARK_YOUNG) &&
+                        reason == GCReason::ALLOCATION_LIMIT) {
+                        fullConcurrentMarkRequested = true;
+                    }
+                    if (concurrentMarker_->IsEnabled() && markType_ == MarkType::MARK_YOUNG) {
+                        // Wait for existing concurrent marking tasks to be finished (if any),
+                        // and reset concurrent marker's status for full mark.
+                        bool concurrentMark = CheckOngoingConcurrentMarking();
+                        if (concurrentMark) {
+                            concurrentMarker_->Reset();
+                        }
+                    }
+                    SetMarkType(MarkType::MARK_FULL);
+                    if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
+                        LOG_ECMA(INFO)
+                            << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
+                        oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
+                        TriggerConcurrentMarking();
+                        oldGCRequested_ = true;
+                        ProcessGCListeners();
+                        return;
+                    }
+                    partialGC_->RunPhases();
+                    break;
                 }
-                SetMarkType(MarkType::MARK_FULL);
-                if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
-                    LOG_ECMA(INFO) << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
-                    oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
-                    TriggerConcurrentMarking();
-                    oldGCRequested_ = true;
-                    ProcessGCListeners();
-                    return;
-                }
-                partialGC_->RunPhases();
-                break;
+                case TriggerGCType::FULL_GC:
+                    fullGC_->SetForAppSpawn(false);
+                    fullGC_->RunPhases();
+                    if (fullGCRequested_) {
+                        fullGCRequested_ = false;
+                    }
+                    break;
+                case TriggerGCType::APPSPAWN_FULL_GC:
+                    fullGC_->SetForAppSpawn(true);
+                    fullGC_->RunPhasesForAppSpawn();
+                    break;
+                default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
+                    UNREACHABLE();
+                    break;
             }
-            case TriggerGCType::FULL_GC:
-                fullGC_->SetForAppSpawn(false);
-                fullGC_->RunPhases();
-                if (fullGCRequested_) {
-                    fullGCRequested_ = false;
-                }
-                break;
-            case TriggerGCType::APPSPAWN_FULL_GC:
-                fullGC_->SetForAppSpawn(true);
-                fullGC_->RunPhasesForAppSpawn();
-                break;
-            default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
-                break;
         }
-        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpResumeForGC();
 
         ClearIdleTask();
         // Adjust the old space capacity and global limit for the first partial GC with full mark.

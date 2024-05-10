@@ -78,8 +78,8 @@ public:
     void PGOPreDump(JSTaggedType func);
     void PGODump(JSTaggedType func);
 
-    void WaitPGODumpPauseForGC();
-    void WaitPGODumpResumeForGC();
+    void SuspendByGC();
+    void ResumeByGC();
     void WaitPGODumpFinish();
 
     void HandlePGOPreDump();
@@ -108,6 +108,8 @@ private:
         LOAD,
     };
 
+    void ProfileBytecode(ApEntityId abcId, const CString& recordName, JSTaggedValue funcValue);
+
     enum class State : uint8_t {
         STOP,
         PAUSE,
@@ -116,15 +118,33 @@ private:
         FORCE_SAVE_PAUSE,
     };
 
-    void ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue);
-    void NotifyGC()
+    static std::string StateToString(State state)
     {
-        condition_.SignalAll();
+        switch (state) {
+            case State::STOP:
+                return "STOP";
+            case State::PAUSE:
+                return "PAUSE";
+            case State::START:
+                return "START";
+            case State::FORCE_SAVE:
+                return "FORCE SAVE";
+            case State::FORCE_SAVE_PAUSE:
+                return "FORCE SAVE PAUSE";
+            default:
+                return "UNKNOWN";
+        }
     }
+
+    State GetState();
+    void SetState(State state);
+    void NotifyGC();
+    void WaitingPGODump();
     void StopPGODump();
     void StartPGODump();
-    bool IsGCWaitingWithLock();
-    bool IsGCWaiting();
+    bool IfGCWaitingThenNotifyGCWithLock();
+    bool IfGCWaitingThenNotifyGC();
+    void DispatchPGODumpTask();
 
     void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
                       ProfileTypeInfo *profileTypeInfo, BCType type);
@@ -199,6 +219,7 @@ private:
         bool Run([[maybe_unused]] uint32_t threadIndex) override
         {
             profiler_->HandlePGODumpByDumpThread(profiler_->isForce_);
+            profiler_->StopPGODump();
             return true;
         }
 
@@ -460,7 +481,7 @@ private:
     EcmaVM *vm_ { nullptr };
     bool isEnable_ { false };
     bool isForce_ {false};
-    State state_ { State::STOP };
+    std::atomic<State> state_ {State::STOP};
     uint32_t methodCount_ { 0 };
     std::chrono::system_clock::time_point saveTimestamp_;
     Mutex mutex_;
@@ -473,6 +494,25 @@ private:
     CUnorderedSet<uint32_t> skipCtorMethodId_;
     JITProfiler *jitProfiler_ {nullptr};
     friend class PGOProfilerManager;
+};
+
+class PGODumpPauseScope {
+public:
+    explicit PGODumpPauseScope(std::shared_ptr<PGOProfiler> profiler): profiler_(profiler)
+    {
+        profiler_->SuspendByGC();
+    }
+
+    ~PGODumpPauseScope()
+    {
+        profiler_->ResumeByGC();
+    }
+
+    NO_COPY_SEMANTIC(PGODumpPauseScope);
+    NO_MOVE_SEMANTIC(PGODumpPauseScope);
+
+private:
+    std::shared_ptr<PGOProfiler> profiler_;
 };
 } // namespace pgo
 } // namespace panda::ecmascript
