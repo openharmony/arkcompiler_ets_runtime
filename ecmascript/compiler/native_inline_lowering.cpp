@@ -495,7 +495,7 @@ void NativeInlineLowering::TryInlineNumberIsFinite(GateRef gate, size_t argc, bo
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsFinite)));
     }
     GateRef ret = builder_.NumberIsFinite(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, bool skipThis)
@@ -513,7 +513,7 @@ void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, b
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsInteger)));
     }
     GateRef ret = builder_.NumberIsInteger(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool skipThis)
@@ -531,7 +531,7 @@ void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool 
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsNaN)));
     }
     GateRef ret = builder_.NumberIsNaN(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberParseFloat(GateRef gate, size_t argc, bool skipThis)
@@ -567,7 +567,7 @@ void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t arg
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsSafeInteger)));
     }
     GateRef ret = builder_.NumberIsSafeInteger(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineBigIntAsIntN(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
