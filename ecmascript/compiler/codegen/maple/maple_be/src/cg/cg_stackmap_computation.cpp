@@ -112,10 +112,7 @@ void StackmapComputation::RelocateStackmapInfo()
             LoadOperand(*insn, regNO);
         }
 
-        auto *stackMapLiveIn = insn->GetStackMapLiveIn();
-        std::set<uint32> setInfo;
-        stackMapLiveIn->GetInfo().ConvertToSet(setInfo);
-        for (auto regNO : setInfo) {
+        for (auto regNO : insn->GetStackMapLiveIn()) {
             if (!cgFunc.IsRegReference(regNO)) {
                 continue;
             }
@@ -141,10 +138,7 @@ void StackmapComputation::CollectReferenceMap()
 
     for (auto *insn : referenceMapInsns) {
         insnNum++;
-        auto *stackMapLiveIn = insn->GetStackMapLiveIn();
-        std::set<uint32> setInfo;
-        stackMapLiveIn->GetInfo().ConvertToSet(setInfo);
-        for (auto regNO : setInfo) {
+        for (auto regNO : insn->GetStackMapLiveIn()) {
             if (!cgFunc.IsRegReference(regNO)) {
                 continue;
             }
