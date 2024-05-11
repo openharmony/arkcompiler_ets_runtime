@@ -130,9 +130,11 @@ public:
                                        const CString &path, const CString &version);
     static CString ConcatUnifiedOhmUrl(const CString &bundleName, const CString &normalizedpath,
         const CString &version);
+    static CString ConcatPreviewTestUnifiedOhmUrl(const CString &bundleName, const CString &pkgname,
+        const CString &path, const CString &version);
     static CString ConcatHspFileNameCrossBundle(const CString &bundleName, const CString &moduleName);
     static CString ConcatHspFileName(const CString &moduleName);
-    static CString TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &baseFileName,
+    static CString TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &inputFileName, const CString &baseFileName,
         const CString &oldEntryPoint);
     static CString ParseUrl(EcmaVM *vm, const CString &recordName);
     static CString ParsePrefixBundle(JSThread *thread, const JSPandaFile *jsPandaFile,

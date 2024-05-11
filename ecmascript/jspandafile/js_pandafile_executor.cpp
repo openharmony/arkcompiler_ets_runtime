@@ -157,7 +157,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, normalName, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, normalName, entry);
     }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
@@ -210,7 +210,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, name, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
     } else if (!isBundle) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
@@ -312,7 +312,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, normalName, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, normalName, entry);
     }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
@@ -388,7 +388,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, name, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
     } else if (!jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
