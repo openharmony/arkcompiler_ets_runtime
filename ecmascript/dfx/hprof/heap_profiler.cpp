@@ -216,20 +216,20 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
                                     bool isFullGC, bool isSimplify, bool isSync)
 {
     bool res = false;
+    base::BlockHookScope blockScope;
+    ThreadManagedScope managedScope(vm_->GetJSThread());
     if (isFullGC) {
         [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
         ASSERT(heapClean);
     }
+    // suspend All.
+    SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+    if (isFullGC) {
+        DISALLOW_GARBAGE_COLLECTION;
+        const_cast<Heap *>(vm_->GetHeap())->Prepare();
+    }
     pid_t pid = -1;
     {
-        base::BlockHookScope blockScope;
-        ThreadManagedScope managedScope(vm_->GetJSThread());
-        // suspend All.
-        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-        if (isFullGC) {
-            DISALLOW_GARBAGE_COLLECTION;
-            const_cast<Heap *>(vm_->GetHeap())->Prepare();
-        }
         // fork
         if ((pid = fork()) < 0) {
             LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";

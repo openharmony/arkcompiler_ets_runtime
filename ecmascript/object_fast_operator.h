@@ -56,7 +56,8 @@ public:
 
     template<Status status = Status::None>
     static inline JSTaggedValue GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
-                                                  JSTaggedValue key);
+                                                  JSTaggedValue key, bool noAllocate = false,
+                                                  bool *isCallGetter = nullptr);
 
     template <Status status = Status::None>
     static inline JSTaggedValue TrySetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,

@@ -2385,14 +2385,20 @@ void JSObject::ToPropertyDescriptor(JSThread *thread, const JSHandle<JSTaggedVal
     // 23. Return desc.
 }
 
-const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj)
+const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj, bool noAllocate,
+                                                        bool *isCallGetter)
 {
     CString result = "";
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> contructorKey = globalConst->GetHandledConstructorString();
     JSTaggedValue objConstructor = ObjectFastOperator::GetPropertyByName(thread, JSTaggedValue(obj),
-                                                                         contructorKey.GetTaggedValue());
+                                                                         contructorKey.GetTaggedValue(), noAllocate,
+                                                                         isCallGetter);
+    if (*isCallGetter) {
+        return "JSObject";
+    }
+
     if (!objConstructor.IsJSFunction()) {
         return "JSObject";
     }
