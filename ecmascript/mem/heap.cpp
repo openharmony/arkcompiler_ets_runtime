@@ -96,7 +96,7 @@ void SharedHeap::AdjustGlobalSpaceAllocLimit()
                                       config_.GetDefaultGlobalAllocLimit() * 2); // 2: double
     globalSpaceAllocLimit_ = std::min(std::min(globalSpaceAllocLimit_, GetCommittedSize() + growingStep_),
                                       config_.GetMaxHeapSize());
-    LOG_ECMA(INFO) << "Shared gc adjust global space alloc limit to: " << globalSpaceAllocLimit_;
+    LOG_ECMA(DEBUG) << "Shared gc adjust global space alloc limit to: " << globalSpaceAllocLimit_;
 }
 
 bool SharedHeap::ObjectExceedMaxHeapSize() const
