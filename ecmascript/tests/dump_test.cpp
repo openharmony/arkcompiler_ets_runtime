@@ -427,6 +427,7 @@ static JSHandle<JSAPIVector> NewJSAPIVector(ObjectFactory *factory, JSHandle<JST
     jsVector->SetLength(0);
     return jsVector;
 }
+
 #define DUMP_FOR_HANDLE(dumpHandle)                                                     \
     do {                                                                                \
         JSTaggedValue dumpValue = (dumpHandle).GetTaggedValue();                         \
@@ -530,88 +531,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             // CHECK_AND_DUMP_HANDLE(JSType::JS_SHARED_FUNCTION, JSTaggedValue, JSFunctionBase::SIZE, JSFunction::SIZE, 8U, globalEnv->GetFunctionFunction());
 
-            // case JSType::JS_PROXY_REVOC_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSProxyRevocFunction::SIZE, 1U);
-            //     JSHandle<JSHClass> proxyRevocClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetProxyRevocFunctionClass());
-            //     JSHandle<JSObject> proxyRevocFunc = factory->NewJSObjectWithInit(proxyRevocClass);
-            //     DUMP_FOR_HANDLE(proxyRevocFunc);
-            //     break;
-            // }
-           
-            // case JSType::JS_PROMISE_REACTIONS_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSPromiseReactionsFunction::SIZE, 2U);
-            //     JSHandle<JSHClass> promiseReactClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetPromiseReactionFunctionClass());
-            //     JSHandle<JSObject> promiseReactFunc = factory->NewJSObjectWithInit(promiseReactClass);
-            //     DUMP_FOR_HANDLE(promiseReactFunc);
-            //     break;
-            // }
-            // case JSType::JS_PROMISE_EXECUTOR_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSPromiseExecutorFunction::SIZE, 1U);
-            //     JSHandle<JSHClass> promiseExeClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetPromiseExecutorFunctionClass());
-            //     JSHandle<JSObject> promiseExeFunc = factory->NewJSObjectWithInit(promiseExeClass);
-            //     DUMP_FOR_HANDLE(promiseExeFunc);
-            //     break;
-            // }
-            // case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncModuleFulfilledFunction::SIZE, 0U);
-            //     JSHandle<JSHClass> moduleFulfilledClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetAsyncModuleFulfilledFunctionClass());
-            //     JSHandle<JSObject> moduleFulfilledFunc = factory->NewJSObjectWithInit(moduleFulfilledClass);
-            //     DUMP_FOR_HANDLE(moduleFulfilledFunc);
-            //     break;
-            // }
-            // case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncModuleRejectedFunction::SIZE, 0U);
-            //     JSHandle<JSHClass> moduleRejectedClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetAsyncModuleRejectedFunctionClass());
-            //     JSHandle<JSObject> moduleRejectedFunc = factory->NewJSObjectWithInit(moduleRejectedClass);
-            //     DUMP_FOR_HANDLE(moduleRejectedFunc);
-            //     break;
-            // }
-            // case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSPromiseAllResolveElementFunction::SIZE, 5U);
-            //     JSHandle<JSHClass> promiseAllClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetPromiseAllResolveElementFunctionClass());
-            //     JSHandle<JSObject> promiseAllFunc = factory->NewJSObjectWithInit(promiseAllClass);
-            //     DUMP_FOR_HANDLE(promiseAllFunc);
-            //     break;
-            // }
-            // case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSPromiseAnyRejectElementFunction::SIZE, 5U);
-            //     JSHandle<JSHClass> promiseAnyClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetPromiseAnyRejectElementFunctionClass());
-            //     JSHandle<JSObject> promiseAnyFunc = factory->NewJSObjectWithInit(promiseAnyClass);
-            //     DUMP_FOR_HANDLE(promiseAnyFunc);
-            //     break;
-            // }
-            // case JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSPromiseAllSettledElementFunction::SIZE, 5U);
-            //     JSHandle<JSHClass> promiseAllSettledClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetPromiseAllSettledElementFunctionClass());
-            //     JSHandle<JSObject> promiseAllSettledFunc = factory->NewJSObjectWithInit(promiseAllSettledClass);
-            //     DUMP_FOR_HANDLE(promiseAllSettledFunc);
-            //     break;
-            // }
-            // case JSType::JS_PROMISE_FINALLY_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSPromiseFinallyFunction::SIZE, 2U);
-            //     JSHandle<JSHClass> promiseFinallyClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetPromiseFinallyFunctionClass());
-            //     JSHandle<JSObject> promiseFinallyFunc = factory->NewJSObjectWithInit(promiseFinallyClass);
-            //     DUMP_FOR_HANDLE(promiseFinallyFunc);
-            //     break;
-            // }
-            // case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunction::SIZE, JSPromiseValueThunkOrThrowerFunction::SIZE, 1U);
-            //     JSHandle<JSHClass> promiseValueClass =
-            //         JSHandle<JSHClass>::Cast(globalEnv->GetPromiseValueThunkOrThrowerFunctionClass());
-            //     JSHandle<JSObject> promiseValueFunc = factory->NewJSObjectWithInit(promiseValueClass);
-            //     DUMP_FOR_HANDLE(promiseValueFunc);
-            //     break;
-            // }
-
             CAST_CHECK_AND_DUMP_HANDLE(JSType::JS_PROXY_REVOC_FUNCTION, JSFunction::SIZE, JSProxyRevocFunction::SIZE, 1U, globalEnv->GetProxyRevocFunctionClass());
             CAST_CHECK_AND_DUMP_HANDLE(JSType::JS_PROMISE_REACTIONS_FUNCTION, JSFunction::SIZE, JSPromiseReactionsFunction::SIZE, 2U, globalEnv->GetPromiseReactionFunctionClass());
             CAST_CHECK_AND_DUMP_HANDLE(JSType::JS_PROMISE_EXECUTOR_FUNCTION, JSFunction::SIZE, JSPromiseExecutorFunction::SIZE, 1U, globalEnv->GetPromiseExecutorFunctionClass());
@@ -637,16 +556,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
              JSFunction::SIZE, JSAsyncAwaitStatusFunction::SIZE, 1U, \
              factory->NewJSAsyncAwaitStatusFunction(MethodIndex::BUILTINS_PROMISE_HANDLER_ASYNC_AWAIT_FULFILLED));
 
-            // case JSType::JS_BOUND_FUNCTION: {
-            //     CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSBoundFunction::SIZE, 3U);
-            //     NEW_OBJECT_AND_DUMP(JSBoundFunction, JS_BOUND_FUNCTION);
-            //     break;
-            // }
-            // case JSType::JS_REG_EXP: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSRegExp::SIZE, 5U);
-            //     NEW_OBJECT_AND_DUMP(JSRegExp, JS_REG_EXP);
-            //     break;
-            // }
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_BOUND_FUNCTION, JSFunctionBase::SIZE, JSBoundFunction::SIZE, 3U, JSBoundFunction, JS_BOUND_FUNCTION);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_REG_EXP, JSObject::SIZE, JSRegExp::SIZE, 5U, JSRegExp, JS_REG_EXP);
 
@@ -753,112 +662,31 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             CHECK_AND_DUMP_HANDLE(JSType::JS_STRING_ITERATOR, JSTaggedValue, JSObject::SIZE, JSStringIterator::SIZE, 2U, \
             globalEnv->GetStringIterator());
 
-            // case JSType::JS_INTL: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSIntl::SIZE, 1U);
-            //     NEW_OBJECT_AND_DUMP(JSIntl, JS_INTL);
-            //     break;
-            // }
-            // case JSType::JS_LOCALE: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSLocale::SIZE, 1U);
-            //     NEW_OBJECT_AND_DUMP(JSLocale, JS_LOCALE);
-            //     break;
-            // }
-            // case JSType::JS_DATE_TIME_FORMAT: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSDateTimeFormat::SIZE, 9U);
-            //     NEW_OBJECT_AND_DUMP(JSDateTimeFormat, JS_DATE_TIME_FORMAT);
-            //     break;
-            // }
-            // case JSType::JS_RELATIVE_TIME_FORMAT: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSRelativeTimeFormat::SIZE, 4U);
-            //     NEW_OBJECT_AND_DUMP(JSRelativeTimeFormat, JS_RELATIVE_TIME_FORMAT);
-            //     break;
-            // }
-            // case JSType::JS_NUMBER_FORMAT: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSNumberFormat::SIZE, 13U);
-            //     NEW_OBJECT_AND_DUMP(JSNumberFormat, JS_NUMBER_FORMAT);
-            //     break;
-            // }
-            // case JSType::JS_COLLATOR: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSCollator::SIZE, 5U);
-            //     NEW_OBJECT_AND_DUMP(JSCollator, JS_COLLATOR);
-            //     break;
-            // }
-            // case JSType::JS_PLURAL_RULES: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSPluralRules::SIZE, 9U);
-            //     NEW_OBJECT_AND_DUMP(JSPluralRules, JS_PLURAL_RULES);
-            //     break;
-            // }
-            // case JSType::JS_DISPLAYNAMES: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSDisplayNames::SIZE, 3U);
-            //     NEW_OBJECT_AND_DUMP(JSDisplayNames, JS_DISPLAYNAMES);
-            //     break;
-            // }
-            // case JSType::JS_SEGMENTER: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSSegmenter::SIZE, 3U);
-            //     NEW_OBJECT_AND_DUMP(JSSegmenter, JS_SEGMENTER);
-            //     break;
-            // }
-            // case JSType::JS_SEGMENTS: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSSegments::SIZE, 4U);
-            //     NEW_OBJECT_AND_DUMP(JSSegments, JS_SEGMENTS);
-            //     break;
-            // }
-            // case JSType::JS_SEGMENT_ITERATOR: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSSegmentIterator::SIZE, 4U);
-            //     NEW_OBJECT_AND_DUMP(JSSegmentIterator, JS_SEGMENTS);
-            //     break;
-            // }
-            // case JSType::JS_LIST_FORMAT: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSListFormat::SIZE, 3U);
-            //     NEW_OBJECT_AND_DUMP(JSListFormat, JS_LIST_FORMAT);
-            //     break;
-            // }
-            // case JSType::JS_SHARED_ARRAY_BUFFER:
-            // case JSType::JS_ARRAY_BUFFER: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSArrayBuffer::SIZE, 2U);
-            //     NEW_OBJECT_AND_DUMP(JSArrayBuffer, JS_ARRAY_BUFFER);
-            //     break;
-            // }
-            // case JSType::JS_SENDABLE_ARRAY_BUFFER: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSSendableArrayBuffer::SIZE, 2U);
-            //     NEW_OBJECT_AND_DUMP(JSSendableArrayBuffer, JS_SENDABLE_ARRAY_BUFFER);
-            //     break;
-            // }
-            // case JSType::JS_PROMISE: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSPromise::SIZE, 4U);
-            //     NEW_OBJECT_AND_DUMP(JSPromise, JS_PROMISE);
-            //     break;
-            // }
-            // case JSType::JS_DATA_VIEW: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSDataView::SIZE, 3U);
-            //     NEW_OBJECT_AND_DUMP(JSDataView, JS_DATA_VIEW);
-            //     break;
-            // }
-            // case JSType::JS_GENERATOR_OBJECT: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSGeneratorObject::SIZE, 4U);
-            //     NEW_OBJECT_AND_DUMP(JSGeneratorObject, JS_GENERATOR_OBJECT);
-            //     break;
-            // }
-            // case JSType::JS_ASYNC_GENERATOR_OBJECT: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSAsyncGeneratorObject::SIZE, 5U);
-            //     NEW_OBJECT_AND_DUMP(JSAsyncGeneratorObject, JS_ASYNC_GENERATOR_OBJECT);
-            //     break;
-            // }
+            case JSType::JS_SHARED_ARRAY_BUFFER:
+            case JSType::JS_ARRAY_BUFFER: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSArrayBuffer::SIZE, 2U);
+                NEW_OBJECT_AND_DUMP(JSArrayBuffer, JS_ARRAY_BUFFER);
+                break;
+            }
+
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_INTL, JSObject::SIZE, JSIntl::SIZE, 1U, JSIntl, JS_INTL);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_LOCALE, JSObject::SIZE, JSLocale::SIZE, 1U, JSLocale, JS_LOCALE);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_DATE_TIME_FORMAT, JSObject::SIZE, JSDateTimeFormat::SIZE, 9U, JSDateTimeFormat, JS_DATE_TIME_FORMAT);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_RELATIVE_TIME_FORMAT, JSObject::SIZE, JSRelativeTimeFormat::SIZE, 4U, JSRelativeTimeFormat, JS_RELATIVE_TIME_FORMAT);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_NUMBER_FORMAT, JSObject::SIZE, JSNumberFormat::SIZE, 13U, JSNumberFormat, JS_NUMBER_FORMAT);
+            
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_COLLATOR, JSObject::SIZE, JSCollator::SIZE, 5U, JSCollator, JS_COLLATOR);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_PLURAL_RULES, JSObject::SIZE, JSPluralRules::SIZE, 9U, JSPluralRules, JS_PLURAL_RULES);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_DISPLAYNAMES, JSObject::SIZE, JSDisplayNames::SIZE, 3U, JSDisplayNames, JS_DISPLAYNAMES);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_SEGMENTER, JSObject::SIZE, JSSegmenter::SIZE, 3U, JSSegmenter, JS_SEGMENTER);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_SEGMENTS, JSObject::SIZE, JSSegments::SIZE, 4U, JSSegments, JS_SEGMENTS);
+            
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_SEGMENT_ITERATOR, JSObject::SIZE, JSSegmentIterator::SIZE, 4U, JSSegmentIterator, JS_SEGMENTS);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_LIST_FORMAT, JSObject::SIZE, JSListFormat::SIZE, 3U, JSListFormat, JS_LIST_FORMAT);
-            CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_ARRAY_BUFFER, JSObject::SIZE, JSArrayBuffer::SIZE, 2U, JSArrayBuffer, JS_ARRAY_BUFFER);
+            // CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_ARRAY_BUFFER, JSObject::SIZE, JSArrayBuffer::SIZE, 2U, JSArrayBuffer, JS_ARRAY_BUFFER);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_SENDABLE_ARRAY_BUFFER, JSObject::SIZE, JSSendableArrayBuffer::SIZE, 2U, JSSendableArrayBuffer, JS_SENDABLE_ARRAY_BUFFER);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_PROMISE, JSObject::SIZE, JSPromise::SIZE, 4U, JSPromise, JS_PROMISE);
+           
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_DATA_VIEW, JSObject::SIZE, JSDataView::SIZE, 3U, JSDataView, JS_DATA_VIEW);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_GENERATOR_OBJECT, JSObject::SIZE, JSGeneratorObject::SIZE, 4U, JSGeneratorObject, JS_GENERATOR_OBJECT);
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_ASYNC_GENERATOR_OBJECT, JSObject::SIZE, JSAsyncGeneratorObject::SIZE, 5U, JSAsyncGeneratorObject, JS_ASYNC_GENERATOR_OBJECT);
@@ -907,11 +735,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 // Fixme(Gymee) Add test later
                 break;
             }
-            // case JSType::JS_PRIMITIVE_REF: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSPrimitiveRef::SIZE, 1U);
-            //     NEW_OBJECT_AND_DUMP(JSPrimitiveRef, JS_PRIMITIVE_REF);
-            //     break;
-            // }
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_PRIMITIVE_REF, JSObject::SIZE, JSPrimitiveRef::SIZE, 1U, JSPrimitiveRef, JS_PRIMITIVE_REF);
             CHECK_AND_DUMP_HANDLE(JSType::JS_GLOBAL_OBJECT, JSTaggedValue, JSObject::SIZE, JSGlobalObject::SIZE, 0U, \
             globalEnv->GetJSGlobalObject());
@@ -1054,11 +877,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(asyncIteratorRecord);
                 break;
             }
-            // case JSType::JS_ASYNC_FROM_SYNC_ITERATOR: {
-            //     CHECK_DUMP_FIELDS(JSObject::SIZE, JSAsyncFromSyncIterator::SIZE, 1U);
-            //     NEW_OBJECT_AND_DUMP(JSAsyncFromSyncIterator, JS_ASYNC_FROM_SYNC_ITERATOR);
-            //     break;
-            // }
             CHECK_AND_DUMP_NEW_OBJECT(JSType::JS_ASYNC_FROM_SYNC_ITERATOR, JSObject::SIZE, JSAsyncFromSyncIterator::SIZE, 1U, JSAsyncFromSyncIterator, JS_ASYNC_FROM_SYNC_ITERATOR);
             CHECK_DUMP_FIELDS_WITH_JSTYPE(JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION, \
             JSFunction::SIZE, JSAsyncFromSyncIterUnwarpFunction::SIZE, 1U);
