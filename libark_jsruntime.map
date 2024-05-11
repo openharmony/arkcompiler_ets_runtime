@@ -117,6 +117,7 @@
       panda::ecmascript::BigInt::SameValue*;
       panda::ecmascript::BindSmallCpuCore*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
+      panda::ecmascript::ConstantPool::GetMethodFromCache*;
       panda::ecmascript::ConvertToStdString*;
       panda::ecmascript::ConvertToString*;
       panda::ecmascript::Deoptimizier::ComputeShift*;
