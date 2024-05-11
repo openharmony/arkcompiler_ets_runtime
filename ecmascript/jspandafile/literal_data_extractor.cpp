@@ -239,6 +239,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                 literals->Set(thread, pos++, jt);
             } else {
                 uint32_t oldLength = literals->GetLength();
+                ASSERT(oldLength > 0);
                 literals->Trim(thread, oldLength - 1);
             }
         });
@@ -577,6 +578,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 literals->Set(thread, pos++, jt);
             } else {
                 uint32_t oldLength = literals->GetLength();
+                ASSERT(oldLength > 0);
                 literals->Trim(thread, oldLength - 1);
             }
         });

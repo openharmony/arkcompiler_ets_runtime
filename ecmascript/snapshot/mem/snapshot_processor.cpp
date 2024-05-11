@@ -1731,6 +1731,7 @@ EncodeBit SnapshotProcessor::NativePointerToEncodeBit(void *nativePointer)
         if (programSerialize_) {
             pandaMethod_.emplace_back(ToUintPtr(nativePointer));
             ASSERT(pandaMethod_.size() + GetNativeTableSize() <= Constants::MAX_UINT_16);
+            ASSERT(pandaMethod_.size() + GetNativeTableSize() > 0);
             // NOLINTNEXTLINE(bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions)
             index = pandaMethod_.size() + GetNativeTableSize() - 1;
         } else {

@@ -101,6 +101,7 @@ void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32
                                   int32_t toIndex, bool direction)
 {
     uint32_t size = GetLength();
+    ASSERT(size > 0);
     uint32_t idx = size - 1;
     if (direction) {
         while (fromIndex < toIndex) {
@@ -217,6 +218,7 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
     int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         std::ostringstream oss;
+        ASSERT(size > 0);
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());

@@ -324,6 +324,7 @@ CallRangeTypeInfoAccessor::CallRangeTypeInfoAccessor(const CompilationEnv *env, 
 {
     size_t numArgs = acc_.GetNumValueIn(gate);
     constexpr size_t callTargetIndex = 1; // acc
+    ASSERT(numArgs > 0);
     argc_ = numArgs - callTargetIndex;
     func_ = acc_.GetValueIn(gate, argc_);
 }
@@ -395,6 +396,7 @@ CallThisRangeTypeInfoAccessor::CallThisRangeTypeInfoAccessor(const CompilationEn
     ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
     size_t numIns = acc_.GetNumValueIn(gate);
     argc_ = numIns - callTargetIndex - fixedInputsNum;
+    ASSERT(numIns > 0);
     func_ = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
 }
 

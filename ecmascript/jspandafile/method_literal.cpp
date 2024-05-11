@@ -73,6 +73,8 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
 
     uint32_t numVregs = cda.GetNumVregs();
     uint32_t numArgs = cda.GetNumArgs();
+    ASSERT((numArgs - HaveFuncBit::Decode(callType) -
+        HaveNewTargetBit::Decode(callType) - HaveThisBit::Decode(callType)) >= 0);
     // Needed info for call can be got by loading callField only once.
     // Native bit will be set in NewMethodForNativeFunction();
     callField_ = (callType & CALL_TYPE_MASK) |

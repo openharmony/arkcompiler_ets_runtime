@@ -507,6 +507,7 @@ CVector<MethodInfo> JSStackTrace::ReadAllMethodInfos(std::shared_ptr<JSPandaFile
 std::optional<CodeInfo> JSStackTrace::TranslateByteCodePc(uintptr_t realPc, const CVector<MethodInfo> &vec)
 {
     int32_t left = 0;
+    ASSERT(vec.size() > 0);
     int32_t right = vec.size() - 1;
     for (; left <= right;) {
         int32_t mid = (left + right) / 2;
@@ -1419,6 +1420,7 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp,
 void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t &strIdx, char *outStr, size_t strLen)
 {
     // note: big endian
+    ASSERT(strLen > 0);
     for (size_t i = 0; prefix[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
         outStr[strIdx++] = prefix[i];
     }

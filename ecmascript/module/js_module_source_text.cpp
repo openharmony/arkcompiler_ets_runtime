@@ -1843,6 +1843,7 @@ void SourceTextModule::AddAsyncParentModule(JSThread *thread, JSHandle<SourceTex
         module->SetAsyncParentModules(thread, array);
     } else {
         JSHandle<TaggedArray> array(thread, asyncParentModules);
+        ASSERT(array->GetLength() > 0);
         array = TaggedArray::SetCapacity(thread, array, array->GetLength() + 1);
         array->Set(thread, array->GetLength() - 1, parent.GetTaggedValue());
         module->SetAsyncParentModules(thread, array);

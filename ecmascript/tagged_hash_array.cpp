@@ -220,6 +220,7 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
 JSTaggedValue TaggedHashArray::RemoveNode(JSThread *thread, int hash, JSTaggedValue key)
 {
     uint32_t length = GetLength();
+    ASSERT(length > 0);
     uint32_t index = (length - 1) & hash;
     JSTaggedValue node = Get(index);
     if (node.IsHole()) {
