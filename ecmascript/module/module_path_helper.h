@@ -138,7 +138,7 @@ public:
     static CString ParsePrefixBundle(JSThread *thread, const JSPandaFile *jsPandaFile,
         [[maybe_unused]] CString &baseFileName, CString moduleRequestName, [[maybe_unused]] CString recordName);
     static CString ParseNormalizedOhmUrl(JSThread *thread, CString &baseFileName, CString requestName);
-    static CString MakeNewRecord(const JSPandaFile *jsPandaFile, CString &baseFileName,
+    static CString MakeNewRecord(JSThread *thread, const JSPandaFile *jsPandaFile, CString &baseFileName,
                                  const CString &recordName, const CString &requestName);
     static CString FindOhpmEntryPoint(const JSPandaFile *jsPandaFile, const CString &ohpmPath,
                                       const CString &requestName);
