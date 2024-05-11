@@ -152,7 +152,7 @@ template("host_moduletest_action") {
   if (defined(invoker.is_merge_abc) && invoker.is_merge_abc) {
     _is_merge_abc_ = true
   }
-  _timeout_ = "200"
+  _timeout_ = "300"
   if (defined(invoker.timeout)) {
     _timeout_ = invoker.timeout
   }

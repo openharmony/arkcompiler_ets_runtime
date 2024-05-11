@@ -17,8 +17,10 @@
       panda::ecmascript::COMPILER_HELP_HEAD_MSG*;
 
       panda::ArrayBufferRef::*;
+      panda::SendableArrayBufferRef::*;
       panda::BufferRef::*;
       panda::ArrayRef::*;
+      panda::SendableArrayRef::*;
       panda::BigInt64ArrayRef::*;
       panda::BigIntRef::*;
       panda::BigUint64ArrayRef::*;
@@ -50,6 +52,7 @@
       panda::RegExpRef::*;
       panda::SetIteratorRef::*;
       panda::SetRef::*;
+      panda::SendableTypedArrayRef::*;
       panda::SharedInt8ArrayRef::*;
       panda::SharedUint8ArrayRef::*;
       panda::SharedInt16ArrayRef::*;
