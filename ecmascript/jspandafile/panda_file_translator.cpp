@@ -26,6 +26,7 @@
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/patch/quick_fix_helper.h"
 #include "ecmascript/tagged_array.h"
 
 #include "libpandafile/class_data_accessor-inl.h"
@@ -133,12 +134,13 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     }
 
     MethodLiteral *mainMethodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
-    return GenerateProgramInternal(vm, mainMethodLiteral, sconstpool);
+    return GenerateProgramInternal(vm, mainMethodLiteral, sconstpool, jsPandaFile);
 }
 
 JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
                                                                MethodLiteral *mainMethodLiteral,
-                                                               JSHandle<ConstantPool> constpool)
+                                                               JSHandle<ConstantPool> constpool,
+                                                               const JSPandaFile *jsPandaFile)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
@@ -150,6 +152,12 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
     } else {
         JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
         JSHandle<Method> method = factory->NewSMethod(mainMethodLiteral);
+        JSTaggedValue patchVal = QuickFixHelper::CreateMainFuncWithPatch(vm, mainMethodLiteral, jsPandaFile);
+        if (!patchVal.IsHole()) {
+            method = JSHandle<Method>(thread, patchVal);
+        } else {
+            method->SetConstantPool(thread, constpool);
+        }
         JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
         JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
         // Main function is created profileTypeInfo by default.
@@ -157,7 +165,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
             SlowRuntimeStub::NotifyInlineCache(thread, mainFunc.GetObject<JSFunction>());
         }
         program->SetMainFunction(thread, mainFunc.GetTaggedValue());
-        method->SetConstantPool(thread, constpool);
     }
     return program;
 }

@@ -820,6 +820,7 @@ ecma_source = [
   "ecmascript/object_operator.cpp",
   "ecmascript/patch/patch_loader.cpp",
   "ecmascript/patch/quick_fix_manager.cpp",
+  "ecmascript/patch/quick_fix_helper.cpp",
   "ecmascript/pgo_profiler/ap_file/pgo_file_info.cpp",
   "ecmascript/pgo_profiler/pgo_profiler.cpp",
   "ecmascript/pgo_profiler/pgo_profiler_decoder.cpp",

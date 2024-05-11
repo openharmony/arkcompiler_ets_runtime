@@ -24,6 +24,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/js_shared_module_manager.h"
+#include "ecmascript/patch/quick_fix_helper.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -305,9 +306,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     JSHandle<JSTaggedValue> module = SharedModuleManager::GetInstance()->GenerateFuncModule(thread, jsPandaFile,
                                                                                             entryPoint, classKind);
     jsFunc->SetModule(thread, module.GetTaggedValue());
-    if (thread->GetCurrentEcmaContext()->GetStageOfColdReload() == StageOfColdReload::COLD_RELOADING) {
-        QuickFixManager::SetPatchModule(thread, method, jsFunc);
-    }
+    QuickFixHelper::SetPatchModule(thread, method, jsFunc);
     jsFunc->SetLength(length);
     return jsFunc;
 }
