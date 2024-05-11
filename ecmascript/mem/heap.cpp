@@ -60,6 +60,16 @@
 #include "syspara/parameter.h"
 #endif
 
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+#include "parameters.h"
+#include "hisysevent.h"
+static constexpr uint32_t DEC_TO_INT = 100;
+static size_t g_threshold = OHOS::system::GetUintParameter<size_t>("persist.dfx.leak.threshold", 85);
+static uint64_t g_lastHeapDumpTime = 0;
+static bool g_debugLeak = OHOS::system::GetBoolParameter("debug.dfx.tags.enableleak", false);
+static constexpr uint64_t HEAP_DUMP_REPORT_INTERVAL = 24 * 3600 * 1000;
+#endif
+
 namespace panda::ecmascript {
 SharedHeap* SharedHeap::GetInstance()
 {
@@ -836,6 +846,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     ASSERT(thread_->IsPropertyCacheCleared());
     ProcessGCListeners();
 
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    if (!hasOOMDump_) {
+        ThresholdReachedDump();
+    }
+#endif
+
     if (GetEcmaVM()->IsEnableBaselineJit() || GetEcmaVM()->IsEnableFastJit()) {
         // check machine code space if enough
         int remainSize = static_cast<int>(config_.GetDefaultMachineCodeSpaceSize()) -
@@ -1090,6 +1106,10 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
         LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, propertyName:" << propertyName
             << " value:" << std::to_string(pid);
     }
+#ifdef ENABLE_HISYSEVENT
+    GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize());
+    hasOOMDump_ = true;
+#endif
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
     heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true, true);
     HeapProfilerInterface::Destroy(ecmaVm_);
@@ -2016,6 +2036,41 @@ void Heap::ProcessGCListeners()
         listener(data);
     }
 }
+
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+uint64_t Heap::GetCurrentTickMillseconds()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+void Heap::ThresholdReachedDump()
+{
+    size_t limitSize = GetHeapLimitSize();
+    if (!limitSize) {
+        LOG_GC(INFO) << "ThresholdReachedDump limitSize is invaild";
+        return;
+    }
+    size_t nowPrecent = GetHeapObjectSize() * DEC_TO_INT / limitSize;
+    if (g_debugLeak || (nowPrecent >= g_threshold && (g_lastHeapDumpTime == 0 ||
+        GetCurrentTickMillseconds() - g_lastHeapDumpTime > HEAP_DUMP_REPORT_INTERVAL))) {
+            size_t liveObjectSize = GetLiveObjectSize();
+            size_t nowPrecentRecheck = liveObjectSize * DEC_TO_INT / limitSize;
+            LOG_GC(INFO) << "ThresholdReachedDump nowPrecentCheck is " << nowPrecentRecheck;
+            if (nowPrecentRecheck < g_threshold) {
+                return;
+            }
+            g_lastHeapDumpTime = GetCurrentTickMillseconds();
+            base::BlockHookScope blockScope;
+            HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
+            GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
+                                                        GetHeapLimitSize(), GetLiveObjectSize());
+            heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, false, true, false);
+            hasOOMDump_ = false;
+            HeapProfilerInterface::Destroy(ecmaVm_);
+        }
+}
+#endif
 
 void Heap::RemoveGCListener(GCListenerId listenerId)
 {
