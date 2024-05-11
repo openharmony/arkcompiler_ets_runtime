@@ -91,7 +91,7 @@ class JitTask {
 public:
     JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit,
         JSHandle<JSFunction> &jsFunction, CompilerTier tier, CString &methodName, int32_t offset,
-        uint32_t taskThreadId, JitCompileMode mode);
+        uint32_t taskThreadId, JitCompileMode mode, JitDfx *jitDfx);
     // for ut
     JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, uint32_t taskThreadId, JitCompileMode mode);
     ~JitTask();
@@ -213,6 +213,16 @@ public:
         return jitCompileMode_ == JitCompileMode::ASYNC;
     }
 
+    void SetMainThreadCompilerTime(int time)
+    {
+        mainThreadCompileTime_ = time;
+    }
+
+    int GetMainThreadCompilerTime() const
+    {
+        return mainThreadCompileTime_;
+    }
+
     class AsyncTask : public Task {
     public:
         explicit AsyncTask(std::shared_ptr<JitTask>jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }
@@ -278,6 +288,8 @@ private:
     std::unique_ptr<SustainingJSHandle> sustainingJSHandle_;
     EcmaContext *ecmaContext_;
     JitCompileMode jitCompileMode_;
+    JitDfx *jitDfx_ { nullptr };
+    int mainThreadCompileTime_ {0};
 
     std::atomic<RunState> runState_;
     Mutex runStateMutex_;

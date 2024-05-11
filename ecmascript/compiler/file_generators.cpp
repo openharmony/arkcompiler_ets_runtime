@@ -609,6 +609,10 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
         return;
     }
+
+    if (log_->OutputASM()) {
+        PrintMergedCodeComment();
+    }
     GenerateMergedStackmapSection();
 
     // get func entry Map

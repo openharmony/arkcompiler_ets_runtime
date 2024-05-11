@@ -41,3 +41,26 @@ ARK_COMPILER_LOG:
   IS_LITECG: {type: BOOL, desc: codegen type is litecg}
   COMPILER_METHOD_COUNT: {type: UINT32, desc: compiler method count}
   PGO_FILE_LEGAL: {type: BOOL, desc: pgo file is legal}
+
+ARK_STATS_JIT:
+  __BASE: {type: STATISTIC, level: MINOR, desc: ARKTSRUNTIME JIT COMPILER KEY STATS, preserve: true}
+  BUNDLE_NAME: {type: STRING, desc: Application bundle name}
+  PID: {type: INT32, desc: pid}
+  TIME_INTERVAL: {type: INT32, desc: Interval for reporting the event}
+  TOTAL_BASELINE_JIT_TIMES: {type: INT32, desc: Number of baseline JIT triggering times within this period}
+  TOTAL_FASTOPT_JIT_TIMES: {type: INT32, desc: Number of fast optimization JIT triggering times within this period}
+  TOTAL_TIME_ON_MAIN_THREAD: {type: INT32, desc: The total time occupied by JIT on the main thread within this period}
+  TOTAL_TIME_ON_JIT_THREAD: {type: INT32, desc: The total time occupied on the JIT thread within this period}
+  TOTAL_TIME_ON_HOLD_LOCK: {type: INT32, desc: Total lock holding time within this period}
+  MAX_TIME_ON_HOLD_LOCK: {type: INT32, desc: Maximum lock holding time within this period}
+  LONG_TIME_OF_HOLD_LOCK: {type: INT32, desc: Times of long-time lock holding within this period}
+  UNINSTALL_TIME: {type: INT32, desc: JIT deoptimizer times within this period}
+
+ARK_BLOCKUI_JIT:
+  __BASE: {type: STATISTIC, level: MINOR, desc: ARKTSRUNTIME JIT COMPILER BLOCKUI EVENT, preserve: true}
+  BUNDLE_NAME: {type: STRING, desc: Application bundle name}
+  PID: {type: INT32, desc: pid}
+  JIT_TYPE: {type: STRING, desc: Triggered jit type}
+  JIT_FUNCTION_NAME: {type: STRING, desc: JIT compiled function name}
+  TIME_ON_MAIN_THREAD: {type: INT32, desc: The time occupied by JIT on the main thread}
+  TIME_ON_JIT_THREAD: {type: INT32, desc: The time occupied on JIT thread}
