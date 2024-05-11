@@ -321,7 +321,27 @@ JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(int32_t 
     sendableArrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
         NewJSSendableArrayBufferData(sendableArrayBuffer, length);
-        sendableArrayBuffer->SetShared(true);
+        sendableArrayBuffer->SetShared(false);
+    }
+    return sendableArrayBuffer;
+}
+
+JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(void *buffer, int32_t length,
+                                                                        const NativePointerCallback &deleter,
+                                                                        void *data)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+
+    JSHandle<JSFunction> constructor(env->GetSBuiltininArrayBufferFunction());
+    JSHandle<JSSendableArrayBuffer> sendableArrayBuffer(NewJSObjectByConstructor(constructor));
+    length = buffer == nullptr ? 0 : length;
+    sendableArrayBuffer->SetArrayBufferByteLength(length);
+    if (length > 0) {
+        JSHandle<JSNativePointer> pointer = NewSJSNativePointer(buffer, deleter, data, false, length);
+        sendableArrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
+        sendableArrayBuffer->SetShared(false);
+        sendableArrayBuffer->SetWithNativeAreaAllocator(deleter == NativeAreaAllocator::FreeBufferFunc &&
+                                                data == vm_->GetNativeAreaAllocator());
     }
     return sendableArrayBuffer;
 }

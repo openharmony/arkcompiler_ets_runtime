@@ -970,12 +970,19 @@ public:
 
     void Detach(const EcmaVM *vm);
     bool IsDetach();
+};
 
-    static Local<ArrayBufferRef> NewSendable(const EcmaVM *vm, int32_t length);
+class ECMA_PUBLIC_API SendableArrayBufferRef : public ObjectRef {
+public:
+    static Local<SendableArrayBufferRef> New(const EcmaVM *vm, int32_t length);
+    static Local<SendableArrayBufferRef> New(const EcmaVM *vm, void *buffer, int32_t length,
+                                             const NativePointerCallback &deleter, void *data);
 
-    void SendableDetach(const EcmaVM *vm);
-    bool SendableIsDetach();
-    void *SendableGetBuffer();
+    int32_t ByteLength(const EcmaVM *vm);
+    void *GetBuffer();
+
+    void Detach(const EcmaVM *vm);
+    bool IsDetach();
 };
 
 class ECMA_PUBLIC_API DateRef : public ObjectRef {
@@ -991,17 +998,28 @@ public:
     uint32_t ByteOffset(const EcmaVM *vm);
     uint32_t ArrayLength(const EcmaVM *vm);
     Local<ArrayBufferRef> GetArrayBuffer(const EcmaVM *vm);
+};
 
-    uint32_t SendableByteLength(const EcmaVM *vm);
-    uint32_t SendableByteOffset(const EcmaVM *vm);
-    uint32_t SendableArrayLength(const EcmaVM *vm);
-    Local<ArrayBufferRef> SendableGetArrayBuffer(const EcmaVM *vm);
+class ECMA_PUBLIC_API SendableTypedArrayRef : public ObjectRef {
+public:
+    uint32_t ByteLength(const EcmaVM *vm);
+    uint32_t ByteOffset(const EcmaVM *vm);
+    uint32_t ArrayLength(const EcmaVM *vm);
+    Local<SendableArrayBufferRef> GetArrayBuffer(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API ArrayRef : public ObjectRef {
 public:
     static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
     static Local<ArrayRef> NewSendable(const EcmaVM *vm, uint32_t length = 0);
+    uint32_t Length(const EcmaVM *vm);
+    static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
+    static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
+};
+
+class ECMA_PUBLIC_API SendableArrayRef : public ObjectRef {
+public:
+    static Local<SendableArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
     uint32_t Length(const EcmaVM *vm);
     static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
