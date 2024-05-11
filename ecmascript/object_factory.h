@@ -803,7 +803,7 @@ public:
     JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord();
 
     JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord(
-        const JSHandle<EcmaString> &moduleRecord, int32_t index);
+        const JSHandle<EcmaString> &moduleRecord, const JSHandle<EcmaString> &abcFileName, int32_t index);
 
     JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord();
 

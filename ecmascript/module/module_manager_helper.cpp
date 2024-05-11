@@ -159,7 +159,7 @@ JSTaggedValue ModuleManagerHelper::GetModuleValueFromIndexBinding(JSThread *thre
     } else {
         auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
         CString record = ConvertToString(moduleRecord.GetTaggedValue());
-        CString fileName = ConvertToString(module->GetEcmaModuleFilename());
+        CString fileName = ConvertToString(binding->GetAbcFileName());
         if (!JSPandaFileExecutor::LazyExecuteModule(thread, record, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
