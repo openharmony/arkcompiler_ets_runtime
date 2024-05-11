@@ -61,12 +61,7 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
 
 bool StubFileInfo::MmapLoad(const std::string &fileName)
 {
-    std::string filename = "";
-    if (fileName.empty()) {
-        filename = STUB_AN_FILE;
-    } else {
-        filename = fileName;
-    }
+    std::string filename = fileName.empty() ? STUB_AN_FILE : fileName;
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
         LOG_COMPILER(ERROR) << "Can not load stub file from path [ " << filename << " ], "
@@ -85,7 +80,6 @@ bool StubFileInfo::MmapLoad(const std::string &fileName)
         return false;
     }
     PagePreRead(fileMapMem_.GetOriginAddr(), fileMapMem_.GetSize());
-    jit_debug::RegisterStubAnToDebugger((const char *)fileMapMem_.GetOriginAddr());
 
     ElfReader reader(fileMapMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
@@ -138,7 +132,6 @@ bool StubFileInfo::Load()
     ElfReader reader(stubsMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
     reader.ParseELFSections(binBufparser, des_, secs);
-    jit_debug::RegisterStubAnToDebugger((const char *)stubsMem_.addr_);
 
     ModuleSectionDes &des = des_[0];
     uint64_t funcEntryAddr = des.GetSecAddr(ElfSecName::ARK_FUNCENTRY);

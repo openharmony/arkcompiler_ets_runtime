@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,10 +19,11 @@
 
 #include <vector>
 #include <cstring>
+#include <securec.h>
+#include <mutex>
 
 // Keep in sync with gdb/gdb/jit.h
 extern "C" {
-
 typedef enum {
     JIT_NOACTION = 0,
     JIT_REGISTER_FN,
@@ -34,6 +35,7 @@ struct jit_code_entry {
     struct jit_code_entry *prev_entry;
     const char *symfile_addr;
     uint64_t symfile_size;
+    const char *file_addr; // extend the standard
 };
 
 struct jit_descriptor {
@@ -49,18 +51,17 @@ struct jit_descriptor {
 // debugger reads.  Make sure to specify the version statically, because the
 // debugger checks the version before we can set it during runtime.
 struct jit_descriptor __jit_debug_descriptor = {
-        1, JIT_NOACTION, nullptr, nullptr
+    1, JIT_NOACTION, nullptr, nullptr
 };
 
 // Debuggers puts a breakpoint in this function.
-void __attribute__((noinline)) __jit_debug_register_code() {
-    // The noinline and the asm prevent calls to this function from being
-    // optimized out.
-#if !defined(_MSC_VER)
-    asm volatile("" ::: "memory");
-#endif
+void __attribute__((noinline)) __jit_debug_register_code()
+{
+    LOG_COMPILER(INFO) << "__jit_debug_register_code() is called.";
 }
 }
+
+std::mutex g_descMutex;
 
 namespace panda::ecmascript {
 namespace jit_debug {
@@ -70,6 +71,14 @@ static bool RegisterStubAnToDebuggerImpl(const char *fileAddr);
 
 void RegisterStubAnToDebugger(const char *fileAddr)
 {
+    std::lock_guard<std::mutex> guard(g_descMutex);
+    auto entry = __jit_debug_descriptor.first_entry;
+    while (entry != nullptr && entry->file_addr != fileAddr) {
+        entry = entry->next_entry;
+    }
+    if (entry != nullptr) {
+        return;
+    }
     if (RegisterStubAnToDebuggerImpl(fileAddr)) {
         LOG_COMPILER(INFO) << "success to register stub.an to debugger.";
     } else {
@@ -77,8 +86,41 @@ void RegisterStubAnToDebugger(const char *fileAddr)
     }
 }
 
-#define ALIGN_UP(addr, align) ((void *)(((uintptr_t)(addr)) % (align) == 0 ? \
-    (uintptr_t)(addr) : (uintptr_t)(addr) - ((uintptr_t)(addr)) % (align) + (align)))
+void UnregisterStubAnFromDebugger(const char *fileAddr)
+{
+    std::lock_guard<std::mutex> guard(g_descMutex);
+    auto entry = __jit_debug_descriptor.first_entry;
+    while (entry != nullptr && entry->file_addr != fileAddr) {
+        entry = entry->next_entry;
+    }
+    if (entry == nullptr) {
+        return;
+    }
+    if (entry->prev_entry != nullptr) {
+        entry->prev_entry->next_entry = entry->next_entry;
+    }
+    if (entry->next_entry != nullptr) {
+        entry->next_entry->prev_entry = entry->prev_entry;
+    }
+    __jit_debug_descriptor.action_flag = JIT_UNREGISTER_FN;
+    __jit_debug_descriptor.relevant_entry = entry;
+    __jit_debug_register_code();
+    __jit_debug_descriptor.relevant_entry = nullptr;
+    delete entry->symfile_addr;
+    delete entry;
+}
+
+template<typename T, typename U>
+inline T OffsetAlignUp(U *addr, uint64_t offset, uint32_t align)
+{
+    auto value = reinterpret_cast<uint64_t>(addr) + offset;
+    auto result = value;
+    if (align != 0 && (value % align != 0)) {
+        result = value + (align - (value % align));
+    }
+    return reinterpret_cast<T>(result);
+}
+
 
 struct StubAnInfo {
     uintptr_t fileAddr;
@@ -95,7 +137,39 @@ struct StubAnInfo {
     uint32_t symCnt;
 };
 
-const char g_shstr[] = "\0.shstrtab\0.strtab\0.symtab\0.text\0.eh_frame";
+/*
+ * [0] file header
+ * [1] program header
+ * [2] shstrtab
+ * [3] strtab
+ * [4] symtab
+ * [5] .eh_frame
+ * [6] empty header
+ * [7] shstrtab-header
+ * [8] strtab-header
+ * [9] symtab-header
+ * [10] text-header
+ * [11] .eh_frame header
+ */
+const char SHSTR[] = "\0.shstrtab\0.strtab\0.symtab\0.text\0.eh_frame";
+const uint32_t SHSTRTAB_NAME = 1;
+const uint32_t STRTAB_NAME = SHSTRTAB_NAME + strlen(".shstrtab") + 1;
+const uint32_t SYMTAB_NAME = STRTAB_NAME + strlen(".strtab") + 1;
+const uint32_t TEXT_NAME = SYMTAB_NAME + strlen(".symtab") + 1;
+const uint32_t EH_FRAME_NAME = TEXT_NAME + strlen(".text") + 1;
+
+const uint32_t SHSTRTAB_HDR_IDX = 1;
+const uint32_t STRTAB_HDR_IDX = 2;
+const uint32_t SYMTAB_HDR_IDX = 3;
+const uint32_t TEXT_HDR_IDX = 4;
+
+const uint32_t HEADER_CNT = 6;
+
+inline int InfoGetBind(unsigned char info)
+{
+    const uint32_t shift = 4;
+    return info >> shift;
+}
 
 StubAnInfo CollectStubAnInfo(uintptr_t fileAddr)
 {
@@ -128,7 +202,7 @@ StubAnInfo CollectStubAnInfo(uintptr_t fileAddr)
     uint64_t bcStubEnd = 0;
     for (uint32_t symIdx = 0; symIdx < symtabHdr->sh_size / symtabHdr->sh_entsize; symIdx++) {
         Elf64_Sym *sym = symtab + symIdx;
-        if ((sym->st_info >> 4) != STB_GLOBAL) {
+        if (InfoGetBind(sym->st_info) != STB_GLOBAL) {
             continue;
         }
         if (strncmp(&strtab[sym->st_name], "BCStub", strlen("BCStub")) != 0) {
@@ -152,16 +226,17 @@ bool CopyStrTab(void *buffer, const StubAnInfo &info)
 {
     Elf64_Ehdr *newEhdr = (Elf64_Ehdr *)(buffer);
     Elf64_Phdr *newPhdr = (Elf64_Phdr *)(newEhdr + 1);
-    const char *shStrBuff = (const char *)(newPhdr + 1);
-    if (memcpy((void *) shStrBuff, g_shstr, sizeof(g_shstr)) == 0) {
+    char *shStrBuff = reinterpret_cast<char *>(newPhdr + 1);
+    if (memcpy_s(shStrBuff, sizeof(SHSTR), SHSTR, sizeof(SHSTR)) != EOK) {
         return false;
     }
-    const char *newStrtab = shStrBuff + sizeof(g_shstr);
-    if (memcpy((void *) newStrtab, (void *)(info.fileAddr + info.strtabHdr->sh_offset), info.strtabHdr->sh_size) == 0) {
+    char *newStrtab = shStrBuff + sizeof(SHSTR);
+    if (memcpy_s(newStrtab, info.strtabHdr->sh_size,
+        reinterpret_cast<void *>(info.fileAddr + info.strtabHdr->sh_offset), info.strtabHdr->sh_size) != EOK) {
         return false;
     }
     const char bcStubName[] = "BCStubInterpreterRoutine";
-    if (memcpy((void *)(newStrtab + 1), (void *)bcStubName, sizeof(bcStubName)) == 0) {
+    if (memcpy_s((newStrtab + 1), sizeof(bcStubName), bcStubName, sizeof(bcStubName)) != EOK) {
         return false;
     }
     return true;
@@ -170,17 +245,17 @@ bool CopyStrTab(void *buffer, const StubAnInfo &info)
 void ConstructSymTab(Elf64_Sym *newSymtab, const StubAnInfo &info)
 {
     Elf64_Sym *symtab = (Elf64_Sym *)(info.fileAddr + info.symtabHdr->sh_offset);
-    const char *strtab = (const char *)(info.fileAddr + info.strtabHdr->sh_offset);
-    memset((void *)newSymtab, 0, sizeof(Elf64_Sym));
+    const char *strtab = reinterpret_cast<const char *>(info.fileAddr + info.strtabHdr->sh_offset);
+    memset_s(newSymtab, sizeof(Elf64_Sym), 0, sizeof(Elf64_Sym));
     uint32_t newSymIdx = 1;
     for (uint32_t symIdx = 0; symIdx < info.symtabHdr->sh_size / info.symtabHdr->sh_entsize; symIdx++) {
         Elf64_Sym *src = symtab + symIdx;
-        if ((src->st_info >> 4) == STB_GLOBAL
+        if (InfoGetBind(src->st_info) == STB_GLOBAL
             && strncmp(&strtab[src->st_name], "BCStub", strlen("BCStub")) != 0) {
             auto dst = newSymtab + newSymIdx;
             newSymIdx++;
             *dst = *src;
-            dst->st_shndx = 4;
+            dst->st_shndx = TEXT_HDR_IDX;
             dst->st_value -= info.textHdr->sh_offset;
         }
     }
@@ -188,7 +263,7 @@ void ConstructSymTab(Elf64_Sym *newSymtab, const StubAnInfo &info)
     bcSym->st_name = 1;
     bcSym->st_info = newSymtab[1].st_info;
     bcSym->st_other = newSymtab[1].st_other;
-    bcSym->st_shndx = 4;
+    bcSym->st_shndx = TEXT_HDR_IDX;
     bcSym->st_value = info.bcStubBegin - info.textHdr->sh_offset;
     bcSym->st_size = info.bcStubEnd - info.bcStubBegin;
 }
@@ -200,7 +275,10 @@ void ConstructEhdrAndPhdr(Elf64_Ehdr *newEhdr, Elf64_Shdr *newShdrtab, char *buf
         *newEhdr = *info.ehdr;
         newEhdr->e_flags = info.ehdr->e_flags;
         newEhdr->e_machine = info.ehdr->e_machine;
-        memcpy(newEhdr->e_ident, info.ehdr->e_ident, sizeof(info.ehdr->e_ident));
+        if (memcpy_s(newEhdr->e_ident, sizeof(info.ehdr->e_ident),
+                     info.ehdr->e_ident, sizeof(info.ehdr->e_ident)) != EOK) {
+            return;
+        }
         newEhdr->e_version = 1;
         newEhdr->e_phoff = sizeof(Elf64_Ehdr);
         newEhdr->e_shoff = (uintptr_t)newShdrtab - (uintptr_t)buffer;
@@ -208,8 +286,8 @@ void ConstructEhdrAndPhdr(Elf64_Ehdr *newEhdr, Elf64_Shdr *newShdrtab, char *buf
         newEhdr->e_phentsize = sizeof(Elf64_Phdr);
         newEhdr->e_phnum = 1;
         newEhdr->e_shentsize = sizeof(Elf64_Shdr);
-        newEhdr->e_shnum = 6;
-        newEhdr->e_shstrndx = 1;
+        newEhdr->e_shnum = HEADER_CNT;
+        newEhdr->e_shstrndx = SHSTRTAB_HDR_IDX;
         newEhdr->e_type = ET_REL;
         newEhdr->e_entry = 0;
     }
@@ -227,8 +305,8 @@ void ConstructEhdrAndPhdr(Elf64_Ehdr *newEhdr, Elf64_Shdr *newShdrtab, char *buf
     }
 }
 
-void ConstructShdrTab(Elf64_Shdr *newShdrTab, Elf64_Sym *newSymtab, char *buffer, void *ehFrame, uint32_t ehFrameSize,
-                      const StubAnInfo &info)
+void ConstructShdrTab(Elf64_Shdr *newShdrTab, Elf64_Sym *newSymtab, char *buffer, void *ehFrame,
+                      uint32_t ehFrameSize, const StubAnInfo &info)
 {
     Elf64_Shdr hdr{};
     Elf64_Shdr *emptyShdr = newShdrTab;
@@ -238,137 +316,102 @@ void ConstructShdrTab(Elf64_Shdr *newShdrTab, Elf64_Sym *newSymtab, char *buffer
     Elf64_Shdr *newTextHdr = newSymHdr + 1;
     Elf64_Shdr *ehFrameHdr = newTextHdr + 1;
     *emptyShdr = hdr;
-    {
-        *newShstrHdr = hdr;
-        newShstrHdr->sh_offset = sizeof(Elf64_Ehdr) + sizeof(Elf64_Phdr);
-        newShstrHdr->sh_size = sizeof(g_shstr);
-        newShstrHdr->sh_name = 1;
-        newShstrHdr->sh_addr = newStrtabHdr->sh_offset + (uintptr_t)buffer;
-        newShstrHdr->sh_type = SHT_STRTAB;
-        newShstrHdr->sh_flags = SHF_ALLOC;
-    }
 
-    {
-        *newStrtabHdr = hdr;
-        newStrtabHdr->sh_offset = newShstrHdr->sh_offset + newShstrHdr->sh_size;
-        newStrtabHdr->sh_size = info.strtabHdr->sh_size;
-        newStrtabHdr->sh_name = 11;
-        newStrtabHdr->sh_addr = newStrtabHdr->sh_offset + (uintptr_t)buffer;
-        newStrtabHdr->sh_addralign = 1;
-        newStrtabHdr->sh_type = SHT_STRTAB;
-        newStrtabHdr->sh_flags = SHF_ALLOC;
-        newStrtabHdr->sh_link = 0;
-    }
+    newShstrHdr->sh_offset = sizeof(Elf64_Ehdr) + sizeof(Elf64_Phdr);
+    newShstrHdr->sh_size = sizeof(SHSTR);
+    newShstrHdr->sh_name = SHSTRTAB_NAME;
+    newShstrHdr->sh_addr = newStrtabHdr->sh_offset + (uintptr_t)buffer;
+    newShstrHdr->sh_type = SHT_STRTAB;
+    newShstrHdr->sh_flags = SHF_ALLOC;
 
-    {
-        *newSymHdr = *info.symtabHdr;
-        newSymHdr->sh_offset = (uintptr_t)newSymtab - (uintptr_t)buffer;
-        newSymHdr->sh_size = info.symCnt * info.symtabHdr->sh_entsize;
-        newSymHdr->sh_entsize = info.symtabHdr->sh_entsize;
-        newSymHdr->sh_addralign = info.symtabHdr->sh_addralign;
-        newSymHdr->sh_name = 19;
-        newSymHdr->sh_addr = (uintptr_t)newSymtab;
-        newSymHdr->sh_link = 2;
-    }
+    newStrtabHdr->sh_offset = newShstrHdr->sh_offset + newShstrHdr->sh_size;
+    newStrtabHdr->sh_size = info.strtabHdr->sh_size;
+    newStrtabHdr->sh_name = STRTAB_NAME;
+    newStrtabHdr->sh_addr = newStrtabHdr->sh_offset + (uintptr_t)buffer;
+    newStrtabHdr->sh_addralign = 1;
+    newStrtabHdr->sh_type = SHT_STRTAB;
+    newStrtabHdr->sh_flags = SHF_ALLOC;
+    newStrtabHdr->sh_link = SHSTRTAB_HDR_IDX;
 
-    {
-        *newTextHdr = hdr;
-        newTextHdr->sh_offset = 0;
-        newTextHdr->sh_size = info.asmstubHdr->sh_offset + info.asmstubHdr->sh_size - info.textHdr->sh_offset;
-        newTextHdr->sh_name = 27;
-        newTextHdr->sh_addr = info.fileAddr + info.textHdr->sh_offset;
-        newTextHdr->sh_addralign = 0x10;
-        newTextHdr->sh_type = SHT_NOBITS;
-        newTextHdr->sh_flags = SHF_ALLOC | SHF_EXECINSTR;
-        newTextHdr->sh_link = 3;
-    }
+    *newSymHdr = *info.symtabHdr;
+    newSymHdr->sh_offset = (uintptr_t)newSymtab - (uintptr_t)buffer;
+    newSymHdr->sh_size = info.symCnt * info.symtabHdr->sh_entsize;
+    newSymHdr->sh_entsize = info.symtabHdr->sh_entsize;
+    newSymHdr->sh_addralign = info.symtabHdr->sh_addralign;
+    newSymHdr->sh_name = SYMTAB_NAME;
+    newSymHdr->sh_addr = (uintptr_t)newSymtab;
+    newSymHdr->sh_link = STRTAB_HDR_IDX;
 
-    {
-        ehFrameHdr->sh_offset = (uintptr_t)ehFrame - (uintptr_t )buffer;
-        ehFrameHdr->sh_size = ehFrameSize;
-        ehFrameHdr->sh_name = 33;
-        ehFrameHdr->sh_addr = (uintptr_t)ehFrame;
-        ehFrameHdr->sh_addralign = 8;
-        ehFrameHdr->sh_type = SHT_PROGBITS;
-        ehFrameHdr->sh_flags = SHF_ALLOC;
-        ehFrameHdr->sh_link = 4;
-    }
+    newTextHdr->sh_offset = 0;
+    newTextHdr->sh_size = info.asmstubHdr->sh_offset + info.asmstubHdr->sh_size - info.textHdr->sh_offset;
+    newTextHdr->sh_name = TEXT_NAME;
+    newTextHdr->sh_addr = info.fileAddr + info.textHdr->sh_offset;
+    newTextHdr->sh_addralign = sizeof(uint32_t);
+    newTextHdr->sh_type = SHT_NOBITS;
+    newTextHdr->sh_flags = SHF_ALLOC | SHF_EXECINSTR;
+    newTextHdr->sh_link = SYMTAB_HDR_IDX;
+
+    ehFrameHdr->sh_offset = (uintptr_t)ehFrame - (uintptr_t)buffer;
+    ehFrameHdr->sh_size = ehFrameSize;
+    ehFrameHdr->sh_name = EH_FRAME_NAME;
+    ehFrameHdr->sh_addr = (uintptr_t)ehFrame;
+    ehFrameHdr->sh_addralign = sizeof(uintptr_t);
+    ehFrameHdr->sh_type = SHT_PROGBITS;
+    ehFrameHdr->sh_flags = SHF_ALLOC;
+    ehFrameHdr->sh_link = TEXT_HDR_IDX;
 }
 
 bool CreateDebuggerElf(uintptr_t fileAddr, void **result, uint64_t *elfSize)
 {
     auto info = CollectStubAnInfo(fileAddr);
     std::vector<uint8_t> ehFrame {
-            0x10, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-            0x1, 0x0, 0x4, 0x78, 0x1e, 0x0, 0x0, 0x0,
-            0x0, 0x0, 0x0, 0x0, 0x4b, 0x0, 0x0, 0x0,
-            0x18, 0x0, 0x0, 0x0, 0x0, 0xe0, 0x73, 0xab,
-            0xff, 0xff, 0x0, 0x0, 0x30, 0x2c, 0x12, 0x0,
-            0x0, 0x0, 0x0, 0x0, 0xc, 0x1d, 0x0, 0x10,
-            0x1e, 0x17, 0x8d, 0x0, 0x12, 0x8, 0x18, 0x1c,
-            0x6, 0x8, 0x0, 0x29, 0x28, 0x7, 0x0, 0x8,
-            0x10, 0x1c, 0x6, 0x2f, 0xee, 0xff, 0x8, 0x8,
-            0x22, 0x10, 0x1d, 0x17, 0x8d, 0x0, 0x12, 0x8,
-            0x18, 0x1c, 0x6, 0x8, 0x0, 0x29, 0x28, 0x7,
-            0x0, 0x8, 0x10, 0x1c, 0x6, 0x2f, 0xee, 0xff,
+            0x10, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x4, 0x78, 0x1e, 0x0, 0x0, 0x0,
+            0x0, 0x0, 0x0, 0x0, 0x4b, 0x0, 0x0, 0x0, 0x18, 0x0, 0x0, 0x0, 0x0, 0xe0, 0x73, 0xab,
+            0xff, 0xff, 0x0, 0x0, 0x30, 0x2c, 0x12, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc, 0x1d, 0x0, 0x10,
+            0x1e, 0x17, 0x8d, 0x0, 0x12, 0x8, 0x18, 0x1c, 0x6, 0x8, 0x0, 0x29, 0x28, 0x7, 0x0, 0x8,
+            0x10, 0x1c, 0x6, 0x2f, 0xee, 0xff, 0x8, 0x8, 0x22, 0x10, 0x1d, 0x17, 0x8d, 0x0, 0x12, 0x8,
+            0x18, 0x1c, 0x6, 0x8, 0x0, 0x29, 0x28, 0x7, 0x0, 0x8, 0x10, 0x1c, 0x6, 0x2f, 0xee, 0xff,
             0x8, 0x0, 0x22,
     };
     const uint32_t addrOff = 28;
     const uint32_t lenOff = 36;
-    auto writeU64 = [&](uint32_t idx, uint64_t data) {
+    auto writeU64 = [&ehFrame](uint32_t idx, uint64_t data) {
         for (uint32_t i = 0; i < sizeof(uint64_t); i++) {
             ehFrame[idx + i] = (data >> (8 * i)) & 0xff;
         }
     };
     writeU64(addrOff, info.bcStubBegin + fileAddr);
     writeU64(lenOff, info.bcStubEnd - info.bcStubBegin);
-    /*
-     * [0] file header
-     * [1] program header
-     * [2] shstrtab
-     * [3] strtab
-     * [4] symtab
-     * [5] .eh_frame
-     * [6] shstrtab-header
-     * [7] strtab-header
-     * [8] symtab-header
-     * [9] text-header
-     * [10] .eh_frame header
-     */
-    uint32_t totalSize = sizeof(Elf64_Ehdr) + sizeof(Elf64_Phdr);
-    totalSize += sizeof(g_shstr);
-    totalSize += info.strtabHdr->sh_size;
+
+    uint32_t totalSize = sizeof(Elf64_Ehdr) + sizeof(Elf64_Phdr) + sizeof(SHSTR) + info.strtabHdr->sh_size;
     totalSize += info.symtabHdr->sh_entsize * info.symCnt + sizeof(Elf64_Sym); // for align
     totalSize += ehFrame.size() + sizeof(uintptr_t);
-    totalSize += sizeof(Elf64_Shdr) * 6 + sizeof(Elf64_Shdr); // for align
+    totalSize += sizeof(Elf64_Shdr) * HEADER_CNT + sizeof(Elf64_Shdr); // for align
 
     char *buffer = new char[totalSize];
     Elf64_Ehdr *newEhdr = (Elf64_Ehdr *)(buffer);
     Elf64_Phdr *newPhdr = (Elf64_Phdr *)(newEhdr + 1);
     const char *shStrBuff = (const char *)(newPhdr + 1);
-    const char *newStrtab = shStrBuff + sizeof(g_shstr);
+    const char *newStrtab = shStrBuff + sizeof(SHSTR);
     if (!CopyStrTab(buffer, info)) {
         delete[] buffer;
         return false;
     }
 
-    Elf64_Sym *newSymtab = (Elf64_Sym *) ALIGN_UP((uintptr_t)newStrtab + info.strtabHdr->sh_size, info.symtabHdr->sh_addralign);
+    auto newSymtab = OffsetAlignUp<Elf64_Sym *>(newStrtab, info.strtabHdr->sh_size, info.symtabHdr->sh_addralign);
     ConstructSymTab(newSymtab, info);
 
-    void *ehFrameBuffer = (void *)((uintptr_t)newSymtab + info.symtabHdr->sh_entsize * info.symCnt);
-    ehFrameBuffer = (void *) ALIGN_UP(ehFrameBuffer, 8);
-    if (memcpy(ehFrameBuffer, ehFrame.data(), ehFrame.size()) == nullptr) {
+    auto ehFrameBuffer = OffsetAlignUp<char *>(newSymtab, info.symtabHdr->sh_entsize * info.symCnt, sizeof(uintptr_t));
+    if (memcpy_s(ehFrameBuffer, ehFrame.size(), ehFrame.data(), ehFrame.size()) != EOK) {
         delete[] buffer;
         return false;
     }
 
-    Elf64_Shdr *newShdrtab = (Elf64_Shdr *)((uintptr_t)ehFrameBuffer + ehFrame.size());
-    newShdrtab = (Elf64_Shdr *)ALIGN_UP(newShdrtab, 8);
-
+    auto newShdrtab = OffsetAlignUp<Elf64_Shdr *>(ehFrameBuffer, ehFrame.size(), sizeof(uintptr_t));
     ConstructEhdrAndPhdr(newEhdr, newShdrtab, buffer, info);
     ConstructShdrTab(newShdrtab, newSymtab, buffer, ehFrameBuffer, ehFrame.size(), info);
 
-    *result = (void *)buffer;
+    *result = reinterpret_cast<void *>(buffer);
     *elfSize = totalSize;
     return true;
 }
@@ -380,6 +423,7 @@ static bool RegisterStubAnToDebuggerImpl(const char *fileAddr)
         return false;
     }
     entry->prev_entry = nullptr;
+    entry->file_addr = fileAddr;
 
     // Insert this entry at the head of the list.
     jit_code_entry *nextEntry = __jit_debug_descriptor.first_entry;
