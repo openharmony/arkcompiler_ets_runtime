@@ -69,7 +69,7 @@ public:
         return TLAB_SIZE;
     }
 
-    bool NeedNewTlab(size_t size)
+    inline bool NeedNewTlab(size_t size)
     {
         if (size > TLAB_SIZE) {
             return false;
@@ -78,9 +78,19 @@ public:
             tlabWasteLimit_ += INCREASE_WASTE_SIZE;
             return false;
         }
+        if (disabled_) {
+            return false;
+        }
         return true;
     }
+
+    void DisableNewTlab()
+    {
+        disabled_ = true;
+    }
+
 private:
+    bool disabled_ {false};
     Heap *heap_ {nullptr};
     BumpPointerAllocator bpAllocator_;
     size_t tlabWasteLimit_ {INIT_WASTE_LIMIT};
