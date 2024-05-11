@@ -63,6 +63,7 @@ public:
     void AddGCStatsToKey();
     bool CheckIfMainThread() const;
     bool CheckIfKeyPauseTime() const;
+    void SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory) const;
 
     void IncGCCount()
     {

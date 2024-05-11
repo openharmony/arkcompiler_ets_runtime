@@ -115,6 +115,26 @@ void GCKeyStats::SendSysEvent() const
 #endif
 }
 
+void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory) const
+{
+#ifdef ENABLE_HISYSEVENT
+    int32_t ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::FRAMEWORK,
+        "ARK_STATS_DUMP",
+        OHOS::HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "PID", getprocpid(),
+        "TID", syscall(SYS_gettid),
+        "PROCESS_NAME", PGOProfilerManager::GetInstance()->GetBundleName(),
+        "LIMITSIZE", limitSize,
+        "ACTIVE_MEMORY", activeMemory,
+        "TYPE", type);
+    if (ret != 0) {
+        LOG_GC(INFO) << "GCKeyStats SendSysEventBeforeDump Failed! ret = " << ret;
+    }
+#else
+    LOG_GC(INFO) << "GCKeyStats type: " << type << ", limitSize: " << limitSize << ", activeMemory: " << activeMemory;
+#endif
+}
+
 void GCKeyStats::PrintKeyStatisticResult() const
 {
     LOG_GC(INFO) << "/******************* GCKeyStats HiSysEvent statistic: *******************/";
