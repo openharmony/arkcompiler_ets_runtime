@@ -76,6 +76,7 @@ LMIRBuilder::LMIRBuilder(Module &module_) : mirBuilder(*module_.GetMIRBuilder())
     strType = CreatePtrType(u8Type);  // u8PtrType
     i64PtrType = CreatePtrType(i64Type);
     i64RefType = CreateRefType(i64Type);
+    i64RefRefType = CreateRefType(i64RefType);
 }
 
 void LMIRBuilder::DumpIRToFile(const std::string fileName)

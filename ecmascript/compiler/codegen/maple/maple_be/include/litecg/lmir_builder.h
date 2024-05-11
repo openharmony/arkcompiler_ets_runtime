@@ -725,6 +725,7 @@ public:
     Type *strType;
     Type *i64PtrType;
     Type *i64RefType;
+    Type *i64RefRefType;
 
 private:
     Stmt &CreateSwitchInternal(Type *type, Expr cond, BB &defaultBB, std::vector<std::pair<int64_t, BB *>> &cases);
