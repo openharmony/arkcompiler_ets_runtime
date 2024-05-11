@@ -483,6 +483,7 @@ public:
 
     bool IsModuleNamespaceObject();
     bool IsSharedArrayBuffer();
+    bool IsSendableArrayBuffer();
 
     bool IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value);
     Local<StringRef> Typeof(const EcmaVM *vm);
