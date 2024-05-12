@@ -438,6 +438,8 @@ EcmaVM::~EcmaVM()
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         GetJit()->ClearTaskWithVm(this);
     }
+    // clear c_address: c++ pointer delete
+    ClearBufferData();
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
@@ -456,8 +458,6 @@ EcmaVM::~EcmaVM()
     }
 #endif
 
-    // clear c_address: c++ pointer delete
-    ClearBufferData();
     if (!isBundlePack_) {
         std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
         if (jsPandaFile != nullptr) {

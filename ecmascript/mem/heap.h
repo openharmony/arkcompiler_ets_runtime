@@ -558,6 +558,7 @@ private:
     void ReclaimRegions();
 
     bool parallelGC_ {true};
+    bool optionalLogEnabled_ {false};
     bool localFullMarkTriggered_ {false};
     GCStats *sGCStats_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};

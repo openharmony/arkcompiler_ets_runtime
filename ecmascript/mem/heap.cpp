@@ -106,7 +106,8 @@ void SharedHeap::AdjustGlobalSpaceAllocLimit()
                                       config_.GetDefaultGlobalAllocLimit() * 2); // 2: double
     globalSpaceAllocLimit_ = std::min(std::min(globalSpaceAllocLimit_, GetCommittedSize() + growingStep_),
                                       config_.GetMaxHeapSize());
-    LOG_ECMA(DEBUG) << "Shared gc adjust global space alloc limit to: " << globalSpaceAllocLimit_;
+    LOG_ECMA_IF(optionalLogEnabled_, INFO) << "Shared gc adjust global space alloc limit to: "
+        << globalSpaceAllocLimit_;
 }
 
 bool SharedHeap::ObjectExceedMaxHeapSize() const
@@ -131,6 +132,7 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     heapRegionAllocator_ = heapRegionAllocator;
     shouldVerifyHeap_ = option.EnableHeapVerify();
     parallelGC_ = option.EnableParallelGC();
+    optionalLogEnabled_ = option.EnableOptionalLog();
     size_t maxHeapSize = config_.GetMaxHeapSize();
     size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
     sNonMovableSpace_ = new SharedNonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
@@ -1510,9 +1512,6 @@ void Heap::TryTriggerFullMarkBySharedSize(size_t size)
             SetFullMarkRequestedState(true);
             TryTriggerConcurrentMarking();
             newAllocatedSharedObjectSize_ = 0;
-        } else if (!NeedStopCollection()) {
-            CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
-            newAllocatedSharedObjectSize_= 0;
         }
     }
 }
