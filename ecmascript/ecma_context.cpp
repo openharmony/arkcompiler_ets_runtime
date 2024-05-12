@@ -313,6 +313,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             module = moduleManager_->HostGetImportedModule(moduleName);
         }
         // esm -> SourceTextModule; cjs or script -> string of recordName
+        module->SetSendableEnv(thread_, JSTaggedValue::Undefined());
         func->SetModule(thread_, module);
     } else {
         // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,

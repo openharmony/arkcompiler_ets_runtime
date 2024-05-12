@@ -408,6 +408,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(AsyncGeneratorResolve)              \
     V(AsyncGeneratorReject)               \
     V(NewLexicalEnvWithName)              \
+    V(NewSendableEnv)                     \
     V(OptGetUnmapedArgs)                  \
     V(OptCopyRestArgs)                    \
     V(NotifyBytecodePcChanged)            \
@@ -815,6 +816,7 @@ private:
     static inline JSTaggedValue RuntimeCreateObjectWithBuffer(JSThread *thread, ObjectFactory *factory,
                                                               const JSHandle<JSObject> &literal);
     static inline JSTaggedValue RuntimeNewLexicalEnv(JSThread *thread, uint16_t numVars);
+    static inline JSTaggedValue RuntimeNewSendableEnv(JSThread *thread, uint16_t numVars);
     static inline JSTaggedValue RuntimeNewObjRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                    const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx,
                                                    uint16_t length);

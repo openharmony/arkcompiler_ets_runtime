@@ -409,6 +409,14 @@ JSTaggedValue SlowRuntimeStub::NewLexicalEnv(JSThread *thread, uint16_t numVars)
     return RuntimeStubs::RuntimeNewLexicalEnv(thread, numVars);
 }
 
+JSTaggedValue SlowRuntimeStub::NewSendableEnv(JSThread *thread, uint16_t numVars)
+{
+    INTERPRETER_TRACE(thread, NewSendableEnv);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    return RuntimeStubs::RuntimeNewSendableEnv(thread, numVars);
+}
+
 JSTaggedValue SlowRuntimeStub::NewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId)
 {
     INTERPRETER_TRACE(thread, NewlexenvwithName);

@@ -5441,6 +5441,210 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16)
     }
 }
 
+DECLARE_ASM_HANDLER(HandleCallRuntimeNewSendableEnvImm8)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef numVars = ZExtInt8ToInt16(ReadInst8_1(pc));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(NewSendableEnv),
+                              { Int16ToTaggedInt(numVars) });
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
+    Bind(&notException);
+    varAcc = res;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    SetSendableEnvToModule(glue, module, res);
+    DISPATCH_WITH_ACC(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeNewSendableEnvImm16)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef numVars = ReadInst16_1(pc);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(NewSendableEnv),
+                              { Int16ToTaggedInt(numVars) });
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
+    Bind(&notException);
+    varAcc = res;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    SetSendableEnvToModule(glue, module, res);
+    DISPATCH_WITH_ACC(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeStSendableVarImm4Imm4)
+{
+    auto env = GetEnvironment();
+    GateRef level = ZExtInt8ToInt32(ReadInst4_2(pc));
+    GateRef slot = ZExtInt8ToInt32(ReadInst4_3(pc));
+
+    GateRef value = acc;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    SetPropertiesToSendableEnv(glue, *currentEnv, slot, value);
+    DISPATCH(CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeStSendableVarImm8Imm8)
+{
+    auto env = GetEnvironment();
+    GateRef level = ZExtInt8ToInt32(ReadInst8_1(pc));
+    GateRef slot = ZExtInt8ToInt32(ReadInst8_2(pc));
+
+    GateRef value = acc;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    SetPropertiesToSendableEnv(glue, *currentEnv, slot, value);
+    DISPATCH(CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeStSendableVarImm16Imm16)
+{
+    auto env = GetEnvironment();
+    GateRef level = ZExtInt16ToInt32(ReadInst16_1(pc));
+    GateRef slot = ZExtInt16ToInt32(ReadInst16_3(pc));
+
+    GateRef value = acc;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    SetPropertiesToSendableEnv(glue, *currentEnv, slot, value);
+    DISPATCH(CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableVarImm4Imm4)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef level = ZExtInt8ToInt32(ReadInst4_2(pc));
+    GateRef slot = ZExtInt8ToInt32(ReadInst4_3(pc));
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    GateRef variable = GetPropertiesFromSendableEnv(*currentEnv, slot);
+    varAcc = variable;
+
+    DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableVarImm8Imm8)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef level = ZExtInt8ToInt32(ReadInst8_1(pc));
+    GateRef slot = ZExtInt8ToInt32(ReadInst8_2(pc));
+
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    GateRef variable = GetPropertiesFromSendableEnv(*currentEnv, slot);
+    varAcc = variable;
+
+    DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableVarImm16Imm16)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef level = ZExtInt16ToInt32(ReadInst16_1(pc));
+    GateRef slot = ZExtInt16ToInt32(ReadInst16_3(pc));
+
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    GateRef variable = GetPropertiesFromSendableEnv(*currentEnv, slot);
+    varAcc = variable;
+
+    DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16);
+}
+
 ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)

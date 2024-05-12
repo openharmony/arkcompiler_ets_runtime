@@ -435,8 +435,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
     CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
-    EcmaVM *vm = thread->GetEcmaVM();
-    CString newFileName = ModulePathHelper::ParseUrl(vm, recordName);
+    CString newFileName = filename;
     if (newFileName.empty()) {
         newFileName = filename;
     }

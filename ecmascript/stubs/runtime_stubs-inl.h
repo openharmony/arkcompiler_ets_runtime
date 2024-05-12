@@ -46,6 +46,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
+#include "ecmascript/sendable_env.h"
 #include "ecmascript/template_string.h"
 
 namespace panda::ecmascript {
@@ -896,7 +897,12 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
         chc.Update(aotLiteralInfo->GetChc());
     }
 
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, cp, literalId, entry);
+    JSHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
+    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
+        JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
+        sendableEnv = JSHandle<JSTaggedValue>(thread, moduleRecord->GetSendableEnv());
+    }
+    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, cp, literalId, entry, sendableEnv);
 
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
@@ -946,8 +952,13 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
 
-    auto literalObj =
-        ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry, ClassKind::SENDABLE);
+    JSHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
+    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
+        JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
+        sendableEnv = JSHandle<JSTaggedValue>(thread, moduleRecord->GetSendableEnv());
+    }
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(
+        thread, constpoolHandle, literalId, entry, sendableEnv, ClassKind::SENDABLE);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     auto literalLength = arrayHandle->GetLength();
@@ -965,6 +976,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
         SendableClassDefiner::DefineSendableClassFromExtractor(thread, extractor, staticFieldArray);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> sendableClsModule = moduleManager->GenerateSendableFuncModule(module);
+    JSHandle<SourceTextModule> sendableClsModuleRecord(sendableClsModule);
+    sendableClsModuleRecord->SetSendableEnv(thread, sendableEnv);
     cls->SetModule(thread, sendableClsModule.GetTaggedValue());
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2074,6 +2087,19 @@ JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnv(JSThread *thread, uint16_t numV
 
     JSTaggedValue currentLexenv = thread->GetCurrentLexenv();
     newEnv->SetParentEnv(thread, currentLexenv);
+    newEnv->SetScopeInfo(thread, JSTaggedValue::Hole());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return newEnv.GetTaggedValue();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeNewSendableEnv(JSThread *thread, uint16_t numVars)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SendableEnv> newEnv = factory->NewSendableEnv(numVars);
+
+    JSTaggedValue module = JSFunction::Cast(thread->GetCurrentFunction())->GetModule();
+    JSHandle<SourceTextModule> moduleHandle(thread, module);
+    newEnv->SetParentEnv(thread, moduleHandle->GetSendableEnv());
     newEnv->SetScopeInfo(thread, JSTaggedValue::Hole());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return newEnv.GetTaggedValue();

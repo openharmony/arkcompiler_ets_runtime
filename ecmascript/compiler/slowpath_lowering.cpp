@@ -755,6 +755,20 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16:
             LowerSendableExternalModule(gate);
             break;
+        case EcmaOpcode::CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16:
+            LowerNewSendableEnv(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16:
+            LowerStSendableVar(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
+            LowerLdSendableVar(gate);
+            break;
         case EcmaOpcode::LDA_STR_ID16:
             LowerLdStr(gate);
             break;
@@ -2009,6 +2023,18 @@ void SlowPathLowering::LowerNewLexicalEnvWithName(GateRef gate)
     ReplaceHirWithValue(gate, result, true);
 }
 
+void SlowPathLowering::LowerNewSendableEnv(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    auto args = { builder_.ToTaggedInt(acc_.GetValueIn(gate, 0)) };
+    GateRef result = LowerCallRuntime(gate, RTSTUB_ID(NewSendableEnv), args, true);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+    builder_.SetSendableEnvToModule(glue_, module, result);
+    ReplaceHirWithValue(gate, result);
+}
+
 void SlowPathLowering::LowerPopLexicalEnv(GateRef gate)
 {
     GateRef currentEnv = acc_.GetValueIn(gate, 0);
@@ -2328,6 +2354,41 @@ void SlowPathLowering::LowerLdLexVar(GateRef gate)
     ReplaceHirWithValue(gate, result, true);
 }
 
+void SlowPathLowering::LowerLdSendableVar(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef level = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef slot = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 1));
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+    DEFVALUE(currentEnv, (&builder_), VariableType::JS_ANY(), builder_.GetSendableEnvFromModule(module));
+    GateRef index = builder_.Int32(SendableEnv::SENDABLE_PARENT_ENV_INDEX);
+    Label exit(&builder_);
+    uint64_t constLevel = acc_.TryGetValue(acc_.GetValueIn(gate, 0));
+    if (constLevel == 0) {
+        builder_.Jump(&exit);
+    } else if (constLevel == 1) {
+        currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
+        builder_.Jump(&exit);
+    } else {
+        DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
+        Label loopHead(&builder_);
+        Label loopEnd(&builder_);
+        BRANCH_CIR(builder_.Int32LessThan(*i, level), &loopHead, &exit);
+        builder_.LoopBegin(&loopHead);
+        currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        BRANCH_CIR(builder_.Int32LessThan(*i, level), &loopEnd, &exit);
+        builder_.Bind(&loopEnd);
+        builder_.LoopEnd(&loopHead);
+    }
+    builder_.Bind(&exit);
+    GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(SendableEnv::SENDABLE_RESERVED_ENV_LENGTH));
+    GateRef result = builder_.GetValueFromTaggedArray(*currentEnv, valueIndex);
+    ReplaceHirWithValue(gate, result, true);
+}
+
 void SlowPathLowering::LowerStLexVar(GateRef gate)
 {
     // 4: number of value inputs
@@ -2358,6 +2419,43 @@ void SlowPathLowering::LowerStLexVar(GateRef gate)
     }
     builder_.Bind(&exit);
     GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(LexicalEnv::RESERVED_ENV_LENGTH));
+    builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *currentEnv, valueIndex, value);
+    auto result = *currentEnv;
+    ReplaceHirWithValue(gate, result, true);
+}
+
+void SlowPathLowering::LowerStSendableVar(GateRef gate)
+{
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef level = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef slot = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 1));
+    GateRef value = acc_.GetValueIn(gate, 2);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+    DEFVALUE(currentEnv, (&builder_), VariableType::JS_ANY(), builder_.GetSendableEnvFromModule(module));
+    GateRef index = builder_.Int32(SendableEnv::SENDABLE_PARENT_ENV_INDEX);
+    Label exit(&builder_);
+    uint64_t constLevel = acc_.TryGetValue(acc_.GetValueIn(gate, 0));
+    if (constLevel == 0) {
+        builder_.Jump(&exit);
+    } else if (constLevel == 1) {
+        currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
+        builder_.Jump(&exit);
+    } else {
+        DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
+        Label loopHead(&builder_);
+        Label loopEnd(&builder_);
+        BRANCH_CIR(builder_.Int32LessThan(*i, level), &loopHead, &exit);
+        builder_.LoopBegin(&loopHead);
+        currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        BRANCH_CIR(builder_.Int32LessThan(*i, level), &loopEnd, &exit);
+        builder_.Bind(&loopEnd);
+        builder_.LoopEnd(&loopHead);
+    }
+    builder_.Bind(&exit);
+    GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(SendableEnv::SENDABLE_RESERVED_ENV_LENGTH));
     builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *currentEnv, valueIndex, value);
     auto result = *currentEnv;
     ReplaceHirWithValue(gate, result, true);

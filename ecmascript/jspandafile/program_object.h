@@ -494,7 +494,8 @@ public:
     static JSTaggedValue PUBLIC_API GetMethodFromCache(JSTaggedValue constpool, uint32_t index);
 
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
-        uint32_t literal, CString entry, ClassKind kind = ClassKind::NON_SENDABLE)
+        uint32_t literal, CString entry, JSHandle<JSTaggedValue> sendableEnv = JSHandle<JSTaggedValue>(),
+        ClassKind kind = ClassKind::NON_SENDABLE)
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         // Do not use cache when sendable for get wrong obj from cache,
@@ -516,8 +517,8 @@ public:
             ASSERT(jsPandaFile->IsNewVersion());
             panda_file::File::EntityId literalId = constpool->GetEntityId(literal);
             bool needSetAotFlag = isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined();
-            JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes, nullptr, kind);
+            JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(thread,
+                jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes, nullptr, sendableEnv, kind);
             JSHandle<ClassLiteral> classLiteral;
             if (kind == ClassKind::SENDABLE) {
                 classLiteral = factory->NewSClassLiteral();

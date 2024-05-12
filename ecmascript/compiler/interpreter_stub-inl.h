@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_arguments.h"
@@ -281,6 +282,11 @@ GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::ECMA_MODULE_OFFSET));
 }
 
+GateRef InterpreterStubBuilder::GetSendableEnvFromModule(GateRef module)
+{
+    return Load(VariableType::JS_POINTER(), module, IntPtr(SourceTextModule::SENDABLE_ENV_OFFSET));
+}
+
 GateRef InterpreterStubBuilder::GetHomeObjectFromFunction(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::HOME_OBJECT_OFFSET));
@@ -319,6 +325,12 @@ void InterpreterStubBuilder::SetModuleToFunction(GateRef glue, GateRef function,
 {
     GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, function, offset, value);
+}
+
+void InterpreterStubBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value)
+{
+    GateRef offset = IntPtr(SourceTextModule::SENDABLE_ENV_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, module, offset, value);
 }
 
 void InterpreterStubBuilder::SetPcToFrame(GateRef glue, GateRef frame, GateRef value)

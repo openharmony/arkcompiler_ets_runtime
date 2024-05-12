@@ -50,6 +50,7 @@ class GlobalEnvConstants;
 class AccessorData;
 class JSGlobalObject;
 class LexicalEnv;
+class SendableEnv;
 class JSDate;
 class JSProxy;
 class JSRealm;
@@ -846,6 +847,7 @@ public:
     JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
     JSHandle<Method> CloneMethodTemporaryForJIT(JSHandle<Method> method);
+    JSHandle<SendableEnv> NewSendableEnv(int numSlots);
 
 private:
     friend class GlobalEnv;
