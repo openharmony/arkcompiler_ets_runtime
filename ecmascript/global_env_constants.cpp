@@ -245,6 +245,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         JSType::RESOLVEDRECORDINDEXBINDING_RECORD));
     SetConstant(ConstantIndex::RESOLVED_RECORD_BINDING_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ResolvedRecordBinding::SIZE, JSType::RESOLVEDRECORDBINDING_RECORD));
+    SetConstant(ConstantIndex::SENDABLE_ENV_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SENDABLE_ENV));
 }
 
 void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory)

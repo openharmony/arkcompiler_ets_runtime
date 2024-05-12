@@ -31,6 +31,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/sendable_env.h"
 
 // class Object;
 namespace panda::ecmascript {
@@ -667,6 +668,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSSourceTextModule()
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
     obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    obj->SetSendableEnv(thread_, undefinedValue);
     return obj;
 }
 
@@ -825,5 +827,16 @@ JSHandle<AOTLiteralInfo> ObjectFactory::NewSAOTLiteralInfo(uint32_t length, JSTa
     JSHandle<AOTLiteralInfo> aotLiteralInfo(thread_, header);
     aotLiteralInfo->InitializeWithSpecialValue(initVal, length);
     return aotLiteralInfo;
+}
+
+JSHandle<SendableEnv> ObjectFactory::NewSendableEnv(int numSlots)
+{
+    NewObjectHook();
+    size_t size = SendableEnv::ComputeSize(numSlots);
+    auto header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(sHeap_->GetGlobalConst()->GetSendableEnvClass().GetTaggedObject()), size);
+    JSHandle<SendableEnv> array(thread_, header);
+    array->InitializeWithSpecialValue(JSTaggedValue::Hole(), numSlots + SendableEnv::SENDABLE_RESERVED_ENV_LENGTH);
+    return array;
 }
 }  // namespace panda::ecmascript

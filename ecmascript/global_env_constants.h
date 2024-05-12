@@ -94,6 +94,7 @@ class ObjectFactory;
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ResolvedRecordIndexBindingClass, RESOLVED_RECORD_INEDX_BINDING_CLASS_INDEX, ecma_roots_class)    \
     V(JSTaggedValue, ResolvedRecordBindingClass, RESOLVED_RECORD_BINDING_CLASS_INDEX, ecma_roots_class)               \
+    V(JSTaggedValue, SendableEnvClass, SENDABLE_ENV_CLASS_INDEX, ecma_roots_class)                                    \
 
 #define GLOBAL_ENV_CONSTANT_CLASS(V)                                                                                  \
     V(JSTaggedValue, JSProxyCallableClass, JS_PROXY_CALLABLE_CLASS_INDEX, ecma_roots_class)                           \

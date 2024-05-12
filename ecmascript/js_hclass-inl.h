@@ -194,6 +194,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::SENDABLE_ENV:
         case JSType::CONSTANT_POOL:
         case JSType::AOT_LITERAL_INFO:
         case JSType::VTABLE:

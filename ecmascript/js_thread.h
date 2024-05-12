@@ -343,6 +343,7 @@ public:
     }
 
     JSTaggedValue GetCurrentLexenv() const;
+    JSTaggedValue GetCurrentFunction() const;
 
     void RegisterRTInterface(size_t id, Address addr)
     {

@@ -38,6 +38,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/stubs/runtime_stubs.h"
+#include "ecmascript/sendable_env.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -1021,7 +1022,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 11;
+    constexpr size_t numCallRuntimeOps = 19;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -7606,6 +7607,134 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
         SET_ACC(moduleVar);
         DISPATCH(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8) {
+        uint8_t numVars = READ_INST_8_1();
+        LOG_INST() << "intrinsics::newsendableenv8"
+                   << " imm " << numVars;
+
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::NewSendableEnv(thread, numVars);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        SourceTextModule *moduleRecord = SourceTextModule::Cast(GetEcmaModule(sp));
+        moduleRecord->SetSendableEnv(thread, res);
+        DISPATCH(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16) {
+        uint16_t numVars = READ_INST_16_1();
+        LOG_INST() << "intrinsics::newsendableenv16"
+                   << " imm " << numVars;
+
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::NewSendableEnv(thread, numVars);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        SourceTextModule *moduleRecord = SourceTextModule::Cast(GetEcmaModule(sp));
+        moduleRecord->SetSendableEnv(thread, res);
+        DISPATCH(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4) {
+        uint16_t level = READ_INST_4_2();
+        uint16_t slot = READ_INST_4_3();
+        LOG_INST() << "intrinsics::stsendablevar4"
+                   << " level:" << level << " slot:" << slot;
+
+        JSTaggedValue value = GET_ACC();
+        SourceTextModule *moduleRecord = SourceTextModule::Cast(GetEcmaModule(sp));
+        JSTaggedValue env = moduleRecord->GetSendableEnv();
+        for (uint32_t i = 0; i < level; i++) {
+            JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+            ASSERT(!taggedParentEnv.IsUndefined());
+            env = taggedParentEnv;
+        }
+        SendableEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, value);
+
+        DISPATCH(CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8) {
+        uint16_t level = READ_INST_8_1();
+        uint16_t slot = READ_INST_8_2();
+        LOG_INST() << "intrinsics::stsendablevar8"
+                   << " level:" << level << " slot:" << slot;
+
+        JSTaggedValue value = GET_ACC();
+        SourceTextModule *moduleRecord = SourceTextModule::Cast(GetEcmaModule(sp));
+        JSTaggedValue env = moduleRecord->GetSendableEnv();
+        for (uint32_t i = 0; i < level; i++) {
+            JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+            ASSERT(!taggedParentEnv.IsUndefined());
+            env = taggedParentEnv;
+        }
+        SendableEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, value);
+
+        DISPATCH(CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16) {
+        uint16_t level = READ_INST_16_1();
+        uint16_t slot = READ_INST_16_3();
+        LOG_INST() << "intrinsics::stsendablevar16"
+                   << " level:" << level << " slot:" << slot;
+
+        JSTaggedValue value = GET_ACC();
+        SourceTextModule *moduleRecord = SourceTextModule::Cast(GetEcmaModule(sp));
+        JSTaggedValue env = moduleRecord->GetSendableEnv();
+        for (uint32_t i = 0; i < level; i++) {
+            JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+            ASSERT(!taggedParentEnv.IsUndefined());
+            env = taggedParentEnv;
+        }
+        SendableEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, value);
+
+        DISPATCH(CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4) {
+        uint16_t level = READ_INST_4_2();
+        uint16_t slot = READ_INST_4_3();
+
+        LOG_INST() << "intrinsics::ldsendablevar4"
+                   << " level:" << level << " slot:" << slot;
+        SourceTextModule *moduleRecord = SourceTextModule::Cast(GetEcmaModule(sp));
+        JSTaggedValue env = moduleRecord->GetSendableEnv();
+        for (uint32_t i = 0; i < level; i++) {
+            JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+            ASSERT(!taggedParentEnv.IsUndefined());
+            env = taggedParentEnv;
+        }
+        SET_ACC(SendableEnv::Cast(env.GetTaggedObject())->GetProperties(slot));
+        DISPATCH(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8) {
+        uint16_t level = READ_INST_8_1();
+        uint16_t slot = READ_INST_8_2();
+
+        LOG_INST() << "intrinsics::ldsendablevar8"
+                   << " level:" << level << " slot:" << slot;
+        SourceTextModule *moduleRecord = SourceTextModule::Cast(GetEcmaModule(sp));
+        JSTaggedValue env = moduleRecord->GetSendableEnv();
+        for (uint32_t i = 0; i < level; i++) {
+            JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+            ASSERT(!taggedParentEnv.IsUndefined());
+            env = taggedParentEnv;
+        }
+        SET_ACC(SendableEnv::Cast(env.GetTaggedObject())->GetProperties(slot));
+        DISPATCH(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16) {
+        uint16_t level = READ_INST_16_1();
+        uint16_t slot = READ_INST_16_3();
+
+        LOG_INST() << "intrinsics::ldsendablevar16"
+                   << " level:" << level << " slot:" << slot;
+        SourceTextModule *moduleRecord = SourceTextModule::Cast(GetEcmaModule(sp));
+        JSTaggedValue env = moduleRecord->GetSendableEnv();
+        for (uint32_t i = 0; i < level; i++) {
+            JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+            ASSERT(!taggedParentEnv.IsUndefined());
+            env = taggedParentEnv;
+        }
+        SET_ACC(SendableEnv::Cast(env.GetTaggedObject())->GetProperties(slot));
+        DISPATCH(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16);
     }
 #include "templates/debugger_instruction_handler.inl"
 }

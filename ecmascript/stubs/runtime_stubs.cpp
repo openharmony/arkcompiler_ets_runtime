@@ -2681,6 +2681,13 @@ DEF_RUNTIME_STUBS(NewLexicalEnvWithName)
         static_cast<uint16_t>(scopeId.GetInt())).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(NewSendableEnv)
+{
+    RUNTIME_STUBS_HEADER(NewSendableEnv);
+    JSTaggedValue numVars = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeNewSendableEnv(thread, static_cast<uint16_t>(numVars.GetInt())).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(OptGetUnmapedArgs)
 {
     RUNTIME_STUBS_HEADER(OptGetUnmapedArgs);

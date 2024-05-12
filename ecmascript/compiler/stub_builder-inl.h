@@ -43,6 +43,7 @@
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/property_attributes.h"
+#include "ecmascript/sendable_env.h"
 
 namespace panda::ecmascript::kungfu {
 using JSFunction = panda::ecmascript::JSFunction;
@@ -2726,9 +2727,19 @@ inline GateRef StubBuilder::GetParentEnv(GateRef object)
     return env_->GetBuilder()->GetParentEnv(object);
 }
 
+inline GateRef StubBuilder::GetSendableParentEnv(GateRef object)
+{
+    return env_->GetBuilder()->GetSendableParentEnv(object);
+}
+
 inline GateRef StubBuilder::GetPropertiesFromLexicalEnv(GateRef object, GateRef index)
 {
     return env_->GetBuilder()->GetPropertiesFromLexicalEnv(object, index);
+}
+
+inline GateRef StubBuilder::GetPropertiesFromSendableEnv(GateRef object, GateRef index)
+{
+    return env_->GetBuilder()->GetPropertiesFromSendableEnv(object, index);
 }
 
 inline GateRef StubBuilder::GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex)
@@ -2739,6 +2750,12 @@ inline GateRef StubBuilder::GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef lev
 inline void StubBuilder::SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value)
 {
     GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue, object, valueIndex, value);
+}
+
+inline void StubBuilder::SetPropertiesToSendableEnv(GateRef glue, GateRef object, GateRef index, GateRef value)
+{
+    GateRef valueIndex = Int32Add(index, Int32(SendableEnv::SENDABLE_RESERVED_ENV_LENGTH));
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, object, valueIndex, value);
 }
 

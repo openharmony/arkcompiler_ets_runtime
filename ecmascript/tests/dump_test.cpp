@@ -941,6 +941,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::TAGGED_ARRAY:
             case JSType::VTABLE:
             case JSType::LEXICAL_ENV:
+            case JSType::SENDABLE_ENV:
             case JSType::AOT_LITERAL_INFO: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray);
@@ -1377,7 +1378,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SOURCE_TEXT_MODULE_RECORD: {
-                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 16U);
+                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 17U);
                 JSHandle<SourceTextModule> moduleSourceRecord = factory->NewSourceTextModule();
                 DUMP_FOR_HANDLE(moduleSourceRecord);
                 break;

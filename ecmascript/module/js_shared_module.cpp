@@ -43,6 +43,7 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
     sModule->SetEnvironment(thread, sendableEnvironment);
     sModule->SetEcmaModuleFilename(thread, currentModule->GetEcmaModuleFilename());
     sModule->SetEcmaModuleRecordName(thread, currentModule->GetEcmaModuleRecordName());
+    sModule->SetSendableEnv(thread, JSTaggedValue::Undefined());
     return JSHandle<JSTaggedValue>(sModule);
 }
 
