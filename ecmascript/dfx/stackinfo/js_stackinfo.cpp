@@ -605,7 +605,7 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t map
         methodId = codeInfo->methodId;
     }
     auto offset = codeInfo->offset;
-    ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(methodId), offset, *jsFunction);
+    ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(methodId), offset, *jsFunction, extractor->GetSourceMap());
 
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
@@ -1334,6 +1334,9 @@ bool JSSymbolExtractor::ParseHapFileData([[maybe_unused]] std::string& hapName)
             break;
         }
     }
+    if (ret && sourceMap_ == nullptr) {
+        CreateSourceMap(hapName);
+    }
 #endif
     return ret;
 }
@@ -1595,11 +1598,18 @@ SourceMap* JSSymbolExtractor::GetSourceMap(uint8_t *data, size_t dataSize)
     return sourceMap_.get();
 }
 
+void JSSymbolExtractor::CreateSourceMap([[maybe_unused]] const std::string &hapPath)
+{
+#if defined(PANDA_TARGET_OHOS)
+    sourceMap_ = std::make_shared<SourceMap>();
+    sourceMap_->Init(hapPath);
+#endif
+}
+
 void JSSymbolExtractor::CreateSourceMap(uint8_t *data, size_t dataSize)
 {
-    SourceMap sourcemap;
-    sourcemap.Init(data, dataSize);
-    sourceMap_ = std::make_shared<SourceMap>(sourcemap);
+    sourceMap_ = std::make_shared<SourceMap>();
+    sourceMap_->Init(data, dataSize);
 }
 
 DebugInfoExtractor* JSSymbolExtractor::GetDebugExtractor()
