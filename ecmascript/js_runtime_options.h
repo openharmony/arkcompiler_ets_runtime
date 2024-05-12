@@ -136,6 +136,7 @@ enum CommandValues {
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_PRINT_EXECUTE_TIME,
     OPTION_SPLIT_ONE,
+    OPTION_ENABLE_EDEN_GC,
     OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
@@ -344,6 +345,16 @@ public:
     void SetEnableForceGC(bool value)
     {
         enableForceGc_ = value;
+    }
+
+    bool EnableEdenGC() const
+    {
+        return enableEdenGC_;
+    }
+
+    void SetEnableEdenGC(bool value)
+    {
+        enableEdenGC_ = value;
     }
 
     bool ForceFullGC() const
@@ -1802,6 +1813,7 @@ private:
     std::string compilerExternalPkgInfo_ {};
     bool compilerEnableExternalPkg_ {true};
     bool enableForceGc_ {true};
+    bool enableEdenGC_ {false};
     bool forceFullGc_ {true};
     uint32_t forceSharedGc_ {1};
     int arkProperties_ = GetDefaultProperties();

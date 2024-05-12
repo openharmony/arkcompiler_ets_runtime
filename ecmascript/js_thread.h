@@ -1402,6 +1402,14 @@ public:
         return isInConcurrentScope_;
     }
 
+    void EnableEdenGCBarriers()
+    {
+        auto setValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetValueWithEdenBarrier);
+        SetFastStubEntry(kungfu::CommonStubCSigns::SetValueWithBarrier, setValueStub);
+        auto markStub = GetRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrierWithEden);
+        RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrier, markStub);
+    }
+
 #ifndef NDEBUG
     inline void LaunchSuspendAll()
     {

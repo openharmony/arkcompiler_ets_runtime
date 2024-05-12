@@ -2697,18 +2697,56 @@ inline GateRef StubBuilder::ObjectAddressToRange(GateRef x)
     return IntPtrAnd(TaggedCastToIntPtr(x), IntPtr(~panda::ecmascript::DEFAULT_REGION_MASK));
 }
 
-inline GateRef StubBuilder::InYoungGeneration(GateRef region)
+inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag space)
 {
     auto offset = Region::PackedData::GetFlagOffset(env_->Is32Bit());
     GateRef x = Load(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
         IntPtr(0));
     if (env_->Is32Bit()) {
         return Int32Equal(Int32And(x,
-            Int32(RegionSpaceFlag::VALID_SPACE_MASK)), Int32(RegionSpaceFlag::IN_YOUNG_SPACE));
+            Int32(RegionSpaceFlag::VALID_SPACE_MASK)), Int32(space));
     } else {
         return Int64Equal(Int64And(x,
-            Int64(RegionSpaceFlag::VALID_SPACE_MASK)), Int64(RegionSpaceFlag::IN_YOUNG_SPACE));
+            Int64(RegionSpaceFlag::VALID_SPACE_MASK)), Int64(space));
     }
+}
+
+inline GateRef StubBuilder::InEdenGeneration(GateRef region)
+{
+    return RegionInSpace(region, RegionSpaceFlag::IN_EDEN_SPACE);
+}
+
+inline GateRef StubBuilder::InYoungGeneration(GateRef region)
+{
+    return RegionInSpace(region, RegionSpaceFlag::IN_YOUNG_SPACE);
+}
+
+inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag spaceBegin, RegionSpaceFlag spaceEnd)
+{
+    auto offset = Region::PackedData::GetFlagOffset(env_->Is32Bit());
+    GateRef x = Load(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
+        IntPtr(0));
+    if (env_->Is32Bit()) {
+        GateRef spaceType = Int32And(x, Int32(RegionSpaceFlag::VALID_SPACE_MASK));
+        GateRef greater = Int32GreaterThanOrEqual(spaceType, Int32(spaceBegin));
+        GateRef less = Int32LessThanOrEqual(spaceType, Int32(spaceEnd));
+        return BoolAnd(greater, less);
+    } else {
+        GateRef spaceType = Int64And(x, Int64(RegionSpaceFlag::VALID_SPACE_MASK));
+        GateRef greater = Int64GreaterThanOrEqual(spaceType, Int64(spaceBegin));
+        GateRef less = Int64LessThanOrEqual(spaceType, Int64(spaceEnd));
+        return BoolAnd(greater, less);
+    }
+}
+
+inline GateRef StubBuilder::InGeneralYoungGeneration(GateRef region)
+{
+    return RegionInSpace(region, RegionSpaceFlag::GENERAL_YOUNG_BEGIN, RegionSpaceFlag::GENERAL_YOUNG_END);
+}
+
+inline GateRef StubBuilder::InGeneralOldGeneration(GateRef region)
+{
+    return RegionInSpace(region, RegionSpaceFlag::GENERAL_OLD_BEGIN, RegionSpaceFlag::GENERAL_OLD_END);
 }
 
 inline GateRef StubBuilder::InSharedHeap(GateRef region)

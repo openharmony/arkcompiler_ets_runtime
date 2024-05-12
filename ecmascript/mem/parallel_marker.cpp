@@ -35,6 +35,17 @@ void Marker::MarkRoots(uint32_t threadId)
     workManager_->PushWorkNodeToGlobal(threadId, false);
 }
 
+void Marker::ProcessNewToEden(uint32_t threadId)
+{
+    heap_->EnumerateNewSpaceRegions(std::bind(&Marker::HandleNewToEdenRSet, this, threadId, std::placeholders::_1));
+    ProcessMarkStack(threadId);
+}
+
+void Marker::ProcessNewToEdenNoMarkStack(uint32_t threadId)
+{
+    heap_->EnumerateNewSpaceRegions(std::bind(&Marker::HandleNewToEdenRSet, this, threadId, std::placeholders::_1));
+}
+
 void Marker::ProcessOldToNew(uint32_t threadId)
 {
     heap_->EnumerateOldSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1));
@@ -74,7 +85,7 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
     auto visitor = [this, threadId, isFullMark, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                                     VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
-        bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
+        bool needBarrier = isFullMark && !rootRegion->InGeneralNewSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end, needBarrier, cb)) {
                 return;
@@ -110,7 +121,7 @@ void NonMovableMarker::ProcessMarkStackConcurrent(uint32_t threadId)
     auto visitor = [this, threadId, isFullMark, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                                     VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
-        bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
+        bool needBarrier = isFullMark && !rootRegion->InGeneralNewSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end, needBarrier, cb)) {
                 return;
@@ -148,7 +159,7 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
                                                                    VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
         visitAddrNum += end.SlotAddress() - start.SlotAddress();
-        bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
+        bool needBarrier = isFullMark && !rootRegion->InGeneralNewSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end, needBarrier, cb)) {
                 return;

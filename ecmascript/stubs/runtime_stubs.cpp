@@ -3276,6 +3276,14 @@ JSTaggedType RuntimeStubs::DoubleToLength(double x)
     return JSTaggedNumber(length).GetRawData();
 }
 
+void RuntimeStubs::InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue,
+    uintptr_t object, size_t offset)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    uintptr_t slotAddr = object + offset;
+    return region->InsertNewToEdenRSet(slotAddr);
+}
+
 void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset)
 {
@@ -3323,6 +3331,23 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     }
 #endif
     ASSERT(thread->IsConcurrentMarkingOrFinished());
+    Barriers::UpdateWithoutEden(thread, slotAddr, objectRegion, value, valueRegion);
+}
+
+void RuntimeStubs::MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
+    uintptr_t object, size_t offset, TaggedObject *value)
+{
+    uintptr_t slotAddr = object + offset;
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    ASSERT(!valueRegion->InSharedHeap());
+    auto thread = JSThread::GlueToJSThread(argGlue);
+#if ECMASCRIPT_ENABLE_BARRIER_CHECK
+    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+        LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrierWithEden checked value:" << value << " is invalid!";
+    }
+#endif
+    ASSERT(thread->IsConcurrentMarkingOrFinished());
     Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
@@ -3352,13 +3377,14 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         LOG_FULL(FATAL) << "RuntimeStubs::StoreBarrier checked value:" << value << " is invalid!";
     }
 #endif
-    if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
         // Should align with '8' in 64 and 32 bit platform
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
-    }
-    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+    } else if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
         objectRegion->InsertLocalToShareRSet(slotAddr);
+    } else if (valueRegion->InEdenSpace() && objectRegion->InYoungSpace()) {
+        objectRegion->InsertNewToEdenRSet(slotAddr);
     }
     if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);

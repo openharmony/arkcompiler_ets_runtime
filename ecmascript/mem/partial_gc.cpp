@@ -55,10 +55,7 @@ void PartialGC::RunPhases()
     Initialize();
     Mark();
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
-        // verify mark
-        LOG_ECMA(DEBUG) << "start verify mark";
-        Verification(heap_, heap_->IsFullMark() ?
-            VerifyKind::VERIFY_MARK_FULL : VerifyKind::VERIFY_MARK_YOUNG).VerifyAll();
+        Verification::VerifyMark(heap_);
     }
     Sweep();
     Evacuate();
@@ -66,10 +63,7 @@ void PartialGC::RunPhases()
         heap_->GetSweeper()->PostTask();
     }
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
-        // verify evacuate and sweep
-        LOG_ECMA(DEBUG) << "start verify evacuate and sweep";
-        Verification(heap_, heap_->IsConcurrentFullMark() ?
-            VerifyKind::VERIFY_EVACUATE_OLD : VerifyKind::VERIFY_EVACUATE_YOUNG).VerifyAll();
+        Verification::VerifyEvacuate(heap_);
     }
     Finish();
     if (heap_->IsConcurrentFullMark()) {
@@ -132,7 +126,17 @@ void PartialGC::Mark()
     heap_->GetNonMovableMarker()->MarkRoots(MAIN_THREAD_INDEX);
     if (heap_->IsConcurrentFullMark()) {
         heap_->GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
-    } else {
+    } else if (heap_->IsEdenMark()) {
+        {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessOldToNew");
+            heap_->GetNonMovableMarker()->ProcessOldToNew(MAIN_THREAD_INDEX);
+        }
+        {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessNewToEden");
+            heap_->GetNonMovableMarker()->ProcessNewToEden(MAIN_THREAD_INDEX);
+        }
+        heap_->GetNonMovableMarker()->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
+    } else if (heap_->IsYoungMark()) {
         {
             ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessOldToNew");
             heap_->GetNonMovableMarker()->ProcessOldToNew(MAIN_THREAD_INDEX);
@@ -162,7 +166,10 @@ void PartialGC::ProcessNativeDelete()
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         ASSERT(!objectRegion->InSharedHeap());
-        if (!objectRegion->InYoungSpaceOrCSet() && !heap_->IsConcurrentFullMark()) {
+        if (heap_->IsEdenMark() && !objectRegion->InEdenSpace()) {
+            return header;
+        }
+        if (!objectRegion->InGeneralNewSpaceOrCSet() && heap_->IsYoungMark()) {
             return header;
         }
         if (!objectRegion->Test(header)) {

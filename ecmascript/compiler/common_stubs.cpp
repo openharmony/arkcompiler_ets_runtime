@@ -791,6 +791,16 @@ void SetValueWithBarrierStubBuilder::GenerateCircuit()
     Return();
 }
 
+void SetValueWithEdenBarrierStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef offset = PtrArgument(2); // 2 : 3rd para
+    GateRef value = TaggedArgument(3); // 3 : 4th para
+    SetValueWithBarrier(glue, obj, offset, value, true);
+    Return();
+}
+
 void NewThisObjectCheckedStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);

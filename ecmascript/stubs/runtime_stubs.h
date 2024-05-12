@@ -154,8 +154,10 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
     V(InsertLocalToShareRSet)                  \
+    V(InsertNewToEdenRSet)                     \
     V(SetBitAtomic)                            \
     V(MarkingBarrier)                          \
+    V(MarkingBarrierWithEden)                  \
     V(SharedGCMarkingBarrier)                  \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
@@ -547,11 +549,14 @@ public:
     static void FatalPrintCustom(uintptr_t fmt, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
+    static void MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
+        uintptr_t object, size_t offset, TaggedObject *value);
     static void SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, TaggedObject *value);
     static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
+    static void InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,

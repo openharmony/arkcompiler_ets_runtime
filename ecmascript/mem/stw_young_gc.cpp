@@ -119,7 +119,7 @@ void STWYoungGC::Sweep()
     }
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
-        if (!objectRegion->InYoungSpace()) {
+        if (objectRegion->InGeneralOldSpace()) {
             return header;
         }
 

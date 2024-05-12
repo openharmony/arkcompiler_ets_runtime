@@ -413,6 +413,9 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter()) {
         thread_->GetCurrentEcmaContext()->LoadStubFile();
     }
+    if (options_.EnableEdenGC()) {
+        heap_->EnableEdenGC();
+    }
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
@@ -634,7 +637,8 @@ void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) cons
 
 void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
-    if (!heap_->IsYoungGC()) {
+    // ProcessNativeDelete should be limited to OldGC or FullGC only
+    if (!heap_->IsGeneralYoungGC()) {
         auto iter = nativePointerList_.begin();
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
         while (iter != nativePointerList_.end()) {
@@ -687,7 +691,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
     if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
         thread_->GetCurrentEcmaContext()->GetRegExpParserCache()->Clear();
     }
-    if (!heap_->IsYoungGC()) {
+    // process native ref should be limited to OldGC or FullGC only
+    if (!heap_->IsGeneralYoungGC()) {
         heap_->ResetNativeBindingSize();
         // array buffer
         auto iter = nativePointerList_.begin();

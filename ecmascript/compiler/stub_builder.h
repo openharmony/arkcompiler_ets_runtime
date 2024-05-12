@@ -235,7 +235,12 @@ public:
     GateRef TaggedIsHeapObject(GateRef x);
     GateRef TaggedIsAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
+    GateRef RegionInSpace(GateRef region, RegionSpaceFlag space);
+    GateRef RegionInSpace(GateRef region, RegionSpaceFlag spaceBegin, RegionSpaceFlag spaceEnd);
+    GateRef InEdenGeneration(GateRef region);
     GateRef InYoungGeneration(GateRef region);
+    GateRef InGeneralYoungGeneration(GateRef region);
+    GateRef InGeneralOldGeneration(GateRef region);
     GateRef InSharedHeap(GateRef region);
     GateRef InSharedSweepableSpace(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
@@ -668,7 +673,7 @@ public:
     GateRef IntPtrEuqal(GateRef x, GateRef y);
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
-    void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
+    void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden = false);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, ProfileOperation callback);
     GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
                               ProfileOperation callback, GateRef isInternal,

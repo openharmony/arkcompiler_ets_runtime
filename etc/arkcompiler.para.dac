@@ -19,3 +19,4 @@ persist.ark.asminterpreter = shell:shell:0775
 ark.jit.enable.litecg = shell:shell:0775
 ark.jit.enable.dumpobj = shell:shell:0775
 ark.jit.hotness.threshold = shell:shell:0775
+persist.ark.edengc.enable = shell:shell:0775

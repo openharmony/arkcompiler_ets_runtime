@@ -1546,15 +1546,13 @@ void StubBuilder::SetValueWithRep(
     return;
 }
 
-
-void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value)
+void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label isVailedIndex(env);
-    Label notValidIndex(env);
+    Label checkMarkStatus(env);
     Label valueIsShared(env);
     Label valueIsNotShared(env);
     // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
@@ -1646,10 +1644,19 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     }
     Bind(&valueIsNotShared);
     {
-        GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
-        GateRef valueRegionInYoung = InYoungGeneration(valueRegion);
-        BRANCH(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);
-        Bind(&isVailedIndex);
+        Label isOldToYoung(env);
+        Label checkEden(env);
+        if (withEden) {
+            GateRef objectRegionInOld = InGeneralOldGeneration(objectRegion);
+            GateRef valueRegionInYoung = InGeneralYoungGeneration(valueRegion);
+            BRANCH(BoolAnd(objectRegionInOld, valueRegionInYoung), &isOldToYoung, &checkEden);
+        } else {
+            GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
+            GateRef valueRegionInYoung = InYoungGeneration(valueRegion);
+            BRANCH(BoolAnd(objectNotInYoung, valueRegionInYoung), &isOldToYoung, &checkMarkStatus);
+        }
+
+        Bind(&isOldToYoung);
         {
             GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_->Is32Bit()));
             auto oldToNewSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
@@ -1673,15 +1680,54 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
                 GateRef newmapValue = Int32Or(oldsetValue, GetBitMask(bitOffset));
 
                 Store(VariableType::INT32(), glue, bitsetData, byteIndex, newmapValue);
-                Jump(&notValidIndex);
+                Jump(&checkMarkStatus);
             }
             Bind(&isNullPtr);
             {
                 CallNGCRuntime(glue, RTSTUB_ID(InsertOldToNewRSet), { glue, obj, offset });
-                Jump(&notValidIndex);
+                Jump(&checkMarkStatus);
             }
         }
-        Bind(&notValidIndex);
+        if (withEden) {
+            Bind(&checkEden);
+            GateRef objectRegionInYoung = InYoungGeneration(objectRegion);
+            GateRef valueRegionInEden = InEdenGeneration(valueRegion);
+            Label newToEden(env);
+            Branch(BoolAnd(objectRegionInYoung, valueRegionInEden), &newToEden, &checkMarkStatus);
+            Bind(&newToEden);
+            {
+                GateRef loadOffset = IntPtr(Region::PackedData::GetNewToEdenSetOffset(env_->Is32Bit()));
+                auto newToEdenSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
+                Label isNullPtr(env);
+                Label notNullPtr(env);
+                Branch(IntPtrEuqal(newToEdenSet, IntPtr(0)), &isNullPtr, &notNullPtr);
+                Bind(&notNullPtr);
+                {
+                    GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
+                    // (slotAddr - this) >> TAGGED_TYPE_SIZE_LOG
+                    GateRef bitOffsetPtr = IntPtrLSR(PtrSub(slotAddr, objectRegion), IntPtr(TAGGED_TYPE_SIZE_LOG));
+                    GateRef bitOffset = TruncPtrToInt32(bitOffsetPtr);
+                    GateRef bitPerWordLog2 = Int32(GCBitset::BIT_PER_WORD_LOG2);
+                    GateRef bytePerWord = Int32(GCBitset::BYTE_PER_WORD);
+                    // bitOffset >> BIT_PER_WORD_LOG2
+                    GateRef index = Int32LSR(bitOffset, bitPerWordLog2);
+                    GateRef byteIndex = Int32Mul(index, bytePerWord);
+                    // bitset_[index] |= mask;
+                    GateRef bitsetData = PtrAdd(newToEdenSet, IntPtr(RememberedSet::GCBITSET_DATA_OFFSET));
+                    GateRef oldsetValue = Load(VariableType::INT32(), bitsetData, byteIndex);
+                    GateRef newmapValue = Int32Or(oldsetValue, GetBitMask(bitOffset));
+
+                    Store(VariableType::INT32(), glue, bitsetData, byteIndex, newmapValue);
+                    Jump(&checkMarkStatus);
+                }
+                Bind(&isNullPtr);
+                {
+                    CallNGCRuntime(glue, RTSTUB_ID(InsertNewToEdenRSet), { glue, obj, offset });
+                    Jump(&checkMarkStatus);
+                }
+            }
+        }
+        Bind(&checkMarkStatus);
         {
             Label marking(env);
             bool isArch32 = GetEnvironment()->Is32Bit();

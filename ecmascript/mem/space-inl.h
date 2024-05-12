@@ -72,6 +72,9 @@ RegionSpaceFlag Space::GetRegionFlag() const
         case MemSpaceType::LOCAL_SPACE:
             flags = RegionSpaceFlag::IN_OLD_SPACE;
             break;
+        case MemSpaceType::EDEN_SPACE:
+            flags = RegionSpaceFlag::IN_EDEN_SPACE;
+            break;
         case MemSpaceType::SEMI_SPACE:
             flags = RegionSpaceFlag::IN_YOUNG_SPACE;
             break;
