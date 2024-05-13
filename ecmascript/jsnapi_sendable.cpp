@@ -102,6 +102,7 @@ void JSNapiSendable::InitWithPropertiesInfo(JSThread *thread,
         desc.SetValue(JSNApiHelper::ToJSHandle(info.attributes[i].GetValue(vm)));
         descs.push_back(desc);
     }
+    InitInstanceDescription(thread, descs);
 }
 
 SharedFieldType JSNapiSendable::GetSharedFieldType(JSThread *thread,

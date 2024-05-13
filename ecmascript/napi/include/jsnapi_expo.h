@@ -1032,7 +1032,7 @@ public:
 
 class ECMA_PUBLIC_API SharedInt8ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedInt8ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedInt8ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1043,7 +1043,7 @@ public:
 
 class ECMA_PUBLIC_API SharedUint8ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedUint8ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedUint8ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1060,7 +1060,7 @@ public:
 
 class ECMA_PUBLIC_API SharedInt16ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedInt16ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedInt16ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1072,7 +1072,7 @@ public:
 
 class ECMA_PUBLIC_API SharedUint16ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedUint16ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedUint16ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1083,7 +1083,7 @@ public:
 
 class ECMA_PUBLIC_API SharedInt32ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedInt32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedInt32ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1095,7 +1095,7 @@ public:
 
 class ECMA_PUBLIC_API SharedUint32ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedUint32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedUint32ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                      int32_t byteOffset, int32_t length);
 };
 

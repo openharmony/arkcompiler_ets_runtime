@@ -944,7 +944,7 @@ bool JSValueRef::IsVector()
 
 bool JSValueRef::IsSharedObject()
 {
-    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedObject();
+    return IsJSShared() && IsObject();
 }
 
 bool JSValueRef::IsSharedFunction()
@@ -1019,16 +1019,23 @@ bool JSValueRef::IsDetachedArraybuffer(bool &isArrayBuffer)
 
 void JSValueRef::DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer)
 {
-    if (!IsArrayBuffer()) {
+    if (IsArrayBuffer()) {
+        JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+        if (arrayBuffer->IsDetach()) {
+            return;
+        }
+        arrayBuffer->Detach(vm->GetJSThread());
+        isArrayBuffer = true;
+    } else if (IsSendableArrayBuffer()) {
+        JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+        if (arrayBuffer->IsDetach()) {
+            return;
+        }
+        arrayBuffer->Detach(vm->GetJSThread());
+        isArrayBuffer = true;
+    } else {
         isArrayBuffer = false;
-        return;
     }
-    isArrayBuffer = true;
-    JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
-    if (arrayBuffer->IsDetach()) {
-        return;
-    }
-    arrayBuffer->Detach(vm->GetJSThread());
 }
 
 void JSValueRef::GetDataViewInfo(const EcmaVM *vm,
