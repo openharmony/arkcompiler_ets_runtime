@@ -420,7 +420,9 @@ void OldSpace::Merge(LocalSpace *localSpace)
     size_t hugeSpaceCommitSize = localHeap_->GetHugeObjectSpace()->GetCommittedSize();
     if (committedSize_ + hugeSpaceCommitSize > GetOverShootMaximumCapacity()) {
         LOG_ECMA_MEM(ERROR) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
-        localHeap_->ShouldThrowOOMError(true);
+        if (localHeap_->CanThrowOOMError()) {
+            localHeap_->ShouldThrowOOMError(true);
+        }
         IncreaseMergeSize(committedSize_ - oldCommittedSize);
         // if throw OOM, temporarily increase space size to avoid vm crash
         IncreaseOutOfMemoryOvershootSize(committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity());

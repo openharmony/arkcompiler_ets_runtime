@@ -757,7 +757,9 @@ bool JSThread::CheckSafepoint()
 
     if (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()
         && !heap->GetOnSerializeEvent()) {
+        heap->SetCanThrowOOMError(false);
         heap->GetConcurrentMarker()->HandleMarkingFinished();
+        heap->SetCanThrowOOMError(true);
         gcTriggered = true;
     }
     return gcTriggered;

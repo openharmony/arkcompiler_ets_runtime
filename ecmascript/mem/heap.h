@@ -198,6 +198,16 @@ public:
     {
         shouldThrowOOMError_ = shouldThrow;
     }
+    
+    void SetCanThrowOOMError(bool canThrow)
+    {
+        canThrowOOMError_ = canThrow;
+    }
+    
+    bool CanThrowOOMError()
+    {
+        return canThrowOOMError_;
+    }
 
     bool IsInBackground() const
     {
@@ -308,6 +318,7 @@ protected:
     bool clearTaskFinished_ {true};
     bool inBackground_ {false};
     bool shouldThrowOOMError_ {false};
+    bool canThrowOOMError_ {true};
     bool oldGCRequested_ {false};
     bool onSerializeEvent_ {false};
     std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
