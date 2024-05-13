@@ -388,6 +388,9 @@ JSTaggedValue BuiltinsRegExp::GetAllFlagsInternal(JSThread *thread, JSHandle<JST
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
     uint8_t *flagsStr = new uint8_t[RegExpParser::FLAG_NUM + 1];  // FLAG_NUM flags + '\0'
+    if (flagsStr == nullptr) {
+        LOG_ECMA(FATAL) << "BuiltinsRegExp::GetAllFlagsInternal:flagsStr is nullptr";
+    }
     size_t flagsLen = 0;
     JSHandle<EcmaString> emptyString = factory->GetEmptyString();
     JSHandle<JSTaggedValue> hasIndicesKey(factory->NewFromASCII("hasIndices"));

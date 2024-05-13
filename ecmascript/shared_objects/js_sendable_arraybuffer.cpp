@@ -53,6 +53,9 @@ void JSSendableArrayBuffer::Attach(JSThread *thread, uint32_t arrayBufferByteLen
         LOG_FULL(DEBUG) << "attaching for transfer";
         JSHandle<JSNativePointer> np(thread, arrayBufferData.GetTaggedObject());
         NativeAreaAllocator *allocator = SharedHeap::GetInstance()->GetNativeAreaAllocator();
+        if (allocator == nullptr) {
+            LOG_ECMA(FATAL) << "JSSendableArrayBuffer::Attach:allocator is nullptr";
+        }
         allocator->IncreaseNativeMemoryUsage(MallocUsableSize(np->GetExternalPointer()));
         np->SetData(allocator);
     }

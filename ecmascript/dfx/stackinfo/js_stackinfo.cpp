@@ -508,7 +508,7 @@ std::optional<CodeInfo> JSStackTrace::TranslateByteCodePc(uintptr_t realPc, cons
 {
     int32_t left = 0;
     ASSERT(vec.size() > 0);
-    int32_t right = vec.size() - 1;
+    int32_t right = static_cast<int32_t>(vec.size()) - 1;
     for (; left <= right;) {
         int32_t mid = (left + right) / 2;
         bool isRight = realPc >= (vec[mid].codeBegin + vec[mid].codeSize);
@@ -1095,6 +1095,9 @@ std::string ArkGetFileName(int pid, uintptr_t jsPandaFileAddr, std::string &hapP
 {
     size_t size = sizeof(JSPandaFile) / sizeof(long);
     uintptr_t *jsPandaFilePart = new uintptr_t[size]();
+    if (jsPandaFilePart == nullptr) {
+        LOG_ECMA(FATAL) << "ArkGetFileName:jsPandaFilePart is nullptr";
+    }
     for (size_t i = 0; i < size; i++) {
         if (!ReadUintptrFromAddr(pid, jsPandaFileAddr, jsPandaFilePart[i], g_needCheck)) {
             LOG_ECMA(ERROR) << "ArkGetFilePath failed, jsPandaFileAddr: " << jsPandaFileAddr;

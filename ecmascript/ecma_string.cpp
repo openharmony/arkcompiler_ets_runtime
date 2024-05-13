@@ -272,7 +272,7 @@ bool IsSubStringAtSpan(Span<T1> &lhsSp, Span<T2> &rhsSp, uint32_t offset)
     int rhsSize = static_cast<int>(rhsSp.size());
     ASSERT(rhsSize + offset <= lhsSp.size());
     for (int i = 0; i < rhsSize; ++i) {
-        auto left = static_cast<int32_t>(lhsSp[offset + i]);
+        auto left = static_cast<int32_t>(lhsSp[offset + static_cast<uint32_t>(i)]);
         auto right = static_cast<int32_t>(rhsSp[i]);
         if (left != right) {
             return false;
