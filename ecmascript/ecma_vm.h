@@ -710,6 +710,82 @@ public:
     {
         return sharedNativePointerCallbacks_;
     }
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+    void ResetScopeLockStats()
+    {
+        enterThreadManagedScopeCount_ = 0;
+        enterJsiNativeScopeCount_ = 0;
+        enterFastNativeScopeCount_ = 0;
+        updateThreadStateTransCount_ = 0;
+        stringTableLockCount_ = 0;
+    }
+
+    bool IsCollectingScopeLockStats() const
+    {
+        return isCollectingScopeLockStats_;
+    }
+
+    void StartCollectingScopeLockStats()
+    {
+        isCollectingScopeLockStats_ = true;
+    }
+    
+    void StopCollectingScopeLockStats()
+    {
+        isCollectingScopeLockStats_ = false;
+    }
+    
+    int GetEnterThreadManagedScopeCount() const
+    {
+        return enterThreadManagedScopeCount_;
+    }
+
+    void IncreaseEnterThreadManagedScopeCount()
+    {
+        enterThreadManagedScopeCount_++;
+    }
+
+    int GetEnterFastNativeScopeCount() const
+    {
+        return enterFastNativeScopeCount_;
+    }
+
+    void IncreaseEnterFastNativeScopeCount()
+    {
+        enterFastNativeScopeCount_++;
+    }
+
+    int GetEnterJsiNativeScopeCount() const
+    {
+        return enterJsiNativeScopeCount_;
+    }
+
+    void IncreaseEnterJsiNativeScopeCount()
+    {
+        enterJsiNativeScopeCount_++;
+    }
+
+    int GetUpdateThreadStateTransCount() const
+    {
+        return updateThreadStateTransCount_;
+    }
+
+    void IncreaseUpdateThreadStateTransCount()
+    {
+        updateThreadStateTransCount_++;
+    }
+
+    int GetStringTableLockCount() const
+    {
+        return stringTableLockCount_;
+    }
+
+    void IncreaseStringTableLockCount()
+    {
+        stringTableLockCount_++;
+    }
+#endif
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -830,6 +906,16 @@ private:
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
     bool overLimit_ {false};
+
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+    // Stats for Thread-State-Transition and String-Table Locks
+    bool isCollectingScopeLockStats_ = false;
+    int enterThreadManagedScopeCount_ = 0;
+    int enterFastNativeScopeCount_ = 0;
+    int enterJsiNativeScopeCount_ = 0;
+    int updateThreadStateTransCount_ = 0;
+    int stringTableLockCount_ = 0;
+#endif
 };
 }  // namespace ecmascript
 }  // namespace panda

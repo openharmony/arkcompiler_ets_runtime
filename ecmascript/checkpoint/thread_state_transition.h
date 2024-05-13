@@ -26,8 +26,20 @@ public:
         : self_(self)
         {
             ASSERT(self_ != nullptr);
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+            auto vm = self_->GetEcmaVM();
+            bool isCollectingStats = vm->IsCollectingScopeLockStats();
+            if (isCollectingStats) {
+                vm->IncreaseEnterThreadManagedScopeCount();
+            }
+#endif
             oldState_ = self_->GetState();
             if (oldState_ != newState) {
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+                if (isCollectingStats) {
+                    vm->IncreaseUpdateThreadStateTransCount();
+                }
+#endif
                 self_->UpdateState(newState);
             }
         }
