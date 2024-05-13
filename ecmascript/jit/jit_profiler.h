@@ -61,7 +61,8 @@ public:
     {
         return bcOffsetPGODefOpTypeMap_;
     }
-    void InsertProfileType(JSTaggedType root, JSTaggedType child, ProfileType rootType, ProfileType childType);
+    void InsertProfileType(JSTaggedType root, JSTaggedType child, ProfileType rootType, ProfileType childType,
+                           bool update = false);
     void InitJITProfiler()
     {
         ptManager_ = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
