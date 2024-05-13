@@ -781,16 +781,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         GetEcmaVM()->GetPGOProfiler()->WaitPGODumpResumeForGC();
 
-        // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
-        if (shouldThrowOOMError_) {
-            sweeper_->EnsureAllTaskFinished();
-            DumpHeapSnapshotBeforeOOM(false);
-            StatisticHeapDetail();
-            ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
-            oldSpace_->ResetMergeSize();
-            shouldThrowOOMError_ = false;
-        }
-
         ClearIdleTask();
         // Adjust the old space capacity and global limit for the first partial GC with full mark.
         // Trigger full mark next time if the current survival rate is much less than half the average survival rates.
@@ -826,6 +816,15 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         // below 16M, Otherwise, old GC will be triggered frequently. Non-concurrent mark period, non movable space max
         // heap size is 16M, if exceeded, an OOM exception will be thrown, this check is to do this.
         CheckNonMovableSpaceOOM();
+    }
+    // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
+    if (shouldThrowOOMError_) {
+        sweeper_->EnsureAllTaskFinished();
+        DumpHeapSnapshotBeforeOOM(false);
+        StatisticHeapDetail();
+        ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
+        oldSpace_->ResetMergeSize();
+        shouldThrowOOMError_ = false;
     }
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
