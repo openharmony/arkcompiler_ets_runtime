@@ -125,9 +125,9 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
         int exit_status = WEXITSTATUS(status);
         HiviewDFX::HiLog::Info(LABEL, "child process exited with status: %{public}d", exit_status);
         switch (exit_status) {
-            case ErrOfCompile::COMPILE_OK:
+            case static_cast<int>(ErrOfCompile::COMPILE_OK):
                 ret = ERR_OK; break;
-            case ErrOfCompile::COMPILE_NO_AP:
+            case static_cast<int>(ErrOfCompile::COMPILE_NO_AP):
                 ret = ERR_OK_NO_AOT_FILE; break;
             default:
                 ret = ERR_AOT_COMPILER_CALL_FAILED; break;

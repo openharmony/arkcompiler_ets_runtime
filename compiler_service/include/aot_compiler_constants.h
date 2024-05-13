@@ -153,7 +153,7 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-force-baselinejit-compile-main",
 };
 
-enum ErrOfCompile {
+enum class ErrOfCompile {
     COMPILE_OK = (0),
     ERR_COMPILE_FAIL = (-1),
     ERR_COMPILE_HELP = (1),
