@@ -39,3 +39,22 @@ function f2() {
 }
 f2(1,2);
 f0.apply(null,v38);
+
+var next_expected = 0;
+var large_array3 = new Array(100);
+large_array3[0] = 0;
+large_array3[1] = 1;
+large_array3[2] = 2;
+large_array3[3] = 3;
+large_array3[4] = 4;
+large_array3[95] = 95;
+
+function called_by_apply() {}
+called_by_apply.apply({}, large_array3);
+
+for (var x in large_array3) {
+    print(next_expected++ == x);
+    if (next_expected == 5) {
+        next_expected = 95;
+    }
+}

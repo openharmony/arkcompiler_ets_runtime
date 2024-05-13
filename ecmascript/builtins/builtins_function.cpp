@@ -44,7 +44,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeInvokeSelf([[maybe_unused]] Ecm
     return JSTaggedValue::Undefined();
 }
 namespace {
-static size_t MakeArgListWithHole(JSThread *thread, TaggedArray *argv, int length)
+static size_t MakeArgListWithHole(TaggedArray *argv, int length)
 {
     if (length <= 0) {
         return 0;
@@ -53,12 +53,6 @@ static size_t MakeArgListWithHole(JSThread *thread, TaggedArray *argv, int lengt
     size_t arryLength = argv->GetLength();
     if (newlength > arryLength) {
         length = arryLength;
-    }
-    for (size_t index = 0; index < newlength; ++index) {
-        JSTaggedValue value = argv->Get(thread, index);
-        if (value.IsHole()) {
-            argv->Set(thread, index, JSTaggedValue::Undefined());
-        }
     }
     return length;
 }
@@ -81,7 +75,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
             return std::make_pair(nullptr, 0);
         }
         auto length = result.GetInt();
-        size_t res = MakeArgListWithHole(thread, elements, length);
+        size_t res = MakeArgListWithHole(elements, length);
         return std::make_pair(elements, res);
     } else if (arrayObj->IsStableJSArray(thread)) {
         JSHandle<JSArray> argList = JSHandle<JSArray>::Cast(arrayObj);
@@ -105,7 +99,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length, JSTaggedValue::Undefined());
             return std::make_pair(*array, length);
         }
-        size_t res = MakeArgListWithHole(thread, elements, length);
+        size_t res = MakeArgListWithHole(elements, length);
         return std::make_pair(elements, res);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";

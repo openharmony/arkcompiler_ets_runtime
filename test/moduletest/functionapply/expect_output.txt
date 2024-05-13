@@ -16,3 +16,9 @@
 0
 ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
 undefined undefined
+true
+true
+true
+true
+true
+true
