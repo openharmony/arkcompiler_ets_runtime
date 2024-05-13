@@ -783,7 +783,7 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
                 CallRuntime(glue, RTSTUB_ID(FunctionDefineOwnProperty), {func, funcprotoAccessor, kind});
             }
             Jump(&exit);
-        } else if (JSFunction::HasPrototype(getKind)) {
+        } else if (JSFunction::HasAccessor(getKind)) {
             auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                        ConstantIndex::FUNCTION_NAME_ACCESSOR);
             SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
