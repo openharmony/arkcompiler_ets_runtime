@@ -131,6 +131,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'stub.an'\n"
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
+    "--enable-aot-crash-escape:            Enable AOT crash escape. "
+                                           "Default: 'true'\n"
     "--enable-elements-kind:               Enable elementsKind sampling and usage. Default: 'false'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
@@ -252,6 +254,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-target-triple", required_argument, nullptr, OPTION_COMPILER_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
+        {"enable-aot-crash-escape", required_argument, nullptr, OPTION_ENABLE_AOT_CRASH_ESCAPE},
         {"enable-elements-kind", required_argument, nullptr, OPTION_ENABLE_ELEMENTSKIND},
         {"compiler-pgo-profiler-path", required_argument, nullptr, OPTION_COMPILER_PGO_PROFILER_PATH},
         {"compiler-pgo-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_PGO_HOTNESS_THRESHOLD},
@@ -653,6 +656,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnablePGOProfiler(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_AOT_CRASH_ESCAPE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableAotCrashEscape(argBool);
                 } else {
                     return false;
                 }

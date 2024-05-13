@@ -1532,6 +1532,7 @@ public:
     static bool KeyIsNumber(const char* utf8);
 
     static bool IsJitEscape();
+    static bool IsAotEscape(const EcmaVM *vm);
 private:
     static int vmCount_;
     static bool initialize_;
@@ -1547,7 +1548,6 @@ private:
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
-    static bool IsAotEscape();
     static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
     template<typename T>
     friend class Global;

@@ -137,6 +137,7 @@ public:
     }
 
     void InitializePGOProfiler();
+    void InitializeEnableAotCrash();
     void ResetPGOProfiler();
 
     bool PUBLIC_API IsEnablePGOProfiler() const;
@@ -694,6 +695,16 @@ public:
         return isJitCompileVM_;
     }
 
+    void SetEnableAotCrashEscapeVM(bool enableAotCrashEscape)
+    {
+        enableAotCrashEscape_ = enableAotCrashEscape;
+    }
+
+    bool IsEnableAotCrashEscapeVM() const
+    {
+        return enableAotCrashEscape_;
+    }
+
     static void SetMultiThreadCheck(bool multiThreadCheck)
     {
         multiThreadCheck_ = multiThreadCheck;
@@ -829,6 +840,7 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
+    bool enableAotCrashEscape_ {true};
     bool overLimit_ {false};
 };
 }  // namespace ecmascript

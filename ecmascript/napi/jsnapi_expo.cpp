@@ -4287,8 +4287,12 @@ std::map<CrashType, int> CollectCrashSum()
     return escapeMap;
 }
 
-bool JSNApi::IsAotEscape()
+bool JSNApi::IsAotEscape(const EcmaVM *vm)
 {
+    if (!vm->IsEnableAotCrashEscapeVM()) {
+        LOG_ECMA(INFO) << "disable aot crash escape.";
+        return false;
+    }
     auto escapeMap = CollectCrashSum();
     return escapeMap[CrashType::AOT] >= CrashInfo::GetAotCrashCount() ||
         escapeMap[CrashType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
@@ -4321,7 +4325,7 @@ bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)
 
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
-    if (IsAotEscape()) {
+    if (IsAotEscape(vm)) {
         LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
         return;
     }
