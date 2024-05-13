@@ -1438,6 +1438,10 @@ public:
     static void SetMultiThreadCheck(bool multiThreadCheck = true);
 
     // Napi Heavy Logics fast path
+    static Local<JSValueRef> NapiHasProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
+    static Local<JSValueRef> NapiHasOwnProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
+    static Local<JSValueRef> NapiGetProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
+    static Local<JSValueRef> NapiDeleteProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
     static Local<JSValueRef> NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativeObj, const char* utf8Key);
 
     static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
