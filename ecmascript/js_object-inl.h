@@ -309,6 +309,7 @@ void JSObject::SetPropertyInlinedProps(const JSThread *thread, const JSHClass *h
                                        JSTaggedValue value)
 {
     uint32_t offset = hclass->GetInlinedPropertiesOffset(index);
+    ASSERT(hclass->GetObjectSize() > offset);
     if (needBarrier) {
         SET_VALUE_WITH_BARRIER(thread, this, offset, value);
     } else {
