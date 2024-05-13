@@ -230,7 +230,7 @@ TYPED_ARRAY_ALL(TYPED_ARRAY_NEW)
 
 #define SENDABLE_TYPED_ARRAY_NEW(Type)                                                                    \
     Local<Type##Ref> Type##Ref::New(                                                                      \
-        const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length)               \
+        const EcmaVM *vm, Local<SendableArrayBufferRef> buffer, int32_t byteOffset, int32_t length)       \
     {                                                                                                     \
         CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));                      \
         ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());                                   \
