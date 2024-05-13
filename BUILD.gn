@@ -679,6 +679,7 @@ ecma_source = [
   "ecmascript/interpreter/frame_handler.cpp",
   "ecmascript/interpreter/interpreter.cpp",
   "ecmascript/interpreter/interpreter_assembly.cpp",
+  "ecmascript/interpreter/interpreter-inl.cpp",
   "ecmascript/interpreter/slow_runtime_stub.cpp",
   "ecmascript/intl/locale_helper.cpp",
   "ecmascript/jit/jit.cpp",
