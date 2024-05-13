@@ -1079,9 +1079,5 @@ void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
     method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
     method->SetJitCompiledCode(true);
     method->SetIsFastCall(isFastCall);
-
-    MethodLiteral *methodLiteral = method->GetMethodLiteral();
-    methodLiteral->SetAotCodeBit(true);
-    methodLiteral->SetIsFastCall(isFastCall);
 }
 }  // namespace panda::ecmascript
