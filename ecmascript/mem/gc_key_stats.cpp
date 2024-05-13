@@ -120,7 +120,7 @@ void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size
 #ifdef ENABLE_HISYSEVENT
     int32_t ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::FRAMEWORK,
         "ARK_STATS_DUMP",
-        OHOS::HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        OHOS::HiviewDFX::HiSysEvent::EventType::FAULT,
         "PID", getprocpid(),
         "TID", syscall(SYS_gettid),
         "PROCESS_NAME", PGOProfilerManager::GetInstance()->GetBundleName(),
