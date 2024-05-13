@@ -781,18 +781,20 @@ JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindi
 {
     JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
     JSHandle<EcmaString> ecmaModule(undefinedValue);
+    JSHandle<EcmaString> fileName(undefinedValue);
     int32_t index = 0;
-    return NewSResolvedRecordIndexBindingRecord(ecmaModule, index);
+    return NewSResolvedRecordIndexBindingRecord(ecmaModule, fileName, index);
 }
 
 JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord(
-    const JSHandle<EcmaString> &moduleRecord, int32_t index)
+    const JSHandle<EcmaString> &moduleRecord, const JSHandle<EcmaString> &abcFileName, int32_t index)
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordIndexBindingClass().GetTaggedObject()));
     JSHandle<ResolvedRecordIndexBinding> obj(thread_, header);
     obj->SetModuleRecord(thread_, moduleRecord);
+    obj->SetAbcFileName(thread_, abcFileName);
     obj->SetIndex(index);
     return obj;
 }

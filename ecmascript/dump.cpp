@@ -3773,6 +3773,9 @@ void ResolvedRecordIndexBinding::Dump(std::ostream &os) const
     os << " - Module: ";
     GetModuleRecord().Dump(os);
     os << "\n";
+    os << " - AbcFileName: ";
+    GetAbcFileName().Dump(os);
+    os << "\n";
     os << " - Index: ";
     GetIndex();
     os << "\n";
@@ -5896,6 +5899,7 @@ void ResolvedIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 void ResolvedRecordIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
+    vec.emplace_back(CString("AbcFileName"), GetAbcFileName());
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
 }
 
