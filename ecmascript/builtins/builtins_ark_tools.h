@@ -128,6 +128,13 @@
     V("jitCompileAsync",                           JitCompileAsync,                           1, INVALID)     \
     V("waitJitCompileFinish",                      WaitJitCompileFinish,                      1, INVALID)
 
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_SCOPE_LOCK_STATS(V)                                   \
+    V("startScopeLockStats",            StartScopeLockStats,            0, INVALID)       \
+    V("stopScopeLockStats",             StopScopeLockStats,             0, INVALID)
+#else
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_SCOPE_LOCK_STATS(V) // Nothing
+#endif
 
 #ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
@@ -141,6 +148,7 @@
     BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)               \
     BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)          \
     BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)              \
+    BUILTIN_ARK_TOOLS_FUNCTIONS_SCOPE_LOCK_STATS(V)     \
     BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)
 
 namespace panda::ecmascript::builtins {
@@ -219,6 +227,12 @@ public:
     static JSTaggedValue IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue TimeInUs(EcmaRuntimeCallInfo *info);
+
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+    static JSTaggedValue StartScopeLockStats(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue StopScopeLockStats(EcmaRuntimeCallInfo *info);
+#endif
 
     static JSTaggedValue PrepareFunctionForOptimization(EcmaRuntimeCallInfo *info);
 
