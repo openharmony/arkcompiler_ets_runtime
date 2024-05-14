@@ -856,6 +856,8 @@ try {
     undefined instanceof v1.values();
 } catch (error) {
     print(error.name);
+}
+
 /*
  * @tc.name:ArrayConstructor
  * @tc.desc:test Array
