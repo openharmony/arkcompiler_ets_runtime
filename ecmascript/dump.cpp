@@ -117,6 +117,7 @@
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
+#include "ecmascript/sendable_env.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -194,6 +195,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "TaggedArray";
         case JSType::LEXICAL_ENV:
             return "LexicalEnv";
+        case JSType::SENDABLE_ENV:
+            return "SendableEnv";
         case JSType::TAGGED_DICTIONARY:
             return "TaggedDictionary";
         case JSType::CONSTANT_POOL:
@@ -792,6 +795,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::TAGGED_DICTIONARY:
         case JSType::TEMPLATE_MAP:
         case JSType::LEXICAL_ENV:
+        case JSType::SENDABLE_ENV:
         case JSType::COW_TAGGED_ARRAY:
         case JSType::AOT_LITERAL_INFO:
             DumpArrayClass(TaggedArray::Cast(obj), os);
@@ -2664,6 +2668,11 @@ void LexicalEnv::Dump(std::ostream &os) const
     DumpArrayClass(this, os);
 }
 
+void SendableEnv::Dump(std::ostream &os) const
+{
+    DumpArrayClass(this, os);
+}
+
 void COWTaggedArray::Dump(std::ostream &os) const
 {
     DumpArrayClass(this, os);
@@ -3680,6 +3689,9 @@ void SourceTextModule::Dump(std::ostream &os) const
     os << " - AsyncParentModules: ";
     GetAsyncParentModules().Dump(os);
     os << "\n";
+    os << " - SendableEnv: ";
+    GetSendableEnv().Dump(os);
+    os << "\n";
     os << " - HasTLA: ";
     os << GetHasTLA();
     os << "\n";
@@ -3760,6 +3772,9 @@ void ResolvedRecordIndexBinding::Dump(std::ostream &os) const
 {
     os << " - Module: ";
     GetModuleRecord().Dump(os);
+    os << "\n";
+    os << " - AbcFileName: ";
+    GetAbcFileName().Dump(os);
     os << "\n";
     os << " - Index: ";
     GetIndex();
@@ -3959,6 +3974,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::SENDABLE_ENV:
         case JSType::COW_TAGGED_ARRAY:
         case JSType::AOT_LITERAL_INFO:
             DumpArrayClass(TaggedArray::Cast(obj), vec);
@@ -5296,6 +5312,11 @@ void LexicalEnv::DumpForSnapshot(std::vector<Reference> &vec) const
     DumpArrayClass(this, vec);
 }
 
+void SendableEnv::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    DumpArrayClass(this, vec);
+}
+
 void GlobalEnv::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     auto globalConst = GetJSThread()->GlobalConstants();
@@ -5832,6 +5853,7 @@ void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("CycleRoot"), GetCycleRoot());
     vec.emplace_back(CString("TopLevelCapability"), GetTopLevelCapability());
     vec.emplace_back(CString("AsyncParentModules"), GetAsyncParentModules());
+    vec.emplace_back(CString("SendableEnv"), GetSendableEnv());
     vec.emplace_back(CString("HasTLA"), JSTaggedValue(GetHasTLA()));
     vec.emplace_back(CString("AsyncEvaluatingOrdinal"), JSTaggedValue(GetAsyncEvaluatingOrdinal()));
     vec.emplace_back(CString("PendingAsyncDependencies"), JSTaggedValue(GetPendingAsyncDependencies()));
@@ -5877,6 +5899,7 @@ void ResolvedIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 void ResolvedRecordIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
+    vec.emplace_back(CString("AbcFileName"), GetAbcFileName());
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
 }
 

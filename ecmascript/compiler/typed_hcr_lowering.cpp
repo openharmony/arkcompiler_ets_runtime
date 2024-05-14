@@ -2006,8 +2006,9 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                                     GateRef leftDst = builder_.TaggedPointerToInt64(
                                         builder_.PtrAdd(newBackingStore,
                                         builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
-                                    GateRef rightDst = builder_.TaggedPointerToInt64(
-                                        builder_.PtrAdd(leftDst, builder_.ZExtInt32ToPtr(leftLength)));
+                                    GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
+                                        builder_.PtrMul(builder_.ZExtInt32ToPtr(leftLength),
+                                        builder_.IntPtr(sizeof(uint16_t)))));
                                     builder_.CopyChars(glue, leftDst, leftSource, leftLength,
                                         builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
                                     builder_.CopyChars(glue, rightDst, rightSource, rightLength,
@@ -2117,7 +2118,8 @@ GateRef TypedHCRLowering::AllocateLineString(GateRef glue, GateRef length, GateR
     GateRef stringClass = builder_.GetGlobalConstantValue(ConstantIndex::LINE_STRING_CLASS_INDEX);
 
     builder_.StartAllocate();
-    GateRef lineString = builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
+    GateRef lineString =
+        builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), lineString, 0, stringClass,
         MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);

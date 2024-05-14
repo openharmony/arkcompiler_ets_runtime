@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
-#include "ecmascript/dfx/vmstat/jit_preheat_profiler.h"
+#include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include <iomanip>
 #include "ecmascript/base/config.h"
 
@@ -91,10 +91,10 @@ void OptCodeProfiler::PrintAndReset()
 
 void OptCodeProfiler::FilterMethodToPrint()
 {
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
     std::vector<CString> methods;
-    auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
-    for (auto it = profMap.begin(); it != profMap.end()) {
+    auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
+    for (auto it = profMap.begin(); it != profMap.end();) {
         if (it->second == false) {
             methods.push_back(it->first);
             profMap.erase(it++);
@@ -106,7 +106,7 @@ void OptCodeProfiler::FilterMethodToPrint()
         if (methodName.find("func_main_") != methodName.npos) {
             continue;
         }
-        LOG_ECMA(ERROR) << methodName << " has not been fully jit preheated.";
+        LOG_ECMA(ERROR) << methodName << " has not been fully jit warmed up.";
     }
 #endif
     std::vector<std::pair<uint64_t, Name>> profVec;
@@ -119,7 +119,7 @@ void OptCodeProfiler::FilterMethodToPrint()
               });
 
     auto itr = profVec.begin();
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
     while (itr != profVec.end()) {
 #else
     for (int i = 0; i < printMehodCount_ && itr != profVec.end(); i++) {
@@ -127,7 +127,7 @@ void OptCodeProfiler::FilterMethodToPrint()
         PrintMethodRecord(itr->first, itr->second.GetName());
         itr++;
     }
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
     if (profMap.size() != 0) {
         for (auto it = profMap.begin(); it != profMap.end(); it++) {
             if (it->first.find("func_main_") != it->first.npos) {
@@ -135,7 +135,7 @@ void OptCodeProfiler::FilterMethodToPrint()
             }
             LOG_ECMA(ERROR) << "There exists compiled function " << it->first
                             << ", but it has not been jit executed, please "
-                               "preheat strongly.";
+                               "warm up strongly.";
         }
     }
 #endif
@@ -143,9 +143,9 @@ void OptCodeProfiler::FilterMethodToPrint()
 
 void OptCodeProfiler::PrintMethodRecord(Key key, std::string methodName)
 {
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
+#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
     CString methodInfo = abcNames_[key.GetAbcId()] + ":" + CString(methodName);
-    auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
+    auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
     if (profMap.find(methodInfo) != profMap.end()) {
         profMap.erase(methodInfo);
     }
@@ -160,7 +160,7 @@ void OptCodeProfiler::PrintMethodRecord(Key key, std::string methodName)
     BcRecord& bcRecord = methodIdToRecord_[key.Value()];
     for (auto it = bcRecord.begin(); it != bcRecord.end(); it++) {
         Record record = it->second;
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER == 0
+#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER == 0
         if (record.Count() == 0) {
             break;
         }
@@ -194,7 +194,7 @@ void OptCodeProfiler::Update(JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpc
     }
     auto methodPoint = Method::Cast(method);
     auto methodId = methodPoint->GetMethodId().GetOffset();
-    auto methodName = methodPoint->GetMethodName();
+    auto methodName = ConvertToStdString(methodPoint->GetRecordNameStr()) + "." + methodPoint->GetMethodName();
 
     const auto *pf = methodPoint->GetJSPandaFile();
     ASSERT(pf != nullptr);

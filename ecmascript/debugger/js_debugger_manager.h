@@ -124,34 +124,9 @@ public:
         debuggerLibraryHandle_ = std::move(handle);
     }
 
-    LibraryHandle &GetDebugLibraryHandle()
+    const LibraryHandle &GetDebugLibraryHandle() const
     {
         return debuggerLibraryHandle_;
-    }
-
-    void SetDebuggerPostTask(DebuggerPostTask debuggerPostTask)
-    {
-        debuggerPostTask_ = debuggerPostTask;
-    }
-
-    DebuggerPostTask GetDebuggerPostTask()
-    {
-        return debuggerPostTask_;
-    }
-
-    void SetLibraryPath(const char *libraryPath)
-    {
-        libraryPath_ = libraryPath;
-    }
-
-    const char *GetLibraryPath()
-    {
-        return libraryPath_;
-    }
-
-    EcmaVM *GetEcmaVM()
-    {
-        return jsThread_->GetEcmaVM();
     }
 
     void SetEvalFrameHandler(std::shared_ptr<FrameHandler> frameHandler)
@@ -281,8 +256,6 @@ private:
 
     NotificationManager notificationManager_;
     HotReloadManager hotReloadManager_;
-    DebuggerPostTask debuggerPostTask_;
-    const char *libraryPath_ {nullptr};
     // Serialization / DeSerialization Timeout check
     bool isSerializationTimeoutCheckEnabled_ { false };
     // in milliseconds

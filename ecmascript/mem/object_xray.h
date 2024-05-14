@@ -428,6 +428,7 @@ public:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:
             case JSType::LEXICAL_ENV:
+            case JSType::SENDABLE_ENV:
             case JSType::AOT_LITERAL_INFO:
             case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:

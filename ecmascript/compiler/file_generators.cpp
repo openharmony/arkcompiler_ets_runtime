@@ -523,6 +523,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
         lmirModule->GetModule()->SetIsAArch64(isAArch64());
     }
 #endif
+    ASSERT(GetModuleVecSize() > 0);
     uint32_t latestModuleIdx = GetModuleVecSize() - 1;
     {
         TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));

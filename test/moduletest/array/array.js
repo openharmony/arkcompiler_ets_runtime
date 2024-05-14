@@ -433,6 +433,7 @@ print(arr.toSpliced(0, 0, 0, 0)[0])
 var arr25 = []
 arr25[1025] = 0;
 print(arr25.includes({}, 414));
+print(arr25.includes(1025,109));
 
 var arr26 = []
 arr25[100] = 0;
@@ -636,3 +637,1112 @@ const mapEd = v0.map(() => {
   v0["pop"]();
 });
 print(new Uint16Array(v0).length);
+
+/*
+ * @tc.name:ArrayConstructor
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+const originalArrays = [
+    [1, 2, 3],
+    ["apple", "banana", "orange"],
+    [true, false, true],
+    [{ name: "John" }, { name: "Doe" }],
+    [NaN, NaN, NaN],
+    [Infinity, -Infinity],
+    [RegExp("pattern1"), RegExp("pattern2")],
+    [new Map(), new Map()],
+    [new Set(), new Set()],
+    [Array.from([1, 2, 3]), Array.from([4, 5, 6])],
+    ["ark_unicodeValue 😀", "ark_unicodeValue 😎"],
+];
+
+for (let i = 0; i < originalArrays.length; i++) {
+    print(originalArrays[i]);
+}
+
+try {
+    const arr1 = [1, 2, 3];
+    print(arr1[10]);
+    print("Exception usage, but does not throw an error");
+} catch (error) {
+    print("Caught an error: " + error);
+}
+
+try {   
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    const arr2 = new Array(-1);
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:from
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+const newArray = Array.from(originalArrays);
+newArray.forEach(array => {
+    print(array);
+});
+
+try {
+    Array.from([1, 2, 3], "not a function");
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    Array.from([1, 2, 3], () => { throw new Error("Something went wrong"); });
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    Array.from(123);
+    Array.from({});
+    Array.from([1, 2, 3], () => {}, 123);
+    print("Exception usage, but does not throw an error");
+} catch (error) {
+    print("Caught an error: " + error);
+}
+
+/*
+ * @tc.name:isArray
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+originalArrays.forEach((array, index) => {
+    print(Array.isArray(array));
+});
+
+try {
+    print(Array.isArray());
+    print(Array.isArray(123));
+    print(Array.isArray("not an array"));
+    print(Array.isArray(null));
+    print(Array.isArray(undefined));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:Of
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+const ArrayOf = Array.of(...originalArrays);
+print(ArrayOf[1]);
+
+try {
+    const arr1 = Array.of(undefined);
+    const arr2 = Array.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    print(arr1);
+    print(arr2);
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:At
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+print(originalArrays.at(1));
+print(originalArrays.at(3));
+print(originalArrays.at(-1));
+print(originalArrays.at(-2));
+
+try {
+    print(originalArrays.at());
+    print(originalArrays.at(100));
+    print(originalArrays.at(null));
+    print(originalArrays.at(undefined));
+    print(originalArrays.at(new Map()));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:concat
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+const array1 = [1, "two", true];
+const array2 = [null, undefined, { key: "value" }];
+const array3 = [];
+
+const concatenatedArray = array1.concat(array2, array3);
+print("Concatenated Array:", concatenatedArray);
+
+const nestedArray = [[1, 2], ["a", "b"], [true, false]];
+const nestedConcatenatedArray = array1.concat(nestedArray, array2);
+print("Nested Concatenated Array:", nestedConcatenatedArray);
+
+const mixedConcatenatedArray = array1.concat(4, "five", { prop: "value" });
+print("Mixed Concatenated Array:", mixedConcatenatedArray);
+
+const spreadConcatenatedArray = [...array1, ...array2, ...array3];
+print("Spread Concatenated Array:", spreadConcatenatedArray);
+
+/*
+ * @tc.name:CopyWithin,Entries
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+const copiedArray1 = originalArrays[0].slice().copyWithin(0, 2);
+const copiedArray2 = originalArrays[1].slice().copyWithin(1, 0, 2);
+const copiedArray3 = originalArrays[2].slice().copyWithin(1, -2);
+const copiedArray4 = originalArrays[3].slice().copyWithin(-1);
+const copiedArray5 = originalArrays[4].slice().copyWithin(0);
+
+print("Original Arrays:", originalArrays);
+print("Copied Array 1:", copiedArray1);
+print("Copied Array 2:", copiedArray2);
+print("Copied Array 3:", copiedArray3);
+print("Copied Array 4:", copiedArray4);
+print("Copied Array 5:", copiedArray5);
+
+for (const [index, value] of originalArrays.entries()) {
+    print(`Index: ${index}`);
+    print(`Value: ${value}`);
+}
+
+/*
+ * @tc.name:Every
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+const numbers1 = [2, 4, 6, 8, 10];
+const allEven = numbers1.every(num => num % 2 === 0);
+print(allEven);
+
+const numbers2 = [1, 2, 3, 4, 5];
+const allEven2 = numbers2.every(num => num % 2 === 0);
+print(allEven2);
+
+const emptyArray1 = [];
+const allEmpty = emptyArray1.every(num => num % 2 === 0);
+print(allEmpty);
+
+const emptyArray2 = [];
+const allEmpty2 = emptyArray2.every(() => true);
+print(allEmpty2);
+
+const mixedArray = [2, 4, "hello", 8, 10];
+const allNumbers = mixedArray.every(num => typeof num === "number");
+print(allNumbers);
+
+const emptyArray3 = [];
+const allNonNegative = emptyArray3.every(num => num >= 0);
+print(allNonNegative);
+
+try {
+    const arr = [1, 2, 3];
+    const result = arr.every("not a function");
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    const arr = [1, 2, 3];
+    const result = arr.every(num => num < undefinedVariable);
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:Fill
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    const array1 = [1, 2, 3, 4, 5];
+    print(array1.fill(0));
+
+    const array2 = [1, 2, 3, 4, 5];
+    print(array2.fill(0, 2));
+
+    const array3 = [1, 2, 3, 4, 5];
+    print(array3.fill(0, 1, 3));
+
+    const array4 = new Array(5);
+    print(array4.fill(0));
+
+    const array5 = Array.from({ length: 5 }, (_, index) => index + 1);
+    print(array5.fill(0, 2));
+
+    const array6 = Array.from({ length: 5 }, (_, index) => index + 1);
+    print(array6.fill(0, 1, 3));
+
+    const array7 = Array(5).fill("hello");
+    print(array7);
+
+    const array8 = [1, 2, 3];
+    print(array8.fill(0, -2));
+
+    const array9 = [1, 2, 3];
+    print(array9.fill(0, -2, -1));
+}
+
+try {
+    const arr = [1, 2, 3];
+    arr.fill(0, 1.5);
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    const arr = [1, 2, 3];
+    arr.fill(0, NaN);
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:Filter
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    const numbers = [1, 2, 3, 4, 5];
+
+    const evenNumbers = numbers.filter(num => num % 2 === 0);
+    print(evenNumbers);
+
+    const greaterThanTwo = numbers.filter(num => num > 2);
+    print(greaterThanTwo);
+
+    const lessThanTen = numbers.filter(num => num < 10);
+    print(lessThanTen);
+
+    const divisibleByThree = numbers.filter(num => num % 3 === 0);
+    print(divisibleByThree);
+
+    const words = ["apple", "banana", "pear", "orange"];
+    const longWords = words.filter(word => word.length >= 5);
+    print(longWords);
+
+    const persons = [
+        { name: "Alice", age: 25 },
+        { name: "Bob", age: 17 },
+        { name: "Charlie", age: 30 }
+    ];
+    const adults = persons.filter(person => person.age > 18);
+    print(adults);
+}
+
+try {
+    const arr = [1, 2, 3];
+    const result = arr.filter("not a function");
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    const obj = { a: 1, b: 2 };
+    const result = obj.filter(() => true);
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:Find
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    const array = [6, 7, 8, 9, 10, NaN, undefined, null, "", false, {name: "John"}, [1, 2, 3]];
+    print(array.find(item => item === 5));
+    print(array.find(item => item === 11));
+    print(array.find(item => item > 5));
+    print(array.find(item => item < 0));
+    print(array.find(item => typeof item === 'string'));
+    print(array.find(item => typeof item === 'object'));
+    print(array.find(item => Array.isArray(item)));
+    print(array.find(item => item));
+    print(array.find(item => item === null));
+    print(array.find(item => item === undefined));
+    print(array.find(item => isNaN(item)));
+    print(array.find(item => item === false));
+}
+
+try {
+    const array = [1, 2, 3, 4, 5];
+    print(array.find());
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    const array = [1, 2, 3, 4, 5];
+    print(array.find("not a function"));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    let array = null;
+    print(array.find(item => item === 1));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    array = undefined;
+    print(array.find(item => item === 1));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:FindIndex
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    const array = [6, 7, 8, 9, 10, NaN, undefined, null, "", false, {name: "John"}, [1, 2, 3]];
+    print(array.findIndex(item => item === 5));
+    print(array.findIndex(item => item === 11));
+    print(array.findIndex(item => item > 5));
+    print(array.findIndex(item => item < 0));
+    print(array.findIndex(item => typeof item === 'string'));
+    print(array.findIndex(item => typeof item === 'object'));
+    print(array.findIndex(item => Array.isArray(item)));
+    print(array.findIndex(item => item));
+    print(array.findIndex(item => item === null));
+    print(array.findIndex(item => item === undefined));
+    print(array.findIndex(item => isNaN(item)));
+    print(array.findIndex(item => item === false));
+}
+
+try {
+    const array = [1, 2, 3, 4, 5];
+    print(array.findIndex());
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    const array = [1, 2, 3, 4, 5];
+    print(array.findIndex("not a function"));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    let array = null;
+    print(array.findIndex(item => item === 1));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    array = undefined;
+    print(array.findIndex(item => item === 1));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:FindLast
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    const array = [6, 7, 8, 9, 10, NaN, undefined, null, "", false, {name: "John"}, [1, 2, 3]];
+    print(array.findLast(item => item === 5));
+    print(array.findLast(item => item === 11));
+    print(array.findLast(item => item > 5));
+    print(array.findLast(item => item < 0));
+    print(array.findLast(item => typeof item === 'string'));
+    print(array.findLast(item => typeof item === 'object'));
+    print(array.findLast(item => Array.isArray(item)));
+    print(array.findLast(item => item));
+    print(array.findLast(item => item === null));
+    print(array.findLast(item => item === undefined));
+    print(array.findLast(item => isNaN(item)));
+    print(array.findLast(item => item === false));
+}
+
+try {
+    const array = [1, 2, 3, 4, 5];
+    print(array.findLast());
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    const array = [1, 2, 3, 4, 5];
+    print(array.findLast("not a function"));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    let array = null;
+    print(array.findLast(item => item === 1));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    array = undefined;
+    print(array.findLast(item => item === 1));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:FindLastIndex
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    const array = [6, 7, 8, 9, 10, NaN, undefined, null, "", false, {name: "John"}, [1, 2, 3]];
+    print(array.findLastIndex(item => item === 5));
+    print(array.findLastIndex(item => item === 11));
+    print(array.findLastIndex(item => item > 5));
+    print(array.findLastIndex(item => item < 0));
+    print(array.findLastIndex(item => typeof item === 'string'));
+    print(array.findLastIndex(item => typeof item === 'object'));
+    print(array.findLastIndex(item => Array.isArray(item)));
+    print(array.findLastIndex(item => item));
+    print(array.findLastIndex(item => item === null));
+    print(array.findLastIndex(item => item === undefined));
+    print(array.findLastIndex(item => isNaN(item)));
+    print(array.findLastIndex(item => item === false));
+}
+
+try {
+    const array = [1, 2, 3, 4, 5];
+    print(array.findLastIndex());
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    const array = [1, 2, 3, 4, 5];
+    print(array.findLastIndex("not a function"));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    let array = null;
+    print(array.findLastIndex(item => item === 1));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    array = undefined;
+    print(array.findLastIndex(item => item === 1));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:Flat
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    const array = [1, 2, [3, 4, [5, 6]], [], [[7], 8], 9, [10]];
+
+    print(array.flat());
+    print(array.flat(2));
+
+    const deeplyNestedArray = [1, [2, [3, [4, [5]]]]];
+    print(deeplyNestedArray.flat(Infinity));
+
+    const emptyArray = [1, [2, [], [3, []]]];
+    print(emptyArray.flat());
+
+    const sparseArray = [1, 2, , 3, 4, [5, , 6]];
+    print(sparseArray.flat());
+
+    const irregularArray = [1, [2, 3, [4, [5]]]];
+    print(irregularArray.flat());
+
+    const arrayWithNonArrays = [1, 'string', {name: 'John'}, null, undefined];
+    print(arrayWithNonArrays.flat());
+
+    const arrayWithNaNAndInfinity = [1, [NaN, Infinity], [2, [3, NaN]]];
+    print(arrayWithNaNAndInfinity.flat());
+}
+
+try {
+    const array = [1, 2, [3, 4]];
+    print(array.flat('string'));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+try {
+    const array = [1, 2, [3, 4]];
+    print(array.flat(-1));
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:FlatMap
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    const array = [1, 2, 3];
+    print(array.flatMap(x => [x, x * 2]));
+    print(array.flatMap(x => []));
+    print(array.flatMap(x => x * 2));
+    print(array.flatMap((x, index) => [x, index]));
+    const sparseArray = [1, , 2, , 3];
+    print(sparseArray.flatMap(x => [x]));
+    const nestedArray = [[1, 2], [3, 4], [5, 6]];
+    print(nestedArray.flatMap(arr => arr));
+    const arrayWithEmptyArrays = [1, [], [2, 3], [], 4];
+    print(arrayWithEmptyArrays.flatMap(x => x));
+    print(array.flatMap(x => x % 2 === 0 ? [x, x * 2] : x));
+}
+
+/*
+ * @tc.name:ForEach
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+originalArrays.forEach(array => {
+    array.forEach(item => {
+        print(item);
+    });
+});
+
+try {
+    const array = [1, 2, 3];
+    array.forEach('not a function');
+} catch (error) {
+    print("Caught an error: ", error);
+}
+
+/*
+ * @tc.name:Includes
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+const testCases = [
+    { array: [1, 2, 3, 4, 5], target: 3 },
+    { array: [1, 2, 3, 4, 5], target: 6 },
+    { array: [NaN, 2, 3], target: NaN },
+    { array: [undefined, 2, 3], target: undefined },
+    { array: ["apple", "banana", "orange"], target: "banana" },
+    { array: ["apple", "banana", "orange"], target: "grape" },
+    { array: [], target: 1 },
+    { array: [true, false, true], target: true },
+    { array: [true, false, true], target: false },
+    { array: [Infinity, -Infinity], target: Infinity },
+    { array: [Infinity, -Infinity], target: -Infinity },
+    { array: [new Map(), new Map()], target: new Map() },
+    { array: [new Set(), new Set()], target: new Set() },
+];
+
+testCases.forEach(({ array, target }) => {
+    const result = array.includes(target);
+    print(`Array: [${array.join(', ')}], Target: ${target}, Result: ${result}`);
+});
+
+/*
+ * @tc.name:IndexOf
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let arr = [1, 2, 3, 4, 5];
+    print(arr.indexOf(3));
+    print(arr.indexOf(1));
+    print(arr.indexOf(5));
+    print([].indexOf(1));
+    let arr2 = ["apple", "banana", "cherry"];
+    print(arr2.indexOf("banana"))
+    let arr3 = [1, 2, 2, 3, 4, 2];
+    print(arr3.indexOf(2));
+    print(arr.indexOf(10));
+    let arr4 = [{id: 1}, {id: 2}, {id: 3}];
+    print(arr4.indexOf({id: 2}));
+    print(arr4.findIndex(item => item.id === 2));
+    print("not an array".indexOf(1));
+}
+
+/*
+ * @tc.name:Join
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let arr = ["apple", "banana", "cherry"];
+    print(arr.join());
+    print(arr.join(", "));
+    let emptyArr = [];
+    print(emptyArr.join());
+    let singleElementArr = ["apple"];
+    print(singleElementArr.join());
+    let mixedArr = ["apple", 1, {name: "John"}];
+    print(mixedArr.join());
+    let customSeparatorArr = ["apple", "banana", "cherry"];
+    print(customSeparatorArr.join(" + "));
+}
+
+/*
+ * @tc.name:Keys
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let arr = ["apple", "banana", "cherry"];
+    let keysIter = arr.keys();
+    for (let key of keysIter) {
+        print(key);
+    }
+
+    let emptyArr = [];
+    let emptyKeysIter = emptyArr.keys();
+    print(emptyKeysIter.next().done);
+
+    let singleElementArr = ["apple"];
+    let singleElementKeysIter = singleElementArr.keys();
+    print(singleElementKeysIter.next().value);
+    print(singleElementKeysIter.next().done);
+
+    let multiDimArr = [["apple", "banana"], ["cherry", "date"]];
+    let multiDimKeysIter = multiDimArr.keys();
+    for (let key of multiDimKeysIter) {
+        print(key);
+    }
+
+    let sparseArr = [1, , 3];
+    let sparseKeysIter = sparseArr.keys();
+    for (let key of sparseKeysIter) {
+        print(key);
+    }
+}
+
+/*
+ * @tc.name:LastIndexOf
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let arr = [1, 2, 3, 4, 2, 5];
+    print(arr.lastIndexOf(2));
+
+    print(arr.lastIndexOf(1));
+    print(arr.lastIndexOf(5));
+    print(arr.lastIndexOf(6));
+
+    let emptyArr = [];
+    print(emptyArr.lastIndexOf(1));
+
+    let arrWithNaN = [1, 2, NaN, 4, NaN];
+    print(arrWithNaN.lastIndexOf(NaN));
+
+    let arrWithUndefined = [1, 2, undefined, 4];
+    print(arrWithUndefined.lastIndexOf(undefined));
+}
+
+/*
+ * @tc.name:Map
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let arr = [1, 2, 3, 4, 5];
+    let mappedArr = arr.map(num => num * 2);
+    print(mappedArr);
+
+    let emptyArr = [];
+    let mappedEmptyArr = emptyArr.map(item => item * 2);
+    print(mappedEmptyArr);
+
+    let arrWithNaN = [1, 2, NaN, 4, NaN];
+    let mappedArrWithNaN = arrWithNaN.map(num => num * 2);
+    print(mappedArrWithNaN);
+
+    let sparseArr = [1, , 3];
+    let mappedSparseArr = sparseArr.map(num => num * 2);
+    print(mappedSparseArr);
+
+    let objArr = [{id: 1}, {id: 2}, {id: 3}];
+    let mappedObjArr = objArr.map(obj => obj.id);
+    print(mappedObjArr);
+
+    let multiDimArr = [[1, 2], [3, 4], [5, 6]];
+    let mappedMultiDimArr = multiDimArr.map(innerArr => innerArr.map(num => num * 2));
+    print(mappedMultiDimArr);
+}
+
+/*
+ * @tc.name:Pop
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let arr = [1, 2, 3, 4, 5];
+    let poppedElement = arr.pop();
+    print(poppedElement);
+    print(arr);
+
+    let emptyArr = [];
+    let poppedEmptyElement = emptyArr.pop();
+    print(poppedEmptyElement);
+    print(emptyArr);
+
+    let singleElementArr = [1];
+    let poppedSingleElement = singleElementArr.pop();
+    print(poppedSingleElement);
+    print(singleElementArr);
+
+    let anotherSingleElementArr = ["apple"];
+    let poppedAnotherSingleElement = anotherSingleElementArr.pop();
+    print(poppedAnotherSingleElement);
+}
+
+/*
+ * @tc.name:Push
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let arr = [1, 2, 3];
+    arr.push(4);
+    print(arr);
+
+    arr.push(5, 6);
+    print(arr);
+
+    let emptyArr = [];
+    emptyArr.push(1);
+    print(emptyArr);
+
+    let objArr = [{ id: 1 }];
+    objArr.push({ id: 2 });
+    print(objArr);
+
+    let nestedArr = [1, 2];
+    nestedArr.push([3, 4]);
+    print(nestedArr);
+
+    let arrWithUndefined = [1, 2, 3];
+    arrWithUndefined.push(undefined);
+    print(arrWithUndefined);
+
+    let singleElementArr = [1];
+    singleElementArr.push(2);
+    print(singleElementArr);
+}
+
+/*
+ * @tc.name:Reduce
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let arr = [1, 2, 3, 4, 5];
+    let sum = arr.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+    print(sum);
+
+    let emptyArr = [];
+    let sumOfEmptyArr = emptyArr.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+    print(sumOfEmptyArr);
+
+    let singleArr = [1];
+    let sumOfSingleArr = singleArr.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+    print(sumOfSingleArr);
+
+    let arrNaN = [1, 2, NaN, 4];
+    let sumOfArrNaN = arrNaN.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+    print(sumOfArrNaN);
+}
+
+/*
+ * @tc.name:ReduceRight
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array1 = ["a", "b", "c", "d", "e"];
+    let result1 = array1.reduceRight((acc, curr) => acc + curr);
+    print(result1);
+
+    let array2 = [];
+    let result2 = array2.reduceRight((acc, curr) => acc + curr, "initialValue");
+    print(result2);
+
+    let array3 = ["a"];
+    let result3 = array3.reduceRight((acc, curr) => acc + curr);
+    print(result3);
+
+    let array4 = ["a", "b", undefined, "d"];
+    let result4 = array4.reduceRight((acc, curr) => acc + curr);
+    print(result4);
+}
+
+/*
+ * @tc.name:Reverse
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array1 = ["a", "b", "c", "d", "e"];
+    array1.reverse();
+    print(array1);
+
+    let emptyArray = [];
+    emptyArray.reverse();
+    print(emptyArray);
+
+    let singleElementArray = ["a"];
+    singleElementArray.reverse();
+    print(singleElementArray);
+
+    let arrayWithUndefined = ["a", "b", undefined, "d"];
+    arrayWithUndefined.reverse();
+    print(arrayWithUndefined);
+}
+
+/*
+ * @tc.name:Shift
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array1 = ["a", "b", "c", "d", "e"];
+    let shiftedElement1 = array1.shift();
+    print(shiftedElement1);
+    print(array1);
+
+    let emptyArray = [];
+    let shiftedElement2 = emptyArray.shift();
+    print(shiftedElement2);
+    print(emptyArray);
+
+    let singleElementArray = ["a"];
+    let shiftedElement3 = singleElementArray.shift();
+    print(shiftedElement3);
+    print(singleElementArray);
+
+    let arrayWithUndefined = ["a", undefined, "b", "c"];
+    let shiftedElement4 = arrayWithUndefined.shift();
+    print(shiftedElement4);
+    print(arrayWithUndefined);
+}
+
+/*
+ * @tc.name:Slice
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array1 = ["a", "b", "c", "d", "e"];
+    let slicedArray1 = array1.slice(1, 3);
+    print(slicedArray1);
+
+    let emptyArray = [];
+    let slicedEmptyArray = emptyArray.slice(1, 3);
+    print(slicedEmptyArray);
+
+    let singleElementArray = ["a"];
+    let slicedSingleElementArray = singleElementArray.slice(0, 1);
+    print(slicedSingleElementArray);
+
+    let arrayWithUndefined = ["a", undefined, "b", "c"];
+    let slicedArrayWithUndefined = arrayWithUndefined.slice(1, 3);
+    print(slicedArrayWithUndefined);
+}
+
+/*
+ * @tc.name:Some
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array1 = [1, 2, 3, 4, 5];
+    let isSomeEven = array1.some(num => num % 2 === 0);
+    print(isSomeEven);
+
+    let array2 = [1, 3, 5, 7, 9];
+    let isSomeEven2 = array2.some(num => num % 2 === 0);
+    print(isSomeEven2);
+
+    let emptyArray = [];
+    let isSomeEmpty = emptyArray.some(num => num > 0);
+    print(isSomeEmpty);
+
+    let singleElementArray = [1];
+    let isSomeSingleElement = singleElementArray.some(num => num > 0);
+    print(isSomeSingleElement);
+
+    let arrayWithUndefined = [1, undefined, 3, 5];
+    let isSomeUndefined = arrayWithUndefined.some(num => num === undefined);
+    print(isSomeUndefined);
+}
+
+/*
+ * @tc.name:Sort
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array1 = [3, 1, 4, 1, 5, 9, 2, 6, 5];
+    array1.sort();
+    print(array1);
+
+    let emptyArray = [];
+    emptyArray.sort();
+    print(emptyArray);
+
+    let singleElementArray = [1];
+    singleElementArray.sort();
+    print(singleElementArray);
+
+    let arrayWithUndefined = [1, undefined, 3, 5];
+    arrayWithUndefined.sort();
+    print(arrayWithUndefined);
+
+    let arrayWithStrings = ["banana", "apple", "cherry"];
+    arrayWithStrings.sort();
+    print(arrayWithStrings);
+}
+
+/*
+ * @tc.name:Splice
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array1 = ["a", "b", "c", "d", "e"];
+    let removedElements1 = array1.splice(2, 2, "x", "y");
+    print(removedElements1);
+    print(array1);
+
+    let emptyArray = [];
+    let removedElements2 = emptyArray.splice(0, 0, "x", "y");
+    print(removedElements2);
+    print(emptyArray);
+
+    let singleElementArray = ["a"];
+    let removedElements3 = singleElementArray.splice(0, 1, "x", "y");
+    print(removedElements3);
+    print(singleElementArray);
+
+    let arrayWithUndefined = [1, undefined, 3, 5];
+    let removedElements4 = arrayWithUndefined.splice(1, 2);
+    print(removedElements4);
+    print(arrayWithUndefined);
+}
+
+/*
+ * @tc.name:toString
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array = ["apple", "banana", "cherry"];
+    let string = array.toString();
+    print(string);
+
+    let numbers = [1, 2, 3, 4, 5];
+    let string2 = numbers.toString();
+    print(string2);
+
+    let mixed = [1, "two", true];
+    let string3 = mixed.toString();
+    print(string3);
+}
+
+/*
+ * @tc.name:Unshift
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array1 = ["a", "b", "c"];
+    let newLength1 = array1.unshift("x", "y");
+    print(newLength1);
+    print(array1);
+
+    let emptyArray = [];
+    let newLength2 = emptyArray.unshift("x", "y");
+    print(newLength2);
+    print(emptyArray);
+
+    let singleElementArray = ["a"];
+    let newLength3 = singleElementArray.unshift("x");
+    print(newLength3);
+    print(singleElementArray);
+
+    let arrayWithUndefined = [1, 2, undefined];
+    let newLength4 = arrayWithUndefined.unshift("x");
+    print(newLength4);
+    print(arrayWithUndefined);
+}
+
+/*
+ * @tc.name:ToReversed ToSorted ToSpliced With
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    let array1 = ["a", "b", "c", "d", "e"];
+    print(array1.toReversed());
+
+    let emptyArray = [];
+    print(emptyArray.toReversed());
+
+    let singleElementArray = ["a"];
+    print(singleElementArray.toReversed());
+
+    let arrayWithUndefined = ["a", "b", undefined, "d"];
+    print(arrayWithUndefined.toReversed());
+}
+
+{
+    let array1 = [3, 1, 4, 1, 5, 9, 2, 6, 5];
+    print(array1.toSorted());
+
+    let emptyArray = [];
+    print(emptyArray.toSorted());
+
+    let singleElementArray = [1];
+    print(singleElementArray.toSorted());
+
+    let arrayWithUndefined = [1, undefined, 3, 5];
+    print(arrayWithUndefined.toSorted());
+
+    let arrayWithStrings = ["banana", "apple", "cherry"];
+    print(arrayWithStrings.toSorted());
+}
+
+{
+    let array1 = ["a", "b", "c", "d", "e"];
+    let removedElements1 = array1.toSpliced(2, 2, "x", "y");
+    print(removedElements1);
+    print(array1);
+
+    let emptyArray = [];
+    let removedElements2 = emptyArray.toSpliced(0, 0, "x", "y");
+    print(removedElements2);
+    print(emptyArray);
+
+    let singleElementArray = ["a"];
+    let removedElements3 = singleElementArray.toSpliced(0, 1, "x", "y");
+    print(removedElements3);
+    print(singleElementArray);
+
+    let arrayWithUndefined = [1, undefined, 3, 5];
+    let removedElements4 = arrayWithUndefined.toSpliced(1, 2);
+    print(removedElements4);
+    print(arrayWithUndefined);
+}

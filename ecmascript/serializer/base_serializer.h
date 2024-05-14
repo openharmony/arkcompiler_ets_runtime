@@ -58,6 +58,7 @@ protected:
     void SerializeSFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeSFunctionModule(JSFunction *func);
     void SerializeLexicalEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
+    void SerializeSendableEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeAsyncFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto);
     void SerializeTaggedObjField(SerializeType serializeType, TaggedObject *root, ObjectSlot start, ObjectSlot end);

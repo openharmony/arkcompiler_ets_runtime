@@ -63,6 +63,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     optBCRange_ = runtimeOptions.GetOptCodeRange();
     isEnableEscapeAnalysis_ = runtimeOptions.IsEnableEscapeAnalysis();
     isEnableInductionVariableAnalysis_ = runtimeOptions.IsEnableInductionVariableAnalysis();
+    isEnableVerifierPass_ = !runtimeOptions.IsTargetCompilerMode();
 
     std::string optionSelectMethods = runtimeOptions.GetCompilerSelectMethods();
     std::string optionSkipMethods = runtimeOptions.GetCompilerSkipMethods();
@@ -178,7 +179,15 @@ uint32_t AotCompilerPreprocessor::GenerateAbcFileInfos()
             LOG_COMPILER(ERROR) << "Cannot execute panda file '" << extendedFilePath << "'";
             continue;
         }
-        checksum = jsPandaFile->GetChecksum();
+
+        if (runtimeOptions_.IsTargetCompilerMode()) {
+            if (fileName.compare(mainPkgName_) == 0) {
+                checksum = jsPandaFile->GetChecksum();
+            }
+        } else {
+            checksum = jsPandaFile->GetChecksum();
+        }
+
         ResolveModule(jsPandaFile.get(), extendedFilePath);
         fileInfos_.emplace_back(fileInfo);
     }

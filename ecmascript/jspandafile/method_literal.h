@@ -72,7 +72,7 @@ public:
         callField_ = IsAotCodeBit::Update(callField_, isCompiled);
     }
 
-    void PUBLIC_API Initialize(const JSPandaFile *jsPandaFile);
+    void PUBLIC_API Initialize(const JSPandaFile *jsPandaFile, const JSThread *thread = nullptr);
 
     bool HaveThisWithCallField() const
     {

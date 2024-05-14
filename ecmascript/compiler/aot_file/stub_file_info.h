@@ -75,6 +75,7 @@ public:
     void AddAsmStubELFInfo(const std::vector<const CallSignature*> &asmCallSigns,
                            const std::vector<size_t> &stubsOffset)
     {
+        ASSERT(stubsOffset.size() > 0);
         if (asmCallSigns.size() != stubsOffset.size() - 1) {
             return;
         }

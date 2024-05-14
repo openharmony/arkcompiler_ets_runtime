@@ -845,6 +845,7 @@ bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len, cons
         utf8Data += nbytes;
         utf8Pos += nbytes;
         if (pHigh != 0) {
+            ASSERT(utf16Len > 0);
             if (utf16Pos >= utf16Len - 1 || *utf16Data != pHigh) {
                 return false;
             }

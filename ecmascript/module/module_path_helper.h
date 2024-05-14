@@ -126,13 +126,14 @@ public:
                                                       CString &baseFileName, CString recordName, CString requestName);
     static void ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outBaseFileName,
                                       CString &outEntryPoint);
-    static CString ConcatUnifiedOhmUrl(const CString &bundleName, const CString &pkgname, const CString &path,
-                                       const CString &version);
+    static CString ConcatUnifiedOhmUrl(const CString &bundleName, const CString &pkgname, const CString &entryPath,
+                                       const CString &path, const CString &version);
     static CString ConcatUnifiedOhmUrl(const CString &bundleName, const CString &normalizedpath,
         const CString &version);
     static CString ConcatHspFileNameCrossBundle(const CString &bundleName, const CString &moduleName);
     static CString ConcatHspFileName(const CString &moduleName);
-    static CString TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &oldEntryPoint);
+    static CString TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &baseFileName,
+        const CString &oldEntryPoint);
     static CString ParseUrl(EcmaVM *vm, const CString &recordName);
     static CString ParsePrefixBundle(JSThread *thread, const JSPandaFile *jsPandaFile,
         [[maybe_unused]] CString &baseFileName, CString moduleRequestName, [[maybe_unused]] CString recordName);
@@ -167,7 +168,7 @@ public:
     static void TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                 [[maybe_unused]] CString &baseFileName, CString recordName,
                                                 CString &requestPath);
-    static CVector<CString> GetPkgContextInfoListElements(JSThread *thread, CString &moduleName,
+    static CVector<CString> GetPkgContextInfoListElements(EcmaVM *vm, CString &moduleName,
                                                           CString &packageName);
     static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
                                                 const CString &requestName);

@@ -382,14 +382,24 @@ namespace panda::ecmascript::kungfu {
     T(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8)       \
     T(HandleCallRuntimeLdSendableClassPrefImm16)                          \
     T(HandleCallRuntimeLdsendableexternalmodulevarImm8)                   \
-    T(HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16)
+    T(HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16)          \
+    T(HandleCallRuntimeNewSendableEnvImm8)                                \
+    T(HandleCallRuntimeNewSendableEnvImm16)                               \
+    T(HandleCallRuntimeStSendableVarImm4Imm4)                             \
+    T(HandleCallRuntimeStSendableVarImm8Imm8)                             \
+    T(HandleCallRuntimeStSendableVarImm16Imm16)                           \
+    T(HandleCallRuntimeLdSendableVarImm4Imm4)                             \
+    T(HandleCallRuntimeLdSendableVarImm8Imm8)                             \
+    T(HandleCallRuntimeLdSendableVarImm16Imm16)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \
     V(BCDebuggerEntry)                                  \
     V(BCDebuggerExceptionEntry)                         \
     V(NewObjectRangeThrowException)                     \
-    V(ThrowStackOverflowException)
+    V(ThrowStackOverflowException)                      \
+    V(HandleDefinefuncImm8Id16Imm8ColdReload)           \
+    V(HandleDefinefuncImm16Id16Imm8ColdReload)
 
 #define APPEND_JIT_SUFFIX(name, V) \
     V(name##WithJitProf, name, SlotIDFormat::IMM8)

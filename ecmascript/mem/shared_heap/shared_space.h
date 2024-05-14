@@ -199,7 +199,10 @@ public:
     ~SharedHugeObjectSpace() override = default;
     NO_COPY_SEMANTIC(SharedHugeObjectSpace);
     NO_MOVE_SEMANTIC(SharedHugeObjectSpace);
-    uintptr_t Allocate(JSThread *thread, size_t objectSize);
+    // Sometimes it is unsafe to checkSafePoint here, e.g. in deserialize, if do checkSafePoint JSThread may be
+    // suspended and then do SharedGC, which will free some regions in SharedHeap that are allocated at the beginning
+    // of deserializing for further object allocating, but no object has been allocated on at this moment.
+    uintptr_t Allocate(JSThread *thread, size_t objectSize, AllocateEventType allocType = AllocateEventType::NORMAL);
     void Sweep();
     size_t GetHeapObjectSize() const;
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;

@@ -125,6 +125,7 @@ public:
     {
         return passOptions_;
     }
+    void UpdatePassOptions(CompilationEnv *env);
 
 private:
     JitCompilationOptions jitOptions_;

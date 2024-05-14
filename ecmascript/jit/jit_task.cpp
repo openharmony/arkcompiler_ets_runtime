@@ -21,7 +21,7 @@
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/dfx/vmstat/jit_preheat_profiler.h"
+#include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 
 namespace panda::ecmascript {
 
@@ -45,7 +45,7 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     compilerTask_(nullptr),
     state_(CompileState::SUCCESS),
     compilerTier_(tier),
-    methodInfo_(methodName),
+    methodName_(methodName),
     offset_(offset),
     taskThreadId_(taskThreadId),
     ecmaContext_(nullptr),
@@ -95,7 +95,7 @@ void JitTask::InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &co
 {
     auto profile = jsFunction_->GetProfileTypeInfo();
     if (profile.IsUndefined()) {
-        LOG_JIT(DEBUG) << "[OSR] Empty profile for installing code:" << GetMethodInfo();
+        LOG_JIT(DEBUG) << "[OSR] Empty profile for installing code:" << GetMethodName();
         return;
     }
     FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(codeObj->GetFuncEntryDes());
@@ -110,7 +110,7 @@ void JitTask::InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &co
         JSHandle<TaggedArray> newArr = factory->NewTaggedArray(initLen);
         newArr->Set(hostThread_, 0, codeObj.GetTaggedValue());
         profileInfoHandle->Set(hostThread_, slotId, newArr.GetTaggedValue());
-        LOG_JIT(DEBUG) << "[OSR] Install machine code:" << GetMethodInfo()
+        LOG_JIT(DEBUG) << "[OSR] Install machine code:" << GetMethodName()
                        << ", code address: " << reinterpret_cast<void*>(codeObj->GetFuncAddr())
                        << ", index: " << newArr->GetLength() - 1;
         return;
@@ -123,7 +123,7 @@ void JitTask::InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &co
     }
     newArr->Set(hostThread_, i, codeObj.GetTaggedValue());
     profileInfoHandle->Set(hostThread_, slotId, newArr.GetTaggedValue());
-    LOG_JIT(DEBUG) << "[OSR] Install machine code:" << GetMethodInfo()
+    LOG_JIT(DEBUG) << "[OSR] Install machine code:" << GetMethodName()
                    << ", code address: " << reinterpret_cast<void*>(codeObj->GetFuncAddr())
                    << ", index: " << newArr->GetLength() - 1;
     return;
@@ -148,6 +148,16 @@ static size_t ComputePayLoadSize(const MachineCodeDesc &codeDesc)
            rodataSizeAfterTextAlign + stackMapSizeAlign;
 }
 
+void JitTask::SetHClassInfoForPGO(JSHandle<Method> &methodHandle)
+{
+    auto ptManager = hostThread_->GetCurrentEcmaContext()->GetPTManager();
+    auto info = ptManager->GenJITHClassInfo();
+    auto ecmaContext = hostThread_->GetCurrentEcmaContext();
+    auto unsharedConstantPool = ConstantPool::Cast(
+        ecmaContext->FindUnsharedConstpool(methodHandle->GetConstantPool()).GetTaggedObject());
+    unsharedConstantPool->SetAotHClassInfoWithBarrier(hostThread_, info.GetTaggedValue());
+}
+
 void JitTask::InstallCode()
 {
     if (!IsCompileSuccess()) {
@@ -156,21 +166,16 @@ void JitTask::InstallCode()
     [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
 
     JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
-    auto ptManager = hostThread_->GetCurrentEcmaContext()->GetPTManager();
     if (GetHostVM()->GetJSOptions().IsEnableJITPGO()) {
-        auto info = ptManager->GenJITHClassInfo();
-        auto ecmaContext = hostThread_->GetCurrentEcmaContext();
-        auto unsharedConstantPool = ConstantPool::Cast(
-            ecmaContext->FindUnsharedConstpool(methodHandle->GetConstantPool()).GetTaggedObject());
-        unsharedConstantPool->SetAotHClassInfoWithBarrier(hostThread_, info.GetTaggedValue());
+        SetHClassInfoForPGO(methodHandle);
     }
 
     size_t size = ComputePayLoadSize(codeDesc_);
 
-    methodHandle = hostThread_->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
-    jsFunction_->SetMethod(hostThread_, methodHandle);
+    JSHandle<Method> newMethodHandle = hostThread_->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
+    jsFunction_->SetMethod(hostThread_, newMethodHandle);
     JSHandle<MachineCode> machineCodeObj =
-        hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_, methodHandle);
+        hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_, newMethodHandle);
     machineCodeObj->SetOSROffset(offset_);
 
     if (hostThread_->HasPendingException()) {
@@ -180,7 +185,7 @@ void JitTask::InstallCode()
     }
 
     if (IsOsrTask()) {
-        InstallOsrCode(methodHandle, machineCodeObj);
+        InstallOsrCode(newMethodHandle, machineCodeObj);
         return;
     }
 
@@ -188,20 +193,25 @@ void JitTask::InstallCode()
     if (compilerTier_ == CompilerTier::FAST) {
         FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
         jsFunction_->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
-        methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
+        newMethodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
-        LOG_JIT(DEBUG) <<"Install fast jit machine code:" << GetMethodInfo();
-#if ECMASCRIPT_ENABLE_JIT_PREHEAT_PROFILER
-        auto &profMap = JitPreheatProfiler::GetInstance()->profMap_;
-        if (profMap.find(GetMethodInfo()) != profMap.end()) {
-            profMap[GetMethodInfo()] = true;
+        if (!hostThread_->IsMachineCodeLowMemory() && methodHandle->GetFunctionKind() == FunctionKind::ARROW_FUNCTION) {
+            hostThread_->GetCurrentEcmaContext()->AddJitMachineCode(
+                methodHandle->GetMethodId(),
+                std::make_pair(methodHandle.GetTaggedType(), machineCodeObj.GetTaggedType()));
+        }
+        LOG_JIT(DEBUG) <<"Install fast jit machine code:" << GetMethodName();
+#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
+        auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
+        if (profMap.find(GetMethodName()) != profMap.end()) {
+            profMap[GetMethodName()] = true;
         }
 #endif
     } else {
         ASSERT(compilerTier_ == CompilerTier::BASELINE);
-        methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
+        newMethodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetBaselineCode(hostThread_, machineCodeObj);
-        LOG_BASELINEJIT(DEBUG) <<"Install baseline jit machine code:" << GetMethodInfo();
+        LOG_BASELINEJIT(DEBUG) <<"Install baseline jit machine code:" << GetMethodName();
     }
 }
 
@@ -279,7 +289,7 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
     if (jitTask_->GetJsFunction().GetAddress() == 0) {
         // for unit test
     } else {
-        CString info = "compile method:" + jitTask_->GetMethodInfo() + ", in jit thread";
+        CString info = "compile method:" + jitTask_->GetMethodName() + ", in jit thread";
         Jit::TimeScope scope(info, jitTask_->GetCompilerTier());
 
         jitTask_->Optimize();

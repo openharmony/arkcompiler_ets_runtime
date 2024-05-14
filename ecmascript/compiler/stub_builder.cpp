@@ -7534,7 +7534,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                                         { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
                 break;
             case JSCallMode::CALL_THIS_ARG2: {
-                thisValue = data[2];
+                thisValue = data[2]; // 2: this input
                 CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltinsArg2, &exit, &result, args, mode);
                 Bind(&notFastBuiltinsArg2);
@@ -7548,7 +7548,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                                         { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
                 break;
             case JSCallMode::CALL_THIS_ARG3: {
-                thisValue = data[3];
+                thisValue = data[3]; // 3: this input
                 CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltinsArg3, &exit, &result, args, mode);
                 Bind(&notFastBuiltinsArg3);
@@ -7675,7 +7675,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG2:
-                        thisValue = data[2];
+                        thisValue = data[2]; // 2: this input
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG2:
                     case JSCallMode::DEPRECATED_CALL_ARG2:
@@ -7683,7 +7683,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3:
-                        thisValue = data[3];
+                        thisValue = data[3]; // 3: args3
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG3:
                     case JSCallMode::DEPRECATED_CALL_ARG3:
@@ -7755,7 +7755,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG2:
-                        thisValue = data[2];
+                        thisValue = data[2]; // 2: this input
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG2:
                     case JSCallMode::DEPRECATED_CALL_ARG2:
@@ -7764,7 +7764,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3:
-                        thisValue = data[3];
+                        thisValue = data[3]; // 3: args3
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG3:
                     case JSCallMode::DEPRECATED_CALL_ARG3:
@@ -7851,7 +7851,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG2:
-                        thisValue = data[2];
+                        thisValue = data[2]; // 2: this input
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG2:
                     case JSCallMode::DEPRECATED_CALL_ARG2:
@@ -7860,7 +7860,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3:
-                        thisValue = data[3];
+                        thisValue = data[3]; // 3: args3
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG3:
                     case JSCallMode::DEPRECATED_CALL_ARG3:
@@ -7934,7 +7934,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG2:
-                        thisValue = data[2];
+                        thisValue = data[2]; // 2: this input
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG2:
                     case JSCallMode::DEPRECATED_CALL_ARG2:
@@ -7943,7 +7943,7 @@ GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateR
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3:
-                        thisValue = data[3];
+                        thisValue = data[3]; // 3: args3
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG3:
                     case JSCallMode::DEPRECATED_CALL_ARG3:
@@ -8296,7 +8296,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
                 break;
             case JSCallMode::CALL_THIS_ARG2: {
-                thisValue = data[2];
+                thisValue = data[2]; // 2: this input
                 CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltinsArg2, &exit, &result, args, mode);
                 Bind(&notFastBuiltinsArg2);
@@ -8310,7 +8310,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
                 break;
             case JSCallMode::CALL_THIS_ARG3: {
-                thisValue = data[3];
+                thisValue = data[3]; // 3: args3
                 CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltinsArg3, &exit, &result, args, mode);
                 Bind(&notFastBuiltinsArg3);
@@ -8436,7 +8436,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG2:
-                        thisValue = data[2];
+                        thisValue = data[2]; // 2: this input
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG2:
                     case JSCallMode::DEPRECATED_CALL_ARG2:
@@ -8444,7 +8444,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3:
-                        thisValue = data[3];
+                        thisValue = data[3]; // 3: args3
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG3:
                     case JSCallMode::DEPRECATED_CALL_ARG3:
@@ -8516,7 +8516,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG2:
-                        thisValue = data[2];
+                        thisValue = data[2]; // 2: this input
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG2:
                     case JSCallMode::DEPRECATED_CALL_ARG2:
@@ -8525,7 +8525,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3:
-                        thisValue = data[3];
+                        thisValue = data[3]; // 3: args3
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG3:
                     case JSCallMode::DEPRECATED_CALL_ARG3:
@@ -8612,7 +8612,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG2:
-                        thisValue = data[2];
+                        thisValue = data[2]; // 2: this input
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG2:
                     case JSCallMode::DEPRECATED_CALL_ARG2:
@@ -8621,7 +8621,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3:
-                        thisValue = data[3];
+                        thisValue = data[3]; // 3: args3
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG3:
                     case JSCallMode::DEPRECATED_CALL_ARG3:
@@ -8695,7 +8695,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG2:
-                        thisValue = data[2];
+                        thisValue = data[2]; // 2: this input
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG2:
                     case JSCallMode::DEPRECATED_CALL_ARG2:
@@ -8704,7 +8704,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3:
-                        thisValue = data[3];
+                        thisValue = data[3]; // 3: args3
                         [[fallthrough]];
                     case JSCallMode::CALL_ARG3:
                     case JSCallMode::DEPRECATED_CALL_ARG3:

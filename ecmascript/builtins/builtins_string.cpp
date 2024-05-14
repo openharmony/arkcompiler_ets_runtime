@@ -397,7 +397,7 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
     int32_t pos = 0;
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 1);
     if (posTag->IsUndefined()) {
-        pos = thisLen;
+        pos = static_cast<int32_t>(thisLen);
     } else {
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

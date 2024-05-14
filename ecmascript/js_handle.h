@@ -86,6 +86,16 @@ public:
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), value.GetRawData());
     }
 
+    JSHandle(const JSThread *thread, JSTaggedValue value, bool isPrimitive)
+    {
+        if (LIKELY(isPrimitive)) {
+            address_ = EcmaHandleScope::NewPrimitiveHandle(
+                const_cast<JSThread *>(thread), value.GetRawData());
+            return;
+        }
+        address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), value.GetRawData());
+    }
+
     JSHandle(const JSThread *thread, const TaggedObject *value)
     {
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), JSTaggedValue(value).GetRawData());

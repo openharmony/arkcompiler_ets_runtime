@@ -664,8 +664,11 @@ private:
 
     static bool IsASCIICharacter(uint16_t data)
     {
+        if (data == 0) {
+            return false;
+        }
         // \0 is not considered ASCII in Ecma-Modified-UTF8 [only modify '\u0000']
-        return data - 1U < base::utf_helper::UTF8_1B_MAX;
+        return data <= base::utf_helper::UTF8_1B_MAX;
     }
 
     template<typename T1, typename T2>

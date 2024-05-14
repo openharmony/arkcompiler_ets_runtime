@@ -551,16 +551,7 @@ JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::OptimizeFunctionOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    JSThread *thread = info->GetThread();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
-    if (!thisValue->IsJSFunction()) {
-        return JSTaggedValue::Undefined();
-    }
-    JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction);
-
+    LOG_ECMA(DEBUG) << "Enter OptimizeFunctionOnNextCall()";
     return JSTaggedValue::Undefined();
 }
 

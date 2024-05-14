@@ -76,6 +76,7 @@ public:
     // ConstantPool
     virtual JSTaggedValue GetArrayLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const = 0;
     virtual JSTaggedValue GetObjectLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const = 0;
+    virtual JSTaggedValue GetMethodFromCache(JSTaggedValue constpool, uint32_t index) const = 0;
     virtual panda_file::File::EntityId GetIdFromCache(JSTaggedValue constpool, uint32_t index) const = 0;
     virtual JSTaggedValue GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const = 0;
 

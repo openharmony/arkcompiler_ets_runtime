@@ -114,3 +114,11 @@ print(Math.min(object_factory(0,   2, [0, 0, 0]),
                object_factory(1,   0, [1, 0, 0]),
                object_factory(2,   1, [1, 1, 0])));
 assertFlags([1, 1, 1]);
+
+print(Math.max(2, 465, 30.4302, -34.444));
+print(Math.max(2, 465, undefined, -34.444));
+print(Math.max(2, 465, undefined, new Date()));
+
+print(Math.min(2, 465, 30.4302, -34.444));
+print(Math.min(2, 465, undefined, -34.444));
+print(Math.min(2, 465, undefined, new Date()));

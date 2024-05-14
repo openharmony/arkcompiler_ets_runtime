@@ -264,6 +264,7 @@ JSTaggedValue JSAPILightWeightMap::Remove(JSThread *thread, const JSHandle<JSAPI
     RemoveValue(thread, lightWeightMap, index, AccossorsKind::HASH);
     RemoveValue(thread, lightWeightMap, index, AccossorsKind::VALUE);
     RemoveValue(thread, lightWeightMap, index, AccossorsKind::KEY);
+    ASSERT(lightWeightMap->GetLength() > 0);
     lightWeightMap->SetLength(lightWeightMap->GetLength() - 1);
     return value;
 }

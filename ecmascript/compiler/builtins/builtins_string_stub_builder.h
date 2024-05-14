@@ -70,6 +70,8 @@ BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
         GateRef pos, GateRef rhsCount);
     GateRef IsSubStringAt(const StringInfoGateRef &lStringInfoGate,
         const StringInfoGateRef &rStringInfoGate, GateRef pos);
+    GateRef GetSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
+    GateRef GetFastSubString(GateRef glue, GateRef thisValue, GateRef start, GateRef len);
 private:
     GateRef ChangeStringTaggedPointerToInt64(GateRef x)
     {
@@ -83,7 +85,6 @@ private:
     GateRef GetSingleCharCodeFromConstantString(GateRef str, GateRef index);
     GateRef GetSingleCharCodeFromLineString(GateRef str, GateRef index);
     GateRef GetSingleCharCodeFromSlicedString(GateRef str, GateRef index);
-    GateRef GetSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
     void CheckParamsAndGetPosition(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* pos, Label *exit, Label *slowPath, Label *posIsValid);
 };

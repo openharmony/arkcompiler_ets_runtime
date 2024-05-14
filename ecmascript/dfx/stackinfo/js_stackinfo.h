@@ -113,6 +113,7 @@ public:
 
     void CreateJSPandaFile();
     void CreateJSPandaFile(uint8_t *data, size_t dataSize);
+    void CreateSourceMap(const std::string &hapPath);
     void CreateSourceMap(uint8_t *data, size_t dataSize);
     void CreateDebugExtractor();
     bool ParseHapFileData(std::string& hapName);

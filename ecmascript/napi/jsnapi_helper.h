@@ -99,6 +99,14 @@
     V(BigInt64Array)       \
     V(BigUint64Array)
 
+#define SENDABLE_TYPED_ARRAY_ALL(V) \
+    V(SharedInt8Array)     \
+    V(SharedUint8Array)    \
+    V(SharedInt16Array)    \
+    V(SharedUint16Array)   \
+    V(SharedInt32Array)    \
+    V(SharedUint32Array)
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define EXCEPTION_ERROR_ALL(V)         \
     V(Error, ERROR)                    \

@@ -57,7 +57,6 @@ bool IsBitmaskImmediate(uint64 val, uint32 bitLen)
     uint64 tmpVal = val + (val & static_cast<uint64>(UINT64_MAX - val + 1));
 
     /* now check if tmp is a power of 2 or tmpVal==0. */
-    CHECK_FATAL(tmpVal > 1 && tmpVal < UINT64_MAX, "value overflow");
     tmpVal = tmpVal & (tmpVal - 1);
     if (tmpVal == 0) {
         if (!expectedOutcome) {
@@ -77,7 +76,7 @@ bool IsBitmaskImmediate(uint64 val, uint32 bitLen)
     int64 diff = p1 - p0;
 
     /* check if diff is a power of two; return false if not. */
-    CHECK_FATAL(static_cast<uint64>(diff) > 1 && static_cast<uint64>(diff) < UINT64_MAX, "value overflow");
+    CHECK_FATAL(static_cast<uint64>(diff) >= 1, "value overflow");
     if ((static_cast<uint64>(diff) & (static_cast<uint64>(diff) - 1)) != 0) {
         DEBUG_ASSERT(!expectedOutcome, "incorrect implementation: valid value but returning false");
         return false;
