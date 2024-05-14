@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/compiler/type_info_accessors.h"
 
@@ -93,6 +94,11 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeIn
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
             CandidateNormalCall(gate, workList, CallKind::CALL);
+            break;
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            CandidateNormalCall(gate, workList, CallKind::CALL_NEW);
             break;
         default:
             break;
@@ -254,20 +260,34 @@ bool TSInlineLowering::CheckParameter(GateRef gate, InlineTypeInfoAccessor &info
 void TSInlineLowering::ReplaceCallInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method)
 {
     GateRef gate = info.GetCallGate();
-    bool isCallThis = info.IsCallThis();
+    Environment env(gate, circuit_, &builder_);
     std::vector<GateRef> vec;
+    bool isCallThis = info.IsCallThis();
+    bool isCallNew = info.IsCallNew();
     size_t numIns = acc_.GetNumValueIn(gate);
     ASSERT(numIns > 0);
     // 1: last one elem is function
     GateRef callTarget = acc_.GetValueIn(gate, numIns - 1);
-    GateRef thisObj = Circuit::NullGate();
+    DEFVALUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     size_t fixedInputsNum = 0;
     if (isCallThis) {
         fixedInputsNum = 2; // 2: call target and this
         thisObj = acc_.GetValueIn(gate, 0);
+    } else if (isCallNew) {
+        fixedInputsNum = 1;
+        callTarget = acc_.GetValueIn(gate, 0);
+        ASSERT(info.FindHClass());
+        JSTaggedValue value = info.GetHClass();
+        JSHClass *hclass = JSHClass::Cast(value.GetTaggedObject());
+        ASSERT(value.IsJSHClass() && hclass->GetObjectType() == JSType::JS_OBJECT);
+        GateRef hclassIndex = info.GetHClassIndex();
+        GateRef stateSplit = acc_.GetDep(gate);
+        GateRef frameState = acc_.FindNearestFrameState(stateSplit);
+        GateRef ihclass = builder_.GetHClassGateFromIndex(frameState, hclassIndex);
+        GateRef size = builder_.IntPtr(hclass->GetObjectSize());
+        thisObj = builder_.TypedNewAllocateThis(callTarget, ihclass, size, frameState);
     } else {
         fixedInputsNum = 1; // 1: call target
-        thisObj = builder_.Undefined();
     }
     // -1: callTarget
     size_t actualArgc = numIns + NUM_MANDATORY_JSFUNC_ARGS - fixedInputsNum;
@@ -279,10 +299,14 @@ void TSInlineLowering::ReplaceCallInput(InlineTypeInfoAccessor &info, GateRef gl
     if (!method->IsFastCall()) {
         vec.emplace_back(builder_.Undefined()); // newTarget
     }
-    vec.emplace_back(thisObj);
+    vec.emplace_back(*thisObj);
     // -1: call Target
     for (size_t i = fixedInputsNum - 1; i < numIns - 1; i++) {
-        vec.emplace_back(acc_.GetValueIn(gate, i));
+        if (isCallNew) {
+            vec.emplace_back(acc_.GetValueIn(gate, i + 1));
+        } else {
+            vec.emplace_back(acc_.GetValueIn(gate, i));
+        }
     }
     LowerToInlineCall(info, vec, method);
 }
@@ -426,7 +450,7 @@ GateRef TSInlineLowering::TraceInlineFunction(GateRef glue, GateRef depend, std:
     return result;
 }
 
-void TSInlineLowering::ReplaceReturnGate(GateRef callGate)
+void TSInlineLowering::ReplaceReturnGate(InlineTypeInfoAccessor &info, GateRef callGate, GateRef ctor, GateRef thisObj)
 {
     std::vector<GateRef> returnVector;
     acc_.GetReturnOuts(returnVector);
@@ -446,7 +470,10 @@ void TSInlineLowering::ReplaceReturnGate(GateRef callGate)
         value = MergeAllReturn(returnVector, state, depend);
     }
     SupplementType(callGate, value);
-    ReplaceHirAndDeleteState(callGate, state, depend, value);
+    if (info.IsCallNew()) {
+        value = builder_.CallConstructCheck(callGate, depend, glue_, ctor, value, thisObj);
+    }
+    ReplaceHirAndDeleteState(callGate, state, value, value);
 }
 
 void TSInlineLowering::ReplaceHirAndDeleteState(GateRef gate, GateRef state, GateRef depend, GateRef value)
@@ -485,16 +512,19 @@ void TSInlineLowering::LowerToInlineCall(
     // replace in depend and state
     GateRef glue = args.at(static_cast<size_t>(CommonArgIdx::GLUE));
     GateRef inlineFunc;
+    GateRef thisObj;
     if (method->IsFastCall()) {
         inlineFunc = args.at(static_cast<size_t>(FastCallArgIdx::FUNC));
+        thisObj = args.at(static_cast<size_t>(FastCallArgIdx::THIS_OBJECT));
     } else {
         inlineFunc = args.at(static_cast<size_t>(CommonArgIdx::FUNC));
+        thisObj = args.at(static_cast<size_t>(CommonArgIdx::THIS_OBJECT));
     }
     GateRef frameArgs = GetFrameArgs(info);
     GateRef callerFunc = acc_.GetValueIn(frameArgs, 0);
     ReplaceEntryGate(callGate, callerFunc, inlineFunc, glue);
     // replace use gate
-    ReplaceReturnGate(callGate);
+    ReplaceReturnGate(info, callGate, inlineFunc, thisObj);
     // remove Useless root gates
     RemoveRoot();
 }
@@ -508,6 +538,9 @@ void TSInlineLowering::InlineFuncCheck(const InlineTypeInfoAccessor &info)
     GateRef frameState = acc_.GetFrameState(gate);
     ASSERT(acc_.GetNumValueIn(gate) > 0);
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
+    if (info.IsCallNew()) {
+        funcIndex = 0;
+    }
     GateRef inlineFunc =  acc_.GetValueIn(gate, funcIndex);
     // Do not load from inlineFunc because type in inlineFunc could be modified by others
     uint32_t methodOffset = info.GetCallMethodId();
