@@ -153,6 +153,7 @@ bool JSAPIStack::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIStack> &ob
     uint32_t length = static_cast<uint32_t>(obj->GetTop() + 1);
     if (index >= length) {
         std::ostringstream oss;
+        ASSERT(length > 0);
         oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
             << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());

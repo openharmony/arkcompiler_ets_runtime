@@ -26,6 +26,7 @@
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/patch/quick_fix_helper.h"
 #include "ecmascript/tagged_array.h"
 
 #include "libpandafile/class_data_accessor-inl.h"
@@ -38,7 +39,7 @@ static T *InitializeMemory(T *mem, Args... args)
     return new (mem) T(std::forward<Args>(args)...);
 }
 
-void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName)
+void PandaFileTranslator::TranslateClasses(const JSThread *thread, JSPandaFile *jsPandaFile, const CString &methodName)
 {
     ASSERT(jsPandaFile != nullptr && jsPandaFile->GetMethodLiterals() != nullptr);
     MethodLiteral *methodLiterals = jsPandaFile->GetMethodLiterals();
@@ -54,8 +55,8 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
         panda_file::ClassDataAccessor cda(*pf, classId);
         CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
         bool isUpdateMainMethodIndex = false;
-        cda.EnumerateMethods([jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, &methodName, &recordName,
-                              &isUpdateMainMethodIndex]
+        cda.EnumerateMethods([thread, jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, &methodName,
+                              &recordName, &isUpdateMainMethodIndex]
             (panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
             CString name = reinterpret_cast<const char *>(jsPandaFile->GetStringData(mda.GetNameId()).data);
@@ -74,7 +75,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
 
             MethodLiteral *methodLiteral = methodLiterals + (methodIdx++);
             InitializeMemory(methodLiteral, methodId);
-            methodLiteral->Initialize(jsPandaFile);
+            methodLiteral->Initialize(jsPandaFile, thread);
 
             if (jsPandaFile->IsNewVersion()) {
                 panda_file::IndexAccessor indexAccessor(*pf, methodId);
@@ -133,12 +134,13 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     }
 
     MethodLiteral *mainMethodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
-    return GenerateProgramInternal(vm, mainMethodLiteral, sconstpool);
+    return GenerateProgramInternal(vm, mainMethodLiteral, sconstpool, jsPandaFile);
 }
 
 JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
                                                                MethodLiteral *mainMethodLiteral,
-                                                               JSHandle<ConstantPool> constpool)
+                                                               JSHandle<ConstantPool> constpool,
+                                                               const JSPandaFile *jsPandaFile)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
@@ -150,6 +152,12 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
     } else {
         JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
         JSHandle<Method> method = factory->NewSMethod(mainMethodLiteral);
+        JSTaggedValue patchVal = QuickFixHelper::CreateMainFuncWithPatch(vm, mainMethodLiteral, jsPandaFile);
+        if (!patchVal.IsHole()) {
+            method = JSHandle<Method>(thread, patchVal);
+        } else {
+            method->SetConstantPool(thread, constpool);
+        }
         JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
         JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
         // Main function is created profileTypeInfo by default.
@@ -157,7 +165,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
             SlowRuntimeStub::NotifyInlineCache(thread, mainFunc.GetObject<JSFunction>());
         }
         program->SetMainFunction(thread, mainFunc.GetTaggedValue());
-        method->SetConstantPool(thread, constpool);
     }
     return program;
 }

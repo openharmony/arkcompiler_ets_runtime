@@ -52,6 +52,7 @@ namespace panda::ecmascript::kungfu {
     V(CodePointAt,        String,   Undefined())                                        \
     V(IndexOf,            String,   IntToTaggedPtr(Int32(-1)))                          \
     V(Substring,          String,   IntToTaggedPtr(Int32(-1)))                          \
+    V(SubStr,             String,   Undefined())                                        \
     V(Replace,            String,   Undefined())                                        \
     V(Trim,               String,   Undefined())                                        \
     V(TrimStart,          String,   Undefined())                                        \
@@ -351,6 +352,9 @@ public:
         // NOTE(schernykh): try to remove this switch and move StringFromCharCode to TYPED_BUILTINS_INLINE list
         switch (builtinId) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
+            case BuiltinsStubCSigns::ID::StringSubstring:
+            case BuiltinsStubCSigns::ID::StringSubStr:
+            case BuiltinsStubCSigns::ID::StringSlice:
             case BuiltinsStubCSigns::ID::MapGet:
             case BuiltinsStubCSigns::ID::MapHas:
             case BuiltinsStubCSigns::ID::MapKeys:
@@ -512,6 +516,12 @@ public:
                 return ConstantIndex::SET_ADD_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::StringSubstring:
+                return ConstantIndex::STRING_SUB_STRING_INDEX;
+            case BuiltinsStubCSigns::ID::StringSubStr:
+                return ConstantIndex::STRING_SUB_STR_INDEX;
+            case BuiltinsStubCSigns::ID::StringSlice:
+                return ConstantIndex::STRING_SLICE_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
                 return ConstantIndex::ARRAY_SORT_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::JsonStringify:
@@ -664,6 +674,9 @@ public:
             {SetAdd, "Set.add"},
             {BigIntConstructor, "BigInt"},
             {NumberParseFloat, "Number.parseFloat"},
+            {StringSubstring, "String.prototype.substring"},
+            {StringSubStr, "String.prototype.substr"},
+            {StringSlice, "String.prototype.slice"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
@@ -720,6 +733,9 @@ public:
             {"mapDelete", MapDelete},
             {"setDelete", SetDelete},
             {"BigInt", BigIntConstructor},
+            {"substring", StringSubstring},
+            {"substr", StringSubStr},
+            {"slice", StringSlice},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);

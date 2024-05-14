@@ -106,6 +106,10 @@ int Main(const int argc, const char **argv)
         LOG_COMPILER(ERROR) << "Cannot Create vm";
         return ERR_FAIL;
     }
+    if (JSNApi::IsAotEscape(vm)) {
+        LOG_COMPILER(ERROR) << " Stop compile AOT because there are more crashes";
+        return ERR_FAIL;
+    }
 
     {
         AOTCompilationEnv aotCompilationEnv(vm);
@@ -180,6 +184,7 @@ int Main(const int argc, const char **argv)
                 .EnableOptBranchProfiling(cOptions.isEnableOptBranchProfiling_)
                 .EnableEscapeAnalysis(cOptions.isEnableEscapeAnalysis_)
                 .EnableInductionVariableAnalysis(cOptions.isEnableInductionVariableAnalysis_)
+                .EnableVerifierPass(cOptions.isEnableVerifierPass_)
                 .Build();
 
         PassManager passManager(&aotCompilationEnv,

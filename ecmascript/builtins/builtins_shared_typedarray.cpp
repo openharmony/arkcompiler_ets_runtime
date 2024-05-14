@@ -375,8 +375,8 @@ JSTaggedValue BuiltinsSharedTypedArray::GetBuffer(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
-    JSHandle<JSTypedArray> typedArray = JSHandle<JSTypedArray>::Cast(thisHandle);
-    JSTaggedValue buffer = JSTypedArray::GetSharedOffHeapBuffer(thread, typedArray);
+    JSHandle<JSSharedTypedArray> typedArray = JSHandle<JSSharedTypedArray>::Cast(thisHandle);
+    JSTaggedValue buffer = JSSharedTypedArray::GetSharedOffHeapBuffer(thread, typedArray);
     // 5. Return buffer.
     return buffer;
 }
@@ -1623,7 +1623,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
     ASSERT((static_cast<uint64_t>(srcByteOffset) + static_cast<uint64_t>(beginIndex) *
             static_cast<uint64_t>(elementSize)) <= static_cast<uint64_t>(UINT32_MAX));
     uint32_t beginByteOffset = srcByteOffset + beginIndex * elementSize;
-    JSTaggedValue buffer = JSTypedArray::GetSharedOffHeapBuffer(thread, thisObj);
+    JSTaggedValue buffer = JSSharedTypedArray::GetSharedOffHeapBuffer(thread, JSHandle<JSSharedTypedArray>(thisObj));
     // 21. Let argumentsList be «buffer, beginByteOffset, newLength».
     // 5. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     // 22. Return Construct(constructor, argumentsList).

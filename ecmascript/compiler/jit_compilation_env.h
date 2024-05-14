@@ -48,6 +48,7 @@ public:
     // ConstantPool
     JSTaggedValue GetArrayLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const override;
     JSTaggedValue GetObjectLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const override;
+    JSTaggedValue GetMethodFromCache(JSTaggedValue constpool, uint32_t index) const override;
     panda_file::File::EntityId GetIdFromCache(JSTaggedValue constpool, uint32_t index) const override;
 
     // GlobalEnv

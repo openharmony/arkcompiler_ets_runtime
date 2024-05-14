@@ -93,8 +93,8 @@ void TypeTable::PutToHashTable(MIRType *mirType)
 void TypeTable::UpdateMIRType(const MIRType &pType, const TyIdx tyIdx)
 {
     MIRType *nType = pType.CopyMIRTypeNode();
-    nType->SetTypeIndex(tyIdx);
     ASSERT_NOT_NULL(nType);
+    nType->SetTypeIndex(tyIdx);
     SetTypeWithTyIdx(tyIdx, *nType);
 }
 

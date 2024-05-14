@@ -117,6 +117,9 @@ void Method::ClearAOTStatusWhenDeopt()
     ClearAOTFlagsWhenInit();
     SetDeoptType(kungfu::DeoptType::NOTCHECK);
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(FATAL) << "Method::ClearAOTStatusWhenDeopt:jsPandaFile is nullptr";
+    }
     MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
     SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
 }
@@ -143,6 +146,9 @@ void Method::ClearJitCompiledCodeFlags()
 {
     ClearAOTFlagsWhenInit();
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(FATAL) << "Method::ClearJitCompiledCodeFlags:jsPandaFile is nullptr";
+    }
     MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
     SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
     SetJitCompiledCode(false);

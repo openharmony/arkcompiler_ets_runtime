@@ -287,6 +287,19 @@ config("ark_jsruntime_common_config") {
     "-Wno-unused-but-set-variable",
   ]
 
+  if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64")) {
+    if (js_runtime_feature_enable_pgo) {
+      cflags = [
+        "-fprofile-use=" + rebase_path(
+                "${js_runtime_feature_pgo_path}/libark_jsruntime.profdata",
+                root_build_dir),
+        "-Wno-error=backend-plugin",
+        "-Wno-profile-instr-out-of-date",
+        "-Wno-profile-instr-unprofiled",
+      ]
+    }
+  }
+
   if (use_musl) {
     defines += [ "PANDA_USE_MUSL" ]
   }
@@ -666,6 +679,7 @@ ecma_source = [
   "ecmascript/interpreter/frame_handler.cpp",
   "ecmascript/interpreter/interpreter.cpp",
   "ecmascript/interpreter/interpreter_assembly.cpp",
+  "ecmascript/interpreter/interpreter-inl.cpp",
   "ecmascript/interpreter/slow_runtime_stub.cpp",
   "ecmascript/intl/locale_helper.cpp",
   "ecmascript/jit/jit.cpp",
@@ -807,6 +821,7 @@ ecma_source = [
   "ecmascript/object_operator.cpp",
   "ecmascript/patch/patch_loader.cpp",
   "ecmascript/patch/quick_fix_manager.cpp",
+  "ecmascript/patch/quick_fix_helper.cpp",
   "ecmascript/pgo_profiler/ap_file/pgo_file_info.cpp",
   "ecmascript/pgo_profiler/pgo_profiler.cpp",
   "ecmascript/pgo_profiler/pgo_profiler_decoder.cpp",

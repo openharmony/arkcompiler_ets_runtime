@@ -17,8 +17,10 @@
       panda::ecmascript::COMPILER_HELP_HEAD_MSG*;
 
       panda::ArrayBufferRef::*;
+      panda::SendableArrayBufferRef::*;
       panda::BufferRef::*;
       panda::ArrayRef::*;
+      panda::SendableArrayRef::*;
       panda::BigInt64ArrayRef::*;
       panda::BigIntRef::*;
       panda::BigUint64ArrayRef::*;
@@ -50,6 +52,13 @@
       panda::RegExpRef::*;
       panda::SetIteratorRef::*;
       panda::SetRef::*;
+      panda::SendableTypedArrayRef::*;
+      panda::SharedInt8ArrayRef::*;
+      panda::SharedUint8ArrayRef::*;
+      panda::SharedInt16ArrayRef::*;
+      panda::SharedUint16ArrayRef::*;
+      panda::SharedInt32ArrayRef::*;
+      panda::SharedUint32ArrayRef::*;
       panda::ProxyRef::*;
       panda::StringRef::*;
       panda::SymbolRef::*;
@@ -111,6 +120,7 @@
       panda::ecmascript::BigInt::SameValue*;
       panda::ecmascript::BindSmallCpuCore*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
+      panda::ecmascript::ConstantPool::GetMethodFromCache*;
       panda::ecmascript::ConvertToStdString*;
       panda::ecmascript::ConvertToString*;
       panda::ecmascript::Deoptimizier::ComputeShift*;
@@ -252,6 +262,7 @@
       panda::ecmascript::ObjectFactory::NewSEcmaHClassDictMode*;
       panda::ecmascript::ObjectFactory::GetRawStringFromStringTable*;
       panda::ecmascript::SendableClassDefiner::AddFieldTypeToHClass*;
+      panda::ecmascript::ObjectFactory::NewSMethod*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageSize*;
@@ -319,6 +330,7 @@
       panda::panda_file::FieldDataAccessor::FieldDataAccessor*;
       panda::panda_file::FieldDataAccessor::GetValueInternal*;
       panda::panda_file::MethodDataAccessor::MethodDataAccessor*;
+      panda::ecmascript::JitCompilationEnv::GetMethodFromCache*;
     };
     extern "C" {
       get_ark_js_heap_crash_info;

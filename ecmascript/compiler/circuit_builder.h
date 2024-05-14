@@ -293,6 +293,7 @@ public:
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
+    GateRef GetSendableEnvFromModule(GateRef module);
     GateRef GetHomeObjectFromFunction(GateRef function);
     GateRef GetHClassGateFromIndex(GateRef gate, int32_t index);
     inline GateRef GetExpectedNumOfArgs(GateRef method);
@@ -326,6 +327,7 @@ public:
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
     void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value);
 
     inline GateRef LogicAnd(GateRef x, GateRef y);
     inline GateRef LogicOr(GateRef x, GateRef y);
@@ -401,7 +403,9 @@ public:
     inline GateRef IsAOTLiteralInfo(GateRef x);
     GateRef GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex);
     GateRef GetParentEnv(GateRef object);
+    GateRef GetSendableParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
+    GateRef GetPropertiesFromSendableEnv(GateRef object, GateRef index);
 
     // call operation
     GateRef CallPrivateGetter(GateRef hirGate, GateRef receiver, GateRef accessor, const char* comment = nullptr);
@@ -748,6 +752,9 @@ public:
         GateRef charSize, VariableType type);
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
+    GateRef StringSubstring(GateRef thisValue, GateRef startTag, GateRef endTag);
+    GateRef StringSubStr(GateRef thisValue, GateRef intStart, GateRef lengthTag);
+    GateRef StringSlice(GateRef thisValue, GateRef startTag, GateRef endTag);
     GateRef NumberIsNaN(GateRef gate);
     GateRef NumberParseFloat(GateRef gate, GateRef frameState);
     GateRef NumberIsFinite(GateRef gate);

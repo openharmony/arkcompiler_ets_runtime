@@ -95,6 +95,7 @@ namespace panda::ecmascript {
     V(CallSpread)                    \
     V(Newlexenv)                     \
     V(NewlexenvwithName)             \
+    V(NewSendableEnv)                \
     V(Stlexvar)                      \
     V(Ldlexvar)                      \
     V(Ldlexenv)                      \

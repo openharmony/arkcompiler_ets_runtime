@@ -35,7 +35,7 @@ class LogParser {
       blockStat: -1,
       blockCollect: -1,
       oneBlock: -1,
-    }
+    };
     this.procNormal_ = null;
     this.output_ = {};
   }
@@ -64,7 +64,7 @@ class LogParser {
           file: this.initBlock_.filePoint,
           irList: [],
           startLine: l,
-        }
+        };
         this.procBlock_.oneBlock = null;
         return true;
       }
@@ -286,7 +286,7 @@ class LogParser {
       /^\[compiler\]  *Succes:([0-9, ]*)$/g, //[compiler] 	Succes:
       /^\[compiler\]  *Bytecode\[\] = *(Empty)*$/g, //[compiler] 	Bytecode[] = Empty
       /^\[compiler\]  *Trys:([0-9, ]*)$/g, //[compiler] 	Trys:
-    ]
+    ];
     let ret;
     let pb = this.procBlock_;
     if (pb.blockStat === 0) {
@@ -297,7 +297,7 @@ class LogParser {
           op: 'B' + ret[1],
           detailList: [],
           maxDetailWidth: 0,
-        }
+        };
         pb.oneBlock.in = [[], [], [], [], this.NumberStringToArray(ret[2])];
         return false;
       }
@@ -353,7 +353,7 @@ class LogParser {
       /^\[compiler\]  *Succes:([0-9, ]*)$/g, //[compiler] 	Succes:
       /^\[compiler\]  *Bytecode\[\] = *(Empty)*$/g, //[compiler] 	Bytecode[] = Empty
       /^\[compiler\]  *Trys:([0-9, ]*)$/g, //[compiler] 	Trys:
-    ]
+    ];
     let pb = this.procBlock_;
     let ret;
     switch (pb.blockStat) {
@@ -365,7 +365,7 @@ class LogParser {
             op: 'B' + ret[1],
             detailList: [],
             maxDetailWidth: 0,
-          }
+          };
           pb.blockStat = 1;
           return false;
         }
@@ -427,4 +427,4 @@ class LogParser {
 
 module.exports = {
   LogParser
-}
+};

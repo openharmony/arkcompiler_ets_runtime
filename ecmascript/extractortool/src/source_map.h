@@ -29,7 +29,8 @@
 
 namespace panda {
 namespace ecmascript {
-using ErrorPos = std::pair<uint32_t, uint32_t>;
+using Clock = std::chrono::high_resolution_clock;
+
 struct SourceMapInfo {
     int32_t beforeRow = 0;
     int32_t beforeColumn = 0;
@@ -74,8 +75,7 @@ public:
 #endif
     void Init(uint8_t *data, size_t dataSize);
     bool TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column);
-    static void ExtractStackInfo(const std::string& stackStr, std::vector<std::string>& res);
-    
+
 private:
     void SplitSourceMap(const std::string& sourceMapData);
     void ExtractSourceMapData(const std::string& sourceMapData, std::shared_ptr<SourceMapData>& curMapData);
@@ -90,7 +90,8 @@ private:
 #endif
 
 private:
-    std::unordered_map<std::string, std::string> sourceMapsData_;
+    std::unordered_map<std::string, std::string> sources_;
+    std::unordered_map<std::string, std::string> mappings_;
     std::unordered_map<std::string, std::shared_ptr<SourceMapData>> sourceMaps_;
 };
 } // namespace panda

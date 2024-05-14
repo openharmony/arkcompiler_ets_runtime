@@ -14,8 +14,12 @@
 group("ark_jit_ts_test") {
   testonly = true
   test_list = [
+    "create_arguments",
     "for_loop",
+    "typed_array",
     "while_loop",
+    "exception",
+    "addition_assignment",
   ]
 
   deps = []

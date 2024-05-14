@@ -94,6 +94,7 @@ class ObjectFactory;
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ResolvedRecordIndexBindingClass, RESOLVED_RECORD_INEDX_BINDING_CLASS_INDEX, ecma_roots_class)    \
     V(JSTaggedValue, ResolvedRecordBindingClass, RESOLVED_RECORD_BINDING_CLASS_INDEX, ecma_roots_class)               \
+    V(JSTaggedValue, SendableEnvClass, SENDABLE_ENV_CLASS_INDEX, ecma_roots_class)                                    \
 
 #define GLOBAL_ENV_CONSTANT_CLASS(V)                                                                                  \
     V(JSTaggedValue, JSProxyCallableClass, JS_PROXY_CALLABLE_CLASS_INDEX, ecma_roots_class)                           \
@@ -209,6 +210,9 @@ class ObjectFactory;
     V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)      \
     V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX, ecma_roots_builtins)             \
     V(JSTaggedValue, StringFromCharCode, STRING_FROM_CHAR_CODE_INDEX, ecma_roots_builtins)              \
+    V(JSTaggedValue, StringSubstring, STRING_SUB_STRING_INDEX, ecma_roots_special)                      \
+    V(JSTaggedValue, StringSubStr, STRING_SUB_STR_INDEX, ecma_roots_special)                            \
+    V(JSTaggedValue, StringSlice, STRING_SLICE_INDEX, ecma_roots_special)                               \
     V(JSTaggedValue, TypedArrayEntries, TYPED_ARRAY_ENTRIES_INDEX, ecma_roots_special)                  \
     V(JSTaggedValue, TypedArrayKeys, TYPED_ARRAY_KEYS_INDEX, ecma_roots_special)                        \
     V(JSTaggedValue, TypedArrayValues, TYPED_ARRAY_VALUES_INDEX, ecma_roots_special)                    \

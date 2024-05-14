@@ -8576,7 +8576,6 @@ void DeleteAndBeforeRevStrPattern::Run(BB &bb, Insn &insn)
     }
     auto &insnUseOpnd = insn.GetOperand(kInsnSecondOpnd);
     Insn *nextInsn = insn.GetNextMachineInsn();
-    CHECK_FATAL(nextInsn != nullptr, "null pointer");
     nextInsn->SetOperand(kInsnSecondOpnd, insnUseOpnd);
     bb.RemoveInsn(insn);
 }

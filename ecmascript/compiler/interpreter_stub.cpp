@@ -2674,9 +2674,11 @@ DECLARE_ASM_HANDLER(HandleReturn)
     BRANCH(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
+        GateRef func = GetFunctionFromFrame(frame);
         GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
-        GateRef isHotForJitCompiling = ProfilerStubBuilder(env).IsHotForJitCompiling(*varProfileTypeInfo, callback);
-        BRANCH(BoolAnd(isProfileDumped, isHotForJitCompiling), &tryContinue, &updateHotness);
+        GateRef isJitCompiled =
+            ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, func, *varProfileTypeInfo, callback);
+        BRANCH(BoolAnd(isProfileDumped, isJitCompiled), &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -2745,9 +2747,11 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     BRANCH(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
+        GateRef func = GetFunctionFromFrame(frame);
         GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
-        GateRef isHotForJitCompiling = ProfilerStubBuilder(env).IsHotForJitCompiling(*varProfileTypeInfo, callback);
-        BRANCH(BoolAnd(isProfileDumped, isHotForJitCompiling), &tryContinue, &updateHotness);
+        GateRef isJitCompiled =
+            ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, func, *varProfileTypeInfo, callback);
+        BRANCH(BoolAnd(isProfileDumped, isJitCompiled), &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -4569,8 +4573,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     NewObjectStubBuilder newBuilder(this);
     GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
-    Label isColdReload(env);
-    Label isNotColdReload(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
     {
@@ -4580,15 +4582,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         SetLexicalEnvToFunction(glue, result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
-
-        GateRef coldReloadStage = GetColdReloadStage(glue);
-        BRANCH(Equal(coldReloadStage, True()), &isColdReload, &isNotColdReload);
-        Bind(&isColdReload);
-        {
-            CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
-            Jump(&isNotColdReload);
-        }
-        Bind(&isNotColdReload);
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         callback.ProfileDefineClass(result);
         varAcc = result;
@@ -4605,8 +4598,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     NewObjectStubBuilder newBuilder(this);
     GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
-    Label isColdReload(env);
-    Label isNotColdReload(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
     {
@@ -4617,15 +4608,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
-
-        GateRef coldReloadStage = GetColdReloadStage(glue);
-        BRANCH(Equal(coldReloadStage, True()), &isColdReload, &isNotColdReload);
-        Bind(&isColdReload);
-        {
-            CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
-            Jump(&isNotColdReload);
-        }
-        Bind(&isNotColdReload);
         varAcc = result;
         callback.ProfileDefineClass(result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
@@ -5165,6 +5147,58 @@ DECLARE_ASM_HANDLER(ThrowStackOverflowException)
     DISPATCH_LAST();
 }
 
+DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8ColdReload)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef methodId = ReadInst16_1(pc);
+    GateRef length = ReadInst8_3(pc);
+    NewObjectStubBuilder newBuilder(this);
+    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
+    Bind(&notException);
+    {
+        SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
+        auto frame = GetFrame(sp);
+        GateRef envHandle = GetEnvFromFrame(frame);
+        SetLexicalEnvToFunction(glue, result, envHandle);
+        GateRef currentFunc = GetFunctionFromFrame(frame);
+        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
+        CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
+        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+        callback.ProfileDefineClass(result);
+        varAcc = result;
+        DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
+    }
+}
+
+DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8ColdReload)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef methodId = ReadInst16_2(pc);
+    GateRef length = ReadInst8_4(pc);
+    NewObjectStubBuilder newBuilder(this);
+    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
+    Bind(&notException);
+    {
+        SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
+        auto frame = GetFrame(sp);
+        GateRef envHandle = GetEnvFromFrame(frame);
+        SetLexicalEnvToFunction(glue, result, envHandle);
+        GateRef currentFunc = GetFunctionFromFrame(frame);
+        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
+        CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
+        varAcc = result;
+        callback.ProfileDefineClass(result);
+        DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
+    }
+}
+
 DECLARE_ASM_HANDLER(HandleWideLdpatchvarPrefImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
@@ -5405,6 +5439,210 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16)
         varAcc = *moduleRef;
         DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
     }
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeNewSendableEnvImm8)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef numVars = ZExtInt8ToInt16(ReadInst8_1(pc));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(NewSendableEnv),
+                              { Int16ToTaggedInt(numVars) });
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
+    Bind(&notException);
+    varAcc = res;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    SetSendableEnvToModule(glue, module, res);
+    DISPATCH_WITH_ACC(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeNewSendableEnvImm16)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef numVars = ReadInst16_1(pc);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(NewSendableEnv),
+                              { Int16ToTaggedInt(numVars) });
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
+    Bind(&notException);
+    varAcc = res;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    SetSendableEnvToModule(glue, module, res);
+    DISPATCH_WITH_ACC(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeStSendableVarImm4Imm4)
+{
+    auto env = GetEnvironment();
+    GateRef level = ZExtInt8ToInt32(ReadInst4_2(pc));
+    GateRef slot = ZExtInt8ToInt32(ReadInst4_3(pc));
+
+    GateRef value = acc;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    SetPropertiesToSendableEnv(glue, *currentEnv, slot, value);
+    DISPATCH(CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeStSendableVarImm8Imm8)
+{
+    auto env = GetEnvironment();
+    GateRef level = ZExtInt8ToInt32(ReadInst8_1(pc));
+    GateRef slot = ZExtInt8ToInt32(ReadInst8_2(pc));
+
+    GateRef value = acc;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    SetPropertiesToSendableEnv(glue, *currentEnv, slot, value);
+    DISPATCH(CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeStSendableVarImm16Imm16)
+{
+    auto env = GetEnvironment();
+    GateRef level = ZExtInt16ToInt32(ReadInst16_1(pc));
+    GateRef slot = ZExtInt16ToInt32(ReadInst16_3(pc));
+
+    GateRef value = acc;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    SetPropertiesToSendableEnv(glue, *currentEnv, slot, value);
+    DISPATCH(CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableVarImm4Imm4)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef level = ZExtInt8ToInt32(ReadInst4_2(pc));
+    GateRef slot = ZExtInt8ToInt32(ReadInst4_3(pc));
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    GateRef variable = GetPropertiesFromSendableEnv(*currentEnv, slot);
+    varAcc = variable;
+
+    DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableVarImm8Imm8)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef level = ZExtInt8ToInt32(ReadInst8_1(pc));
+    GateRef slot = ZExtInt8ToInt32(ReadInst8_2(pc));
+
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    GateRef variable = GetPropertiesFromSendableEnv(*currentEnv, slot);
+    varAcc = variable;
+
+    DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableVarImm16Imm16)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef level = ZExtInt16ToInt32(ReadInst16_1(pc));
+    GateRef slot = ZExtInt16ToInt32(ReadInst16_3(pc));
+
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetSendableEnvFromModule(module));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, level), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    currentEnv = GetSendableParentEnv(*currentEnv);
+    i = Int32Add(*i, Int32(1));
+    BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+    Bind(&afterLoop);
+    GateRef variable = GetPropertiesFromSendableEnv(*currentEnv, slot);
+    varAcc = variable;
+
+    DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16);
 }
 
 ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)

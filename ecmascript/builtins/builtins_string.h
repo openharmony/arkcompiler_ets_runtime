@@ -89,7 +89,7 @@
     V("startsWith",        StartsWith,        1, StringStartsWith)                  \
     /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
     /* String.prototype.substr ( start, length ) */                                 \
-    V("substr",            SubStr,            2, INVALID)                           \
+    V("substr",            SubStr,            2, StringSubStr)                      \
     /* String.prototype.substring ( start, end ) */                                 \
     V("substring",         Substring,         2, StringSubstring)                   \
     /* String.prototype.toLocaleLowerCase ( [ reserved1 [ , reserved2 ] ] ) */      \

@@ -212,7 +212,7 @@ public:
         return false;
     }
 
-    virtual bool IsSameContent(const BaseNode *node) const
+    virtual bool IsSameContent([[maybe_unused]] const BaseNode *node) const
     {
         return false;
     }

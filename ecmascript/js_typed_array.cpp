@@ -776,7 +776,7 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
     return arrayBuffer.GetTaggedValue();
 }
 
-JSTaggedValue JSTypedArray::GetSharedOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray)
+JSTaggedValue JSSharedTypedArray::GetSharedOffHeapBuffer(JSThread *thread, JSHandle<JSSharedTypedArray> typedArray)
 {
     JSTaggedValue arrBuf = typedArray->GetViewedArrayBufferOrByteArray();
     if (arrBuf.IsSendableArrayBuffer()) {

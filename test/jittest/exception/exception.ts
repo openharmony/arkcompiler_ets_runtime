@@ -12,25 +12,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ECMASCRIPT_DFX_VMSTAT_JIT_PREHEAT_PROFILER_H
-#define ECMASCRIPT_DFX_VMSTAT_JIT_PREHEAT_PROFILER_H
 
-#include <unordered_map>
-#include "ecmascript/mem/c_string.h"
-
-namespace panda::ecmascript {
-class JitPreheatProfiler {
-public:
-    static JitPreheatProfiler* GetInstance()
-    {
-        static JitPreheatProfiler profiler;
-        return &profiler;
+function Test() {
+    if ((new Number(1) >>> 0) !== 1) {
+        throw new Error('#1: (new Number(1) >>> 0) === 1. Actual: ' + ((new Number(1) >>> 0)));
     }
-    ~JitPreheatProfiler() {}
-    
-    std::unordered_map<CString, bool> profMap_;
-private:
-    JitPreheatProfiler() {}
-};
-}  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_DFX_VMSTAT_JIT_PREHEAT_PROFILER_H
+
+    if ((-1.234 >>> 0) !== 4294967295) {
+        throw new Error('#2: (-1.234 >>> 0) === 4294967295. Actual: ' + ((-1.234 >>> 0)));
+    }
+}
+
+Test();
+ArkTools.jitCompileAsync(Test);
+var ret = ArkTools.waitJitCompileFinish(Test);
+Test();
+print(ret);

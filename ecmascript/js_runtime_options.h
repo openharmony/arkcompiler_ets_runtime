@@ -161,6 +161,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_JIT,
     OPTION_COMPILER_ENABLE_OSR,
     OPTION_COMPILER_JIT_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_JIT_CALL_THRESHOLD,
     OPTION_COMPILER_OSR_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
@@ -184,6 +185,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_BASELINEJIT,
     OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
+    OPTION_ENABLE_AOT_CRASH_ESCAPE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -991,6 +993,16 @@ public:
         return enablePGOProfiler_;
     }
 
+    void SetEnableAotCrashEscape(bool value)
+    {
+        enableAotCrashEscape_ = value;
+    }
+
+    bool IsEnableAotCrashEscape() const
+    {
+        return enableAotCrashEscape_;
+    }
+
     uint32_t GetPGOHotnessThreshold() const
     {
         return pgoHotnessThreshold_;
@@ -1125,6 +1137,16 @@ public:
     uint16_t GetJitHotnessThreshold() const
     {
         return jitHotnessThreshold_;
+    }
+
+    void SetJitCallThreshold(uint8_t value)
+    {
+        jitCallThreshold_ = value;
+    }
+
+    uint8_t GetJitCallThreshold() const
+    {
+        return jitCallThreshold_;
     }
 
     void SetOsrHotnessThreshold(uint16_t value)
@@ -1788,6 +1810,7 @@ private:
     bool enableAPPJIT_{false};
     bool enableOSR_{false};
     uint16_t jitHotnessThreshold_ {2};
+    uint8_t jitCallThreshold_ {0};
     uint16_t osrHotnessThreshold_ {2};
     bool forceJitCompileMain_{false};
     bool enableBaselineJIT_{false};
@@ -1800,6 +1823,7 @@ private:
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
+    bool enableAotCrashEscape_ {true};
     bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};

@@ -22,4 +22,18 @@ JSHandle<ConstantPool> ConstantPool::GetDeserializedConstantPool(EcmaVM *vm, con
     auto aotFileManager = vm->GetAOTFileManager();
     return JSHandle<ConstantPool>(aotFileManager->GetDeserializedConstantPool(jsPandaFile, cpID));
 }
+
+JSTaggedValue ConstantPool::GetMethodFromCache(JSTaggedValue constpool, uint32_t index)
+{
+    const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+    auto val = taggedPool->GetObjectFromCache(index);
+    JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
+
+    bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
+    if (isLoadedAOT && val.IsAOTLiteralInfo()) {
+        val = JSTaggedValue::Hole();
+    }
+
+    return val.IsHole() ? JSTaggedValue::Undefined() : val;
+}
 }

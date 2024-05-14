@@ -101,6 +101,7 @@ void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32
                                   int32_t toIndex, bool direction)
 {
     uint32_t size = GetLength();
+    ASSERT(size > 0);
     uint32_t idx = size - 1;
     if (direction) {
         while (fromIndex < toIndex) {
@@ -197,6 +198,7 @@ bool JSAPIPlainArray::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIPlain
     uint32_t size = obj->GetLength();
     int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
     if (index < 0 || index >= static_cast<int32_t>(size)) {
+        ASSERT(size > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << index;
@@ -216,6 +218,7 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
     int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         std::ostringstream oss;
+        ASSERT(size > 0);
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
@@ -419,6 +422,7 @@ JSTaggedValue JSAPIPlainArray::GetValueAt(JSThread *thread, int32_t index)
 {
     uint32_t size = GetLength();
     if (index < 0 || index >= static_cast<int32_t>(size)) {
+        ASSERT(size > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << index;

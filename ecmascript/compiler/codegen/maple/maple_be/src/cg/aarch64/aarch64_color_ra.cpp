@@ -1176,7 +1176,7 @@ void GraphColorRegAllocator::ComputeLiveRangesUpdateLiveUnitInsnRange(BB &bb, ui
             /* since bb is empty, then use pointer as is */
             lu->second->SetBegin(currPoint);
         }
-        CHECK_FATAL(lu->second->GetBegin() > 1 && lu->second->GetBegin() < UINT32_MAX, "value overflow");
+        CHECK_FATAL(lu->second->GetBegin() >= 1, "value overflow");
         lu->second->SetBegin(lu->second->GetBegin() - 1);
     }
 }
@@ -3743,7 +3743,6 @@ RegOperand *GraphColorRegAllocator::GetReplaceOpnd(Insn &insn, const Operand &op
     RegOperand &phyOpnd = static_cast<AArch64CGFunc *>(cgFunc)->GetOrCreatePhysicalRegisterOperand(
         static_cast<AArch64reg>(regNO), opnd.GetSize(), regType);
     if (needDump) {
-        CHECK_FATAL(regNO > 1 && regNO < UINT32_MAX, "value overflow");
         LogInfo::MapleLogger() << "replace R" << vregNO << " with R" << (regNO - R0) << "\n";
     }
 

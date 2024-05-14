@@ -249,6 +249,7 @@ void HeapSnapshotJSONSerializer::SerializeStringTable(HeapSnapshot *snapshot, St
     writer->WriteString("\"GC roots\",\n");
     // StringId Range from 3
     size_t capcity = stringTable->GetCapcity();
+    ASSERT(capcity > 0);
     size_t i = 0;
     for (auto key : stringTable->GetOrderedKeyStorage()) {
         if (i == capcity - 1) {

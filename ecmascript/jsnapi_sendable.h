@@ -37,6 +37,9 @@ public:
     {
         return instanceDescs_;
     }
+    static void InitWithPropertiesInfo(JSThread *thread,
+                                       FunctionRef::SendablePropertiesInfo &info,
+                                       std::vector<PropertyDescriptor> &descs);
 
 private:
     std::vector<PropertyDescriptor> staticDescs_;
@@ -45,9 +48,7 @@ private:
 
     static void InitStaticDescription(JSThread *thread, std::vector<PropertyDescriptor> &descs, Local<StringRef> &name);
     static void InitNonStaticDescription(JSThread *thread, std::vector<PropertyDescriptor> &descs);
-    static void InitWithPropertiesInfo(JSThread *thread,
-                                       FunctionRef::SendablePropertiesInfo &info,
-                                       std::vector<PropertyDescriptor> &descs);
+    static void InitInstanceDescription(JSThread *thread, std::vector<PropertyDescriptor> &descs);
     static SharedFieldType GetSharedFieldType(JSThread *thread,
                                               FunctionRef::SendableType type,
                                               Local<JSValueRef> value);

@@ -144,6 +144,10 @@ public:
     static JSHandle<JSObject> ToDateTimeOptions(JSThread *thread, const JSHandle<JSTaggedValue> &options,
                                                 const RequiredOption &required, const DefaultsOption &defaults);
 
+    static void ToDateTimeSkeleton(JSThread *thread, const std::vector<std::string> &options,
+                                   std::string &skeleton, HourCycleOption hc,
+                                   const RequiredOption &required, const DefaultsOption &defaults);
+
     // 13.1.7 FormatDateTime(dateTimeFormat, x)
     static JSHandle<EcmaString> FormatDateTime(JSThread *thread, const JSHandle<JSDateTimeFormat> &dateTimeFormat,
                                                double x);

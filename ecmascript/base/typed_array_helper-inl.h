@@ -426,7 +426,7 @@ JSHandle<JSHClass> TypedArrayHelper::GetNotOnHeapHclassFromType(
 }
 
 JSHandle<JSHClass> TypedArrayHelper::GetSharedNotOnHeapHclassFromType(
-    JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType)
+    JSThread *thread, const JSHandle<JSSharedTypedArray> &obj, const DataViewType arrayType)
 {
     JSHClass* objHclass = JSHandle<TaggedObject>(obj)->GetClass();
     ASSERT_PRINT(objHclass->IsOnHeapFromBitField(), "must be on heap");

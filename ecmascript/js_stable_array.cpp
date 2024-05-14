@@ -1473,6 +1473,7 @@ JSTaggedValue JSStableArray::HandleFindLastOfStable(JSThread *thread, JSHandle<J
             return callResult;
         }
         k--;
+        ASSERT(ElementAccessor::GetElementsLength(thisObjHandle) > 0);
         if (ElementAccessor::GetElementsLength(thisObjHandle) - 1 < k) {
             break;
         }

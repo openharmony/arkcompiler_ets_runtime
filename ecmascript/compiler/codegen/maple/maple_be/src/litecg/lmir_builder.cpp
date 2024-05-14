@@ -76,6 +76,7 @@ LMIRBuilder::LMIRBuilder(Module &module_) : mirBuilder(*module_.GetMIRBuilder())
     strType = CreatePtrType(u8Type);  // u8PtrType
     i64PtrType = CreatePtrType(i64Type);
     i64RefType = CreateRefType(i64Type);
+    i64RefRefType = CreateRefType(i64RefType);
 }
 
 void LMIRBuilder::DumpIRToFile(const std::string fileName)
@@ -142,12 +143,12 @@ void LMIRBuilder::SetCallStmtDeoptBundleInfo(Stmt &callNode,
     for (const auto itr : deoptBundleInfo) {
         auto value = itr.second;
         if (value.kind == kPregKind) {
-            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(value.pregIdx)));
+            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(std::get<PregIdx>(value.data))));
         } else if (itr.second.kind == kSymbolKind) {
             CHECK_FATAL(false, "symbol is not supported currently");
-            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(value.symbol)));
+            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(std::get<MIRSymbol*>(value.data))));
         } else {
-            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(value.constVal)));
+            deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(std::get<MIRConst*>(value.data))));
         }
     }
     if (callNode.GetOpCode() == OP_call) {

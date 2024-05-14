@@ -70,9 +70,11 @@ LiteCGIRBuilder::LiteCGIRBuilder(const std::vector<std::vector<GateRef>> *schedu
       methodLiteral_(methodLiteral),
       jsPandaFile_(jsPandaFile),
       funcName_(funcName),
-      acc_(circuit)
+      acc_(circuit),
+      cf_(*module->GetModule())
 {
     lmirBuilder_ = new LMIRBuilder(*module->GetModule());
+    maple::theMIRModule = module->GetModule();
     ASSERT(compCfg_->Is64Bit());
     slotSize_ = sizeof(uint64_t);
     slotType_ = lmirBuilder_->i64Type;
@@ -191,7 +193,7 @@ void LiteCGIRBuilder::CollectDerivedRefInfo()
     auto GetPregFromGate = [&](GateRef gate)->PregIdx {
         LiteCGValue value = gate2Expr_[gate];
         ASSERT(value.kind == LiteCGValueKind::kPregKind);
-        return value.pregIdx;
+        return std::get<PregIdx>(value.data);
     };
 
     // collect base references for derived phi reference
@@ -209,7 +211,7 @@ void LiteCGIRBuilder::CollectDerivedRefInfo()
     std::set<PregIdx> baseRefSet;
     // set common derived reference
     for (auto it : derivedGate2BaseGate_) {
-        if (acc_.GetOpCode(it.second) == OpCode::CONSTANT) {
+        if (GetExprFromGate(it.second).IsConstValue() || GetExprFromGate(it.first).IsConstValue()) {
             continue;
         }
         ASSERT(!GetExprFromGate(it.second).IsDread());
@@ -376,30 +378,31 @@ Expr LiteCGIRBuilder::GetGlue(const std::vector<GateRef> &inList)
     return glue;
 }
 
-void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, Expr expr)
+void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, Expr expr, bool isGlueAdd)
 {
-    if (expr.IsDread()) {
-        LiteCGValue value;
-        value.kind = LiteCGValueKind::kSymbolKind;
-        value.symbol = lmirBuilder_->GetLocalVarFromExpr(expr);
-        gate2Expr_[gate] = value;
+    if (isGlueAdd) {
+        gate2Expr_[gate] = {LiteCGValueKind::kGlueAdd, lmirBuilder_->GetConstFromExpr(expr)};
+        return;
+    } else if (expr.IsDread()) {
+        gate2Expr_[gate] = {LiteCGValueKind::kSymbolKind, lmirBuilder_->GetLocalVarFromExpr(expr)};
+        return;
+    } else if (expr.IsRegread()) {
+        gate2Expr_[gate] = {LiteCGValueKind::kPregKind, lmirBuilder_->GetPregIdxFromExpr(expr)};
+        return;
+    } else if (expr.IsConstValue()) {
+        gate2Expr_[gate] = {LiteCGValueKind::kConstKind, lmirBuilder_->GetConstFromExpr(expr)};
         return;
     }
-    if (expr.IsRegread()) {
-        LiteCGValue value;
-        value.kind = LiteCGValueKind::kPregKind;
-        value.pregIdx = lmirBuilder_->GetPregIdxFromExpr(expr);
-        gate2Expr_[gate] = value;
+    auto *newNode = cf_.Fold(expr.GetNode());
+    if (newNode == nullptr || !newNode->IsConstval()) {
+        // check expr is not agg
+        BB &curBB = GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]);
+        PregIdx pregIdx = lmirBuilder_->CreatePreg(expr.GetType());
+        lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Regassign(expr, pregIdx));
+        gate2Expr_[gate] = {LiteCGValueKind::kPregKind, pregIdx};
         return;
     }
-    // check expr is not agg
-    BB &curBB = GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]);
-    PregIdx pregIdx = lmirBuilder_->CreatePreg(expr.GetType());
-    lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Regassign(expr, pregIdx));
-    LiteCGValue value;
-    value.kind = LiteCGValueKind::kPregKind;
-    value.pregIdx = pregIdx;
-    gate2Expr_[gate] = value;
+    gate2Expr_[gate] = {LiteCGValueKind::kConstKind, static_cast<maple::ConstvalNode*>(newNode)->GetConstVal()};
 }
 
 Expr LiteCGIRBuilder::GetConstant(GateRef gate)
@@ -449,10 +452,16 @@ Expr LiteCGIRBuilder::GetExprFromGate(GateRef gate)
     }
     LiteCGValue value = gate2Expr_[gate];
     if (value.kind == LiteCGValueKind::kSymbolKind) {
-        return lmirBuilder_->Dread(*value.symbol);
+        return lmirBuilder_->Dread(*std::get<maple::MIRSymbol*>(value.data));
+    } else if (value.kind == LiteCGValueKind::kConstKind) {
+        return lmirBuilder_->ConstVal(*std::get<maple::MIRConst*>(value.data));
+    } else if (value.kind == LiteCGValueKind::kGlueAdd) {
+        auto glue = acc_.GetGlueFromArgList();
+        return lmirBuilder_->Add(ConvertLiteCGTypeFromGate(glue), GetExprFromGate(glue),
+            lmirBuilder_->ConstVal(*std::get<maple::MIRConst*>(value.data)));
     }
     ASSERT(value.kind == LiteCGValueKind::kPregKind);
-    return lmirBuilder_->Regread(value.pregIdx);
+    return lmirBuilder_->Regread(std::get<PregIdx>(value.data));
 }
 
 void LiteCGIRBuilder::InitializeHandlers()
@@ -641,6 +650,11 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
 {
     Expr e1Value = GetExprFromGate(e1);
     Expr e2Value = GetExprFromGate(e2);
+    // save glue + offset
+    if (e1 == acc_.GetGlueFromArgList() && acc_.GetOpCode(e2) == OpCode::CONSTANT) {
+        SaveGate2Expr(gate, e2Value, true);
+        return;
+    }
 
     Expr result;
     /*
@@ -1243,7 +1257,7 @@ void LiteCGIRBuilder::CollectExraCallSiteInfo(std::unordered_map<int, maple::lit
     auto pcIndex = static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX);
     ASSERT(pcOffset.IsConstValue());
     deoptBundleInfo.insert(std::pair<int, LiteCGValue>(
-        pcIndex, {0, nullptr, lmirBuilder_->GetConstFromExpr(pcOffset), LiteCGValueKind::kConstKind}));
+        pcIndex, {LiteCGValueKind::kConstKind, lmirBuilder_->GetConstFromExpr(pcOffset)}));
 
     if (!enableOptInlining_) {
         return;
@@ -1276,7 +1290,7 @@ void LiteCGIRBuilder::CollectExraCallSiteInfo(std::unordered_map<int, maple::lit
         auto constMethodOffset = lmirBuilder_->GetConstFromExpr(
             lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->i32Type, methodOffset)));
         deoptBundleInfo.insert(
-            std::pair<int, LiteCGValue>(encodeIndex, {0, nullptr, constMethodOffset, LiteCGValueKind::kConstKind}));
+            std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kConstKind, constMethodOffset}));
     }
 }
 
@@ -2655,11 +2669,9 @@ void LiteCGIRBuilder::SaveDeoptVregInfo(std::unordered_map<int, LiteCGValue> &de
     Expr value = ConvertToTagged(gate);
     PregIdx pregIdx = lmirBuilder_->CreatePreg(value.GetType());
     lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(value, pregIdx));
-    LiteCGValue deoptVal;
-    deoptVal.kind = LiteCGValueKind::kPregKind;
-    deoptVal.pregIdx = pregIdx;
-    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, deoptVal));
+    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kPregKind, pregIdx}));
 }
+
 void LiteCGIRBuilder::SaveDeoptVregInfoWithI64(std::unordered_map<int, LiteCGValue> &deoptBundleInfo, BB &bb,
                                                int32_t index, size_t curDepth, size_t shift, GateRef gate)
 {
@@ -2668,10 +2680,7 @@ void LiteCGIRBuilder::SaveDeoptVregInfoWithI64(std::unordered_map<int, LiteCGVal
     Expr value = ConvertInt32ToTaggedInt(lmirBuilder_->Cvt(expr.GetType(), lmirBuilder_->i32Type, expr));
     PregIdx pregIdx = lmirBuilder_->CreatePreg(value.GetType());
     lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(value, pregIdx));
-    LiteCGValue deoptVal;
-    deoptVal.kind = LiteCGValueKind::kPregKind;
-    deoptVal.pregIdx = pregIdx;
-    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, deoptVal));
+    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kPregKind, pregIdx}));
 }
 
 void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
@@ -2738,10 +2747,7 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
         int32_t specPcOffsetIndex = static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX);
         int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(specPcOffsetIndex, curDepth, shift);
         Const &pcConst = lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, pc);
-        LiteCGValue deoptVal;
-        deoptVal.kind = LiteCGValueKind::kConstKind;
-        deoptVal.constVal = &pcConst;
-        deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, deoptVal));
+        deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kConstKind, &pcConst}));
 
         // func
         int32_t specCallTargetIndex = static_cast<int32_t>(SpecVregIndex::FUNC_INDEX);

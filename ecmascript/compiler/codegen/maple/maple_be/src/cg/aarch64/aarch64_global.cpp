@@ -1268,7 +1268,7 @@ void LocalVarSaveInsnPattern::Optimize(Insn &insn)
     /* insert ldr insn before useInsn */
     MOperator ldrOpCode = secondInsnSrcOpnd->GetSize() == k64BitSize ? MOP_xldr : MOP_wldr;
     Insn &ldrInsn = cgFunc.GetInsnBuilder()->BuildInsn(ldrOpCode, *secondInsnSrcOpnd, *secondInsnDestOpnd);
-    CHECK_FATAL(useInsn->GetId() > 1 && useInsn->GetId() < UINT32_MAX, "value overflow");
+    CHECK_FATAL(useInsn->GetId() >= 1, "value overflow");
     ldrInsn.SetId(useInsn->GetId() - 1);
     useInsn->GetBB()->InsertInsnBefore(*useInsn, ldrInsn);
     cgFunc.GetRD()->UpdateInOut(*useInsn->GetBB(), true);

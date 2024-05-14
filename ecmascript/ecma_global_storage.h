@@ -565,6 +565,9 @@ private:
             return node->GetObjectAddress();
         }
         auto block = allocator_->New<NodeList<S>>();
+        if (block == nullptr) {
+            LOG_ECMA(FATAL) << "NewGlobalHandleImplement:block is nullptr";
+        }
         block->LinkTo(*storage);
         *storage = block;
 
