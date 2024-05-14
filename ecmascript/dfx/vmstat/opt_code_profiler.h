@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/share_opcodes.h"
+#include <set>
 
 // bcIndex   bytecode   count    fast    slow    typerate
 // ====================(print all)=======================
@@ -213,15 +214,31 @@ public:
     TypedOpProfiler()
     {
         strOpMap_ = {
-            { "LOAD_BUILTIN_OBJECT", OpCode::LOAD_BUILTIN_OBJECT },
-            { "LOAD_PROPERTY", OpCode::LOAD_PROPERTY },
-            { "LOAD_ELEMENT", OpCode::LOAD_ELEMENT }
+#define DECLARE_GATE_OPCODE(NAME, OP, R, S, D, V) \
+        { #OP, OpCode::OP },
+
+    MCR_IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_VALUE(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(DECLARE_GATE_OPCODE)
+#undef DECLARE_GATE_OPCODE
         };
 
         profMap_ = {
-            { OpCode::LOAD_BUILTIN_OBJECT, 0 },
-            { OpCode::LOAD_PROPERTY, 0 },
-            { OpCode::LOAD_ELEMENT, 0 }
+#define DECLARE_GATE_OPCODE(NAME, OP, R, S, D, V) \
+        { OpCode::OP, 0 },
+
+    MCR_IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_VALUE(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(DECLARE_GATE_OPCODE)
+#undef DECLARE_GATE_OPCODE
         };
     }
 
@@ -230,23 +247,31 @@ public:
         auto it = profMap_.find(opcode);
         if (it != profMap_.end()) {
             it->second++;
+            recordOp_.insert(opcode);
         }
     }
 
-    void PrintAndReset(std::string opStr)
+    void Print(std::string opStr)
     {
         auto it = strOpMap_.find(opStr);
         if (it != strOpMap_.end()) {
             LOG_TRACE(INFO) << "Opcode: " << it->first << " Count:"
                             << profMap_.at(it->second);
-
-            profMap_.at(it->second) = 0;
         }
+    }
+
+    void Clear()
+    {
+        for (OpCode op : recordOp_) {
+            profMap_.at(op) = 0;
+        }
+        recordOp_.clear();
     }
 
 private:
     std::map<std::string, OpCode> strOpMap_;
     std::map<OpCode, uint64_t> profMap_;
+    std::set<OpCode> recordOp_ {};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_VMSTAT_OPT_CODE_PROFILER_H

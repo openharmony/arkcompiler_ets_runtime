@@ -148,8 +148,7 @@ function tryCatchTest(obj: any, v : number)
 
 // Test try-catch-deopt 1
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
-//aot: [trace] Check Type: InconsistentHClass6
-//aot: [trace] Check Type: InconsistentHClass6
+//aot: [trace] Check Type: ProtoTypeChanged2
 //: -1
 //pgo: 0
 //aot: 1
@@ -158,8 +157,7 @@ tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
 // Test try-catch-deopt 2
 throwingObj.value = 14
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
-//aot: [trace] Check Type: InconsistentHClass6
-//aot: [trace] Check Type: InconsistentHClass6
+//aot: [trace] Check Type: ProtoTypeChanged2
 //: Error: exception
 //pgo: 0
 //aot: -1

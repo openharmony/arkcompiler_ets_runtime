@@ -756,7 +756,6 @@ GateRef TypedHCRLowering::LoadFromConstPool(GateRef constpool, size_t index, siz
 void TypedHCRLowering::LowerLoadProperty(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    AddProfiling(gate);
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
@@ -991,7 +990,6 @@ VariableType TypedHCRLowering::GetVariableType(BuiltinTypeId id)
 void TypedHCRLowering::LowerLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    AddProfiling(gate);
     LoadElementAccessor accessor = acc_.GetLoadElementAccessor(gate);
     TypedLoadOp op = accessor.GetTypedLoadOp();
     switch (op) {
@@ -2579,7 +2577,6 @@ void TypedHCRLowering::LowerLoadBuiltinObject(GateRef gate)
         return;
     }
     Environment env(gate, circuit_, &builder_);
-    AddProfiling(gate);
     auto frameState = GetFrameState(gate);
     GateRef glue = acc_.GetGlueFromArgList();
     auto builtinEntriesOffset = JSThread::GlueData::GetBuiltinEntriesOffset(false);
@@ -3083,19 +3080,6 @@ void TypedHCRLowering::StorePropertyOnHolder(GateRef holder, GateRef value, Prop
             builder_.SetValueToTaggedArray(
                 GetVarType(plr), acc_.GetGlueFromArgList(), properties, builder_.Int32(plr.GetOffset()), value);
         }
-    }
-}
-
-void TypedHCRLowering::AddProfiling(GateRef gate)
-{
-    if (IsTypedOpProfiling()) {
-        OpCode opcode  = acc_.GetOpCode(gate);
-        auto opcodeGate = builder_.Int32(static_cast<uint32_t>(opcode));
-        GateRef constOpcode = builder_.Int32ToTaggedInt(opcodeGate);
-        GateRef traceGate = builder_.CallRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(ProfileTypedOp),
-                                                 acc_.GetDep(gate), { constOpcode }, gate);
-        acc_.SetDep(gate, traceGate);
-        builder_.SetDepend(acc_.GetDep(gate));
     }
 }
 

@@ -15,7 +15,10 @@
 2
 foo
 bar
+false
 undefined
 bar
+false
 1
 1
+false
