@@ -14,10 +14,7 @@
  */
 
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
-
-#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/space-inl.h"
@@ -102,12 +99,11 @@ void SharedConcurrentSweeper::EnsureAllTaskFinished()
 }
 
 // call in mutator thread
-void SharedConcurrentSweeper::EnsureTaskFinished(JSThread *thread, MemSpaceType type)
+void SharedConcurrentSweeper::EnsureTaskFinished(MemSpaceType type)
 {
     if (!isSweeping_) {
         return;
     }
-    ThreadNativeScope nativeScope(thread);
     WaitingTaskFinish(type);
 }
 

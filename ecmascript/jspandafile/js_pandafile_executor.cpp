@@ -117,7 +117,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
             moduleRecord = sharedModuleManager->ResolveImportedModuleWithMerge(thread, name, entry, executeFromJob);
         }
         
-        ASSERT(!SourceTextModule::IsSharedModule(JSHandle<SourceTextModule>(moduleRecord)));
         SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
         if (thread->HasPendingException()) {
             return Unexpected(false);
@@ -158,7 +157,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, normalName, entry);
     }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
@@ -211,7 +210,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, name, entry);
     } else if (!isBundle) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
@@ -270,7 +269,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     if (context->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
         result = context->InvokeEcmaEntrypointForHotReload(jsPandaFile, entryPoint, executeFromJob);
     } else {
-        context->SetStageOfColdReload(StageOfColdReload::IS_COLD_RELOAD);
         QuickFixManager *quickFixManager = thread->GetEcmaVM()->GetQuickFixManager();
         quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
 
@@ -314,7 +312,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, normalName, entry);
     }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
@@ -390,7 +388,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, name, entry);
     } else if (!jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
@@ -437,8 +435,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
     CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
-    EcmaVM *vm = thread->GetEcmaVM();
-    CString newFileName = ModulePathHelper::ParseUrl(vm, recordName);
+    CString newFileName = filename;
     if (newFileName.empty()) {
         newFileName = filename;
     }

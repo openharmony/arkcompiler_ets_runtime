@@ -17,6 +17,7 @@
 #define MAPLE_LITECG_LMIR_BUILDER_H
 
 #include <cstdint>
+#include <variant>
 #include <vector>
 #include <map>
 #include <string>
@@ -133,13 +134,12 @@ enum LiteCGValueKind {
     kPregKind,
     kSymbolKind,
     kConstKind,
+    kGlueAdd,
 };
 
 struct LiteCGValue {
-    PregIdx pregIdx;
-    MIRSymbol *symbol;
-    MIRConst *constVal;
     LiteCGValueKind kind;
+    std::variant<PregIdx, MIRSymbol*, MIRConst*> data;
 };
 
 using Args = std::vector<Expr>;
@@ -725,6 +725,7 @@ public:
     Type *strType;
     Type *i64PtrType;
     Type *i64RefType;
+    Type *i64RefRefType;
 
 private:
     Stmt &CreateSwitchInternal(Type *type, Expr cond, BB &defaultBB, std::vector<std::pair<int64_t, BB *>> &cases);

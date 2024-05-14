@@ -23,7 +23,7 @@ const INTYPE = {
   framestate: 3,
   root: 4,
   other: 5,
-}
+};
 
 class NODE_TYPE_MASK {
   static NONE = 0;
@@ -125,7 +125,7 @@ class IrToPicture {
         name: name,
         nameWidth: X2DFast.gi().getTextWidth(name, 14),
         ir: ir,
-      }
+      };
       if (entry === -1) {
         entry = ir.id;
       }
@@ -385,4 +385,4 @@ class IrToPicture {
 
 module.exports = {
   IrToPicture
-}
+};

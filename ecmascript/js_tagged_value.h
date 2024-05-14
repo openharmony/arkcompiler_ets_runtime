@@ -669,6 +669,7 @@ public:
     bool IsLocalExportEntry() const;
     bool IsIndirectExportEntry() const;
     bool IsStarExportEntry() const;
+    bool IsModuleBinding() const;
     bool IsResolvedBinding() const;
     bool IsResolvedIndexBinding() const;
     bool IsResolvedRecordIndexBinding() const;

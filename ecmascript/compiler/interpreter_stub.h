@@ -156,11 +156,11 @@ public:
     inline GateRef GetModule(GateRef sp);
     inline GateRef GetProfileTypeInfoFromFunction(GateRef function);
     inline GateRef GetModuleFromFunction(GateRef function);
+    inline GateRef GetSendableEnvFromModule(GateRef function);
     inline GateRef GetHomeObjectFromFunction(GateRef function);
     inline GateRef GetResumeModeFromGeneratorObject(GateRef obj);
     inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetHotnessCounterFromMethod(GateRef method);
-    inline GateRef GetColdReloadStage(GateRef glue);
 
     inline void SetCurrentSpFrame(GateRef glue, GateRef sp);
     inline void SetLastLeaveFrame(GateRef glue, GateRef sp);
@@ -171,6 +171,7 @@ public:
     inline void SetEnvToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
+    inline void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value);
     inline void SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
                               GateRef env, GateRef pc, GateRef prev, GateRef type);
 

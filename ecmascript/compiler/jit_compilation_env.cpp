@@ -135,6 +135,11 @@ JSTaggedValue JitCompilationEnv::GetObjectLiteralFromCache(JSTaggedValue constpo
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(constpool, index, entry);
 }
 
+JSTaggedValue JitCompilationEnv::GetMethodFromCache(JSTaggedValue constpool, uint32_t index) const
+{
+    return ConstantPool::GetMethodFromCache(constpool, index);
+}
+
 panda_file::File::EntityId JitCompilationEnv::GetIdFromCache(JSTaggedValue constpool, uint32_t index) const
 {
     ASSERT(thread_->IsInRunningState());

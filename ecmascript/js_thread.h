@@ -35,6 +35,10 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
 
+#if defined(ENABLE_FFRT_INTERFACES)
+#include "ffrt.h"
+#endif
+
 namespace panda::ecmascript {
 class EcmaContext;
 class EcmaVM;
@@ -339,6 +343,7 @@ public:
     }
 
     JSTaggedValue GetCurrentLexenv() const;
+    JSTaggedValue GetCurrentFunction() const;
 
     void RegisterRTInterface(size_t id, Address addr)
     {
@@ -415,7 +420,16 @@ public:
 
     static ThreadId GetCurrentThreadId()
     {
+#if defined(ENABLE_FFRT_INTERFACES)
+        JSThread::ThreadId id = ffrt_this_task_get_id();
+        if (id != 0) {
+            return id;
+        } else {
+            return os::thread::GetCurrentThreadId();
+        }
+#else
         return os::thread::GetCurrentThreadId();
+#endif
     }
 
     void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
@@ -504,7 +518,7 @@ public:
         isProfiling_ = isProfiling;
     }
 
-    bool GetIsProfiling()
+    bool GetIsProfiling() const
     {
         return isProfiling_;
     }
@@ -847,15 +861,6 @@ public:
         return glueData_.taskInfo_;
     }
 
-    void SetColdReload(bool coldReload)
-    {
-        glueData_.isColdReload_ = coldReload;
-    }
-
-    bool GetColdReload()
-    {
-        return glueData_.isColdReload_;
-    }
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -895,7 +900,6 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
-                                                 base::AlignedBool,
                                                  base::AlignedUint32> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -937,7 +941,6 @@ public:
             RandomStatePtrIndex,
             stateAndFlagsIndex,
             TaskInfoIndex,
-            IsColdReloadIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1153,10 +1156,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::TaskInfoIndex)>(isArch32);
         }
 
-        static size_t GetIsColdReloadOffSet(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::IsColdReloadIndex)>(isArch32);
-        }
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1196,7 +1195,6 @@ public:
         alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
         alignas(EAS) uintptr_t taskInfo_ {0};
-        alignas(EAS) bool isColdReload_ {false};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1332,6 +1330,17 @@ public:
     {
         env_ = env;
     }
+
+    void SetIsInConcurrentScope(bool flag)
+    {
+        isInConcurrentScope_ = flag;
+    }
+
+    bool IsInConcurrentScope()
+    {
+        return isInConcurrentScope_;
+    }
+
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -1455,6 +1464,8 @@ private:
 
     std::atomic<bool> needTermination_ {false};
     std::atomic<bool> hasTerminated_ {false};
+
+    bool isInConcurrentScope_ {false};
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;

@@ -840,7 +840,7 @@ bool AArch64Ebo::OperandLiveAfterInsn(const RegOperand &regOpnd, Insn &insn) con
         if (!nextInsn->IsMachineInstruction()) {
             continue;
         }
-        CHECK_FATAL(nextInsn->GetOperandSize() > 1 && nextInsn->GetOperandSize() < UINT32_MAX, "value overflow");
+        CHECK_FATAL(nextInsn->GetOperandSize() >= 1, "value overflow");
         int32 lastOpndId = static_cast<int32>(nextInsn->GetOperandSize() - 1);
         for (int32 i = lastOpndId; i >= 0; --i) {
             Operand &opnd = nextInsn->GetOperand(static_cast<uint32>(i));

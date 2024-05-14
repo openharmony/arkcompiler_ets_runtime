@@ -734,7 +734,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatUnifiedOhmUrl)
     CString pkgName = "entry";
     CString path = "/Index";
     CString version = "1.0.0";
-    CString outFileName = ModulePathHelper::ConcatUnifiedOhmUrl("", pkgName, path, version);
+    CString outFileName = ModulePathHelper::ConcatUnifiedOhmUrl("", pkgName, "", path, version);
     CString exceptOutFileName = "&entry/src/main/Index&1.0.0";
     EXPECT_EQ(outFileName, exceptOutFileName);
 

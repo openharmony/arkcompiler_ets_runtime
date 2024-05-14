@@ -59,6 +59,11 @@ enum class MemSpaceKind {
     SHARED = 1
 };
 
+enum class AllocateEventType {
+    NORMAL,
+    DESERIALIZE,
+};
+
 static inline bool IsSMemSpace(MemSpaceType type)
 {
     return (type >= MemSpaceType::SHARED_BEGIN) && (type <= MemSpaceType::SHARED_END);
@@ -224,7 +229,8 @@ public:
 
     bool IsOOMDumpSpace()
     {
-        return spaceType_ == OLD_SPACE || spaceType_ == NON_MOVABLE || spaceType_ == HUGE_OBJECT_SPACE;
+        return spaceType_ == SEMI_SPACE || spaceType_ == OLD_SPACE || spaceType_ == NON_MOVABLE ||
+            spaceType_ == HUGE_OBJECT_SPACE;
     }
 
     // methods for allocation inspector
@@ -270,7 +276,10 @@ public:
     ~HugeObjectSpace() override = default;
     NO_COPY_SEMANTIC(HugeObjectSpace);
     NO_MOVE_SEMANTIC(HugeObjectSpace);
-    uintptr_t Allocate(size_t objectSize, JSThread *thread);
+    // Sometimes it is unsafe to checkSafePoint here, e.g. in deserialize, if do checkSafePoint JSThread may be
+    // suspended and then do SharedGC, which will free some regions in SharedHeap that are allocated at the beginning
+    // of deserializing for further object allocating, but no object has been allocated on at this moment.
+    uintptr_t Allocate(size_t objectSize, JSThread *thread, AllocateEventType allocType = AllocateEventType::NORMAL);
     void Sweep();
     size_t GetHeapObjectSize() const;
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;

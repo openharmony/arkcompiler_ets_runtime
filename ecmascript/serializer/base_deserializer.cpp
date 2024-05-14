@@ -385,7 +385,10 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         }
         case SerializedObjectSpace::HUGE_SPACE: {
             // no gc for this allocate
-            res = heap_->GetHugeObjectSpace()->Allocate(objSize, thread_);
+            res = heap_->GetHugeObjectSpace()->Allocate(objSize, thread_, AllocateEventType::DESERIALIZE);
+            if (res == 0) {
+                LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize huge object";
+            }
             break;
         }
         case SerializedObjectSpace::SHARED_OLD_SPACE: {
@@ -408,7 +411,10 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         }
         case SerializedObjectSpace::SHARED_HUGE_SPACE: {
             // no gc for this allocate
-            res = sheap_->GetHugeObjectSpace()->Allocate(thread_, objSize);
+            res = sheap_->GetHugeObjectSpace()->Allocate(thread_, objSize, AllocateEventType::DESERIALIZE);
+            if (res == 0) {
+                LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize shared huge object";
+            }
             break;
         }
         default:

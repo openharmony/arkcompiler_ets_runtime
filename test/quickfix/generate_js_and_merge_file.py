@@ -36,6 +36,11 @@ replace_config3 = [
     {"id": "REPLACE_FUNC_FOO1", "start": 0, "end": 65488},
     {"id": "REPLACE_FUNC_FOO2", "start": 65489, "end": 65536},
 ]
+replace_config4 = [
+    {"id": "REPLACE_FUNC_FOO", "start": 35004, "end": 40153},
+]
+
+aot_multi_constantpool_test_path = "ets_runtime/test/aottest/aot_multi_constantpool_test/"
 
 file_list = [
     {
@@ -79,6 +84,14 @@ file_list = [
         "replace_config": replace_config2,
     },
     {
+        "file_name": "ets_runtime/test/quickfix/multiconstpool_multifunc/base.js",
+        "replace_config": replace_config4,
+    },
+    {
+        "file_name": "ets_runtime/test/quickfix/multiconstpool_multifunc/base_modify.js",
+        "replace_config": replace_config4,
+    },
+    {
         "file_name": "ets_runtime/test/moduletest/multiconstpoolobj/multiconstpoolobj.js",
         "replace_config": replace_config2,
     },
@@ -98,16 +111,41 @@ file_list = [
         "file_name": "ets_runtime/test/moduletest/multiconstpoolarray/multiconstpoolarray.js",
         "replace_config": replace_config2,
     },
+    {
+        "file_name": aot_multi_constantpool_test_path
+            + "multi_constantpool_func/multi_constantpool_func.ts",
+        "replace_config": replace_config1,
+    },
+    {
+        "file_name": aot_multi_constantpool_test_path
+            + "multi_constantpool_constructor/multi_constantpool_constructor.ts",
+        "replace_config": replace_config2,
+    },
+    {
+        "file_name": aot_multi_constantpool_test_path
+            + "multi_constantpool_class/multi_constantpool_class.ts",
+        "replace_config": replace_config2,
+    },
+    {
+        "file_name": aot_multi_constantpool_test_path
+            + "multi_constantpool_funccall/multi_constantpool_funccall.ts",
+        "replace_config": replace_config1,
+    },
+    {
+        "file_name": aot_multi_constantpool_test_path
+            + "multi_constantpool_closure/multi_constantpool_closure.ts",
+        "replace_config": replace_config3,
+    },
 ]
 
 
 def generate_var(var_begin, var_end):
-    sVar = ""
+    str_var_list = []
     for i in range(var_begin, var_end + 1):
-        sVar += 'var a%d = "%d";' % (i, i)
+        str_var_list.append('var a{0} = "{1}";'.format(i, i))
         if (i + 1) % 6 == 0:
-            sVar += "\n"
-    return sVar
+            str_var_list.append("\n")
+    return ''.join(str_var_list)
 
 
 def read_file_content(input_file):
@@ -115,25 +153,30 @@ def read_file_content(input_file):
     with os.fdopen(input_fd, 'r') as fp:
         return fp.read()
 
+
 def write_file_content(output_file, data):
     output_fd = os.open(output_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o755)
     if os.path.exists(output_file):
         with os.fdopen(output_fd, 'w') as fp:
             fp.write(data)
 
+
 def replace_in_data(data, replace_config):
     for cfg in replace_config:
         if cfg["id"] in data:
-            sVar = generate_var(cfg["start"], cfg["end"])
-            data = data.replace(cfg["id"], sVar)
+            str_var = generate_var(cfg["start"], cfg["end"])
+            data = data.replace(cfg["id"], str_var)
     return data
+
 
 def replace_js(input_file, output_file):
     for file in file_list:
-        if not input_file.endswith(file["file_name"]):
+        file_name = file.get("file_name")
+        if not input_file.endswith(file_name):
             continue
         data = read_file_content(input_file)
-        data = replace_in_data(data, file["replace_config"])
+        replace_config = file.get("replace_config")
+        data = replace_in_data(data, replace_config)
         write_file_content(output_file, data)
         return output_file
     return None
@@ -147,10 +190,12 @@ def is_file_in_list(file_path):
     )
 
     for item in file_list:
-        list_dir_path = os.path.dirname(item["file_name"])
+        file_name = item.get("file_name")
+        list_dir_path = os.path.dirname(file_name)
         if list_dir_path in input_dir_path:
             return True
     return False
+
 
 def process_with_prefix(input_file, output_file, prefix):
     input_fd = os.open(input_file, os.O_RDONLY, 0o755)
@@ -158,6 +203,7 @@ def process_with_prefix(input_file, output_file, prefix):
     with os.fdopen(input_fd, 'r') as inputfp, os.fdopen(output_fd, 'w') as outputfp:
         for line in inputfp:
             outputfp.write(prefix + line)
+
         
 def handle_files(input_file, output_file, prefix):
     input_fd = os.open(input_file, os.O_RDONLY, 0o755)
@@ -176,11 +222,13 @@ def handle_files(input_file, output_file, prefix):
                 ll[0] = prefix + ll[0]
             outputfp.write(";".join(ll))
 
+
 def replace_merge_file(input_file, output_file, prefix):
     if input_file.endswith(("base.txt", "patch.txt")) and is_file_in_list(prefix):
         handle_files(input_file, output_file, prefix)
     else:
         process_with_prefix(input_file, output_file, prefix)
+
      
 def replace_var(input_file, output_file, prefix):
     if prefix:
@@ -196,8 +244,8 @@ def main():
     parser.add_argument("--prefix", type=str)
 
     args = parser.parse_args()
-
     replace_var(os.path.abspath(args.input), args.output, args.prefix)
+
 
 if __name__ == "__main__":
     sys.exit(main())

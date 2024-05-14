@@ -624,3 +624,13 @@ f.exec = f;
 let relpfun = reg51[Symbol.replace];
 relpfun.apply(f, [1, 2, 3, 4]);
 print("success");
+
+{
+  let str = /^\s*([^;\s]*)/;
+  str.test("text/html");
+  print(RegExp.$1);
+  str.test("text/plain");
+  print(RegExp.$1);
+  str.test("text/html");
+  print(RegExp.$1);
+}

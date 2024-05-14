@@ -267,6 +267,9 @@ bool BuiltinsArrayBuffer::IsDetachedBuffer(JSTaggedValue arrayBuffer)
     // 1. Assert: Type(arrayBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
     ASSERT(arrayBuffer.IsArrayBuffer() || arrayBuffer.IsSharedArrayBuffer());
     JSArrayBuffer *buffer = JSArrayBuffer::Cast(arrayBuffer.GetTaggedObject());
+    if (buffer == nullptr) {
+        LOG_ECMA(FATAL) << "BuiltinsArrayBuffer::IsDetachedBuffer:buffer is nullptr";
+    }
     JSTaggedValue dataSlot = buffer->GetArrayBufferData();
     // 2. If arrayBuffer’s [[ArrayBufferData]] internal slot is null, return true.
     // 3. Return false.
@@ -767,6 +770,9 @@ void *BuiltinsArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t
     }
 
     JSArrayBuffer *arrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
+    if (arrayBuffer == nullptr) {
+        LOG_ECMA(FATAL) << "BuiltinsArrayBuffer::GetDataPointFromBuffer:arrayBuffer is nullptr";
+    }
     if (arrayBuffer->GetArrayBufferByteLength() == 0) {
         return nullptr;
     }

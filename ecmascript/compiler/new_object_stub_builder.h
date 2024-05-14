@@ -51,9 +51,10 @@ public:
     }
 
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
-    void NewJSObject(Variable *result, Label *exit, GateRef hclass);
     void NewJSObject(Variable *result, Label *exit, GateRef hclass, GateRef size);
-    GateRef NewJSObject(GateRef glue, GateRef hclass);
+    void NewJSObject(Variable *result, Label *exit, GateRef hclass,
+                     MemoryOrder order = MemoryOrder::Default());
+    GateRef NewJSObject(GateRef glue, GateRef hclass, MemoryOrder order = MemoryOrder::Default());
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArray(GateRef glue, GateRef len);
@@ -62,10 +63,13 @@ public:
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);
-    GateRef NewJSFunction(GateRef glue, GateRef constpool, GateRef index);
+    GateRef NewJSFunction(GateRef glue, GateRef constpool, GateRef index,
+                          FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     void NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
-                       Variable *result, Label *success, Label *failed);
-    void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind);
+                       Variable *result, Label *success, Label *failed,
+                       FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
+    void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind,
+                              FunctionKind getKind = FunctionKind::LAST_FUNCTION_KIND);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
@@ -79,7 +83,8 @@ public:
                            GateRef trackInfo, bool isEmptyArray);
     GateRef NewTrackInfo(GateRef glue, GateRef cachedHClass, GateRef cachedFunc, RegionSpaceFlag spaceFlag,
                          GateRef arraySize);
-    void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
+    void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end,
+                                    MemoryOrder order = MemoryOrder::Default());
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef FastSuperAllocateThis(GateRef glue, GateRef superCtor, GateRef newTarget);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);

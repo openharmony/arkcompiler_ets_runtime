@@ -12,9 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_array.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/object_factory-inl.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_array-inl.h"
+
 namespace panda::ecmascript {
 JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread *thread,
                                                                         const JSHandle<JSTaggedValue> &module)
@@ -38,6 +43,7 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
     sModule->SetEnvironment(thread, sendableEnvironment);
     sModule->SetEcmaModuleFilename(thread, currentModule->GetEcmaModuleFilename());
     sModule->SetEcmaModuleRecordName(thread, currentModule->GetEcmaModuleRecordName());
+    sModule->SetSendableEnv(thread, JSTaggedValue::Undefined());
     return JSHandle<JSTaggedValue>(sModule);
 }
 
@@ -52,8 +58,9 @@ JSHandle<JSTaggedValue> SendableClassModule::CloneRecordIndexBinding(JSThread *t
     }
 
     JSHandle<EcmaString> record(thread, SourceTextModule::GetModuleName(resolvedModule.GetTaggedValue()));
+    JSHandle<EcmaString> fileName(thread, resolvedModule->GetEcmaModuleFilename());
     int32_t index = binding->GetIndex();
-    return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordIndexBindingRecord(record, index));
+    return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordIndexBindingRecord(record, fileName, index));
 }
 
 JSHandle<JSTaggedValue> SendableClassModule::CloneRecordNameBinding(JSThread *thread, JSTaggedValue binding)
@@ -139,5 +146,67 @@ JSHandle<JSTaggedValue> SharedModuleHelper::ParseSharedModule(JSThread *thread, 
     moduleRecord->SetTypes(ModuleTypes::ECMA_MODULE);
     moduleRecord->SetIsNewBcVersion(true);
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
+}
+
+JSHandle<TaggedArray> JSSharedModule::GenerateSharedExports(JSThread *thread, const JSHandle<TaggedArray> &oldExports)
+{
+    uint32_t newLength = oldExports->GetLength();
+    if (newLength == 0) {
+        LOG_FULL(INFO) << "Empty exports in moduleNamespace";
+    }
+    JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(newLength);
+    for (uint32_t i = 0; i < newLength; i++) {
+        JSTaggedValue value = oldExports->Get(i);
+        ASSERT(value.IsString());
+        newArray->Set(thread, i, value);
+    }
+    return newArray;
+}
+
+JSHandle<JSTaggedValue> JSSharedModule::CreateSharedSortedExports(JSThread *thread,
+    const JSHandle<TaggedArray> &oldExports)
+{
+    auto globalConst = thread->GlobalConstants();
+    JSHandle<TaggedArray> exports = GenerateSharedExports(thread, oldExports);
+    // 7. Let sortedExports be a new List containing the same values as the list exports where the values
+    // are ordered as if an Array of the same values had been sorted using
+    // Array.prototype.sort using undefined as comparefn.
+    JSHandle<JSSharedArray> exportsArray = JSSharedArray::CreateArrayFromList(thread, exports);
+    JSHandle<JSTaggedValue> sortedExports = JSHandle<JSTaggedValue>::Cast(exportsArray);
+    JSHandle<JSTaggedValue> fn = globalConst->GetHandledUndefined();
+    JSSharedArray::Sort(thread, sortedExports, fn);
+    return sortedExports;
+}
+
+JSHandle<ModuleNamespace> JSSharedModule::SModuleNamespaceCreate(JSThread *thread,
+                                                                 const JSHandle<JSTaggedValue> &module,
+                                                                 const JSHandle<TaggedArray> &exports)
+{
+    auto globalConst = thread->GlobalConstants();
+    // 2. Assert: module.[[Namespace]] is undefined.
+    JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
+    ASSERT(ModuleRecord::GetNamespace(moduleRecord.GetTaggedValue()).IsUndefined());
+    // 3. Assert: exports is a List of String values.
+    // 4. Let M be a newly created object.
+    // 5. Set M's essential internal methods to the definitions specified in 9.4.6.
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<ModuleNamespace> mNp = factory->NewSModuleNamespace();
+    // 6. Set M.[[Module]] to module.
+    mNp->SetModule(thread, module);
+    JSHandle<JSTaggedValue> sortedExports = JSSharedModule::CreateSharedSortedExports(thread, exports);
+
+    // 8. Set M.[[Exports]] to sortedExports.
+    mNp->SetExports(thread, sortedExports);
+    // 9. Create own properties of M corresponding to the definitions in 26.3.
+
+    JSHandle<JSTaggedValue> toStringTag = thread->GetEcmaVM()->GetGlobalEnv()->GetToStringTagSymbol();
+    JSHandle<JSTaggedValue> moduleString = globalConst->GetHandledModuleString();
+    PropertyDescriptor des(thread, moduleString, false, false, false);
+    JSHandle<JSObject> mNpObj = JSHandle<JSObject>::Cast(mNp);
+    JSObject::DefineOwnProperty(thread, mNpObj, toStringTag, des);
+    // 10. Set module.[[Namespace]] to M.
+    ModuleRecord::SetNamespace(thread, moduleRecord.GetTaggedValue(), mNp.GetTaggedValue());
+    mNp->GetJSHClass()->SetExtensible(false);
+    return mNp;
 }
 } // namespace panda::ecmascript

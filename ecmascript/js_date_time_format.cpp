@@ -343,8 +343,13 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
 
     // 2. Let options be ? ToDateTimeOptions(options, "any", "date").
-    JSHandle<JSObject> dateTimeOptions = ToDateTimeOptions(thread, options, RequiredOption::ANY, DefaultsOption::DATE);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
+    JSHandle<JSObject> dateTimeOptions;
+    if (options->IsUndefined()) {
+        dateTimeOptions = factory->CreateNullJSObject();
+    } else {
+        dateTimeOptions = JSTaggedValue::ToObject(thread, options);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
+    }
 
     // 4. Let matcher be ? GetOption(options, "localeMatcher", "string", « "lookup", "best fit" », "best fit").
     auto matcher = JSLocale::GetOptionOfString<LocaleMatcherOption>(
@@ -526,6 +531,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     std::string skeleton;
     std::vector<IcuPatternDesc> data = GetIcuPatternDesc(hc);
     int32_t explicitFormatComponents = 0;
+    std::vector<std::string> skeletonOpts;
     for (const IcuPatternDesc &item : data) {
         // prop be [[TimeZoneName]]
         if (item.property == "timeZoneName") {
@@ -539,6 +545,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
             //     i. Set hasExplicitFormatComponents to true.
             if (secondDigitsString > 0) {
                 explicitFormatComponents = 1;
+                skeletonOpts.emplace_back(item.property);
             }
         }
         JSHandle<JSTaggedValue> property(thread, factory->NewFromStdString(item.property).GetTaggedValue());
@@ -546,6 +553,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
         bool isFind = JSLocale::GetOptionOfString(thread, dateTimeOptions, property, item.allowedValues, &value);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
         if (isFind) {
+            skeletonOpts.emplace_back(item.property);
             explicitFormatComponents = 1;
             skeleton += item.map.find(value)->second;
             // [[Hour]] is defined.
@@ -587,6 +595,8 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
 
     if (dateStyle == DateTimeStyleOption::UNDEFINED
         && timeStyle == DateTimeStyleOption::UNDEFINED) {
+        ToDateTimeSkeleton(thread, skeletonOpts, skeleton, hc, RequiredOption::ANY, DefaultsOption::DATE);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
         // If dateTimeFormat.[[Hour]] is defined, then
         if (isHourDefined) {
             // e. Set dateTimeFormat.[[HourCycle]] to hc.
@@ -811,6 +821,95 @@ JSHandle<JSObject> JSDateTimeFormat::ToDateTimeOptions(JSThread *thread, const J
 
     // 8. Return options.
     return optionsResult;
+}
+
+void JSDateTimeFormat::ToDateTimeSkeleton(JSThread *thread, const std::vector<std::string> &options,
+                                          std::string &skeleton, HourCycleOption hc,
+                                          const RequiredOption &required, const DefaultsOption &defaults)
+{
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    // 1. Let needDefaults be true.
+    bool needDefaults = true;
+
+    // 2. If required is "date" or "any", then
+    //    a. For each of the property names "weekday", "year", "month", "day", do
+    //      i. Let prop be the property name.
+    //      ii. Let value be ? Get(options, prop).
+    //      iii. If value is not undefined, let needDefaults be false.
+    auto globalConst = thread->GlobalConstants();
+    if (required == RequiredOption::DATE || required == RequiredOption::ANY) {
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(CAPACITY_4);
+        array->Set(thread, 0, globalConst->GetHandledWeekdayString());
+        array->Set(thread, 1, globalConst->GetHandledYearString());
+        array->Set(thread, 2, globalConst->GetHandledMonthString());  // 2 means the third slot
+        array->Set(thread, 3, globalConst->GetHandledDayString());    // 3 means the fourth slot
+        JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+        uint32_t len = array->GetLength();
+        for (uint32_t i = 0; i < len; i++) {
+            key.Update(array->Get(thread, i));
+            std::string result = EcmaStringAccessor(key.GetTaggedValue()).ToStdString();
+            auto it = std::find(options.begin(), options.end(), result);
+            if (it != options.end()) {
+                needDefaults = false;
+                break;
+            }
+        }
+    }
+
+    // 3. If required is "time" or "any", then
+    //    a. For each of the property names "dayPeriod", "hour", "minute", "second", "fractionalSecondDigits", do
+    //      i. Let prop be the property name.
+    //      ii. Let value be ? Get(options, prop).
+    //      iii. If value is not undefined, let needDefaults be false.
+    if (required == RequiredOption::TIME || required == RequiredOption::ANY) {
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(CAPACITY_5);
+        array->Set(thread, 0, globalConst->GetHandledDayPeriodString());
+        array->Set(thread, 1, globalConst->GetHandledHourString());
+        array->Set(thread, 2, globalConst->GetHandledMinuteString());   // 2 means the second slot
+        array->Set(thread, 3, globalConst->GetHandledSecondString());   // 3 means the third slot
+        array->Set(thread, 4, globalConst->GetHandledFractionalSecondDigitsString());   // 4 means the fourth slot
+        JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+        uint32_t len = array->GetLength();
+        for (uint32_t i = 0; i < len; i++) {
+            key.Update(array->Get(thread, i));
+            std::string result = EcmaStringAccessor(key.GetTaggedValue()).ToStdString();
+            auto it = std::find(options.begin(), options.end(), result);
+            if (it != options.end()) {
+                needDefaults = false;
+                break;
+            }
+        }
+    }
+
+    // 4. If needDefaults is true and defaults is either "date" or "all", then
+    //    skeleton += "year", "month", "day"
+    if (needDefaults && (defaults == DefaultsOption::DATE || defaults == DefaultsOption::ALL)) {
+        skeleton += "yMd";
+    }
+
+    // 5. If needDefaults is true and defaults is either "time" or "all", then
+    //    skeleton += "hour", "minute", "second"
+    if (needDefaults && (defaults == DefaultsOption::TIME || defaults == DefaultsOption::ALL)) {
+        switch (hc) {
+            case HourCycleOption::H12:
+                skeleton += "hms";
+                break;
+            case HourCycleOption::H23:
+            case HourCycleOption::UNDEFINED:
+                skeleton += "Hms";
+                break;
+            case HourCycleOption::H11:
+                skeleton += "Kms";
+                break;
+            case HourCycleOption::H24:
+                skeleton += "kms";
+                break;
+            default:
+                break;
+        }
+    }
 }
 
 // 13.1.7 FormatDateTime(dateTimeFormat, x)
@@ -1585,6 +1684,7 @@ std::string JSDateTimeFormat::ToTitleCaseTimezonePosition(const std::string &inp
             continue;
         }
     }
+    ASSERT(input.length() >= leftPosition);
     titleEntry.emplace_back(input.substr(leftPosition, input.length() - leftPosition));
     std::string result;
     size_t len = titleEntry.size();

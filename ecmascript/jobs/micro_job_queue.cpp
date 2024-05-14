@@ -101,10 +101,11 @@ void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> 
     JSMutableHandle<PendingJob> pendingJob(thread, JSTaggedValue::Undefined());
     while (!promiseQueue->Empty()) {
         LOG_ECMA(VERBOSE) << "ExecutePendingJob length: " << promiseQueue->Size();
-        thread->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
         pendingJob.Update(promiseQueue->Pop(thread));
         PendingJob::ExecutePendingJob(pendingJob, thread);
-        thread->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
+        if (!thread->IsInConcurrentScope()) {
+            thread->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
+        }
         if (thread->HasPendingException()) {
             return;
         }

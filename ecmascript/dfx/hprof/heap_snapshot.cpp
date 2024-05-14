@@ -245,6 +245,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalArray[");
         case JSType::LEXICAL_ENV:
             return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
+        case JSType::SENDABLE_ENV:
+            return GetArrayString(TaggedArray::Cast(entry), "SendableEnv[");
         case JSType::CONSTANT_POOL:
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalConstantPool[");
         case JSType::PROFILE_TYPE_INFO:
@@ -1114,7 +1116,8 @@ const CString HeapSnapshot::ParseObjectName(TaggedObject *obj)
 {
     ASSERT(JSTaggedValue(obj).IsJSObject());
     JSThread *thread = vm_->GetJSThread();
-    return JSObject::ExtractConstructorAndRecordName(thread, obj);
+    bool isCallGetter = false;
+    return JSObject::ExtractConstructorAndRecordName(thread, obj, true, &isCallGetter);
 }
 
 Node *HeapSnapshot::InsertNodeUnique(Node *node)

@@ -145,8 +145,12 @@ public:
     void CopyDataFrom(const BitSet &other)
     {
         ASSERT(wordCount_ >= other.wordCount_);
-        if (!UseWords()) {
-            data_.inlineWord_ = other.data_.inlineWord_;
+        if (!other.UseWords()) {
+            if (UseWords()) {
+                data_.words_[0] = other.data_.inlineWord_;
+            } else {
+                data_.inlineWord_ = other.data_.inlineWord_;
+            }
             return;
         }
         for (size_t i = 0; i < other.wordCount_; i++) {
@@ -168,6 +172,7 @@ private:
     };
     static size_t SizeOf(size_t bitSize)
     {
+        ASSERT(bitSize > 0);
         // +1: for word 1
         return ((bitSize - 1) >> BIT_PER_WORD_LOG2) + 1;
     }

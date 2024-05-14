@@ -271,6 +271,8 @@ private:
 
     void InitializeModuleNamespace(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
 
+    void InitializeSModuleNamespace(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass) const;
+
     void InitializeCjsModule(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeCjsExports(const JSHandle<GlobalEnv> &env) const;

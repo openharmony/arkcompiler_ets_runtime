@@ -373,6 +373,7 @@ void Gate::CheckSelector() const
     if (GetOpCode() == OpCode::VALUE_SELECTOR || GetOpCode() == OpCode::DEPEND_SELECTOR) {
         auto stateOp = GetInGateConst(0)->GetOpCode();
         if (stateOp == OpCode::MERGE || stateOp == OpCode::LOOP_BEGIN) {
+            ASSERT(GetNumIns() > 0);
             if (GetInGateConst(0)->GetNumIns() != GetNumIns() - 1) {
                 if (GetOpCode() == OpCode::DEPEND_SELECTOR) {
                     CheckFailed("Number of depend flows does not match control flows (expected:" +

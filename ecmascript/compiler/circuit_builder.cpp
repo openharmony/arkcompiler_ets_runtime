@@ -33,6 +33,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
+#include "ecmascript/sendable_env.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -548,6 +549,17 @@ GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, offset);
 }
 
+GateRef CircuitBuilder::GetSendableEnvFromModule(GateRef module)
+{
+    return Load(VariableType::JS_POINTER(), module, IntPtr(SourceTextModule::SENDABLE_ENV_OFFSET));
+}
+
+void CircuitBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value)
+{
+    GateRef offset = IntPtr(SourceTextModule::SENDABLE_ENV_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, module, offset, value);
+}
+
 GateRef CircuitBuilder::GetHomeObjectFromFunction(GateRef function)
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
@@ -1054,9 +1066,21 @@ GateRef CircuitBuilder::GetParentEnv(GateRef object)
     return GetValueFromTaggedArray(object, index);
 }
 
+GateRef CircuitBuilder::GetSendableParentEnv(GateRef object)
+{
+    GateRef index = Int32(SendableEnv::SENDABLE_PARENT_ENV_INDEX);
+    return GetValueFromTaggedArray(object, index);
+}
+
 GateRef CircuitBuilder::GetPropertiesFromLexicalEnv(GateRef object, GateRef index)
 {
     GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
+    return GetValueFromTaggedArray(object, valueIndex);
+}
+
+GateRef CircuitBuilder::GetPropertiesFromSendableEnv(GateRef object, GateRef index)
+{
+    GateRef valueIndex = Int32Add(index, Int32(SendableEnv::SENDABLE_RESERVED_ENV_LENGTH));
     return GetValueFromTaggedArray(object, valueIndex);
 }
 }  // namespace panda::ecmascript::kungfu

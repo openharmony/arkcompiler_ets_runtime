@@ -292,7 +292,6 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
 {
     // registry target based on build, cgfunc, emitter need to be registried.
     InitializeAllTargetInfos(m.GetMemPool());
-    theMIRModule = &m;
     std::string compileTarget = "";
     if (Triple::GetTriple().IsAarch64BeOrLe()) {
         compileTarget = "aarch64";

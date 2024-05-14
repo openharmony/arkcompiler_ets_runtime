@@ -283,13 +283,22 @@ void FrameIterator::Advance()
             current_ = frame->GetPrevFrameFp();
             break;
         }
-        case FrameType::BUILTIN_FRAME:
-        case FrameType::BUILTIN_ENTRY_FRAME : {
+        case FrameType::BUILTIN_FRAME : {
             auto frame = GetFrame<BuiltinFrame>();
             if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 needCalCallSiteInfo = true;
+            }
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
+        case FrameType::BUILTIN_ENTRY_FRAME : {
+            auto frame = GetFrame<BuiltinFrame>();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                needCalCallSiteInfo = false;
             }
             current_ = frame->GetPrevFrameFp();
             break;

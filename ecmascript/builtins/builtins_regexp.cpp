@@ -198,7 +198,7 @@ JSTaggedValue BuiltinsRegExp::Test(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> string = JSHandle<JSTaggedValue>::Cast(stringHandle);
     // test fast path
     if (IsFastRegExp(thread, thisObj)) {
-        return RegExpTestFast(thread, thisObj, string, true);
+        return RegExpTestFast(thread, thisObj, string, false);
     }
 
     // 5. Let match be RegExpExec(R, string).

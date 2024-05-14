@@ -29,7 +29,7 @@ public:
 
     void Attach(JSThread *thread, uint32_t arrayBufferByteLength, JSTaggedValue arrayBufferData,
                 bool transferWithNativeAreaAllocator = false);
-    void Detach(JSThread *thread, bool transferWithNativeAreaAllocator = false);
+    void Detach(JSThread *thread, bool transferWithNativeAreaAllocator = false, bool isSerialize = false);
 
     bool IsDetach()
     {

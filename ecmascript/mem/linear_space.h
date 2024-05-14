@@ -41,7 +41,10 @@ public:
     {
         return allocator_.GetEndAddress();
     }
-
+    size_t GetOvershootSize() const
+    {
+        return overShootSize_;
+    }
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
 protected:
@@ -61,7 +64,9 @@ public:
     NO_MOVE_SEMANTIC(SemiSpace);
 
     void Initialize() override;
-    void Restart();
+    void Restart(size_t overShootSize = 0);
+    size_t CalculateNewOverShootSize();
+    bool CommittedSizeIsLarge();
 
     uintptr_t AllocateSync(size_t size);
 

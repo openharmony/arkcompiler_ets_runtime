@@ -432,6 +432,7 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
 
 TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size)
 {
+    ASSERT(!thread->IsJitThread());
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = reinterpret_cast<TaggedObject*>(sNonMovableTlab_->Allocate(size));
     if (object != nullptr) {
@@ -444,7 +445,6 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
     size_t newTlabSize = sNonMovableTlab_->ComputeSize();
     object = SharedHeap::GetInstance()->AllocateSNonMovableTlab(thread, newTlabSize);
     if (object == nullptr) {
-        LOG_ECMA_MEM(WARN) << "allocate shared non movable space tlab failed";
         return nullptr;
     }
     uintptr_t begin = reinterpret_cast<uintptr_t>(object);
@@ -457,6 +457,7 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
 
 TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size)
 {
+    ASSERT(!thread->IsJitThread());
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = reinterpret_cast<TaggedObject*>(sOldTlab_->Allocate(size));
     if (object != nullptr) {
@@ -469,7 +470,7 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
     size_t newTlabSize = sOldTlab_->ComputeSize();
     object = SharedHeap::GetInstance()->AllocateSOldTlab(thread, newTlabSize);
     if (object == nullptr) {
-        LOG_ECMA_MEM(WARN) << "allocate shared old space tlab failed";
+        sOldTlab_->DisableNewTlab();
         return nullptr;
     }
     uintptr_t begin = reinterpret_cast<uintptr_t>(object);
@@ -483,7 +484,11 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
 void Heap::SwapNewSpace()
 {
     activeSemiSpace_->Stop();
-    inactiveSemiSpace_->Restart();
+    size_t newOverShootSize = 0;
+    if (!inBackground_ && gcType_ != TriggerGCType::FULL_GC && gcType_ != TriggerGCType::APPSPAWN_FULL_GC) {
+        newOverShootSize = activeSemiSpace_->CalculateNewOverShootSize();
+    }
+    inactiveSemiSpace_->Restart(newOverShootSize);
 
     SemiSpace *newSpace = inactiveSemiSpace_;
     inactiveSemiSpace_ = activeSemiSpace_;
@@ -653,7 +658,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, hclass, size);
     }
-    TaggedObject *object =
+    TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
@@ -672,7 +677,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, size);
     }
-    TaggedObject *object =
+    TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
@@ -703,7 +708,6 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            // todo(lukai) DumpHeapSnapshotBeforeOOM
             ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");
             object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
             if (UNLIKELY(object == nullptr)) {

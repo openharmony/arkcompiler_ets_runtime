@@ -27,6 +27,7 @@
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
@@ -275,6 +276,15 @@ void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &current
     JSHandle<JSTaggedValue> valueHandle(thread, value);
     currentModule->StoreModuleValue(thread, keyHandle, valueHandle);
 }
+JSHandle<SourceTextModule> ModuleManager::GetImportedModule(JSTaggedValue referencing)
+{
+    auto thread = vm_->GetJSThread();
+    if (!IsLocalModuleLoaded(referencing)) {
+        return SharedModuleManager::GetInstance()->GetSModule(thread, referencing);
+    } else {
+        return HostGetImportedModule(referencing);
+    }
+}
 
 JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(const CString &referencingModule)
 {
@@ -308,7 +318,7 @@ JSTaggedValue ModuleManager::HostGetImportedModule(void *src)
     return result;
 }
 
-bool ModuleManager::IsImportedModuleLoaded(JSTaggedValue referencing)
+bool ModuleManager::IsLocalModuleLoaded(JSTaggedValue referencing)
 {
     NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
     int entry = dict->FindEntry(referencing);
@@ -318,6 +328,21 @@ bool ModuleManager::IsImportedModuleLoaded(JSTaggedValue referencing)
     JSTaggedValue result = dict->GetValue(entry).GetWeakRawValue();
     dict->UpdateValue(vm_->GetJSThread(), entry, result);
     return true;
+}
+
+bool ModuleManager::IsSharedModuleLoaded(JSTaggedValue referencing)
+{
+    SharedModuleManager* sharedModuleManager = SharedModuleManager::GetInstance();
+    return sharedModuleManager->SearchInSModuleManager(vm_->GetJSThread(), ConvertToString(referencing));
+}
+
+bool ModuleManager::IsModuleLoaded(JSTaggedValue referencing)
+{
+    if (IsLocalModuleLoaded(referencing)) {
+        return true;
+    }
+    SharedModuleManager* sharedModuleManager = SharedModuleManager::GetInstance();
+    return sharedModuleManager->SearchInSModuleManager(vm_->GetJSThread(), ConvertToString(referencing));
 }
 
 bool ModuleManager::IsEvaluatedModule(JSTaggedValue referencing)
@@ -554,6 +579,11 @@ void ModuleManager::AddToInstantiatingSModuleList(const CString &record)
 CVector<CString> ModuleManager::GetInstantiatingSModuleList()
 {
     return InstantiatingSModuleList_;
+}
+
+void ModuleManager::ClearInstantiatingSModuleList()
+{
+    InstantiatingSModuleList_.clear();
 }
 
 JSTaggedValue ModuleManager::GetModuleNamespace(int32_t index)
@@ -793,7 +823,7 @@ JSHandle<JSTaggedValue> ModuleManager::GetModuleNameSpaceFromFile(
     JSThread *thread, std::string &recordNameStr, std::string &baseFileName)
 {
     JSHandle<EcmaString> recordName = thread->GetEcmaVM()->GetFactory()->NewFromASCII(recordNameStr.c_str());
-    if (!IsImportedModuleLoaded(recordName.GetTaggedValue())) {
+    if (!IsLocalModuleLoaded(recordName.GetTaggedValue())) {
         if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(
             thread, baseFileName.c_str(), recordNameStr.c_str(), false, true)) {
             LOG_ECMA(ERROR) << "LoadModuleNameSpaceFromFile:Cannot execute module: %{public}s, recordName: %{public}s",
@@ -801,7 +831,7 @@ JSHandle<JSTaggedValue> ModuleManager::GetModuleNameSpaceFromFile(
             return thread->GlobalConstants()->GetHandledUndefinedString();
         }
     }
-    JSHandle<ecmascript::SourceTextModule> moduleRecord = HostGetImportedModule(recordName.GetTaggedValue());
+    JSHandle<ecmascript::SourceTextModule> moduleRecord = GetImportedModule(recordName.GetTaggedValue());
     moduleRecord->SetLoadingTypes(ecmascript::LoadingTypes::STABLE_MODULE);
     return ecmascript::SourceTextModule::GetModuleNamespace(
         thread, JSHandle<ecmascript::SourceTextModule>(moduleRecord));

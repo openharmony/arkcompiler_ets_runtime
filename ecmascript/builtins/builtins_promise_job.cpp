@@ -216,7 +216,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     }
     // Loading request module.
     thread->GetEcmaVM()->PushToDeregisterModuleList(entryPoint);
-    if (!moduleManager->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
+    if (!moduleManager->IsModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
@@ -234,7 +234,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     } else {
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
         JSHandle<SourceTextModule> moduleRecord =
-            moduleManager->HostGetImportedModule(moduleName.GetTaggedValue());
+            moduleManager->GetImportedModule(moduleName.GetTaggedValue());
         JSHandle<JSTaggedValue> nameSp = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         // d. Let namespace be ? GetModuleNamespace(moduleRecord).
