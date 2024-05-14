@@ -43,6 +43,27 @@ bool JsonHelper::IsFastValueToQuotedString(const char *value)
     return true;
 }
 
+CString DefaultValueToQuotedString(const char ch, CString product) {
+    // c. Else if C has a code unit value less than 0x0020 (SPACE), then
+    if (ch > 0 && ch < CODE_SPACE) {
+        /*
+            * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
+            * ii. Let product be the concatenation of product and "u".
+            * iii. Let hex be the string result of converting the numeric code unit value of C to a String of
+            * four hexadecimal digits. Alphabetic hexadecimal digits are presented as lowercase Latin letters.
+            * iv. Let product be the concatenation of product and hex.
+            */
+        std::ostringstream oss;
+        oss << "\\u" << std::hex << std::setfill('0') << std::setw(FOUR_HEX) << static_cast<int>(ch);
+        product += oss.str();
+    } else {
+        // Else,
+        // i. Let product be the concatenation of product and C.
+        product += ch;
+    }
+    return product;
+}
+
 CString JsonHelper::ValueToQuotedString(CString str)
 {
     CString product;
@@ -116,23 +137,24 @@ CString JsonHelper::ValueToQuotedString(CString str)
                     break;
                 }
             default:
-                // c. Else if C has a code unit value less than 0x0020 (SPACE), then
-                if (*c > 0 && *c < CODE_SPACE) {
-                    /*
-                     * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-                     * ii. Let product be the concatenation of product and "u".
-                     * iii. Let hex be the string result of converting the numeric code unit value of C to a String of
-                     * four hexadecimal digits. Alphabetic hexadecimal digits are presented as lowercase Latin letters.
-                     * iv. Let product be the concatenation of product and hex.
-                     */
-                    std::ostringstream oss;
-                    oss << "\\u" << std::hex << std::setfill('0') << std::setw(FOUR_HEX) << static_cast<int>(*c);
-                    product += oss.str();
-                } else {
-                    // Else,
-                    // i. Let product be the concatenation of product and C.
-                    product += *c;
-                }
+                product = DefaultValueToQuotedString(*c, product);
+                // // c. Else if C has a code unit value less than 0x0020 (SPACE), then
+                // if (*c > 0 && *c < CODE_SPACE) {
+                //     /*
+                //      * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
+                //      * ii. Let product be the concatenation of product and "u".
+                //      * iii. Let hex be the string result of converting the numeric code unit value of C to a String of
+                //      * four hexadecimal digits. Alphabetic hexadecimal digits are presented as lowercase Latin letters.
+                //      * iv. Let product be the concatenation of product and hex.
+                //      */
+                //     std::ostringstream oss;
+                //     oss << "\\u" << std::hex << std::setfill('0') << std::setw(FOUR_HEX) << static_cast<int>(*c);
+                //     product += oss.str();
+                // } else {
+                //     // Else,
+                //     // i. Let product be the concatenation of product and C.
+                //     product += *c;
+                // }
         }
     }
     // 3. Let product be the concatenation of product and code unit 0x0022 (QUOTATION MARK).
