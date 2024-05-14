@@ -110,6 +110,7 @@ int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, st
                                         std::vector<int16_t> &sigData)
 {
     HiviewDFX::HiLog::Debug(LABEL, "begin to call aot compiler");
+    unLoadHandler_->RemoveTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().EcmascriptAotCompiler(argsMap, sigData);
     HiviewDFX::HiLog::Debug(LABEL, "finish aot compiler");
     DelayUnloadTask();
@@ -119,6 +120,7 @@ int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, st
 int32_t AotCompilerService::StopAotCompiler()
 {
     HiviewDFX::HiLog::Debug(LABEL, "stop aot compiler service");
+    unLoadHandler_->RemoveTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().StopAotCompiler();
     DelayUnloadTask();
     return ret;

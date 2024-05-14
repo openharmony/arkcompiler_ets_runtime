@@ -28,7 +28,7 @@
 namespace OHOS::ArkCompiler {
 class AotCompilerClient {
 public:
-    AotCompilerClient() = default;
+    AotCompilerClient();
     virtual ~AotCompilerClient() = default;
     static AotCompilerClient &GetInstance();
     int32_t AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
@@ -36,12 +36,17 @@ public:
     int32_t StopAotCompiler();
     void OnLoadSystemAbilitySuccess(const sptr<IRemoteObject> &remoteObject);
     void OnLoadSystemAbilityFail();
+    void AotCompilerOnRemoteDied(const wptr<IRemoteObject> &remoteObject);
 
 private:
     sptr<IAotCompilerInterface> GetAotCompilerProxy();
     bool LoadAotCompilerService();
     void SetAotCompiler(const sptr<IRemoteObject> &remoteObject);
     sptr<IAotCompilerInterface> GetAotCompiler();
+    class AotCompilerDiedRecipient : public IRemoteObject::DeathRecipient {
+    public:
+        void OnRemoteDied(const wptr<IRemoteObject> &remote) override;
+    };
 
 private:
     std::condition_variable loadSaCondition_;
@@ -49,6 +54,7 @@ private:
     bool loadSaFinished_;
     std::mutex mutex_;
     sptr<IAotCompilerInterface> aotCompilerProxy_ = nullptr;
+    sptr<AotCompilerDiedRecipient> aotCompilerDiedRecipient_ = nullptr;
     DISALLOW_COPY_AND_MOVE(AotCompilerClient);
 };
 } // namespace OHOS::ArkCompiler
