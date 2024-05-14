@@ -160,6 +160,7 @@ host_unittest_action("HProfTest") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 

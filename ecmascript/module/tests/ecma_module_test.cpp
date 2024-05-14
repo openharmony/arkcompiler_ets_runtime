@@ -807,4 +807,15 @@ HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName)
     CString version = "1.0.0";
     EXPECT_EQ(res[4], version);
 }
+
+HWTEST_F_L0(EcmaModuleTest, ConcatPreviewTestUnifiedOhmUrl)
+{
+    CString bundleName = "";
+    CString pkgName = "entry";
+    CString path = "/.test/testability/pages/Index";
+    CString version = "";
+    CString exceptOutUrl = "&entry/.test/testability/pages/Index&";
+    CString res = ModulePathHelper::ConcatPreviewTestUnifiedOhmUrl(bundleName, pkgName, path, version);
+    EXPECT_EQ(res, exceptOutUrl);
+}
 }  // namespace panda::test

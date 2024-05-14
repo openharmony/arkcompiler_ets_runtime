@@ -376,3 +376,4 @@ print('abc'.padEnd(-Infinity, 'def') );
 print('abc'.padEnd(0, 'def') );
 print('abc'.padEnd(-1, 'def') );
 print('abc'.padEnd(5, ''))
+print('abc'.padEnd(5, ''))

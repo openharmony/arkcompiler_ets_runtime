@@ -37,6 +37,7 @@ host_unittest_action("JobTest") {
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   deps += hiviewdfx_deps
+  external_deps += [ "zlib:libz" ]
 }
 
 group("unittest") {

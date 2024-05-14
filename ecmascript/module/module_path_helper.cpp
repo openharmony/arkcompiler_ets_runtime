@@ -169,7 +169,7 @@ void ModulePathHelper::ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFil
         outEntryPoint.erase(outEntryPoint.length() - EXT_NAME_ABC_LEN, EXT_NAME_ABC_LEN);
     }
     if (vm->IsNormalizedOhmUrlPack()) {
-        outEntryPoint = TransformToNormalizedOhmUrl(vm, outBaseFileName, outEntryPoint);
+        outEntryPoint = TransformToNormalizedOhmUrl(vm, inputFileName, outBaseFileName, outEntryPoint);
     }
 }
 
@@ -193,6 +193,13 @@ CString ModulePathHelper::ConcatUnifiedOhmUrl(const CString &bundleName, const C
         version;
 }
 
+CString ModulePathHelper::ConcatPreviewTestUnifiedOhmUrl(const CString &bundleName, const CString &pkgname,
+    const CString &path, const CString &version)
+{
+    return bundleName + PathHelper::NORMALIZED_OHMURL_TAG + pkgname + path + PathHelper::NORMALIZED_OHMURL_TAG +
+        version;
+}
+
 CString ModulePathHelper::ConcatHspFileNameCrossBundle(const CString &bundleName, const CString &moduleName)
 {
     CString bundlePath = BUNDLE_INSTALL_PATH;
@@ -206,8 +213,8 @@ CString ModulePathHelper::ConcatHspFileName(const CString &moduleName)
     return bundlePath + moduleName + MERGE_ABC_ETS_MODULES;
 }
 
-CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &baseFileName,
-    const CString &oldEntryPoint)
+CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &inputFileName,
+    const CString &baseFileName, const CString &oldEntryPoint)
 {
     CString prefix(1, PathHelper::NORMALIZED_OHMURL_TAG);
     if (oldEntryPoint == ENTRY_MAIN_FUNCTION || StringHelper::StringStartWith(oldEntryPoint, prefix)) {
@@ -239,6 +246,10 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
     if (data.size() > 0) {
         version = data[PKGINFO_VERSION_INDEX];
         entryPath = data[PKGINFO_ENTRY_PATH_INDEX];
+    }
+    // If the inputFileName contains '.test', it is a preview test, no need to splice the entry path.
+    if (inputFileName.find(PREVIER_TEST_DIR) != CString::npos) {
+        return ConcatPreviewTestUnifiedOhmUrl("", pkgname, path, version);
     }
     // When the entry path ends with a slash (/), use the entry path to concatenate ohmurl.
     CString endStr(1, PathHelper::SLASH_TAG);
