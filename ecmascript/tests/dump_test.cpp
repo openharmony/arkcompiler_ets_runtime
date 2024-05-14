@@ -1378,7 +1378,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SOURCE_TEXT_MODULE_RECORD: {
-                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 16U);
+                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 17U);
                 JSHandle<SourceTextModule> moduleSourceRecord = factory->NewSourceTextModule();
                 DUMP_FOR_HANDLE(moduleSourceRecord);
                 break;
@@ -1420,7 +1420,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::RESOLVEDRECORDINDEXBINDING_RECORD: {
-                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordIndexBinding::SIZE, 2U);
+                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordIndexBinding::SIZE, 3U);
                 JSHandle<ResolvedRecordIndexBinding> recordBinding = factory->NewSResolvedRecordIndexBindingRecord();
                 DUMP_FOR_HANDLE(recordBinding);
                 break;
