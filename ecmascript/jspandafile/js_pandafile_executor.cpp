@@ -277,7 +277,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     return result;
 }
 
-void JSPandaFileExecutor::BindPandaFilesForAot(EcmaVM *vm, [[maybe_unused]]JSPandaFile *jsPandaFile)
+void JSPandaFileExecutor::BindPandaFilesForAot(EcmaVM *vm, [[maybe_unused]] JSPandaFile *jsPandaFile)
 {
     if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
         std::string aotFileBaseName(vm->GetModuleName());

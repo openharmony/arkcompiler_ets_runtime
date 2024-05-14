@@ -857,6 +857,6 @@ void ModuleManager::RemoveModuleFromCache(JSTaggedValue recordName)
     LOG_ECMA_IF(entry == -1, FATAL) << "Can not get module: " << ConvertToString(recordName) <<
          ", when try to remove the module";
 
-    resolvedModules_  = NameDictionary::Remove(thread, dict, entry).GetTaggedValue();
+    resolvedModules_ = NameDictionary::Remove(thread, dict, entry).GetTaggedValue();
 }
 } // namespace panda::ecmascript

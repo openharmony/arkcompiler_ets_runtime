@@ -215,7 +215,7 @@ public:
     NO_COPY_SEMANTIC(NonMovableSpace);
     NO_MOVE_SEMANTIC(NonMovableSpace);
 
-    uintptr_t  CheckAndAllocate(size_t size);
+    uintptr_t CheckAndAllocate(size_t size);
 };
 
 class AppSpawnSpace : public SparseSpace {

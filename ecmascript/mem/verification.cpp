@@ -260,16 +260,16 @@ void VerifyObjectVisitor::VerifyMarkFull(TaggedObject *object, ObjectSlot slot, 
     }
 }
 
-void VerifyObjectVisitor::VerifyEvacuateOld([[maybe_unused]]TaggedObject *root,
-                                            [[maybe_unused]]ObjectSlot slot,
-                                            [[maybe_unused]]TaggedObject *value) const
+void VerifyObjectVisitor::VerifyEvacuateOld([[maybe_unused]] TaggedObject *root,
+                                            [[maybe_unused]] ObjectSlot slot,
+                                            [[maybe_unused]] TaggedObject *value) const
 {
     VerifyEvacuateYoung(root, slot, value);
 }
 
-void VerifyObjectVisitor::VerifyEvacuateFull([[maybe_unused]]TaggedObject *root,
-                                             [[maybe_unused]]ObjectSlot slot,
-                                             [[maybe_unused]]TaggedObject *value) const
+void VerifyObjectVisitor::VerifyEvacuateFull([[maybe_unused]] TaggedObject *root,
+                                             [[maybe_unused]] ObjectSlot slot,
+                                             [[maybe_unused]] TaggedObject *value) const
 {
     VerifyEvacuateYoung(root, slot, value);
 }

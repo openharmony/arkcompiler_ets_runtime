@@ -138,7 +138,7 @@ public:
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
           profilerDecoder_(profilerDecoder), passOptions_(passOptions),
           callMethodFlagMap_(callMethodFlagMap), fileInfos_(fileInfos), optBCRange_(optBCRange) {
-                enableJITLog_ =  compilationEnv_->GetJSOptions().GetTraceJIT();
+                enableJITLog_ = compilationEnv_->GetJSOptions().GetTraceJIT();
             };
 
     virtual ~PassManager() = default;

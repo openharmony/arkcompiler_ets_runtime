@@ -552,7 +552,7 @@ public:
         return result;
     }
 
-    void ChangeGCParams([[maybe_unused]]bool inBackground) override
+    void ChangeGCParams([[maybe_unused]] bool inBackground) override
     {
         LOG_FULL(ERROR) << "SharedHeap ChangeGCParams() not support yet";
         return;

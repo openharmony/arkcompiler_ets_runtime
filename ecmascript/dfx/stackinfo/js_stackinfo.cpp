@@ -33,7 +33,7 @@
 #endif
 
 namespace panda::ecmascript {
-[[maybe_unused]]static bool g_needCheck = true;
+[[maybe_unused]] static bool g_needCheck = true;
 
 const int USEC_PER_SEC = 1000 * 1000;
 const int NSEC_PER_USEC = 1000;

@@ -283,7 +283,7 @@ void LiteCGIRBuilder::Build()
 
     for (auto &pair: bbID2phiAssign) {
         for (auto &expr: pair.second) {
-            auto &stmt =  lmirBuilder_->Regassign(lmirBuilder_->Regread(expr.first), expr.second);
+            auto &stmt = lmirBuilder_->Regassign(lmirBuilder_->Regread(expr.first), expr.second);
             lmirBuilder_->AppendStmtBeforeBranch(GetOrCreateBB(pair.first), stmt);
         }
     }

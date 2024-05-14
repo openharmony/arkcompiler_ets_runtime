@@ -6807,7 +6807,7 @@ GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
     GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, index);
     GateRef protoOrHclass = Load(VariableType::JS_ANY(), func, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     NewObjectStubBuilder newBuilder(env_);
-    GateRef newObj  = newBuilder.NewJSObject(glue, protoOrHclass);
+    GateRef newObj = newBuilder.NewJSObject(glue, protoOrHclass);
     GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
     Store(VariableType::JS_ANY(), glue, newObj, valueOffset, obj);
     return newObj;

@@ -1008,7 +1008,7 @@ void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef n
     }
 }
 
-void BuiltinsStringStubBuilder::Trim(GateRef glue, GateRef thisValue, GateRef numArgs [[maybe_unused]],
+void BuiltinsStringStubBuilder::Trim(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
     Variable *res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
