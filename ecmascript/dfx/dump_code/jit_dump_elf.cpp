@@ -106,7 +106,7 @@ void JsJitDumpElf::LayoutSections()
         UpdateGlobalOffset(*section);
     }
 
-    globalOffset = Alignment::Align<maplebe::Offset>(globalOffset, 16U); 
+    globalOffset = Alignment::Align<maplebe::Offset>(globalOffset, 16U);
     header.e_shoff = globalOffset;
     header.e_shnum = static_cast<uint16>(sections.size());
 }
@@ -117,18 +117,20 @@ void JsJitDumpElf::RegisterSection(Section &section)
     section.SetIndex(static_cast<maplebe::SectionIndex>(sections.size() - 1));
 }
 
+void JsJitDumpElf::Init()
+{
+    DataSection *nullDataSection = new DataSection(" ", SHT_NULL, 0, 0);
+    RegisterSection(*nullDataSection);
+    strTabSection = new StringSection(".strtab", SHT_STRTAB, 0, 1);
+    RegisterSection(*strTabSection);
+    textSection = new DataSection(".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, k8Bits);
+    RegisterSection(*textSection);
+    symbolTabSection = new SymbolSection(".symtab", SHT_SYMTAB, 0, k8Bits, *strTabSection);
+    RegisterSection(*symbolTabSection);
+}
+
 void JsJitDumpElf::AppendData(std::vector<uint8> &codeBuff)
 {
-    if (textSection == nullptr) {
-        DataSection *nullDataSection = new DataSection(" ", SHT_NULL, 0, 0);
-        RegisterSection(*nullDataSection);
-        strTabSection = new StringSection(".strtab", SHT_STRTAB, 0, 1);
-        RegisterSection(*strTabSection);
-        textSection = new DataSection(".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, k8Bits);
-        RegisterSection(*textSection);
-        symbolTabSection = new SymbolSection(".symtab", SHT_SYMTAB, 0, k8Bits, *strTabSection);
-        RegisterSection(*symbolTabSection);
-    }
     textSection->AppendData(codeBuff.data(), codeBuff.size());
 }
 
@@ -153,8 +155,8 @@ void JsJitDumpElf::AppendSymbolToSymTab(int64 symIdx, uint64 funcSymValue, uint6
     uint8 funcSymType = STB_GLOBAL;
     auto nameIndex = strTabSection->AddString(symbolName);
     AddSymToSymTab({static_cast<maplebe::Word>(nameIndex),
-                    static_cast<uint8>((funcSymType << kLeftShift4Bits) + (STT_FUNC & 0xf)), 0, textSection->GetIndex(),
-                    funcSymValue, funcSymSize}, symIdx);
+        static_cast<uint8>((funcSymType << kLeftShift4Bits) + (STT_FUNC & 0xf)), 0, textSection->GetIndex(),
+        funcSymValue, funcSymSize}, symIdx);
 }
 
 void JsJitDumpElf::SetFileOffset(int fd, uint64 offset)

@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#ifndef ECMASCRIPT_JIT_DUMP_ELF_H
+#define ECMASCRIPT_JIT_DUMP_ELF_H
+
 #include <vector>
 #include <string>
 #include <unistd.h>
@@ -20,9 +23,6 @@
 
 #include "ecmascript/compiler/codegen/maple/maple_be/include/cg/elf_types.h"
 #include "ecmascript/log_wrapper.h"
-
-#ifndef ECMASCRIPT_JIT_DUMP_ELF_H
-#define ECMASCRIPT_JIT_DUMP_ELF_H
 
 namespace panda::ecmascript {
 
@@ -167,7 +167,7 @@ public:
 
     void WriteSection(int fd) override
     {
-       (void)write(fd, reinterpret_cast<const char *>(relas.data()), relas.size() * sizeof(maplebe::Rela));
+        (void)write(fd, reinterpret_cast<const char *>(relas.data()), relas.size() * sizeof(maplebe::Rela));
     }
 
     void AppendRela(maplebe::Rela rela)
@@ -250,8 +250,8 @@ private:
 
 class DataSection : public Section {
 public:
-    DataSection(const std::string &name, maplebe::Word type, maplebe::Xword flags, maplebe::Xword align) :
-        Section(name, type, flags, align) {}
+    DataSection(const std::string &name, maplebe::Word type, maplebe::Xword flags, maplebe::Xword align)
+        : Section(name, type, flags, align) {}
 
     ~DataSection() = default;
 
@@ -300,8 +300,8 @@ protected:
 
 class StringSection : public DataSection {
 public:
-    StringSection(const std::string &name, maplebe::Word type, maplebe::Xword flags, maplebe::Xword align) :
-        DataSection(name, type, flags, align)
+    StringSection(const std::string &name, maplebe::Word type, maplebe::Xword flags, maplebe::Xword align)
+        : DataSection(name, type, flags, align)
     {
         AddString("\0");
     }
@@ -330,6 +330,7 @@ public:
 
 class JsJitDumpElf {
 public:
+    void Init();
     void SetFileOffset(int fd, uint64 offset);
     void Initx86ElfHeader();
     void InitArmElfHeader();

@@ -88,7 +88,7 @@ struct ArkUnwindParam {
     bool *isJsFrame;
     uintptr_t *jitCache;
     size_t *jitSize;
-    ArkUnwindParam(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, uintptr_t *methodId, 
+    ArkUnwindParam(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, uintptr_t *methodId,
                    bool *isJsFrame, uintptr_t *jitCache, size_t *jitSize)
         : ctx(ctx), readMem(readMem), fp(fp), sp(sp), pc(pc), methodId(methodId),
           isJsFrame(isJsFrame), jitCache(jitCache), jitSize(jitSize) {}
@@ -162,8 +162,7 @@ public:
     static AOTFileManager *loader;
     static JSRuntimeOptions *options;
     static void BuildCrashInfo(bool isJsCrash, uintptr_t pc = 0);
-    static std::unordered_map<EntityId, uintptr_t> methodMap;
-    static std::unordered_map<uintptr_t, std::string> nameMap;
+    static std::unordered_map<EntityId, std::string> nameMap;
 };
 void CrashCallback(char *buf, size_t len, void *ucontext);
 uint64_t GetMicrosecondsTimeStamp();
@@ -179,7 +178,9 @@ extern "C" int ark_parse_js_frame_info(
 extern "C" int ark_translate_js_frame_info(
     uint8_t *data, size_t dataSize, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int step_ark_with_record_jit(panda::ecmascript::ArkUnwindParam *arkUnwindParam);
-extern "C" int ark_write_jit_code(int fd, std::vector<uintptr_t> *jitCodeVec);
+extern "C" int ark_write_jit_code(
+    void *ctx, panda::ecmascript::ReadMemFunc readMem, int fd, const uintptr_t *const jitCodeArray,
+    const size_t jitSize);
 extern "C" int step_ark(
     void *ctx, panda::ecmascript::ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp,
     uintptr_t *pc, uintptr_t *methodId, bool *isJsFrame);

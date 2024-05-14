@@ -332,6 +332,8 @@
       ark_destory_local;
       ark_parse_js_file_info;
       ark_parse_js_frame_info_local;
+      step_ark_with_record_jit;
+      ark_write_jit_code;
     };
   local:
     *;

@@ -35,16 +35,10 @@
 namespace panda::ecmascript {
 [[maybe_unused]]static bool g_needCheck = true;
 
-std::unordered_map<EntityId, uintptr_t> JsStackInfo::methodMap;
-std::unordered_map<uintptr_t, std::string> JsStackInfo::nameMap;
-
 const int USEC_PER_SEC = 1000 * 1000;
 const int NSEC_PER_USEC = 1000;
 
-bool IsFastJitFunctionFrame([[maybe_unused]]const FrameType frameType)
-{
-    return true;
-}
+std::unordered_map<EntityId, std::string> JsStackInfo::nameMap;
 
 std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
 {
@@ -533,6 +527,16 @@ std::optional<CodeInfo> JSStackTrace::TranslateByteCodePc(uintptr_t realPc, cons
     return std::nullopt;
 }
 
+void SaveFuncName(EntityId entityId, const std::string &name)
+{
+    size_t length = 256; // maximum stack length
+    if (JsStackInfo::nameMap.size() > length) {
+        auto it = JsStackInfo::nameMap.begin();
+        JsStackInfo::nameMap.erase(it);
+    }
+    JsStackInfo::nameMap.emplace(entityId, name);
+}
+
 template<typename T>
 void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtractor,
                       EntityId methodId, uintptr_t offset, T &jsFrame, SourceMap *sourceMap = nullptr)
@@ -543,9 +547,7 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
     }
     std::string name = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
     name = name.empty() ? "anonymous" : name;
-    if (JsStackInfo::methodMap.find(methodId) != JsStackInfo::methodMap.end()) {
-        JsStackInfo::nameMap.emplace(JsStackInfo::methodMap[methodId], name);
-    }
+    SaveFuncName(methodId, name);
     std::string url = debugExtractor->GetSourceFile(methodId);
 
     // line number and column number
@@ -819,50 +821,55 @@ bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr,
     return ArkGetNextFrame(ctx, readMem, currentPtr, frameType, pc, methodId);
 }
 
-bool ArkWriteJitCode(int fd, std::vector<uintptr_t> *jitCodeVec)
+bool ArkWriteJitCode(void *ctx, ReadMemFunc readMem, int fd, const uintptr_t *const jitCodeArray,
+                     const size_t jitSize)
 {
     JsJitDumpElf jitDumpElf;
+    jitDumpElf.Init();
     int64 idx = 0;
-    for (size_t i = 0; i < jitCodeVec->size(); i++) {
-        JSTaggedValue machineCodeValue = JSTaggedValue((*jitCodeVec)[i]);
-        MachineCode *machineCodeObj = MachineCode::Cast(machineCodeValue.GetTaggedObject());
-        size_t len = machineCodeObj->GetTextSize();
-        char *funcAddr = reinterpret_cast<char *>(machineCodeObj->GetFuncAddr());
-        std::vector<uint8> codeVec;
-        memmove_s(codeVec.data(), len, funcAddr, len);
-        jitDumpElf.AppendData(codeVec);
-        jitDumpElf.AppendSymbolToSymTab(idx++, 0, machineCodeObj->GetTextSize(),
-                                                         JsStackInfo::nameMap[(*jitCodeVec)[i]]);
+    if (jitSize == 0) {
+        for (size_t i = 0; i < jitSize; i++) {
+            uintptr_t functionAddr = jitCodeArray[i];
+            uintptr_t machineCode = 0;
+            readMem(ctx, functionAddr + JSFunction::MACHINECODE_OFFSET, &machineCode);
+            if (!machineCode) {
+                continue;
+            }
+            uintptr_t method = ArkCheckAndGetMethod(ctx, readMem, functionAddr);
+            if (!method) {
+                LOG_ECMA(DEBUG) << std::hex << "Failed to get method: " << functionAddr;
+                continue;
+            }
+            uintptr_t methodId = 0;
+            if (!ArkGetMethodIdFromMethod(ctx, readMem, method, methodId)) {
+                LOG_ECMA(DEBUG) << std::hex << "ArkGetJsFrameDebugInfo failed, method: " << method;
+                continue;
+            }
+            std::string name = JsStackInfo::nameMap[EntityId(methodId)];
+            uintptr_t size = 0;
+            readMem(ctx, machineCode + MachineCode::INSTRSIZ_OFFSET, &size);
+            if (!size) {
+                continue;
+            }
+            size_t len = *reinterpret_cast<size_t*>(size);
+            uintptr_t funcAddr = 0;
+            readMem(ctx, machineCode + MachineCode::FUNCADDR_OFFSET, &funcAddr);
+            if (!funcAddr) {
+                continue;
+            }
+            std::vector<uint8> codeVec;
+            for (size_t l = 0; l < size; l++) {
+                uintptr_t tmp = 0;
+                readMem(ctx, funcAddr + l, &tmp);
+                codeVec.push_back(*reinterpret_cast<uint8*>(tmp));
+            }
+            jitDumpElf.AppendData(codeVec);
+            jitDumpElf.AppendSymbolToSymTab(idx++, 0, len, name);
+        }
     }
     jitDumpElf.WriteJitElfFile(fd);
-    JsStackInfo::methodMap.clear();
     JsStackInfo::nameMap.clear();
     return true;
-}
-
-uintptr_t ArkGetJitMachineCode(void *ctx, ReadMemFunc readMem, uintptr_t currentPtr)
-{
-    uintptr_t *function = 0;
-    uintptr_t *machineCode = 0;
-    uintptr_t funcAddr = currentPtr;
-    // funcAddr -= FASTJITFunctionFrame::GetTypeOffset();
-    // funcAddr += FASTJITFunctionFrame::GetFunctionOffset();
-    readMem(ctx, funcAddr, function);
-    *function += JSFunction::MACHINECODE_OFFSET;
-    readMem(ctx, *function, machineCode);
-    return *machineCode;
-}
-
-void SaveMethodId(EntityId entityId, uintptr_t machineCodeAddr)
-{
-    size_t length = 256; // maximum stack length
-    if (JsStackInfo::methodMap.size() > length) {
-        auto it = JsStackInfo::methodMap.begin();
-        uintptr_t value = it->second;
-        JsStackInfo::nameMap.erase(value);
-        JsStackInfo::methodMap.erase(it);
-    }
-    JsStackInfo::methodMap.emplace(entityId, machineCodeAddr);
 }
 
 bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
@@ -875,6 +882,23 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
     }
 
     uintptr_t frameType = 0;
+    uintptr_t frameTypeTmp = 0;
+    uintptr_t tmpPtr = currentPtr;
+    tmpPtr -= sizeof(FrameType);
+    if (arkUnwindParam->readMem(arkUnwindParam->ctx, tmpPtr, &frameTypeTmp)) {
+        if (IsFunctionFrame(frameTypeTmp)) {
+            if (static_cast<FrameType>(frameTypeTmp) == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME ||
+                static_cast<FrameType>(frameTypeTmp) == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+                uintptr_t *function = 0;
+                uintptr_t funcAddr = tmpPtr;
+                funcAddr -= OptimizedJSFunctionFrame::GetTypeOffset();
+                funcAddr += OptimizedJSFunctionFrame::GetFunctionOffset();
+                arkUnwindParam->readMem(arkUnwindParam->ctx, funcAddr, function);
+                *(arkUnwindParam->jitCache + *arkUnwindParam->jitSize) = *function;
+                *arkUnwindParam->jitSize += 1;
+            }
+        }
+    }
     if (ArkGetNextFrame(arkUnwindParam->ctx, arkUnwindParam->readMem, currentPtr, frameType, *arkUnwindParam->pc,
         arkUnwindParam->methodId)) {
         if (ArkFrameCheck(frameType)) {
@@ -886,12 +910,6 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
             *arkUnwindParam->isJsFrame = false;
             return ret;
         } else {
-            if (IsFastJitFunctionFrame(static_cast<FrameType>(frameType))) {
-                uintptr_t machineCode = ArkGetJitMachineCode(arkUnwindParam->ctx, arkUnwindParam->readMem, currentPtr);
-                *(arkUnwindParam->jitCache + *arkUnwindParam->jitSize) = machineCode;
-                *arkUnwindParam->jitSize += 1;
-                SaveMethodId(EntityId(*arkUnwindParam->methodId), machineCode);
-            }
             *arkUnwindParam->fp = currentPtr;
             *arkUnwindParam->sp = currentPtr;
             *arkUnwindParam->isJsFrame = true;
@@ -1825,9 +1843,10 @@ __attribute__((visibility("default"))) int step_ark_with_record_jit(panda::ecmas
 }
 
 __attribute__((visibility("default"))) int ark_write_jit_code(
-    int fd, std::vector<uintptr_t> *jitCodeVec)
+    void *ctx, panda::ecmascript::ReadMemFunc readMem, int fd, const uintptr_t *const jitCodeArray,
+    const size_t jitSize)
 {
-    if (panda::ecmascript::ArkWriteJitCode(fd, jitCodeVec)) {
+    if (panda::ecmascript::ArkWriteJitCode(ctx, readMem, fd, jitCodeArray, jitSize)) {
         return 1;
     }
     return -1;
