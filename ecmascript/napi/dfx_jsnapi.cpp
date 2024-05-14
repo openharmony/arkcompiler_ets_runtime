@@ -191,6 +191,10 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
     dumpStruct->captureNumericValue = captureNumericValue;
     dumpStruct->isFullGC = isFullGC;
     uv_work_t *work = new uv_work_t;
+    if (work == nullptr) {
+        LOG_ECMA(ERROR) << "work nullptr";
+        return;
+    }
     work->data = static_cast<void *>(dumpStruct);
     uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
     if (loop == nullptr) {
@@ -261,6 +265,9 @@ void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     uv_work_t *work = new uv_work_t;
+    if (work == nullptr) {
+        LOG_ECMA(FATAL) << "DFXJSNApi::TriggerGCWithVm:work is nullptr";
+    }
     work->data = static_cast<void *>(const_cast<EcmaVM *>(vm));
     uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
     if (loop == nullptr) {

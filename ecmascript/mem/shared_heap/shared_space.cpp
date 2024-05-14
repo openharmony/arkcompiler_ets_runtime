@@ -137,6 +137,9 @@ bool SharedSparseSpace::Expand(JSThread *thread)
         return false;
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedSparseSpace::Expand:region is nullptr";
+    }
     region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
@@ -146,6 +149,9 @@ bool SharedSparseSpace::Expand(JSThread *thread)
 Region *SharedSparseSpace::AllocateDeserializeRegion(JSThread *thread)
 {
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedSparseSpace::AllocateDeserializeRegion:region is nullptr";
+    }
     region->InitializeFreeObjectSets();
     return region;
 }
@@ -409,6 +415,9 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
         currentRegion->SetHighWaterMark(top);
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, heap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedReadOnlySpace::Expand:region is nullptr";
+    }
     allocator_.Reset(region->GetBegin(), region->GetEnd());
     AddRegion(region);
     return true;
@@ -463,6 +472,9 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, A
         return 0;
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread, heap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedHugeObjectSpace::Allocate:region is nullptr";
+    }
     AddRegion(region);
     // It need to mark unpoison when huge object being allocated.
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);

@@ -1237,7 +1237,7 @@ void PGOProfiler::DumpCall(ApEntityId abcId, const CString &recordName, EntityId
         kind = ProfileType::Kind::BuiltinFunctionId;
     } else if (slotValue.IsMethod()) {
         Method *calleeMethod = Method::Cast(slotValue);
-        calleeMethodId = calleeMethod->GetMethodId().GetOffset();
+        calleeMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
         calleeAbcId = GetMethodAbcId(slotValue);
         kind = ProfileType::Kind::MethodId;
     } else {

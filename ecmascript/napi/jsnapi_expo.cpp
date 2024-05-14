@@ -4166,7 +4166,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     reinterpret_cast<StopDebug>(sym.Value())(vm);
 
     vm->GetJsDebuggerManager()->SetDebugMode(false);
-    int tid = vm->GetTid();
+    uint32_t tid = vm->GetTid();
     JsDebuggerManager::DeleteJsDebuggerManager(tid);
     return true;
 #else
