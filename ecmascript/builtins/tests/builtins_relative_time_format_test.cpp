@@ -23,42 +23,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
-class BuiltinsRelativeTimeFormatTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsRelativeTimeFormatTest : public BaseTestWithScope<true> {
 };
 
 // new RelativeTimeFormat(newTarget is undefined)
@@ -109,6 +74,21 @@ static JSTaggedValue JSRelativeTimeFormatCreateWithLocaleTest(JSThread *thread, 
     return result;
 }
 
+JSTaggedValue FormatCommon(JSThread* thread, JSHandle<JSRelativeTimeFormat>& jsPluralRules,
+    JSHandle<JSTaggedValue>& numberValue, JSHandle<JSTaggedValue>& unitValue)
+{
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8: arg max len
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, numberValue.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, unitValue.GetTaggedValue());
+
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsRelativeTimeFormat::Format(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
+
 // format(1, auto)
 HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_001)
 {
@@ -120,15 +100,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_001)
                                         thread, locale, numericValue));
     JSHandle<JSTaggedValue> unitValue(factory->NewFromASCII("day"));
     JSHandle<JSTaggedValue> numberValue(thread, JSTaggedValue(1));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, numberValue.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, unitValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsRelativeTimeFormat::Format(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
     EXPECT_STREQ("tomorrow", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
@@ -145,15 +117,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_002)
                                         thread, locale, numericValue));
     JSHandle<JSTaggedValue> unitValue(factory->NewFromASCII("day"));
     JSHandle<JSTaggedValue> numberValue(thread, JSTaggedValue(0));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, numberValue.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, unitValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsRelativeTimeFormat::Format(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
     EXPECT_STREQ("today", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
@@ -170,15 +134,8 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_003)
                                         thread, locale, numericValue));
     JSHandle<JSTaggedValue> unitValue(factory->NewFromASCII("day"));
     JSHandle<JSTaggedValue> numberValue(thread, JSTaggedValue(-1));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, numberValue.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, unitValue.GetTaggedValue());
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsRelativeTimeFormat::Format(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
     EXPECT_STREQ("yesterday", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
@@ -195,15 +152,8 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_004)
                                         thread, locale, numericValue));
     JSHandle<JSTaggedValue> unitValue(factory->NewFromASCII("day"));
     JSHandle<JSTaggedValue> numberValue(thread, JSTaggedValue(-1));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, numberValue.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, unitValue.GetTaggedValue());
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsRelativeTimeFormat::Format(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
     EXPECT_STREQ("1 day ago", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
@@ -220,15 +170,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_005)
                                         thread, locale, numericValue));
     JSHandle<JSTaggedValue> unitValue(factory->NewFromASCII("day"));
     JSHandle<JSTaggedValue> numberValue(thread, JSTaggedValue(1));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, numberValue.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, unitValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsRelativeTimeFormat::Format(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
     EXPECT_STREQ("in 1 day", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
