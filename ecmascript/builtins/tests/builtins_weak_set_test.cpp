@@ -36,31 +36,7 @@ namespace panda::test {
 using BuiltinsWeakSet = ecmascript::builtins::BuiltinsWeakSet;
 using JSWeakSet = ecmascript::JSWeakSet;
 
-class BuiltinsWeakSetTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsWeakSetTest : public BaseTestWithScope<false> {
 };
 
 static JSObject *JSObjectTestCreate(JSThread *thread)
@@ -160,32 +136,26 @@ HWTEST_F_L0(BuiltinsWeakSetTest, AddAndHas)
     }
 }
 
-HWTEST_F_L0(BuiltinsWeakSetTest, DeleteAndRemove)
+void AddCommon(JSThread* thread, JSHandle<JSWeakSet>& weakSet, JSHandle<JSTaggedValue>& key, int i)
 {
-    // create jsSet
-    JSHandle<JSWeakSet> weakSet(thread, CreateBuiltinsWeakSet(thread));
+    auto ecmaRuntimeCallInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means 1 call arg
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(weakSet.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, key.GetTaggedValue());
 
-    // add 40 keys
-    JSTaggedValue lastKey(JSTaggedValue::Undefined());
-    for (int i = 0; i < 40; i++) {
-        JSHandle<JSTaggedValue> key(thread, JSObjectTestCreate(thread));
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    // add
+    JSTaggedValue result1 = BuiltinsWeakSet::Add(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
 
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(weakSet.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, key.GetTaggedValue());
+    EXPECT_TRUE(result1.IsECMAObject());
+    JSWeakSet *jsWeakSet = JSWeakSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
+    EXPECT_EQ(jsWeakSet->GetSize(), i + 1);
+}
 
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result1 = BuiltinsWeakSet::Add(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        EXPECT_TRUE(result1.IsECMAObject());
-        JSWeakSet *jsWeakSet = JSWeakSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-        EXPECT_EQ(jsWeakSet->GetSize(), static_cast<int>(i) + 1);
-        lastKey = key.GetTaggedValue();
-    }
-    // whether jsWeakSet has delete lastKey
-
+void HasAndDeleteCommon(JSThread* thread, JSHandle<JSWeakSet>& weakSet, JSTaggedValue& lastKey)
+{
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo1->SetThis(weakSet.GetTaggedValue());
@@ -208,6 +178,24 @@ HWTEST_F_L0(BuiltinsWeakSetTest, DeleteAndRemove)
     EXPECT_EQ(result4.GetRawData(), JSTaggedValue::False().GetRawData());
 }
 
+HWTEST_F_L0(BuiltinsWeakSetTest, DeleteAndRemove)
+{
+    // create jsSet
+    JSHandle<JSWeakSet> weakSet(thread, CreateBuiltinsWeakSet(thread));
+
+    // add 40 keys
+    JSTaggedValue lastKey(JSTaggedValue::Undefined());
+    for (int i = 0; i < 40; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSObjectTestCreate(thread));
+
+        AddCommon(thread, weakSet, key, i);
+        lastKey = key.GetTaggedValue();
+    }
+    // whether jsWeakSet has delete lastKey
+
+    HasAndDeleteCommon(thread, weakSet, lastKey);
+}
+
 HWTEST_F_L0(BuiltinsWeakSetTest, SymbolKey)
 {
     // create jsSet
@@ -219,42 +207,11 @@ HWTEST_F_L0(BuiltinsWeakSetTest, SymbolKey)
         JSHandle<JSSymbol> symbolKey = thread->GetEcmaVM()->GetFactory()->NewJSSymbol();
         JSHandle<JSTaggedValue> key(symbolKey);
 
-        auto ecmaRuntimeCallInfo =
-            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means 1 call arg
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(weakSet.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, key.GetTaggedValue());
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        // add
-        JSTaggedValue result1 = BuiltinsWeakSet::Add(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        EXPECT_TRUE(result1.IsECMAObject());
-        JSWeakSet *jsWeakSet = JSWeakSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-        EXPECT_EQ(jsWeakSet->GetSize(), static_cast<int>(i) + 1);
+        AddCommon(thread, weakSet, key, i);
         lastKey = key.GetTaggedValue();
     }
     // whether jsWeakSet has delete lastKey
 
-    auto ecmaRuntimeCallInfo1 =
-        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means 1 call arg
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(weakSet.GetTaggedValue());
-    ecmaRuntimeCallInfo1->SetCallArg(0, lastKey);
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    // has
-    JSTaggedValue result2 = BuiltinsWeakSet::Has(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
-    EXPECT_EQ(result2.GetRawData(), JSTaggedValue::True().GetRawData());
-
-    // delete
-    JSTaggedValue result3 = BuiltinsWeakSet::Delete(ecmaRuntimeCallInfo1);
-    EXPECT_EQ(result3.GetRawData(), JSTaggedValue::True().GetRawData());
-
-    // check deleteKey is deleted
-    JSTaggedValue result4 = BuiltinsWeakSet::Has(ecmaRuntimeCallInfo1);
-    EXPECT_EQ(result4.GetRawData(), JSTaggedValue::False().GetRawData());
+   HasAndDeleteCommon(thread, weakSet, lastKey);
 }
 }  // namespace panda::test

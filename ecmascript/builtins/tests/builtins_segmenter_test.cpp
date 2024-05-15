@@ -24,42 +24,7 @@
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 namespace panda::test {
-class BuiltinsSegmenterTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data/icudt67l.dat as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsSegmenterTest : public BaseTestWithScope<true> {
 };
 
 static JSTaggedValue JSSegmenterCreateWithLocaleTest(JSThread *thread, JSHandle<JSTaggedValue> &locale)
@@ -225,25 +190,8 @@ HWTEST_F_L0(BuiltinsSegmenterTest, ResolvedOptions)
         JSObject::GetProperty(thread, resultObj, granularityKey).GetValue(), defaultGranularityValue), true);
 }
 
-// %SegmentsPrototype%.containing ( index )
-HWTEST_F_L0(BuiltinsSegmenterTest, SegmentsPrototypeContaining_001)
+void SegmentsPrototypeCommon(JSThread* thread, JSHandle<JSTaggedValue>& result, std::vector<JSHandle<JSTaggedValue>>& values)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("zh-cn"));
-    JSHandle<JSTaggedValue> granularity(factory->NewFromASCII("sentence"));
-    JSHandle<JSTaggedValue> stringValue(factory->NewFromUtf8("这句话是中文。这句还是中文！"));
-    JSHandle<JSTaggedValue> segments(thread, JSSegmentsCreateTest(thread, locale, granularity, stringValue));
-
-    auto ecmaRuntimeCallInfo =
-        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);  // 6 means 1 call args
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(segments.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(3)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSHandle<JSTaggedValue> result(thread, BuiltinsSegments::Containing(ecmaRuntimeCallInfo));
-    TestHelper::TearDownFrame(thread, prev);
-    EXPECT_TRUE(result->IsJSObject());
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> segmentKey = globalConst->GetHandledSegmentString();
     JSHandle<JSTaggedValue> indexKey = globalConst->GetHandledIndexString();
@@ -253,12 +201,38 @@ HWTEST_F_L0(BuiltinsSegmenterTest, SegmentsPrototypeContaining_001)
     JSHandle<JSTaggedValue> indexValue(JSObject::GetProperty(thread, result, indexKey).GetValue());
     JSHandle<JSTaggedValue> inputValue(JSObject::GetProperty(thread, result, inputKey).GetValue());
     JSHandle<JSTaggedValue> isWordLikeValue(JSObject::GetProperty(thread, result, isWordLikeKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(segmentValue)).ToCString().c_str(),
+    values.push_back(segmentValue);
+    values.push_back(indexValue);
+    values.push_back(inputValue);
+    values.push_back(isWordLikeValue);
+}
+
+// %SegmentsPrototype%.containing ( index )
+HWTEST_F_L0(BuiltinsSegmenterTest, SegmentsPrototypeContaining_001)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("zh-cn"));
+    JSHandle<JSTaggedValue> granularity(factory->NewFromASCII("sentence"));
+    JSHandle<JSTaggedValue> stringValue(factory->NewFromUtf8("这句话是中文。这句还是中文！"));
+    JSHandle<JSTaggedValue> segments(thread, JSSegmentsCreateTest(thread, locale, granularity, stringValue));
+
+    std::vector<JSTaggedValue> args{ JSTaggedValue(static_cast<double>(3))};
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6, segments.GetTaggedValue());  // 6 means 1 call args
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSHandle<JSTaggedValue> result(thread, BuiltinsSegments::Containing(ecmaRuntimeCallInfo));
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_TRUE(result->IsJSObject());
+    std::vector<JSHandle<JSTaggedValue>> outValues;
+    SegmentsPrototypeCommon(thread, result, outValues);
+
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[0])).ToCString().c_str(),
                  "这句话是中文。");
-    EXPECT_EQ(indexValue->GetRawData(), JSTaggedValue(0).GetRawData());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(inputValue)).ToCString().c_str(),
+    EXPECT_EQ(outValues[1]->GetRawData(), JSTaggedValue(0).GetRawData());   // 1:index value
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[2])).ToCString().c_str(), // 2: input value
                  "这句话是中文。这句还是中文！");
-    EXPECT_TRUE(isWordLikeValue->IsUndefined());
+    EXPECT_TRUE(outValues[3]->IsUndefined()); // 2: word link value
 }
 
 HWTEST_F_L0(BuiltinsSegmenterTest, SegmentsPrototypeContaining_002)
@@ -269,31 +243,23 @@ HWTEST_F_L0(BuiltinsSegmenterTest, SegmentsPrototypeContaining_002)
     JSHandle<JSTaggedValue> stringValue(factory->NewFromUtf8("Que ma joie demeure"));
     JSHandle<JSTaggedValue> segments(thread, JSSegmentsCreateTest(thread, locale, granularity, stringValue));
 
+    std::vector<JSTaggedValue> args{ JSTaggedValue(static_cast<double>(10))};
     auto ecmaRuntimeCallInfo =
-        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);  // 6 means 1 call args
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(segments.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(10)));
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6, segments.GetTaggedValue());  // 6 means 1 call args
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> result(thread, BuiltinsSegments::Containing(ecmaRuntimeCallInfo));
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_TRUE(result->IsJSObject());
-    auto globalConst = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> segmentKey = globalConst->GetHandledSegmentString();
-    JSHandle<JSTaggedValue> indexKey = globalConst->GetHandledIndexString();
-    JSHandle<JSTaggedValue> inputKey = globalConst->GetHandledInputString();
-    JSHandle<JSTaggedValue> isWordLikeKey = globalConst->GetHandledIsWordLikeString();
-    JSHandle<JSTaggedValue> segmentValue(JSObject::GetProperty(thread, result, segmentKey).GetValue());
-    JSHandle<JSTaggedValue> indexValue(JSObject::GetProperty(thread, result, indexKey).GetValue());
-    JSHandle<JSTaggedValue> inputValue(JSObject::GetProperty(thread, result, inputKey).GetValue());
-    JSHandle<JSTaggedValue> isWordLikeValue(JSObject::GetProperty(thread, result, isWordLikeKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(segmentValue)).ToCString().c_str(),
+
+    std::vector<JSHandle<JSTaggedValue>> outValues;
+    SegmentsPrototypeCommon(thread, result, outValues);
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[0])).ToCString().c_str(),
                  "joie");
-    EXPECT_EQ(indexValue->GetRawData(), JSTaggedValue(7).GetRawData());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(inputValue)).ToCString().c_str(),
+    EXPECT_EQ(outValues[1]->GetRawData(), JSTaggedValue(7).GetRawData());
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[2])).ToCString().c_str(),
                  "Que ma joie demeure");
-    EXPECT_EQ(isWordLikeValue->GetRawData(), JSTaggedValue::True().GetRawData());
+    EXPECT_EQ(outValues[3]->GetRawData(), JSTaggedValue::True().GetRawData());
 }
 
 HWTEST_F_L0(BuiltinsSegmenterTest, SegmentsPrototypeContaining_003)
@@ -304,11 +270,9 @@ HWTEST_F_L0(BuiltinsSegmenterTest, SegmentsPrototypeContaining_003)
     JSHandle<JSTaggedValue> stringValue(factory->NewFromUtf8("Que ma joie demeure"));
     JSHandle<JSTaggedValue> segments(thread, JSSegmentsCreateTest(thread, locale, granularity, stringValue));
 
+    std::vector<JSTaggedValue> args{ JSTaggedValue(static_cast<double>(-10))};
     auto ecmaRuntimeCallInfo =
-        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);  // 6 means 1 call args
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(segments.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-10)));
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6, segments.GetTaggedValue());  // 6 means 1 call args
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> result(thread, BuiltinsSegments::Containing(ecmaRuntimeCallInfo));
