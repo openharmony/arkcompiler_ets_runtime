@@ -230,7 +230,7 @@ void EcmaVM::PostFork()
     } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
-    if (JSNApi::IsAotEscape(this)) {
+    if (JSNApi::IsAotEscape()) {
         options_.SetEnablePGOProfiler(false);
     }
     ResetPGOProfiler();
@@ -296,11 +296,6 @@ void EcmaVM::InitializePGOProfiler()
         pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
     }
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
-}
-
-void EcmaVM::InitializeEnableAotCrash()
-{
-    SetEnableAotCrashEscapeVM(options_.IsEnableAotCrashEscape());
 }
 
 void EcmaVM::ResetPGOProfiler()
@@ -377,7 +372,6 @@ bool EcmaVM::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
-    InitializeEnableAotCrash();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);

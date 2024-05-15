@@ -106,7 +106,7 @@ int Main(const int argc, const char **argv)
         LOG_COMPILER(ERROR) << "Cannot Create vm";
         return ERR_FAIL;
     }
-    if (JSNApi::IsAotEscape(vm)) {
+    if (JSNApi::IsAotEscape()) {
         LOG_COMPILER(ERROR) << " Stop compile AOT because there are more crashes";
         return ERR_FAIL;
     }

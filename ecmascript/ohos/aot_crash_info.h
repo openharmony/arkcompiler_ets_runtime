@@ -17,6 +17,9 @@
 #define ECMASCRIPT_COMPILER_OHOS_AOT_CRASH_INFO_H
 
 #include "ecmascript/base/string_helper.h"
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
+#endif
 
 namespace panda::ecmascript::ohos {
 #define CRASH_TYPE(V)                                                \
@@ -38,6 +41,7 @@ class AotCrashInfo {
     constexpr static const char *const CRASH_FILE_NAME = "aot_crash.log";
     constexpr static const char *const RUNTIME_SO_PATH = "/system/lib64/platformsdk/libark_jsruntime.so";
     constexpr static const char *const SPLIT_STR = "|";
+    constexpr static const char *const AOT_ESCAPE_DISABLE = "ark.aot.escape.disable";
     constexpr static int AOT_CRASH_COUNT = 1;
     constexpr static int OTHERS_CRASH_COUNT = 3;
     constexpr static int CRASH_LOG_SIZE = 3;
@@ -64,6 +68,14 @@ public:
             }
         }
         return CrashType::NONE;
+    }
+
+    static bool GetAotEscapeDisable()
+    {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+        return OHOS::system::GetBoolParameter(AOT_ESCAPE_DISABLE, false);
+#endif
+        return false;
     }
 
     static std::string GetSandBoxPath()
