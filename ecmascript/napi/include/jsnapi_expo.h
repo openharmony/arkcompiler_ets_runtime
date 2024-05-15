@@ -1031,8 +1031,8 @@ class ECMA_PUBLIC_API SendableArrayRef : public ObjectRef {
 public:
     static Local<SendableArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
     uint32_t Length(const EcmaVM *vm);
-    static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
+    static bool SetProperty(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
 };
 
 class ECMA_PUBLIC_API Int8ArrayRef : public TypedArrayRef {

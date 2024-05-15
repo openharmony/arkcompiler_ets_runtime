@@ -112,6 +112,12 @@ public:
                                       const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode);
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                            const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode sCheckMode);
+    static bool SetProperty(JSThread *thread,
+                            const JSHandle<JSTaggedValue> &obj,
+                            uint32_t index,
+                            const JSHandle<JSTaggedValue> &value,
+                            bool mayThrow,
+                            SCheckMode sCheckMode);
 
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn);
     static bool IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
