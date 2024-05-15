@@ -115,8 +115,7 @@ static JSTaggedValue JSLocaleCreateWithOptionTest(JSThread *thread)
     return result;
 }
 
-enum class AlgorithmType
-{
+enum class AlgorithmType {
     TO_STRING,
     GET_BASE_NAME,
     GET_HOUR_CYCLE,
@@ -215,7 +214,8 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetBaseName)
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionTest(thread));
 
     std::vector<JSTaggedValue> args{};
-    auto result = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_BASE_NAME); // 4 : arg len
+    auto result =
+        LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_BASE_NAME);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
@@ -227,7 +227,8 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetHourCycle)
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionTest(thread));
 
     std::vector<JSTaggedValue> args{};
-    auto result = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_HOUR_CYCLE); // 4 : arg len
+    auto result =
+        LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_HOUR_CYCLE);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
@@ -238,7 +239,8 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetCalendar)
 {
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionTest(thread));
     std::vector<JSTaggedValue> args{};
-    auto result = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_CALENDAR); // 4 : arg len
+    auto result =
+        LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_CALENDAR);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
@@ -250,7 +252,8 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetCaseFirst)
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionTest(thread));
 
     std::vector<JSTaggedValue> args{};
-    auto result = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_CASE_FIRST); // 4 : arg len
+    auto result =
+        LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_CASE_FIRST);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
@@ -262,7 +265,8 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetCollation)
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionTest(thread));
 
     std::vector<JSTaggedValue> args{};
-    auto result = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_COLLATION); // 4 : arg len
+    auto result =
+        LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_COLLATION);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
@@ -284,7 +288,8 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetNumberingSystem)
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionTest(thread));
 
     std::vector<JSTaggedValue> args{};
-    auto result = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_NUMBERING_SYSTEM); // 4 : arg len
+    auto result = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4,
+                                  AlgorithmType::GET_NUMBERING_SYSTEM);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
@@ -296,7 +301,8 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetLanguage)
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionTest(thread));
 
     std::vector<JSTaggedValue> args{};
-    auto result = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_LANGUAGE); // 4 : arg len
+    auto result =
+        LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_LANGUAGE);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
@@ -378,9 +384,11 @@ HWTEST_F_L0(BuiltinsLocaleTest, Maximize_002)
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionTest(thread));
 
     std::vector<JSTaggedValue> args{};
-    auto resultObj = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::MAXI_MIZE); // 4 : arg len
+    auto resultObj =
+        LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::MAXI_MIZE);  // 4 : arg len
     JSHandle<JSLocale> resultLocale(thread, resultObj);
-    auto result = LocaleAlgorithm(thread, resultLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_BASE_NAME); // 4 : arg len
+    auto result =
+        LocaleAlgorithm(thread, resultLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_BASE_NAME);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
@@ -393,10 +401,12 @@ HWTEST_F_L0(BuiltinsLocaleTest, Minimize_001)
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionTest(thread));
 
     std::vector<JSTaggedValue> args{};
-    auto resultObj = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::MINI_MIZE); // 4 : arg len
+    auto resultObj =
+        LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::MINI_MIZE);  // 4 : arg len
 
     JSHandle<JSLocale> resultLocale(thread, resultObj);
-    auto result = LocaleAlgorithm(thread, resultLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_BASE_NAME); // 4 : arg len
+    auto result =
+        LocaleAlgorithm(thread, resultLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_BASE_NAME);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
@@ -411,10 +421,12 @@ HWTEST_F_L0(BuiltinsLocaleTest, Minimize_002)
     JSHandle<JSLocale> jsLocale = JSHandle<JSLocale>(thread, JSLocaleCreateWithOptionsTagsTest(thread, languageValue));
 
     std::vector<JSTaggedValue> args{};
-    auto resultObj = LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::MINI_MIZE); // 4 : arg len
+    auto resultObj =
+        LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::MINI_MIZE);  // 4 : arg len
 
     JSHandle<JSLocale> resultLocale(thread, resultObj);
-    auto result = LocaleAlgorithm(thread, resultLocale.GetTaggedValue(), args, 4, AlgorithmType::TO_STRING); // 4 : arg len
+    auto result =
+        LocaleAlgorithm(thread, resultLocale.GetTaggedValue(), args, 4, AlgorithmType::TO_STRING);  // 4 : arg len
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);

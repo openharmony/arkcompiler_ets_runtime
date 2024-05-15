@@ -25,43 +25,70 @@ using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
 using BuiltinsArray = ecmascript::builtins::BuiltinsArray;
-class BuiltinsCollatorTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsCollatorTest : public BaseTestWithScope<true> {
 };
+
+static JSTaggedValue CollatorConstructor(JSThread *thread, std::vector<JSTaggedValue>& args,
+    JSHandle<JSFunction>& target)
+{
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*target), 8);
+    ecmaRuntimeCallInfo->SetFunction(target.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    for (size_t i = 0; i < args.size(); i++) {
+        ecmaRuntimeCallInfo->SetCallArg(i, args[i]);
+    }
+
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsCollator::CollatorConstructor(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
+
+enum class AlgorithmType {
+    COLLATOR_SUPPORTED_LOCALES_OF,
+    COLLATOR_RESOLVED_OPTIONS,
+    COLLATOR_COMPARE,
+    ARRAY_SORT,
+    ARRAY_JOIN,
+    ARRAY_TOSTR,
+};
+
+static JSTaggedValue CollatorAlgorithm(JSThread *thread, std::vector<JSTaggedValue>& args, int32_t maxArgLen,
+    AlgorithmType type, JSTaggedValue thisValue = JSTaggedValue::Undefined())
+{
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), maxArgLen);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(thisValue);
+    for (size_t i = 0; i < args.size(); i++) {
+        ecmaRuntimeCallInfo->SetCallArg(i, args[i]);
+    }
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result;
+    switch (type) {
+        case AlgorithmType::COLLATOR_SUPPORTED_LOCALES_OF:
+            result = BuiltinsCollator::SupportedLocalesOf(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::COLLATOR_RESOLVED_OPTIONS:
+            result = BuiltinsCollator::ResolvedOptions(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::COLLATOR_COMPARE:
+            result = BuiltinsCollator::Compare(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::ARRAY_SORT:
+            result = BuiltinsArray::Sort(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::ARRAY_JOIN:
+            result = BuiltinsArray::Join(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::ARRAY_TOSTR:
+            result = BuiltinsArray::ToString(ecmaRuntimeCallInfo);
+            break;
+        default:
+            break;
+    }
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
 
 HWTEST_F_L0(BuiltinsCollatorTest, CollatorConstructor)
 {
@@ -93,15 +120,8 @@ HWTEST_F_L0(BuiltinsCollatorTest, CollatorConstructor)
     JSObject::SetProperty(thread, optionsObj, ignorePunctuationKey, ignorePunctuationValue);
     JSObject::SetProperty(thread, optionsObj, numericKey, numericValue);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
-    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue()); // set option tag
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsCollator::CollatorConstructor(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{localesString.GetTaggedValue(), optionsObj.GetTaggedValue()};
+    auto result = CollatorConstructor(thread, vals, newTarget);
 
     EXPECT_TRUE(result.IsJSCollator());
 }
@@ -112,17 +132,10 @@ static JSTaggedValue JSCollatorCreateWithLocaleTest(JSThread *thread, JSHandle<J
     JSHandle<JSFunction> newTarget(env->GetCollatorFunction());
 
     JSHandle<JSTaggedValue> localesString = locale;
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
-    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
-    // set no options
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue::Undefined());
+    std::vector<JSTaggedValue> vals{localesString.GetTaggedValue(), JSTaggedValue::Undefined()};
+    auto result = CollatorConstructor(thread, vals, newTarget);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsCollator::CollatorConstructor(ecmaRuntimeCallInfo);
     EXPECT_TRUE(result.IsJSCollator());
-    TestHelper::TearDownFrame(thread, prev);
     return result;
 }
 
@@ -143,16 +156,10 @@ static JSTaggedValue JSCollatorCreateWithLocaleAndOptionsTest(JSThread *thread, 
     JSObject::SetProperty(thread, optionsObj, usageKey, usageValue);
     JSObject::SetProperty(thread, optionsObj, sensitivityKey, sensitivityValue);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
-    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
+    std::vector<JSTaggedValue> vals{localesString.GetTaggedValue(), optionsObj.GetTaggedValue()};
+    auto result = CollatorConstructor(thread, vals, newTarget);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsCollator::CollatorConstructor(ecmaRuntimeCallInfo);
     EXPECT_TRUE(result.IsJSCollator());
-    TestHelper::TearDownFrame(thread, prev);
     return result;
 }
 
@@ -163,13 +170,8 @@ HWTEST_F_L0(BuiltinsCollatorTest, Compare_001)
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("de"));
     JSHandle<JSCollator> jsCollator = JSHandle<JSCollator>(thread, JSCollatorCreateWithLocaleTest(thread, locale));
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(jsCollator.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsCollator::Compare(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{};
+    auto result1 = CollatorAlgorithm(thread, vals, 4, AlgorithmType::COLLATOR_COMPARE, jsCollator.GetTaggedValue());
     JSHandle<JSFunction> jsFunction(thread, result1);
 
     JSArray *jsArray =
@@ -189,14 +191,8 @@ HWTEST_F_L0(BuiltinsCollatorTest, Compare_001)
     PropertyDescriptor desc2(thread, value2, true, true, true);
     JSArray::DefineOwnProperty(thread, jsObject, key2, desc2);
 
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, jsFunction.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::Sort(ecmaRuntimeCallInfo2); // sort in language(de)
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> arrayVals{jsFunction.GetTaggedValue()};
+    auto result2 = CollatorAlgorithm(thread, arrayVals, 6, AlgorithmType::ARRAY_SORT, jsObject.GetTaggedValue());
 
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result2.GetRawData())));
@@ -212,13 +208,8 @@ HWTEST_F_L0(BuiltinsCollatorTest, Compare_002)
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("sv"));
     JSHandle<JSCollator> jsCollator = JSHandle<JSCollator>(thread, JSCollatorCreateWithLocaleTest(thread, locale));
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(jsCollator.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsCollator::Compare(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{};
+    auto result1 = CollatorAlgorithm(thread, vals, 4, AlgorithmType::COLLATOR_COMPARE, jsCollator.GetTaggedValue());
 
     JSHandle<JSFunction> jsFunction(thread, result1);
     JSArray *jsArray =
@@ -238,24 +229,14 @@ HWTEST_F_L0(BuiltinsCollatorTest, Compare_002)
     PropertyDescriptor desc2(thread, value2, true, true, true);
     JSArray::DefineOwnProperty(thread, jsObject, key2, desc2);
 
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, jsFunction.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::Sort(ecmaRuntimeCallInfo2); // sort in language(sv)
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> arrayVals{jsFunction.GetTaggedValue()};
+    auto result2 = CollatorAlgorithm(thread, arrayVals, 6, AlgorithmType::ARRAY_SORT, jsObject.GetTaggedValue());
     JSHandle<JSObject> resultObj(thread, result2);
 
     JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromUtf8("a,Z,ä");
-    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(resultObj.GetTaggedValue());
+    std::vector<JSTaggedValue> arrayVals2{};
+    auto result = CollatorAlgorithm(thread, arrayVals2, 4, AlgorithmType::ARRAY_JOIN, resultObj.GetTaggedValue());
 
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
-    JSTaggedValue result = BuiltinsArray::Join(ecmaRuntimeCallInfo3);
-    TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, str), 0);
 }
@@ -268,13 +249,8 @@ HWTEST_F_L0(BuiltinsCollatorTest, Compare_003)
     JSHandle<JSCollator> jsCollator =
         JSHandle<JSCollator>(thread, JSCollatorCreateWithLocaleAndOptionsTest(thread, locale));
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(jsCollator.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsCollator::Compare(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{};
+    auto result1 = CollatorAlgorithm(thread, vals, 4, AlgorithmType::COLLATOR_COMPARE, jsCollator.GetTaggedValue());
 
     JSHandle<JSFunction> jsFunction(thread, result1);
     JSArray *jsArray =
@@ -287,15 +263,9 @@ HWTEST_F_L0(BuiltinsCollatorTest, Compare_003)
     JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
     JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
 
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, value0.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(1, value1.GetTaggedValue());
+    std::vector<JSTaggedValue> arrayVals{value0.GetTaggedValue(), value1.GetTaggedValue()};
+    auto result2 = CollatorAlgorithm(thread, arrayVals, 8, AlgorithmType::ARRAY_TOSTR, jsObject.GetTaggedValue());
 
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2); // search in language(sv)
-    TestHelper::TearDownFrame(thread, prev);
     JSHandle<JSTaggedValue> resultHandle(thread, result2);
     EXPECT_EQ(resultHandle->GetInt(), 0); // Congrès and congres is matching
 }
@@ -307,13 +277,8 @@ HWTEST_F_L0(BuiltinsCollatorTest, ResolvedOptions)
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("de"));
     JSHandle<JSCollator> jsCollator = JSHandle<JSCollator>(thread, JSCollatorCreateWithLocaleTest(thread, locale));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsCollator.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsCollator::ResolvedOptions(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{};
+    auto result = CollatorAlgorithm(thread, vals, 4, AlgorithmType::COLLATOR_RESOLVED_OPTIONS, jsCollator.GetTaggedValue());
 
     JSHandle<JSTaggedValue> resultObj =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
@@ -342,15 +307,8 @@ HWTEST_F_L0(BuiltinsCollatorTest, SupportedLocalesOf)
     JSObject::SetProperty(thread, optionsObj, localeMatcherKey, localeMatcherValue);
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("id-u-co-pinyin-de-ID"));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, locale.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue resultArr = BuiltinsCollator::SupportedLocalesOf(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{locale.GetTaggedValue(), optionsObj.GetTaggedValue()};
+    auto resultArr = CollatorAlgorithm(thread, vals, 8, AlgorithmType::COLLATOR_SUPPORTED_LOCALES_OF);
 
     JSHandle<JSArray> resultHandle(thread, resultArr);
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());

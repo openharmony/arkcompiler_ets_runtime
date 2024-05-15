@@ -60,7 +60,6 @@ JSTaggedValue FormatCommon(JSThread* thread, JSHandle<JSListFormat>& jsFormat, J
     JSTaggedValue result = BuiltinsListFormat::Format(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     return result;
-
 }
 
 // Format("Motorcycle" ,type(conjunction))
@@ -151,7 +150,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_005)
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("zh-cn"));
     JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("conjunction")); // the default value
 
-    std::vector<std::string> listVal{"中文", "英文","韩文" };
+    std::vector<std::string> listVal{"中文", "英文", "韩文" };
     JSHandle<EcmaString> handleEcmaStr = CommonTest(thread, locale, typeValue, listVal);
     EXPECT_STREQ("中文、英文和韩文", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }

@@ -81,7 +81,8 @@ static void SelectTest(JSThread *thread, std::string_view data, std::string_view
         JSHandle<JSPluralRules>(thread, JSPluralRulesCreateWithLocaleTest(thread, locale, typeValue));
 
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(v));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 : argv length
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);  // 6 : argv length
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
     ecmaRuntimeCallInfo->SetCallArg(0, value.GetTaggedValue());

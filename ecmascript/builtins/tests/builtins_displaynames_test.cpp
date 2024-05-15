@@ -23,10 +23,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 namespace panda::test {
 class BuiltinsDisplayNamesTest : public BaseTestWithScope<true> {
-public:
 };
-
-
 
 static JSTaggedValue JSDisplayNamesCreateWithOptionTest(JSThread *thread, JSHandle<JSTaggedValue> &locale,
                                                         JSHandle<JSTaggedValue> &typeValue)

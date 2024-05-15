@@ -58,14 +58,15 @@ JSTaggedValue TestFunctionApplyAndCall(EcmaRuntimeCallInfo *argv)
     return BuiltinsBase::GetTaggedInt(result);
 }
 
-enum class AlgorithmType{
+enum class AlgorithmType {
     PROTOTYPE_APPLY,
     PROTOTYPE_BIND,
     PROTOTYPE_CALL,
 };
 
-static JSTaggedValue FunctionAlgorithm(JSThread* thread, JSHandle<JSFunction>& thisArg, std::vector<JSTaggedValue>& args,
-    uint32_t argLen, AlgorithmType type = AlgorithmType::PROTOTYPE_APPLY)
+static JSTaggedValue FunctionAlgorithm(JSThread *thread, JSHandle<JSFunction> &thisArg,
+                                       std::vector<JSTaggedValue> &args, uint32_t argLen,
+                                       AlgorithmType type = AlgorithmType::PROTOTYPE_APPLY)
 {
     auto ecmaRuntimeCallInfos = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), argLen);
     ecmaRuntimeCallInfos->SetFunction(JSTaggedValue::Undefined());
@@ -351,7 +352,7 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeCall1)
 
     // func thisArg ...args
     std::vector<JSTaggedValue> args{thisArg.GetTaggedValue(), JSTaggedValue(static_cast<int32_t>(123)),
-        JSTaggedValue(static_cast<int32_t>(456)),JSTaggedValue(static_cast<int32_t>(789))};
+                                JSTaggedValue(static_cast<int32_t>(456)), JSTaggedValue(static_cast<int32_t>(789))};
     auto result = FunctionAlgorithm(thread, func, args, 12, AlgorithmType::PROTOTYPE_CALL);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(1371).GetRawData());
