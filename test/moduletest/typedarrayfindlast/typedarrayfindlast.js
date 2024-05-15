@@ -20,17 +20,12 @@
  * @tc.require: issueI7LP2E
  */
 
-[
-    Float64Array,
-    Float32Array,
-    Int32Array,
-    Int16Array,
-    Int8Array,
-    Uint32Array,
-    Uint16Array,
-    Uint8Array,
+const typedArrayFindConstructors = [
+    Float64Array, Float32Array, Int32Array, Int16Array, Int8Array, Uint32Array, Uint16Array, Uint8Array,
     Uint8ClampedArray
-].forEach(function (ctor, i) {
+];
+
+typedArrayFindConstructors.forEach(function (ctor, i) {
     if (testTypeArrayAt1(ctor)) {
         print(ctor.name + " test success !!!");
     } else {

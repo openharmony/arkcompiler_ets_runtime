@@ -13,17 +13,12 @@
  * limitations under the License.
  */
 
-[
-    Float64Array,
-    Float32Array,
-    Int32Array,
-    Int16Array,
-    Int8Array,
-    Uint32Array,
-    Uint16Array,
-    Uint8Array,
-    Uint8ClampedArray
-].forEach(function (ctor, i) {
+const typedArraySubArrayConstructors = [
+  Float64Array, Float32Array, Int32Array, Int16Array, Int8Array, Uint32Array, Uint16Array, Uint8Array,
+  Uint8ClampedArray
+];
+
+typedArraySubArrayConstructors.forEach(function (ctor, i) {
     testTypeArrayAt1(ctor)
 });
 
