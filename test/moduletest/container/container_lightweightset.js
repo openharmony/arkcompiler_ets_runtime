@@ -161,3 +161,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test LightWeightSet fail: " + flag);
     }
 }
+export let lightweightsetRes = "Test LightWeightSet done";
