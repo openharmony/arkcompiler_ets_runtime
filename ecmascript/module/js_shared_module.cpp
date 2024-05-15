@@ -43,6 +43,7 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
     sModule->SetEnvironment(thread, sendableEnvironment);
     sModule->SetEcmaModuleFilename(thread, currentModule->GetEcmaModuleFilename());
     sModule->SetEcmaModuleRecordName(thread, currentModule->GetEcmaModuleRecordName());
+    sModule->SetSendableEnv(thread, JSTaggedValue::Undefined());
     return JSHandle<JSTaggedValue>(sModule);
 }
 
@@ -57,8 +58,9 @@ JSHandle<JSTaggedValue> SendableClassModule::CloneRecordIndexBinding(JSThread *t
     }
 
     JSHandle<EcmaString> record(thread, SourceTextModule::GetModuleName(resolvedModule.GetTaggedValue()));
+    JSHandle<EcmaString> fileName(thread, resolvedModule->GetEcmaModuleFilename());
     int32_t index = binding->GetIndex();
-    return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordIndexBindingRecord(record, index));
+    return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordIndexBindingRecord(record, fileName, index));
 }
 
 JSHandle<JSTaggedValue> SendableClassModule::CloneRecordNameBinding(JSThread *thread, JSTaggedValue binding)

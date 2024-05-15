@@ -252,6 +252,9 @@ TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
     TaggedObject *object = AllocateOldOrHugeObject(hclass, size);
+    if (object == nullptr) {
+        LOG_ECMA(FATAL) << "Heap::AllocateOldOrHugeObject:object is nullptr";
+    }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
 #endif
@@ -306,6 +309,9 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
     TaggedObject *object = AllocateNonMovableOrHugeObject(hclass, size);
+    if (object == nullptr) {
+        LOG_ECMA(FATAL) << "Heap::AllocateNonMovableOrHugeObject:object is nullptr";
+    }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
 #endif
@@ -470,6 +476,7 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
     size_t newTlabSize = sOldTlab_->ComputeSize();
     object = SharedHeap::GetInstance()->AllocateSOldTlab(thread, newTlabSize);
     if (object == nullptr) {
+        sOldTlab_->DisableNewTlab();
         return nullptr;
     }
     uintptr_t begin = reinterpret_cast<uintptr_t>(object);
@@ -707,7 +714,6 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            // todo(lukai) DumpHeapSnapshotBeforeOOM
             ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");
             object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
             if (UNLIKELY(object == nullptr)) {
@@ -742,7 +748,13 @@ TaggedObject *SharedHeap::AllocateSOldTlab(JSThread *thread, size_t size)
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return nullptr;
     }
-    return reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    TaggedObject *object = nullptr;
+    if (sOldSpace_->GetCommittedSize() > sOldSpace_->GetInitialCapacity() / 2) { // 2: half
+        object = reinterpret_cast<TaggedObject *>(sOldSpace_->AllocateNoGCAndExpand(thread, size));
+    } else {
+        object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    }
+    return object;
 }
 
 TaggedObject *SharedHeap::AllocateSNonMovableTlab(JSThread *thread, size_t size)

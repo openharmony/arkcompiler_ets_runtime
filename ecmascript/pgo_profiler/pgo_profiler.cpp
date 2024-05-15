@@ -285,52 +285,79 @@ void PGOProfiler::PGODump(JSTaggedType func)
     StartPGODump();
 }
 
-void PGOProfiler::WaitPGODumpPauseForGC()
+void PGOProfiler::SuspendByGC()
 {
     if (!isEnable_) {
         return;
     }
     LockHolder lock(mutex_);
-    if (state_ == State::START) {
-        state_ = State::PAUSE;
-        condition_.Wait(&mutex_);
-    } else if (state_ == State::FORCE_SAVE) {
-        state_ = State::FORCE_SAVE_PAUSE;
-        condition_.Wait(&mutex_);
+    if (GetState() == State::START) {
+        SetState(State::PAUSE);
+        WaitingPGODump();
+    } else if (GetState() == State::FORCE_SAVE) {
+        SetState(State::FORCE_SAVE_PAUSE);
+        WaitingPGODump();
     }
 }
 
-void PGOProfiler::WaitPGODumpResumeForGC()
+void PGOProfiler::ResumeByGC()
 {
     if (!isEnable_) {
         return;
     }
     LockHolder lock(mutex_);
-    if (state_ == State::PAUSE) {
-        state_ = State::START;
-        Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
-    } else if (state_ == State::FORCE_SAVE_PAUSE) {
-        state_ = State::FORCE_SAVE;
-        Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
+    if (GetState() == State::PAUSE) {
+        SetState(State::START);
+        DispatchPGODumpTask();
+    } else if (GetState() == State::FORCE_SAVE_PAUSE) {
+        SetState(State::FORCE_SAVE);
+        DispatchPGODumpTask();
     }
 }
 
 void PGOProfiler::StopPGODump()
 {
     LockHolder lock(mutex_);
-    state_ = State::STOP;
+    if (IfGCWaitingThenNotifyGC()) {
+        return;
+    }
+    SetState(State::STOP);
     NotifyGC();
 }
 
 void PGOProfiler::StartPGODump()
 {
-    if (state_ == State::STOP) {
-        state_ = State::START;
-        Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
+    if (GetState() == State::STOP) {
+        SetState(State::START);
+        DispatchPGODumpTask();
     }
+}
+
+void PGOProfiler::DispatchPGODumpTask()
+{
+    Taskpool::GetCurrentTaskpool()->PostTask(
+        std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
+}
+
+PGOProfiler::State PGOProfiler::GetState()
+{
+    return state_.load(std::memory_order_acquire);
+}
+
+void PGOProfiler::SetState(State state)
+{
+    LOG_ECMA(DEBUG) << "[PGODumpStateChange] " << StateToString(GetState()) << " -> " << StateToString(state);
+    state_.store(state, std::memory_order_release);
+}
+
+void PGOProfiler::NotifyGC()
+{
+    condition_.SignalAll();
+}
+
+void PGOProfiler::WaitingPGODump()
+{
+    condition_.Wait(&mutex_);
 }
 
 void PGOProfiler::WaitPGODumpFinish()
@@ -339,9 +366,47 @@ void PGOProfiler::WaitPGODumpFinish()
         return;
     }
     LockHolder lock(mutex_);
-    while (state_ == State::START) {
-        condition_.Wait(&mutex_);
+    while (GetState() == State::START) {
+        WaitingPGODump();
     }
+}
+
+void PGOProfiler::DumpByForce()
+{
+    isForce_ = true;
+    LockHolder lock(mutex_);
+    if (GetState() == State::START) {
+        SetState(State::FORCE_SAVE);
+        WaitingPGODump();
+    } else if (GetState() == State::STOP && !dumpWorkList_.IsEmpty()) {
+        SetState(State::FORCE_SAVE);
+        WaitingPGODump();
+        DispatchPGODumpTask();
+    } else if (GetState() == State::PAUSE) {
+        SetState(State::FORCE_SAVE_PAUSE);
+        WaitingPGODump();
+    }
+}
+
+bool PGOProfiler::IfGCWaitingThenNotifyGCWithLock()
+{
+    if (GetState() == State::PAUSE) {
+        LockHolder lock(mutex_);
+        if (GetState() == State::PAUSE) {
+            NotifyGC();
+            return true;
+        }
+    }
+    return false;
+}
+
+bool PGOProfiler::IfGCWaitingThenNotifyGC()
+{
+    if (GetState() == State::PAUSE) {
+        NotifyGC();
+        return true;
+    }
+    return false;
 }
 
 void PGOProfiler::PGOPreDump(JSTaggedType func)
@@ -438,7 +503,7 @@ void PGOProfiler::HandlePGOPreDump()
 
 void PGOProfiler::HandlePGODumpByDumpThread(bool force)
 {
-    ConcurrentGuard guard(v_);
+    ConcurrentGuard guard(v_, "HandlePGODumpByDumpThread");
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
@@ -481,12 +546,11 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
         ProfileBytecode(abcId, recordName, value);
         current = PopFromProfileQueue();
     }
-    ASSERT(state_ != State::STOP);
-    if (IsGCWaitingWithLock()) {
+    ASSERT(GetState() != State::STOP);
+    if (IfGCWaitingThenNotifyGCWithLock()) {
         return;
     }
     MergeProfilerAndDispatchAsyncSaveTask(force);
-    StopPGODump();
 }
 
 void PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask(bool force)
@@ -511,7 +575,7 @@ PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
     LockHolder lock(mutex_);
     WorkNode* node = nullptr;
     while (node == nullptr) {
-        if (IsGCWaiting()) {
+        if (IfGCWaitingThenNotifyGC()) {
             break;
         }
         if (dumpWorkList_.IsEmpty()) {
@@ -520,27 +584,6 @@ PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
         node = dumpWorkList_.PopFront();
     }
     return node;
-}
-
-bool PGOProfiler::IsGCWaitingWithLock()
-{
-    if (state_ == State::PAUSE) {
-        LockHolder lock(mutex_);
-        if (state_ == State::PAUSE) {
-            NotifyGC();
-            return true;
-        }
-    }
-    return false;
-}
-
-bool PGOProfiler::IsGCWaiting()
-{
-    if (state_ == State::PAUSE) {
-        NotifyGC();
-        return true;
-    }
-    return false;
 }
 
 void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue)
@@ -561,7 +604,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
     auto bcInsLast = bcIns.JumpTo(codeSize);
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
-        if (IsGCWaitingWithLock()) {
+        if (IfGCWaitingThenNotifyGCWithLock()) {
             break;
         }
         auto opcode = bcIns.GetOpcode();
@@ -1052,23 +1095,6 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
     }
 }
 
-void PGOProfiler::DumpByForce()
-{
-    isForce_ = true;
-    LockHolder lock(mutex_);
-    if (state_ == State::START) {
-        state_ = State::FORCE_SAVE;
-        condition_.Wait(&mutex_);
-    } else if (state_ == State::STOP && !dumpWorkList_.IsEmpty()) {
-        state_ = State::FORCE_SAVE;
-        condition_.Wait(&mutex_);
-        Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
-    } else if (state_ == State::PAUSE) {
-        state_ = State::FORCE_SAVE_PAUSE;
-        condition_.Wait(&mutex_);
-    }
-}
 void PGOProfiler::DumpOpType(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                              uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
 {
@@ -1211,7 +1237,7 @@ void PGOProfiler::DumpCall(ApEntityId abcId, const CString &recordName, EntityId
         kind = ProfileType::Kind::BuiltinFunctionId;
     } else if (slotValue.IsMethod()) {
         Method *calleeMethod = Method::Cast(slotValue);
-        calleeMethodId = calleeMethod->GetMethodId().GetOffset();
+        calleeMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
         calleeAbcId = GetMethodAbcId(slotValue);
         kind = ProfileType::Kind::MethodId;
     } else {

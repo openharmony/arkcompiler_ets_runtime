@@ -336,6 +336,10 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
 JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                         JSHandle<JSTaggedValue> value, bool isOwn)
 {
+    ICKind kind = GetICKind();
+    if (IsValueIC(kind)) {
+        key = JSTaggedValue::ToPropertyKey(GetThread(), key);
+    }
     if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
         icAccessor_.SetAsMega();
         bool success = JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
@@ -345,7 +349,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
         return StoreTypedArrayValueMiss(receiver, key, value);
     }
-    ICKind kind = GetICKind();
+    
     // global variable find from global record firstly
     if (kind == ICKind::NamedGlobalStoreIC || kind == ICKind::NamedGlobalTryStoreIC) {
         JSTaggedValue box = SlowRuntimeStub::LdGlobalRecord(thread_, key.GetTaggedValue());

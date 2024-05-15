@@ -195,6 +195,14 @@ EcmaContext::~EcmaContext()
     handleScopeCount_ = 0;
     handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
 
+    for (auto n : primitiveStorageNodes_) {
+        delete n;
+    }
+    primitiveStorageNodes_.clear();
+    currentPrimitiveStorageIndex_ = -1;
+    primitiveScopeCount_ = 0;
+    primitiveScopeStorageNext_ = primitiveScopeStorageEnd_ = nullptr;
+
     if (vm_->IsEnableBaselineJit() || vm_->IsEnableFastJit()) {
         // clear jit task
         vm_->GetJit()->ClearTask(this);
@@ -305,6 +313,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             module = moduleManager_->HostGetImportedModule(moduleName);
         }
         // esm -> SourceTextModule; cjs or script -> string of recordName
+        module->SetSendableEnv(thread_, JSTaggedValue::Undefined());
         func->SetModule(thread_, module);
     } else {
         // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
@@ -1022,6 +1031,58 @@ void EcmaContext::ShrinkHandleStorage(int prevIndex)
             auto node = handleStorageNodes_.back();
             delete node;
             handleStorageNodes_.pop_back();
+        }
+    }
+}
+
+uintptr_t *EcmaContext::ExpandPrimitiveStorage()
+{
+    uintptr_t *result = nullptr;
+    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size() - 1);
+    if (currentPrimitiveStorageIndex_ == lastIndex) {
+        auto n = new std::array<JSTaggedType, NODE_BLOCK_SIZE>();
+        primitiveStorageNodes_.push_back(n);
+        currentPrimitiveStorageIndex_++;
+        result = reinterpret_cast<uintptr_t *>(&n->data()[0]);
+        primitiveScopeStorageEnd_ = &n->data()[NODE_BLOCK_SIZE];
+    } else {
+        currentPrimitiveStorageIndex_++;
+        auto lastNode = primitiveStorageNodes_[currentPrimitiveStorageIndex_];
+        result = reinterpret_cast<uintptr_t *>(&lastNode->data()[0]);
+        primitiveScopeStorageEnd_ = &lastNode->data()[NODE_BLOCK_SIZE];
+    }
+
+    return result;
+}
+
+void EcmaContext::ShrinkPrimitiveStorage(int prevIndex)
+{
+    currentPrimitiveStorageIndex_ = prevIndex;
+    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size() - 1);
+#if ECMASCRIPT_ENABLE_ZAP_MEM
+    uintptr_t size = ToUintPtr(primitiveScopeStorageEnd_) - ToUintPtr(primitiveScopeStorageNext_);
+    if (currentPrimitiveStorageIndex_ != -1) {
+        if (memset_s(primitiveScopeStorageNext_, size, 0, size) != EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
+    }
+    for (int32_t i = currentPrimitiveStorageIndex_ + 1; i < lastIndex; i++) {
+        if (memset_s(primitiveStorageNodes_[i],
+                     NODE_BLOCK_SIZE * sizeof(JSTaggedType), 0,
+                     NODE_BLOCK_SIZE * sizeof(JSTaggedType)) !=
+                     EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
+    }
+#endif
+
+    if (lastIndex > MIN_PRIMITIVE_STORAGE_SIZE && currentPrimitiveStorageIndex_ < MIN_PRIMITIVE_STORAGE_SIZE) {
+        for (int i = MIN_PRIMITIVE_STORAGE_SIZE; i < lastIndex; i++) {
+            auto node = primitiveStorageNodes_.back();
+            delete node;
+            primitiveStorageNodes_.pop_back();
         }
     }
 }

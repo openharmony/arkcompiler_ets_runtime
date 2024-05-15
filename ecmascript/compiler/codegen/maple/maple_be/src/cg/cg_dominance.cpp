@@ -225,18 +225,29 @@ void DomAnalysis::ComputeIterDomFrontiers()
 
 uint32 DomAnalysis::ComputeDtPreorder(const BB &bb, uint32 &num)
 {
-    DEBUG_ASSERT(num < dtPreOrder.size(), "index out of range in Dominance::ComputeDtPreorder");
-    dtPreOrder[num] = bb.GetId();
-    dtDfn[bb.GetId()] = num;
-    uint32 maxDtDfnOut = num;
-    ++num;
+    // {BB, parent/self BB id}
+    using Node = std::pair<const BB *, uint32>;
+    std::stack<Node> allNodes;
+    allNodes.emplace(Node{&bb, bb.GetId()});
 
-    for (uint32 k : domChildren[bb.GetId()]) {
-        maxDtDfnOut = ComputeDtPreorder(*bbVec[k], num);
+    while (!allNodes.empty()) {
+        DEBUG_ASSERT(num < dtPreOrder.size(), "index out of range in Dominance::ComputeDtPreorder");
+        Node curNode = allNodes.top();
+        allNodes.pop();
+        auto curBBId = curNode.first->GetId();
+        dtPreOrder[num] = curBBId;
+        dtDfn[curBBId] = num;
+        ++num;
+        dtDfnOut[curNode.second] = num;
+        if (domChildren[curBBId].empty()) {
+            dtDfnOut[curBBId] = num;
+            continue;
+        }
+        for (size_t idx = domChildren[curBBId].size(); idx > 0; --idx) {
+            allNodes.emplace(Node{bbVec[domChildren[curBBId][idx - 1]], curBBId});
+        }
     }
-
-    dtDfnOut[bb.GetId()] = maxDtDfnOut;
-    return maxDtDfnOut;
+    return num;
 }
 
 // true if b1 dominates b2

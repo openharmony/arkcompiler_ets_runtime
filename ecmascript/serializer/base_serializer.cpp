@@ -115,6 +115,9 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
         case JSType::LEXICAL_ENV:
             SerializeLexicalEnvFieldIndividually(root, start, end);
             return true;
+        case JSType::SENDABLE_ENV:
+            SerializeSendableEnvFieldIndividually(root, start, end);
+            return true;
         case JSType::JS_SHARED_FUNCTION:
             SerializeSFunctionFieldIndividually(root, start, end);
             return true;
@@ -230,6 +233,29 @@ void BaseSerializer::SerializeSFunctionModule(JSFunction *func)
 void BaseSerializer::SerializeLexicalEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
 {
     ASSERT(root->GetClass()->GetObjectType() == JSType::LEXICAL_ENV);
+    ObjectSlot slot = start;
+    while (slot < end) {
+        size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
+        switch (fieldOffset) {
+            case PARENT_ENV_SLOT:
+            case SCOPE_INFO_SLOT: {
+                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+                data_->WriteJSTaggedValue(JSTaggedValue::Hole());
+                slot++;
+                break;
+            }
+            default: {
+                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                slot++;
+                break;
+            }
+        }
+    }
+}
+
+void BaseSerializer::SerializeSendableEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
+{
+    ASSERT(root->GetClass()->GetObjectType() == JSType::SENDABLE_ENV);
     ObjectSlot slot = start;
     while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);

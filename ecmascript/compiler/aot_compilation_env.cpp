@@ -95,6 +95,11 @@ JSTaggedValue AOTCompilationEnv::GetObjectLiteralFromCache(JSTaggedValue constpo
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(thread_, constpool, index, entry);
 }
 
+JSTaggedValue AOTCompilationEnv::GetMethodFromCache(JSTaggedValue constpool, uint32_t index) const
+{
+    return ConstantPool::GetMethodFromCache(thread_, constpool, index);
+}
+
 panda_file::File::EntityId AOTCompilationEnv::GetIdFromCache(JSTaggedValue constpool, uint32_t index) const
 {
     return ConstantPool::GetIdFromCache(constpool, index);

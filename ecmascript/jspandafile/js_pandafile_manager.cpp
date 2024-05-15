@@ -527,7 +527,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
             methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
         }
     }
-    PandaFileTranslator::TranslateClasses(newJsPandaFile.get(), methodName);
+    PandaFileTranslator::TranslateClasses(thread, newJsPandaFile.get(), methodName);
 
     {
         LockHolder lock(jsPandaFileLock_);

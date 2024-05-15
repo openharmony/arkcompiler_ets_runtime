@@ -388,9 +388,56 @@ public:
         return lastHandleScope_;
     }
 
+    JSTaggedType *GetPrimitiveScopeStorageNext() const
+    {
+        return primitiveScopeStorageNext_;
+    }
+
+    void SetPrimitiveScopeStorageNext(JSTaggedType *value)
+    {
+        primitiveScopeStorageNext_ = value;
+    }
+
+    JSTaggedType *GetPrimitiveScopeStorageEnd() const
+    {
+        return primitiveScopeStorageEnd_;
+    }
+
+    void SetPrimitiveScopeStorageEnd(JSTaggedType *value)
+    {
+        primitiveScopeStorageEnd_ = value;
+    }
+
+    int GetCurrentPrimitiveStorageIndex() const
+    {
+        return currentPrimitiveStorageIndex_;
+    }
+
+    void PrimitiveScopeCountAdd()
+    {
+        primitiveScopeCount_++;
+    }
+
+    void PrimitiveScopeCountDec()
+    {
+        primitiveScopeCount_--;
+    }
+
+    void SetLastPrimitiveScope(EcmaHandleScope *scope)
+    {
+        lastPrimitiveScope_ = scope;
+    }
+
+    EcmaHandleScope *GetLastPrimitiveScope() const
+    {
+        return lastPrimitiveScope_;
+    }
+
     size_t IterateHandle(const RootRangeVisitor &rangeVisitor);
     uintptr_t *ExpandHandleStorage();
     void ShrinkHandleStorage(int prevIndex);
+    uintptr_t *ExpandPrimitiveStorage();
+    void ShrinkPrimitiveStorage(int prevIndex);
 
     JSTaggedType *GetCurrentFrame() const
     {
@@ -636,6 +683,15 @@ private:
     int32_t currentHandleStorageIndex_ {-1};
     int32_t handleScopeCount_ {0};
     EcmaHandleScope *lastHandleScope_ {nullptr};
+    // PrimitveScope
+    static constexpr int32_t MIN_PRIMITIVE_STORAGE_SIZE = 2;
+    JSTaggedType *primitiveScopeStorageNext_ {nullptr};
+    JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
+    std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
+    int32_t currentPrimitiveStorageIndex_ {-1};
+    int32_t primitiveScopeCount_ {0};
+    EcmaHandleScope *lastPrimitiveScope_ {nullptr};
+
     // Frame pointer
     JSTaggedType *currentFrame_ {nullptr};
     JSTaggedType *leaveFrame_ {nullptr};

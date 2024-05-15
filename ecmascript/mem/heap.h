@@ -558,6 +558,7 @@ private:
     void ReclaimRegions();
 
     bool parallelGC_ {true};
+    bool optionalLogEnabled_ {false};
     bool localFullMarkTriggered_ {false};
     GCStats *sGCStats_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
@@ -1066,6 +1067,10 @@ private:
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
     void ProcessGCListeners();
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    uint64_t GetCurrentTickMillseconds();
+    void ThresholdReachedDump();
+#endif
     void CleanCallBack();
     class ParallelGCTask : public Task {
     public:
@@ -1255,6 +1260,8 @@ private:
      * The listeners which are called at the end of GC
      */
     std::vector<std::pair<FinishGCListener, void *>> gcListeners_;
+
+    bool hasOOMDump_ {false};
 };
 }  // namespace panda::ecmascript
 

@@ -185,6 +185,7 @@ void DtoaHelper::DigitGen(const DiyFp &W, const DiyFp &Mp, uint64_t delta, char 
         if (d || *len) {
             buffer[(*len)++] = static_cast<char>('0' + d);
         }
+        ASSERT(one.f > 0);
         p2 &= one.f - 1;
         kappa--;
         if (p2 < delta) {
@@ -238,7 +239,7 @@ void DtoaHelper::FillDigits32(uint32_t number, BufferVector<char> buffer, int* l
     int number_length = 0;
     // We fill the digits in reverse order and exchange them afterwards.
     while (number != 0) {
-        int digit = number % TEN;
+        int digit = static_cast<int>(number % TEN);
         number /= TEN;
         buffer[(*length) + number_length] = '0' + digit;
         number_length++;

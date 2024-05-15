@@ -118,8 +118,8 @@ public:
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo, ProfileOperation callback);
 
     void TryJitCompile(GateRef glue, OffsetInfo opCodeInfo, GateRef func, GateRef profileTypeInfo);
-    GateRef IsHotForJitCompiling(GateRef profileTypeInfo, ProfileOperation callback);
-    GateRef IsHotForJitCompiling(GateRef profileTypeInfo);
+    GateRef IsCompiledOrTryCompile(GateRef glue, GateRef func, GateRef profileTypeInfo, ProfileOperation callback);
+    GateRef IsCompiledOrTryCompile(GateRef glue, GateRef func, GateRef profileTypeInfo);
 
 private:
     static constexpr size_t MAX_PROFILE_CALL_COUNT = 10000;
@@ -143,6 +143,10 @@ private:
     GateRef GetJitHotnessThreshold(GateRef profileTypeInfo);
     GateRef GetJitHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetJitHotnessCntOffset(GateRef profileTypeInfo);
+    GateRef GetJitCallThresholdOffset(GateRef profileTypeInfo);
+    GateRef GetJitCallThreshold(GateRef profileTypeInfo);
+    GateRef GetJitCallCntOffset(GateRef profileTypeInfo);
+    GateRef GetJitCallCnt(GateRef profileTypeInfo);
     GateRef GetOsrHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetOsrHotnessThreshold(GateRef profileTypeInfo);
     GateRef GetBaselineJitHotnessThresholdOffset(GateRef profileTypeInfo);

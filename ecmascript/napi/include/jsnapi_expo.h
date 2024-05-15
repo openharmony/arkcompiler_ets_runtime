@@ -483,6 +483,7 @@ public:
 
     bool IsModuleNamespaceObject();
     bool IsSharedArrayBuffer();
+    bool IsSendableArrayBuffer();
 
     bool IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value);
     Local<StringRef> Typeof(const EcmaVM *vm);
@@ -504,6 +505,7 @@ public:
     bool IsTreeSet();
     bool IsVector();
     bool IsSharedObject();
+    bool IsSharedFunction();
     bool IsJSShared();
     bool IsSharedArray();
     bool IsSharedTypedArray();
@@ -665,14 +667,26 @@ public:
 
 class ECMA_PUBLIC_API ObjectRef : public JSValueRef {
 public:
+    enum class SendableType {
+        NONE,
+        OBJECT,
+        GENERIC,
+    };
+    struct SendablePropertiesInfo {
+        std::vector<Local<JSValueRef>> keys;
+        std::vector<SendableType> types;
+        std::vector<PropertyAttribute> attributes;
+    };
     static constexpr int MAX_PROPERTIES_ON_STACK = 32;
     static inline ObjectRef *Cast(JSValueRef *value)
     {
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
+    static Local<ObjectRef> NewS(const EcmaVM *vm);
     static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
                                               const PropertyAttribute *attributes);
+    static Local<ObjectRef> NewSWithProperties(const EcmaVM *vm, SendablePropertiesInfo &info);
     static Local<ObjectRef> NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount, const char **keys,
                                                    const Local<JSValueRef> *values);
     static Local<ObjectRef> CreateAccessorData(const EcmaVM *vm, Local<FunctionRef> getter, Local<FunctionRef> setter);
@@ -728,15 +742,6 @@ using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 using InternalFunctionCallback = JSValueRef(*)(JsiRuntimeCallInfo*);
 class ECMA_PUBLIC_API FunctionRef : public ObjectRef {
 public:
-    enum class SendableType {
-        NONE,
-        OBJECT,
-    };
-    struct SendablePropertiesInfo {
-        std::vector<Local<JSValueRef>> keys;
-        std::vector<SendableType> types;
-        std::vector<PropertyAttribute> attributes;
-    };
     struct SendablePropertiesInfos {
         SendablePropertiesInfo instancePropertiesInfo;
         SendablePropertiesInfo staticPropertiesInfo;
@@ -912,9 +917,16 @@ protected:
     inline LocalScope(const EcmaVM *vm, JSTaggedType value);
 
 private:
+    void OpenLocalScope(EcmaContext *context);
+    void OpenPrimitiveScope(EcmaContext *context);
+    void CloseLocalScope(EcmaContext *context);
+    void ClosePrimitiveScope(EcmaContext *context);
     void *prevNext_ = nullptr;
     void *prevEnd_ = nullptr;
     int prevHandleStorageIndex_ {-1};
+    void *prevPrimitiveNext_ = nullptr;
+    void *prevPrimitiveEnd_ = nullptr;
+    int prevPrimitiveStorageIndex_ {-1};
     void *thread_ = nullptr;
 };
 
@@ -958,12 +970,19 @@ public:
 
     void Detach(const EcmaVM *vm);
     bool IsDetach();
+};
 
-    static Local<ArrayBufferRef> NewSendable(const EcmaVM *vm, int32_t length);
+class ECMA_PUBLIC_API SendableArrayBufferRef : public ObjectRef {
+public:
+    static Local<SendableArrayBufferRef> New(const EcmaVM *vm, int32_t length);
+    static Local<SendableArrayBufferRef> New(const EcmaVM *vm, void *buffer, int32_t length,
+                                             const NativePointerCallback &deleter, void *data);
 
-    void SendableDetach(const EcmaVM *vm);
-    bool SendableIsDetach();
-    void *SendableGetBuffer();
+    int32_t ByteLength(const EcmaVM *vm);
+    void *GetBuffer();
+
+    void Detach(const EcmaVM *vm);
+    bool IsDetach();
 };
 
 class ECMA_PUBLIC_API DateRef : public ObjectRef {
@@ -979,17 +998,28 @@ public:
     uint32_t ByteOffset(const EcmaVM *vm);
     uint32_t ArrayLength(const EcmaVM *vm);
     Local<ArrayBufferRef> GetArrayBuffer(const EcmaVM *vm);
+};
 
-    uint32_t SendableByteLength(const EcmaVM *vm);
-    uint32_t SendableByteOffset(const EcmaVM *vm);
-    uint32_t SendableArrayLength(const EcmaVM *vm);
-    Local<ArrayBufferRef> SendableGetArrayBuffer(const EcmaVM *vm);
+class ECMA_PUBLIC_API SendableTypedArrayRef : public ObjectRef {
+public:
+    uint32_t ByteLength(const EcmaVM *vm);
+    uint32_t ByteOffset(const EcmaVM *vm);
+    uint32_t ArrayLength(const EcmaVM *vm);
+    Local<SendableArrayBufferRef> GetArrayBuffer(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API ArrayRef : public ObjectRef {
 public:
     static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
     static Local<ArrayRef> NewSendable(const EcmaVM *vm, uint32_t length = 0);
+    uint32_t Length(const EcmaVM *vm);
+    static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
+    static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
+};
+
+class ECMA_PUBLIC_API SendableArrayRef : public ObjectRef {
+public:
+    static Local<SendableArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
     uint32_t Length(const EcmaVM *vm);
     static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
@@ -1002,7 +1032,7 @@ public:
 
 class ECMA_PUBLIC_API SharedInt8ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedInt8ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedInt8ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1013,7 +1043,7 @@ public:
 
 class ECMA_PUBLIC_API SharedUint8ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedUint8ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedUint8ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1030,7 +1060,7 @@ public:
 
 class ECMA_PUBLIC_API SharedInt16ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedInt16ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedInt16ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1042,7 +1072,7 @@ public:
 
 class ECMA_PUBLIC_API SharedUint16ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedUint16ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedUint16ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1053,7 +1083,7 @@ public:
 
 class ECMA_PUBLIC_API SharedInt32ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedInt32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedInt32ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                    int32_t byteOffset, int32_t length);
 };
 
@@ -1065,7 +1095,7 @@ public:
 
 class ECMA_PUBLIC_API SharedUint32ArrayRef : public TypedArrayRef {
 public:
-    static Local<SharedUint32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer,
+    static Local<SharedUint32ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
                                                      int32_t byteOffset, int32_t length);
 };
 
@@ -1494,6 +1524,10 @@ public:
     static void SetMultiThreadCheck(bool multiThreadCheck = true);
 
     // Napi Heavy Logics fast path
+    static Local<JSValueRef> NapiHasProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
+    static Local<JSValueRef> NapiHasOwnProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
+    static Local<JSValueRef> NapiGetProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
+    static Local<JSValueRef> NapiDeleteProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
     static Local<JSValueRef> NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativeObj, const char* utf8Key);
 
     static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
@@ -1502,6 +1536,7 @@ public:
     static bool KeyIsNumber(const char* utf8);
 
     static bool IsJitEscape();
+    static bool IsAotEscape(const EcmaVM *vm);
 private:
     static int vmCount_;
     static bool initialize_;
@@ -1517,7 +1552,6 @@ private:
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
-    static bool IsAotEscape();
     static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
     template<typename T>
     friend class Global;

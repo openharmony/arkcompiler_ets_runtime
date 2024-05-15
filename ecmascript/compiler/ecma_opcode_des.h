@@ -329,6 +329,14 @@ namespace panda::ecmascript::kungfu {
     V(CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16)                              \
     V(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8)                   \
     V(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16)              \
+    V(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8)                                \
+    V(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16)                           \
+    V(CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4)                            \
+    V(CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8)                            \
+    V(CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16)                      \
+    V(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4)                            \
+    V(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8)                            \
+    V(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16)                      \
 
 inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
 {

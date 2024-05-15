@@ -127,7 +127,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
     EXPECT_TRUE(pf->FindMethodLiteral(methodId[0].GetOffset()) == nullptr);
 
     const char *methodName = MethodLiteral::GetMethodName(pf.get(), methodId[0]);
-    PandaFileTranslator::TranslateClasses(pf.get(), CString(methodName));
+    PandaFileTranslator::TranslateClasses(thread, pf.get(), CString(methodName));
     EXPECT_TRUE(pf->FindMethodLiteral(methodId[0].GetOffset()) != nullptr);
     EXPECT_EQ(pf->FindMethodLiteral(methodId[0].GetOffset())->GetFunctionKind(),
                                     ecmascript::FunctionKind::NONE_FUNCTION);

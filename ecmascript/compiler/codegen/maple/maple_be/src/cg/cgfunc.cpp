@@ -2105,14 +2105,20 @@ void CGFunc::GenerateCfiPrologEpilog()
 
 void CGFunc::TraverseAndClearCatchMark(BB &bb)
 {
-    /* has bb been visited */
-    if (bb.GetInternalFlag3()) {
-        return;
-    }
-    bb.SetIsCatch(false);
-    bb.SetInternalFlag3(1);
-    for (auto succBB : bb.GetSuccs()) {
-        TraverseAndClearCatchMark(*succBB);
+    std::queue<BB *> allBBs;
+    allBBs.emplace(&bb);
+    while (!allBBs.empty()) {
+        BB *curBB = allBBs.front();
+        allBBs.pop();
+        /* has bb been visited */
+        if (curBB->GetInternalFlag3()) {
+            continue;
+        }
+        curBB->SetIsCatch(false);
+        curBB->SetInternalFlag3(1);
+        for (auto *succBB : curBB->GetSuccs()) {
+            allBBs.emplace(succBB);
+        }
     }
 }
 

@@ -250,8 +250,8 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
     JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
-    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize) + srcArray->GetByteOffset();
-    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize) + targetArray->GetByteOffset();
+    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize + srcArray->GetByteOffset());
+    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize + targetArray->GetByteOffset());
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);
@@ -2679,6 +2679,13 @@ DEF_RUNTIME_STUBS(NewLexicalEnvWithName)
     return RuntimeNewLexicalEnvWithName(thread,
         static_cast<uint16_t>(numVars.GetInt()),
         static_cast<uint16_t>(scopeId.GetInt())).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewSendableEnv)
+{
+    RUNTIME_STUBS_HEADER(NewSendableEnv);
+    JSTaggedValue numVars = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeNewSendableEnv(thread, static_cast<uint16_t>(numVars.GetInt())).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(OptGetUnmapedArgs)

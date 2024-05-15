@@ -142,31 +142,7 @@ using namespace panda::ecmascript::base;
         << "Fields in obj are not in dump list. "
 
 namespace panda::test {
-class EcmaDumpTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class EcmaDumpTest : public BaseTestWithScope<false> {
 };
 
 #ifndef NDEBUG
@@ -941,6 +917,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::TAGGED_ARRAY:
             case JSType::VTABLE:
             case JSType::LEXICAL_ENV:
+            case JSType::SENDABLE_ENV:
             case JSType::AOT_LITERAL_INFO: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray);
@@ -1377,7 +1354,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SOURCE_TEXT_MODULE_RECORD: {
-                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 16U);
+                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 17U);
                 JSHandle<SourceTextModule> moduleSourceRecord = factory->NewSourceTextModule();
                 DUMP_FOR_HANDLE(moduleSourceRecord);
                 break;
@@ -1419,7 +1396,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::RESOLVEDRECORDINDEXBINDING_RECORD: {
-                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordIndexBinding::SIZE, 2U);
+                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordIndexBinding::SIZE, 3U);
                 JSHandle<ResolvedRecordIndexBinding> recordBinding = factory->NewSResolvedRecordIndexBindingRecord();
                 DUMP_FOR_HANDLE(recordBinding);
                 break;

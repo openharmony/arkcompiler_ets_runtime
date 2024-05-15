@@ -231,15 +231,23 @@ public:
 
     size_t UnionFind(size_t idx)
     {
+        std::stack<size_t> allIdxs;
+        allIdxs.emplace(idx);
         size_t pIdx = parentIdx_[idx];
-        if (pIdx == idx) {
-            return idx;
+        while (pIdx != allIdxs.top()) {
+            allIdxs.emplace(pIdx);
+            pIdx = parentIdx_[pIdx];
         }
-        size_t unionFindSetRoot = UnionFind(pIdx);
-        if (semiDom_[minIdx_[idx]] > semiDom_[minIdx_[pIdx]]) {
-            minIdx_[idx] = minIdx_[pIdx];
+        size_t unionFindSetRoot = pIdx;
+        while (!allIdxs.empty()) {
+            if (semiDom_[minIdx_[allIdxs.top()]] > semiDom_[minIdx_[pIdx]]) {
+                minIdx_[allIdxs.top()] = minIdx_[pIdx];
+            }
+            parentIdx_[allIdxs.top()] = unionFindSetRoot;
+            pIdx = allIdxs.top();
+            allIdxs.pop();
         }
-        return parentIdx_[idx] = unionFindSetRoot;
+        return unionFindSetRoot;
     }
 
     void Merge(size_t fatherIdx, size_t sonIdx)
@@ -399,8 +407,8 @@ public:
             if (loopInfo.loopHead == nullptr) {
                 loopInfo.loopHead = loopHead;
                 loopInfo.loopBodys = chunk_->New<BitSet>(chunk_, size);
-                loopInfo.loopIndex = loopNumber;
-                loopInfo.loopHead->loopIndex_ = loopInfo.loopIndex;
+                loopInfo.loopIndex = static_cast<size_t>(loopNumber);
+                loopInfo.loopHead->loopIndex_ = static_cast<int32_t>(loopInfo.loopIndex);
             }
             if (curRegion != loopHead) {
                 loopInfo.loopBodys->SetBit(curRegion->GetId());
@@ -528,7 +536,7 @@ public:
             } else {
                 innerLoop.loopDepth = 1;
             }
-            succ->loopDepth_ = innerLoop.loopDepth;
+            succ->loopDepth_ = static_cast<int32_t>(innerLoop.loopDepth);
             loopInfo = &innerLoop;
         } else if (loopInfo != nullptr) {
             succ->loopIndex_ = static_cast<int32_t>(loopInfo->loopIndex);
@@ -793,7 +801,7 @@ public:
             GateRegion* useRegion = useInfo.region;
             if (useInfo.IsSelector()) {
                 GateRef state = acc_.GetState(useGate);
-                ASSERT(acc_.IsCFGMerge(state));
+                ASSERT(acc_.IsCFGMerge(state) && useIt.GetIndex() > 0);
                 useGate = acc_.GetIn(state, useIt.GetIndex() - 1); // -1: for state
                 useRegion = linearizer_->FindPredRegion(useGate);
             } else if (acc_.IsCFGMerge(useGate)) {
@@ -974,6 +982,7 @@ size_t GraphLinearizer::OptimizeCFG()
         GateRegion* src = regionList_[i];
         if (!src->IsDead() && src->IsSimple(&acc_)) {
             size_t dead = OptimizeControls(src);
+            ASSERT(liveNum >= dead);
             liveNum -= dead;
         }
     }

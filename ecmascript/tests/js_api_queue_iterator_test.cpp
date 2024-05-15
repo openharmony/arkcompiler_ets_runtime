@@ -17,66 +17,17 @@
 #include "ecmascript/js_api/js_api_queue_iterator.h"
 #include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSAPIQueueIteratorTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPIQueueIteratorTest : public BaseTestWithScope<false> {
 protected:
     JSHandle<JSAPIQueue> CreateQueue(int capacaty = JSAPIQueue::DEFAULT_CAPACITY_LENGTH)
     {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(value.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::Queue)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPIQueue> jsQueue(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSHandle<TaggedArray> newElements = factory->NewTaggedArray(capacaty);
-        jsQueue->SetElements(thread, newElements);
-        jsQueue->SetLength(thread, JSTaggedValue(0));
-        jsQueue->SetFront(0);
-        jsQueue->SetTail(0);
-        return jsQueue;
+        return EcmaContainerCommon::CreateQueue(thread, capacaty);
     }
 };
 

@@ -324,6 +324,7 @@ CallRangeTypeInfoAccessor::CallRangeTypeInfoAccessor(const CompilationEnv *env, 
 {
     size_t numArgs = acc_.GetNumValueIn(gate);
     constexpr size_t callTargetIndex = 1; // acc
+    ASSERT(numArgs > 0);
     argc_ = numArgs - callTargetIndex;
     func_ = acc_.GetValueIn(gate, argc_);
 }
@@ -395,6 +396,7 @@ CallThisRangeTypeInfoAccessor::CallThisRangeTypeInfoAccessor(const CompilationEn
     ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
     size_t numIns = acc_.GetNumValueIn(gate);
     argc_ = numIns - callTargetIndex - fixedInputsNum;
+    ASSERT(numIns > 0);
     func_ = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
 }
 
@@ -465,6 +467,30 @@ uint32_t InlineTypeInfoAccessor::GetCallMethodId() const
         }
     }
     return methodOffset;
+}
+
+bool InlineTypeInfoAccessor::FindHClass() const
+{
+    auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+    if (!sampleType->IsProfileType()) {
+        return false;
+    }
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+    hclassIndex_ = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
+    if (hclassIndex_ == -1) {
+        return false;
+    }
+    return ptManager_->QueryHClass(type.first, type.second).IsJSHClass();
+}
+
+JSTaggedValue InlineTypeInfoAccessor::GetHClass() const
+{
+    auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+    ASSERT(sampleType->IsProfileType());
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+    hclassIndex_ = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
+    ASSERT(hclassIndex_ != -1);
+    return ptManager_->QueryHClass(type.first, type.second);
 }
 
 JSTaggedValue ObjectAccessTypeInfoAccessor::GetKeyTaggedValue() const

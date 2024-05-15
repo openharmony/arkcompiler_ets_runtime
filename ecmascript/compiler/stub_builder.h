@@ -321,10 +321,12 @@ public:
     GateRef Sqrt(GateRef x);
     GateRef GetSetterFromAccessor(GateRef accessor);
     GateRef GetElementsArray(GateRef object);
-    void SetElementsArray(VariableType type, GateRef glue, GateRef object, GateRef elementsArray);
+    void SetElementsArray(VariableType type, GateRef glue, GateRef object, GateRef elementsArray,
+                          MemoryOrder order = MemoryOrder::Default());
     GateRef GetPropertiesArray(GateRef object);
     // SetProperties in js_object.h
-    void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray);
+    void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray,
+                            MemoryOrder order = MemoryOrder::Default());
     GateRef GetHash(GateRef object);
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
@@ -485,7 +487,8 @@ public:
     inline void SetIsTS(GateRef glue, GateRef hClass, GateRef value);
     GateRef IsProtoTypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
-        GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY());
+        GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY(),
+        MemoryOrder order = MemoryOrder::Default());
     GateRef GetPropertyInlinedProps(GateRef obj, GateRef hClass,
         GateRef index);
     GateRef GetInlinedPropOffsetFromHClass(GateRef hclass, GateRef attrOffset);
@@ -671,18 +674,27 @@ public:
     GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
         ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
     GateRef GetParentEnv(GateRef object);
+    GateRef GetSendableParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
+    GateRef GetPropertiesFromSendableEnv(GateRef object, GateRef index);
     GateRef GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex);
     void SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
+    void SetPropertiesToSendableEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
     inline GateRef GetBuiltinId(GateRef method);
-    void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv);
-    void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetMethodToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
+                                 MemoryOrder order = MemoryOrder::Default());
+    void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value,
+                                    MemoryOrder order = MemoryOrder::Default());
+    void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value,
+                                      MemoryOrder order = MemoryOrder::Default());
+    void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value,
+                                 MemoryOrder order = MemoryOrder::Default());
+    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value,
+                             MemoryOrder order = MemoryOrder::Default());
+    void SetMethodToFunction(GateRef glue, GateRef function, GateRef value,
+                             MemoryOrder order = MemoryOrder::Default());
     void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetGlobalObject(GateRef glue);

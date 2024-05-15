@@ -65,9 +65,13 @@ struct ConcurrentGuardValues {
 };
 
 class ConcurrentGuard {
+private:
+    const char* operation_;
+
 public:
-    ConcurrentGuard(ConcurrentGuardValues& v): v_(v)
+    ConcurrentGuard(ConcurrentGuardValues& v, const char* operation = ""): operation_(operation), v_(v)
     {
+        LOG_ECMA(DEBUG) << "[ConcurrentGuard] " << operation_ << " start";
         auto tid = Gettid();
         auto except = 0;
         if (!v_.count_.compare_exchange_strong(except, 1)) {
@@ -84,6 +88,7 @@ public:
             LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 1, but get " << except
                             << ", current tid: " << tid << ", last tid: " << v_.last_tid_;
         }
+        LOG_ECMA(DEBUG) << "[ConcurrentGuard] " << operation_ << " end";
     };
 
 private:

@@ -702,7 +702,8 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(ECMAObject, PROPERTIES_OFFSET, SIZE)
 
     DECL_DUMP()
-    static const CString ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj);
+    static const CString ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj, bool noAllocate = false,
+                                                         bool *isCallGetter = nullptr);
 
     static JSHandle<NameDictionary> PUBLIC_API TransitionToDictionary(const JSThread *thread,
                                                                       const JSHandle<JSObject> &receiver);
@@ -749,10 +750,7 @@ public:
     static void TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static void OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj);
 
-    static void SetSProperties(JSThread *thread,
-                               JSHandle<JSObject> obj,
-                               JSHandle<JSHClass> hclass,
-                               const std::vector<PropertyDescriptor> &descs);
+    static void SetSProperties(JSThread *thread, JSHandle<JSObject> obj, const std::vector<PropertyDescriptor> &descs);
 
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);

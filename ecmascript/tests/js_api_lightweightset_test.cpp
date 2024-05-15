@@ -25,68 +25,17 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSAPILightWeightSetTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPILightWeightSetTest : public BaseTestWithScope<false> {
 protected:
     JSAPILightWeightSet *CreateLightWeightSet()
     {
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo =
-            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 3 means the value
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LightWeightSet)));
-
-        auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSHandle<JSTaggedValue> constructor =
-            JSHandle<JSTaggedValue>(thread, containers::ContainersPrivate::Load(objCallInfo));
-        TestHelper::TearDownFrame(thread, prev);
-        JSHandle<JSAPILightWeightSet> lightweightSet =
-            JSHandle<JSAPILightWeightSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor),
-                                                                                  constructor));
-        JSHandle<JSTaggedValue> hashArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(8)); // 8 means the value
-        JSHandle<JSTaggedValue> valueArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(8)); // 8 means the value
-        lightweightSet->SetHashes(thread, hashArray);
-        lightweightSet->SetValues(thread, valueArray);
-        lightweightSet->SetLength(0); // 0 means the value
-        return *lightweightSet;
+        return EcmaContainerCommon::CreateLightWeightSet(thread);
     }
 };
 

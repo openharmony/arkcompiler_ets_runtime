@@ -97,7 +97,9 @@
     V(Float32Array)        \
     V(Float64Array)        \
     V(BigInt64Array)       \
-    V(BigUint64Array)      \
+    V(BigUint64Array)
+
+#define SENDABLE_TYPED_ARRAY_ALL(V) \
     V(SharedInt8Array)     \
     V(SharedUint8Array)    \
     V(SharedInt16Array)    \

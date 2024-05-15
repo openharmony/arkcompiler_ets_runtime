@@ -141,6 +141,18 @@ void SignalReg(int signo)
     newAction.sa_sigaction = GetSignalHandler;
     sigaction(signo, &newAction, nullptr);
 }
+
+void SignalAllReg()
+{
+    SignalReg(SIGABRT);
+    SignalReg(SIGBUS);
+    SignalReg(SIGSEGV);
+    SignalReg(SIGILL);
+    SignalReg(SIGKILL);
+    SignalReg(SIGSTKFLT);
+    SignalReg(SIGFPE);
+    SignalReg(SIGTRAP);
+}
 #endif
 
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
@@ -207,14 +219,7 @@ void EcmaVM::PostFork()
     Taskpool::GetCurrentTaskpool()->Initialize();
     LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
 #ifdef JIT_ESCAPE_ENABLE
-    SignalReg(SIGABRT);
-    SignalReg(SIGBUS);
-    SignalReg(SIGSEGV);
-    SignalReg(SIGILL);
-    SignalReg(SIGKILL);
-    SignalReg(SIGSTKFLT);
-    SignalReg(SIGFPE);
-    SignalReg(SIGTRAP);
+    SignalAllReg();
 #endif
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     heap_->EnableParallelGC();
@@ -225,8 +230,10 @@ void EcmaVM::PostFork()
     } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
+    if (JSNApi::IsAotEscape(this)) {
+        options_.SetEnablePGOProfiler(false);
+    }
     ResetPGOProfiler();
-
     bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
     bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
     if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
@@ -291,6 +298,11 @@ void EcmaVM::InitializePGOProfiler()
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
 }
 
+void EcmaVM::InitializeEnableAotCrash()
+{
+    SetEnableAotCrashEscapeVM(options_.IsEnableAotCrashEscape());
+}
+
 void EcmaVM::ResetPGOProfiler()
 {
     if (pgoProfiler_ != nullptr) {
@@ -350,6 +362,9 @@ void EcmaVM::EnableJit()
     bool jitEnableLitecg = panda::ecmascript::ohos::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
     LOG_JIT(INFO) << "jit enable litecg: " << jitEnableLitecg;
     options_.SetCompilerEnableLiteCG(jitEnableLitecg);
+    uint8_t jitCallThreshold = panda::ecmascript::ohos::GetJitCallThreshold(options_.GetJitCallThreshold());
+    LOG_JIT(INFO) << "jit call threshold: " << std::to_string(jitCallThreshold);
+    options_.SetJitCallThreshold(jitCallThreshold);
 }
 
 Jit *EcmaVM::GetJit() const
@@ -362,6 +377,7 @@ bool EcmaVM::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
+    InitializeEnableAotCrash();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);
@@ -421,12 +437,16 @@ EcmaVM::~EcmaVM()
 #endif
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (thread_->isProfiling_) {
+    if (profiler_ != nullptr) {
         if (profiler_->GetOutToFile()) {
             DFXJSNApi::StopCpuProfilerForFile(this);
         } else {
             DFXJSNApi::StopCpuProfilerForInfo(this);
         }
+    }
+    if (profiler_ != nullptr) {
+        delete profiler_;
+        profiler_ = nullptr;
     }
 #endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -435,6 +455,8 @@ EcmaVM::~EcmaVM()
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         GetJit()->ClearTaskWithVm(this);
     }
+    // clear c_address: c++ pointer delete
+    ClearBufferData();
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
@@ -453,8 +475,6 @@ EcmaVM::~EcmaVM()
     }
 #endif
 
-    // clear c_address: c++ pointer delete
-    ClearBufferData();
     if (!isBundlePack_) {
         std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
         if (jsPandaFile != nullptr) {

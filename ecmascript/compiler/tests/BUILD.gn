@@ -51,6 +51,7 @@ host_unittest_action("TypedArrayLoweringTest") {
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
     sdk_libc_secshared_dep,
   ]
+  external_deps = [ "zlib:libz" ]
 }
 
 host_unittest_action("DeadCodeEliminationTest") {
@@ -99,6 +100,7 @@ host_unittest_action("LoopOptimizationTest") {
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
     sdk_libc_secshared_dep,
   ]
+  external_deps = [ "zlib:libz" ]
 }
 
 host_unittest_action("ConstantFoldingTest") {
@@ -115,6 +117,7 @@ host_unittest_action("ConstantFoldingTest") {
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
     sdk_libc_secshared_dep,
   ]
+  external_deps = [ "zlib:libz" ]
 }
 
 host_unittest_action("GlobalValueNumberingTest") {
@@ -132,6 +135,7 @@ host_unittest_action("GlobalValueNumberingTest") {
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
     sdk_libc_secshared_dep,
   ]
+  external_deps = [ "zlib:libz" ]
 }
 
 host_unittest_action("InstructionCombineTest") {
@@ -148,6 +152,7 @@ host_unittest_action("InstructionCombineTest") {
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
     sdk_libc_secshared_dep,
   ]
+  external_deps = [ "zlib:libz" ]
 }
 
 group("host_unittest") {

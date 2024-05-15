@@ -585,6 +585,9 @@ Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, si
             LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
         }
         Region *region = space->AllocateDeserializeRegion(thread_);
+        if (region == nullptr) {
+            LOG_ECMA(FATAL) << "BaseDeserializer::AllocateMultiSharedRegion:region is nullptr";
+        }
         if (regionNum == 1) { // 1: Last allocate region
             size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
             region->SetHighWaterMark(region->GetEnd() - lastRegionRemainSize);

@@ -507,7 +507,8 @@ CVector<MethodInfo> JSStackTrace::ReadAllMethodInfos(std::shared_ptr<JSPandaFile
 std::optional<CodeInfo> JSStackTrace::TranslateByteCodePc(uintptr_t realPc, const CVector<MethodInfo> &vec)
 {
     int32_t left = 0;
-    int32_t right = vec.size() - 1;
+    ASSERT(vec.size() > 0);
+    int32_t right = static_cast<int32_t>(vec.size()) - 1;
     for (; left <= right;) {
         int32_t mid = (left + right) / 2;
         bool isRight = realPc >= (vec[mid].codeBegin + vec[mid].codeSize);
@@ -604,7 +605,7 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t map
         methodId = codeInfo->methodId;
     }
     auto offset = codeInfo->offset;
-    ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(methodId), offset, *jsFunction);
+    ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(methodId), offset, *jsFunction, extractor->GetSourceMap());
 
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
@@ -1094,6 +1095,9 @@ std::string ArkGetFileName(int pid, uintptr_t jsPandaFileAddr, std::string &hapP
 {
     size_t size = sizeof(JSPandaFile) / sizeof(long);
     uintptr_t *jsPandaFilePart = new uintptr_t[size]();
+    if (jsPandaFilePart == nullptr) {
+        LOG_ECMA(FATAL) << "ArkGetFileName:jsPandaFilePart is nullptr";
+    }
     for (size_t i = 0; i < size; i++) {
         if (!ReadUintptrFromAddr(pid, jsPandaFileAddr, jsPandaFilePart[i], g_needCheck)) {
             LOG_ECMA(ERROR) << "ArkGetFilePath failed, jsPandaFileAddr: " << jsPandaFileAddr;
@@ -1333,6 +1337,9 @@ bool JSSymbolExtractor::ParseHapFileData([[maybe_unused]] std::string& hapName)
             break;
         }
     }
+    if (ret && sourceMap_ == nullptr) {
+        CreateSourceMap(hapName);
+    }
 #endif
     return ret;
 }
@@ -1419,6 +1426,7 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp,
 void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t &strIdx, char *outStr, size_t strLen)
 {
     // note: big endian
+    ASSERT(strLen > 0);
     for (size_t i = 0; prefix[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
         outStr[strIdx++] = prefix[i];
     }
@@ -1593,11 +1601,18 @@ SourceMap* JSSymbolExtractor::GetSourceMap(uint8_t *data, size_t dataSize)
     return sourceMap_.get();
 }
 
+void JSSymbolExtractor::CreateSourceMap([[maybe_unused]] const std::string &hapPath)
+{
+#if defined(PANDA_TARGET_OHOS)
+    sourceMap_ = std::make_shared<SourceMap>();
+    sourceMap_->Init(hapPath);
+#endif
+}
+
 void JSSymbolExtractor::CreateSourceMap(uint8_t *data, size_t dataSize)
 {
-    SourceMap sourcemap;
-    sourcemap.Init(data, dataSize);
-    sourceMap_ = std::make_shared<SourceMap>(sourcemap);
+    sourceMap_ = std::make_shared<SourceMap>();
+    sourceMap_->Init(data, dataSize);
 }
 
 DebugInfoExtractor* JSSymbolExtractor::GetDebugExtractor()

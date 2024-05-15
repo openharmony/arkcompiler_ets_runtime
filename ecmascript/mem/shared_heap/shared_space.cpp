@@ -137,6 +137,9 @@ bool SharedSparseSpace::Expand(JSThread *thread)
         return false;
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedSparseSpace::Expand:region is nullptr";
+    }
     region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
@@ -146,6 +149,9 @@ bool SharedSparseSpace::Expand(JSThread *thread)
 Region *SharedSparseSpace::AllocateDeserializeRegion(JSThread *thread)
 {
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedSparseSpace::AllocateDeserializeRegion:region is nullptr";
+    }
     region->InitializeFreeObjectSets();
     return region;
 }
@@ -409,6 +415,9 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
         currentRegion->SetHighWaterMark(top);
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, heap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedReadOnlySpace::Expand:region is nullptr";
+    }
     allocator_.Reset(region->GetBegin(), region->GetEnd());
     AddRegion(region);
     return true;
@@ -450,25 +459,28 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, A
         UNREACHABLE();
     }
 #endif
-    if (allocType == AllocateEventType::NORMAL) {
-        thread->CheckSafepointIfSuspended();
-    }
-    LockHolder lock(allocateLock_);
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
     size_t alignedSize = AlignUp(objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
+    if (allocType == AllocateEventType::NORMAL) {
+        thread->CheckSafepointIfSuspended();
+        CheckAndTriggerLocalFullMark(thread, alignedSize);
+    }
+    LockHolder lock(allocateLock_);
     if (CommittedSizeExceed(alignedSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread, heap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedHugeObjectSpace::Allocate:region is nullptr";
+    }
     AddRegion(region);
     // It need to mark unpoison when huge object being allocated.
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     InvokeAllocationInspector(region->GetBegin(), objectSize);
 #endif
-    CheckAndTriggerLocalFullMark(thread, alignedSize);
     return region->GetBegin();
 }
 

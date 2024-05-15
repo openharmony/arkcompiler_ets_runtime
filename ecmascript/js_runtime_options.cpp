@@ -131,6 +131,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'stub.an'\n"
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
+    "--enable-aot-crash-escape:            Enable AOT crash escape. "
+                                           "Default: 'true'\n"
     "--enable-elements-kind:               Enable elementsKind sampling and usage. Default: 'false'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
@@ -164,6 +166,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
     "--compiler-enable-osr:                Enable osr: Default: 'false'\n"
     "--compiler-jit-hotness-threshold:     Set hotness threshold for jit. Default: '2'\n"
+    "--compiler-jit-call-threshold:        Set call threshold for jit. Default: '0'\n"
     "--compiler-osr-hotness-threshold:     Set hotness threshold for osr. Default: '2'\n"
     "--compiler-force-jit-compile-main:    Enable jit compile main function: Default: 'false'\n"
     "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n"
@@ -251,6 +254,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-target-triple", required_argument, nullptr, OPTION_COMPILER_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
+        {"enable-aot-crash-escape", required_argument, nullptr, OPTION_ENABLE_AOT_CRASH_ESCAPE},
         {"enable-elements-kind", required_argument, nullptr, OPTION_ENABLE_ELEMENTSKIND},
         {"compiler-pgo-profiler-path", required_argument, nullptr, OPTION_COMPILER_PGO_PROFILER_PATH},
         {"compiler-pgo-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_PGO_HOTNESS_THRESHOLD},
@@ -279,6 +283,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-osr", required_argument, nullptr, OPTION_COMPILER_ENABLE_OSR},
         {"compiler-trace-jit", required_argument, nullptr, OPTION_COMPILER_TRACE_JIT},
         {"compiler-jit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_JIT_HOTNESS_THRESHOLD},
+        {"compiler-jit-call-threshold", required_argument, nullptr, OPTION_COMPILER_JIT_CALL_THRESHOLD},
         {"compiler-osr-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_OSR_HOTNESS_THRESHOLD},
         {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
         {"compiler-enable-jit-pgo", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_PGO},
@@ -655,6 +660,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_ENABLE_AOT_CRASH_ESCAPE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableAotCrashEscape(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_ENABLE_ELEMENTSKIND:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -965,6 +978,16 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     uint16_t val = argUint32 > std::numeric_limits<uint16_t>::max() ?
                         std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(argUint32);
                     SetJitHotnessThreshold(val);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_JIT_CALL_THRESHOLD:
+                ret = ParseUint32Param("compiler-jit-call-threshold", &argUint32);
+                if (ret) {
+                    uint8_t val =  argUint32 > std::numeric_limits<uint8_t>::max() ?
+                        std::numeric_limits<uint8_t>::max() : static_cast<uint8_t>(argUint32);
+                    SetJitCallThreshold(val);
                 } else {
                     return false;
                 }

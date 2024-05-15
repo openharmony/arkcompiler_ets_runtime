@@ -53,8 +53,6 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     UNREACHABLE();
 #endif
     // refactor: remove JitCompilationOptions, reuse CompilationOptions
-    bool isApp = runtimeOptions.IsEnableAPPJIT();
-
     optLevel_ = runtimeOptions.GetOptLevel();
     relocMode_ = runtimeOptions.GetRelocMode();
     logOption_ = runtimeOptions.GetCompilerLogOption();
@@ -64,7 +62,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
     profilerIn_ = std::string(runtimeOptions.GetPGOProfilerPath());
     isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();
-    isEnableTypeLowering_ = isApp ? false : runtimeOptions.IsEnableTypeLowering();
+    isEnableTypeLowering_ = runtimeOptions.IsEnableTypeLowering();
     isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();

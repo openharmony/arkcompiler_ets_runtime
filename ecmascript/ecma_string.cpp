@@ -272,7 +272,7 @@ bool IsSubStringAtSpan(Span<T1> &lhsSp, Span<T2> &rhsSp, uint32_t offset)
     int rhsSize = static_cast<int>(rhsSp.size());
     ASSERT(rhsSize + offset <= lhsSp.size());
     for (int i = 0; i < rhsSize; ++i) {
-        auto left = static_cast<int32_t>(lhsSp[offset + i]);
+        auto left = static_cast<int32_t>(lhsSp[offset + static_cast<uint32_t>(i)]);
         auto right = static_cast<int32_t>(rhsSp[i]);
         if (left != right) {
             return false;
@@ -845,6 +845,7 @@ bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len, cons
         utf8Data += nbytes;
         utf8Pos += nbytes;
         if (pHigh != 0) {
+            ASSERT(utf16Len > 0);
             if (utf16Pos >= utf16Len - 1 || *utf16Data != pHigh) {
                 return false;
             }

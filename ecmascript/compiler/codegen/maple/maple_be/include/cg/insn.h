@@ -54,7 +54,8 @@ public:
           localAlloc(&memPool),
           opnds(localAlloc.Adapter()),
           registerBinding(localAlloc.Adapter()),
-          comment(&memPool)
+          comment(&memPool),
+          stackMapLiveIn(localAlloc.Adapter())
     {
     }
     Insn(MemPool &memPool, MOperator opc, Operand &opnd0) : Insn(memPool, opc)
@@ -753,10 +754,10 @@ public:
 
     void SetStackMapLiveIn(SparseDataInfo &liveIn)
     {
-        stackMapLiveIn = &liveIn;
+        liveIn.GetInfo().ConvertToSet(stackMapLiveIn);
     }
 
-    SparseDataInfo *GetStackMapLiveIn()
+    const MapleSet<regno_t> &GetStackMapLiveIn() const
     {
         return stackMapLiveIn;
     }
@@ -815,7 +816,7 @@ private:
     MemDefUse *referenceOsts = nullptr;
     SparseDataInfo *stackMapDef = nullptr;
     SparseDataInfo *stackMapUse = nullptr;
-    SparseDataInfo *stackMapLiveIn = nullptr;
+    MapleSet<regno_t> stackMapLiveIn;
 };
 
 struct VectorRegSpec {

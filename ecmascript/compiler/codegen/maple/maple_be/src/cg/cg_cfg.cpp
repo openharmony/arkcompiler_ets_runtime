@@ -787,12 +787,18 @@ void CGCFG::UnreachCodeAnalysis() const
 
 void CGCFG::FindWillExitBBs(BB *bb, std::set<BB *, BBIdCmp> *visitedBBs)
 {
-    if (visitedBBs->count(bb) != 0) {
-        return;
-    }
-    visitedBBs->insert(bb);
-    for (BB *predbb : bb->GetPreds()) {
-        FindWillExitBBs(predbb, visitedBBs);
+    std::queue<BB *> allBBs;
+    allBBs.push(bb);
+    while (!allBBs.empty()) {
+        BB *curBB = allBBs.front();
+        allBBs.pop();
+        if (visitedBBs->count(curBB) != 0) {
+            continue;
+        }
+        visitedBBs->insert(curBB);
+        for (auto *predBB : curBB->GetPreds()) {
+            allBBs.push(predBB);
+        }
     }
 }
 

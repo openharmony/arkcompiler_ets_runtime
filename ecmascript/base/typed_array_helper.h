@@ -21,6 +21,7 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 
 #include "ecmascript/builtins/builtins_shared_typedarray.h"
 #include "ecmascript/builtins/builtins_typedarray.h"
@@ -88,7 +89,7 @@ public:
     inline static JSHandle<JSHClass> GetSharedOnHeapHclassFromType(
         JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType);
     inline static JSHandle<JSHClass> GetSharedNotOnHeapHclassFromType(
-        JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType);
+        JSThread *thread, const JSHandle<JSSharedTypedArray> &obj, const DataViewType arrayType);
     inline static uint32_t GetSizeFromType(const DataViewType arrayType);
     inline static bool IsAccessorHasChanged(const JSHandle<JSTaggedValue> &obj);
     static int32_t SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,

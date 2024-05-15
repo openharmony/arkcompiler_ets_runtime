@@ -110,7 +110,7 @@ inline T AlignDown(T x, size_t alignment)
 template<typename T>
 inline T AlignUp(T x, size_t alignment)
 {
-    ASSERT(std::is_integral<T>::value);
+    ASSERT(std::is_integral<T>::value && (x + alignment) > 0);
     return AlignDown<T>(static_cast<T>(x + alignment - 1U), alignment);
 }
 }  // namespace panda::ecmascript

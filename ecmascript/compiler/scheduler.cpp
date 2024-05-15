@@ -20,6 +20,27 @@
 #include "ecmascript/compiler/verifier.h"
 
 namespace panda::ecmascript::kungfu {
+size_t UnionFind(std::vector<size_t> &semiDom, std::vector<size_t> &parent, std::vector<size_t> &minIdx, size_t idx)
+{
+    std::stack<size_t> allIdxs;
+    allIdxs.emplace(idx);
+    size_t pIdx = parent[idx];
+    while (pIdx != allIdxs.top()) {
+        allIdxs.emplace(pIdx);
+        pIdx = parent[pIdx];
+    }
+    size_t unionFindSetRoot = pIdx;
+    while (!allIdxs.empty()) {
+        if (semiDom[minIdx[allIdxs.top()]] > semiDom[minIdx[pIdx]]) {
+            minIdx[allIdxs.top()] = minIdx[pIdx];
+        }
+        parent[allIdxs.top()] = unionFindSetRoot;
+        pIdx = allIdxs.top();
+        allIdxs.pop();
+    }
+    return unionFindSetRoot;
+}
+
 void Scheduler::CalculateDominatorTree(const Circuit *circuit,
                                        std::vector<GateRef>& bbGatesList,
                                        std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
@@ -63,20 +84,9 @@ void Scheduler::CalculateDominatorTree(const Circuit *circuit,
         std::vector<size_t> parent(bbGatesList.size());
         std::iota(parent.begin(), parent.end(), 0);
         std::vector<size_t> minIdx(bbGatesList.size());
-        std::function<size_t(size_t)> unionFind = [&] (size_t idx) -> size_t {
-            size_t pIdx = parent[idx];
-            if (pIdx == idx) {
-                return idx;
-            }
-            size_t unionFindSetRoot = unionFind(pIdx);
-            if (semiDom[minIdx[idx]] > semiDom[minIdx[pIdx]]) {
-                minIdx[idx] = minIdx[pIdx];
-            }
-            return parent[idx] = unionFindSetRoot;
-        };
         auto merge = [&] (size_t fatherIdx, size_t sonIdx) -> void {
-            size_t parentFatherIdx = unionFind(fatherIdx);
-            size_t parentSonIdx = unionFind(sonIdx);
+            size_t parentFatherIdx = UnionFind(semiDom, parent, minIdx, fatherIdx);
+            size_t parentSonIdx = UnionFind(semiDom, parent, minIdx, sonIdx);
             parent[parentSonIdx] = parentFatherIdx;
         };
         std::iota(semiDom.begin(), semiDom.end(), 0);
@@ -91,13 +101,13 @@ void Scheduler::CalculateDominatorTree(const Circuit *circuit,
                     if (preGateIdx < idx) {
                         semiDom[idx] = std::min(semiDom[idx], preGateIdx);
                     } else {
-                        unionFind(preGateIdx);
+                        UnionFind(semiDom, parent, minIdx, preGateIdx);
                         semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[preGateIdx]]);
                     }
                 }
             }
             for (const auto &succDomIdx : semiDomTree[idx]) {
-                unionFind(succDomIdx);
+                UnionFind(semiDom, parent, minIdx, succDomIdx);
                 if (idx == semiDom[minIdx[succDomIdx]]) {
                     immDom[succDomIdx] = idx;
                 } else {

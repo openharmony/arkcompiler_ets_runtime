@@ -80,6 +80,12 @@ inline uint32 GetPrimTypeBitSize(PrimType primType)
     return GetPrimTypeSize(primType) << k8BitShift;
 }
 
+inline uint32 GetAlignedPrimTypeBitSize(PrimType primType)
+{
+    auto size = GetPrimTypeBitSize(primType);
+    return size <= k32BitSize ? k32BitSize : k64BitSize;
+}
+
 inline uint32 GetPrimTypeActualBitSize(PrimType primType)
 {
     // GetPrimTypeSize(PTY_u1) will return 1, so we take it as a special case
@@ -1240,9 +1246,9 @@ public:
     {
         return dim;
     }
-    void SetDim(uint16 dim)
+    void SetDim(uint16 newDim)
     {
-        this->dim = dim;
+        this->dim = newDim;
     }
 
     const TypeAttrs &GetTypeAttrs() const
@@ -1404,9 +1410,9 @@ public:
     {
         return fields;
     }
-    void SetFields(const FieldVector &fields)
+    void SetFields(const FieldVector &newFields)
     {
-        this->fields = fields;
+        this->fields = newFields;
     }
 
     const FieldPair &GetFieldsElemt(size_t n) const
@@ -1454,9 +1460,9 @@ public:
     {
         return parentFields;
     }
-    void SetParentFields(const FieldVector &parentFields)
+    void SetParentFields(const FieldVector &newParentFields)
     {
-        this->parentFields = parentFields;
+        this->parentFields = newParentFields;
     }
     const FieldVector &GetParentFields() const
     {

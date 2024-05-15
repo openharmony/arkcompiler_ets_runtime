@@ -256,6 +256,7 @@ private:
     void LowerDefineFunc(GateRef gate);
     void LowerNewLexicalEnv(GateRef gate);
     void LowerNewLexicalEnvWithName(GateRef gate);
+    void LowerNewSendableEnv(GateRef gate);
     void LowerPopLexicalEnv(GateRef gate);
     void LowerLdSuperByValue(GateRef gate);
     void LowerStSuperByValue(GateRef gate);
@@ -276,7 +277,9 @@ private:
     void LowerCreateGeneratorObj(GateRef gate);
     void LowerStArraySpread(GateRef gate);
     void LowerLdLexVar(GateRef gate);
+    void LowerLdSendableVar(GateRef gate);
     void LowerStLexVar(GateRef gate);
+    void LowerStSendableVar(GateRef gate);
     void LowerDefineClassWithBuffer(GateRef gate);
     void LowerAsyncFunctionEnter(GateRef gate);
     void LowerTypeof(GateRef gate);

@@ -551,6 +551,9 @@ void MIRModule::DumpTypeTreeToCxxHeaderFile(MIRType &ty, std::unordered_set<MIRT
 
 void MIRModule::DumpToCxxHeaderFile(std::set<std::string> &leafClasses, const std::string &pathToOutf) const
 {
+    if (pathToOutf.empty()) {
+        return;
+    }
     std::ofstream mpltFile;
     mpltFile.open(pathToOutf, std::ios::trunc);
     std::streambuf *backup = LogInfo::MapleLogger().rdbuf();

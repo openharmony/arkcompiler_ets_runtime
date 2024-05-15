@@ -289,6 +289,9 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
     if (!data.IsUndefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
         auto newData = nativeAreaAllocator->AllocateBuffer(size);
+        if (newData == nullptr) {
+            LOG_ECMA(FATAL) << "ObjectFactory::NewJSSendableArrayBufferData:newData is nullptr";
+        }
         if (memset_s(newData, length, 0, length) != EOK) {
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
@@ -300,6 +303,9 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
     }
 
     auto newData = nativeAreaAllocator->AllocateBuffer(size);
+    if (newData == nullptr) {
+        LOG_ECMA(FATAL) << "ObjectFactory::NewJSSendableArrayBufferData:newData is nullptr";
+    }
     if (memset_s(newData, length, 0, length) != EOK) {
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
@@ -321,7 +327,27 @@ JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(int32_t 
     sendableArrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
         NewJSSendableArrayBufferData(sendableArrayBuffer, length);
-        sendableArrayBuffer->SetShared(true);
+        sendableArrayBuffer->SetShared(false);
+    }
+    return sendableArrayBuffer;
+}
+
+JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(void *buffer, int32_t length,
+                                                                        const NativePointerCallback &deleter,
+                                                                        void *data)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+
+    JSHandle<JSFunction> constructor(env->GetSBuiltininArrayBufferFunction());
+    JSHandle<JSSendableArrayBuffer> sendableArrayBuffer(NewJSObjectByConstructor(constructor));
+    length = buffer == nullptr ? 0 : length;
+    sendableArrayBuffer->SetArrayBufferByteLength(length);
+    if (length > 0) {
+        JSHandle<JSNativePointer> pointer = NewSJSNativePointer(buffer, deleter, data, false, length);
+        sendableArrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
+        sendableArrayBuffer->SetShared(false);
+        sendableArrayBuffer->SetWithNativeAreaAllocator(deleter == NativeAreaAllocator::FreeBufferFunc &&
+                                                data == vm_->GetNativeAreaAllocator());
     }
     return sendableArrayBuffer;
 }
@@ -3266,6 +3292,8 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
         array->SetJitHotnessThreshold(threshold);
         threshold = vm_->GetJSOptions().GetOsrHotnessThreshold();
         array->SetOsrHotnessThreshold(threshold);
+        uint8_t jitCallThreshold = vm_->GetJSOptions().GetJitCallThreshold();
+        array->SetJitCallThreshold(jitCallThreshold);
     }
     if (vm_->IsEnableBaselineJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetBaselineJitHotnessThreshold();
@@ -4578,6 +4606,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
     obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    obj->SetSendableEnv(thread_, undefinedValue);
     return obj;
 }
 

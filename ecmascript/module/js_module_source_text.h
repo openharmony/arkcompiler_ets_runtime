@@ -21,6 +21,7 @@
 #include "ecmascript/module/js_module_record.h"
 #include "ecmascript/module/js_module_entry.h"
 #include "ecmascript/tagged_array.h"
+#include "ecmascript/sendable_env.h"
 
 namespace panda::ecmascript {
 struct StateVisit;
@@ -227,7 +228,8 @@ public:
     ACCESSORS(NameDictionary, NAME_DICTIONARY_OFFSET, CYCLE_ROOT_OFFSET);
     ACCESSORS(CycleRoot, CYCLE_ROOT_OFFSET, TOP_LEVEL_CAPABILITY_OFFSET);
     ACCESSORS(TopLevelCapability, TOP_LEVEL_CAPABILITY_OFFSET, ASYNC_PARENT_MODULES_OFFSET);
-    ACCESSORS(AsyncParentModules, ASYNC_PARENT_MODULES_OFFSET, EVALUATION_ERROR_OFFSET);
+    ACCESSORS(AsyncParentModules, ASYNC_PARENT_MODULES_OFFSET, SENDABLE_ENV_OFFSET);
+    ACCESSORS(SendableEnv, SENDABLE_ENV_OFFSET, EVALUATION_ERROR_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(EvaluationError, int32_t, EVALUATION_ERROR_OFFSET, DFS_ANCESTOR_INDEX_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(DFSAncestorIndex, int32_t, DFS_ANCESTOR_INDEX_OFFSET, DFS_INDEX_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(DFSIndex, int32_t, DFS_INDEX_OFFSET, ASYNC_EVALUATION_OFFSET);

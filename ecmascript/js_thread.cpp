@@ -200,6 +200,12 @@ JSTaggedValue JSThread::GetCurrentLexenv() const
     return frameHandler.GetEnv();
 }
 
+JSTaggedValue JSThread::GetCurrentFunction() const
+{
+    FrameHandler frameHandler(this);
+    return frameHandler.GetFunction();
+}
+
 const JSTaggedType *JSThread::GetCurrentFrame() const
 {
     if (IsAsmInterpreter()) {
