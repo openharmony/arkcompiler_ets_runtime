@@ -90,7 +90,7 @@ private:
 class JitTask {
 public:
     JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit,
-        JSHandle<JSFunction> &jsFunction, CString &methodName, int32_t offset,
+        JSHandle<JSFunction> &jsFunction, CompilerTier tier, CString &methodName, int32_t offset,
         uint32_t taskThreadId, JitCompileMode mode);
     // for ut
     JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, uint32_t taskThreadId, JitCompileMode mode);
@@ -99,11 +99,12 @@ public:
     void Finalize();
     void PrepareCompile();
 
+    void SetHClassInfoForPGO(JSHandle<Method> &methodHandle);
     void InstallCode();
     void InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj);
-    MachineCodeDesc *GetMachineCodeDesc()
+    MachineCodeDesc &GetMachineCodeDesc()
     {
-        return &codeDesc_;
+        return codeDesc_;
     }
 
     JSHandle<JSFunction> GetJsFunction() const
@@ -136,6 +137,11 @@ public:
         return offset_ != MachineCode::INVALID_OSR_OFFSET;
     }
 
+    CompilerTier GetCompilerTier() const
+    {
+        return compilerTier_;
+    }
+
     Jit *GetJit()
     {
         return jit_;
@@ -161,14 +167,14 @@ public:
         return static_cast<JitVM*>(compilerThread_->GetEcmaVM());
     }
 
-    CString GetMethodInfo() const
+    CString GetMethodName() const
     {
-        return methodInfo_;
+        return methodName_;
     }
 
-    void SetMethodInfo(CString methodInfo)
+    void SetMethodInfo(CString methodName)
     {
-        methodInfo_ = methodInfo;
+        methodName_ = methodName;
     }
 
     uint32_t GetTaskThreadId() const
@@ -207,11 +213,6 @@ public:
         return jitCompileMode_ == JitCompileMode::ASYNC;
     }
 
-    void Terminated()
-    {
-        sustainingJSHandle_->SetTerminated();
-    }
-
     class AsyncTask : public Task {
     public:
         explicit AsyncTask(std::shared_ptr<JitTask>jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }
@@ -238,8 +239,13 @@ public:
         void Terminated()
         {
             Task::Terminated();
-            jitTask_->Terminated();
         }
+
+        void ReleaseSustainingJSHandle()
+        {
+            jitTask_->ReleaseSustainingJSHandle();
+        }
+
     private:
         std::shared_ptr<JitTask> jitTask_ { nullptr };
     };
@@ -265,7 +271,8 @@ private:
     void *compilerTask_;
     MachineCodeDesc codeDesc_;
     CompileState state_;
-    CString methodInfo_;
+    CompilerTier compilerTier_;
+    CString methodName_;
     int32_t offset_;
     uint32_t taskThreadId_;
     std::unique_ptr<SustainingJSHandle> sustainingJSHandle_;

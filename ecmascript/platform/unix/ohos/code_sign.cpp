@@ -14,26 +14,12 @@
  */
 
 #include "ecmascript/platform/code_sign.h"
-
-#include <code_sign_utils.h>
-#include <local_code_sign_kit.h>
-
 #include "ecmascript/log_wrapper.h"
 
-using namespace OHOS::Security::CodeSign;
 namespace panda::ecmascript {
 void CodeSignatureForAOTFile(const std::string &filename, const std::string &appSignature)
 {
-    LOG_ECMA(DEBUG) << "start to sign the aot file!";
-    ByteBuffer sig;
-    if (LocalCodeSignKit::SignLocalCode(appSignature, filename, sig) != CommonErrCode::CS_SUCCESS) {
-        LOG_ECMA(ERROR) << "Failed to sign the aot file!";
-        return;
-    }
-    if (CodeSignUtils::EnforceCodeSignForFile(filename, sig) != CommonErrCode::CS_SUCCESS) {
-        LOG_ECMA(ERROR) << "Failed to enable code signature for the aot file!";
-        return;
-    }
-    LOG_ECMA(DEBUG) << "sign the aot file success";
+    (void)filename;
+    (void)appSignature;
 }
 }  // namespace panda::ecmascript

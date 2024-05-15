@@ -639,7 +639,7 @@ void AArch64MemLayout::AssignSpillLocationsToPseudoRegisters()
     }
     AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
     RegOperand &baseOpnd = aarchCGFunc->GetOrCreateStackBaseRegOperand();
-    int32 offset = segLocals.GetSize();
+    int32 offset = static_cast<int32>(segLocals.GetSize());
 
     OfstOperand *offsetOpnd = &aarchCGFunc->CreateOfstOpnd(offset + k16BitSize, k64BitSize);
     MemOperand *throwMem = aarchCGFunc->CreateMemOperand(MemOperand::kAddrModeBOi, k64BitSize, baseOpnd,

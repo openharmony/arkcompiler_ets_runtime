@@ -78,12 +78,12 @@ public:
     void PGOPreDump(JSTaggedType func);
     void PGODump(JSTaggedType func);
 
-    void WaitPGODumpPause();
-    void WaitPGODumpResume();
+    void SuspendByGC();
+    void ResumeByGC();
     void WaitPGODumpFinish();
 
     void HandlePGOPreDump();
-    void HandlePGODump(bool force);
+    void HandlePGODumpByDumpThread(bool force);
 
     void ProcessReferences(const WeakRootVisitor &visitor);
     void Iterate(const RootVisitor &visitor);
@@ -108,6 +108,8 @@ private:
         LOAD,
     };
 
+    void ProfileBytecode(ApEntityId abcId, const CString& recordName, JSTaggedValue funcValue);
+
     enum class State : uint8_t {
         STOP,
         PAUSE,
@@ -116,8 +118,33 @@ private:
         FORCE_SAVE_PAUSE,
     };
 
-    void ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue);
-    bool PausePGODump();
+    static std::string StateToString(State state)
+    {
+        switch (state) {
+            case State::STOP:
+                return "STOP";
+            case State::PAUSE:
+                return "PAUSE";
+            case State::START:
+                return "START";
+            case State::FORCE_SAVE:
+                return "FORCE SAVE";
+            case State::FORCE_SAVE_PAUSE:
+                return "FORCE SAVE PAUSE";
+            default:
+                return "UNKNOWN";
+        }
+    }
+
+    State GetState();
+    void SetState(State state);
+    void NotifyGC();
+    void WaitingPGODump();
+    void StopPGODump();
+    void StartPGODump();
+    bool IfGCWaitingThenNotifyGCWithLock();
+    bool IfGCWaitingThenNotifyGC();
+    void DispatchPGODumpTask();
 
     void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
                       ProfileTypeInfo *profileTypeInfo, BCType type);
@@ -178,7 +205,7 @@ private:
     class WorkNode;
     void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString& recordName, EntityId methodId, WorkNode* current);
     WorkNode* PopFromProfileQueue();
-    void SaveProfiler(bool force);
+    void MergeProfilerAndDispatchAsyncSaveTask(bool force);
     bool IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
                             JSHClass *exceptRecvHClassOnHeap, JSHClass *exceptHoldHClass,
                             JSHClass *exceptPrototypeOfPrototypeHClass);
@@ -191,7 +218,8 @@ private:
 
         bool Run([[maybe_unused]] uint32_t threadIndex) override
         {
-            profiler_->HandlePGODump(profiler_->isForce_);
+            profiler_->HandlePGODumpByDumpThread(profiler_->isForce_);
+            profiler_->StopPGODump();
             return true;
         }
 
@@ -287,7 +315,7 @@ private:
 
         bool IsHole() const
         {
-            return receiver.IsHole() && holder.IsHole();
+            return receiver.IsHole();
         }
 
         void ProcessReceiver(const WeakRootVisitor& visitor)
@@ -301,20 +329,6 @@ private:
                 ClearReceiver();
             } else if (fwd != obj) {
                 SetReceiver(fwd);
-            }
-        }
-
-        void ProcessHolder(const WeakRootVisitor& visitor)
-        {
-            if (!holder.IsHeapObject()) {
-                return;
-            }
-            auto obj = holder.GetTaggedObject();
-            auto fwd = visitor(obj);
-            if (fwd == nullptr) {
-                ClearHolder();
-            } else if (fwd != obj) {
-                SetHolder(fwd);
             }
         }
 
@@ -402,7 +416,6 @@ private:
             for (auto& iter: map_) {
                 auto& info = iter.second;
                 info.ProcessReceiver(visitor);
-                info.ProcessHolder(visitor);
             }
         }
 
@@ -411,7 +424,6 @@ private:
             if (HasExtraProfileTypeInfo()) {
                 for (auto& iter: map_) {
                     auto& info = iter.second;
-                    visitor(Root::ROOT_VM, ObjectSlot(info.GetReceiverAddr()));
                     visitor(Root::ROOT_VM, ObjectSlot(info.GetHolderAddr()));
                 }
             }
@@ -448,13 +460,12 @@ private:
 public:
     static ApEntityId PUBLIC_API GetMethodAbcId(JSFunction *jsFunction);
     static ApEntityId PUBLIC_API GetMethodAbcId(JSTaggedValue jsMethod);
+    void Reset(bool isEnable);
 private:
     ProfileType GetRecordProfileType(JSFunction *jsFunction, const CString &recordName);
     ProfileType GetRecordProfileType(ApEntityId abcId, const CString &recordName);
     ProfileType GetRecordProfileType(const std::shared_ptr<JSPandaFile> &pf, ApEntityId abcId,
                                      const CString &recordName);
-
-    void Reset(bool isEnable);
 
     bool IsSkippableObjectType(ProfileType type)
     {
@@ -465,10 +476,12 @@ private:
         return false;
     }
 
+    ConcurrentGuardValues v_;
+    std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     EcmaVM *vm_ { nullptr };
     bool isEnable_ { false };
     bool isForce_ {false};
-    State state_ { State::STOP };
+    std::atomic<State> state_ {State::STOP};
     uint32_t methodCount_ { 0 };
     std::chrono::system_clock::time_point saveTimestamp_;
     Mutex mutex_;
@@ -481,6 +494,25 @@ private:
     CUnorderedSet<uint32_t> skipCtorMethodId_;
     JITProfiler *jitProfiler_ {nullptr};
     friend class PGOProfilerManager;
+};
+
+class PGODumpPauseScope {
+public:
+    explicit PGODumpPauseScope(std::shared_ptr<PGOProfiler> profiler): profiler_(profiler)
+    {
+        profiler_->SuspendByGC();
+    }
+
+    ~PGODumpPauseScope()
+    {
+        profiler_->ResumeByGC();
+    }
+
+    NO_COPY_SEMANTIC(PGODumpPauseScope);
+    NO_MOVE_SEMANTIC(PGODumpPauseScope);
+
+private:
+    std::shared_ptr<PGOProfiler> profiler_;
 };
 } // namespace pgo
 } // namespace panda::ecmascript

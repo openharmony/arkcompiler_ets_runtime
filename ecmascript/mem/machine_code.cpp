@@ -20,26 +20,30 @@
 #include "ecmascript/js_handle.h"
 
 namespace panda::ecmascript {
-void MachineCode::SetData(const MachineCodeDesc *desc, JSHandle<Method> &method, size_t dataSize)
+void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize)
 {
     DISALLOW_GARBAGE_COLLECTION;
+    if (desc.codeType == MachineCodeType::BASELINE_CODE) {
+        SetBaselineCodeData(desc, method, dataSize);
+        return;
+    }
     EntityId methodId = method->GetMethodId();
 
     SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
     SetOsrDeoptFlag(false);
     SetOsrExecuteCnt(0);
 
-    size_t rodataSizeBeforeTextAlign = AlignUp(desc->rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
-    size_t codeSizeAlign = AlignUp(desc->codeSize, MachineCode::DATA_ALIGN);
-    size_t rodataSizeAfterTextAlign = AlignUp(desc->rodataSizeAfterText, MachineCode::DATA_ALIGN);
+    size_t rodataSizeBeforeTextAlign = AlignUp(desc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
+    size_t codeSizeAlign = AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
+    size_t rodataSizeAfterTextAlign = AlignUp(desc.rodataSizeAfterText, MachineCode::DATA_ALIGN);
 
-    size_t funcEntryDesSizeAlign = AlignUp(desc->funcEntryDesSize, MachineCode::TEXT_ALIGN);
+    size_t funcEntryDesSizeAlign = AlignUp(desc.funcEntryDesSize, MachineCode::TEXT_ALIGN);
     SetFuncEntryDesSize(funcEntryDesSizeAlign);
 
     size_t instrSize = rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign;
     SetInstructionsSize(instrSize);
 
-    size_t stackMapSizeAlign = AlignUp(desc->stackMapSize, MachineCode::DATA_ALIGN);
+    size_t stackMapSizeAlign = AlignUp(desc.stackMapSize, MachineCode::DATA_ALIGN);
     SetStackMapSize(stackMapSizeAlign);
 
     ASSERT(dataSize == (funcEntryDesSizeAlign + instrSize + stackMapSizeAlign));
@@ -49,40 +53,40 @@ void MachineCode::SetData(const MachineCodeDesc *desc, JSHandle<Method> &method,
     uint8_t *pText = textStart;
     if (rodataSizeBeforeTextAlign != 0) {
         if (memcpy_s(pText, rodataSizeBeforeTextAlign,
-            reinterpret_cast<uint8_t*>(desc->rodataAddrBeforeText), desc->rodataSizeBeforeText) != EOK) {
-            LOG_JIT(ERROR) << "memcpy fail in copy jit code";
+            reinterpret_cast<uint8_t*>(desc.rodataAddrBeforeText), desc.rodataSizeBeforeText) != EOK) {
+            LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
             return;
         }
         pText += rodataSizeBeforeTextAlign;
     }
-    if (memcpy_s(pText, codeSizeAlign, reinterpret_cast<uint8_t*>(desc->codeAddr), desc->codeSize) != EOK) {
-        LOG_JIT(ERROR) << "memcpy fail in copy jit code";
+    if (memcpy_s(pText, codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+        LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
         return;
     }
     pText += codeSizeAlign;
     if (rodataSizeAfterTextAlign != 0) {
         if (memcpy_s(pText, rodataSizeAfterTextAlign,
-            reinterpret_cast<uint8_t*>(desc->rodataAddrAfterText), desc->rodataSizeAfterText) != EOK) {
-            LOG_JIT(ERROR) << "memcpy fail in copy jit code";
+            reinterpret_cast<uint8_t*>(desc.rodataAddrAfterText), desc.rodataSizeAfterText) != EOK) {
+            LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
             return;
         }
     }
 
     uint8_t *stackmapAddr = GetStackMapAddress();
-    if (memcpy_s(stackmapAddr, desc->stackMapSize, reinterpret_cast<uint8_t*>(desc->stackMapAddr),
-        desc->stackMapSize) != EOK) {
-        LOG_JIT(ERROR) << "memcpy fail in copy jit stackmap";
+    if (memcpy_s(stackmapAddr, desc.stackMapSize, reinterpret_cast<uint8_t*>(desc.stackMapAddr),
+        desc.stackMapSize) != EOK) {
+        LOG_JIT(ERROR) << "memcpy fail in copy fast jit stackmap";
         return;
     }
 
     FuncEntryDes *funcEntry = reinterpret_cast<FuncEntryDes*>(GetFuncEntryDesAddress());
-    if (memcpy_s(funcEntry, desc->funcEntryDesSize, reinterpret_cast<uint8_t*>(desc->funcEntryDesAddr),
-        desc->funcEntryDesSize) != EOK) {
-        LOG_JIT(ERROR) << "memcpy fail in copy jit funcEntry";
+    if (memcpy_s(funcEntry, desc.funcEntryDesSize, reinterpret_cast<uint8_t*>(desc.funcEntryDesAddr),
+        desc.funcEntryDesSize) != EOK) {
+        LOG_JIT(ERROR) << "memcpy fail in copy fast jit funcEntry";
         return;
     }
 
-    uint32_t cnt = desc->funcEntryDesSize / sizeof(FuncEntryDes);
+    uint32_t cnt = desc.funcEntryDesSize / sizeof(FuncEntryDes);
     ASSERT(cnt <= 2); // 2: jsfunction + deoptimize stub
     for (uint32_t i = 0; i < cnt; i++) {
         funcEntry->codeAddr_ += reinterpret_cast<uintptr_t>(textStart);
@@ -93,10 +97,48 @@ void MachineCode::SetData(const MachineCodeDesc *desc, JSHandle<Method> &method,
     }
 
     CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
-    LOG_JIT(DEBUG) << "MachineCode :" << methodName << ", "  << " text addr:" <<
+    LOG_JIT(DEBUG) << "Fast JIT MachineCode :" << methodName << ", "  << " text addr:" <<
         reinterpret_cast<void*>(GetText()) << ", size:" << instrSize  <<
         ", stackMap addr:" << reinterpret_cast<void*>(stackmapAddr) << ", size:" << stackMapSizeAlign <<
         ", funcEntry addr:" << reinterpret_cast<void*>(GetFuncEntryDesAddress()) << ", count:" << cnt;
+
+    //todo
+    size_t pageSize = 4096; // 4096 : pageSize
+    uintptr_t startPage = reinterpret_cast<uintptr_t>(textStart) & ~(pageSize - 1);
+    uintptr_t endPage = (reinterpret_cast<uintptr_t>(textStart) + dataSize) & ~(pageSize - 1);
+    size_t protSize = (endPage == startPage) ? ((dataSize + pageSize - 1U) & (~(pageSize - 1))) :
+        (pageSize + ((dataSize + pageSize - 1U) & (~(pageSize - 1))));
+    PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE);
+}
+
+void MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
+                                      JSHandle<Method> &method, size_t dataSize)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    SetFuncEntryDesSize(0);
+
+    size_t instrSizeAlign = AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
+    SetInstructionsSize(instrSizeAlign);
+
+    SetStackMapSize(0);
+
+    ASSERT(dataSize == instrSizeAlign);
+    SetPayLoadSizeInBytes(dataSize);
+
+    uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
+    ASSERT(IsAligned(reinterpret_cast<uintptr_t>(textStart), TEXT_ALIGN));
+    uint8_t *pText = textStart;
+    if (memcpy_s(pText, instrSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+        LOG_BASELINEJIT(ERROR) << "memcpy fail in copy baseline jit code";
+        return;
+    }
+
+    SetFuncAddr(reinterpret_cast<uintptr_t>(textStart));
+
+    CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
+    LOG_BASELINEJIT(DEBUG) << "BaselineCode :" << methodName << ", "  << " text addr:" <<
+        reinterpret_cast<void*>(GetText()) << ", size:" << instrSizeAlign  <<
+        ", stackMap addr: 0, size: 0, funcEntry addr: 0, count 0";
 
     //todo
     size_t pageSize = 4096;

@@ -340,6 +340,51 @@ GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
         Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
 }
 
+GateRef CircuitBuilder::CallPrivateGetter(GateRef hirGate, GateRef receiver, GateRef accessor, const char* comment)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
+
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> args = {currentControl, currentDepend, receiver, accessor};
+    AppendFrameArgs(args, hirGate);
+    auto callGate = GetCircuit()->NewGate(circuit_->CallPrivateGetter(pcOffset),
+                                          MachineType::I64,
+                                          args.size(),
+                                          args.data(),
+                                          GateType::AnyType(),
+                                          comment);
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
+GateRef CircuitBuilder::CallPrivateSetter(
+    GateRef hirGate, GateRef receiver, GateRef accessor, GateRef value, const char* comment)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
+
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> args = {currentControl, currentDepend, receiver, accessor, value};
+    AppendFrameArgs(args, hirGate);
+    auto callGate = GetCircuit()->NewGate(circuit_->CallPrivateSetter(pcOffset),
+                                          MachineType::I64,
+                                          args.size(),
+                                          args.data(),
+                                          GateType::AnyType(),
+                                          comment);
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
 GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,
                                    const char* comment)
 {
@@ -403,6 +448,50 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);
     return callGate;
+}
+
+GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
+                                     bool needPushUndefined)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    uint64_t bitfield = args.size();
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
+    args.insert(args.begin(), currentDepend);
+    args.insert(args.begin(), currentControl);
+    AppendFrameArgs(args, hirGate);
+    auto callGate = GetCircuit()->NewGate(circuit_->CallNew(bitfield, pcOffset, needPushUndefined),
+                                          MachineType::I64, args.size(), args.data(), GateType::AnyType());
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
+GateRef CircuitBuilder::CallConstructCheck(GateRef callGate, GateRef depend, GateRef glue, GateRef ctor,
+                                           GateRef value, GateRef thisObj)
+{
+    const CallSignature *cs = CommonStubCSigns::Get(CommonStubCSigns::ConstructorCheck);
+    GateRef target = IntPtr(CommonStubCSigns::ConstructorCheck);
+    const std::vector<GateRef> &args = { glue, ctor, value, thisObj };
+    std::vector<GateRef> inputs { depend, target, glue };
+    inputs.insert(inputs.end(), args.begin(), args.end());
+    auto numValuesIn = args.size() + 2; // 2: target & glue
+    if (circuit_->IsOptimizedJSFunctionFrame() && callGate != Circuit::NullGate()) {
+        AppendFrameArgs(inputs, callGate);
+        numValuesIn += 1;
+
+        GateRef pcOffset = Int64(acc_.TryGetPcOffset(callGate));
+        inputs.emplace_back(pcOffset);
+        numValuesIn += 1;
+    }
+    const GateMetaData* meta = circuit_->Call(numValuesIn);
+    MachineType machineType = cs->GetReturnType().GetMachineType();
+    GateType type = cs->GetReturnType().GetGateType();
+    value = circuit_->NewGate(meta, machineType, inputs.size(), inputs.data(), type, nullptr);
+    return value;
 }
 
 GateRef CircuitBuilder::CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength)

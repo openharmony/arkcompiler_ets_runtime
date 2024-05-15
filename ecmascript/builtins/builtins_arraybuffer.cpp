@@ -267,6 +267,9 @@ bool BuiltinsArrayBuffer::IsDetachedBuffer(JSTaggedValue arrayBuffer)
     // 1. Assert: Type(arrayBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
     ASSERT(arrayBuffer.IsArrayBuffer() || arrayBuffer.IsSharedArrayBuffer());
     JSArrayBuffer *buffer = JSArrayBuffer::Cast(arrayBuffer.GetTaggedObject());
+    if (buffer == nullptr) {
+        LOG_ECMA(FATAL) << "BuiltinsArrayBuffer::IsDetachedBuffer:buffer is nullptr";
+    }
     JSTaggedValue dataSlot = buffer->GetArrayBufferData();
     // 2. If arrayBuffer’s [[ArrayBufferData]] internal slot is null, return true.
     // 3. Return false.
@@ -302,12 +305,12 @@ JSTaggedValue BuiltinsArrayBuffer::CloneArrayBuffer(JSThread *thread, const JSHa
     if (srcBuffer->IsByteArray()) {
         JSHandle<ByteArray> byteArrayBuf(srcBuffer);
         srcLen = byteArrayBuf->GetArrayLength();
-        int32_t byteLen = byteArrayBuf->GetByteLength();
+        int32_t byteLen = static_cast<int32_t>(byteArrayBuf->GetByteLength());
         // 5. Assert: srcByteOffset ≤ srcLength.
         ASSERT(srcByteOffset <= srcLen);
         // 6. Let cloneLength be (srcLength – srcByteOffset) * byteLen.
         cloneLen = static_cast<int32_t>(srcLen - srcByteOffset) * byteLen;
-        srcByteOffset *= byteLen;
+        srcByteOffset *= static_cast<uint32_t>(byteLen);
     } else {
         JSHandle<JSArrayBuffer> arrBuf(srcBuffer);
         srcLen = arrBuf->GetArrayBufferByteLength();
@@ -767,6 +770,9 @@ void *BuiltinsArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t
     }
 
     JSArrayBuffer *arrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
+    if (arrayBuffer == nullptr) {
+        LOG_ECMA(FATAL) << "BuiltinsArrayBuffer::GetDataPointFromBuffer:arrayBuffer is nullptr";
+    }
     if (arrayBuffer->GetArrayBufferByteLength() == 0) {
         return nullptr;
     }

@@ -34,7 +34,7 @@
 namespace panda::ecmascript {
 
 void JSSegmenter::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSSegmenter> &segmenter,
-                                      icu::BreakIterator* icuBreakIterator, const DeleteEntryPoint &callback)
+                                      icu::BreakIterator* icuBreakIterator, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -43,7 +43,7 @@ void JSSegmenter::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSSegment
     JSTaggedValue data = segmenter->GetIcuField();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuBreakIterator);
+        native->ResetExternalPointer(thread, icuBreakIterator);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuBreakIterator, callback);
@@ -102,6 +102,8 @@ JSHandle<JSSegmenter> JSSegmenter::InitializeSegmenter(JSThread *thread,
     JSHandle<JSObject> optionsObject;
     if (options->IsUndefined()) {
         optionsObject = factory->CreateNullJSObject();
+    } else if (!options->IsJSObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "options is not Object", segmenter);
     } else {
         optionsObject = JSTaggedValue::ToObject(thread, options);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSSegmenter, thread);

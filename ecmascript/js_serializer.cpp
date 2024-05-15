@@ -1385,6 +1385,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSFunction()
     JSHandle<JSTaggedValue> methodVal = DeserializeJSTaggedValue();
     JSHandle<Method> method = JSHandle<Method>::Cast(methodVal);
     func->SetMethod(thread_, method);
+    func->SetTaskConcurrentFuncFlag(0); // 0 : default value
     func->InitializeForConcurrentFunction(thread_);
     if (method->IsAotWithCallField()) {
         uintptr_t codeEntry;
@@ -1784,7 +1785,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSNativePointer()
         return JSHandle<JSTaggedValue>();
     }
     JSHandle<JSNativePointer> np = factory_->NewJSNativePointer(ToVoidPtr(externalPtr),
-                                                                reinterpret_cast<DeleteEntryPoint>(deleter),
+                                                                reinterpret_cast<NativePointerCallback>(deleter),
                                                                 ToVoidPtr(allocatorPtr),
                                                                 false,
                                                                 bindingSize);

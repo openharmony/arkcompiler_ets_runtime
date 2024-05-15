@@ -154,12 +154,15 @@ uint32 AArch64AlignAnalysis::GetAlignRange(uint32 alignedVal, uint32 addr) const
     if (addr == 0) {
         return addr;
     }
+    CHECK_FATAL(alignedVal > 0, "must not be zero");
     uint32 range = (alignedVal - (((addr - 1) * kInsnSize) & (alignedVal - 1))) / kInsnSize - 1;
     return range;
 }
 
 bool AArch64AlignAnalysis::IsInSameAlignedRegion(uint32 addr1, uint32 addr2, uint32 alignedRegionSize) const
 {
+    CHECK_FATAL(addr2 > 0, "must not be zero");
+    CHECK_FATAL(addr1 > 0, "must not be zero");
     return (((addr1 - 1) * kInsnSize) / alignedRegionSize) == (((addr2 - 1) * kInsnSize) / alignedRegionSize);
 }
 
@@ -188,6 +191,7 @@ bool AArch64AlignAnalysis::MarkCondBranchAlign()
                 insn->SetAddress(addr);
                 continue;
             }
+            CHECK_FATAL(insn->GetOperandSize() > 0, "must not be zero");
             Operand &opnd = insn->GetOperand(insn->GetOperandSize() - 1);
             if (!opnd.IsLabelOpnd()) {
                 insn->SetAddress(addr);

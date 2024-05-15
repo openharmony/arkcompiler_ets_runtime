@@ -175,14 +175,13 @@ HWTEST_F_L0(GCTest, CallbackTask)
         for (int i = 0; i < 10; i++) {
             // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
             void *externalPointer = malloc(10);
-            [[maybe_unused]] JSHandle<JSNativePointer> nativePointer
-                = factory->NewJSNativePointer(externalPointer,
-                                              [](void* pointer, [[maybe_unused]] void* data) {
-                                                  if (pointer != nullptr) {
-                                                      free(pointer);
-                                                  }
-                                              },
-                                              nullptr, false, 10, Concurrent::YES);
+            [[maybe_unused]] JSHandle<JSNativePointer> nativePointer = factory->NewJSNativePointer(
+                externalPointer, []([[maybe_unused]] void *env, void* pointer, [[maybe_unused]] void* data) {
+                if (pointer != nullptr) {
+                    free(pointer);
+                }
+            },
+            nullptr, false, 10, Concurrent::YES);
         }
     }
     size_t number = vm->GetConcurrentNativePointerListSize();
@@ -190,6 +189,50 @@ HWTEST_F_L0(GCTest, CallbackTask)
     heap->CollectGarbage(TriggerGCType::OLD_GC);
     size_t newNumber = vm->GetConcurrentNativePointerListSize();
     EXPECT_TRUE(number > newNumber);
+}
+
+HWTEST_F_L0(GCTest, LargeOverShootSizeTest)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    size_t originalYoungSize = heap->GetNewSpace()->GetCommittedSize();
+
+    EXPECT_FALSE(heap->GetNewSpace()->CommittedSizeIsLarge());
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    heap->NotifyHighSensitive(true);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 500; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    size_t newYoungSize = heap->GetNewSpace()->GetCommittedSize();
+    size_t originalOverShootSize = heap->GetNewSpace()->GetOvershootSize();
+    EXPECT_TRUE(heap->GetNewSpace()->CommittedSizeIsLarge());
+    EXPECT_TRUE(originalYoungSize < newYoungSize);
+
+    heap->NotifyHighSensitive(false);
+    heap->CollectGarbage(TriggerGCType::YOUNG_GC);
+    newYoungSize = heap->GetNewSpace()->GetCommittedSize();
+    size_t newOverShootSize = heap->GetNewSpace()->GetOvershootSize();
+
+    EXPECT_TRUE(originalYoungSize < newYoungSize);
+    EXPECT_TRUE(originalOverShootSize < newOverShootSize);
+    EXPECT_TRUE(0 < newOverShootSize);
+
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 100; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    size_t newSize = heap->GetNewSpace()->GetCommittedSize();
+    size_t newShootSize = heap->GetNewSpace()->GetOvershootSize();
+
+    EXPECT_TRUE(originalYoungSize <= newSize);
+    EXPECT_TRUE(newYoungSize > newSize);
+    EXPECT_TRUE(newOverShootSize > newShootSize);
 }
 
 } // namespace panda::test

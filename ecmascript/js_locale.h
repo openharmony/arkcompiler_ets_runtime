@@ -167,7 +167,7 @@ public:
         return reinterpret_cast<icu::Locale *>(result);
     }
 
-    static void FreeIcuLocale(void *pointer, void *data)
+    static void FreeIcuLocale([[maybe_unused]] void *env, void *pointer, void *data)
     {
         if (pointer == nullptr) {
             return;
@@ -483,6 +483,8 @@ public:
 
     static bool IsWellFormedCurrencyCode(const std::string &currency);
 
+    static bool IsWellFormedCalendarCode(const std::string& calendar);
+
     static JSHandle<JSTaggedValue> GetNumberFieldType(JSThread *thread, JSTaggedValue x, int32_t fieldId);
 
     static bool ApplyOptionsToTag(JSThread *thread, const JSHandle<EcmaString> &tag, const JSHandle<JSObject> &options,
@@ -492,7 +494,7 @@ public:
                                                const JSHandle<EcmaString> &localeString,
                                                const JSHandle<JSObject> &options);
 
-    static JSHandle<EcmaString> NormalizeKeywordValue(JSThread *thread, const JSHandle<JSLocale> &locale,
+    static JSTaggedValue NormalizeKeywordValue(JSThread *thread, const JSHandle<JSLocale> &locale,
                                                     const std::string &key);
 
     static JSHandle<EcmaString> ToString(JSThread *thread, const JSHandle<JSLocale> &locale);

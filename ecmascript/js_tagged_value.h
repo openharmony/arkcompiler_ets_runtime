@@ -659,16 +659,6 @@ public:
     bool IsRegularObject() const;
     bool IsMachineCodeObject() const;
     bool IsClassInfoExtractor() const;
-    bool IsTSType() const;
-    bool IsTSObjectType() const;
-    bool IsTSClassType() const;
-    bool IsTSUnionType() const;
-    bool IsTSInterfaceType() const;
-    bool IsTSClassInstanceType() const;
-    bool IsTSFunctionType() const;
-    bool IsTSArrayType() const;
-    bool IsTSIteratorInstanceType() const;
-    bool IsTSNamespaceType() const;
 
     bool IsCjsExports() const;
     bool IsCjsModule() const;
@@ -679,6 +669,7 @@ public:
     bool IsLocalExportEntry() const;
     bool IsIndirectExportEntry() const;
     bool IsStarExportEntry() const;
+    bool IsModuleBinding() const;
     bool IsResolvedBinding() const;
     bool IsResolvedIndexBinding() const;
     bool IsResolvedRecordIndexBinding() const;
@@ -688,14 +679,6 @@ public:
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;
     bool IsSharedType() const;
-    bool IsJSSharedJSONValue() const;
-    bool IsJSSharedJSONFalse() const;
-    bool IsJSSharedJSONTrue() const;
-    bool IsJSSharedJSONString() const;
-    bool IsJSSharedJSONNull() const;
-    bool IsJSSharedJSONObject() const;
-    bool IsJSSharedJSONNumber() const;
-    bool IsJSSharedJSONArray() const;
 
     bool PUBLIC_API IsInSharedHeap() const;
     bool IsInSharedSweepableSpace() const;
@@ -719,6 +702,11 @@ public:
     void D() const DUMP_API_ATTR;
     void DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode = true) const;
     static void DV(JSTaggedType val) DUMP_API_ATTR;
+    friend std::ostream& operator<<(std::ostream& os, const JSTaggedValue& value)
+    {
+        value.Dump(os);
+        return os;
+    }
 
 private:
     JSTaggedType value_;

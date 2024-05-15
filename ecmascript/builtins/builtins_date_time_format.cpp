@@ -64,14 +64,16 @@ JSTaggedValue BuiltinsDateTimeFormat::DateTimeFormatConstructor(EcmaRuntimeCallI
     //    a. Perform ? DefinePropertyOrThrow(this, %Intl%.[[FallbackSymbol]], PropertyDescriptor{ [[Value]]:
     //       dateTimeFormat, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
     //    b. Return this.
-    bool isInstanceOf = JSObject::InstanceOf(thread, thisValue, env->GetDateTimeFormatFunction());
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (newTarget->IsUndefined() && thisValue->IsJSObject() && isInstanceOf) {
-        PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>::Cast(dtf), false, false, false);
-        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
-        JSTaggedValue::DefinePropertyOrThrow(thread, thisValue, key, descriptor);
+    if (newTarget->IsUndefined() && thisValue->IsJSObject()) {
+        bool isInstanceOf = JSObject::InstanceOf(thread, thisValue, env->GetDateTimeFormatFunction());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        return thisValue.GetTaggedValue();
+        if (isInstanceOf) {
+            PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>::Cast(dtf), false, false, false);
+            JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
+            JSTaggedValue::DefinePropertyOrThrow(thread, thisValue, key, descriptor);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return thisValue.GetTaggedValue();
+        }
     }
 
     // 6. Return dateTimeFormat.
@@ -326,10 +328,6 @@ JSTaggedValue BuiltinsDateTimeFormat::FormatRangeToParts(EcmaRuntimeCallInfo *ar
     JSTaggedNumber valueY = JSTaggedValue::ToNumber(thread, endDate);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double y = valueY.GetNumber();
-    // 7. If x is greater than y, throw a RangeError exception.
-    if (x > y) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "x is greater than y", JSTaggedValue::Exception());
-    }
 
     // 8. Return ? FormatDateTimeRangeToParts(dtf, x, y)
     JSHandle<JSDateTimeFormat> dtf = JSHandle<JSDateTimeFormat>::Cast(thisValue);

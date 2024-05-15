@@ -95,7 +95,7 @@ function show2(message, ...args) {
 }
 const handler = {
     apply: function (target, thisArg, argumentsList) {
-        return target(...argumentsList);;
+        return target(...argumentsList);
     }
 };
 let proxy = new Proxy(show2, handler);

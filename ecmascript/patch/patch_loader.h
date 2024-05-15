@@ -80,7 +80,7 @@ struct PatchInfo {
     // patch replaced recordNames.
     CUnorderedSet<CString> replacedRecordNames;
     // patch replaced methods.
-    CUnorderedMap<EntityId, CString> repalcedPatchMethods;
+    CUnorderedMap<EntityId, CString> replacedPatchMethods;
 };
 
 enum class StageOfHotReload : int32_t {
@@ -88,6 +88,12 @@ enum class StageOfHotReload : int32_t {
     INITIALIZE_STAGE_OF_HOTRELOAD, // 0 : initialize stageOfHotreload_ in ecma_context.h
     LOAD_END_EXECUTE_PATCHMAIN, // 1: for Interceptint get module var
     UNLOAD_END_EXECUTE_PATCHMAIN // 2 :for execute abc normally
+};
+
+enum class StageOfColdReload : int32_t {
+    NOT_COLD_RELOAD,
+    IS_COLD_RELOAD,
+    COLD_RELOADING
 };
 
 class PatchLoader {

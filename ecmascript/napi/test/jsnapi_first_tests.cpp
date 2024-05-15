@@ -484,7 +484,7 @@ HWTEST_F_L0(JSNApiTests, CreateNativeObject)
     size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
     Local<NativePointerRef> nativeInfo = NativePointerRef::New(
         vm_, reinterpret_cast<void *>(info),
-        [](void *data, [[maybe_unused]] void *info) {
+        []([[maybe_unused]] void *env, void *data, [[maybe_unused]] void *info) {
             auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo *>(data);
             delete externalInfo;
         },
@@ -572,7 +572,7 @@ HWTEST_F_L0(JSNApiTests, GetProtoType)
     size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
     Local<NativePointerRef> nativeInfo = NativePointerRef::New(
         vm_, reinterpret_cast<void *>(info),
-        [](void *data, [[maybe_unused]] void *info) {
+        []([[maybe_unused]] void *env, void *data, [[maybe_unused]] void *info) {
             auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo *>(data);
             delete externalInfo;
         },
@@ -625,6 +625,23 @@ HWTEST_F_L0(JSNApiTests, PromiseCatch)
     vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
+HWTEST_F_L0(JSNApiTests, PromiseCatchUintPtr)
+{
+    LocalScope scope(vm_);
+    Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm_);
+
+    Local<PromiseRef> promise = capability->GetPromise(vm_);
+    Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
+    Local<PromiseRef> catchPromise = promise->Catch(vm_, reject);
+    ASSERT_TRUE(promise->IsPromise());
+    ASSERT_TRUE(catchPromise->IsPromise());
+
+    Local<StringRef> reason = StringRef::NewFromUtf8(vm_, "Reject");
+    ASSERT_TRUE(capability->Reject(vm_, reinterpret_cast<uintptr_t>(*reason)));
+
+    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+}
+
 /*
  * @tc.number: ffi_interface_api_013
  * @tc.name: CheckResolve_New_Reject
@@ -667,6 +684,22 @@ HWTEST_F_L0(JSNApiTests, PromiseThen)
     vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
+HWTEST_F_L0(JSNApiTests, PromiseThenUintPtr)
+{
+    LocalScope scope(vm_);
+    Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm_);
+
+    Local<PromiseRef> promise = capability->GetPromise(vm_);
+    Local<FunctionRef> resolve = FunctionRef::New(vm_, ResolvedCallback);
+    Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
+    Local<PromiseRef> thenPromise = promise->Then(vm_, resolve, reject);
+    ASSERT_TRUE(promise->IsPromise());
+    ASSERT_TRUE(thenPromise->IsPromise());
+
+    Local<StringRef> value = NumberRef::New(vm_, 300.3); // 300.3 : test case of input
+    ASSERT_TRUE(capability->Resolve(vm_, reinterpret_cast<uintptr_t>(*value)));
+    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+}
 
 /**
  * @tc.number: ffi_interface_api_014
@@ -718,7 +751,7 @@ HWTEST_F_L0(JSNApiTests, ArrayBufferWithBuffer)
     const int32_t length = 15;
     Data *data = new Data();
     data->length = length;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = []([[maybe_unused]] void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         ASSERT_EQ(currentData->length, 15); // 5 : size of arguments
@@ -1655,7 +1688,7 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFi
 HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
 {
     LocalScope scope(vm_);
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
     bool callNative = true;
     size_t nativeBindingsize = 15;

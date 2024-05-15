@@ -28,3 +28,9 @@ export {str as tmp}
 export function f() {
     print("load function f()");
 }
+
+const add = (a, b) => {
+    print('add');
+    return a + b;
+};
+export { add };

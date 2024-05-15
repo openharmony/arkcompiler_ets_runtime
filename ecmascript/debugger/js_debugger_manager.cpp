@@ -36,4 +36,13 @@ namespace panda::ecmascript::tooling {
         }
         return jsDebuggerManagerMap_[tid];
     }
+
+    void JsDebuggerManager::DeleteJsDebuggerManager(int tid)
+    {
+        std::unique_lock<std::shared_mutex> lock(mutex_);
+        auto it = jsDebuggerManagerMap_.find(tid);
+        if (it != jsDebuggerManagerMap_.end()) {
+            jsDebuggerManagerMap_.erase(it);
+        }
+    }
 } // namespace panda::ecmascript::tooling

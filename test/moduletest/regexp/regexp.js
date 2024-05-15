@@ -599,3 +599,38 @@ delete e.exec;
   v0[Symbol.match] = v4;
   print(v0["exec"]());
 }
+
+{
+  ("65535").split(/(?!\1(a\1)\1)\1/g);
+  const o4 = {
+    ...RegExp,
+  };
+  print(o4);
+}
+
+{
+  const v2 = /e\8Z(x)(x)(x)(x)(x)(x)(x)(x)(x)(x)\10*/misd;
+  v2[1073741824] = -194290175n;
+  for (let v3 = 0; v3 < 2; v3++) {
+    print(v2.test(-194290175n));
+  }
+}
+
+function f(...args) {
+  return {};
+}
+let reg51 = new RegExp("a");
+f.exec = f;
+let relpfun = reg51[Symbol.replace];
+relpfun.apply(f, [1, 2, 3, 4]);
+print("success");
+
+{
+  let str = /^\s*([^;\s]*)/;
+  str.test("text/html");
+  print(RegExp.$1);
+  str.test("text/plain");
+  print(RegExp.$1);
+  str.test("text/html");
+  print(RegExp.$1);
+}

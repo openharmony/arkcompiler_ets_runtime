@@ -30,3 +30,74 @@ r.exec = function() {
 };
 let a = r[Symbol.replace]('', '[$<length>]');
 print(a)
+
+let lineString1 = "这是一段lineString，A1这是替换的字符串A2"
+let treeString1 = "这是一段treeString，".concat("B1这是替换的字符串B2")
+let slicedString = "这是一段slicedString，C1这是要替换的字符串C2，xxxxxxxx".slice(0, 30);
+
+var re1 = /[ABC]/;
+var re2 = /[ABC]/g;
+
+var res1 = lineString1.replace(re1, "X");
+var res2 = lineString1.replace(re2, "X");
+var res3 = treeString1.replace(re1, "X");
+var res4 = treeString1.replace(re2, "X");
+var res5 = slicedString.replace(re1, "X");
+var res6 = slicedString.replace(re2, "X");
+
+print(res1)
+print(res2)
+print(res3)
+print(res4)
+print(res5)
+print(res6)
+
+let lineString2 = "aaaaAbbbbBccccCaaaabbbbcccc"
+
+function func1() {
+    return "xxxxxxx".concat("yyyyyyyyy")
+}
+var res = lineString2.replace(re2, func1);
+print(res)
+
+function func2() {
+    return "xxxxxxx".concat("xxxxxxx")
+}
+res = lineString2.replace(re2, func2);
+print(res)
+
+function func3() {
+    return "xxxxxxxxxxxxxx".concat("yyyyyyyy")
+}
+res = lineString2.replace(re2, func3);
+print(res)
+
+function func4() {
+    return "xxxxxxxxxxxxxx".concat("y")
+}
+res = lineString2.replace(re2, func4);
+print(res)
+
+function func5() {
+    return "哈哈哈哈哈哈哈".concat("嘻嘻嘻嘻嘻嘻嘻嘻嘻")
+}
+res = lineString2.replace(re2, func5);
+print(res)
+
+function func6() {
+    return "哈哈哈哈哈哈哈".concat("哈哈哈哈哈哈哈")
+}
+res = lineString2.replace(re2, func6);
+print(res)
+
+function func7() {
+    return "哈哈哈哈哈哈哈哈哈".concat("嘻嘻嘻嘻嘻嘻嘻")
+}
+res = lineString2.replace(re2, func7);
+print(res)
+
+function func8() {
+    return "哈哈哈哈哈哈哈哈哈".concat("嘻")
+}
+res = lineString2.replace(re2, func8);
+print(res)

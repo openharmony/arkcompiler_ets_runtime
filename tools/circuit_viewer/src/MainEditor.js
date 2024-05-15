@@ -27,7 +27,7 @@ class MainEditor {
 
     this.filePoint_ = '';
     this.files_ = [];
-    this.viewer_ = {}
+    this.viewer_ = {};
     LogParser.Load('test.txt', this.onLoad.bind(this));
 
     this.selectFile_ = new XSelect(this.files_, this.filePoint_);
@@ -62,7 +62,7 @@ class MainEditor {
       reader.onload = (e) => {
         let ret = atob(e.target.result.split(',')[1]);
         this.onLoad(files[0].name, ret);
-      }
+      };
     }
   }
   static pInstance_ = null;
@@ -123,4 +123,4 @@ class MainEditor {
 
 module.exports = {
   MainEditor
-}
+};

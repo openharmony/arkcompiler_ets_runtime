@@ -347,6 +347,11 @@ void DebuggerApi::SwitchThreadStateRunningOrNative(const EcmaVM *ecmaVM, ThreadS
     }
 }
 
+bool DebuggerApi::RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url)
+{
+    return debugger->RemoveBreakpointsByUrl(url);
+}
+
 // ScopeInfo
 Local<JSValueRef> DebuggerApi::GetProperties(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
                                              int32_t level, uint32_t slot)

@@ -423,6 +423,10 @@ public:
             size += sizeof(PGOProfileType) * (count - 1) * 2;   // 2 means mul by 2
         }
         auto result = reinterpret_cast<PGOProtoChainTemplate *>(malloc(size));
+        if (result == nullptr) {
+            LOG_ECMA_MEM(FATAL) << "malloc failed";
+            UNREACHABLE();
+        }
         new (result) PGOProtoChainTemplate(size, count);
         PGOProfileType *curPt = &(result->rootType_);
         for (auto iter : protoChain) {
@@ -448,6 +452,10 @@ public:
             size += sizeof(PGOProfileType) * (static_cast<size_t>(count) - 1) * 2;   // 2 means mul by 2
         }
         auto result = reinterpret_cast<PGOProtoChainTemplate *>(malloc(size));
+        if (result == nullptr) {
+            LOG_ECMA_MEM(FATAL) << "malloc failed";
+            UNREACHABLE();
+        }
         new (result) PGOProtoChainTemplate(size, count);
         PGOProfileType *curPt = &(result->rootType_);
         from->IterateProtoChain([&context, &curPt] (auto rootType, auto childType) {
@@ -875,6 +883,9 @@ public:
             if (sampleType->GetProfileType().IsMethodId()) {
                 return sampleType->GetProfileType().IsValidCallMethodId();
             }
+            if (sampleType->GetProfileType().IsClassType()) {
+                return sampleType->GetProfileType().IsValidClassConstructorMethodId();
+            }
         }
         return false;
     }
@@ -882,6 +893,9 @@ public:
     uint32_t GetCallMethodId() const
     {
         auto sampleType = static_cast<const PGOSampleType*>(type_);
+        if (sampleType->GetProfileType().IsClassType()) {
+            return sampleType->GetProfileType().GetClassConstructorMethodId();
+        }
         return sampleType->GetProfileType().GetCallMethodId();
     }
 

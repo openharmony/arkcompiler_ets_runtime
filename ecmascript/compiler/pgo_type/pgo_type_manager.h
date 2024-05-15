@@ -103,18 +103,42 @@ public:
     {
         locToElmsKindMap_.emplace(loc, kind);
     }
+
     inline void ClearHCInfoLocal()
     {
         hclassInfoLocal_.clear();
     }
-public:
+
     JSHandle<TaggedArray> GenJITHClassInfo();
-    void GenJITHClassInfoLocal();
+
+    // symbol
+    std::optional<uint64_t> PUBLIC_API GetSymbolIdByProfileType(ProfileTypeTuple type) const;
+
+    void DumpHClassData(std::ostream& os) const
+    {
+        int i = 0;
+        for (const auto& root: hcData_) {
+            int j = 0;
+            os << "[" << i << "]" << std::endl;
+            os << "RootType: " << root.first << std::endl;
+            for (const auto& child: root.second) {
+                os << "[" << i << "]" << "[" << j << "]" << std::endl;
+                os << "ChildType: " << child.first << std::endl;
+                os << "HClass: " << JSTaggedValue(child.second) << std::endl;
+                j++;
+            }
+            i++;
+        }
+    }
+
 private:
     // snapshot
     void GenHClassInfo();
+    void GenSymbolInfo();
     void GenArrayInfo();
     void GenConstantIndexInfo();
+
+    uint32_t GetSymbolCountFromHClassData();
 
     // opt to std::unordered_map
     using TransIdToHClass = std::map<ProfileType, JSTaggedType>;
@@ -127,6 +151,7 @@ private:
     CUnorderedMap<PGOTypeLocation, ProfileType, HashPGOTypeLocation> locToRootIdMap_ {};
     CUnorderedMap<PGOTypeLocation, ElementsKind, HashPGOTypeLocation> locToElmsKindMap_ {};
     CMap<ProfileTyper, uint32_t> profileTyperToHClassIndex_ {};
+    CMap<ProfileTypeTuple, uint64_t> profileTypeToSymbolId_ {};
     std::map<panda_file::File::EntityId, uint32_t> idElmsIdxMap_ {};
     std::map<panda_file::File::EntityId, ElementsKind> idElmsKindMap_ {};
     AOTSnapshot aotSnapshot_;
@@ -140,6 +165,7 @@ private:
     // so that subsequent passes (type_infer, ts_hcr_lowering) can obtain the correct constpool.
     JSTaggedValue curCP_ {JSTaggedValue::Hole()};
     int32_t curCPID_ {0};
+    int32_t pos_ {0};
 };
 }  // panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_MANAGER_H

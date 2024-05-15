@@ -828,10 +828,12 @@ bool AArch64ICOMorePredsPattern::Optimize(BB &curBB)
     }
     Insn *gotoBr = curBB.GetLastMachineInsn();
     DEBUG_ASSERT(gotoBr != nullptr, "gotoBr should not be nullptr");
+    CHECK_FATAL(gotoBr->GetOperandSize() >= 1, "value overflow");
     auto &gotoLabel = static_cast<LabelOperand &>(gotoBr->GetOperand(gotoBr->GetOperandSize() - 1));
     for (BB *preBB : curBB.GetPreds()) {
         Insn *condBr = cgFunc->GetTheCFG()->FindLastCondBrInsn(*preBB);
         DEBUG_ASSERT(condBr != nullptr, "nullptr check");
+        CHECK_FATAL(condBr->GetOperandSize() >= 1, "value overflow");
         Operand &condBrLastOpnd = condBr->GetOperand(condBr->GetOperandSize() - 1);
         DEBUG_ASSERT(condBrLastOpnd.IsLabelOpnd(), "label Operand must be exist in branch insn");
         auto &labelOpnd = static_cast<LabelOperand &>(condBrLastOpnd);
@@ -959,6 +961,7 @@ bool AArch64ICOMorePredsPattern::DoOpt(BB &gotoBB)
             preBB->InsertInsnBefore(*condBr, *csel);
         }
         /* new condBr */
+        CHECK_FATAL(condBr->GetOperandSize() >= 1, "value overflow");
         condBr->SetOperand(condBr->GetOperandSize() - 1, *labelOpnd[0]);
     }
     /* Remove branches and merge gotoBB */

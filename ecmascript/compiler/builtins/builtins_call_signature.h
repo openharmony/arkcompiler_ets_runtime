@@ -52,8 +52,15 @@ namespace panda::ecmascript::kungfu {
     V(CodePointAt,        String,   Undefined())                                        \
     V(IndexOf,            String,   IntToTaggedPtr(Int32(-1)))                          \
     V(Substring,          String,   IntToTaggedPtr(Int32(-1)))                          \
+    V(SubStr,             String,   Undefined())                                        \
     V(Replace,            String,   Undefined())                                        \
     V(Trim,               String,   Undefined())                                        \
+    V(TrimStart,          String,   Undefined())                                        \
+    V(TrimEnd,            String,   Undefined())                                        \
+    V(TrimLeft,           String,   Undefined())                                        \
+    V(TrimRight,          String,   Undefined())                                        \
+    V(PadStart,           String,   Undefined())                                        \
+    V(PadEnd,             String,   Undefined())                                        \
     V(Concat,             String,   Undefined())                                        \
     V(Slice,              String,   Undefined())                                        \
     V(ToLowerCase,        String,   Undefined())                                        \
@@ -62,11 +69,18 @@ namespace panda::ecmascript::kungfu {
     V(GetStringIterator,  String,   Undefined())
 
 #define BUILTINS_WITH_OBJECT_STUB_BUILDER(V)                                      \
-    V(ToString,        Object,   Undefined())                                     \
-    V(Create,          Object,   Undefined())                                     \
-    V(Assign,          Object,   Undefined())                                     \
-    V(HasOwnProperty,  Object,   TaggedFalse())                                   \
-    V(Keys,            Object,   Undefined())
+    V(ToString,                    Object,   Undefined())                         \
+    V(Create,                      Object,   Undefined())                         \
+    V(Assign,                      Object,   Undefined())                         \
+    V(HasOwnProperty,              Object,   TaggedFalse())                       \
+    V(Keys,                        Object,   Undefined())                         \
+    V(GetPrototypeOf,              Object,   Undefined())                         \
+    V(GetOwnPropertyNames,         Object,   Undefined())                         \
+    V(GetOwnPropertySymbols,       Object,   Undefined())                         \
+    V(Entries,                     Object,   Undefined())                         \
+    V(IsFrozen,                    Object,   Undefined())                         \
+    V(IsSealed,                    Object,   Undefined())                         \
+    V(GetOwnPropertyDescriptors,   Object,   Undefined())
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V)         \
     V(With,          Array,   Undefined())          \
@@ -139,13 +153,21 @@ namespace panda::ecmascript::kungfu {
     V(Some,            TypedArray,  Undefined())    \
     V(Filter,          TypedArray,  Undefined())    \
     V(With,            TypedArray,  Undefined())    \
+    V(Entries,         TypedArray,  Undefined())    \
+    V(Keys,            TypedArray,  Undefined())    \
+    V(Values,          TypedArray,  Undefined())    \
     V(Slice,           TypedArray,  Undefined())    \
     V(SubArray,        TypedArray,  Undefined())    \
     V(Sort,            TypedArray,  Undefined())    \
     V(GetByteLength,   TypedArray,  Undefined())    \
     V(GetByteOffset,   TypedArray,  Undefined())    \
     V(Set,             TypedArray,  Undefined())    \
-    V(FindIndex,       TypedArray,  Undefined())
+    V(FindIndex,       TypedArray,  Undefined())    \
+    V(FindLastIndex,   TypedArray,  Undefined())    \
+    V(ToSorted,        TypedArray,  Undefined())    \
+    V(Of,              TypedArray,  Undefined())    \
+    V(Map,             TypedArray,  Undefined())    \
+    V(ToReversed,      TypedArray,  Undefined())
 
 #define BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)                           \
     V(SetInt32,     DataView,  INT32,     SetTypedValue, Undefined())    \
@@ -231,9 +253,14 @@ namespace panda::ecmascript::kungfu {
     V(MathMin)                                      \
     V(MathMax)                                      \
     V(MathImul)                                     \
+    V(DateGetTime)                                  \
+    V(DateNow)                                      \
     V(GlobalIsFinite)                               \
     V(GlobalIsNan)                                  \
+    V(BigIntConstructor)                            \
     V(ArrayBufferIsView)                            \
+    V(BigIntAsIntN)                                 \
+    V(BigIntAsUintN)                                \
     V(DataViewGetFloat32)                           \
     V(DataViewGetFloat64)                           \
     V(DataViewGetInt8)                              \
@@ -269,7 +296,7 @@ public:
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = JsonStringify,
         TYPED_BUILTINS_LAST = IteratorProtoReturn,
-        INVALID = 0xFF,
+        INVALID = 0xFFFF,
     };
     static_assert(ID::NONE == 0);
 
@@ -325,7 +352,26 @@ public:
         // NOTE(schernykh): try to remove this switch and move StringFromCharCode to TYPED_BUILTINS_INLINE list
         switch (builtinId) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
+            case BuiltinsStubCSigns::ID::StringSubstring:
+            case BuiltinsStubCSigns::ID::StringSubStr:
+            case BuiltinsStubCSigns::ID::StringSlice:
             case BuiltinsStubCSigns::ID::MapGet:
+            case BuiltinsStubCSigns::ID::MapHas:
+            case BuiltinsStubCSigns::ID::MapKeys:
+            case BuiltinsStubCSigns::ID::MapValues:
+            case BuiltinsStubCSigns::ID::MapEntries:
+            case BuiltinsStubCSigns::ID::SetHas:
+            case BuiltinsStubCSigns::ID::MapDelete:
+            case BuiltinsStubCSigns::ID::SetDelete:
+            case BuiltinsStubCSigns::ID::TypedArrayEntries:
+            case BuiltinsStubCSigns::ID::TypedArrayKeys:
+            case BuiltinsStubCSigns::ID::TypedArrayValues:
+            case BuiltinsStubCSigns::ID::SetValues:
+            case BuiltinsStubCSigns::ID::SetEntries:
+            case BuiltinsStubCSigns::ID::MapClear:
+            case BuiltinsStubCSigns::ID::SetClear:
+            case BuiltinsStubCSigns::ID::SetAdd:
+            case BuiltinsStubCSigns::ID::NumberParseFloat:
                 return true;
             default:
                 return false;
@@ -444,8 +490,38 @@ public:
                 return ConstantIndex::MATH_IMUL_INDEX;
             case BuiltinsStubCSigns::ID::MapGet:
                 return ConstantIndex::MAP_GET_INDEX;
+            case BuiltinsStubCSigns::ID::MapHas:
+                return ConstantIndex::MAP_HAS_INDEX;
+            case BuiltinsStubCSigns::ID::MapKeys:
+                return ConstantIndex::MAP_KEYS_INDEX;
+            case BuiltinsStubCSigns::ID::MapValues:
+                return ConstantIndex::MAP_VALUES_INDEX;
+            case BuiltinsStubCSigns::ID::MapEntries:
+                return ConstantIndex::MAP_ENTRIES_INDEX;
+            case BuiltinsStubCSigns::ID::SetHas:
+                return ConstantIndex::SET_HAS_INDEX;
+            case BuiltinsStubCSigns::ID::MapDelete:
+                return ConstantIndex::MAP_DELETE_INDEX;
+            case BuiltinsStubCSigns::ID::SetDelete:
+                return ConstantIndex::SET_DELETE_INDEX;
+            case BuiltinsStubCSigns::ID::SetValues:
+                return ConstantIndex::SET_VALUES_INDEX;
+            case BuiltinsStubCSigns::ID::SetEntries:
+                return ConstantIndex::SET_ENTRIES_INDEX;
+            case BuiltinsStubCSigns::ID::MapClear:
+                return ConstantIndex::MAP_CLEAR_INDEX;
+            case BuiltinsStubCSigns::ID::SetClear:
+                return ConstantIndex::SET_CLEAR_INDEX;
+            case BuiltinsStubCSigns::ID::SetAdd:
+                return ConstantIndex::SET_ADD_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::StringSubstring:
+                return ConstantIndex::STRING_SUB_STRING_INDEX;
+            case BuiltinsStubCSigns::ID::StringSubStr:
+                return ConstantIndex::STRING_SUB_STR_INDEX;
+            case BuiltinsStubCSigns::ID::StringSlice:
+                return ConstantIndex::STRING_SLICE_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
                 return ConstantIndex::ARRAY_SORT_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::JsonStringify:
@@ -462,6 +538,16 @@ public:
                 return ConstantIndex::ITERATOR_PROTO_RETURN_INDEX;
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
+            case BuiltinsStubCSigns::ID::DateGetTime:
+                return ConstantIndex::DATE_GET_TIME_INDEX;
+            case BuiltinsStubCSigns::ID::DateNow:
+                return ConstantIndex::DATE_NOW_INDEX;
+            case BuiltinsStubCSigns::ID::TypedArrayEntries:
+                return ConstantIndex::TYPED_ARRAY_ENTRIES_INDEX;
+            case BuiltinsStubCSigns::ID::TypedArrayKeys:
+                return ConstantIndex::TYPED_ARRAY_KEYS_INDEX;
+            case BuiltinsStubCSigns::ID::TypedArrayValues:
+                return ConstantIndex::TYPED_ARRAY_VALUES_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsFinite:
                 return ConstantIndex::GLOBAL_IS_FINITE_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsNan:
@@ -500,6 +586,10 @@ public:
                 return ConstantIndex::DATA_VIEW_SET_UINT16_INDEX;
             case BuiltinsStubCSigns::ID::DataViewSetUint32:
                 return ConstantIndex::DATA_VIEW_SET_UINT32_INDEX;
+            case BuiltinsStubCSigns::ID::BigIntAsIntN:
+                return ConstantIndex::BIGINT_AS_INTN_INDEX;
+            case BuiltinsStubCSigns::ID::BigIntAsUintN:
+                return ConstantIndex::BIGINT_AS_UINTN_INDEX;
             case BuiltinsStubCSigns::ID::NumberIsFinite:
                 return ConstantIndex::NUMBER_IS_FINITE_INDEX;
             case BuiltinsStubCSigns::ID::NumberIsInteger:
@@ -508,10 +598,18 @@ public:
                 return ConstantIndex::NUMBER_IS_NAN_INDEX;
             case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
                 return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
+            case BuiltinsStubCSigns::ID::NumberParseFloat:
+                return ConstantIndex::NUMBER_PARSE_FLOAT_INDEX;
             default:
-                LOG_COMPILER(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
+                LOG_COMPILER(INFO) << "GetConstantIndex Invalid Id:" << builtinId;
+                return ConstantIndex::INVALID;
         }
+    }
+
+    static bool CheckBuiltinsIdInvalid(ID builtinId)
+    {
+        auto result = kungfu::BuiltinsStubCSigns::GetConstantIndex(builtinId);
+        return result == ConstantIndex::INVALID;
     }
 
     static size_t GetGlobalEnvIndex(ID builtinId);
@@ -552,9 +650,33 @@ public:
             {MathImul, "Math.imul"},
             {MathMax, "Math.max"},
             {MathMin, "Math.min"},
+            {DateGetTime, "Date.prototype.getTime"},
+            {DateNow, "Date.now"},
+            {TypedArrayEntries, "TypedArray.entries"},
+            {TypedArrayKeys, "TypedArray.keys"},
+            {TypedArrayValues, "TypedArray.values"},
             {GlobalIsFinite, "isFinite"},
             {GlobalIsNan, "isNan"},
+            {BigIntAsIntN, "BigInt.asIntN"},
+            {BigIntAsUintN, "BigInt.asUintN"},
             {MapGet, "Map.get"},
+            {MapHas, "Map.has"},
+            {MapKeys, "Map.keys"},
+            {MapValues, "Map.values"},
+            {MapEntries, "Map.entries"},
+            {SetValues, "Set.values"},
+            {SetEntries, "Set.entries"},
+            {SetHas, "Set.has"},
+            {MapDelete, "Map.delete"},
+            {SetDelete, "Set.delete"},
+            {MapClear, "Map.clear"},
+            {SetClear, "Set.clear"},
+            {SetAdd, "Set.add"},
+            {BigIntConstructor, "BigInt"},
+            {NumberParseFloat, "Number.parseFloat"},
+            {StringSubstring, "String.prototype.substring"},
+            {StringSubStr, "String.prototype.substr"},
+            {StringSlice, "String.prototype.slice"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
@@ -602,8 +724,18 @@ public:
             {"next", StringIteratorProtoNext},
             {"sort", ArraySort},
             {"stringify", JsonStringify},
+            {"getTime", DateGetTime},
+            {"now", DateNow},
             {"isFinite", GlobalIsFinite},
             {"isNan", GlobalIsNan},
+            {"asIntN", BigIntAsIntN},
+            {"asUintN", BigIntAsUintN},
+            {"mapDelete", MapDelete},
+            {"setDelete", SetDelete},
+            {"BigInt", BigIntConstructor},
+            {"substring", StringSubstring},
+            {"substr", StringSubStr},
+            {"slice", StringSlice},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);
@@ -640,6 +772,7 @@ enum class BuiltinsArgs : size_t {
 #define IS_TYPED_BUILTINS_ID_CALL_THIS1(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis1(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS3(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis3(id)
 #define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)
+#define IS_INVALID_ID(id) kungfu::BuiltinsStubCSigns::CheckBuiltinsIdInvalid(id)
 #define GET_TYPED_GLOBAL_ENV_INDEX(id) kungfu::BuiltinsStubCSigns::GetGlobalEnvIndex(id)
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H

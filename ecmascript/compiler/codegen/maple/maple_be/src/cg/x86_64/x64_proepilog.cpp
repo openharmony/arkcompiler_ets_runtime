@@ -34,8 +34,8 @@ void X64GenProEpilog::GenerateCalleeSavedRegs(bool isPush)
     }
     /* CalleeSave(0) = -(FrameSize + CalleeReg - ArgsStk) */
     X64MemLayout *memLayout = static_cast<X64MemLayout *>(cgFunc.GetMemlayout());
-    int64 offset = -(memLayout->StackFrameSize() + static_cast<X64CGFunc &>(cgFunc).SizeOfCalleeSaved() -
-                     memLayout->SizeOfArgsToStackPass());
+    int64 offset = -static_cast<int64>((memLayout->StackFrameSize() +
+        static_cast<X64CGFunc &>(cgFunc).SizeOfCalleeSaved() - memLayout->SizeOfArgsToStackPass()));
     RegOperand &baseReg = cgFunc.GetOpndBuilder()->CreatePReg(x64::RBP, k64BitSize, kRegTyInt);
     std::vector<std::pair<uint16, int32>> calleeRegAndOffsetVec;
     for (const auto &reg : calleeSavedRegs) {
@@ -52,7 +52,7 @@ void X64GenProEpilog::GenerateCalleeSavedRegs(bool isPush)
         } else {
             GeneratePopCalleeSavedRegs(calleeReg, memOpnd, regSize);
         }
-        offset += regByteSize;
+        offset += static_cast<int64>(regByteSize);
     }
     const auto &emitMemoryManager = CGOptions::GetInstance().GetEmitMemoryManager();
     if (emitMemoryManager.codeSpace != nullptr) {
@@ -151,7 +151,8 @@ void X64GenProEpilog::GenerateProlog(BB &bb)
         MOperator mSubirOp = x64::MOP_subq_i_r;
         Insn &subInsn = cgFunc.GetInsnBuilder()->BuildInsn(mSubirOp, X64CG::kMd[mSubirOp]);
         auto *memLayout = static_cast<X64MemLayout *>(cgFunc.GetMemlayout());
-        int64 trueFrameSize = memLayout->StackFrameSize() + static_cast<X64CGFunc &>(cgFunc).SizeOfCalleeSaved();
+        int64 trueFrameSize =
+            static_cast<int64>(memLayout->StackFrameSize() + static_cast<X64CGFunc &>(cgFunc).SizeOfCalleeSaved());
         ImmOperand &opndImm = cgFunc.GetOpndBuilder()->CreateImm(k32BitSize, trueFrameSize);
         subInsn.AddOpndChain(opndImm).AddOpndChain(opndSpReg);
         cgFunc.GetCurBB()->AppendInsn(subInsn);

@@ -488,6 +488,13 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
         }
     }
 
+    if (!numberingSystemStr.empty()) {
+        // If numberingSystem is invalid, Let numberingSystem be undefined.
+        if (!JSLocale::IsWellNumberingSystem(numberingSystemStr)) {
+            numberFormat->SetNumberingSystem(thread, undefinedValue);
+        }
+    }
+
     // 10. Let localeData be %NumberFormat%.[[LocaleData]].
     JSHandle<TaggedArray> availableLocales;
     if (requestedLocales->GetLength() == 0) {
@@ -753,7 +760,7 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
     if (U_FAILURE(status)) {  // NOLINT(readability-implicit-bool-conversion)
         THROW_TYPE_ERROR(thread, "formattedNumber toString failed");
     }
-    ASSERT(x.IsNumber());
+    ASSERT(x.IsNumber() || x.IsBigInt());
 
     StyleOption styleOption = numberFormat->GetStyle();
 
@@ -847,13 +854,21 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
 JSHandle<JSArray> JSNumberFormat::FormatNumericToParts(JSThread *thread, const JSHandle<JSNumberFormat> &numberFormat,
                                                        JSTaggedValue x)
 {
-    ASSERT(x.IsNumber());
+    ASSERT(x.IsNumber() || x.IsBigInt());
     icu::number::LocalizedNumberFormatter *icuNumberFormatter = numberFormat->GetIcuCallTarget();
     ASSERT(icuNumberFormatter != nullptr);
 
     UErrorCode status = U_ZERO_ERROR;
-    double number = x.GetNumber();
-    icu::number::FormattedNumber formattedNumber = icuNumberFormatter->formatDouble(number, status);
+    icu::number::FormattedNumber formattedNumber;
+    if (x.IsBigInt()) {
+        JSHandle<BigInt> bigint(thread, x);
+        JSHandle<EcmaString> bigintStr = BigInt::ToString(thread, bigint);
+        std::string stdString = EcmaStringAccessor(bigintStr).ToStdString();
+        formattedNumber = icuNumberFormatter->formatDecimal(icu::StringPiece(stdString), status);
+    } else {
+        double number = x.GetNumber();
+        formattedNumber = icuNumberFormatter->formatDouble(number, status);
+    }
     if (U_FAILURE(status)) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSArray> emptyArray = factory->NewJSArray();
@@ -877,7 +892,7 @@ JSHandle<JSTaggedValue> JSNumberFormat::UnwrapNumberFormat(JSThread *thread, con
     // 2. If nf does not have an [[InitializedNumberFormat]] internal slot and ?
     //  InstanceofOperator(nf, %NumberFormat%) is true, then Let nf be ? Get(nf, %Intl%.[[FallbackSymbol]]).
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    bool hasInstance = JSObject::InstanceOf(thread, nf, env->GetNumberFormatFunction());
+    bool hasInstance = JSFunction::OrdinaryHasInstance(thread, env->GetNumberFormatFunction(), nf);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
 
     bool isJSNumberFormat = nf->IsJSNumberFormat();
@@ -1028,6 +1043,20 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
         JSHandle<JSTaggedValue> maximumFractionDigits(thread, numberFormat->GetMaximumFractionDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumFractionDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
+
+        // in v3, should contain BOTH significant and fraction digits
+        if (roundingType == RoundingType::COMPACTROUNDING) {
+            // [[MinimumSignificantDigits]]
+            property = globalConst->GetHandledMinimumSignificantDigitsString();
+            JSHandle<JSTaggedValue> minimumSignificantDigits(thread, numberFormat->GetMinimumSignificantDigits());
+            JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumSignificantDigits);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+            // [[MaximumSignificantDigits]]
+            property = globalConst->GetHandledMaximumSignificantDigitsString();
+            JSHandle<JSTaggedValue> maximumSignificantDigits(thread, numberFormat->GetMaximumSignificantDigits());
+            JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumSignificantDigits);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+        }
     }
 
     // [[UseGrouping]]

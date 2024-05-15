@@ -91,18 +91,69 @@
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/taskpool/taskpool.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 #include "ecmascript/ohos/enable_aot_list_helper.h"
+#include "ecmascript/ohos/jit_tools.h"
 
-#ifdef JIT_SWITCH_COMPILE_MODE
-#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
 #endif
 
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 AOTFileManager *JsStackInfo::loader = nullptr;
+JSRuntimeOptions *JsStackInfo::options = nullptr;
+bool EcmaVM::multiThreadCheck_ = false;
+
+#ifdef JIT_ESCAPE_ENABLE
+static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31
+
+void GetSignalHandler(int signal, siginfo_t *info, void *context)
+{
+    [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
+    [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
+    uintptr_t pc = 0;
+#if defined(PANDA_TARGET_AMD64)
+    pc = static_cast<uintptr_t>(mcontext.gregs[REG_RIP]);
+#elif defined(PANDA_TARGET_ARM64)
+    pc = static_cast<uintptr_t>(mcontext.pc);
+#endif
+    if (JsStackInfo::loader == nullptr) {
+        ecmascript::JsStackInfo::BuildCrashInfo(false);
+    } else if (!JsStackInfo::loader->InsideStub(pc) && !JsStackInfo::loader->InsideAOT(pc)) {
+        ecmascript::JsStackInfo::BuildCrashInfo(false);
+    } else {
+        ecmascript::JsStackInfo::BuildCrashInfo(false, pc);
+    }
+    sigaction(signal, &s_oldSa[signal], nullptr);
+    int rc = syscall(SYS_rt_tgsigqueueinfo, getpid(), syscall(SYS_gettid), info->si_signo, info);
+    if (rc != 0) {
+        LOG_ECMA(ERROR) << "GetSignalHandler() failed to resend signal during crash";
+    }
+}
+
+void SignalReg(int signo)
+{
+    sigaction(signo, nullptr, &s_oldSa[signo]);
+    struct sigaction newAction;
+    newAction.sa_flags = SA_RESTART | SA_SIGINFO;
+    newAction.sa_sigaction = GetSignalHandler;
+    sigaction(signo, &newAction, nullptr);
+}
+
+void SignalAllReg()
+{
+    SignalReg(SIGABRT);
+    SignalReg(SIGBUS);
+    SignalReg(SIGSEGV);
+    SignalReg(SIGILL);
+    SignalReg(SIGKILL);
+    SignalReg(SIGSTKFLT);
+    SignalReg(SIGFPE);
+    SignalReg(SIGTRAP);
+}
+#endif
 
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 {
@@ -125,10 +176,17 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     if (JsStackInfo::loader == nullptr) {
         JsStackInfo::loader = vm->GetAOTFileManager();
     }
+    if (JsStackInfo::options == nullptr) {
+        JsStackInfo::options = &(vm->GetJSOptions());
+    }
 #if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (SetThreadInfoCallback != nullptr) {
         SetThreadInfoCallback(CrashCallback);
     }
+#endif
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
+    vm->GetJSOptions().SetArkProperties(arkProperties);
 #endif
     return vm;
 }
@@ -159,6 +217,10 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
     Taskpool::GetCurrentTaskpool()->Initialize();
+    LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
+#ifdef JIT_ESCAPE_ENABLE
+    SignalAllReg();
+#endif
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
@@ -168,18 +230,32 @@ void EcmaVM::PostFork()
     } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
+    if (JSNApi::IsAotEscape(this)) {
+        options_.SetEnablePGOProfiler(false);
+    }
     ResetPGOProfiler();
-
-    bool isEnableJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
+    bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
+    bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
     if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
-        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableJit);
-        if (isEnableJit) {
+        options_.SetEnableAPPJIT(true);
+        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
+        bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
+        if ((!jitEscapeDisable) && JSNApi::IsJitEscape()) {
+            isEnableFastJit = false;
+            isEnableBaselineJit = false;
+            options_.SetEnableJIT(false);
+        }
+        if (isEnableFastJit || isEnableBaselineJit) {
             EnableJit();
         }
     }
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
+#endif
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
+    GetJSOptions().SetArkProperties(arkProperties);
 #endif
 }
 
@@ -190,6 +266,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
       ecmaParamConfiguration_(std::move(config))
 {
     options_ = std::move(options);
+    LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
@@ -221,6 +298,11 @@ void EcmaVM::InitializePGOProfiler()
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
 }
 
+void EcmaVM::InitializeEnableAotCrash()
+{
+    SetEnableAotCrashEscapeVM(options_.IsEnableAotCrashEscape());
+}
+
 void EcmaVM::ResetPGOProfiler()
 {
     if (pgoProfiler_ != nullptr) {
@@ -247,22 +329,42 @@ bool EcmaVM::IsEnableElementsKind() const
     return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();
 }
 
-bool EcmaVM::IsEnableJit() const
+bool EcmaVM::IsEnableFastJit() const
 {
-    return GetJit()->IsEnable();
+    return GetJit()->IsEnableFastJit();
+}
+
+bool EcmaVM::IsEnableBaselineJit() const
+{
+    return GetJit()->IsEnableBaselineJit();
 }
 
 void EcmaVM::EnableJit()
 {
+    // check enable aot pgo, if have enable aot pgo, thread installed pgo stubs
+    if (!IsEnablePGOProfiler() && pgoProfiler_ != nullptr) {
+        // only jit enable pgo, disable aot pgo dump
+        options_.SetEnableProfileDump(false);
+        Jit::GetInstance()->SetProfileNeedDump(false);
+        // enable pgo profile
+        options_.SetEnablePGOProfiler(true);
+        ResetPGOProfiler();
+    }
     if (pgoProfiler_ != nullptr) {
         pgoProfiler_->InitJITProfiler();
     }
+    bool isApp = Jit::GetInstance()->IsAppJit();
+    options_.SetEnableAPPJIT(isApp);
+    bool profileNeedDump = Jit::GetInstance()->IsProfileNeedDump();
+    options_.SetEnableProfileDump(profileNeedDump);
+
     GetJSThread()->SwitchJitProfileStubs();
-#ifdef JIT_SWITCH_COMPILE_MODE
-    bool jitEnableLitecg = OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);
+    bool jitEnableLitecg = panda::ecmascript::ohos::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
     LOG_JIT(INFO) << "jit enable litecg: " << jitEnableLitecg;
     options_.SetCompilerEnableLiteCG(jitEnableLitecg);
-#endif
+    uint8_t jitCallThreshold = panda::ecmascript::ohos::GetJitCallThreshold(options_.GetJitCallThreshold());
+    LOG_JIT(INFO) << "jit call threshold: " << std::to_string(jitCallThreshold);
+    options_.SetJitCallThreshold(jitCallThreshold);
 }
 
 Jit *EcmaVM::GetJit() const
@@ -275,6 +377,7 @@ bool EcmaVM::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
+    InitializeEnableAotCrash();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);
@@ -288,7 +391,7 @@ bool EcmaVM::Initialize()
         LOG_FULL(FATAL) << "alloc factory_ failed";
         UNREACHABLE();
     }
-    debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
+    debuggerManager_ = new tooling::JsDebuggerManager(this);
     aotFileManager_ = new AOTFileManager(this);
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
@@ -308,7 +411,7 @@ bool EcmaVM::Initialize()
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
-    if (IsEnableJit()) {
+    if (IsEnableFastJit() || IsEnableBaselineJit()) {
         EnableJit();
     }
     initialized_ = true;
@@ -326,23 +429,34 @@ EcmaVM::~EcmaVM()
         thread_ = nullptr;
         return;
     }
-    ASSERT(thread_->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread_->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Destruct VM must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (thread_->isProfiling_) {
+    if (profiler_ != nullptr) {
         if (profiler_->GetOutToFile()) {
             DFXJSNApi::StopCpuProfilerForFile(this);
         } else {
             DFXJSNApi::StopCpuProfilerForInfo(this);
         }
     }
+    if (profiler_ != nullptr) {
+        delete profiler_;
+        profiler_ = nullptr;
+    }
 #endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     DeleteHeapProfile();
 #endif
-    if (IsEnableJit()) {
+    if (IsEnableFastJit() || IsEnableBaselineJit()) {
         GetJit()->ClearTaskWithVm(this);
     }
+    // clear c_address: c++ pointer delete
+    ClearBufferData();
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
@@ -361,8 +475,6 @@ EcmaVM::~EcmaVM()
     }
 #endif
 
-    // clear c_address: c++ pointer delete
-    ClearBufferData();
     if (!isBundlePack_) {
         std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
         if (jsPandaFile != nullptr) {
@@ -402,7 +514,7 @@ EcmaVM::~EcmaVM()
     }
 
     if (debuggerManager_ != nullptr) {
-        chunk_.Delete(debuggerManager_);
+        delete debuggerManager_;
         debuggerManager_ = nullptr;
     }
 
@@ -527,7 +639,7 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy();
+                object->Destroy(thread_);
                 iter = nativePointerList_.erase(iter);
             } else {
                 ++iter;
@@ -582,7 +694,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy();
+                object->Destroy(thread_);
                 iter = nativePointerList_.erase(iter);
                 continue;
             }
@@ -637,14 +749,14 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
     if (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-        object->Destroy();
+        object->Destroy(thread_);
         nativePointerList_.erase(iter);
     }
     auto newIter = std::find(concurrentNativePointerList_.begin(), concurrentNativePointerList_.end(), pointer);
     if (newIter != concurrentNativePointerList_.end()) {
         JSNativePointer *object = *newIter;
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-        object->Destroy();
+        object->Destroy(thread_);
         concurrentNativePointerList_.erase(newIter);
     }
 }
@@ -671,10 +783,10 @@ bool EcmaVM::ContainInDeregisterModuleList(CString module)
 void EcmaVM::ClearBufferData()
 {
     for (auto iter : nativePointerList_) {
-        iter->Destroy();
+        iter->Destroy(thread_);
     }
     for (auto iter : concurrentNativePointerList_) {
-        iter->Destroy();
+        iter->Destroy(thread_);
     }
     nativePointerList_.clear();
     thread_->GetCurrentEcmaContext()->ClearBufferData();
@@ -821,16 +933,11 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         return;
     }
     JSHandle<JSFunction> functionInfo(functionValue);
-    if (functionInfo->IsCallNapi()) {
-        LOG_ECMA(INFO) << "Function is not taskpool task";
+    if (!functionInfo->GetTaskConcurrentFuncFlag()) {
+        LOG_ECMA(INFO) << "Function is not Concurrent Function";
         return;
     }
-    JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo();
-    if (!extraInfoValue.IsJSNativePointer()) {
-        LOG_ECMA(INFO) << "FunctionExtraInfo is not JSNativePointer";
-        return;
-    }
-    
+
     void *taskInfo = reinterpret_cast<void*>(thread_->GetTaskInfo());
     // clear the taskInfo when return, which can prevent the callback to get it
     thread_->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
@@ -922,22 +1029,23 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
 std::pair<std::string, std::string> EcmaVM::GetCurrentModuleInfo(bool needRecordName)
 {
     std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread_);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, std::make_pair("", ""));
     CString recordName = ConvertToString(moduleInfo.first);
     CString fileName = ConvertToString(moduleInfo.second);
     LOG_FULL(INFO) << "Current recordName is " << recordName <<", current fileName is " << fileName;
+    if (needRecordName) {
+        if (fileName.length() > ModulePathHelper::BUNDLE_INSTALL_PATH_LEN &&
+            fileName.find(ModulePathHelper::BUNDLE_INSTALL_PATH) == 0) {
+            fileName = fileName.substr(ModulePathHelper::BUNDLE_INSTALL_PATH_LEN);
+        } else {
+            LOG_FULL(ERROR) << " GetCurrentModuleName Fail, fileName is " << fileName;
+        }
+        return std::make_pair(recordName.c_str(), fileName.c_str());
+    }
     CString moduleName;
     if (IsNormalizedOhmUrlPack()) {
         moduleName = ModulePathHelper::GetModuleNameWithNormalizedName(recordName);
     } else {
-        if (needRecordName) {
-            if (fileName.length() > ModulePathHelper::BUNDLE_INSTALL_PATH_LEN &&
-                fileName.find(ModulePathHelper::BUNDLE_INSTALL_PATH) == 0) {
-                fileName = fileName.substr(ModulePathHelper::BUNDLE_INSTALL_PATH_LEN);
-            } else {
-                LOG_FULL(ERROR) << " GetCurrentModuleName Fail, fileName is " << fileName;
-            }
-            return std::make_pair(recordName.c_str(), fileName.c_str());
-        }
         moduleName = ModulePathHelper::GetModuleName(recordName);
     }
     if (moduleName.empty()) {
@@ -976,21 +1084,9 @@ bool EcmaVM::IsHmsModule(const CString &moduleStr) const
     return true;
 }
 
-void EcmaVM::SetpkgContextInfoList(const std::map<std::string, std::vector<std::vector<std::string>>> &list)
+void EcmaVM::SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list)
 {
-    for (auto it = list.begin(); it != list.end(); it++) {
-        const std::vector<std::vector<std::string>> vec = it->second;
-        CMap<CString, CVector<CString>> map;
-        for (size_t i = 0; i < vec.size(); i++) {
-            CString pkgName = vec[i][0].c_str();
-            CVector<CString> pkgContextInfo;
-            for (size_t j = 1; j < vec[i].size(); j++) {
-                pkgContextInfo.emplace_back(vec[i][j].c_str());
-            }
-            map.emplace(pkgName, pkgContextInfo);
-        }
-        pkgContextInfoList_.emplace(it->first.c_str(), map);
-    }
+    pkgContextInfoList_ = list;
 }
 
 // Initialize IcuData Path

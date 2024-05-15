@@ -48,3 +48,10 @@ set.add("c")
 for (const item of set) {
   print(item);
 }
+
+let int8Array = new Int8Array(1);
+function foo2(a) {
+  new a.constructor();
+}
+foo2(int8Array);
+

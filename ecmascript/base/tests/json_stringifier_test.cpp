@@ -15,7 +15,6 @@
 
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;

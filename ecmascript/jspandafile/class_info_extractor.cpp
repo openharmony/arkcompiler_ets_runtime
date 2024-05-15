@@ -980,7 +980,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
         } else {
             JSHandle<NameDictionary> baseDict(thread, baseIHClass->GetLayout());
             auto baseLength = baseDict->EntriesCount();
-            auto newLength = fieldNum + baseLength;
+            auto newLength = fieldNum + static_cast<uint32_t>(baseLength);
             JSHandle<NameDictionary> dict =
                 NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(newLength));
             baseDict->Rehash(thread, *dict);
@@ -1000,6 +1000,7 @@ JSHandle<TaggedArray> SendableClassDefiner::ExtractStaticFieldTypeArray(JSThread
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = fieldTypeArray->GetLength();
+    ASSERT(arrayLength > 0);
     auto instanceFieldNums = static_cast<uint32_t>(fieldTypeArray->Get(arrayLength - 1).GetInt());
     uint32_t staticFieldBegin = instanceFieldNums * 2; // 2: key-type
     if (staticFieldBegin >= arrayLength) {

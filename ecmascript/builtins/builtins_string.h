@@ -70,9 +70,9 @@
     /* String.prototype.toWellFormed ( ) */                                         \
     V("toWellFormed",      ToWellFormed,      0, INVALID)                           \
     /* String.prototype.padEnd ( maxLength [ , fillString ] ) */                    \
-    V("padEnd",            PadEnd,            1, INVALID)                           \
+    V("padEnd",            PadEnd,            1, StringPadEnd)                      \
     /* String.prototype.padStart ( maxLength [ , fillString ] ) */                  \
-    V("padStart",          PadStart,          1, INVALID)                           \
+    V("padStart",          PadStart,          1, StringPadStart)                    \
     /* String.prototype.repeat ( count ) */                                         \
     V("repeat",            Repeat,            1, INVALID)                           \
     /* String.prototype.replace ( searchValue, replaceValue ) */                    \
@@ -89,7 +89,7 @@
     V("startsWith",        StartsWith,        1, StringStartsWith)                  \
     /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
     /* String.prototype.substr ( start, length ) */                                 \
-    V("substr",            SubStr,            2, INVALID)                           \
+    V("substr",            SubStr,            2, StringSubStr)                      \
     /* String.prototype.substring ( start, end ) */                                 \
     V("substring",         Substring,         2, StringSubstring)                   \
     /* String.prototype.toLocaleLowerCase ( [ reserved1 [ , reserved2 ] ] ) */      \
@@ -105,17 +105,17 @@
     /* String.prototype.trim ( ) */                                                 \
     V("trim",              Trim,              0, StringTrim)                        \
     /* String.prototype.trimEnd ( ) */                                              \
-    V("trimEnd",           TrimEnd,           0, INVALID)                           \
+    V("trimEnd",           TrimEnd,           0, StringTrimEnd)                     \
     /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
     /* Equivalent to trimStart. For compatibility only. */                          \
     /* String.prototype.trimLeft ( ) */                                             \
-    V("trimLeft",          TrimLeft,          0, INVALID)                           \
+    V("trimLeft",          TrimLeft,          0, StringTrimLeft)                    \
     /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
     /* Equivalent to trimEnd. For compatibility only. */                            \
     /* String.prototype.trimEnd ( ) */                                              \
-    V("trimRight",         TrimRight,         0, INVALID)                           \
+    V("trimRight",         TrimRight,         0, StringTrimRight)                   \
     /* String.prototype.trimStart ( ) */                                            \
-    V("trimStart",         TrimStart,         0, INVALID)                           \
+    V("trimStart",         TrimStart,         0, StringTrimStart)                   \
     /* String.prototype.valueOf ( ) */                                              \
     V("valueOf",           ValueOf,           0, INVALID)
 

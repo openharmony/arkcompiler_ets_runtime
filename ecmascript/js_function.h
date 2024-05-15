@@ -63,7 +63,8 @@ public:
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LENGTH_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, TASK_CONCURRENT_FUNC_FLAG_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(TaskConcurrentFuncFlag, uint32_t, TASK_CONCURRENT_FUNC_FLAG_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, CODE_ENTRY_OFFSET)
@@ -205,6 +206,11 @@ public:
             (kind != FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
     }
 
+    inline static bool IsNormalFunctionAndCanSkipWbWhenInitialization(FunctionKind kind)
+    {
+        return kind != FunctionKind::LAST_FUNCTION_KIND;
+    }
+
     inline static bool HasAccessor(FunctionKind kind)
     {
         return kind >= FunctionKind::NORMAL_FUNCTION && kind <= FunctionKind::ASYNC_FUNCTION;
@@ -220,10 +226,10 @@ public:
         GetClass()->SetClassConstructor(flag);
     }
 
-    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
-        void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
-    void SetSFunctionExtraInfo(
-        JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize = 0);
+    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
+                              void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
+    void SetSFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
+                               void *data, size_t nativeBindingsize = 0);
 
     JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;
@@ -244,7 +250,8 @@ public:
     ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
     // For runtime native function, the LexicalEnv field is used to store GlobalEnv, such as RegExp's native function
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, MACHINECODE_OFFSET)
-    ACCESSORS(MachineCode, MACHINECODE_OFFSET, PROFILE_TYPE_INFO_OFFSET)
+    ACCESSORS(MachineCode, MACHINECODE_OFFSET, BASELINECODE_OFFSET)
+    ACCESSORS(BaselineCode, BASELINECODE_OFFSET, PROFILE_TYPE_INFO_OFFSET)
     ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, HOME_OBJECT_OFFSET)
     ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, ECMA_MODULE_OFFSET)
     ACCESSORS(Module, ECMA_MODULE_OFFSET, WORK_NODE_POINTER_OFFSET)

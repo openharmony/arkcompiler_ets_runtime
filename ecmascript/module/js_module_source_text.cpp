@@ -99,7 +99,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
     if (isNative) {
-        if (moduleManager->IsImportedModuleLoaded(moduleRequestStr.GetTaggedValue())) {
+        if (moduleManager->IsLocalModuleLoaded(moduleRequestStr.GetTaggedValue())) {
             return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequestStr.GetTaggedValue()));
         }
         return moduleManager->ResolveNativeModule(moduleRequestName, baseFilename, moduleType);
@@ -134,7 +134,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModule(JSThread *th
                                                                     bool executeFromJob)
 {
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (moduleManager->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
+    if (moduleManager->IsLocalModuleLoaded(moduleRequest.GetTaggedValue())) {
         return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue()));
     }
 
@@ -517,7 +517,6 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SourceTextModule::Instantiate");
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleHdl);
-    ASSERT(!SourceTextModule::IsSharedModule(module));
     // 1. Let module be this Source Text Module Record.
     // 2. Assert: module.[[Status]] is one of UNLINKED, LINKED, EVALUATING-ASYNC, or EVALUATED.
     ModuleStatus status = module->GetStatus();
@@ -881,7 +880,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
             JSHandle<JSTaggedValue> resolution =
                 SourceTextModule::ResolveExport(thread, module, nameHandle, resolveVector);
             // ii. If resolution is a ResolvedBinding Record, append name to unambiguousNames.
-            if (resolution->IsResolvedBinding() || resolution->IsResolvedIndexBinding()) {
+            if (resolution->IsModuleBinding()) {
                 unambiguousNames->Set(thread, idx, nameHandle);
                 idx++;
             }
@@ -948,7 +947,6 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
     // 1. Let module be this Source Text Module Record.
     // 2. Assert: module.[[Status]] is one of LINKED, EVALUATING-ASYNC, or EVALUATED.
     JSMutableHandle<SourceTextModule> module(thread, moduleHdl);
-    ASSERT(!SourceTextModule::IsSharedModule(module));
     ModuleStatus status = module->GetStatus();
     ASSERT((status == ModuleStatus::INSTANTIATED || status == ModuleStatus::EVALUATING_ASYNC ||
             status == ModuleStatus::EVALUATED));
@@ -967,7 +965,10 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 7. Set module.[[TopLevelCapability]] to capability.
-    module->SetTopLevelCapability(thread, capability);
+    if (!SourceTextModule::IsSharedModule(module)) {
+        module->SetTopLevelCapability(thread, capability);
+    }
+
     // 8. Let result be Completion(InnerModuleEvaluation(module, stack, 0)).
     int result = SourceTextModule::InnerModuleEvaluation(thread, module, stack, 0, buffer, size, executeFromJob);
     HandleEvaluateResult(thread, module, capability, stack, result);
@@ -1842,6 +1843,7 @@ void SourceTextModule::AddAsyncParentModule(JSThread *thread, JSHandle<SourceTex
         module->SetAsyncParentModules(thread, array);
     } else {
         JSHandle<TaggedArray> array(thread, asyncParentModules);
+        ASSERT(array->GetLength() > 0);
         array = TaggedArray::SetCapacity(thread, array, array->GetLength() + 1);
         array->Set(thread, array->GetLength() - 1, parent.GetTaggedValue());
         module->SetAsyncParentModules(thread, array);
@@ -2132,7 +2134,7 @@ void SourceTextModule::CheckCircularImportTool(JSThread *thread, const CString &
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<EcmaString> moduleRecordNameVal =
         thread->GetEcmaVM()->GetFactory()->NewFromUtf8(circularModuleRecordName.c_str());
-    if (moduleManager->IsImportedModuleLoaded(moduleRecordNameVal.GetTaggedValue())) {
+    if (moduleManager->IsLocalModuleLoaded(moduleRecordNameVal.GetTaggedValue())) {
         moduleRecord.Update(moduleManager->HostGetImportedModule(moduleRecordNameVal.GetTaggedValue()));
     } else {
         moduleRecord.Update(moduleManager->HostResolveImportedModule(circularModuleRecordName));
@@ -2253,7 +2255,7 @@ std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModule
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
     if (isNative) {
-        ASSERT(moduleManager->IsImportedModuleLoaded(moduleRequestStr.GetTaggedValue()));
+        ASSERT(moduleManager->IsLocalModuleLoaded(moduleRequestStr.GetTaggedValue()));
         // native module cached by current context's module manager.
         return std::make_tuple(!SourceTextModule::SHARED_MODULE_TAG,
             moduleManager->HostGetImportedModule(moduleRequestStr.GetTaggedValue()));

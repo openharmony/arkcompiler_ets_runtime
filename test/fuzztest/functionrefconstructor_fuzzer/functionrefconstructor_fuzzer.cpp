@@ -37,7 +37,7 @@ namespace OHOS {
             return;
         }
         FunctionCallback nativeFunc = FuncRefConCallbackForTest;
-        Deleter deleter = nullptr;
+        NativePointerCallback deleter = nullptr;
         Local<FunctionRef> func = FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
         Local<JSValueRef> argv[1];
         argv[0] = NumberRef::New(vm, 1.3); // 1.3 : test case of input

@@ -148,6 +148,7 @@ void BaseSchedule::DumpRegionInfoBeforeSchedule(CDGRegion &region) const
         BB *bb = region.GetRegionNodes()[i]->GetBB();
         DEBUG_ASSERT(bb != nullptr, "get bb from cdgNode failed");
         LogInfo::MapleLogger() << "bb_" << bb->GetId();
+        CHECK_FATAL(region.GetRegionNodeSize() >= 1, "value overflow");
         if (i != region.GetRegionNodeSize() - 1) {
             LogInfo::MapleLogger() << ", ";
         } else {

@@ -95,6 +95,7 @@ namespace panda::ecmascript {
     V(CallSpread)                    \
     V(Newlexenv)                     \
     V(NewlexenvwithName)             \
+    V(NewSendableEnv)                \
     V(Stlexvar)                      \
     V(Ldlexvar)                      \
     V(Ldlexenv)                      \
@@ -206,6 +207,7 @@ namespace panda::ecmascript {
     V(SuperCall)                     \
     V(SuperCallSpread)               \
     V(DefineMethod)                  \
+    V(SetPatchModule)                \
     V(LdSuperByValue)                \
     V(StSuperByValue)                \
     V(ThrowDeleteSuperProperty)      \
@@ -353,14 +355,6 @@ namespace panda::ecmascript {
     V(SendableArrayBuffer, SetValueInBuffer)  \
     V(SendableArrayBuffer, CloneArrayBuffer)  \
     V(SendableArrayBuffer, AllocateSendableArrayBuffer) \
-    V(BuiltinsJsonValue, JSONObjectConstructor) \
-    V(BuiltinsJsonValue, JSONArrayConstructor)  \
-    V(BuiltinsJsonValue, JSONTrueConstructor)   \
-    V(BuiltinsJsonValue, JSONFalseConstructor)  \
-    V(BuiltinsJsonValue, JSONNullConstructor)   \
-    V(BuiltinsJsonValue, JSONNumberConstructor) \
-    V(BuiltinsJsonValue, JSONStringConstructor) \
-    V(BuiltinsJsonValue, Get)                   \
     V(SendableArrayBuffer, IsView)            \
     V(AsyncFromSyncIterator, Next)            \
     V(AsyncFromSyncIterator, Throw)           \

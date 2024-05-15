@@ -207,31 +207,28 @@ def append_row_data(report_file, case_test_data):
                 ark_divide_v_8_with_jitless = str("{:.2f}".format(float(exec_time) / float(v_8_jitless_excute_time)))
         jis_case_file_name_with_class = Constants.JS_FILE_SUPER_LINK_DICT['/'.join([class_name, api_name])]
         js_file_super_link = '/'.join([Constants.HYPERLINK_HEAD, jis_case_file_name_with_class])
-        new_row = [js_case_name, scene, excute_status,
-                   cast_to_float_or_str(exec_time), yesterday_excute_time,
-                   is_degraded_str,
-                   cast_to_float_or_str(v_8_excute_time),
-                   cast_to_float_or_str(v_8_jitless_excute_time),
-                   cast_to_float_or_str(ark_divide_v_8),
-                   cast_to_float_or_str(ark_divide_v_8_with_jitless),
-                   js_file_super_link, ' ']
+        new_row = [js_case_name, scene, excute_status, cast_to_float_or_str(exec_time), yesterday_excute_time,
+                   is_degraded_str,cast_to_float_or_str(v_8_excute_time),
+                   cast_to_float_or_str(v_8_jitless_excute_time),cast_to_float_or_str(ark_divide_v_8),
+                   cast_to_float_or_str(ark_divide_v_8_with_jitless),js_file_super_link, ' ']
         ws.append(new_row)
-        if is_degraded_str is str(True):
-            ws.cell(row=ws.max_row, column=6).fill = PatternFill(start_color='FF0000', end_color='FF0000',
-                                                                 fill_type=Constants.SOLID)
-        if (ark_divide_v_8 != Constants.NA_FIX and
-            (float(ark_divide_v_8) > 2 or
-             abs(float(ark_divide_v_8) - 2) <= Constants.COMPARISON_ACCURACY)):
-            ws.cell(row=ws.max_row, column=9).fill = PatternFill(start_color='FFFF00', end_color='FFFF00',
-                                                                 fill_type=Constants.SOLID)
-        if (ark_divide_v_8_with_jitless != Constants.NA_FIX and
-            (float(ark_divide_v_8_with_jitless) > 2 or
-             abs(float(ark_divide_v_8_with_jitless) - 2) <= Constants.COMPARISON_ACCURACY)):
-            ws.cell(row=ws.max_row, column=10).fill = PatternFill(start_color='FF00FF', end_color='FF00FF',
-                                                                  fill_type=Constants.SOLID)
+        check(is_degraded_str, ark_divide_v_8, ark_divide_v_8_with_jitless, ws)
     wb.save(report_file)
     return Constants.RET_OK
 
+def check(is_degraded_str,ark_divide_v_8,ark_divide_v_8_with_jitless,ws):
+    if is_degraded_str is str(True):
+        ws.cell(row=ws.max_row, column=6).fill = PatternFill(start_color='FF0000', end_color='FF0000',
+                                                             fill_type=Constants.SOLID)
+    if (ark_divide_v_8 != Constants.NA_FIX and
+            (float(ark_divide_v_8) > 2 or abs(float(ark_divide_v_8) - 2) <= Constants.COMPARISON_ACCURACY)):
+        ws.cell(row=ws.max_row, column=9).fill = PatternFill(start_color='FFFF00', end_color='FFFF00',
+                                                             fill_type=Constants.SOLID)
+    if (ark_divide_v_8_with_jitless != Constants.NA_FIX and
+            (float(ark_divide_v_8_with_jitless) > 2 or
+             abs(float(ark_divide_v_8_with_jitless) - 2) <= Constants.COMPARISON_ACCURACY)):
+        ws.cell(row=ws.max_row, column=10).fill = PatternFill(start_color='FF00FF', end_color='FF00FF',
+                                                              fill_type=Constants.SOLID)
 
 def get_ark_js_cmd(abc_file: str) -> List[str]:
     """Get command for ark js vm"""
@@ -419,7 +416,8 @@ def append_summary_info(report_file, total_cost_time):
     ark_divide_v_8_degraded_count = 0
     ark_divide_v_8_jitless_degraded_count = 0
 
-    for row_num in range(2, ws.max_row + 1):
+    last_bench_line = ws.max_row
+    for row_num in range(2, last_bench_line + 1):
         excu_status = str(ws.cell(row=row_num, column=3).value)
         is_degraded = str(ws.cell(row=row_num, column=6).value)
         if is_degraded == str(True):
@@ -445,9 +443,11 @@ def append_summary_info(report_file, total_cost_time):
         if ark_divide_v_8_jitless != Constants.NA_FIX and float(ark_divide_v_8_jitless) > 1:
             ark_divide_v_8_jitless_degraded_count += 1
 
-    count = 3
-    for _ in range(count):
-        new_row = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
+    avg_funcs = ['AVERAGE', 'GEOMEAN', 'MEDIAN']
+    for avg_func in avg_funcs:
+        new_row = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+                   f'=\"{avg_func}: \"&{avg_func}(I2:I{last_bench_line})',
+                   f'=\"{avg_func}: \"&{avg_func}(J2:J{last_bench_line})', ' ', ' ']
         ws.append(new_row)
     new_row = ['劣化判定比率上限', degraded_upper_limit, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)

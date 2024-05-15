@@ -102,6 +102,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
 
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
+    jsThread->SetThreadId();
 
     RegisterThread(jsThread);
     return jsThread;
@@ -138,6 +139,8 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 JSThread::JSThread(EcmaVM *vm, bool isJit) : id_(os::thread::GetCurrentThreadId()), vm_(vm), isJitThread_(isJit)
 {
     ASSERT(isJit);
+    // jit thread no need GCIterating
+    readyForGCIterating_ = false;
     RegisterThread(this);
 };
 
@@ -197,6 +200,12 @@ JSTaggedValue JSThread::GetCurrentLexenv() const
     return frameHandler.GetEnv();
 }
 
+JSTaggedValue JSThread::GetCurrentFunction() const
+{
+    FrameHandler frameHandler(this);
+    return frameHandler.GetFunction();
+}
+
 const JSTaggedType *JSThread::GetCurrentFrame() const
 {
     if (IsAsmInterpreter()) {
@@ -242,7 +251,7 @@ void JSThread::InvokeSharedNativePointerCallbacks()
         ASSERT(callbackPair.first != nullptr && callbackPair.second.first != nullptr &&
                callbackPair.second.second != nullptr);
         auto callback = callbackPair.first;
-        (*callback)(callbackPair.second.first, callbackPair.second.second);
+        (*callback)(env_, callbackPair.second.first, callbackPair.second.second);
     }
 }
 
@@ -287,10 +296,12 @@ bool JSThread::IsInRunningStateOrProfiling() const
 {
     bool result = IsInRunningState();
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    return result || vm_->GetHeapProfile() != nullptr;
-#else
-    return result;
+    result |= vm_->GetHeapProfile() != nullptr;
 #endif
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    result |= GetIsProfiling();
+#endif
+    return result;
 }
 
 void JSThread::WriteToStackTraceFd(std::ostringstream &buffer) const
@@ -681,31 +692,47 @@ void JSThread::TerminateExecution()
     SetException(error.GetTaggedValue());
 }
 
+void JSThread::CheckAndPassActiveBarrier()
+{
+    ThreadStateAndFlags oldStateAndFlags;
+    oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
+    if ((oldStateAndFlags.asStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
+        PassSuspendBarrier();
+    }
+}
+
+bool JSThread::PassSuspendBarrier()
+{
+    // Use suspendLock_ to avoid data-race between suspend-all-thread and suspended-threads.
+    LockHolder lock(suspendLock_);
+    if (suspendBarrier_ != nullptr) {
+        suspendBarrier_->PassStrongly();
+        suspendBarrier_ = nullptr;
+        ClearFlag(ThreadFlag::ACTIVE_BARRIER);
+        return true;
+    }
+    return false;
+}
+
 bool JSThread::CheckSafepoint()
 {
-    interruptMutex_.Lock();
-    ResetCheckSafePointStatusWithoutLock();
+    ResetCheckSafePointStatus();
 
-    if (HasTerminationRequestWithoutLock()) {
+    if (HasTerminationRequest()) {
         TerminateExecution();
-        SetVMTerminatedWithoutLock(true);
-        SetTerminationRequestWithoutLock(false);
+        SetVMTerminated(true);
+        SetTerminationRequest(false);
     }
 
-    if (IsSuspended()) {
-        interruptMutex_.Unlock();
+    if (HasSuspendRequest()) {
+        CheckAndPassActiveBarrier();
         WaitSuspension();
-        interruptMutex_.Lock();
     }
 
     // vmThreadControl_ 's thread_ is current JSThread's this.
-    if (VMNeedSuspensionWithoutLock()) {
-        interruptMutex_.Unlock();
+    if (VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
-    } else {
-        interruptMutex_.Unlock();
     }
-
     if (HasInstallMachineCode()) {
         vm_->GetJit()->InstallTasks(GetThreadId());
         SetInstallMachineCode(false);
@@ -759,15 +786,33 @@ size_t JSThread::GetAsmStackLimit()
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     // js stack limit
     size_t result = GetCurrentStackPosition() - EcmaParamConfiguration::GetDefalutStackSize();
+    int ret = -1;
+    void *stackAddr = nullptr;
+    size_t size = 0;
+#if defined(ENABLE_FFRT_INTERFACES)
+    if (!ffrt_get_current_coroutine_stack(&stackAddr, &size)) {
+        pthread_attr_t attr;
+        ret = pthread_getattr_np(pthread_self(), &attr);
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "Get current thread attr failed";
+            return result;
+        }
+        ret = pthread_attr_getstack(&attr, &stackAddr, &size);
+        if (pthread_attr_destroy(&attr) != 0) {
+            LOG_ECMA(ERROR) << "Destroy current thread attr failed";
+        }
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "Get current thread stack size failed";
+            return result;
+        }
+    }
+#else
     pthread_attr_t attr;
-    int ret = pthread_getattr_np(pthread_self(), &attr);
+    ret = pthread_getattr_np(pthread_self(), &attr);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Get current thread attr failed";
         return result;
     }
-
-    void *stackAddr = nullptr;
-    size_t size = 0;
     ret = pthread_attr_getstack(&attr, &stackAddr, &size);
     if (pthread_attr_destroy(&attr) != 0) {
         LOG_ECMA(ERROR) << "Destroy current thread attr failed";
@@ -776,6 +821,7 @@ size_t JSThread::GetAsmStackLimit()
         LOG_ECMA(ERROR) << "Get current thread stack size failed";
         return result;
     }
+#endif
 
     bool isMainThread = IsMainThread();
     uintptr_t threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr);
@@ -820,7 +866,7 @@ size_t JSThread::GetAsmStackLimit()
 bool JSThread::IsLegalAsmSp(uintptr_t sp) const
 {
     uint64_t bottom = GetStackLimit() - EcmaParamConfiguration::GetDefaultReservedStackSize();
-    uint64_t top = GetStackStart();
+    uint64_t top = GetStackStart() + EcmaParamConfiguration::GetAllowedUpperStackDiff();
     return (bottom <= sp && sp <= top);
 }
 
@@ -903,7 +949,35 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterat
     glueData_.stackStart_ = currentContext->GetStackStart();
     if (!currentContext->GlobalEnvIsHole()) {
         SetGlueGlobalEnv(*(currentContext->GetGlobalEnv()));
-        SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
+        /**
+         * GlobalObject has two copies, one in GlueData and one in Context.GlobalEnv, when switch context, will save
+         * GlobalObject in GlueData to CurrentContext.GlobalEnv(is this nessary?), and then switch to new context,
+         * save the GlobalObject in NewContext.GlobalEnv to GlueData.
+         * The initial value of GlobalObject in Context.GlobalEnv is Undefined, but in GlueData is Hole,
+         * so if two SharedGC happened during the builtins initalization like this, maybe will cause incorrect scene:
+         *
+         * Default:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                 Undefined                   Hole
+         *
+         * First SharedGC(JSThread::SwitchCurrentContext), Set GlobalObject from Context.GlobalEnv to GlueData:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                 Undefined                 Undefined
+         *
+         * Builtins Initialize, Create GlobalObject and Set to Context.GlobalEnv:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                    Obj                    Undefined
+         *
+         * Second SharedGC(JSThread::SwitchCurrentContext), Set GlobalObject from GlueData to Context.GlobalEnv:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                 Undefined                 Undefined
+         *
+         * So when copy values between Context.GlobalEnv and GlueData, need to check if the value is Hole in GlueData,
+         * and if is Undefined in Context.GlobalEnv, because the initial value is different.
+        */
+        if (!currentContext->GetGlobalEnv()->GetGlobalObject().IsUndefined()) {
+            SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
+        }
     }
     if (!isInIterate) {
         // If isInIterate is true, it means it is in GC iterate and global variables are no need to change.
@@ -1013,19 +1087,27 @@ void JSThread::UpdateState(ThreadState newState)
         TransferToRunning();
     } else {
         // Here can be some extra checks...
-        StoreState(newState, false);
+        StoreState(newState);
     }
 }
 
-void JSThread::SuspendThread(bool internalSuspend)
+void JSThread::SuspendThread(bool internalSuspend, SuspendBarrier* barrier)
 {
     LockHolder lock(suspendLock_);
     if (!internalSuspend) {
         // do smth here if we want to combine internal and external suspension
     }
+
     uint32_t old_count = suspendCount_++;
     if (old_count == 0) {
         SetFlag(ThreadFlag::SUSPEND_REQUEST);
+        SetCheckSafePointStatus();
+    }
+
+    if (barrier != nullptr) {
+        ASSERT(suspendBarrier_ == nullptr);
+        suspendBarrier_ = barrier;
+        SetFlag(ThreadFlag::ACTIVE_BARRIER);
         SetCheckSafePointStatus();
     }
 }
@@ -1056,8 +1138,9 @@ void JSThread::WaitSuspension()
         while (suspendCount_ > 0) {
             suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
             // we need to do smth if Runtime is terminating at this point
+            LOG_ECMA(ERROR) << "Suspend timeout when triggering shared-gc: " << TIMEOUT << "ms";
         }
-        ASSERT(!IsSuspended());
+        ASSERT(!HasSuspendRequest());
     }
     UpdateState(oldState);
 }
@@ -1077,15 +1160,14 @@ void JSThread::ManagedCodeEnd()
 void JSThread::TransferFromRunningToSuspended(ThreadState newState)
 {
     ASSERT(currentThread == this);
-    StoreState(newState, false);
-    ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
-    Runtime::GetInstance()->GetMutatorLock()->Unlock();
+    StoreSuspendedState(newState);
+    CheckAndPassActiveBarrier();
 }
 
 void JSThread::TransferToRunning()
 {
     ASSERT(currentThread == this);
-    StoreState(ThreadState::RUNNING, true);
+    StoreRunningState(ThreadState::RUNNING);
     // Invoke free weak global callback when thread switch to running
     if (!weakNodeFreeGlobalCallbacks_.empty()) {
         InvokeWeakNodeFreeGlobalCallBack();
@@ -1098,34 +1180,60 @@ void JSThread::TransferToRunning()
     }
 }
 
-void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
+inline void JSThread::StoreState(ThreadState newState)
 {
     while (true) {
         ThreadStateAndFlags oldStateAndFlags;
         oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
-        if (lockMutatorLock && oldStateAndFlags.asStruct.flags != ThreadFlag::NO_FLAGS) {
-            WaitSuspension();
-            continue;
-        }
+
         ThreadStateAndFlags newStateAndFlags;
         newStateAndFlags.asStruct.flags = oldStateAndFlags.asStruct.flags;
         newStateAndFlags.asStruct.state = newState;
 
-        if (lockMutatorLock) {
-            Runtime::GetInstance()->GetMutatorLock()->ReadLock();
-        }
-
-        if (glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
-            newStateAndFlags.asNonvolatileInt, std::memory_order_release)) {
+        bool done = glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
+                                                                               newStateAndFlags.asNonvolatileInt,
+                                                                               std::memory_order_release);
+        if (LIKELY(done)) {
             break;
         }
+    }
+}
 
-        // CAS failed. Unlock mutator lock
-        if (lockMutatorLock) {
-            ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
-            Runtime::GetInstance()->GetMutatorLock()->Unlock();
+void JSThread::StoreRunningState(ThreadState newState)
+{
+    ASSERT(newState == ThreadState::RUNNING);
+    while (true) {
+        ThreadStateAndFlags oldStateAndFlags;
+        oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
+        ASSERT(oldStateAndFlags.asStruct.state != ThreadState::RUNNING);
+
+        if (LIKELY(oldStateAndFlags.asStruct.flags == ThreadFlag::NO_FLAGS)) {
+            ThreadStateAndFlags newStateAndFlags;
+            newStateAndFlags.asStruct.flags = oldStateAndFlags.asStruct.flags;
+            newStateAndFlags.asStruct.state = newState;
+
+            if (glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
+                                                                           newStateAndFlags.asNonvolatileInt,
+                                                                           std::memory_order_release)) {
+                break;
+            }
+        } else if ((oldStateAndFlags.asStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
+            PassSuspendBarrier();
+        } else if ((oldStateAndFlags.asStruct.flags & ThreadFlag::SUSPEND_REQUEST) != 0) {
+            constexpr int TIMEOUT = 100;
+            LockHolder lock(suspendLock_);
+            while (suspendCount_ > 0) {
+                suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
+            }
+            ASSERT(!HasSuspendRequest());
         }
     }
+}
+
+inline void JSThread::StoreSuspendedState(ThreadState newState)
+{
+    ASSERT(newState != ThreadState::RUNNING);
+    StoreState(newState);
 }
 
 void JSThread::PostFork()
@@ -1145,7 +1253,7 @@ void JSThread::PostFork()
 bool JSThread::IsInManagedState() const
 {
     ASSERT(this == JSThread::GetCurrent());
-    return GetMutatorLockState() == MutatorLock::MutatorLockState::RDLOCK && GetState() == ThreadState::RUNNING;
+    return GetState() == ThreadState::RUNNING;
 }
 
 MutatorLock::MutatorLockState JSThread::GetMutatorLockState() const

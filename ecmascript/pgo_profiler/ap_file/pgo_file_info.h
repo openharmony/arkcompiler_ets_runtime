@@ -129,6 +129,7 @@ public:
 
     static size_t Size(uint32_t sectionNumber)
     {
+        ASSERT(sectionNumber > 0);
         return sizeof(PGOProfilerHeader) + (sectionNumber - 1) * sizeof(SectionInfo);
     }
 

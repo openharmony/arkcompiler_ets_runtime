@@ -53,12 +53,12 @@ public:
         return IsFastBuiltinBit::Update(callField, isFastBuiltin);
     }
 
-    bool HaveThisWithCallField(uint64_t callField) const
+    static bool HaveThisWithCallField(uint64_t callField)
     {
         return HaveThisBit::Decode(callField);
     }
 
-    bool HaveNewTargetWithCallField(uint64_t callField) const
+    static bool HaveNewTargetWithCallField(uint64_t callField)
     {
         return HaveNewTargetBit::Decode(callField);
     }
@@ -68,7 +68,7 @@ public:
         return HaveExtraBit::Decode(callField);
     }
 
-    bool HaveFuncWithCallField(uint64_t callField) const
+    static bool HaveFuncWithCallField(uint64_t callField)
     {
         return HaveFuncBit::Decode(callField);
     }
@@ -189,7 +189,7 @@ public:
         return MethodLiteral::OnlyHaveNewTagetAndThisWithCallField(callField);
     }
 
-    uint32_t GetNumVregsWithCallField(uint64_t callField) const
+    static uint32_t GetNumVregsWithCallField(uint64_t callField)
     {
         return NumVregsBits::Decode(callField);
     }
@@ -402,7 +402,7 @@ public:
     }
 
     const JSPandaFile *PUBLIC_API GetJSPandaFile() const;
-    uint32_t GetCodeSize() const;
+    uint32_t PUBLIC_API GetCodeSize() const;
     MethodLiteral *PUBLIC_API GetMethodLiteral() const;
 
     const char *PUBLIC_API GetMethodName() const;

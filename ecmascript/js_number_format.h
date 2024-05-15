@@ -98,7 +98,7 @@ public:
         return reinterpret_cast<icu::number::LocalizedNumberFormatter *>(result);
     }
 
-    static void FreeIcuNumberformat(void *pointer, void *data)
+    static void FreeIcuNumberformat([[maybe_unused]] void *env, void *pointer, void *data)
     {
         if (pointer == nullptr) {
             return;

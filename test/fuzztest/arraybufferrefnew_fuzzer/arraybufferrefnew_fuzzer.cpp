@@ -30,7 +30,7 @@ void ArrayBufferRefNewFuzzTest(const uint8_t* data, size_t size)
     if (size <= 0) {
         return;
     }
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     JSNApi::DestroyJSVM(vm);
 }
@@ -43,7 +43,7 @@ void ArrayBufferRef_New_IsDetach_Detach_ByteLength_GetBuffer_FuzzTest(const uint
     if (size <= 0) {
         return;
     }
-    Deleter deleter = nullptr;
+    NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     arrayBuffer->IsDetach();
     arrayBuffer->Detach(vm);

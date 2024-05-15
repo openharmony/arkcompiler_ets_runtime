@@ -30,17 +30,17 @@ export class XTools {
   static CONFIG = null;
   static LoadConfig() {
     const xhr = new XMLHttpRequest();
-    xhr.open('GET', "config.json");
+    xhr.open('GET', 'config.json');
     xhr.onreadystatechange = () => {
       if (xhr.readyState === XMLHttpRequest.DONE) {
         if (xhr.status === 200) {
           try {
             XTools.CONFIG = JSON.parse(xhr.responseText);
             for (let k in XTools.CONFIG.NodeColor) {
-              XTools.CONFIG.NodeColor[k]=parseInt(XTools.CONFIG.NodeColor[k],16);
+              XTools.CONFIG.NodeColor[k] = parseInt(XTools.CONFIG.NodeColor[k],16);
             }
             for (let k in XTools.CONFIG.LineColor) {
-              XTools.CONFIG.LineColor[k]=parseInt(XTools.CONFIG.LineColor[k],16);
+              XTools.CONFIG.LineColor[k] = parseInt(XTools.CONFIG.LineColor[k],16);
             }
           } catch (e) {
             alert('Config file error');

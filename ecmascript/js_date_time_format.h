@@ -122,13 +122,13 @@ public:
 
     icu::Locale *GetIcuLocale() const;
     static void SetIcuLocale(JSThread *thread, JSHandle<JSDateTimeFormat> obj,
-        const icu::Locale &icuLocale, const DeleteEntryPoint &callback);
-    static void FreeIcuLocale(void *pointer, void *data);
+        const icu::Locale &icuLocale, const NativePointerCallback &callback);
+    static void FreeIcuLocale(void *env, void *pointer, void *data);
 
     icu::SimpleDateFormat *GetIcuSimpleDateFormat() const;
     static void SetIcuSimpleDateFormat(JSThread *thread, JSHandle<JSDateTimeFormat> obj,
-        const icu::SimpleDateFormat &icuSimpleDateTimeFormat, const DeleteEntryPoint &callback);
-    static void FreeSimpleDateFormat(void *pointer, void *data);
+        const icu::SimpleDateFormat &icuSimpleDateTimeFormat, const NativePointerCallback &callback);
+    static void FreeSimpleDateFormat(void *env, void *pointer, void *data);
     static icu::SimpleDateFormat *GetCachedIcuSimpleDateFormat(JSThread *thread,
                                                                const JSHandle<JSTaggedValue> &locales,
                                                                IcuFormatterType type);
@@ -143,6 +143,10 @@ public:
     // 13.1.2 ToDateTimeOptions (options, required, defaults)
     static JSHandle<JSObject> ToDateTimeOptions(JSThread *thread, const JSHandle<JSTaggedValue> &options,
                                                 const RequiredOption &required, const DefaultsOption &defaults);
+
+    static void ToDateTimeSkeleton(JSThread *thread, const std::vector<std::string> &options,
+                                   std::string &skeleton, HourCycleOption hc,
+                                   const RequiredOption &required, const DefaultsOption &defaults);
 
     // 13.1.7 FormatDateTime(dateTimeFormat, x)
     static JSHandle<EcmaString> FormatDateTime(JSThread *thread, const JSHandle<JSDateTimeFormat> &dateTimeFormat,
@@ -173,7 +177,7 @@ private:
     static HourCycleOption OptionToHourCycle(const std::string &hc);
     // 2: number of elements
     static Value TrackValue(int32_t beginning, int32_t ending, std::array<int32_t, 2> begin,
-                            std::array<int32_t, 2> end);
+                            std::array<int32_t, 2> end); // 2: number of elements
 
     static HourCycleOption OptionToHourCycle(UDateFormatHourCycle hc);
 

@@ -96,15 +96,15 @@ public:
     inline int GetRegSize() const
     {
         if (scale_ == B) {
-            return 8;
+            return 8; // 8:Register size
         } else if (scale_ == H) {
-            return 16;
+            return 16; // 16:Register size
         } else if (scale_ == S) {
-            return 32;
+            return 32; // 32:Register size
         } else if (scale_ == D) {
-            return 64;
+            return 64; // 64:Register size
         } else if (scale_ == Q) {
-            return 128;
+            return 128; // 128:Register size
         }
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();

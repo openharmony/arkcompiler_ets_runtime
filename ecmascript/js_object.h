@@ -258,6 +258,7 @@ class PropertyMetaData {
 public:
     using IsFoundField = BitField<bool, 0, 1>;
     using IsInlinedPropsField = IsFoundField::NextFlag;
+    // 3: The bit field that represents the "Representation" of the property
     using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;
     using OffsetField = RepresentationField::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
 
@@ -384,7 +385,7 @@ public:
 
     void* GetNativePointerField(int32_t index) const;
     void SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-                               const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0,
+                               const NativePointerCallback &callBack, void *data, size_t nativeBindingsize = 0,
                                Concurrent isConcurrent = Concurrent::NO);
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(const JSThread *thread, int32_t count);
@@ -701,7 +702,8 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(ECMAObject, PROPERTIES_OFFSET, SIZE)
 
     DECL_DUMP()
-    static const CString ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj);
+    static const CString ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj, bool noAllocate = false,
+                                                         bool *isCallGetter = nullptr);
 
     static JSHandle<NameDictionary> PUBLIC_API TransitionToDictionary(const JSThread *thread,
                                                                       const JSHandle<JSObject> &receiver);
@@ -748,10 +750,7 @@ public:
     static void TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static void OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj);
 
-    static void SetSProperties(JSThread *thread,
-                               JSHandle<JSObject> obj,
-                               JSHandle<JSHClass> hclass,
-                               const std::vector<PropertyDescriptor> &descs);
+    static void SetSProperties(JSThread *thread, JSHandle<JSObject> obj, const std::vector<PropertyDescriptor> &descs);
 
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);

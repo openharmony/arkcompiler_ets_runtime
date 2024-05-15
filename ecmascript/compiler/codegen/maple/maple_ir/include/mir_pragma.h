@@ -154,29 +154,29 @@ public:
         valueType = type;
     }
 
-    void SetI32Val(int32 val)
+    void SetI32Val(int32 newVal)
     {
-        this->val.i = val;
+        this->val.i = newVal;
     }
 
-    void SetI64Val(int64 val)
+    void SetI64Val(int64 newVal)
     {
-        this->val.j = val;
+        this->val.j = newVal;
     }
 
-    void SetU64Val(uint64 val)
+    void SetU64Val(uint64 newVal)
     {
-        this->val.u = val;
+        this->val.u = newVal;
     }
 
-    void SetFloatVal(float val)
+    void SetFloatVal(float newVal)
     {
-        this->val.f = val;
+        this->val.f = newVal;
     }
 
-    void SetDoubleVal(double val)
+    void SetDoubleVal(double newVal)
     {
-        this->val.d = val;
+        this->val.d = newVal;
     }
 
 private:

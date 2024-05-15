@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+declare interface ArkTools {
+    isAOTCompiled(args: any): boolean;
+}
 declare function print(arg:any):string;
 
 function doSize(): number {
@@ -40,8 +43,10 @@ try {
 }
 
 // Check after deleting elements
+//aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapGetSize
 myMap.delete(-1);
 print(myMap.size); //: 6
+//aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapGetSize
 myMap.delete(-200);
 print(myMap.size); //: 6
 
@@ -53,4 +58,18 @@ print(myMap.size); //: 7
 
 // Check after clearing
 myMap.clear();
+//aot: [trace] aot inline builtin: Map.clear, caller function name:func_main_0@builtinMapGetSize
 print(myMap.size); //: 0
+
+// Check deoptimization
+if (ArkTools.isAOTCompiled(printSize)) {
+    // Define 'size' property in 'myMap', which shadows 'prototype.size'
+    Object.defineProperty(myMap, 'size', {
+        value: 42
+    });
+}
+
+printSize();
+//pgo: 0
+//aot: [trace] Check Type: IsNotMap
+//aot: 42

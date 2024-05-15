@@ -290,6 +290,10 @@ HWTEST_F_L0(DFXJSNApiTests, GetArrayBufferSize_GetHeapTotalSize_GetHeapUsedSize)
     size_t heapObjectSize = DFXJSNApi::GetHeapObjectSize(vm_);
     size_t expectHeapObjectSize = heap->GetHeapObjectSize();
     EXPECT_EQ(heapObjectSize, expectHeapObjectSize);
+
+    size_t processHeapLimitSize = DFXJSNApi::GetProcessHeapLimitSize();
+    EXPECT_GE(processHeapLimitSize, heap->GetEcmaParamConfiguration().GetMaxHeapSize());
+    EXPECT_LE(processHeapLimitSize, MAX_MEM_POOL_CAPACITY);
 }
 
 HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)

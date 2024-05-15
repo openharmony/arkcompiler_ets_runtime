@@ -61,6 +61,8 @@ public:
  *      |    object literal(JSObject)    |  |
  *      |   class literal(ClassLiteral)  |  v
  *      +--------------------------------+----
+ *      |          AOTSymbolInfo         |TaggedArray
+ *      +--------------------------------+----
  *      |      unshared constpool index  |int32_t
  *      +--------------------------------+----
  *      |      shared constpool id       |int32_t
@@ -85,10 +87,11 @@ public:
     static constexpr size_t AOT_HCLASS_INFO_INDEX = 5;
     static constexpr size_t UNSHARED_CONSTPOOL_INDEX = 6;
     static constexpr size_t SHARED_CONSTPOOL_ID = 7;
+    static constexpr size_t AOT_SYMBOL_INFO_INDEX = 8;
     static constexpr size_t RESERVED_POOL_LENGTH = INDEX_HEADER_INDEX; // divide the gc area
 
-    // AOTHClassInfo, AOTArrayInfo, ConstIndexInfo, unsharedConstpoolIndex, constpoolId
-    static constexpr size_t EXTEND_DATA_NUM = 5;
+    // AOTHClassInfo, AOTArrayInfo, ConstIndexInfo, unsharedConstpoolIndex, constpoolId, AOTSymbolInfo
+    static constexpr size_t EXTEND_DATA_NUM = 6;
 
     static constexpr int32_t CONSTPOOL_TYPE_FLAG = INT32_MAX; // INT32_MAX : unshared constpool.
     static constexpr int32_t CONSTPOOL_INVALID_ID = 0;
@@ -190,6 +193,11 @@ public:
         return literalInfo->GetObjectFromCache(0).GetInt() == static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE);
     }
 
+    static bool IsAotSymbolInfoExist(JSHandle<TaggedArray> symbolInfo, JSTaggedValue symbol)
+    {
+        return symbolInfo->GetLength() > 0 && !symbol.IsHole();
+    }
+
     static JSHandle<ConstantPool> CreateSharedConstPoolForAOT(
         EcmaVM *vm, JSHandle<ConstantPool> constpool, int32_t cpId = 0)
     {
@@ -216,6 +224,7 @@ public:
         }
 
         JSHandle<TaggedArray> array(vm->GetJSThread()->GlobalConstants()->GetHandledEmptyArray());
+        sconstpool->SetAotSymbolInfo(array.GetTaggedValue());
         sconstpool->SetAotHClassInfo(array.GetTaggedValue());
         sconstpool->SetAotArrayInfo(array.GetTaggedValue());
         sconstpool->SetConstantIndexInfo(array.GetTaggedValue());
@@ -316,6 +325,7 @@ public:
             Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
         }
         JSHandle<TaggedArray> array(thread->GlobalConstants()->GetHandledEmptyArray());
+        SetAotSymbolInfo(array.GetTaggedValue());
         SetAotHClassInfo(array.GetTaggedValue());
         SetAotArrayInfo(array.GetTaggedValue());
         SetConstantIndexInfo(array.GetTaggedValue());
@@ -360,6 +370,38 @@ public:
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotArrayInfoOffset()));
     }
 
+    inline JSTaggedValue GetAotSymbolInfo() const
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotSymbolInfoOffset()));
+    }
+
+    static JSTaggedValue GetSymbolFromSymbolInfo(JSHandle<TaggedArray> symbolInfoHandler, uint64_t id)
+    {
+        uint32_t len = symbolInfoHandler->GetLength();
+        for (uint32_t j = 0; j < len; j += 2) { // 2: symbolId, symbol
+            ASSERT(j + 1 < len);
+            uint64_t symbolId = symbolInfoHandler->Get(j).GetRawData();
+            if (symbolId == id) {
+                return symbolInfoHandler->Get(j + 1);
+            }
+        }
+        return JSTaggedValue::Hole();
+    }
+
+    static JSTaggedValue GetSymbolFromSymbolInfo(JSTaggedValue symbolInfo, uint64_t id)
+    {
+        TaggedArray* info = TaggedArray::Cast(symbolInfo.GetTaggedObject());
+        uint32_t len = info->GetLength();
+        for (uint32_t j = 0; j < len; j += 2) { // 2: symbolId, symbol
+            ASSERT(j + 1 < len);
+            uint64_t symbolId = info->Get(j).GetRawData();
+            if (symbolId == id) {
+                return info->Get(j + 1);
+            }
+        }
+        return JSTaggedValue::Hole();
+    }
+
     inline void SetAotHClassInfo(JSTaggedValue info)
     {
         Barriers::SetPrimitive(GetData(), GetAotHClassInfoOffset(), info.GetRawData());
@@ -368,6 +410,11 @@ public:
     inline void SetAotHClassInfoWithBarrier(JSThread *thread, JSTaggedValue info)
     {
         Set(thread, (GetLength() - AOT_HCLASS_INFO_INDEX), info);
+    }
+
+    inline void SetAotSymbolInfo(JSTaggedValue info)
+    {
+        Barriers::SetPrimitive(GetData(), GetAotSymbolInfoOffset(), info.GetRawData());
     }
 
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
@@ -444,8 +491,11 @@ public:
         return method.GetTaggedValue();
     }
 
+    static JSTaggedValue PUBLIC_API GetMethodFromCache(JSTaggedValue constpool, uint32_t index);
+
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
-        uint32_t literal, CString entry, ClassKind kind = ClassKind::NON_SENDABLE)
+        uint32_t literal, CString entry, JSHandle<JSTaggedValue> sendableEnv = JSHandle<JSTaggedValue>(),
+        ClassKind kind = ClassKind::NON_SENDABLE)
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         // Do not use cache when sendable for get wrong obj from cache,
@@ -467,8 +517,8 @@ public:
             ASSERT(jsPandaFile->IsNewVersion());
             panda_file::File::EntityId literalId = constpool->GetEntityId(literal);
             bool needSetAotFlag = isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined();
-            JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes, nullptr, kind);
+            JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(thread,
+                jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes, nullptr, sendableEnv, kind);
             JSHandle<ClassLiteral> classLiteral;
             if (kind == ClassKind::SENDABLE) {
                 classLiteral = factory->NewSClassLiteral();
@@ -563,7 +613,11 @@ public:
                 case ConstPoolType::ARRAY_LITERAL: {
                     // literal fetching from AOT ArrayInfos
                     JSMutableHandle<TaggedArray> literal(thread, JSTaggedValue::Undefined());
+                    #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+                    ElementsKind dataKind = ElementsKind::GENERIC;
+                    #else
                     ElementsKind dataKind = ElementsKind::NONE;
+                    #endif
                     bool loadedFromAOT = constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag,
                                                                                 entryIndexes, literal, &dataKind);
                     if (!loadedFromAOT) {
@@ -735,6 +789,11 @@ private:
     inline size_t GetSharedConstpoolIdOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - SHARED_CONSTPOOL_ID);
+    }
+
+    inline size_t GetAotSymbolInfoOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_SYMBOL_INFO_INDEX);
     }
 
     inline size_t GetLastOffset() const

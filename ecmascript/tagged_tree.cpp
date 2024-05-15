@@ -213,6 +213,7 @@ void TaggedTree<Derived>::Remove(const JSThread *thread, const JSHandle<Derived>
         }
     }
     tree->RemoveEntry(thread, successor);
+    ASSERT(tree->NumberOfElements() > 0);
     tree->SetNumberOfElements(thread, tree->NumberOfElements() - 1);
     tree->SetNumberOfDeletedElements(thread, tree->NumberOfDeletedElements() + 1);
 }

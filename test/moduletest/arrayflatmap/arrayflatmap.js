@@ -63,3 +63,15 @@ arr3.__proto__.pop(3);
 let arr4 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 var result4 = arr4.flatMap(testFunction);
 print(result4);
+
+let arr = [1,,,,,5];
+let res = arr.flatMap((x)=>{
+    let ret=[x,x+1];
+    ret[105] = x+2;
+    Object.defineProperty(ret,2000,{value:x+3});
+    return ret;
+})
+print(res);
+print(res.length)
+
+

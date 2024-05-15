@@ -104,7 +104,7 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
         __ Tbnz(callFieldRegister, MethodLiteral::IsNativeBit::START_BIT, &callNativeEntry);
         // fast path
         __ Add(argvRegister, argvRegister, Immediate(NUM_MANDATORY_JSFUNC_ARGS * JSTaggedValue::TaggedTypeSize()));
-        JSCallCommonEntry(assembler, JSCallMode::CALL_ENTRY);
+        JSCallCommonEntry(assembler, JSCallMode::CALL_ENTRY, FrameTransitionType::OTHER_TO_BASELINE_CHECK);
     }
     __ Bind(&notCallable);
     {
@@ -119,7 +119,8 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     }
 }
 
-void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode)
+void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
+    JSCallMode mode, FrameTransitionType type)
 {
     Label stackOverflow;
     Register glueRegister = __ GlueRegister();
@@ -127,7 +128,8 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
     Register currentSlotRegister = __ AvailableRegister3();
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register argcRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARGC);
-    if (!kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
+    if (!kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode) || type == FrameTransitionType::BASELINE_TO_OTHER ||
+        type == FrameTransitionType::BASELINE_TO_BASELINE_CHECK) {
         __ PushFpAndLr();
     }
     // save fp
@@ -158,7 +160,7 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
     __ Bind(&fastPathEntry);
     JSCallCommonFastPath(assembler, mode, &pushCallThis, &stackOverflow);
     __ Bind(&pushCallThis);
-    PushCallThis(assembler, mode, &stackOverflow);
+    PushCallThis(assembler, mode, &stackOverflow, type);
     __ Bind(&slowPathEntry);
     JSCallCommonSlowPath(assembler, mode, &fastPathEntry, &pushCallThis, &stackOverflow);
 
@@ -385,73 +387,73 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
 void AsmInterpreterCall::PushCallThisRangeAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisRangeAndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_WITH_ARGV);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_WITH_ARGV, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallRangeAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallRangeAndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_WITH_ARGV);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_WITH_ARGV, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallNewAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallNewAndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushSuperCallAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushSuperCallAndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::SUPER_CALL_WITH_ARGV);
+    JSCallCommonEntry(assembler, JSCallMode::SUPER_CALL_WITH_ARGV, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallArgs3AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArgs3AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG3);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG3, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallArgs2AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArgs2AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG2);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG2, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallArg1AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArg1AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG1);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG1, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallArg0AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArg0AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallThisArg0AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg0AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG0);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG0, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallThisArg1AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg1AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG1);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG1, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs2AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 void AsmInterpreterCall::PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs3AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3, FrameTransitionType::OTHER_TO_OTHER);
 }
 
 // uint64_t PushCallRangeAndDispatchNative(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
@@ -633,13 +635,15 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
     if (type == FrameType::BUILTIN_FRAME) {
         // push stack args
         __ Add(next, sp, Immediate(BuiltinFrame::GetStackArgsToFpDelta(false)));
-        // 16: type & next
+        // 2: -2 * FRAME_SLOT_SIZE means type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
+        // 2: 2 * FRAME_SLOT_SIZE means skip next and frame type
+        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));
     } else {
-        // 16: type & next
+        // 2: -2 * FRAME_SLOT_SIZE means type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
+        // 2: 2 * FRAME_SLOT_SIZE means skip next and frame type
+        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));
     }
 }
 
@@ -917,7 +921,7 @@ void AsmInterpreterCall::CallGetter(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
-        JSCallCommonEntry(assembler, JSCallMode::CALL_GETTER);
+        JSCallCommonEntry(assembler, JSCallMode::CALL_GETTER, FrameTransitionType::OTHER_TO_OTHER);
     }
 }
 
@@ -931,7 +935,7 @@ void AsmInterpreterCall::CallSetter(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
-        JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER);
+        JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER, FrameTransitionType::OTHER_TO_OTHER);
     }
 }
 
@@ -945,7 +949,8 @@ void AsmInterpreterCall::CallContainersArgs3(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
-        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_OTHER);
     }
 }
 
@@ -967,7 +972,8 @@ void AsmInterpreterCall::CallReturnWithArgv(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
-        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_OTHER);
     }
 }
 
@@ -1046,7 +1052,8 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     }
 }
 
-void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow)
+void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler,
+    JSCallMode mode, Label *stackOverflow, FrameTransitionType type)
 {
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
@@ -1099,11 +1106,12 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     }
     __ Bind(&pushVregs);
     {
-        PushVregs(assembler, stackOverflow);
+        PushVregs(assembler, stackOverflow, type);
     }
 }
 
-void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOverflow)
+void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
+    Label *stackOverflow, FrameTransitionType type)
 {
     Register glue = __ GlueRegister();
     Register prevSpRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::SP);
@@ -1135,6 +1143,32 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
 
         __ Align16(currentSlotRegister);
         __ Mov(Register(SP), currentSlotRegister);
+        if (type == FrameTransitionType::OTHER_TO_BASELINE_CHECK ||
+            type == FrameTransitionType::BASELINE_TO_BASELINE_CHECK) {
+            // check baselinecode, temp modify TOOD: need to check
+            Label baselineCodeUndefined;
+            __ Ldr(tempRegister, MemoryOperand(callTargetRegister, JSFunction::BASELINECODE_OFFSET));
+            __ Cmp(tempRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+            __ B(Condition::EQ, &baselineCodeUndefined);
+
+            // check is compiling
+            __ Cmp(tempRegister, Immediate(JSTaggedValue::VALUE_HOLE));
+            __ B(Condition::EQ, &baselineCodeUndefined);
+
+            __ Ldr(tempRegister, MemoryOperand(tempRegister, MachineCode::FUNCADDR_OFFSET));
+            if (glue != X19) {
+                __ Mov(X19, glue);
+            }
+            if (methodRegister != X21) {
+                __ Mov(X21, methodRegister);
+            }
+            __ Mov(currentSlotRegister, Immediate(0));
+            // -3: frame type, prevSp, pc
+            __ Stur(currentSlotRegister, MemoryOperand(newSpRegister, -3 * FRAME_SLOT_SIZE));
+            __ Mov(Register(X29), newSpRegister);
+            __ Br(tempRegister);
+            __ Bind(&baselineCodeUndefined);
+        }
         DispatchCall(assembler, pcRegister, newSpRegister);
     }
 }
@@ -1237,7 +1271,7 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
                                 << "This frame has been modified, and the offset CppToAsmInterp should be updated too.";
         }
     }
-    __ Add(fp, sp, Immediate(4 * FRAME_SLOT_SIZE));  // 32: skip frame type, prevSp, pc and glue
+    __ Add(fp, sp, Immediate(4 * FRAME_SLOT_SIZE));  // 4: 32 means skip frame type, prevSp, pc and glue
 }
 
 void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)

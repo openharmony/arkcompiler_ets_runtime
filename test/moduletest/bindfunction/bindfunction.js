@@ -82,3 +82,24 @@ print(v21)
 const proxy = new Proxy(Array.prototype.includes, {});
 const bind_proxy = proxy.bind();
 print(bind_proxy.length)
+
+const arr = []
+const f = ArrayBuffer.bind();
+new f(...arr);
+new f(1);
+
+function f1(...args){
+    print(args)
+    print(args.length)
+}
+let fn=f1.bind(undefined,0,1,2,3,4,5,6,7,8,9);
+fn(arr)
+
+BigInt64Array.bind(BigInt64Array,BigInt64Array,BigInt64Array)
+const t9 = ("round").normalize.bind();
+
+try {
+    new t9()
+} catch(err) {
+    print(err);
+}

@@ -78,7 +78,6 @@ struct AlignedPointer;
 }
 }  // namespace ecmascript
 
-using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
 using EcmaVM = ecmascript::EcmaVM;
 using EcmaContext = ecmascript::EcmaContext;
@@ -235,6 +234,16 @@ public:
         return isWorker_;
     }
 
+    void SetIsRestrictedWorker(bool isRestrictedWorker)
+    {
+        isRestrictedWorker_ = isRestrictedWorker;
+    }
+
+    bool GetIsRestrictedWorker() const
+    {
+        return isRestrictedWorker_;
+    }
+
     void SetBundleName(const std::string &value)
     {
         bundleName_ = value;
@@ -263,7 +272,12 @@ public:
 
     void SetEnableJIT(bool value)
     {
-        enableJIT_ = value;
+        enableFastJIT_ = value;
+    }
+
+    void SetEnableBaselineJIT(bool value)
+    {
+        enableBaselineJIT_ = value;
     }
 
 private:
@@ -383,7 +397,12 @@ private:
 
     bool GetEnableJIT() const
     {
-        return enableJIT_;
+        return enableFastJIT_;
+    }
+
+    bool GetEnableBaselineJIT() const
+    {
+        return enableBaselineJIT_;
     }
 
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
@@ -401,13 +420,15 @@ private:
     bool enableAsmInterpreter_ {true};
     bool enableBuiltinsLazy_ {true};
     bool isWorker_ {false};
+    bool isRestrictedWorker_ {false};
     std::string asmOpcodeDisableRange_ {""};
     std::string bundleName_ {};
     bool enableAOT_ {false};
     std::string anDir_ {};
     bool enableProfile_ {false};
     std::string profileDir_ {};
-    bool enableJIT_ {false};
+    bool enableFastJIT_ {false};
+    bool enableBaselineJIT_ {false};
     friend JSNApi;
 };
 

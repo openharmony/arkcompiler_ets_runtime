@@ -1,0 +1,4 @@
+dynamicimportsharedmodule.ts;dynamicimportsharedmodule;esm;dynamicimportsharedmodule.ts;xxdynamicimportsharedmodulexx
+string.ts;string;esm;string.ts;xxstringxx
+func.ts;func;esm;func.ts;xxfuncxx
+shared.ts;shared;esm;shared.ts;xxsharedxx;true

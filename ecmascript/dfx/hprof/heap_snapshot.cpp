@@ -101,10 +101,10 @@ HeapSnapshot::~HeapSnapshot()
     stringTable_ = nullptr;
 }
 
-bool HeapSnapshot::BuildUp()
+bool HeapSnapshot::BuildUp(bool isSimplify)
 {
-    FillNodes(true);
-    FillEdges();
+    FillNodes(true, isSimplify);
+    FillEdges(isSimplify);
     AddSyntheticRoot();
     return Verify();
 }
@@ -245,6 +245,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalArray[");
         case JSType::LEXICAL_ENV:
             return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
+        case JSType::SENDABLE_ENV:
+            return GetArrayString(TaggedArray::Cast(entry), "SendableEnv[");
         case JSType::CONSTANT_POOL:
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalConstantPool[");
         case JSType::PROFILE_TYPE_INFO:
@@ -277,15 +279,6 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         }
         case JSType::JS_SHARED_FUNCTION: {
             return GetString("JSSharedFunction");
-        }
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_STRING:
-        case JSType::JS_SHARED_JSON_ARRAY: {
-            return GetString("SharedJSONValue");
         }
         case JSType::FREE_OBJECT_WITH_ONE_FIELD:
         case JSType::FREE_OBJECT_WITH_NONE_FIELD:
@@ -393,6 +386,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("ArrayBuffer");
         case JSType::JS_SENDABLE_ARRAY_BUFFER:
             return GetString("SendableArrayBuffer");
+        case JSType::JS_SHARED_ARRAY:
+            return GetString("SharedArray");
         case JSType::JS_SHARED_ARRAY_BUFFER:
             return GetString("SharedArrayBuffer");
         case JSType::JS_PROXY_REVOC_FUNCTION:
@@ -602,20 +597,6 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
                 return GetString("MachineCode");
             case JSType::CLASS_INFO_EXTRACTOR:
                 return GetString("ClassInfoExtractor");
-            case JSType::TS_OBJECT_TYPE:
-                return GetString("TSObjectType");
-            case JSType::TS_INTERFACE_TYPE:
-                return GetString("TSInterfaceType");
-            case JSType::TS_CLASS_TYPE:
-                return GetString("TSClassType");
-            case JSType::TS_UNION_TYPE:
-                return GetString("TSUnionType");
-            case JSType::TS_CLASS_INSTANCE_TYPE:
-                return GetString("TSClassInstanceType");
-            case JSType::TS_FUNCTION_TYPE:
-                return GetString("TSFunctionType");
-            case JSType::TS_ARRAY_TYPE:
-                return GetString("TSArrayType");
             default:
                 break;
         }
@@ -662,18 +643,18 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
     return nodeType;
 }
 
-void HeapSnapshot::FillNodes(bool isInFinish)
+void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
 {
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
-        heap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
-            GenerateNode(JSTaggedValue(obj), 0, isInFinish);
-        });
+        heap->IterateOverObjects([this, isInFinish, isSimplify](TaggedObject *obj) {
+            GenerateNode(JSTaggedValue(obj), 0, isInFinish, isSimplify);
+        }, isSimplify);
     }
 }
 
-Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish)
+Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish, bool isSimplify)
 {
     Node *node = nullptr;
     if (entry.IsHeapObject()) {
@@ -725,12 +706,13 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
                 }
                 InsertNodeUnique(node);
                 ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
+                return node;
             } else {
                 existNode->SetLive(true);
                 return existNode;
             }
         }
-    } else {
+    } else if (!isSimplify) {
         CString primitiveName;
         if (entry.IsInt()) {
             if (!captureNumericValue_) {
@@ -839,6 +821,7 @@ void HeapSnapshot::AddTraceNodeId(MethodLiteral *methodLiteral)
     uint32_t traceNodeId = 0;
     auto result = methodToTraceNodeId_.find(methodLiteral);
     if (result == methodToTraceNodeId_.end()) {
+        ASSERT(traceInfoStack_.size() > 0);
         traceNodeId = traceInfoStack_.size() - 1;
         methodToTraceNodeId_.emplace(methodLiteral, traceNodeId);
     } else {
@@ -1041,17 +1024,20 @@ Node *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bool is
     return node;
 }
 
-void HeapSnapshot::FillEdges()
+void HeapSnapshot::FillEdges(bool isSimplify)
 {
-    size_t length = nodes_.size();
     auto iter = nodes_.begin();
     size_t count = 0;
-    while (count++ < length) {
+    while (count++ < nodes_.size()) {
         ASSERT(*iter != nullptr);
         auto entryFrom = *iter;
         auto *objFrom = reinterpret_cast<TaggedObject *>(entryFrom->GetAddress());
         std::vector<Reference> referenceResources;
         JSTaggedValue objValue(objFrom);
+        if (!objValue.IsHeapObject()) {
+            iter++;
+            continue;
+        }
         objValue.DumpForSnapshot(referenceResources, isVmMode_);
         for (auto const &it : referenceResources) {
             JSTaggedValue toValue = it.value_;
@@ -1068,7 +1054,7 @@ void HeapSnapshot::FillEdges()
                 entryTo = entryMap_.FindEntry(Node::NewAddress(to));
             }
             if (entryTo == nullptr) {
-                entryTo = GenerateNode(toValue, 0, true);
+                entryTo = GenerateNode(toValue, 0, true, isSimplify);
             }
             if (entryTo != nullptr) {
                 Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
@@ -1130,7 +1116,8 @@ const CString HeapSnapshot::ParseObjectName(TaggedObject *obj)
 {
     ASSERT(JSTaggedValue(obj).IsJSObject());
     JSThread *thread = vm_->GetJSThread();
-    return JSObject::ExtractConstructorAndRecordName(thread, obj);
+    bool isCallGetter = false;
+    return JSObject::ExtractConstructorAndRecordName(thread, obj, true, &isCallGetter);
 }
 
 Node *HeapSnapshot::InsertNodeUnique(Node *node)

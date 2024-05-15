@@ -38,7 +38,7 @@ public:
                       bool outputAsm,
                       size_t maxMethodsInModule,
                       const std::pair<uint32_t, uint32_t> &compilerMethodsRange);
-    virtual ~CompilationDriver();
+    ~CompilationDriver() = default;
 
     NO_COPY_SEMANTIC(CompilationDriver);
     NO_MOVE_SEMANTIC(CompilationDriver);
@@ -154,6 +154,11 @@ public:
         methodInfo.SetResolvedMethod(true);
         panda_file::File::EntityId resolvedMethodId(resolvedMethod);
         UpdateCompileQueue(recordName, resolvedMethodId);
+    }
+
+    uint32_t GetCompilerMethodCount() const
+    {
+        return compiledMethodCnt_;
     }
 protected:
     // add maxMethodsInModule_ functions in a module and when a module is

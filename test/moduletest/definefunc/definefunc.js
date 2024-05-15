@@ -26,3 +26,23 @@ function foo() {
 }
 
 foo();
+
+var makeAuthorRepo = function (dep) {
+    var author = dep.author;
+    return {
+        get author() {
+            return author;
+        },
+    };
+};
+var repo1 = makeAuthorRepo({
+    author: {
+        name: 'prop1'
+    }
+});
+var repo2 = makeAuthorRepo({
+    author: {
+        name: 'prop2'
+    }
+});
+print('repo1 ' + repo1.author.name);

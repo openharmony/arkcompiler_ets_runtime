@@ -100,7 +100,6 @@ public:
     // only use in TypeArray fast set property
     static JSTaggedNumber NonEcmaObjectToNumber(JSThread *thread, const JSTaggedValue tagged);
     static JSTaggedValue GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray);
-    static JSTaggedValue GetSharedOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray);
     static bool FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedValue> &typedArray,
                                    const JSHandle<JSTaggedValue> &value, uint32_t start, uint32_t end);
     static constexpr size_t VIEWED_ARRAY_BUFFER_OFFSET = JSObject::SIZE;

@@ -102,21 +102,24 @@ void AArch64AsmEmitter::EmitFastLSDA(FuncEmitInfo &funcEmitInfo)
 
     Emitter *emitter = currCG->GetEmitter();
     PUIdx pIdx = currCG->GetMIRModule()->CurFunction()->GetPuidx();
-    const std::string &idx = strdup(std::to_string(pIdx).c_str());
+    char *idx = strdup(std::to_string(pIdx).c_str());
+    CHECK_FATAL(idx != nullptr, "strdup failed");
     /*
      * .word 0xFFFFFFFF
      * .word .Label.LTest_3B_7C_3Cinit_3E_7C_28_29V3-func_start_label
      */
     (void)emitter->Emit("\t.word 0xFFFFFFFF\n");
-    (void)emitter->Emit("\t.word .L." + idx + "__");
+    (void)emitter->Emit("\t.word .L.").Emit(idx).Emit("__");
     if (aarchCGFunc.NeedCleanup()) {
         emitter->Emit(cgFunc.GetCleanupLabel()->GetLabelIdx());
     } else {
         DEBUG_ASSERT(!cgFunc.GetExitBBsVec().empty(), "exitbbsvec is empty in AArch64AsmEmitter::EmitFastLSDA");
         emitter->Emit(cgFunc.GetExitBB(0)->GetLabIdx());
     }
-    emitter->Emit("-.L." + idx + "__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
+    emitter->Emit("-.L.").Emit(idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
     emitter->IncreaseJavaInsnCount();
+    free(idx);
+    idx = nullptr;
 }
 
 /* the normal gcc_except_table */
@@ -180,9 +183,13 @@ void AArch64AsmEmitter::EmitFullLSDA(FuncEmitInfo &funcEmitInfo)
             } else if (cgFunc.GetFunction().IsJava()) {
                 DEBUG_ASSERT(!cgFunc.GetExitBBsVec().empty(), "exitbbsvec is empty in AArch64Emitter::EmitFullLSDA");
                 PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
-                const std::string &idx = strdup(std::to_string(pIdx).c_str());
-                (void)emitter->Emit(".L." + idx).Emit("__").Emit(cgFunc.GetExitBB(0)->GetLabIdx());
-                (void)emitter->Emit(" - .L." + idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
+                char *idx = strdup(std::to_string(pIdx).c_str());
+                CHECK_FATAL(idx != nullptr, "strdup failed");
+                (void)emitter->Emit(".L.").Emit(idx).Emit("__").Emit(cgFunc.GetExitBB(0)->GetLabIdx());
+                (void)emitter->Emit(" - .L.").Emit(idx).Emit("__")
+                    .Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
+                free(idx);
+                idx = nullptr;
             } else {
                 emitter->Emit("0\n");
             }
@@ -219,9 +226,12 @@ void AArch64AsmEmitter::EmitFullLSDA(FuncEmitInfo &funcEmitInfo)
         } else {
             DEBUG_ASSERT(!cgFunc.GetExitBBsVec().empty(), "exitbbsvec is empty in AArch64AsmEmitter::EmitFullLSDA");
             PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
-            const std::string &idx = strdup(std::to_string(pIdx).c_str());
-            (void)emitter->Emit(".L." + idx).Emit("__").Emit(cgFunc.GetExitBB(0)->GetLabIdx());
-            (void)emitter->Emit(" - .L." + idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
+            char *idx = strdup(std::to_string(pIdx).c_str());
+            CHECK_FATAL(idx != nullptr, "strdup failed");
+            (void)emitter->Emit(".L.").Emit(idx).Emit("__").Emit(cgFunc.GetExitBB(0)->GetLabIdx());
+            (void)emitter->Emit(" - .L.").Emit(idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
+            free(idx);
+            idx = nullptr;
         }
         emitter->Emit("\t.uleb128 0\n");
         if (!cgFunc.GetFunction().IsJava()) {
@@ -284,6 +294,7 @@ void AArch64AsmEmitter::EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std:
     }
     PUIdx pIdx = currCG->GetMIRModule()->CurFunction()->GetPuidx();
     char *puIdx = strdup(std::to_string(pIdx).c_str());
+    CHECK_FATAL(puIdx != nullptr, "strdup failed");
     const std::string &labelName = cgFunc.GetFunction().GetLabelTab()->GetName(labIdx);
     if (currCG->GenerateVerboseCG()) {
         (void)emitter.Emit(".L.")
@@ -566,11 +577,14 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
         } else if (ehFunc->NeedFullLSDA()) {
             LSDAHeader *lsdaHeader = ehFunc->GetLSDAHeader();
             PUIdx pIdx = emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
-            const std::string &idx = strdup(std::to_string(pIdx).c_str());
+            char *idx = strdup(std::to_string(pIdx).c_str());
+            CHECK_FATAL(idx != nullptr, "strdup failed");
             /*  .word .Label.lsda_label-func_start_label */
-            (void)emitter.Emit("\t.word .L." + idx).Emit("__").Emit(lsdaHeader->GetLSDALabel()->GetLabelIdx());
-            (void)emitter.Emit("-.L." + idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
+            (void)emitter.Emit("\t.word .L.").Emit(idx).Emit("__").Emit(lsdaHeader->GetLSDALabel()->GetLabelIdx());
+            (void)emitter.Emit("-.L.").Emit(idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
             emitter.IncreaseJavaInsnCount();
+            free(idx);
+            idx = nullptr;
         } else if (ehFunc->NeedFastLSDA()) {
             EmitFastLSDA(funcEmitInfo);
         }
@@ -590,6 +604,7 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
         CHECK_FATAL(arrayConst != nullptr, "null ptr check");
         PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
         char *idx = strdup(std::to_string(pIdx).c_str());
+        CHECK_FATAL(idx != nullptr, "strdup failed");
         for (size_t i = 0; i < arrayConst->GetConstVec().size(); i++) {
             MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
             CHECK_FATAL(lblConst != nullptr, "null ptr check");
@@ -920,6 +935,7 @@ static void AsmStringOutputRegNum(bool isInt, uint32 regno, uint32 intBase, uint
 {
     regno_t newRegno;
     if (isInt) {
+        CHECK_FATAL(regno >= intBase, "value overflow");
         newRegno = regno - intBase;
     } else {
         newRegno = regno - fpBase;
@@ -1172,6 +1188,7 @@ void AArch64AsmEmitter::EmitAdrpLabel(Emitter &emitter, const Insn &insn) const
     char *idx;
     idx =
         strdup(std::to_string(Globals::GetInstance()->GetBECommon()->GetMIRModule().CurFunction()->GetPuidx()).c_str());
+    CHECK_FATAL(idx != nullptr, "strdup failed");
     (void)emitter.Emit(".L.").Emit(idx).Emit("__").Emit(lidx).Emit("\n");
 
     /* add     xd, xd, #lo12:label */

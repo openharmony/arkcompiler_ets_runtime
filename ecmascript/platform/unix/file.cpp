@@ -132,7 +132,6 @@ JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue d
     CString resolvedFilename;
     CString dirnameStr = ConvertToString(EcmaString::Cast(dirname.GetTaggedObject()));
     CString requestStr = ConvertToString(EcmaString::Cast(request.GetTaggedObject()));
-
     if (requestStr.find("./") == 0) {
         requestStr = requestStr.substr(2); // 2 : delete './'
     }

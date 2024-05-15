@@ -32,7 +32,12 @@ LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, 
 
 uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 {
-    ASSERT(localHeap_->GetJSThread()->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     auto object = allocator_.Allocate(size);
     if (object != 0) {
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
@@ -178,12 +183,23 @@ void SemiSpace::Initialize()
     allocator_.Reset(region->GetBegin(), region->GetEnd());
 }
 
-void SemiSpace::Restart()
+void SemiSpace::Restart(size_t overShootSize)
 {
-    overShootSize_ = 0;
+    overShootSize_ = overShootSize;
     survivalObjectSize_ = 0;
     allocateAfterLastGC_ = 0;
     Initialize();
+}
+
+size_t SemiSpace::CalculateNewOverShootSize()
+{
+    return committedSize_ <= maximumCapacity_ ?
+           0 : AlignUp((committedSize_ - maximumCapacity_) / 2, DEFAULT_REGION_SIZE); // 2 is the half.
+}
+
+bool SemiSpace::CommittedSizeIsLarge()
+{
+    return committedSize_ >= maximumCapacity_ * 2; // 2 is the half.
 }
 
 uintptr_t SemiSpace::AllocateSync(size_t size)

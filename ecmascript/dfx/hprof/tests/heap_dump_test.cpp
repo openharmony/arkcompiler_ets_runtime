@@ -64,16 +64,18 @@ public:
 
     bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
                           bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
-                          bool isFullGC = true) override
+                          bool isFullGC = true, bool isSimplify = false, bool isSync = false) override
     {
         return profiler_->DumpHeapSnapshot(dumpFormat, stream, progress, isVmMode, isPrivate, captureNumericValue,
-                                           isFullGC);
+                                           isFullGC, isSimplify, isSync);
     }
 
     void DumpHeapSnapshot(DumpFormat dumpFormat, bool isVmMode = true, bool isPrivate = false,
-                          bool captureNumericValue = false, bool isFullGC = true) override
+                          bool captureNumericValue = false, bool isFullGC = true,
+                          bool isSimplify = false, bool isSync = false) override
     {
-        profiler_->DumpHeapSnapshot(dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
+        profiler_->DumpHeapSnapshot(dumpFormat, isVmMode, isPrivate, captureNumericValue,
+                                    isFullGC, isSimplify, isSync);
     }
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,

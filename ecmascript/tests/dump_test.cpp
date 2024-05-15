@@ -115,7 +115,6 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -130,7 +129,6 @@
 #include "ecmascript/template_map.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/transitions_dictionary.h"
-#include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
@@ -198,14 +196,6 @@ static JSHandle<JSSet> NewJSSet(JSThread *thread, ObjectFactory *factory, JSHand
     JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread));
     jsSet->SetLinkedSet(thread, linkedSet);
     return jsSet;
-}
-
-static JSHandle<JSSharedJSONValue> NewJSJSONValue(ObjectFactory *factory,
-                                                  JSHandle<JSTaggedValue> proto)
-{
-    JSHandle<JSHClass> jsonValueHClass =
-        factory->NewEcmaHClass(JSSharedJSONValue::SIZE, JSType::JS_SHARED_JSON_OBJECT, proto);
-    return JSHandle<JSSharedJSONValue>::Cast(factory->NewJSObjectWithInit(jsonValueHClass));
 }
 
 static JSHandle<JSSharedSet> NewJSSharedSet(JSThread *thread, ObjectFactory *factory)
@@ -466,18 +456,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsObj);
                 break;
             }
-            case JSType::JS_SHARED_JSON_OBJECT:
-            case JSType::JS_SHARED_JSON_NULL:
-            case JSType::JS_SHARED_JSON_TRUE:
-            case JSType::JS_SHARED_JSON_FALSE:
-            case JSType::JS_SHARED_JSON_NUMBER:
-            case JSType::JS_SHARED_JSON_STRING:
-            case JSType::JS_SHARED_JSON_ARRAY: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedJSONValue::SIZE, 1U);
-                JSHandle<JSSharedJSONValue> jsSharedJsonValue = NewJSJSONValue(factory, proto);
-                DUMP_FOR_HANDLE(jsSharedJsonValue);
-                break;
-            }
             case JSType::JS_REALM: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSRealm::SIZE, 2U);
                 JSHandle<JSRealm> jsRealm = factory->NewJSRealm();
@@ -498,7 +476,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::JS_FUNCTION:
             case JSType::JS_SHARED_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 7U);
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 8U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc);
                 break;
@@ -939,6 +917,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::TAGGED_ARRAY:
             case JSType::VTABLE:
             case JSType::LEXICAL_ENV:
+            case JSType::SENDABLE_ENV:
             case JSType::AOT_LITERAL_INFO: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray);
@@ -991,7 +970,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SYMBOL: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), JSSymbol::SIZE, 2U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), JSSymbol::SIZE, 3U);
                 JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
                 DUMP_FOR_HANDLE(symbol);
                 break;
@@ -1157,60 +1136,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(
                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
                 DUMP_FOR_HANDLE(classInfoExtractor);
-                break;
-            }
-            case JSType::TS_OBJECT_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSObjectType::SIZE, 3U);
-                JSHandle<TSObjectType> objectType = factory->NewTSObjectType(0);
-                DUMP_FOR_HANDLE(objectType);
-                break;
-            }
-            case JSType::TS_CLASS_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassType::SIZE, 7U);
-                JSHandle<TSClassType> classType = factory->NewTSClassType();
-                DUMP_FOR_HANDLE(classType);
-                break;
-            }
-            case JSType::TS_INTERFACE_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSInterfaceType::SIZE, 4U);
-                JSHandle<TSInterfaceType> interfaceType = factory->NewTSInterfaceType();
-                DUMP_FOR_HANDLE(interfaceType);
-                break;
-            }
-            case JSType::TS_CLASS_INSTANCE_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassInstanceType::SIZE, 2U);
-                JSHandle<TSClassInstanceType> classInstanceType = factory->NewTSClassInstanceType();
-                DUMP_FOR_HANDLE(classInstanceType);
-                break;
-            }
-            case JSType::TS_UNION_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSUnionType::SIZE, 2U);
-                JSHandle<TSUnionType> unionType = factory->NewTSUnionType(1);
-                DUMP_FOR_HANDLE(unionType);
-                break;
-            }
-            case JSType::TS_FUNCTION_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSFunctionType::SIZE, 5U);
-                JSHandle<TSFunctionType> functionType = factory->NewTSFunctionType(1);
-                DUMP_FOR_HANDLE(functionType);
-                break;
-            }
-            case JSType::TS_ARRAY_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSArrayType::SIZE, 2U);
-                JSHandle<TSArrayType> arrayType = factory->NewTSArrayType();
-                DUMP_FOR_HANDLE(arrayType);
-                break;
-            }
-            case JSType::TS_ITERATOR_INSTANCE_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSIteratorInstanceType::SIZE, 2U);
-                JSHandle<TSIteratorInstanceType> iteratorInstanceType = factory->NewTSIteratorInstanceType();
-                DUMP_FOR_HANDLE(iteratorInstanceType);
-                break;
-            }
-            case JSType::TS_NAMESPACE_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSNamespaceType::SIZE, 2U);
-                JSHandle<TSNamespaceType> namespaceType = factory->NewTSNamespaceType();
-                DUMP_FOR_HANDLE(namespaceType);
                 break;
             }
             case JSType::JS_API_ARRAY_LIST: {
@@ -1429,7 +1354,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SOURCE_TEXT_MODULE_RECORD: {
-                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 16U);
+                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 17U);
                 JSHandle<SourceTextModule> moduleSourceRecord = factory->NewSourceTextModule();
                 DUMP_FOR_HANDLE(moduleSourceRecord);
                 break;
@@ -1471,7 +1396,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::RESOLVEDRECORDINDEXBINDING_RECORD: {
-                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordIndexBinding::SIZE, 2U);
+                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordIndexBinding::SIZE, 3U);
                 JSHandle<ResolvedRecordIndexBinding> recordBinding = factory->NewSResolvedRecordIndexBindingRecord();
                 DUMP_FOR_HANDLE(recordBinding);
                 break;

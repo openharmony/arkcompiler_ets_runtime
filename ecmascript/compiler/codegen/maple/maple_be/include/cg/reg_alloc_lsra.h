@@ -764,6 +764,10 @@ public:
     RegOperand *GetReplaceUdOpnd(Insn &insn, Operand &opnd, uint32 &spillIdx);
     void SetAllocMode();
     void LinearScanRegAllocator();
+    void FinalizeFreeReferenceSpillStack(Insn &insn);
+    void FinalizeUseRegisters(Insn &insn, uint32 &spillIdx);
+    void FinalizeUseDefRegisters(Insn &insn, uint32 &spillIdx);
+    void FinalizeDefRegisters(Insn &insn, uint32 &spillIdx);
     void FinalizeRegisters();
     void CollectReferenceMap();
     void SolveRegOpndDeoptInfo(const RegOperand &regOpnd, DeoptInfo &deoptInfo, int32 deoptVregNO) const;

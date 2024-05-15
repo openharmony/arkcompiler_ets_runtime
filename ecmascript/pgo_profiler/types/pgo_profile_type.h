@@ -57,6 +57,7 @@ public:
     };
 
     static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
+    static constexpr uint32_t HUGE_ABC_ID = 500;
 
     static PUBLIC_API const ProfileType PROFILE_TYPE_NONE;
 
@@ -280,6 +281,10 @@ public:
 
     void UpdateAbcId(ApEntityId abcId)
     {
+        if (abcId > HUGE_ABC_ID) {
+            // only for debug purpose, do not merge to release version
+            LOG_ECMA(FATAL) << "huge abcId: " << abcId;
+        }
         type_ = AbcIdBits::Update(type_, abcId);
     }
 
@@ -308,6 +313,12 @@ public:
         return stream.str();
     }
 
+    friend std::ostream& operator<<(std::ostream& os, const ProfileType& type)
+    {
+        os << type.GetTypeString();
+        return os;
+    }
+
     void UpdateId(uint32_t id)
     {
         type_ = IdBits::Update(type_, id);
@@ -328,9 +339,20 @@ public:
         return GetCallMethodId() > 0;
     }
 
+    bool IsValidClassConstructorMethodId() const
+    {
+        return GetClassConstructorMethodId() > 0;
+    }
+
     uint32_t GetCallMethodId() const
     {
         ASSERT(IsMethodId());
+        return GetId();
+    }
+
+    uint32_t GetClassConstructorMethodId() const
+    {
+        ASSERT(IsClassType());
         return GetId();
     }
 
@@ -360,6 +382,15 @@ public:
         ASSERT(IsBuiltinsArray());
         auto builtinsArrayId = BuiltinsArrayId(GetId());
         return builtinsArrayId.GetTransitionElementsKind();
+    }
+
+    bool IsBuiltinsMap() const
+    {
+        if (IsBuiltinsType()) {
+            JSType type = GetBuiltinsType();
+            return type == JSType::JS_MAP;
+        }
+        return false;
     }
 
     bool IsBuiltinsString() const

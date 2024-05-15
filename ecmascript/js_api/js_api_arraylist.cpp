@@ -125,6 +125,7 @@ void JSAPIArrayList::TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIA
 JSTaggedValue JSAPIArrayList::Get(JSThread *thread, const uint32_t index)
 {
     if (index >= GetLength().GetArrayLength()) {
+        ASSERT(GetLength().GetArrayLength() > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= "
             << (GetLength().GetArrayLength() - 1) << ". Received value is: " << index;
@@ -277,6 +278,7 @@ JSTaggedValue JSAPIArrayList::ReplaceAllElements(JSThread *thread, const JSHandl
 JSTaggedValue JSAPIArrayList::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
     if (index >= GetLength().GetArrayLength()) {
+        ASSERT(GetLength().GetArrayLength() > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= "
             << (GetLength().GetArrayLength() - 1) << ". Received value is: " << index;
@@ -415,6 +417,7 @@ bool JSAPIArrayList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIArrayL
 
     uint32_t length = obj->GetLength().GetArrayLength();
     if (index >= length) {
+        ASSERT(length > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
             << ". Received value is: " << index;

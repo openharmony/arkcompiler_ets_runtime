@@ -60,6 +60,16 @@
 #include "syspara/parameter.h"
 #endif
 
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+#include "parameters.h"
+#include "hisysevent.h"
+static constexpr uint32_t DEC_TO_INT = 100;
+static size_t g_threshold = OHOS::system::GetUintParameter<size_t>("persist.dfx.leak.threshold", 85);
+static uint64_t g_lastHeapDumpTime = 0;
+static bool g_debugLeak = OHOS::system::GetBoolParameter("debug.dfx.tags.enableleak", false);
+static constexpr uint64_t HEAP_DUMP_REPORT_INTERVAL = 24 * 3600 * 1000;
+#endif
+
 namespace panda::ecmascript {
 SharedHeap* SharedHeap::GetInstance()
 {
@@ -96,7 +106,8 @@ void SharedHeap::AdjustGlobalSpaceAllocLimit()
                                       config_.GetDefaultGlobalAllocLimit() * 2); // 2: double
     globalSpaceAllocLimit_ = std::min(std::min(globalSpaceAllocLimit_, GetCommittedSize() + growingStep_),
                                       config_.GetMaxHeapSize());
-    LOG_ECMA(INFO) << "Shared gc adjust global space alloc limit to: " << globalSpaceAllocLimit_;
+    LOG_ECMA_IF(optionalLogEnabled_, INFO) << "Shared gc adjust global space alloc limit to: "
+        << globalSpaceAllocLimit_;
 }
 
 bool SharedHeap::ObjectExceedMaxHeapSize() const
@@ -121,6 +132,7 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     heapRegionAllocator_ = heapRegionAllocator;
     shouldVerifyHeap_ = option.EnableHeapVerify();
     parallelGC_ = option.EnableParallelGC();
+    optionalLogEnabled_ = option.EnableOptionalLog();
     size_t maxHeapSize = config_.GetMaxHeapSize();
     size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
     sNonMovableSpace_ = new SharedNonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
@@ -339,6 +351,11 @@ void Heap::Initialize()
     auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
     auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
+    sOldTlab_ = new ThreadLocalAllocationBuffer(this);
+    thread_->ReSetSOldSpaceAllocationAddress(sOldTlab_->GetTopAddress(), sOldTlab_->GetEndAddress());
+    sNonMovableTlab_ = new ThreadLocalAllocationBuffer(this);
+    thread_->ReSetSNonMovableSpaceAllocationAddress(sNonMovableTlab_->GetTopAddress(),
+                                                    sNonMovableTlab_->GetEndAddress());
     inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
 
     // whether should verify heap duration gc
@@ -408,8 +425,30 @@ void Heap::Initialize()
     gcListeners_.reserve(16U);
 }
 
+void Heap::ResetTlab()
+{
+    sOldTlab_->Reset();
+    sNonMovableTlab_->Reset();
+}
+
+void Heap::FillBumpPointerForTlab()
+{
+    sOldTlab_->FillBumpPointer();
+    sNonMovableTlab_->FillBumpPointer();
+}
+
 void Heap::Destroy()
 {
+    if (sOldTlab_ != nullptr) {
+        sOldTlab_->Reset();
+        delete sOldTlab_;
+        sOldTlab_ = nullptr;
+    }
+    if (sNonMovableTlab_!= nullptr) {
+        sNonMovableTlab_->Reset();
+        delete sNonMovableTlab_;
+        sNonMovableTlab_= nullptr;
+    }
     if (workManager_ != nullptr) {
         delete workManager_;
         workManager_ = nullptr;
@@ -611,6 +650,7 @@ void Heap::EnableParallelGC()
         workManager_ = new WorkManager(this, maxEvacuateTaskCount_ + 1);
         UpdateWorkManager(workManager_);
     }
+    ASSERT(maxEvacuateTaskCount_ > 0);
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
                                          maxEvacuateTaskCount_ - 1);
     bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
@@ -640,7 +680,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
     Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
-        ASSERT(thread_->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+        if (UNLIKELY(!thread_->IsInRunningStateOrProfiling())) {
+            LOG_ECMA(FATAL) << "Local GC must be in jsthread running state";
+            UNREACHABLE();
+        }
+#endif
         RecursionScope recurScope(this);
         if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent() ||
             (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
@@ -678,72 +723,65 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
         }
         gcType_ = gcType;
-        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpPause();
-        switch (gcType) {
-            case TriggerGCType::YOUNG_GC:
-                // Use partial GC for young generation.
-                if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
-                    SetMarkType(MarkType::MARK_YOUNG);
-                }
-                if (markType_ == MarkType::MARK_FULL) {
-                    // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
-                    gcType_ = TriggerGCType::OLD_GC;
-                }
-                partialGC_->RunPhases();
-                break;
-            case TriggerGCType::OLD_GC: {
-                bool fullConcurrentMarkRequested = false;
-                // Check whether it's needed to trigger full concurrent mark instead of trigger old gc
-                if (concurrentMarker_->IsEnabled() && (thread_->IsReadyToMark() || markType_ == MarkType::MARK_YOUNG) &&
-                    reason == GCReason::ALLOCATION_LIMIT) {
-                    fullConcurrentMarkRequested = true;
-                }
-                if (concurrentMarker_->IsEnabled() && markType_ == MarkType::MARK_YOUNG) {
-                    // Wait for existing concurrent marking tasks to be finished (if any),
-                    // and reset concurrent marker's status for full mark.
-                    bool concurrentMark = CheckOngoingConcurrentMarking();
-                    if (concurrentMark) {
-                        concurrentMarker_->Reset();
+        {
+            pgo::PGODumpPauseScope pscope(GetEcmaVM()->GetPGOProfiler());
+            switch (gcType) {
+                case TriggerGCType::YOUNG_GC:
+                    // Use partial GC for young generation.
+                    if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
+                        SetMarkType(MarkType::MARK_YOUNG);
                     }
+                    if (markType_ == MarkType::MARK_FULL) {
+                        // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
+                        gcType_ = TriggerGCType::OLD_GC;
+                    }
+                    partialGC_->RunPhases();
+                    break;
+                case TriggerGCType::OLD_GC: {
+                    bool fullConcurrentMarkRequested = false;
+                    // Check whether it's needed to trigger full concurrent mark instead of trigger old gc
+                    if (concurrentMarker_->IsEnabled() &&
+                        (thread_->IsReadyToMark() || markType_ == MarkType::MARK_YOUNG) &&
+                        reason == GCReason::ALLOCATION_LIMIT) {
+                        fullConcurrentMarkRequested = true;
+                    }
+                    if (concurrentMarker_->IsEnabled() && markType_ == MarkType::MARK_YOUNG) {
+                        // Wait for existing concurrent marking tasks to be finished (if any),
+                        // and reset concurrent marker's status for full mark.
+                        bool concurrentMark = CheckOngoingConcurrentMarking();
+                        if (concurrentMark) {
+                            concurrentMarker_->Reset();
+                        }
+                    }
+                    SetMarkType(MarkType::MARK_FULL);
+                    if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
+                        LOG_ECMA(INFO)
+                            << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
+                        oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
+                        TriggerConcurrentMarking();
+                        oldGCRequested_ = true;
+                        ProcessGCListeners();
+                        return;
+                    }
+                    partialGC_->RunPhases();
+                    break;
                 }
-                SetMarkType(MarkType::MARK_FULL);
-                if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
-                    LOG_ECMA(INFO) << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
-                    oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
-                    TriggerConcurrentMarking();
-                    oldGCRequested_ = true;
-                    ProcessGCListeners();
-                    return;
-                }
-                partialGC_->RunPhases();
-                break;
+                case TriggerGCType::FULL_GC:
+                    fullGC_->SetForAppSpawn(false);
+                    fullGC_->RunPhases();
+                    if (fullGCRequested_) {
+                        fullGCRequested_ = false;
+                    }
+                    break;
+                case TriggerGCType::APPSPAWN_FULL_GC:
+                    fullGC_->SetForAppSpawn(true);
+                    fullGC_->RunPhasesForAppSpawn();
+                    break;
+                default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
+                    UNREACHABLE();
+                    break;
             }
-            case TriggerGCType::FULL_GC:
-                fullGC_->SetForAppSpawn(false);
-                fullGC_->RunPhases();
-                if (fullGCRequested_) {
-                    fullGCRequested_ = false;
-                }
-                break;
-            case TriggerGCType::APPSPAWN_FULL_GC:
-                fullGC_->SetForAppSpawn(true);
-                fullGC_->RunPhasesForAppSpawn();
-                break;
-            default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
-                break;
-        }
-        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpResume();
-
-        // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
-        if (shouldThrowOOMError_) {
-            sweeper_->EnsureAllTaskFinished();
-            DumpHeapSnapshotBeforeOOM(false);
-            StatisticHeapDetail();
-            ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
-            oldSpace_->ResetMergeSize();
-            shouldThrowOOMError_ = false;
         }
 
         ClearIdleTask();
@@ -782,6 +820,15 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         // heap size is 16M, if exceeded, an OOM exception will be thrown, this check is to do this.
         CheckNonMovableSpaceOOM();
     }
+    // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
+    if (shouldThrowOOMError_) {
+        sweeper_->EnsureAllTaskFinished();
+        DumpHeapSnapshotBeforeOOM(false);
+        StatisticHeapDetail();
+        ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
+        oldSpace_->ResetMergeSize();
+        shouldThrowOOMError_ = false;
+    }
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
     thread_->InvokeWeakNodeNativeFinalizeCallback();
@@ -803,9 +850,16 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     ASSERT(thread_->IsPropertyCacheCleared());
     ProcessGCListeners();
 
-    if (GetEcmaVM()->IsEnableJit()) {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    if (!hasOOMDump_) {
+        ThresholdReachedDump();
+    }
+#endif
+
+    if (GetEcmaVM()->IsEnableBaselineJit() || GetEcmaVM()->IsEnableFastJit()) {
         // check machine code space if enough
-        int remainSize = config_.GetDefaultMachineCodeSpaceSize() - GetMachineCodeSpace()->GetHeapObjectSize();
+        int remainSize = static_cast<int>(config_.GetDefaultMachineCodeSpaceSize()) -
+            static_cast<int>(GetMachineCodeSpace()->GetHeapObjectSize());
         Jit::GetInstance()->CheckMechineCodeSpaceMemory(GetEcmaVM()->GetJSThread(), remainSize);
     }
 }
@@ -824,6 +878,19 @@ void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string 
     }
     LOG_ECMA_MEM(ERROR) << oss.str().c_str();
     THROW_OOM_ERROR(thread, oss.str().c_str());
+}
+
+void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName)
+{
+    std::ostringstream oss;
+    oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: "
+        << functionName.c_str();
+    LOG_ECMA_MEM(ERROR) << oss.str().c_str();
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::OOM_ERROR, oss.str().c_str());
+    thread->SetException(error.GetTaggedValue());
 }
 
 void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
@@ -1007,6 +1074,7 @@ std::string FormatCmdLine(const std::string& cmdLine)
             break;
         }
     }
+    ASSERT(endPos >= startPos);
     return cmdLine.substr(startPos, endPos - startPos);
 }
 
@@ -1042,8 +1110,12 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
         LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, propertyName:" << propertyName
             << " value:" << std::to_string(pid);
     }
+#ifdef ENABLE_HISYSEVENT
+    GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize());
+    hasOOMDump_ = true;
+#endif
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC);
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true, true);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
@@ -1442,9 +1514,6 @@ void Heap::TryTriggerFullMarkBySharedSize(size_t size)
             SetFullMarkRequestedState(true);
             TryTriggerConcurrentMarking();
             newAllocatedSharedObjectSize_ = 0;
-        } else if (!NeedStopCollection()) {
-            CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
-            newAllocatedSharedObjectSize_= 0;
         }
     }
 }
@@ -1656,6 +1725,7 @@ void Heap::NotifyFinishColdStartSoon()
 
 void Heap::NotifyHighSensitive(bool isStart)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SmartGC: set high sensitive status: " + std::to_string(isStart));
     isStart ? SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE)
         : SetSensitiveStatus(AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
     LOG_GC(DEBUG) << "SmartGC: set high sensitive status: " << isStart;
@@ -1761,7 +1831,7 @@ void Heap::CleanCallBack()
     auto &callbacks = this->GetEcmaVM()->GetNativePointerCallbacks();
     if (!callbacks.empty()) {
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<DeleteCallbackTask>(this->GetJSThread()->GetThreadId(), callbacks)
+            std::make_unique<DeleteCallbackTask>(thread_, thread_->GetThreadId(), callbacks)
         );
     }
     ASSERT(callbacks.empty());
@@ -1771,7 +1841,7 @@ bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     for (auto iter : nativePointerCallbacks_) {
         if (iter.first != nullptr) {
-            iter.first(iter.second.first, iter.second.second);
+            iter.first(thread_, iter.second.first, iter.second.second);
         }
     }
     return true;
@@ -1948,7 +2018,8 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
         });
     }
 
-    if (code == nullptr) {
+    if (code == nullptr ||
+        code->GetPayLoadSizeInBytes() == code->GetInstructionsSize()) { // baseline code
         return {};
     }
     return code->CalCallSiteInfo(retAddr);
@@ -1966,6 +2037,41 @@ void Heap::ProcessGCListeners()
         listener(data);
     }
 }
+
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+uint64_t Heap::GetCurrentTickMillseconds()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+void Heap::ThresholdReachedDump()
+{
+    size_t limitSize = GetHeapLimitSize();
+    if (!limitSize) {
+        LOG_GC(INFO) << "ThresholdReachedDump limitSize is invaild";
+        return;
+    }
+    size_t nowPrecent = GetHeapObjectSize() * DEC_TO_INT / limitSize;
+    if (g_debugLeak || (nowPrecent >= g_threshold && (g_lastHeapDumpTime == 0 ||
+        GetCurrentTickMillseconds() - g_lastHeapDumpTime > HEAP_DUMP_REPORT_INTERVAL))) {
+            size_t liveObjectSize = GetLiveObjectSize();
+            size_t nowPrecentRecheck = liveObjectSize * DEC_TO_INT / limitSize;
+            LOG_GC(INFO) << "ThresholdReachedDump nowPrecentCheck is " << nowPrecentRecheck;
+            if (nowPrecentRecheck < g_threshold) {
+                return;
+            }
+            g_lastHeapDumpTime = GetCurrentTickMillseconds();
+            base::BlockHookScope blockScope;
+            HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
+            GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
+                                                        GetHeapLimitSize(), GetLiveObjectSize());
+            heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, false, true, false);
+            hasOOMDump_ = false;
+            HeapProfilerInterface::Destroy(ecmaVm_);
+        }
+}
+#endif
 
 void Heap::RemoveGCListener(GCListenerId listenerId)
 {

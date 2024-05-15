@@ -23,11 +23,15 @@ namespace panda::ecmascript::ohos {
     V(AOT)                                                           \
     V(OTHERS)                                                        \
     V(NONE)                                                          \
+    V(JIT)                                                           \
+    V(JS)                                                            \
 
 enum class CrashType {
     AOT,
+    JIT,
     OTHERS,
     NONE,
+    JS,
 };
 class AotCrashInfo {
     constexpr static const char *const SANDBOX_ARK_PROFILE_PATH = "/data/storage/ark-profile";
@@ -38,6 +42,8 @@ class AotCrashInfo {
     constexpr static int OTHERS_CRASH_COUNT = 3;
     constexpr static int CRASH_LOG_SIZE = 3;
     constexpr static int NT_GNU_BUILD_ID = 3;
+    constexpr static int JIT_CRASH_COUNT = 1;
+    constexpr static int JS_CRASH_COUNT = 3;
 public:
     
     explicit AotCrashInfo() = default;
@@ -49,6 +55,10 @@ public:
         if (splitCrashInfo.size() == CRASH_LOG_SIZE) {
             if (splitCrashInfo[CRASH_LOG_SIZE - 1] == GetCrashTypeStr(CrashType::AOT)) {
                 return CrashType::AOT;
+            } else if (splitCrashInfo[CRASH_LOG_SIZE - 1] == GetCrashTypeStr(CrashType::JIT)) {
+                return CrashType::JIT;
+            } else if (splitCrashInfo[CRASH_LOG_SIZE - 1] == GetCrashTypeStr(CrashType::JS)) {
+                return CrashType::JS;
             } else if (splitCrashInfo[CRASH_LOG_SIZE - 1] == GetCrashTypeStr(CrashType::OTHERS)) {
                 return CrashType::OTHERS;
             }
@@ -69,6 +79,16 @@ public:
     static int GetAotCrashCount()
     {
         return AOT_CRASH_COUNT;
+    }
+
+    static int GetJitCrashCount()
+    {
+        return JIT_CRASH_COUNT;
+    }
+
+    static int GetJsCrashCount()
+    {
+        return JS_CRASH_COUNT;
     }
 
     static int GetOthersCrashCount()
@@ -124,6 +144,9 @@ public:
         }
         std::string soPath = panda::os::file::File::GetExtendedFilePath(RUNTIME_SO_PATH);
         if (!ecmascript::RealPath(soPath, realPath, false)) {
+            return "";
+        }
+        if (!FileExist(realPath.c_str())) {
             return "";
         }
         fileMap = ecmascript::FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);

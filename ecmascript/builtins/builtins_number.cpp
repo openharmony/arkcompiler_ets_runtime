@@ -316,7 +316,7 @@ JSTaggedValue BuiltinsNumber::ToFixed(EcmaRuntimeCallInfo *argv)
     if (std::abs(valueNumber) >= FIRST_NO_FIXED) {
         return value.ToString(thread).GetTaggedValue();
     }
-    return NumberHelper::DoubleToASCII(thread, valueNumber, static_cast<int>(digit), base::FRAC_FORMAT);
+    return NumberHelper::DoubleToFixedString(thread, valueNumber, static_cast<int>(digit));
 }
 
 // 20.1.3.4
@@ -424,7 +424,7 @@ JSTaggedValue BuiltinsNumber::ToPrecision(EcmaRuntimeCallInfo *argv)
     if (digit < base::MIN_FRACTION + 1 || digit > base::MAX_FRACTION) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "fraction must be 1 to 100", JSTaggedValue::Exception());
     }
-    return NumberHelper::DoubleToASCII(thread, valueNumber, static_cast<int>(digit), base::FIXED_FORMAT);
+    return NumberHelper::DoubleToPrecisionString(thread, valueNumber, static_cast<int>(digit));
 }
 
 // 20.1.3.6

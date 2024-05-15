@@ -51,6 +51,7 @@ class SharedConcurrentSweeper;
 class SharedGC;
 class SharedGCMarker;
 class STWYoungGC;
+class ThreadLocalAllocationBuffer;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
@@ -243,7 +244,7 @@ public:
 
     void SetSensitiveStatus(AppSensitiveStatus status)
     {
-        sensitiveStatus_.store(status, std::memory_order_release);;
+        sensitiveStatus_.store(status, std::memory_order_release);
     }
 
     bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
@@ -273,7 +274,8 @@ public:
     }
 
     void OnAllocateEvent(EcmaVM *ecmaVm, TaggedObject* address, size_t size);
-    inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass, size_t size);
+    inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
+                                            [[maybe_unused]] size_t size);
     bool CheckCanDistributeTask();
     void IncreaseTaskCount();
     void ReduceTaskCount();
@@ -281,6 +283,7 @@ public:
     void WaitClearTaskFinished();
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
+    void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
 
 protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
@@ -530,6 +533,8 @@ public:
 
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 
+    inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, size_t size);
+
     inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass);
 
     inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
@@ -544,11 +549,16 @@ public:
 
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 
+    inline TaggedObject *AllocateSNonMovableTlab(JSThread *thread, size_t size);
+
+    inline TaggedObject *AllocateSOldTlab(JSThread *thread, size_t size);
+
     size_t VerifyHeapObjects(VerifyKind verifyKind) const;
 private:
     void ReclaimRegions();
 
     bool parallelGC_ {true};
+    bool optionalLogEnabled_ {false};
     bool localFullMarkTriggered_ {false};
     GCStats *sGCStats_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
@@ -754,6 +764,13 @@ public:
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
 
+    // shared non movable space tlab
+    inline TaggedObject *AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size);
+    // shared old space tlab
+    inline TaggedObject *AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size);
+
+    void ResetTlab();
+    void FillBumpPointerForTlab();
     /*
      * GC triggers.
      */
@@ -940,7 +957,7 @@ public:
      */
 
     template<class Callback>
-    void IterateOverObjects(const Callback &cb) const;
+    void IterateOverObjects(const Callback &cb, bool isSimplify = false) const;
 
     size_t VerifyHeapObjects(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     size_t VerifyOldToNewRSet(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
@@ -1050,6 +1067,10 @@ private:
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
     void ProcessGCListeners();
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    uint64_t GetCurrentTickMillseconds();
+    void ThresholdReachedDump();
+#endif
     void CleanCallBack();
     class ParallelGCTask : public Task {
     public:
@@ -1095,8 +1116,9 @@ private:
 
     class DeleteCallbackTask : public Task {
     public:
-        DeleteCallbackTask(int32_t id, std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &callbacks)
-            : Task(id)
+        DeleteCallbackTask(JSThread *thread, int32_t id,
+                           std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &callbacks)
+            : Task(id), thread_(thread)
         {
             std::swap(callbacks, nativePointerCallbacks_);
         };
@@ -1107,7 +1129,8 @@ private:
         NO_MOVE_SEMANTIC(DeleteCallbackTask);
 
     private:
-        std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+        std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+        JSThread *thread_ {nullptr};
     };
 
     class RecursionScope {
@@ -1153,7 +1176,10 @@ private:
     HugeMachineCodeSpace *hugeMachineCodeSpace_ {nullptr};
     HugeObjectSpace *hugeObjectSpace_ {nullptr};
     SnapshotSpace *snapshotSpace_ {nullptr};
-
+    // tlab for shared non movable space
+    ThreadLocalAllocationBuffer *sNonMovableTlab_ {nullptr};
+    // tlab for shared old space
+    ThreadLocalAllocationBuffer *sOldTlab_ {nullptr};
     /*
      * Garbage collectors collecting garbage in different scopes.
      */
@@ -1234,6 +1260,8 @@ private:
      * The listeners which are called at the end of GC
      */
     std::vector<std::pair<FinishGCListener, void *>> gcListeners_;
+
+    bool hasOOMDump_ {false};
 };
 }  // namespace panda::ecmascript
 

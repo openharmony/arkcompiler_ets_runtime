@@ -19,6 +19,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/compiler/aot_file/executed_memory_allocator.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
 
 namespace panda::ecmascript {
@@ -52,9 +53,15 @@ struct FuncEntryDes {
         return (kind_ == CallSignature::TargetKind::BUILTINS_STUB ||
                 kind_ == CallSignature::TargetKind::BUILTINS_WITH_ARGV_STUB);
     }
+
     bool IsCommonStub() const
     {
         return (kind_ == CallSignature::TargetKind::COMMON_STUB);
+    }
+
+    bool IsBaselineStub() const
+    {
+        return (kind_ == CallSignature::TargetKind::BASELINE_STUB);
     }
     bool IsGeneralRTStub() const
     {

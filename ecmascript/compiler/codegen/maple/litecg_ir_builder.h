@@ -30,6 +30,7 @@
 #include "ecmascript/compiler/ir_module.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "lmir_builder.h"
+#include "constantfold.h"
 
 namespace panda::ecmascript::kungfu {
 class LMIRModule : public IRModule {
@@ -132,6 +133,7 @@ private:
     std::map<GateRef, maple::litecg::PregIdx> derivedPhiGate2BasePhiPreg_;
     std::map<GateRef, GateRef> derivedGate2BaseGate_; // derived reference gate to base reference gate map
     std::map<GateRef, bool> derivedGateCache_; // cache whether the phi reference is derived, base or unknow
+    maple::ConstantFold cf_;
 
 #define DECLAREVISITLOWEROPCODE(name, signature) void Visit##name signature;
     OPCODES(DECLAREVISITLOWEROPCODE)
@@ -145,7 +147,7 @@ private:
             usedOpcodeSet.insert(op);
         }
     }
-    void SaveGate2Expr(GateRef gate, maple::litecg::Expr expr);
+    void SaveGate2Expr(GateRef gate, maple::litecg::Expr expr, bool isGlueAdd = false);
     maple::litecg::Expr GetExprFromGate(GateRef gate);
     maple::litecg::Expr GetConstant(GateRef gate);
     void BuildInstID2BBIDMap();
@@ -206,6 +208,7 @@ private:
     void SaveJSFuncOnOptJSFuncFrame(maple::litecg::Var &value);
     void SaveFrameTypeOnFrame(FrameType frameType);
     bool IsInterpreted() const;
+    bool IsBaselineBuiltin() const;
     void AddFunc();
     void CollectDerivedRefInfo();
     bool IsLogEnabled() const

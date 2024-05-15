@@ -20,6 +20,63 @@
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
+class SlotIDInfo {
+public:
+    enum class SlotIDInfoType : uint8_t {
+        PC,
+        SLOT_ID,
+        PC_FORMAT,
+    };
+
+    SlotIDInfo(GateRef info, SlotIDInfoType slotType) : slotType_(slotType)
+    {
+        ASSERT(slotType != SlotIDInfoType::PC_FORMAT);
+        if (slotType == SlotIDInfoType::PC) {
+            pc_ = info;
+        } else {
+            ASSERT(slotType == SlotIDInfoType::SLOT_ID);
+            slotID_ = info;
+        }
+    }
+
+    SlotIDInfo(GateRef pc, SlotIDFormat format)
+        : slotType_(SlotIDInfoType::PC_FORMAT), pc_(pc), format_(format) {}
+
+    ~SlotIDInfo() = default;
+
+    GateRef GetSlotID() const
+    {
+        return slotID_;
+    }
+
+    SlotIDInfoType GetSlotType() const
+    {
+        return slotType_;
+    }
+
+    GateRef GetPC() const
+    {
+        return pc_;
+    }
+
+    SlotIDFormat GetFormat() const
+    {
+        return format_;
+    }
+
+private:
+    SlotIDInfoType slotType_;
+    GateRef slotID_ = 0;
+    GateRef pc_ = 0;
+    SlotIDFormat format_ = SlotIDFormat::IMM16;
+};
+
+struct OffsetInfo {
+    GateRef offset = 0;
+    GateRef pc = 0;
+    bool isPc = true;
+};
+
 class ProfilerStubBuilder : public StubBuilder {
 public:
     explicit ProfilerStubBuilder(StubBuilder *parent) : StubBuilder(parent) {}
@@ -29,25 +86,29 @@ public:
     NO_COPY_SEMANTIC(ProfilerStubBuilder);
     void GenerateCircuit() override {}
 
+    // used for interpreter builtin
     void PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,
         const std::vector<GateRef> &values, SlotIDFormat format, OperationType type);
+    // used for baseline builtin
+    void PGOProfiler(GateRef glue, GateRef func, GateRef profileTypeInfo, GateRef slotIdOrOffset,
+        const std::vector<GateRef> &values, OperationType type);
 
     void TryDump(GateRef glue, GateRef func, GateRef profileTypeInfo);
     void TryPreDump(GateRef glue, GateRef func, GateRef profileTypeInfo);
 
     void ProfileCall(
-        GateRef glue, GateRef pc, GateRef func, GateRef target, GateRef profileTypeInfo, SlotIDFormat format);
+        GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef target, GateRef profileTypeInfo);
     void ProfileNativeCall(
-        GateRef glue, GateRef pc, GateRef func, GateRef target, GateRef profileTypeInfo, SlotIDFormat format);
+        GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef target, GateRef profileTypeInfo);
     void ProfileOpType(
-        GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, GateRef type, SlotIDFormat format);
+        GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef profileTypeInfo, GateRef type);
     void ProfileDefineClass(
-        GateRef glue, GateRef pc, GateRef func, GateRef constructor, GateRef profileTypeInfo, SlotIDFormat format);
+        GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef constructor, GateRef profileTypeInfo);
     void ProfileCreateObject(
-        GateRef glue, GateRef pc, GateRef func, GateRef newObj, GateRef profileTypeInfo, SlotIDFormat format);
-    void ProfileBranch(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, bool isTrue);
+        GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef newObj, GateRef profileTypeInfo);
+    void ProfileBranch(GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef profileTypeInfo, bool isTrue);
     void ProfileGetIterator(
-        GateRef glue, GateRef pc, GateRef func, GateRef iterator, GateRef profileTypeInfo, SlotIDFormat format);
+        GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef iterator, GateRef profileTypeInfo);
 
     GateRef UpdateTrackTypeInPropAttr(GateRef attr, GateRef value, ProfileOperation callback);
     void UpdatePropAttrIC(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback);
@@ -56,9 +117,9 @@ public:
 
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo, ProfileOperation callback);
 
-    void TryJitCompile(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo);
-    GateRef IsHotForJitCompiling(GateRef profileTypeInfo, ProfileOperation callback);
-    GateRef IsHotForJitCompiling(GateRef profileTypeInfo);
+    void TryJitCompile(GateRef glue, OffsetInfo opCodeInfo, GateRef func, GateRef profileTypeInfo);
+    GateRef IsCompiledOrTryCompile(GateRef glue, GateRef func, GateRef profileTypeInfo, ProfileOperation callback);
+    GateRef IsCompiledOrTryCompile(GateRef glue, GateRef func, GateRef profileTypeInfo);
 
 private:
     static constexpr size_t MAX_PROFILE_CALL_COUNT = 10000;
@@ -69,7 +130,7 @@ private:
 
     void TryPreDumpInner(GateRef glue, GateRef func, GateRef profileTypeInfo);
 
-    GateRef GetSlotID(GateRef pc, SlotIDFormat format);
+    GateRef GetSlotID(const SlotIDInfo &slotInfo);
     GateRef GetBitFieldOffsetFromProfileTypeInfo(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoPreDumped(GateRef profileTypeInfo);
@@ -82,10 +143,18 @@ private:
     GateRef GetJitHotnessThreshold(GateRef profileTypeInfo);
     GateRef GetJitHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetJitHotnessCntOffset(GateRef profileTypeInfo);
+    GateRef GetJitCallThresholdOffset(GateRef profileTypeInfo);
+    GateRef GetJitCallThreshold(GateRef profileTypeInfo);
+    GateRef GetJitCallCntOffset(GateRef profileTypeInfo);
+    GateRef GetJitCallCnt(GateRef profileTypeInfo);
     GateRef GetOsrHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetOsrHotnessThreshold(GateRef profileTypeInfo);
+    GateRef GetBaselineJitHotnessThresholdOffset(GateRef profileTypeInfo);
+    GateRef GetBaselineJitHotnessThreshold(GateRef profileTypeInfo);
     GateRef GetOsrHotnessCntOffset(GateRef profileTypeInfo);
     GateRef GetOsrHotnessCnt(GateRef profileTypeInfo);
+    void PGOProfiler(GateRef glue, GateRef func, GateRef profileTypeInfo, SlotIDInfo slotIdInfo,
+        const std::vector<GateRef> &values, OperationType type);
 };
 } // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PROFILER_STUB_BUILDER_H

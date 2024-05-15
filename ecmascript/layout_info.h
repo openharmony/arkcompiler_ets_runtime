@@ -17,6 +17,7 @@
 #define ECMASCRIPT_LAYOUT_INFO_H
 
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_symbol.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array.h"
 
@@ -42,6 +43,11 @@ public:
     inline static LayoutInfo *UncheckCast(TaggedObject *obj)
     {
         return reinterpret_cast<LayoutInfo *>(obj);
+    }
+
+    static LayoutInfo* GetLayoutInfoFromHClass(const JSHClass* hclass)
+    {
+        return LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     }
 
     void Initialize(const JSThread *thread, int num = 0);
@@ -97,12 +103,13 @@ public:
     void GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys,
                         const JSHandle<JSObject> object);
 
-    void DumpFieldIndex(int index, pgo::HClassLayoutDesc *desc);
-    bool UpdateFieldIndex(int index, pgo::HClassLayoutDesc *desc);
+    void DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
+    bool UpdateFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
+    CString GetSymbolKeyString(JSTaggedValue key);
     DECL_DUMP()
 
 private:
-    bool IsUninitializedProperty(const JSObject *object, uint32_t index) const;
+    bool IsUninitializedProperty(const JSObject* object, uint32_t index) const;
 };
 }  // namespace panda::ecmascript
 

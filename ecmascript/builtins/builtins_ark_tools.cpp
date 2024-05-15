@@ -202,9 +202,11 @@ JSTaggedValue BuiltinsArkTools::GetLexicalEnv(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
-    const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap())->CollectGarbage(
+    auto heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
+    heap->CollectGarbage(
         TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
     SharedHeap::GetInstance()->CollectGarbage(info->GetThread(), TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER);
+    heap->GetHeapPrepare();
     return JSTaggedValue::True();
 }
 
@@ -483,6 +485,22 @@ JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo
     return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
 }
 
+JSTaggedValue BuiltinsArkTools::IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(PropertyDetector::IsRegExpFlagsDetectorValid(env));
+}
+
+JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env));
+}
+
 JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -495,23 +513,23 @@ JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInf
     }
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<EcmaString> mapString = factory->NewFromUtf8("Map");
+    JSHandle<EcmaString> mapString = factory->NewFromUtf8ReadOnly("Map");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(mapString))) {
         return JSTaggedValue(PropertyDetector::IsMapIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> setString = factory->NewFromUtf8("Set");
+    JSHandle<EcmaString> setString = factory->NewFromUtf8ReadOnly("Set");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(setString))) {
         return JSTaggedValue(PropertyDetector::IsSetIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> stringString = factory->NewFromUtf8("String");
+    JSHandle<EcmaString> stringString = factory->NewFromUtf8ReadOnly("String");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(stringString))) {
         return JSTaggedValue(PropertyDetector::IsStringIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> arrayString = factory->NewFromUtf8("Array");
+    JSHandle<EcmaString> arrayString = factory->NewFromUtf8ReadOnly("Array");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(arrayString))) {
         return JSTaggedValue(PropertyDetector::IsArrayIteratorDetectorValid(env));
     }
-    JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8("TypedArray");
+    JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8ReadOnly("TypedArray");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(typedarrayString))) {
         return JSTaggedValue(PropertyDetector::IsTypedArrayIteratorDetectorValid(env));
     }
@@ -523,6 +541,34 @@ JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *i
     ClockScope scope;
     return JSTaggedValue(scope.GetCurTime());
 }
+
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+JSTaggedValue BuiltinsArkTools::StartScopeLockStats(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    auto vm = thread->GetEcmaVM();
+    vm->StartCollectingScopeLockStats();
+    LOG_FULL(INFO) << "Start Collecting ArkCompiler Scope-Lock Stats";
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::StopScopeLockStats(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    auto vm = thread->GetEcmaVM();
+    LOG_FULL(INFO) << "Stop Collecting ArkCompiler Scope-Lock Stats: "
+                   << " ThreadStateTransition count: " << vm->GetUpdateThreadStateTransCount()
+                   << " , Entered Scope But NO State Transition count: " << (vm->GetEnterJsiNativeScopeCount() +
+                                                                     vm->GetEnterFastNativeScopeCount() +
+                                                                     vm->GetEnterThreadManagedScopeCount() -
+                                                                     vm->GetUpdateThreadStateTransCount())
+                   << " , String-Table Lock count: " << vm->GetStringTableLockCount();
+    vm->ResetScopeLockStats();
+    vm->StopCollectingScopeLockStats();
+    return JSTaggedValue::Undefined();
+}
+#endif
+
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
@@ -533,16 +579,7 @@ JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::OptimizeFunctionOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    JSThread *thread = info->GetThread();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
-    if (!thisValue->IsJSFunction()) {
-        return JSTaggedValue::Undefined();
-    }
-    JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction);
-
+    LOG_ECMA(DEBUG) << "Enter OptimizeFunctionOnNextCall()";
     return JSTaggedValue::Undefined();
 }
 
@@ -1153,7 +1190,8 @@ JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::False();
     }
     JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction, MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
     return JSTaggedValue::True();
 }
 
@@ -1167,7 +1205,8 @@ JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::False();
     }
     JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction, MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
     return JSTaggedValue::True();
 }
 
@@ -1183,7 +1222,7 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     JSHandle<JSFunction> jsFunction(thisValue);
 
     auto jit = Jit::GetInstance();
-    if (!jit->IsEnable()) {
+    if (!jit->IsEnableFastJit()) {
         return JSTaggedValue::False();
     }
     if (jsFunction->GetMachineCode() == JSTaggedValue::Undefined()) {

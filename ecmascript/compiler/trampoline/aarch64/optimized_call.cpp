@@ -73,7 +73,7 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME)));
     // 2 : 2 means pairs
     __ Stp(tmp, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-    __ Add(fp, sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip frame type and tmp
+    __ Add(fp, sp, Immediate(2 * FRAME_SLOT_SIZE));  // 2 : 2 means pairs
     __ Str(fp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 
     // load runtime trampoline address
@@ -275,7 +275,8 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
-        AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT);
+        AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT,
+                                              FrameTransitionType::OTHER_TO_OTHER);
     }
 }
 

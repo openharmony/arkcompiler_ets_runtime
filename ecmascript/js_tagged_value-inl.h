@@ -903,10 +903,6 @@ inline bool JSTaggedValue::IsArray(JSThread *thread) const
         return true;
     }
 
-    if (jsHclass->IsJSSharedArray()) {
-        return true;
-    }
-
     if (jsHclass->IsJSProxy()) {
         return JSProxy::Cast(GetTaggedObject())->IsArray(thread);
     }
@@ -931,41 +927,6 @@ inline bool JSTaggedValue::IsJSArray() const
 inline bool JSTaggedValue::IsJSSharedArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedArray();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONFalse() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONFalse();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONTrue() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONTrue();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONString() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONString();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONNull() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONNull();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONObject() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONObject();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONNumber() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONNumber();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONArray() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONArray();
 }
 
 inline bool JSTaggedValue::IsStableJSArray(JSThread *thread) const
@@ -1124,11 +1085,6 @@ inline bool JSTaggedValue::IsJSMap() const
 inline bool JSTaggedValue::IsJSSharedMap() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedMap();
-}
-
-inline bool JSTaggedValue::IsJSSharedJSONValue() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONValue();
 }
 
 inline bool JSTaggedValue::IsJSWeakMap() const
@@ -1511,36 +1467,6 @@ inline bool JSTaggedValue::IsClassInfoExtractor() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsClassInfoExtractor();
 }
 
-inline bool JSTaggedValue::IsTSType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSType();
-}
-
-inline bool JSTaggedValue::IsTSObjectType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSObjectType();
-}
-
-inline bool JSTaggedValue::IsTSClassType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSClassType();
-}
-
-inline bool JSTaggedValue::IsTSInterfaceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSInterfaceType();
-}
-
-inline bool JSTaggedValue::IsTSUnionType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSUnionType();
-}
-
-inline bool JSTaggedValue::IsTSClassInstanceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSClassInstanceType();
-}
-
 inline bool JSTaggedValue::IsCjsExports() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCjsExports();
@@ -1554,26 +1480,6 @@ inline bool JSTaggedValue::IsCjsModule() const
 inline bool JSTaggedValue::IsCjsRequire() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCjsRequire();
-}
-
-inline bool JSTaggedValue::IsTSFunctionType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSFunctionType();
-}
-
-inline bool JSTaggedValue::IsTSArrayType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSArrayType();
-}
-
-inline bool JSTaggedValue::IsTSIteratorInstanceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSIteratorInstanceType();
-}
-
-inline bool JSTaggedValue::IsTSNamespaceType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSNamespaceType();
 }
 
 inline bool JSTaggedValue::IsModuleRecord() const
@@ -1604,6 +1510,12 @@ inline bool JSTaggedValue::IsIndirectExportEntry() const
 inline bool JSTaggedValue::IsStarExportEntry() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsStarExportEntry();
+}
+
+inline bool JSTaggedValue::IsModuleBinding() const
+{
+    return IsResolvedBinding() || IsResolvedIndexBinding() ||
+        IsResolvedRecordIndexBinding() || IsResolvedRecordBinding();
 }
 
 inline bool JSTaggedValue::IsResolvedBinding() const

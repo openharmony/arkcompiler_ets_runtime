@@ -136,9 +136,9 @@ public:
         int more = 1;
         int rightShift7Bits = 7;
         while (more != 0) {
-            uint8 byte = value & 0x7F;
-            uint8 sign = value & 0x40;
-            value >>= rightShift7Bits;
+            uint8 byte = static_cast<uint8>(static_cast<uint64>(value) & 0x7F);
+            uint8 sign = static_cast<uint8>(static_cast<uint64>(value) & 0x40);
+            value = static_cast<uint64>(value) >> rightShift7Bits;
             if ((value == 0 && sign == 0) || (value == -1 && sign != 0)) {
                 more = 0;
             } else {
@@ -211,6 +211,8 @@ public:
     void Xor(InsnSize insnSize, const Mem &mem, Reg reg) override;
     void Xor(InsnSize insnSize, Reg reg, const Mem &mem) override;
     void Xor(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem) override;
+    /* bsr */
+    void Bsr(InsnSize insnSize, Reg srcReg, Reg destReg) override;
     /* not */
     void Not(InsnSize insnSize, Reg reg) override;
     void Not(InsnSize insnSize, const Mem &mem) override;

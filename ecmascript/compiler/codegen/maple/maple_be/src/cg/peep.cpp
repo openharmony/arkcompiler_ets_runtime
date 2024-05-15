@@ -151,6 +151,7 @@ bool CGPeepPattern::IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &in
         if (!nextInsn->IsMachineInstruction()) {
             continue;
         }
+        CHECK_FATAL(nextInsn->GetOperandSize() > 0, "must not be zero");
         int32 lastOpndId = static_cast<int32>(nextInsn->GetOperandSize() - 1);
         for (int32 i = lastOpndId; i >= 0; --i) {
             Operand &opnd = nextInsn->GetOperand(static_cast<uint32>(i));
@@ -355,6 +356,7 @@ bool PeepPattern::IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &insn
         if (!nextInsn->IsMachineInstruction()) {
             continue;
         }
+        CHECK_FATAL(nextInsn->GetOperandSize() > 0, "must not be zero");
         int32 lastOpndId = static_cast<int32>(nextInsn->GetOperandSize() - 1);
         for (int32 i = lastOpndId; i >= 0; --i) {
             Operand &opnd = nextInsn->GetOperand(static_cast<uint32>(i));

@@ -115,6 +115,9 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
         case JSType::LEXICAL_ENV:
             SerializeLexicalEnvFieldIndividually(root, start, end);
             return true;
+        case JSType::SENDABLE_ENV:
+            SerializeSendableEnvFieldIndividually(root, start, end);
+            return true;
         case JSType::JS_SHARED_FUNCTION:
             SerializeSFunctionFieldIndividually(root, start, end);
             return true;
@@ -186,6 +189,7 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
             case JSFunction::MACHINECODE_OFFSET:
+            case JSFunction::BASELINECODE_OFFSET:
             case JSFunction::PROFILE_TYPE_INFO_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
@@ -249,6 +253,29 @@ void BaseSerializer::SerializeLexicalEnvFieldIndividually(TaggedObject *root, Ob
     }
 }
 
+void BaseSerializer::SerializeSendableEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
+{
+    ASSERT(root->GetClass()->GetObjectType() == JSType::SENDABLE_ENV);
+    ObjectSlot slot = start;
+    while (slot < end) {
+        size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
+        switch (fieldOffset) {
+            case PARENT_ENV_SLOT:
+            case SCOPE_INFO_SLOT: {
+                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+                data_->WriteJSTaggedValue(JSTaggedValue::Hole());
+                slot++;
+                break;
+            }
+            default: {
+                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                slot++;
+                break;
+            }
+        }
+    }
+}
+
 void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
 {
     ASSERT(root->GetClass()->GetObjectType() == JSType::JS_ASYNC_FUNCTION);
@@ -266,6 +293,7 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
             case JSFunction::PROTO_OR_DYNCLASS_OFFSET:
             case JSFunction::LEXICAL_ENV_OFFSET:
             case JSFunction::MACHINECODE_OFFSET:
+            case JSFunction::BASELINECODE_OFFSET:
             case JSFunction::PROFILE_TYPE_INFO_OFFSET:
             case JSFunction::HOME_OBJECT_OFFSET:
             case JSFunction::ECMA_MODULE_OFFSET: {

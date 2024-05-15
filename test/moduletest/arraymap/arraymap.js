@@ -43,3 +43,23 @@ a.constructor = {};
 a.constructor[Symbol.species] = Ctor;
 var result = a.map(function() {});
 print(result == instance);
+{
+  const v1 = new BigInt64Array();
+  const v2 = [65537,-1,4096,-9007199254740990,-268435456,6,-29705,128,-6];
+  function f3() {
+      v2["pop"]();
+      return f3;
+  }
+  let a = v2.map(f3());
+  print(a.length)
+}
+
+{
+  const v0 = [0,1,2,3,4,5,6,7,8,9,10];
+  const mapEd = v0.map(() =>{
+    Object.defineProperty(Array.prototype, '8',{value: 42, writable :false });
+    return 8;
+  })
+  print(v0)
+}
+

@@ -39,6 +39,8 @@ public:
         return static_cast<JSSharedTypedArray *>(object);
     }
 
+    static JSTaggedValue GetSharedOffHeapBuffer(JSThread *thread, JSHandle<JSSharedTypedArray> typedArray);
+
     static constexpr size_t MOD_RECORD_OFFSET = JSTypedArray::SIZE;
     ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(ModRecord, uint32_t, MOD_RECORD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);

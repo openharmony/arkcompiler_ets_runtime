@@ -14,6 +14,8 @@
  */
 #include "ecmascript/patch/patch_loader.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/global_handle_collection.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -21,7 +23,6 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
 PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,
@@ -42,6 +43,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 
     if (!thread->GetCurrentEcmaContext()->HasCachedConstpool(baseFile)) {
         LOG_ECMA(INFO) << "cold patch!";
+        vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile, patchFile);
         return PatchErrorCode::SUCCESS;
     }
 
@@ -75,11 +77,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 void PatchLoader::ExecuteFuncOrPatchMain(
     JSThread *thread, const JSPandaFile *jsPandaFile, const PatchInfo &patchInfo, bool loadPatch)
 {
-    bool needToFinishManagedCode = false;
-    if (thread->GetState() != ThreadState::RUNNING) {
-        needToFinishManagedCode = true;
-        thread->ManagedCodeBegin();
-    }
+    ThreadManagedScope managedScope(thread);
     LOG_ECMA(DEBUG) << "execute main begin";
     EcmaContext *context = thread->GetCurrentEcmaContext();
     context->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
@@ -112,13 +110,26 @@ void PatchLoader::ExecuteFuncOrPatchMain(
 
     if (loadPatch) {
         context->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+        if (context->GetStageOfColdReload() == StageOfColdReload::IS_COLD_RELOAD) {
+            context->SetStageOfColdReload(StageOfColdReload::COLD_RELOADING);
+            // change bc stub entry when using assembly interpreter
+            if (thread->IsAsmInterpreter()) {
+                auto handleDefinefuncImm8Id16Imm8ColdReload = thread->GetBCStubEntry(
+                    kungfu::BytecodeStubCSigns::HandleDefinefuncImm8Id16Imm8ColdReload);
+                auto handleDefinefuncImm16Id16Imm8ColdReload = thread->GetBCStubEntry(
+                    kungfu::BytecodeStubCSigns::HandleDefinefuncImm16Id16Imm8ColdReload);
+                thread->SetBCStubEntry(
+                    kungfu::BytecodeStubCSigns::ID_HandleDefinefuncImm8Id16Imm8,
+                    handleDefinefuncImm8Id16Imm8ColdReload);
+                thread->SetBCStubEntry(
+                    kungfu::BytecodeStubCSigns::ID_HandleDefinefuncImm16Id16Imm8,
+                    handleDefinefuncImm16Id16Imm8ColdReload);
+            }
+        }
     } else {
         context->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
     }
     LOG_ECMA(DEBUG) << "execute main end";
-    if (needToFinishManagedCode) {
-        thread->ManagedCodeEnd();
-    }
 }
 
 PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString &patchFileName,
@@ -150,7 +161,7 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
         return PatchErrorCode::INTERNAL_ERROR;
     }
 
-    patchInfo.repalcedPatchMethods.clear();
+    patchInfo.replacedPatchMethods.clear();
     for (const auto &item : baseMethodInfo) {
         const auto &methodIndex = item.first;
         JSTaggedValue baseConstpool = baseConstpoolValues.value().get()[methodIndex.constpoolNum];
@@ -160,7 +171,7 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
         MethodLiteral *baseMethodLiteral = item.second;
         EntityId baseMethodId = baseMethodLiteral->GetMethodId();
         JSTaggedValue baseConstpoolValue = context->FindConstpool(baseFile.get(), baseMethodId);
-        patchInfo.repalcedPatchMethods.emplace(baseMethodId, patchMethod->GetRecordNameStr());
+        patchInfo.replacedPatchMethods.emplace(baseMethodId, patchMethod->GetRecordNameStr());
         ReplaceMethod(thread, patchMethod, baseMethodLiteral, baseConstpoolValue);
         LOG_ECMA(DEBUG) << "Replace base method: "
                        << patchMethod->GetRecordNameStr()
@@ -250,17 +261,17 @@ void PatchLoader::ReplaceMethod(JSThread *thread,
 // Iterator heap to update module in JSFunction.
 void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
 {
-    auto &repalcedPatchMethods = patchInfo.repalcedPatchMethods;
+    auto &replacedPatchMethods = patchInfo.replacedPatchMethods;
     const Heap *heap = thread->GetEcmaVM()->GetHeap();
     heap->GetSweeper()->EnsureAllTaskFinished();
-    heap->IterateOverObjects([&repalcedPatchMethods, thread]([[maybe_unused]] TaggedObject *obj) {
+    heap->IterateOverObjects([&replacedPatchMethods, thread]([[maybe_unused]] TaggedObject *obj) {
         JSFunction *function = nullptr;
         if (JSTaggedValue(obj).IsJSFunction()) {
             function = JSFunction::Cast(obj);
             EntityId methodId = Method::Cast(function->GetMethod())->GetMethodId();
-            if (repalcedPatchMethods.count(methodId) > 0) {
+            if (replacedPatchMethods.count(methodId) > 0) {
                 JSHandle<JSTaggedValue> moduleRecord =
-                    thread->GetCurrentEcmaContext()->FindPatchModule(repalcedPatchMethods[methodId]);
+                    thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[methodId]);
                 function->SetModule(thread, moduleRecord.GetTaggedValue());
                 function->SetProfileTypeInfo(thread, JSTaggedValue::Undefined());
             }
@@ -322,8 +333,11 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
 
                 EntityId patchMethodId = patchMethodLiteral->GetMethodId();
                 JSTaggedValue patchConstpoolValue = context->FindConstpool(patchFile, patchMethodId);
-                patchInfo.repalcedPatchMethods.emplace(patchMethodId, baseMethod->GetRecordNameStr());
+                patchInfo.replacedPatchMethods.emplace(patchMethodId, baseMethod->GetRecordNameStr());
                 ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
+                LOG_ECMA(DEBUG) << "Replace base method: "
+                                << baseMethod->GetRecordNameStr() << ": "
+                                << baseMethod->GetMethodName();
 
                 BaseMethodIndex indexs = {constpoolNum, constpoolIndex};
                 SaveBaseMethodInfo(patchInfo, baseFile, baseMethodId, indexs);
@@ -376,8 +390,11 @@ void PatchLoader::FindAndReplaceClassLiteral(JSThread *thread, const JSPandaFile
 
         EntityId patchMethodId = patchMethodLiteral->GetMethodId();
         JSTaggedValue patchConstpoolValue = thread->GetCurrentEcmaContext()->FindConstpool(patchFile, patchMethodId);
-        patchInfo.repalcedPatchMethods.emplace(patchMethodId, baseMethod->GetRecordNameStr());
+        patchInfo.replacedPatchMethods.emplace(patchMethodId, baseMethod->GetRecordNameStr());
         ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
+        LOG_ECMA(DEBUG) << "Replace base method: "
+                        << baseMethod->GetRecordNameStr() << ": "
+                        << baseMethod->GetMethodName();
 
         BaseMethodIndex indexs = {constpoolNum, constpoolIndex, literalIndex};
         SaveBaseMethodInfo(patchInfo, baseFile, baseMethodId, indexs);
@@ -535,6 +552,7 @@ CString PatchLoader::GetRealName(const JSPandaFile *jsPandaFile, EntityId entity
 {
     std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, entityId));
     size_t poiIndex = methodName.find_last_of('#');
+    ASSERT(methodName.size() > 0);
     if (poiIndex != std::string::npos && poiIndex < methodName.size() - 1 && className != "default") {
         methodName = methodName.substr(poiIndex + 1);
     }

@@ -38,6 +38,8 @@ public:
     GateRef GetDataPointFromBuffer(GateRef arrBuf);
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
     void DoSort(GateRef glue, GateRef receiver, Variable *result, Label *exit, Label *slowPath);
+    void FastSetPropertyByIndex(GateRef glue, GateRef value, GateRef array, GateRef index, GateRef jsType);
+    void SetValueToBuffer(GateRef glue, GateRef value, GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
 
 #define DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(method, ...)           \
     void method(GateRef glue, GateRef numArgs, GateRef end, Variable *result, Label *exit, Label *slowPath);
@@ -78,6 +80,9 @@ private:
     {
         return GetEnvironment()->GetBuilder()->ChangeTaggedPointerToInt64(x);
     }
+private:
+    void BuildArrayIterator(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable *result, Label *exit, Label *slowPath, IterationKind iteratorKind);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_TYPEDARRAY_STUB_BUILDER_H

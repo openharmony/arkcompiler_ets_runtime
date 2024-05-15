@@ -35,7 +35,7 @@ class LogParser {
       blockStat: -1,
       blockCollect: -1,
       oneBlock: -1,
-    }
+    };
     this.procNormal_ = null;
     this.output_ = {};
   }
@@ -64,7 +64,7 @@ class LogParser {
           file: this.initBlock_.filePoint,
           irList: [],
           startLine: l,
-        }
+        };
         this.procBlock_.oneBlock = null;
         return true;
       }
@@ -78,10 +78,10 @@ class LogParser {
   }
   isStart(l) {
     //========= After bytecode2circuit lowering [func_main_0@484@arkcompiler/ets_runtime/sd_test/ttabs.abc] ========
-    const regexStart = /=+ *After ([a-zA-Z0-9_ ]+) \[([#a-zA-Z0-9_@/.-]+)\] *=+/g
+    const regexStart = /=+ *After ([a-zA-Z0-9_ ]+) \[([#a-zA-Z0-9_@/.-]+)\] *=+/g;
     //========= After inlining [OthreMath@test@arkcompiler/ets_runtime/sd_test/test.abc] Caller
     //method [func_main_0@641@arkcompiler/ets_runtime/sd_test/test.abc]====================[0m
-    const regexStart2 = /=+ *After ([a-zA-Z0-9_ ]+) \[([a-zA-Z0-9_@/.-]+)\] *Caller method \[([#a-zA-Z0-9_@/.]+)\] *=+/g
+    const regexStart2 = /=+ *After ([a-zA-Z0-9_ ]+) \[([a-zA-Z0-9_@/.-]+)\] *Caller method \[([#a-zA-Z0-9_@/.]+)\] *=+/g;
 
     if (l[11] !== '=') {
       return;
@@ -157,7 +157,7 @@ class LogParser {
           cutResult.push(tmp);
           p = i;
         }
-        cutResult.push('inNum=[' + ir.in[0].length + ',' + ir.in[1].length + ',' + ir.in[2].length + ',' + ir.in[3].length + ',' + ir.in[4].length + ']')
+        cutResult.push('inNum=[' + ir.in[0].length + ',' + ir.in[1].length + ',' + ir.in[2].length + ',' + ir.in[3].length + ',' + ir.in[4].length + ']');
         cutResult.push('outNum=' + ir.out.length);
         ir.maxDetailWidth = 0;
         for (let detail of cutResult) {
@@ -172,7 +172,7 @@ class LogParser {
     }
     else {
       //= End typeHitRate: 0.500000 =
-      let regexEnd = /=+ End[a-zA-Z:.0-9 ]* =+/g
+      let regexEnd = /=+ End[a-zA-Z:.0-9 ]* =+/g;
       let tt = regexEnd.exec(l);
       if (tt) { //收集结束，入大表l.search('== End ==') > 0
         if (this.procNormal_.irList.length > 0) {
@@ -237,7 +237,7 @@ class LogParser {
   }
   NumberStringToArray(ss) {
     let outs = ss.split(',');
-    let ret = []
+    let ret = [];
     for (let s of outs) {
       let ttt = parseInt(s);
       if (!isNaN(ttt)) {
@@ -252,7 +252,7 @@ class LogParser {
 
     if (l.startsWith('[compiler] aot method')) {
       //[compiler] aot method [func_main_0@b.abc] log:
-      const regexFuncName = /^\[compiler\] aot method \[([#a-zA-Z0-9_@/.]+)\] (recordName \[[a-zA-Z0-9_]*\] )*log:/g
+      const regexFuncName = /^\[compiler\] aot method \[([#a-zA-Z0-9_@/.]+)\] (recordName \[[a-zA-Z0-9_]*\] )*log:/g;
       ret = regexFuncName.exec(l);
       if (ret) {
         [ib.funcPoint, ib.filePoint] = this.splitLast(ret[1]);
@@ -261,7 +261,7 @@ class LogParser {
       }
     }
     if (l.startsWith('[compiler] ==================== Before state split')) {
-      const regexFuncName2 = /^\[compiler\] =+ Before state split linearizer \[([#a-zA-Z0-9_@/.]+)\] *=*/g
+      const regexFuncName2 = /^\[compiler\] =+ Before state split linearizer \[([#a-zA-Z0-9_@/.]+)\] *=*/g;
       ret = regexFuncName2.exec(l);
       if (ret) {
         [ib.funcPoint, ib.filePoint] = this.splitLast(ret[1]);
@@ -270,7 +270,7 @@ class LogParser {
       }
     }
     if (l.startsWith('[compiler] ==================== After graph lineari')) {
-      const regexFuncName3 = /^\[compiler\] =+ After graph linearizer \[([#a-zA-Z0-9_@/.]+)\] *=*/g
+      const regexFuncName3 = /^\[compiler\] =+ After graph linearizer \[([#a-zA-Z0-9_@/.]+)\] *=*/g;
       ret = regexFuncName3.exec(l);
       if (ret) {
         [ib.funcPoint, ib.filePoint] = this.splitLast(ret[1]);
@@ -286,7 +286,7 @@ class LogParser {
       /^\[compiler\]  *Succes:([0-9, ]*)$/g, //[compiler] 	Succes:
       /^\[compiler\]  *Bytecode\[\] = *(Empty)*$/g, //[compiler] 	Bytecode[] = Empty
       /^\[compiler\]  *Trys:([0-9, ]*)$/g, //[compiler] 	Trys:
-    ]
+    ];
     let ret;
     let pb = this.procBlock_;
     if (pb.blockStat === 0) {
@@ -297,7 +297,7 @@ class LogParser {
           op: 'B' + ret[1],
           detailList: [],
           maxDetailWidth: 0,
-        }
+        };
         pb.oneBlock.in = [[], [], [], [], this.NumberStringToArray(ret[2])];
         return false;
       }
@@ -353,7 +353,7 @@ class LogParser {
       /^\[compiler\]  *Succes:([0-9, ]*)$/g, //[compiler] 	Succes:
       /^\[compiler\]  *Bytecode\[\] = *(Empty)*$/g, //[compiler] 	Bytecode[] = Empty
       /^\[compiler\]  *Trys:([0-9, ]*)$/g, //[compiler] 	Trys:
-    ]
+    ];
     let pb = this.procBlock_;
     let ret;
     switch (pb.blockStat) {
@@ -365,7 +365,7 @@ class LogParser {
             op: 'B' + ret[1],
             detailList: [],
             maxDetailWidth: 0,
-          }
+          };
           pb.blockStat = 1;
           return false;
         }
@@ -427,4 +427,4 @@ class LogParser {
 
 module.exports = {
   LogParser
-}
+};

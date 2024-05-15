@@ -53,7 +53,7 @@ icu::LocaleDisplayNames *JSDisplayNames::GetIcuLocaleDisplayNames() const
     return reinterpret_cast<icu::LocaleDisplayNames *>(result);
 }
 
-void JSDisplayNames::FreeIcuLocaleDisplayNames(void *pointer, [[maybe_unused]] void* hint)
+void JSDisplayNames::FreeIcuLocaleDisplayNames([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void* hint)
 {
     if (pointer == nullptr) {
         return;
@@ -64,7 +64,7 @@ void JSDisplayNames::FreeIcuLocaleDisplayNames(void *pointer, [[maybe_unused]] v
 
 void JSDisplayNames::SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<JSDisplayNames> &displayNames,
                                               icu::LocaleDisplayNames* iculocaledisplaynames,
-                                              const DeleteEntryPoint &callback)
+                                              const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -73,7 +73,7 @@ void JSDisplayNames::SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<J
     JSTaggedValue data = displayNames->GetIcuLDN();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(iculocaledisplaynames);
+        native->ResetExternalPointer(thread, iculocaledisplaynames);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(iculocaledisplaynames, callback);
@@ -194,6 +194,14 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     // 17. Set displayNames.[[Fallback]] to fallback.
     displayNames->SetFallback(fallback);
 
+    // Let languageDisplay be ? GetOption(options, "languageDisplay", string, « "dialect", "standard" », "dialect").
+    property = globalConst->GetHandledLanguageDisplayString();
+    auto langDisplay = JSLocale::GetOptionOfString<LanguageDisplayOption>(
+        thread, optionsObject, property, {LanguageDisplayOption::DIALECT, LanguageDisplayOption::STANDARD},
+        {"dialect", "standard"}, LanguageDisplayOption::DIALECT);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
+    displayNames->SetLanguageDisplay(langDisplay);
+
     // 18. Set displayNames.[[Locale]] to the value of r.[[Locale]].
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
@@ -290,6 +298,51 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
         icuLocaldisplaynames->scriptDisplayName(scriptCode.c_str(), result);
         JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
         return codeResult;
+    } else if (typeOpt == TypednsOption::CALENDAR) {
+        std::string calendarCode = intl::LocaleHelper::ConvertToStdString(code);
+        if (!JSLocale::IsWellFormedCalendarCode(calendarCode)) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "invalid calendar", code);
+        }
+
+        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
+        icu::UnicodeString result;
+        std::string calendarStrCode = std::strcmp(calendarCode.c_str(), "gregory") == 0
+                                        ? "gregorian"
+                                        : std::strcmp(calendarCode.c_str(), "ethioaa") == 0
+                                            ? "ethiopic-amete-alem"
+                                            : calendarCode;
+        icuLocaldisplaynames->keyValueDisplayName("calendar", calendarStrCode.c_str(), result);
+        JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
+        return codeResult;
+    } else if (typeOpt == TypednsOption::DATETIMEFIELD) {
+        StyOption style = displayNames->GetStyle();
+        UDateTimePGDisplayWidth width;
+        switch (style) {
+            case StyOption::LONG:
+                width = UDATPG_WIDE;
+                break;
+            case StyOption::SHORT:
+                width = UDATPG_ABBREVIATED;
+                break;
+            case StyOption::NARROW:
+                width = UDATPG_NARROW;
+                break;
+            default:
+                break;
+        }
+        std::string datetimeCode = intl::LocaleHelper::ConvertToStdString(code);
+        UDateTimePatternField field = StringToUDateTimePatternField(datetimeCode.c_str());
+        if (field == UDATPG_FIELD_COUNT) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "invalid datetimefield", code);
+        }
+
+        UErrorCode status = U_ZERO_ERROR;
+        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
+        icu::Locale locales = icuLocaldisplaynames->getLocale();
+        std::unique_ptr<icu::DateTimePatternGenerator> generator(
+            icu::DateTimePatternGenerator::createInstance(locales, status));
+        icu::UnicodeString result = generator->getFieldDisplayName(field, width);
+        return intl::LocaleHelper::UStringToString(thread, result);
     }
     // 4. 4. Assert: type is "currency".
     // 5. If ! IsWellFormedCurrencyCode(code) is false, throw a RangeError exception.
@@ -303,6 +356,47 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
     icuLocaldisplaynames->keyValueDisplayName("currency", cCode.c_str(), result);
     JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
     return codeResult;
+}
+
+UDateTimePatternField JSDisplayNames::StringToUDateTimePatternField(const char* code)
+{
+    if (std::strcmp(code, "day") == 0) {
+        return UDATPG_DAY_FIELD;
+    }
+    if (std::strcmp(code, "dayPeriod") == 0) {
+        return UDATPG_DAYPERIOD_FIELD;
+    }
+    if (std::strcmp(code, "era") == 0) {
+        return UDATPG_ERA_FIELD;
+    }
+    if (std::strcmp(code, "hour") == 0) {
+        return UDATPG_HOUR_FIELD;
+    }
+    if (std::strcmp(code, "minute") == 0) {
+        return UDATPG_MINUTE_FIELD;
+    }
+    if (std::strcmp(code, "month") == 0) {
+        return UDATPG_MONTH_FIELD;
+    }
+    if (std::strcmp(code, "quarter") == 0) {
+        return UDATPG_QUARTER_FIELD;
+    }
+    if (std::strcmp(code, "second") == 0) {
+        return UDATPG_SECOND_FIELD;
+    }
+    if (std::strcmp(code, "timeZoneName") == 0) {
+        return UDATPG_ZONE_FIELD;
+    }
+    if (std::strcmp(code, "weekOfYear") == 0) {
+        return UDATPG_WEEK_OF_YEAR_FIELD;
+    }
+    if (std::strcmp(code, "weekday") == 0) {
+        return UDATPG_WEEKDAY_FIELD;
+    }
+    if (std::strcmp(code, "year") == 0) {
+        return UDATPG_YEAR_FIELD;
+    }
+    return UDATPG_FIELD_COUNT;
 }
 
 JSHandle<JSTaggedValue> StyOptionToEcmaString(JSThread *thread, StyOption style)
@@ -374,6 +468,24 @@ JSHandle<JSTaggedValue> FallbackOptionToEcmaString(JSThread *thread, FallbackOpt
     return result;
 }
 
+JSHandle<JSTaggedValue> LanguageDisplayOptionToEcmaString(JSThread *thread, LanguageDisplayOption langDisplay)
+{
+    JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+    auto globalConst = thread->GlobalConstants();
+    switch (langDisplay) {
+        case LanguageDisplayOption::DIALECT:
+            result.Update(globalConst->GetHandledDialectString().GetTaggedValue());
+            break;
+        case LanguageDisplayOption::STANDARD:
+            result.Update(globalConst->GetHandledStandardString().GetTaggedValue());
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    return result;
+}
+
 void JSDisplayNames::ResolvedOptions(JSThread *thread, const JSHandle<JSDisplayNames> &displayNames,
                                      const JSHandle<JSObject> &options)
 {
@@ -405,5 +517,15 @@ void JSDisplayNames::ResolvedOptions(JSThread *thread, const JSHandle<JSDisplayN
     JSHandle<JSTaggedValue> fallbackString = FallbackOptionToEcmaString(thread, fallback);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, fallbackString);
     RETURN_IF_ABRUPT_COMPLETION(thread);
+
+    // [[languageDisplay]]
+    // The default languageDisplay is 'dialect' if type is 'language'
+    if (type == TypednsOption::LANGUAGE) {
+        LanguageDisplayOption langDisplay = displayNames->GetLanguageDisplay();
+        propertyKey = globalConst->GetHandledLanguageDisplayString();
+        JSHandle<JSTaggedValue> langDisplayString = LanguageDisplayOptionToEcmaString(thread, langDisplay);
+        JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, langDisplayString);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+    }
 }
 }  // namespace panda::ecmascript

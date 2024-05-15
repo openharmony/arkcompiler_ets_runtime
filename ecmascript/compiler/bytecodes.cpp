@@ -49,6 +49,9 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
         case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
         case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
@@ -84,6 +87,9 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
         case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
         case EcmaOpcode::LDA_STR_ID16:
         case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
@@ -131,6 +137,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
         case EcmaOpcode::NEWLEXENV_IMM8:
         case EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16:
+        case EcmaOpcode::CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16:
         case EcmaOpcode::POPLEXENV:
         case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
         case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
@@ -143,9 +151,15 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
         case EcmaOpcode::STLEXVAR_IMM4_IMM4:
         case EcmaOpcode::STLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16:
         case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
         case EcmaOpcode::STRICTEQ_IMM8_V8:
         case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
@@ -242,9 +256,6 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
-        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
-        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
         case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
@@ -269,6 +280,9 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
             flags |= BytecodeFlags::SUPPORT_DEOPT;
             kind = BytecodeKind::CALL_BC;
             break;
@@ -449,6 +463,14 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
         case EcmaOpcode::CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8:
         case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16:
             flags |= BytecodeFlags::READ_FUNC;
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
@@ -917,6 +939,27 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4: {
+            uint16_t level = READ_INST_4_2();
+            uint16_t slot = READ_INST_4_3();
+            info.inputs.emplace_back(Immediate(level));
+            info.inputs.emplace_back(Immediate(slot));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8: {
+            uint16_t level = READ_INST_8_1();
+            uint16_t slot = READ_INST_8_2();
+            info.inputs.emplace_back(Immediate(level));
+            info.inputs.emplace_back(Immediate(slot));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16: {
+            uint16_t level = READ_INST_16_1();
+            uint16_t slot = READ_INST_16_3();
+            info.inputs.emplace_back(Immediate(level));
+            info.inputs.emplace_back(Immediate(slot));
+            break;
+        }
         case EcmaOpcode::STLEXVAR_IMM4_IMM4: {
             uint16_t level = READ_INST_4_0();
             uint16_t slot = READ_INST_4_1();
@@ -941,6 +984,27 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4: {
+            uint16_t level = READ_INST_4_2();
+            uint16_t slot = READ_INST_4_3();
+            info.inputs.emplace_back(Immediate(level));
+            info.inputs.emplace_back(Immediate(slot));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8: {
+            uint16_t level = READ_INST_8_1();
+            uint16_t slot = READ_INST_8_2();
+            info.inputs.emplace_back(Immediate(level));
+            info.inputs.emplace_back(Immediate(slot));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16: {
+            uint16_t level = READ_INST_16_1();
+            uint16_t slot = READ_INST_16_3();
+            info.inputs.emplace_back(Immediate(level));
+            info.inputs.emplace_back(Immediate(slot));
+            break;
+        }
         case EcmaOpcode::NEWLEXENV_IMM8: {
             uint8_t numVars = READ_INST_8_0();
             info.inputs.emplace_back(Immediate(numVars));
@@ -953,6 +1017,16 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(Immediate(numVars));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             info.vregOut.emplace_back(builder->GetEnvVregIdx());
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8: {
+            uint8_t numVars = READ_INST_8_1();
+            info.inputs.emplace_back(Immediate(numVars));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16: {
+            uint16_t numVars = READ_INST_16_1();
+            info.inputs.emplace_back(Immediate(numVars));
             break;
         }
         case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16: {

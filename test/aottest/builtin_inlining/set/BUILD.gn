@@ -14,6 +14,9 @@
 group("ark_aot_builtin_inlining_set_test") {
   testonly = true
   test_list = [
+    "Add",
+    "Delete",
+    "Clear",
     "Entries",
     "Has",
     "Values",

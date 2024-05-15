@@ -86,10 +86,10 @@ public:
     bool GetStackCallNapi(JSThread *thread, bool beforeCallNapi);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
 
-    void StartCpuProfilerForInfo();
-    std::unique_ptr<struct ProfileInfo> StopCpuProfilerForInfo();
-    void StartCpuProfilerForFile(const std::string &fileName);
-    void StopCpuProfilerForFile();
+    bool StartCpuProfilerForInfo();
+    bool StopCpuProfilerForInfo(std::unique_ptr<struct ProfileInfo> &profileInfo);
+    bool StartCpuProfilerForFile(const std::string &fileName);
+    bool StopCpuProfilerForFile();
     void SetCpuSamplingInterval(int interval);
     void RecordCallNapiInfo(const std::string &methodAddr);
     void SetBuildNapiStack(bool flag);

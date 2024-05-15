@@ -47,9 +47,9 @@ public:
     MIRPreg(uint32 n, PrimType ptyp, MIRType *mType) : primType(ptyp), pregNo(n), mirType(mType) {}
 
     ~MIRPreg() = default;
-    void SetNeedRC(bool needRC = true)
+    void SetNeedRC(bool newNeedRC = true)
     {
-        this->needRC = needRC;
+        this->needRC = newNeedRC;
     }
 
     bool NeedRC() const
@@ -87,9 +87,9 @@ public:
         return pregNo;
     }
 
-    void SetPregNo(int32 pregNo)
+    void SetPregNo(int32 newPregNo)
     {
-        this->pregNo = pregNo;
+        this->pregNo = newPregNo;
     }
 
     MIRType *GetMIRType() const
@@ -97,9 +97,9 @@ public:
         return mirType;
     }
 
-    void SetMIRType(MIRType *mirType)
+    void SetMIRType(MIRType *newMirType)
     {
-        this->mirType = mirType;
+        this->mirType = newMirType;
     }
 
 private:

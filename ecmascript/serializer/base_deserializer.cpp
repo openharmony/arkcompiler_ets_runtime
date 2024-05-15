@@ -385,7 +385,10 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         }
         case SerializedObjectSpace::HUGE_SPACE: {
             // no gc for this allocate
-            res = heap_->GetHugeObjectSpace()->Allocate(objSize, thread_);
+            res = heap_->GetHugeObjectSpace()->Allocate(objSize, thread_, AllocateEventType::DESERIALIZE);
+            if (res == 0) {
+                LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize huge object";
+            }
             break;
         }
         case SerializedObjectSpace::SHARED_OLD_SPACE: {
@@ -408,7 +411,10 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         }
         case SerializedObjectSpace::SHARED_HUGE_SPACE: {
             // no gc for this allocate
-            res = sheap_->GetHugeObjectSpace()->Allocate(thread_, objSize);
+            res = sheap_->GetHugeObjectSpace()->Allocate(thread_, objSize, AllocateEventType::DESERIALIZE);
+            if (res == 0) {
+                LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize shared huge object";
+            }
             break;
         }
         default:
@@ -504,20 +510,6 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetSharedBigInt64ArrayFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_SHARED_BIGUINT64_ARRAY:
             return env->GetSharedBigUint64ArrayFunctionPrototype().GetTaggedType();
-        case (uint8_t)JSType::JS_SHARED_JSON_OBJECT:
-            return env->GetSharedJSONObjectFunctionPrototype().GetTaggedType();
-        case (uint8_t)JSType::JS_SHARED_JSON_STRING:
-            return env->GetSharedJSONStringFunctionPrototype().GetTaggedType();
-        case (uint8_t)JSType::JS_SHARED_JSON_NUMBER:
-            return env->GetSharedJSONNumberFunctionPrototype().GetTaggedType();
-        case (uint8_t)JSType::JS_SHARED_JSON_TRUE:
-            return env->GetSharedJSONTrueFunctionPrototype().GetTaggedType();
-        case (uint8_t)JSType::JS_SHARED_JSON_FALSE:
-            return env->GetSharedJSONFalseFunctionPrototype().GetTaggedType();
-        case (uint8_t)JSType::JS_SHARED_JSON_ARRAY:
-            return env->GetSharedJSONArrayFunctionPrototype().GetTaggedType();
-        case (uint8_t)JSType::JS_SHARED_JSON_NULL:
-            return env->GetSharedJSONNullFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_ARRAY_BUFFER:
             return JSHandle<JSFunction>(env->GetArrayBufferFunction())->GetFunctionPrototype().GetRawData();
         case (uint8_t)JSType::JS_SHARED_ARRAY_BUFFER:
@@ -593,6 +585,9 @@ Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, si
             LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
         }
         Region *region = space->AllocateDeserializeRegion(thread_);
+        if (region == nullptr) {
+            LOG_ECMA(FATAL) << "BaseDeserializer::AllocateMultiSharedRegion:region is nullptr";
+        }
         if (regionNum == 1) { // 1: Last allocate region
             size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
             region->SetHighWaterMark(region->GetEnd() - lastRegionRemainSize);

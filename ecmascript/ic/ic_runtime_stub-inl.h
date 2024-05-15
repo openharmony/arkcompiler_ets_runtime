@@ -98,12 +98,11 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryLoadICByName(JSThread *thread, JSTagg
             return LoadICWithHandler(thread, receiver, receiver, cachedHandler);
         }
     } else if (receiver.IsNumber()) {
-        auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSTaggedValue> handler = JSHandle<JSTaggedValue>(thread, secondValue);
-        JSHandle<JSPrimitiveRef> primitive =
-            factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, JSHandle<JSTaggedValue>(thread, receiver));
-        JSTaggedValue primitiveValue = primitive.GetTaggedValue();
-        return LoadICWithHandler(thread, primitiveValue, primitiveValue, handler.GetTaggedValue());
+        JSHandle<JSFunction> function(thread->GetEcmaVM()->GetGlobalEnv()->GetNumberFunction());
+        auto hclass = reinterpret_cast<JSHClass *>(function->GetProtoOrHClass().GetTaggedObject());
+        if (firstValue.GetWeakReferentUnChecked() == hclass) {
+            return LoadICWithHandler(thread, receiver, receiver, secondValue);
+        }
     }
     return JSTaggedValue::Hole();
 }

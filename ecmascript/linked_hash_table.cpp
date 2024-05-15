@@ -177,6 +177,13 @@ bool LinkedHashMap::Has(const JSThread *thread, JSTaggedValue key) const
 
 JSHandle<LinkedHashMap> LinkedHashMap::Clear(const JSThread *thread, const JSHandle<LinkedHashMap> &table)
 {
+    if (table->Capacity() == LinkedHashMap::MIN_CAPACITY) {
+        table->FillRangeWithSpecialValue(JSTaggedValue::Hole(), LinkedHashMap::ELEMENTS_START_INDEX,
+                                         table->GetLength());
+        table->SetNumberOfDeletedElements(thread, table->NumberOfDeletedElements() + table->NumberOfElements());
+        table->SetNumberOfElements(thread, 0);
+        return table;
+    }
     JSHandle<LinkedHashMap> newMap = LinkedHashMap::Create(thread, LinkedHashMap::MIN_CAPACITY,
         table.GetTaggedValue().IsInSharedHeap() ? MemSpaceKind::SHARED : MemSpaceKind::LOCAL);
     if (table->Capacity() > 0) {
@@ -224,6 +231,13 @@ bool LinkedHashSet::Has(const JSThread *thread, JSTaggedValue key) const
 
 JSHandle<LinkedHashSet> LinkedHashSet::Clear(const JSThread *thread, const JSHandle<LinkedHashSet> &table)
 {
+    if (table->Capacity() == LinkedHashSet::MIN_CAPACITY) {
+        table->FillRangeWithSpecialValue(JSTaggedValue::Hole(), LinkedHashSet::ELEMENTS_START_INDEX,
+                                         table->GetLength());
+        table->SetNumberOfDeletedElements(thread, table->NumberOfDeletedElements() + table->NumberOfElements());
+        table->SetNumberOfElements(thread, 0);
+        return table;
+    }
     JSHandle<LinkedHashSet> newSet = LinkedHashSet::Create(thread, LinkedHashSet::MIN_CAPACITY,
         table.GetTaggedValue().IsInSharedHeap() ? MemSpaceKind::SHARED : MemSpaceKind::LOCAL);
     if (table->Capacity() > 0) {
@@ -241,6 +255,9 @@ JSHandle<LinkedHashSet> LinkedHashSet::Shrink(const JSThread *thread, const JSHa
 
 int LinkedHash::Hash(const JSThread *thread, JSTaggedValue key)
 {
+    if (key.IsInt()) {
+        return key.GetInt();
+    }
     if (key.IsSymbol()) {
         auto symbolString = JSSymbol::Cast(key.GetTaggedObject());
         return symbolString->GetHashField();
@@ -265,6 +282,9 @@ int LinkedHash::Hash(const JSThread *thread, JSTaggedValue key)
     // Int, Double, Special and HeapObject(except symbol and string)
     if (key.IsDouble()) {
         key = JSTaggedValue::TryCastDoubleToInt32(key.GetDouble());
+        if (key.IsInt()) {
+            return key.GetInt();
+        }
     }
     uint64_t keyValue = key.GetRawData();
     return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));

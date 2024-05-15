@@ -120,6 +120,7 @@ public:
     bool SetSmartBreakpoint(const JSPtLocation &location);
     bool RemoveBreakpoint(const JSPtLocation &location) override;
     void RemoveAllBreakpoints() override;
+    bool RemoveBreakpointsByUrl(const std::string &url) override;
     void BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset) override;
     void LoadModule(std::string_view filename, std::string_view entryPoint) override
     {

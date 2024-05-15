@@ -67,17 +67,17 @@ CString BigIntHelper::Conversion(const CString &num, uint32_t conversionToRadix,
 
 JSHandle<BigInt> BigInt::GetUint64MaxBigint(JSThread *thread)
 {
-    JSHandle<BigInt> bigint = CreateBigint(thread, 3);
+    JSHandle<BigInt> bigint = CreateBigint(thread, 3); // 3:The number of digits in an object of type BigInt
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0);
-    bigint->SetDigit(2, 1);
+    bigint->SetDigit(2, 1); // 2:The number of digits in an object of type BigInt
     return bigint;
 }
 
 JSHandle<BigInt> BigInt::GetInt64MaxBigint(JSThread *thread)
 {
-    JSHandle<BigInt> bigint = CreateBigint(thread, 2);
+    JSHandle<BigInt> bigint = CreateBigint(thread, 2); // 2:The number of digits in an object of type BigInt
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0x80000000); // 0x80000000:Int MAX
@@ -704,6 +704,7 @@ JSHandle<BigInt> BigInt::Subtract(JSThread *thread, JSHandle<BigInt> x, JSHandle
     // (-x) - (-y) == y - x == -(x - y)
     uint32_t xLength = x->GetLength();
     uint32_t yLength = y->GetLength();
+    ASSERT(xLength > 0);
     uint32_t i = xLength - 1;
     int subSize = static_cast<int>(xLength - yLength);
     if (subSize > 0) {
@@ -801,6 +802,7 @@ JSHandle<BigInt> BigInt::BigintSubOne(JSThread *thread, JSHandle<BigInt> x)
 
 inline uint32_t BigIntHelper::SubHelper(uint32_t x, uint32_t y, uint32_t &bigintCarry)
 {
+    ASSERT(x - y >= 0);
     uint32_t minuSub = x - y;
     if (minuSub > x) {
         bigintCarry += 1;
@@ -896,6 +898,7 @@ void BigInt::JudgeRoundDown(JSHandle<BigInt> x, uint32_t digitMove, uint32_t bit
     }
 
     if (roundDown && bitsMove == 0) {
+        ASSERT(x->GetLength() > 0);
         uint32_t highBits = x->GetDigit(x->GetLength() - 1);
         // If all the most significant bits are 1, we think that carry will cause overflow,
         // and needLen needs to be increased by 1
@@ -1359,6 +1362,7 @@ JSHandle<BigInt> BigInt::DivideAndRemainderWithBigintDivisor(JSThread *thread, J
     }
     // format the divisor and dividend so that the highest order of the divisor is
     // greater than or equal to half of uint32_t
+    ASSERT(divisorLen > 0);
     uint32_t leadingZeros = base::CountLeadingZeros(divisor->GetDigit(divisorLen - 1));
     JSHandle<BigInt> v = FormatLeftShift(thread, leadingZeros, divisor, false);
     JSHandle<BigInt> u = FormatLeftShift(thread, leadingZeros, dividend, true);
@@ -1597,6 +1601,7 @@ JSTaggedNumber BigInt::BigIntToNumber(JSHandle<BigInt> bigint)
     uint64_t mantissa = (needMoveBit == 64) ? 0 :
         ((static_cast<uint64_t>(BigintHead) << needMoveBit) >> 12); // 12 mantissa// just has 52 bits
     int remainMantissaBits = needMoveBit - 12;
+    ASSERT(bigintBitLen > 0);
     uint64_t exponent = static_cast<uint64_t>(bigintBitLen - 1);
     int index = static_cast<int>(bigintLen - 1);
     uint32_t digit = 0;
@@ -1649,6 +1654,7 @@ JSTaggedNumber BigInt::BigIntToNumber(JSHandle<BigInt> bigint)
 static int CompareToBitsLen(JSHandle<BigInt> bigint, int numBitLen, int &leadingZeros)
 {
     uint32_t bigintLen = bigint->GetLength();
+    ASSERT(bigintLen > 0);
     uint32_t BigintHead = bigint->GetDigit(bigintLen - 1);
     leadingZeros = static_cast<int>(base::CountLeadingZeros(BigintHead));
     int bigintBitLen = static_cast<int>(bigintLen * BigInt::DATEBITS) - leadingZeros;
@@ -1714,6 +1720,7 @@ ComparisonResult BigInt::CompareWithNumber(JSHandle<BigInt> bigint, JSHandle<JST
     uint32_t bigintLen = bigint->GetLength();
     int leftover = 0;
     bool IsFirstInto = true;
+    ASSERT(bigintLen > 0);
     for (int index = static_cast<int>(bigintLen - 1); index >= 0; --index) {
         uint32_t doubleNum = 0;
         uint32_t BigintNum = bigint->GetDigit(index);

@@ -94,6 +94,12 @@ GateRef CircuitBuilder::TaggedObjectIsByteArray(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::BYTE_ARRAY)));
 }
 
+GateRef CircuitBuilder::TaggedObjectIsMap(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_MAP)));
+}
+
 GateRef CircuitBuilder::TaggedObjectIsDataView(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -277,6 +283,12 @@ GateRef CircuitBuilder::TaggedObjectIsJSSet(GateRef obj)
 {
     GateRef objType = GetObjectType(LoadHClass(obj));
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_SET)));
+}
+
+GateRef CircuitBuilder::TaggedObjectIsJSDate(GateRef obj)
+{
+    GateRef objType = GetObjectType(LoadHClass(obj));
+    return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_DATE)));
 }
 
 GateRef CircuitBuilder::TaggedObjectIsTypedArray(GateRef obj)
@@ -573,7 +585,7 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vect
 
     std::vector<GateRef> inList { currentControl, currentDepend };
     inList.insert(inList.end(), args.begin(), args.end());
-    inList.push_back(Int8(static_cast<int8_t>(id)));
+    inList.push_back(Int16(static_cast<int16_t>(id)));
     AppendFrameArgs(inList, hirGate);
 
     auto builtinOp = TypedCallOperator(hirGate, MachineType::I64, inList, isSideEffect);

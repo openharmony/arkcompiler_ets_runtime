@@ -99,6 +99,14 @@
     V(BigInt64Array)       \
     V(BigUint64Array)
 
+#define SENDABLE_TYPED_ARRAY_ALL(V) \
+    V(SharedInt8Array)     \
+    V(SharedUint8Array)    \
+    V(SharedInt16Array)    \
+    V(SharedUint16Array)   \
+    V(SharedInt32Array)    \
+    V(SharedUint32Array)
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define EXCEPTION_ERROR_ALL(V)         \
     V(Error, ERROR)                    \
@@ -125,6 +133,12 @@ public:
     {
         ASSERT(from != nullptr);
         return *reinterpret_cast<ecmascript::JSTaggedValue *>(from);
+    }
+
+    static inline ecmascript::JSMutableHandle<ecmascript::JSTaggedValue> ToJSMutableHandle(Local<JSValueRef> from)
+    {
+        ASSERT(!from.IsEmpty());
+        return ecmascript::JSMutableHandle<ecmascript::JSTaggedValue>(reinterpret_cast<uintptr_t>(*from));
     }
 
     static inline ecmascript::JSHandle<ecmascript::JSTaggedValue> ToJSHandle(Local<JSValueRef> from)

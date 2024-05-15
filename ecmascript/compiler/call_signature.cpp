@@ -990,6 +990,199 @@ DEF_CALL_SIGNATURE(AsmInterpreterEntry)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+#define BASELINE_CALL_ARGS_SIGNATURE_COMMON(name)                           \
+    /* 1 : 1 input parameters */                                            \
+    CallSignature signature(#name, 0, 1,                                    \
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());             \
+    *callSign = signature;                                                  \
+    std::array<VariableType, 1> params = { /* 1: 1 input parameters */      \
+        VariableType::NATIVE_POINTER(),                                     \
+    };                                                                      \
+    callSign->SetVariadicArgs(true);                                        \
+    callSign->SetParameters(params.data());                                 \
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC); \
+    callSign->SetCallConv(CallSignature::CallConv::GHCCallConv);
+
+DEF_CALL_SIGNATURE(CallArg0AndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg0AndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArg1AndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg1AndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs2AndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs2AndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs3AndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs3AndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg0AndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg0AndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg1AndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg1AndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs2AndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs2AndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs3AndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs3AndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallRangeAndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallRangeAndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallNewAndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallNewAndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(SuperCallAndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(SuperCallAndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisRangeAndCheckToBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisRangeAndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArg0AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg0AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArg1AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg1AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs2AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs2AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs3AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs3AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg0AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg0AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg1AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg1AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs2AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs2AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs3AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs3AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallRangeAndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallRangeAndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallNewAndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallNewAndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(SuperCallAndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(SuperCallAndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisRangeAndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisRangeAndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArg0AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg0AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArg1AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg1AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs2AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs2AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs3AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs3AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg0AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg0AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg1AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg1AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs2AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs2AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs3AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs3AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallRangeAndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallRangeAndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallNewAndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallNewAndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(SuperCallAndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(SuperCallAndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisRangeAndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisRangeAndCheckToBaselineFromBaseline)
+}
+
 DEF_CALL_SIGNATURE(GeneratorReEnterAsmInterp)
 {
     /* 2 : 2 input parameters */
@@ -1319,6 +1512,36 @@ DEF_CALL_SIGNATURE(NumberHelperStringToDouble)
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = bigIntSameValueZero;
     std::array<VariableType, 1> params = { // 1 : 1 input parameters
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(CallBigIntAsIntN)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CallBigIntAsIntN", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
+                            VariableType::JS_POINTER());
+    *callSign = signature;
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::FLOAT64(),
+        VariableType::JS_POINTER()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(CallBigIntAsUintN)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CallBigIntAsUintN", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
+                            VariableType::JS_POINTER());
+    *callSign = signature;
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::FLOAT64(),
         VariableType::JS_POINTER(),
     };
     callSign->SetParameters(params.data());
@@ -1897,6 +2120,22 @@ DEF_CALL_SIGNATURE(InsertLocalToShareRSet)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(SetBitAtomic)
+{
+    // 3 : 3 input parameters
+    CallSignature index("SetBitAtomic", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = index;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32(),
+        VariableType::INT32()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 #define DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(NAME)                                               \
     DEF_CALL_SIGNATURE(NAME)                                                                       \
     {                                                                                              \
@@ -1959,6 +2198,15 @@ DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME(FloatAtan2)
 DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME(FloatPow)
 
 #undef DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME
+
+DEF_CALL_SIGNATURE(CallDateNow)
+{
+    CallSignature signature("CallDateNow", 0, 0, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::FLOAT64());
+    *callSign = signature;
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
 
 DEF_CALL_SIGNATURE(FindElementWithCache)
 {
@@ -2353,48 +2601,82 @@ DEF_CALL_SIGNATURE(Getnextpropname)
 
 DEF_CALL_SIGNATURE(CreateJSSetIterator)
 {
-    // 2 : 2 input parameters
-    CallSignature signature("CreateJSSetIterator", 0, 2,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = signature;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::NATIVE_POINTER(),  // glue
-        VariableType::JS_ANY(),          // obj
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    UNARY_CALL_SIGNATURE(CreateJSSetIterator)
+}
+
+DEF_CALL_SIGNATURE(JSSetEntries)
+{
+    UNARY_CALL_SIGNATURE(JSSetEntries)
 }
 
 DEF_CALL_SIGNATURE(CreateJSMapIterator)
 {
-    // 2 : 2 input parameters
-    CallSignature signature("CreateJSMapIterator", 0, 2,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = signature;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::NATIVE_POINTER(),  // glue
-        VariableType::JS_ANY(),          // obj
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    UNARY_CALL_SIGNATURE(CreateJSMapIterator)
+}
+
+DEF_CALL_SIGNATURE(JSMapKeys)
+{
+    UNARY_CALL_SIGNATURE(JSMapKeys)
+}
+
+DEF_CALL_SIGNATURE(JSMapValues)
+{
+    UNARY_CALL_SIGNATURE(JSMapValues)
 }
 
 DEF_CALL_SIGNATURE(JSMapGet)
 {
-    // 3 : 3 input parameters
-    CallSignature signature("JSMapGet", 0, 3,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = signature;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),  // glue
-        VariableType::JS_ANY(),          // obj
-        VariableType::JS_ANY(),          // key
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    BINARY_CALL_SIGNATURE(JSMapGet)
+}
+
+DEF_CALL_SIGNATURE(JSMapHas)
+{
+    *callSign = CallSignature("JSMapHas", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
+DEF_CALL_SIGNATURE(JSSetHas)
+{
+    *callSign = CallSignature("JSSetHas", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
+DEF_CALL_SIGNATURE(JSMapDelete)
+{
+    *callSign = CallSignature("JSMapDelete", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
+DEF_CALL_SIGNATURE(JSSetDelete)
+{
+    *callSign = CallSignature("JSSetDelete", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
+DEF_CALL_SIGNATURE(JSSetAdd)
+{
+    *callSign = CallSignature("JSSetAdd", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
 }
 
 DEF_CALL_SIGNATURE(FastStringEqual)
@@ -2410,7 +2692,6 @@ DEF_CALL_SIGNATURE(FastStringEqual)
         VariableType::JS_ANY(),          // ecmaString2
     };
     callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
 DEF_CALL_SIGNATURE(FastStringAdd)
@@ -2465,4 +2746,48 @@ DEF_CALL_SIGNATURE(CopyTypedArrayBuffer)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(CreateJSTypedArrayEntries)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CreateJSTypedArrayEntries", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // obj
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(CreateJSTypedArrayKeys)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CreateJSTypedArrayKeys", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // obj
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(CreateJSTypedArrayValues)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CreateJSTypedArrayValues", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // obj
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
 }  // namespace panda::ecmascript::kungfu

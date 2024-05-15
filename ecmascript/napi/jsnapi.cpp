@@ -105,7 +105,7 @@ using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 extern "C" {
     bool StartDebug(const std::string& componentName, void* vm, bool isDebugMode, int32_t instanceId,
         const DebuggerPostTask& debuggerPostTask, int port);
-    void StopDebug(const std::string& componentName);
+    void StopDebug(void* vm);
     void WaitForDebugger(void* vm);
 }
 } // namespace OHOS::ArkCompiler::Toolchain
@@ -190,6 +190,7 @@ using ecmascript::Log;
 using ecmascript::EcmaContext;
 using ecmascript::JSWeakMap;
 using ecmascript::JSWeakSet;
+using ecmascript::JSSendableArrayBuffer;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -226,6 +227,32 @@ using TransformType = ecmascript::base::JsonHelper::TransformType;
 TYPED_ARRAY_ALL(TYPED_ARRAY_NEW)
 
 #undef TYPED_ARRAY_NEW
+
+#define SENDABLE_TYPED_ARRAY_NEW(Type)                                                                    \
+    Local<Type##Ref> Type##Ref::New(                                                                      \
+        const EcmaVM *vm, Local<SendableArrayBufferRef> buffer, int32_t byteOffset, int32_t length)       \
+    {                                                                                                     \
+        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));                      \
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());                                   \
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();                                                     \
+                                                                                                          \
+        JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                        \
+        JSHandle<JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(buffer));                    \
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();             \
+        const uint32_t argsLength = 3;                                                                    \
+        EcmaRuntimeCallInfo *info =                                                                       \
+            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, argsLength);   \
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \
+        info->SetCallArg(arrayBuffer.GetTaggedValue(), JSTaggedValue(byteOffset), JSTaggedValue(length)); \
+        JSTaggedValue result = JSFunction::Construct(info);                                               \
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \
+        JSHandle<JSTaggedValue> resultHandle(thread, result);                                             \
+        return JSNApiHelper::ToLocal<Type##Ref>(resultHandle);                                            \
+    }
+
+SENDABLE_TYPED_ARRAY_ALL(SENDABLE_TYPED_ARRAY_NEW)
+
+#undef SENDABLE_TYPED_ARRAY_NEW
 
 // ---------------------------------- JSON ------------------------------------------
 Local<JSValueRef> JSON::Parse(const EcmaVM *vm, Local<StringRef> string)

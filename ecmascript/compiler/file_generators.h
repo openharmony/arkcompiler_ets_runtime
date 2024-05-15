@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/ir_module.h"
+#include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/stackmap/cg_stackmap.h"
 #include "ecmascript/mem/machine_code.h"
 
@@ -210,7 +211,7 @@ public:
         curCompileFileName_ = fileName.c_str();
     }
 
-    void GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc);
+    void GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc);
     void JitCreateLitecgModule();
     bool isAArch64() const;
 
@@ -233,7 +234,8 @@ private:
 enum class StubFileKind {
     BC,
     COM,
-    BUILTIN
+    BUILTIN,
+    BASELINE
 };
 
 class StubFileGenerator : public FileGenerator {

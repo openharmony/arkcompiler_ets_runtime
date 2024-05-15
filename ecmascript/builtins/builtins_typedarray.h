@@ -54,7 +54,7 @@
     /* %TypedArray%.from ( source [ , mapfn [ , thisArg ] ] ) */    \
     V("from", From, 1, INVALID)                                     \
     /* %TypedArray%.of ( ...items ) */                              \
-    V("of",   Of,   0, INVALID)
+    V("of",   Of,   0, TypedArrayOf)
 
 // List of get accessors in %TypedArray%.prototype, excluding the '@@' properties.
 // V(name, func, stubIndex)
@@ -76,7 +76,7 @@
     /* %TypedArray%.prototype.copyWithin ( target, start [ , end ] ) */                 \
     V("copyWithin",     CopyWithin,     2, TypedArrayCopyWithin)                        \
     /* %TypedArray%.prototype.entries ( ) */                                            \
-    V("entries",        Entries,        0, INVALID)                                     \
+    V("entries",        Entries,        0, TypedArrayEntries)                           \
     /* %TypedArray%.prototype.every ( callbackfn [ , thisArg ] ) */                     \
     V("every",          Every,          1, TypedArrayEvery)                             \
     /* %TypedArray%.prototype.fill ( value [ , start [ , end ] ] ) */                   \
@@ -90,7 +90,7 @@
     /* %TypedArray%.prototype.findLast ( predicate [ , thisArg ] ) */                   \
     V("findLast",       FindLast,       1, INVALID)                                     \
     /* %TypedArray%.prototype.findLastIndex ( predicate [ , thisArg ] ) */              \
-    V("findLastIndex",  FindLastIndex,  1, INVALID)                                     \
+    V("findLastIndex",  FindLastIndex,  1, TypedArrayFindLastIndex)                     \
     /* %TypedArray%.prototype.forEach ( callbackfn [ , thisArg ] ) */                   \
     V("forEach",        ForEach,        1, INVALID)                                     \
     /* %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] ) */             \
@@ -100,11 +100,11 @@
     /* %TypedArray%.prototype.join ( separator ) */                                     \
     V("join",           Join,           1, INVALID)                                     \
     /* %TypedArray%.prototype.keys ( ) */                                               \
-    V("keys",           Keys,           0, INVALID)                                     \
+    V("keys",           Keys,           0, TypedArrayKeys)                              \
     /* %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */          \
     V("lastIndexOf",    LastIndexOf,    1, TypedArrayLastIndexOf)                       \
     /* %TypedArray%.prototype.map ( callbackfn [ , thisArg ] ) */                       \
-    V("map",            Map,            1, INVALID)                                     \
+    V("map",            Map,            1, TypedArrayMap)                               \
     /* %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] ) */               \
     V("reduce",         Reduce,         1, TypedArrayReduce)                            \
     /* %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] ) */          \
@@ -124,11 +124,11 @@
     /* %TypedArray%.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */       \
     V("toLocaleString", ToLocaleString, 0, INVALID)                                     \
     /* %TypedArray%.prototype.toReversed ( ) */                                         \
-    V("toReversed",     ToReversed,     0, INVALID)                                     \
+    V("toReversed",     ToReversed,     0, TypedArrayToReversed)                        \
     /* %TypedArray%.prototype.toSorted ( comparefn ) */                                 \
-    V("toSorted",       ToSorted,       1, INVALID)                                     \
+    V("toSorted",       ToSorted,       1, TypedArrayToSorted)                          \
     /* %TypedArray%.prototype.values ( ) */                                             \
-    V("values",         Values,         0, INVALID)                                     \
+    V("values",         Values,         0, TypedArrayValues)                            \
     /* %TypedArray%.prototype.with ( index, value ) */                                  \
     V("with",           With,           2, TypedArrayWith)
 

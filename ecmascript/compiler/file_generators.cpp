@@ -17,6 +17,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/code_sign.h"
 #include "ecmascript/platform/directory.h"
@@ -459,13 +460,23 @@ Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::
                                      LOptions option, bool logDebug, StubFileKind kind)
 {
     LLVMModule* m = new LLVMModule(allocator, name, logDebug, triple);
-    if (kind == StubFileKind::BC) {
-        m->SetUpForBytecodeHandlerStubs();
-    } else if (kind == StubFileKind::COM) {
-        m->SetUpForCommonStubs();
-    } else {
-        ASSERT(kind == StubFileKind::BUILTIN);
-        m->SetUpForBuiltinsStubs();
+    switch (kind) {
+        case StubFileKind::BC:
+            m->SetUpForBytecodeHandlerStubs();
+            break;
+        case StubFileKind::COM:
+            m->SetUpForCommonStubs();
+            break;
+        case StubFileKind::BUILTIN:
+            m->SetUpForBuiltinsStubs();
+            break;
+        case StubFileKind::BASELINE:
+            m->SetUpForBaselineStubs();
+            break;
+        default:
+            LOG_ECMA(FATAL) << "unsupported stub file kind";
+            UNREACHABLE();
+            break;
     }
     LLVMAssembler* ass = new LLVMAssembler(m, option);
     modulePackage_.emplace_back(Module(m, ass));
@@ -512,6 +523,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
         lmirModule->GetModule()->SetIsAArch64(isAArch64());
     }
 #endif
+    ASSERT(GetModuleVecSize() > 0);
     uint32_t latestModuleIdx = GetModuleVecSize() - 1;
     {
         TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));
@@ -592,9 +604,8 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
     panda::ecmascript::CodeSignatureForAOTFile(filename, appSignature);
 }
 
-void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc)
+void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
 {
-    ASSERT(machineCodeDesc != nullptr);
     if (aotInfo_.GetTotalCodeSize() == 0) {
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
         return;
@@ -621,20 +632,21 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc)
     std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
         moduleSectionDes.GetMergedRODataAddrAndSize(textAddr);
 
-    machineCodeDesc->rodataAddrBeforeText = rodataAddrBeforeText;
-    machineCodeDesc->rodataSizeBeforeText = rodataSizeBeforeText;
-    machineCodeDesc->rodataAddrAfterText = rodataAddrAfterText;
-    machineCodeDesc->rodataSizeAfterText = rodataSizeAfterText;
+    machineCodeDesc.rodataAddrBeforeText = rodataAddrBeforeText;
+    machineCodeDesc.rodataSizeBeforeText = rodataSizeBeforeText;
+    machineCodeDesc.rodataAddrAfterText = rodataAddrAfterText;
+    machineCodeDesc.rodataSizeAfterText = rodataSizeAfterText;
 
     uint64_t stackMapPtr = reinterpret_cast<uint64_t>(moduleSectionDes.GetArkStackMapSharePtr().get());
     size_t stackMapSize = moduleSectionDes.GetArkStackMapSize();
 
-    machineCodeDesc->codeAddr = textAddr;
-    machineCodeDesc->codeSize = textSize;
-    machineCodeDesc->funcEntryDesAddr = funcEntryAddr;
-    machineCodeDesc->funcEntryDesSize = funcEntrySize;
-    machineCodeDesc->stackMapAddr = stackMapPtr;
-    machineCodeDesc->stackMapSize = stackMapSize;
+    machineCodeDesc.codeAddr = textAddr;
+    machineCodeDesc.codeSize = textSize;
+    machineCodeDesc.funcEntryDesAddr = funcEntryAddr;
+    machineCodeDesc.funcEntryDesSize = funcEntrySize;
+    machineCodeDesc.stackMapAddr = stackMapPtr;
+    machineCodeDesc.stackMapSize = stackMapSize;
+    machineCodeDesc.codeType = MachineCodeType::FAST_JIT_CODE;
 }
 
 void AOTFileGenerator::JitCreateLitecgModule()

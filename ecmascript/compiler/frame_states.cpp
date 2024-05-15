@@ -943,8 +943,8 @@ public:
         } else {
             if (!loopInfo.loopBodys->TestBit(backId)) {
                 loopInfo.loopBodys->SetBit(backId);
-                loopInfo.numLoopBacks++;
             }
+            loopInfo.numLoopBacks++;
         }
     }
 
@@ -1003,7 +1003,7 @@ public:
         loopHeader.preds.insert(loopHeader.preds.begin(), block);
         frameBuilder_->AddEmptyBlock(block);
 
-        ASSERT(loopHeader.trys.empty());
+        ASSERT(loopHeader.trys.empty() && numOfEntries > 0);
         loopHeader.numOfStatePreds -= (numOfEntries - 1); // 1: one entry
         auto it = std::find(frameBuilder_->rpoList_.begin(), frameBuilder_->rpoList_.end(), loopHeader.id);
         ASSERT(it != frameBuilder_->rpoList_.end());
@@ -1108,6 +1108,7 @@ public:
 
     BytecodeRegion* PushLoopExist(const BytecodeRegion& bb, size_t depth)
     {
+        ASSERT(depth > 0);
         auto &curState = dfsStack_[depth - 1]; // -1: for current
         auto loopExitIndex = curState.index - bb.succs.size();
         auto& currentInfo = frameBuilder_->GetLoopInfo(bb);

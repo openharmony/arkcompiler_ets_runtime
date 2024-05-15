@@ -140,6 +140,34 @@ Method *FrameHandler::GetMethod() const
     return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
 }
 
+const JSPandaFile* FrameHandler::GetJSPandaFile() const
+{
+    auto method = GetMethod();
+    return method->GetJSPandaFile();
+}
+
+std::string FrameHandler::GetFileName() const
+{
+    auto pandaFile = GetJSPandaFile();
+    return pandaFile->GetFileName();
+}
+
+uint32_t FrameHandler::GetAbcId() const
+{
+    std::string abcName = GetFileName();
+    pgo::PGOProfilerManager* pm = pgo::PGOProfilerManager::GetInstance();
+    uint32_t abcId;
+    if (!pm->GetPandaFileId(CString(abcName), abcId) && !abcName.empty()) {
+        LOG_ECMA(ERROR) << "Get method abc id failed. abcName: " << abcName;
+    }
+    return abcId;
+}
+
+uint32_t FrameHandler::GetMethodId() const
+{
+    return GetMethod()->GetMethodId().GetOffset();
+}
+
 Method *FrameHandler::CheckAndGetMethod() const
 {
     ASSERT(IsJSFrame());
@@ -196,6 +224,7 @@ JSTaggedValue FrameHandler::GetFunction() const
             case FrameType::ASM_INTERPRETER_BRIDGE_FRAME:
             case FrameType::INTERPRETER_BUILTIN_FRAME:
             case FrameType::OPTIMIZED_FRAME:
+            case FrameType::BASELINE_BUILTIN_FRAME:
             case FrameType::ASM_BRIDGE_FRAME:
             case FrameType::LEAVE_FRAME:
             case FrameType::LEAVE_FRAME_WITH_ARGV:
@@ -307,6 +336,7 @@ ARK_INLINE uintptr_t FrameHandler::GetInterpretedFrameEnd(JSTaggedType *prevSp) 
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::ASM_BRIDGE_FRAME:
         case FrameType::LEAVE_FRAME:
+        case FrameType::BASELINE_BUILTIN_FRAME:
         case FrameType::LEAVE_FRAME_WITH_ARGV:
         case FrameType::BUILTIN_CALL_LEAVE_FRAME:
         case FrameType::OPTIMIZED_ENTRY_FRAME:
@@ -369,6 +399,9 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
     const RootRangeVisitor &rangeVisitor, const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     JSTaggedType *current = start;
+    // if the current frame type is BASELINE_BUILTIN_FRAME, the upper frame must be BaselineFrame.
+    // isBaselineFrame is used to differentiate the AsmInterpterFrame and BaselineFrame
+    bool isBaselineFrame = false;
     for (FrameIterator it(current, thread_); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
         FrameType type = it.GetFrameType();
         switch (type) {
@@ -383,10 +416,17 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
                 frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor, type);
                 break;
             }
+            case FrameType::BASELINE_BUILTIN_FRAME: {
+                isBaselineFrame = true;
+                auto frame = it.GetFrame<BaselineBuiltinFrame>();
+                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
+                break;
+            }
             case FrameType::ASM_INTERPRETER_FRAME:
             case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
                 auto frame = it.GetFrame<AsmInterpretedFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
+                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor, isBaselineFrame);
+                isBaselineFrame = false;
                 break;
             }
             case FrameType::INTERPRETER_FRAME:

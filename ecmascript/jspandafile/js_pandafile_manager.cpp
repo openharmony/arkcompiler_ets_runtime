@@ -68,7 +68,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     EcmaVM *vm = thread->GetEcmaVM();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     std::unique_ptr<const panda_file::File> pf;
-    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode()) {
+    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode() && !vm->IsRestrictedWorkerThread()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
@@ -81,6 +81,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         }
         uint8_t *data = nullptr;
         size_t dataSize = 0;
+        LOG_FULL(DEBUG) << "HSP path: " << filename;
         bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(filename), &data, &dataSize);
         if (!getBuffer) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
@@ -91,15 +92,14 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             LOG_FULL(FATAL) << "resolveBufferCallback get buffer failed";
             return nullptr;
         }
-        if (!JSNApi::CheckSecureMem(reinterpret_cast<uintptr_t>(data))) {
-            LOG_FULL(FATAL) << "Hsp secure memory check failed, please execute in secure memory.";
-            return nullptr;
-        }
 #if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
         pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
 #else
         pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
 #endif
+    } else if (vm->IsRestrictedWorkerThread()) {
+        // ReadOnly
+        pf = panda_file::OpenPandaFileOrZip(filename);
     } else {
         pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
     }
@@ -265,6 +265,19 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileByNormalizedName
     EnumerateJSPandaFiles([&](const std::shared_ptr<JSPandaFile> &file) -> bool {
         // normalize path inside and outside sandbox
         if (file->GetNormalizedFileDesc() == normalizedName) {
+            result = file;
+            return false;
+        }
+        return true;
+    });
+    return result;
+}
+
+std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileByMapBase(uintptr_t mapBase)
+{
+    std::shared_ptr<JSPandaFile> result;
+    EnumerateJSPandaFiles([&](const std::shared_ptr<JSPandaFile> &file) -> bool {
+        if (reinterpret_cast<uintptr_t>(file->GetHeader()) == mapBase) {
             result = file;
             return false;
         }
@@ -469,13 +482,13 @@ std::string GetModuleNameFromDesc(const std::string &desc)
         LOG_ECMA(DEBUG) << "GetModuleNameFromDesc can't find fisrt /: " << desc;
         return "";
     }
-
+    ASSERT(lastSlash > 0);
     auto secondLastSlash = desc.rfind("/", lastSlash - 1);
     if (secondLastSlash == std::string::npos) {
         LOG_ECMA(DEBUG) << "GetModuleNameFromDesc can't find second /: " << desc;
         return "";
     }
-
+    ASSERT(secondLastSlash > 0);
     auto thirdLastSlash = desc.rfind("/", secondLastSlash - 1);
     if (thirdLastSlash == std::string::npos) {
         LOG_ECMA(DEBUG) << "GetModuleNameFromDesc can't find third /: " << desc;
@@ -514,7 +527,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
             methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
         }
     }
-    PandaFileTranslator::TranslateClasses(newJsPandaFile.get(), methodName);
+    PandaFileTranslator::TranslateClasses(thread, newJsPandaFile.get(), methodName);
 
     {
         LockHolder lock(jsPandaFileLock_);
@@ -527,6 +540,34 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
             return newJsPandaFile;
         }
     }
+}
+
+/*
+ * Check whether the file path can be loaded into pandafile, excluding bundle packaging and decompression paths
+ */
+bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName)
+{
+    std::shared_ptr<JSPandaFile> jsPandaFile = FindJSPandaFileUnlocked(fileName);
+    if (jsPandaFile != nullptr) {
+        return true;
+    }
+    EcmaVM *vm = thread->GetEcmaVM();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode()) {
+        ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
+        if (resolveBufferCallback == nullptr) {
+            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr";
+            return false;
+        }
+        uint8_t *data = nullptr;
+        size_t dataSize = 0;
+        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize);
+        if (!getBuffer) {
+            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback get buffer failed";
+            return false;
+        }
+    }
+    return true;
 }
 
 void *JSPandaFileManager::AllocateBuffer(size_t size)

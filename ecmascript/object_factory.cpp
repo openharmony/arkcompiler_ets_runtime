@@ -127,7 +127,6 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -139,9 +138,6 @@
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/template_map.h"
-#include "ecmascript/ts_types/ts_obj_layout_info.h"
-#include "ecmascript/ts_types/ts_type.h"
-#include "ecmascript/ts_types/ts_type_table.h"
 #include "ecmascript/vtable.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_collator.h"
@@ -262,7 +258,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
         }
-        pointer->ResetExternalPointer(newData);
+        pointer->ResetExternalPointer(thread_, newData);
         vm_->GetNativeAreaAllocator()->ModifyNativeSizeStats(pointer->GetBindingSize(), size,
                                                              NativeFlag::ARRAY_BUFFER);
         return;
@@ -293,17 +289,23 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
     if (!data.IsUndefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
         auto newData = nativeAreaAllocator->AllocateBuffer(size);
+        if (newData == nullptr) {
+            LOG_ECMA(FATAL) << "ObjectFactory::NewJSSendableArrayBufferData:newData is nullptr";
+        }
         if (memset_s(newData, length, 0, length) != EOK) {
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
         }
-        pointer->ResetExternalPointer(newData);
+        pointer->ResetExternalPointer(thread_, newData);
         nativeAreaAllocator->ModifyNativeSizeStats(pointer->GetBindingSize(), size,
                                                    NativeFlag::ARRAY_BUFFER);
         return;
     }
 
     auto newData = nativeAreaAllocator->AllocateBuffer(size);
+    if (newData == nullptr) {
+        LOG_ECMA(FATAL) << "ObjectFactory::NewJSSendableArrayBufferData:newData is nullptr";
+    }
     if (memset_s(newData, length, 0, length) != EOK) {
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
@@ -325,7 +327,27 @@ JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(int32_t 
     sendableArrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
         NewJSSendableArrayBufferData(sendableArrayBuffer, length);
-        sendableArrayBuffer->SetShared(true);
+        sendableArrayBuffer->SetShared(false);
+    }
+    return sendableArrayBuffer;
+}
+
+JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(void *buffer, int32_t length,
+                                                                        const NativePointerCallback &deleter,
+                                                                        void *data)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+
+    JSHandle<JSFunction> constructor(env->GetSBuiltininArrayBufferFunction());
+    JSHandle<JSSendableArrayBuffer> sendableArrayBuffer(NewJSObjectByConstructor(constructor));
+    length = buffer == nullptr ? 0 : length;
+    sendableArrayBuffer->SetArrayBufferByteLength(length);
+    if (length > 0) {
+        JSHandle<JSNativePointer> pointer = NewSJSNativePointer(buffer, deleter, data, false, length);
+        sendableArrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
+        sendableArrayBuffer->SetShared(false);
+        sendableArrayBuffer->SetWithNativeAreaAllocator(deleter == NativeAreaAllocator::FreeBufferFunc &&
+                                                data == vm_->GetNativeAreaAllocator());
     }
     return sendableArrayBuffer;
 }
@@ -371,8 +393,8 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
     return arrayBuffer;
 }
 
-JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(void *buffer, int32_t length, const DeleteEntryPoint &deleter,
-                                                        void *data, bool share)
+JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(void *buffer, int32_t length,
+                                                        const NativePointerCallback &deleter, void *data, bool share)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
@@ -454,7 +476,7 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
     JSTaggedValue data = regexp->GetByteCodeBuffer();
     if (!data.IsUndefined()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(newBuffer);
+        native->ResetExternalPointer(thread_, newBuffer);
         return;
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newBuffer, NativeAreaAllocator::FreeBufferFunc,
@@ -651,14 +673,20 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object,
     for (uint32_t i = 0; i < length; i++) {
         auto layout = LayoutInfo::Cast(klass->GetLayout().GetTaggedObject());
         JSTaggedValue value = object->GetPropertyInlinedProps(i);
-        if (!layout->GetAttr(i).IsTaggedRep() || !value.IsJSFunction()) {
+        if (!layout->GetAttr(i).IsTaggedRep() || (!value.IsJSFunction() && !value.IsAccessorData())) {
             cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, value);
-        } else {
+        } else if (value.IsJSFunction()) {
             JSHandle<JSFunction> valueHandle(thread_, value);
             JSHandle<JSFunction> newFunc = CloneJSFunction(valueHandle);
             newFunc->SetLexicalEnv(thread_, env);
             newFunc->SetHomeObject(thread_, cloneObject);
             cloneObject->SetPropertyInlinedProps(thread_, i, newFunc.GetTaggedValue());
+        } else {
+            if (value.IsAccessorData()) {
+                JSHandle<AccessorData> accessor = NewAccessorData();
+                value = accessor.GetTaggedValue();
+            }
+            cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, value);
         }
     }
     return cloneObject;
@@ -1007,6 +1035,41 @@ JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
     return NewJSObjectByConstructor(constructor);
 }
 
+JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
+    const JSHandle<JSFunction> &constructor, uint32_t inlinedProps)
+{
+    if (!constructor->HasFunctionPrototype() ||
+        (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
+        JSHandle<JSHClass> jshclass;
+        if (LIKELY(inlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS)) {
+            jshclass = JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, constructor));
+        } else {
+            jshclass = NewEcmaHClass(JSObject::SIZE, inlinedProps, JSType::JS_OBJECT,
+                                     env->GetObjectFunctionPrototype());
+        }
+        JSHandle<JSObject> obj;
+        if (jshclass->IsJSSharedObject()) {
+            obj = NewSharedOldSpaceJSObject(jshclass);
+            if (jshclass->IsDictionaryMode()) {
+                auto fieldLayout = jshclass->GetLayout();
+                ASSERT(fieldLayout.IsDictionary());
+                auto dict = JSHandle<TaggedArray>(thread_, fieldLayout);
+                auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
+                obj->SetProperties(thread_, properties);
+            }
+        } else {
+            obj = NewJSObjectWithInit(jshclass);
+        }
+        return obj;
+    }
+    JSHandle<JSObject> result =
+        NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
+    if (thread_->HasPendingException()) {
+        LOG_FULL(FATAL) << "NewJSObjectByConstructor should not throw Exception! ";
+    }
+    return result;
+}
+
 JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                            uint32_t inlinedProps)
 {
@@ -1100,16 +1163,6 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ITERATOR: {
-            break;
-        }
-        case JSType::JS_SHARED_JSON_OBJECT:
-        case JSType::JS_SHARED_JSON_NULL:
-        case JSType::JS_SHARED_JSON_TRUE:
-        case JSType::JS_SHARED_JSON_FALSE:
-        case JSType::JS_SHARED_JSON_NUMBER:
-        case JSType::JS_SHARED_JSON_STRING:
-        case JSType::JS_SHARED_JSON_ARRAY: {
-            JSSharedJSONValue::Cast(*obj)->SetValue(thread_, JSTaggedValue::Null());
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -1884,6 +1937,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
+    function->SetTaskConcurrentFuncFlag(0); // 0 : default value
     if (method->IsJitCompiledCode()) {
         // jit install code also set aot callfield, should clear flag when new function
         method->ClearJitCompiledCodeFlags();
@@ -2423,6 +2477,7 @@ JSHandle<job::PendingJob> ObjectFactory::NewPendingJob(const JSHandle<JSFunction
     obj->SetSpanId(0);
     obj->SetParentSpanId(0);
     obj->SetFlags(0);
+    obj->SetJobId(0);
 #endif
     return obj;
 }
@@ -2854,21 +2909,22 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     newArray->SetExtraLength(old->GetExtraLength());
 
     uint32_t oldLength = old->GetLength();
-    for (uint32_t i = 0; i < oldLength; i++) {
-        JSTaggedValue value = old->Get(i);
-        if (old->GetClass()->IsMutantTaggedArray()) {
-            newArray->Set<false>(thread_, i, value);
+    uint32_t index = 0;
+    auto isMutantTaggedArray = old->GetClass()->IsMutantTaggedArray();
+    for (; index < oldLength; ++index) {
+        if (isMutantTaggedArray) {
+            newArray->Set<false>(thread_, index, old->Get(index));
         } else {
-            newArray->Set(thread_, i, value);
+            newArray->Set(thread_, index, old->Get(index));
         }
     }
-
-    for (uint32_t i = oldLength; i < length; i++) {
-        if (initVal.IsHole() && old->GetClass()->IsMutantTaggedArray()) {
-            JSTaggedValue specialHole = JSTaggedValue(base::SPECIAL_HOLE);
-            newArray->Set<false>(thread_, i, specialHole);
+    auto isSpecialHole = initVal.IsHole() && isMutantTaggedArray;
+    JSTaggedValue specialHole = JSTaggedValue(base::SPECIAL_HOLE);
+    for (; index < length; ++index) {
+        if (isSpecialHole) {
+            newArray->Set<false>(thread_, index, specialHole);
         } else {
-            newArray->Set(thread_, i, initVal);
+            newArray->Set(thread_, index, initVal);
         }
     }
 
@@ -3126,14 +3182,16 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uin
     return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringNonMovable(vm_, utf8Data, utf8Len));
 }
 
-JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len) const
+JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len,
+                                                                     bool canBeCompress) const
 {
     NewObjectHook();
     if (utf8Len == 0) {
         return GetEmptyString();
     }
     auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringReadOnly(vm_, utf8Data, utf8Len));
+    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringReadOnly(vm_, utf8Data, utf8Len,
+                                                                                    canBeCompress));
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
@@ -3228,12 +3286,18 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoClass().GetTaggedObject()), size);
     JSHandle<ProfileTypeInfo> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
-    if (vm_->IsEnableJit()) {
+    if (vm_->IsEnableFastJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetJitHotnessThreshold();
         ASSERT(threshold != ProfileTypeInfo::JIT_DISABLE_FLAG);
         array->SetJitHotnessThreshold(threshold);
         threshold = vm_->GetJSOptions().GetOsrHotnessThreshold();
         array->SetOsrHotnessThreshold(threshold);
+        uint8_t jitCallThreshold = vm_->GetJSOptions().GetJitCallThreshold();
+        array->SetJitCallThreshold(jitCallThreshold);
+    }
+    if (vm_->IsEnableBaselineJit()) {
+        uint16_t threshold = vm_->GetJSOptions().GetBaselineJitHotnessThreshold();
+        array->SetBaselineJitHotnessThreshold(threshold);
     }
     return array;
 }
@@ -3881,7 +3945,7 @@ uintptr_t ObjectFactory::NewSpaceBySnapshotAllocator(size_t size)
 }
 
 JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
-    const MachineCodeDesc *desc, JSHandle<Method> &method)
+    const MachineCodeDesc &desc, JSHandle<Method> &method)
 {
     NewObjectHook();
     TaggedObject *obj = heap_->AllocateMachineCodeObject(JSHClass::Cast(
@@ -3891,9 +3955,7 @@ JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
         LOG_FULL(FATAL) << "machine code cast failed";
         UNREACHABLE();
     }
-    if (desc != nullptr) {
-        code->SetData(desc, method, length);
-    }
+    code->SetData(desc, method, length);
     JSHandle<MachineCode> codeObj(thread_, code);
     return codeObj;
 }
@@ -3916,193 +3978,6 @@ JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTag
     return obj;
 }
 
-// ----------------------------------- new TSType ----------------------------------------
-JSHandle<TSObjLayoutInfo> ObjectFactory::CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal)
-{
-    uint32_t arrayLength = TSObjLayoutInfo::ComputeArrayLength(propNum);
-    JSHandle<TSObjLayoutInfo> tsPropInfoHandle = JSHandle<TSObjLayoutInfo>::Cast(NewTaggedArray(arrayLength, initVal));
-    tsPropInfoHandle->SetNumOfProperties(thread_, 0);
-    return tsPropInfoHandle;
-}
-
-JSHandle<TSObjectType> ObjectFactory::NewTSObjectType(uint32_t numOfKeys)
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSObjectTypeClass().GetTaggedObject()));
-    JSHandle<TSObjectType> objectType(thread_, header);
-    objectType->SetObjLayoutInfo(thread_, JSTaggedValue::Undefined());
-    objectType->SetIndexSigns(thread_, JSTaggedValue::Undefined());
-    objectType->SetGT(GlobalTSTypeRef::Default());
-
-    JSHandle<TSObjLayoutInfo> tsPropInfo = CreateTSObjLayoutInfo(numOfKeys);
-    objectType->SetObjLayoutInfo(thread_, tsPropInfo);
-    return objectType;
-}
-
-JSHandle<TSClassType> ObjectFactory::NewTSClassType()
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSClassTypeClass().GetTaggedObject()));
-    JSHandle<TSClassType> classType(thread_, header);
-
-    classType->SetGT(GlobalTSTypeRef::Default());
-    classType->SetInstanceType(thread_, JSTaggedValue::Undefined());
-    classType->SetConstructorType(thread_, JSTaggedValue::Undefined());
-    classType->SetPrototypeType(thread_, JSTaggedValue::Undefined());
-    classType->SetName(thread_, JSTaggedValue::Undefined());
-    classType->SetIndexSigns(thread_, JSTaggedValue::Undefined());
-    classType->SetExtensionGT(GlobalTSTypeRef::Default());
-    classType->ClearBitField();
-
-    return classType;
-}
-
-JSHandle<TSInterfaceType> ObjectFactory::NewTSInterfaceType()
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSInterfaceTypeClass().GetTaggedObject()));
-    JSHandle<TSInterfaceType> interfaceType(thread_, header);
-
-    JSHandle<TaggedArray> extends = EmptyArray();
-    interfaceType->SetGT(GlobalTSTypeRef::Default());
-    interfaceType->SetExtends(thread_, extends);
-    interfaceType->SetFields(thread_, JSTaggedValue::Undefined());
-    interfaceType->SetIndexSigns(thread_, JSTaggedValue::Undefined());
-
-    return interfaceType;
-}
-
-
-JSHandle<TSUnionType> ObjectFactory::NewTSUnionType(uint32_t length)
-{
-    NewObjectHook();
-    ASSERT(length > 0);
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSUnionTypeClass().GetTaggedObject()));
-    JSHandle<TSUnionType> unionType(thread_, header);
-
-    unionType->SetGT(GlobalTSTypeRef::Default());
-    unionType->SetComponents(thread_, JSTaggedValue::Undefined());
-    JSHandle<TaggedArray> componentTypes = NewTaggedArray(length, JSTaggedValue::Undefined());
-    unionType->SetComponents(thread_, componentTypes);
-
-    return unionType;
-}
-
-JSHandle<TSClassInstanceType> ObjectFactory::NewTSClassInstanceType()
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSClassInstanceTypeClass().GetTaggedObject()));
-    JSHandle<TSClassInstanceType> classInstanceType(thread_, header);
-
-    classInstanceType->SetGT(GlobalTSTypeRef::Default());
-    classInstanceType->SetClassGT(GlobalTSTypeRef::Default());
-
-    return classInstanceType;
-}
-
-JSHandle<TSFunctionType> ObjectFactory::NewTSFunctionType(uint32_t length)
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSFunctionTypeClass().GetTaggedObject()));
-    JSHandle<TSFunctionType> functionType(thread_, header);
-
-    functionType->SetGT(GlobalTSTypeRef::Default());
-    functionType->SetName(thread_, JSTaggedValue::Undefined());
-    functionType->SetParameterTypes(thread_, JSTaggedValue::Undefined());
-    functionType->SetReturnGT(GlobalTSTypeRef::Default());
-    functionType->SetThisGT(GlobalTSTypeRef::Default());
-    functionType->ClearBitField();
-    functionType->SetMethodOffset(0);
-
-    JSHandle<TaggedArray> parameterTypes = NewTaggedArray(length, JSTaggedValue::Undefined());
-    functionType->SetParameterTypes(thread_, parameterTypes);
-
-    return functionType;
-}
-
-JSHandle<TSArrayType> ObjectFactory::NewTSArrayType()
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSArrayTypeClass().GetTaggedObject()));
-
-    JSHandle<TSArrayType> arrayType(thread_, header);
-    arrayType->SetElementGT(GlobalTSTypeRef::Default());
-
-    return arrayType;
-}
-
-JSHandle<TSTypeTable> ObjectFactory::NewTSTypeTable(uint32_t length)
-{
-    NewObjectHook();
-
-    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length + TSTypeTable::RESERVE_TABLE_LENGTH);
-    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
-    auto header = heap_->AllocateOldOrHugeObject(arrayClass, size);
-
-    JSHandle<TSTypeTable> table(thread_, header);
-    table->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length + TSTypeTable::RESERVE_TABLE_LENGTH);
-    table->SetNumberOfTypes(thread_);
-
-    return table;
-}
-
-JSHandle<TSModuleTable> ObjectFactory::NewTSModuleTable(uint32_t length)
-{
-    NewObjectHook();
-    ASSERT(length > 0);
-
-    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
-    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
-    auto header = heap_->AllocateYoungOrHugeObject(arrayClass, size);
-    JSHandle<TSModuleTable> array(thread_, header);
-    array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
-    array->SetNumberOfTSTypeTables(thread_, 0);
-
-    return array;
-}
-
-JSHandle<TSIteratorInstanceType> ObjectFactory::NewTSIteratorInstanceType()
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSIteratorInstanceTypeClass().GetTaggedObject()));
-    JSHandle<TSIteratorInstanceType> iteratorInstanceType(thread_, header);
-
-    iteratorInstanceType->SetGT(GlobalTSTypeRef::Default());
-    iteratorInstanceType->SetKindGT(GlobalTSTypeRef::Default());
-    iteratorInstanceType->SetElementGT(GlobalTSTypeRef::Default());
-
-    return iteratorInstanceType;
-}
-
-JSHandle<TSNamespaceType> ObjectFactory::NewTSNamespaceType()
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSNamespaceTypeClass().GetTaggedObject()));
-    JSHandle<TSNamespaceType> namespaceType(thread_, header);
-
-    namespaceType->SetPropertyType(thread_, JSTaggedValue::Undefined());
-    JSHandle<TSObjLayoutInfo> tsPropInfo = CreateTSObjLayoutInfo(TSObjLayoutInfo::DEFAULT_CAPACITY);
-    namespaceType->SetPropertyType(thread_, tsPropInfo);
-    return namespaceType;
-}
 // ----------------------------------- new string ----------------------------------------
 JSHandle<EcmaString> ObjectFactory::NewFromASCII(std::string_view data)
 {
@@ -4134,11 +4009,50 @@ JSHandle<EcmaString> ObjectFactory::NewFromASCIIReadOnly(std::string_view data)
     return GetStringFromStringTableReadOnly(utf8Data, data.length());
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTable(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
+    uint32_t utf8Len = data.length();
+    NewObjectHook();
+    if (utf8Len == 0) {
+        return GetEmptyString();
+    }
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+    str->SetMixHashcode(hashCode);
+    return JSHandle<EcmaString>(thread_, str);
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data)
 {
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
     return GetStringFromStringTable(utf8Data, data.length(), canBeCompress);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8ReadOnly(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
+    return GetStringFromStringTableReadOnly(utf8Data, data.length(), canBeCompress);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromUtf16WithoutStringTable(std::u16string_view data)
+{
+    uint32_t utf16Len = data.length();
+    auto utf16Data = reinterpret_cast<const uint16_t *>(data.data());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, utf16Len);
+    NewObjectHook();
+    if (utf16Len == 0) {
+        return GetEmptyString();
+    }
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
+    str->SetMixHashcode(hashCode);
+    return JSHandle<EcmaString>(thread_, str);
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf16(std::u16string_view data)
@@ -4156,10 +4070,38 @@ JSHandle<EcmaString> ObjectFactory::NewFromStdString(const std::string &data)
     return GetStringFromStringTable(utf8Data, data.size(), canBeCompress);
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTable(const uint8_t *utf8Data, uint32_t utf8Len)
+{
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len);
+    NewObjectHook();
+    if (utf8Len == 0) {
+        return GetEmptyString();
+    }
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+    str->SetMixHashcode(hashCode);
+    return JSHandle<EcmaString>(thread_, str);
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len)
 {
     bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len);
     return GetStringFromStringTable(utf8Data, utf8Len, canBeCompress);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromUtf16WithoutStringTable(const uint16_t *utf16Data, uint32_t utf16Len)
+{
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, utf16Len);
+    NewObjectHook();
+    if (utf16Len == 0) {
+        return GetEmptyString();
+    }
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
+    str->SetMixHashcode(hashCode);
+    return JSHandle<EcmaString>(thread_, str);
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf16(const uint16_t *utf16Data, uint32_t utf16Len)
@@ -4664,6 +4606,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
     obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    obj->SetSendableEnv(thread_, undefinedValue);
     return obj;
 }
 
@@ -4928,7 +4871,11 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithProperties(size_t prope
     int inlineProps = std::max(static_cast<int>(propertyCount), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps));
     for (size_t i = 0; i < propertyCount; ++i) {
-        JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
+        JSMutableHandle<JSTaggedValue> key(JSNApiHelper::ToJSMutableHandle(keys[i]));
+        if (key->IsString() && !EcmaStringAccessor(key.GetTaggedValue()).IsInternString()) {
+            // update string stable
+            key.Update(JSTaggedValue(InternString(key)));
+        }
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
         if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
@@ -4964,7 +4911,11 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateLargeJSObjectWithProperties(size_t 
     JSHandle<JSObject> object = NewJSObject(hClassHandle);
 
     for (size_t i = 0; i < propertyCount; ++i) {
-        JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
+        JSMutableHandle<JSTaggedValue> key(JSNApiHelper::ToJSMutableHandle(keys[i]));
+        if (key->IsString() && !EcmaStringAccessor(key.GetTaggedValue()).IsInternString()) {
+            // update string stable
+            key.Update(JSTaggedValue(InternString(key)));
+        }
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
         if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
@@ -4998,7 +4949,11 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithProperties(si
     JSMutableHandle<NameDictionary> dict(
         thread_, NameDictionary::Create(thread_, NameDictionary::ComputeHashTableSize(propertyCount)));
     for (size_t i = 0; i < propertyCount; ++i) {
-        JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
+        JSMutableHandle<JSTaggedValue> key(JSNApiHelper::ToJSMutableHandle(keys[i]));
+        if (key->IsString() && !EcmaStringAccessor(key.GetTaggedValue()).IsInternString()) {
+            // update string stable
+            key.Update(JSTaggedValue(InternString(key)));
+        }
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
         if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",

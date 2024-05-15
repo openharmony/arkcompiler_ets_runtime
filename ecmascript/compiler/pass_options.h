@@ -23,7 +23,6 @@ namespace panda::ecmascript::kungfu {
     V(EarlyElimination, true)                                                    \
     V(LaterElimination, true)                                                    \
     V(ValueNumbering, false)                                                     \
-    V(TypeInfer, false)                                                          \
     V(OptInlining, false)                                                        \
     V(OptNoGCCall, false)                                                        \
     V(OptPGOType, false)                                                         \
@@ -40,7 +39,8 @@ namespace panda::ecmascript::kungfu {
     V(FastModule, false)                                                         \
     V(OptBranchProfiling, true)                                                  \
     V(EscapeAnalysis, false)                                                     \
-    V(InductionVariableAnalysis, false)
+    V(InductionVariableAnalysis, false)                                          \
+    V(VerifierPass, true)
 
 #define OPTION_BUILDER(NAME, DEFAULT)                                            \
     Builder &Enable##NAME(bool value) {                                          \
@@ -54,11 +54,15 @@ namespace panda::ecmascript::kungfu {
 #define GET_OPTION(NAME, DEFAULT)                                                \
     bool Enable##NAME() const { return enable##NAME##_; }
 
+#define SET_OPTION(NAME, DEFAULT)                                                \
+    void Set##NAME(bool value) { enable##NAME##_ = value; }
+
 class PassOptions {
 public:
     PassOptions() = default;
     class Builder;
     OPTION_LIST(GET_OPTION)
+    OPTION_LIST(SET_OPTION)
 
 private:
     OPTION_LIST(OPTIONS)

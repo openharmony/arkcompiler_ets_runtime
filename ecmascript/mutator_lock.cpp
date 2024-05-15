@@ -76,4 +76,30 @@ void MutatorLock::SetState(MutatorLock::MutatorLockState newState)
     JSThread::GetCurrent()->SetMutatorLockState(newState);
 }
 #endif
+
+void SuspendBarrier::Wait()
+{
+    while (true) {
+        int32_t curCount = passBarrierCount_.load(std::memory_order_relaxed);
+        if (LIKELY(curCount > 0)) {
+#if defined(PANDA_TARGET_OHOS)
+            sched_yield();
+#endif
+        } else {
+            curCount = passBarrierCount_.load(std::memory_order_relaxed);
+            ASSERT(curCount == 0);
+            break;
+        }
+    }
+}
+
+void SuspendBarrier::PassCount(int32_t delta)
+{
+    bool done = false;
+    do {
+        int32_t curCount = passBarrierCount_.load(std::memory_order_relaxed);
+        // Reduce value by 1.
+        done = passBarrierCount_.compare_exchange_strong(curCount, curCount + delta);
+    } while (!done);
+}
 }  // namespace panda::ecmascript

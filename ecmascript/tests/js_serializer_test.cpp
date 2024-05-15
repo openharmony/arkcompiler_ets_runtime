@@ -753,8 +753,8 @@ public:
         EXPECT_FALSE(method->IsNativeWithCallField());
 
         JSHandle<ConstantPool> constpool(thread, method->GetConstantPool());
-        EXPECT_EQ(constpool->GetLength(), 8U);
-        EXPECT_EQ(constpool->GetCacheLength(), 6U);
+        EXPECT_EQ(constpool->GetLength(), 9U);
+        EXPECT_EQ(constpool->GetCacheLength(), 7U);
         const JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
         EXPECT_TRUE(jsPandaFile != nullptr);
         const CString &desc = jsPandaFile->GetJSPandaFileDesc();

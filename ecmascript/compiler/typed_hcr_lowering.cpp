@@ -14,10 +14,12 @@
  */
 
 #include "ecmascript/compiler/typed_hcr_lowering.h"
+
 #include "ecmascript/compiler/builtins_lowering.h"
+#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
@@ -25,11 +27,12 @@
 #include "ecmascript/elements.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_map.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/message_string.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/vtable.h"
 
 namespace panda::ecmascript::kungfu {
@@ -53,11 +56,17 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::ECMA_STRING_CHECK:
             LowerEcmaStringCheck(gate);
             break;
+        case OpCode::ECMA_MAP_CHECK:
+            LowerEcmaMapCheck(gate);
+            break;
         case OpCode::FLATTEN_TREE_STRING_CHECK:
             LowerFlattenTreeStringCheck(gate, glue);
             break;
         case OpCode::LOAD_STRING_LENGTH:
             LowerStringLength(gate);
+            break;
+        case OpCode::LOAD_MAP_SIZE:
+            LowerMapSize(gate);
             break;
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
             LowerLoadTypedArrayLength(gate);
@@ -85,6 +94,12 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::LOAD_PROPERTY:
             LowerLoadProperty(gate);
+            break;
+        case OpCode::CALL_PRIVATE_GETTER:
+            LowerCallPrivateGetter(gate, glue);
+            break;
+        case OpCode::CALL_PRIVATE_SETTER:
+            LowerCallPrivateSetter(gate, glue);
             break;
         case OpCode::CALL_GETTER:
             LowerCallGetter(gate, glue);
@@ -226,6 +241,10 @@ void TypedHCRLowering::LowerJSCallTargetCheck(GateRef gate)
         }
         case TypedCallTargetCheckOp::JSCALLTHIS_FAST_NOGC: {
             LowerJSNoGCFastCallThisTargetTypeCheck(gate);
+            break;
+        }
+        case TypedCallTargetCheckOp::JS_NEWOBJRANGE: {
+            LowerJSNewObjRangeCallTargetCheck(gate);
             break;
         }
         default:
@@ -413,6 +432,24 @@ void TypedHCRLowering::LowerEcmaStringCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypedHCRLowering::LowerEcmaMapCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    builder_.HeapObjectCheck(receiver, frameState);
+
+    GateRef hclass = builder_.LoadHClass(receiver);
+
+    size_t mapHclassIndex = GlobalEnv::MAP_CLASS_INDEX;
+    GateRef glueGlobalEnv = builder_.GetGlobalEnv();
+    GateRef mapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, mapHclassIndex);
+    GateRef isMap = builder_.Equal(hclass, mapHclass, "Check HClass");
+
+    builder_.DeoptCheck(isMap, frameState, DeoptType::ISNOTMAP);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 void TypedHCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
@@ -457,6 +494,18 @@ void TypedHCRLowering::LowerStringLength(GateRef gate)
     GateRef length = GetLengthFromString(receiver);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), length);
+}
+
+void TypedHCRLowering::LowerMapSize(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+
+    GateRef linkedMap = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSMap::LINKED_MAP_OFFSET);
+    GateRef mapSizeTagged = builder_.LoadFromTaggedArray(linkedMap, LinkedHashMap::NUMBER_OF_ELEMENTS_INDEX);
+    GateRef mapSize = builder_.TaggedGetInt(mapSizeTagged);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), mapSize);
 }
 
 void TypedHCRLowering::LowerLoadTypedArrayLength(GateRef gate)
@@ -717,6 +766,30 @@ void TypedHCRLowering::LowerLoadProperty(GateRef gate)
     GateRef result = LoadPropertyFromHolder(receiver, plr);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypedHCRLowering::LowerCallPrivateGetter(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: receiver, accessor
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef accessor = acc_.GetValueIn(gate, 1);
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    result = CallAccessor(glue, gate, accessor, receiver, AccessorMode::GETTER);
+    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedHCRLowering::LowerCallPrivateSetter(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 3); // 3: receiver, accessor, value
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef accessor = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+
+    CallAccessor(glue, gate, accessor, receiver, AccessorMode::SETTER, value);
+    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypedHCRLowering::LowerCallGetter(GateRef gate, GateRef glue)
@@ -1465,6 +1538,18 @@ void TypedHCRLowering::LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypedHCRLowering::LowerJSNewObjRangeCallTargetCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    auto ctor = acc_.GetValueIn(gate, 0);
+    GateRef isObj = builder_.TaggedIsHeapObject(ctor);
+    GateRef isJsFunc = builder_.IsJSFunction(ctor);
+    GateRef check = builder_.BoolAnd(isObj, isJsFunc);
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSNEWCALLTGT);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 void TypedHCRLowering::LowerCallTargetCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1496,27 +1581,17 @@ void TypedHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     ArgumentAccessor argAcc(circuit_);
-    GateRef frameState = GetFrameState(gate);
-
-    GateRef ctor = acc_.GetValueIn(gate, 0);
-
-    GateRef isObj = builder_.TaggedIsHeapObject(ctor);
-    GateRef isJsFunc = builder_.IsJSFunction(ctor);
-    GateRef checkFunc = builder_.BoolAnd(isObj, isJsFunc);
-    GateRef check = builder_.BoolAnd(checkFunc, builder_.IsConstructor(ctor));
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTNEWOBJ1);
-
-    DEFVALUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    Label allocate(&builder_);
+    GateRef ctor = acc_.GetValueIn(gate, 0); // 0: 1st argument
+    GateRef ihclass = acc_.GetValueIn(gate, 1); // 1: 2nd argument
+    GateRef size = acc_.GetValueIn(gate, 2); // 2: 3rd argument
+    Label isBase(&builder_);
     Label exit(&builder_);
-
-    GateRef isBase = builder_.IsBase(ctor);
-    BRANCH_CIR(isBase, &allocate, &exit);
-    builder_.Bind(&allocate);
-    {
-        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, ctor });
-        builder_.Jump(&exit);
-    }
+    DEFVALUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    BRANCH_CIR(builder_.IsBase(ctor), &isBase, &exit);
+    builder_.Bind(&isBase);
+    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+    newBuilder.SetParameters(glue, 0);
+    newBuilder.NewJSObject(&thisObj, &exit, ihclass, size);
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *thisObj);
 }
@@ -1931,8 +2006,9 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                                     GateRef leftDst = builder_.TaggedPointerToInt64(
                                         builder_.PtrAdd(newBackingStore,
                                         builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
-                                    GateRef rightDst = builder_.TaggedPointerToInt64(
-                                        builder_.PtrAdd(leftDst, builder_.ZExtInt32ToPtr(leftLength)));
+                                    GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
+                                        builder_.PtrMul(builder_.ZExtInt32ToPtr(leftLength),
+                                        builder_.IntPtr(sizeof(uint16_t)))));
                                     builder_.CopyChars(glue, leftDst, leftSource, leftLength,
                                         builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
                                     builder_.CopyChars(glue, rightDst, rightSource, rightLength,
@@ -2042,7 +2118,8 @@ GateRef TypedHCRLowering::AllocateLineString(GateRef glue, GateRef length, GateR
     GateRef stringClass = builder_.GetGlobalConstantValue(ConstantIndex::LINE_STRING_CLASS_INDEX);
 
     builder_.StartAllocate();
-    GateRef lineString = builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
+    GateRef lineString =
+        builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), lineString, 0, stringClass,
         MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);

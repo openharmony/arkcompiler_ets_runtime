@@ -81,7 +81,6 @@ class JSArrayBuffer;
 class JSFunction;
 class SourceTextModule;
 class Program;
-class TSManager;
 class AOTFileManager;
 class SlowRuntimeStub;
 class RequireManager;
@@ -103,7 +102,8 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
-using DeleteEntryPoint = void (*)(void *, void *);
+using NativePointerCallback = void (*)(void *, void *, void *);
+
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options);
@@ -114,7 +114,7 @@ public:
 
     EcmaVM();
 
-    virtual ~EcmaVM();
+    ~EcmaVM();
 
     void SetLoop(void *loop)
     {
@@ -137,6 +137,7 @@ public:
     }
 
     void InitializePGOProfiler();
+    void InitializeEnableAotCrash();
     void ResetPGOProfiler();
 
     bool PUBLIC_API IsEnablePGOProfiler() const;
@@ -206,7 +207,7 @@ public:
 
     ARK_INLINE JSThread *GetJSThread() const
     {
-        if (options_.EnableThreadCheck()) {
+        if (options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck()) {
             CheckThread();
         }
         return thread_;
@@ -390,6 +391,11 @@ public:
         return options_.IsWorker();
     }
 
+    bool IsRestrictedWorkerThread() const
+    {
+        return options_.IsRestrictedWorker();
+    }
+
     bool IsBundlePack() const
     {
         return isBundlePack_;
@@ -408,19 +414,22 @@ public:
         return !pkgContextInfoList_.empty();
     }
 
-    void SetPkgNameList(const std::map<std::string, std::string> &list)
+    void SetPkgNameList(const CMap<CString, CString> &list)
     {
-        for (auto it = list.begin(); it != list.end(); ++it) {
-            pkgNameList_.emplace(it->first.c_str(), it->second.c_str());
-        }
+        pkgNameList_ = list;
+    }
+
+    CMap<CString, CString> GetPkgNameList() const
+    {
+        return pkgNameList_;
     }
 
     inline CString GetPkgName(const CString &moduleName) const
     {
         auto it = pkgNameList_.find(moduleName);
         if (it == pkgNameList_.end()) {
-            LOG_ECMA(ERROR) << " Get Pkg Name failed";
-            return "";
+            LOG_ECMA(INFO) << " Get Pkg Name failed";
+            return moduleName;
         }
         return it->second;
     }
@@ -439,11 +448,14 @@ public:
         return it->second;
     }
 
-    void SetPkgAliasList(const std::map<std::string, std::string> &list)
+    void SetPkgAliasList(const CMap<CString, CString> &list)
     {
-        for (auto it = list.begin(); it != list.end(); ++it) {
-            pkgAliasList_.emplace(it->first.c_str(), it->second.c_str());
-        }
+        pkgAliasList_ = list;
+    }
+
+    CMap<CString, CString> GetPkgAliasList() const
+    {
+        return pkgAliasList_;
     }
 
     void SetMockModuleList(const std::map<std::string, std::string> &list)
@@ -526,7 +538,7 @@ public:
 
     CString GetHmsModule(const CString &module) const;
 
-    void SetpkgContextInfoList(const std::map<std::string, std::vector<std::vector<std::string>>> &list);
+    void SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list);
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
@@ -634,7 +646,8 @@ public:
     }
 
     Jit *GetJit() const;
-    bool PUBLIC_API IsEnableJit() const;
+    bool PUBLIC_API IsEnableFastJit() const;
+    bool PUBLIC_API IsEnableBaselineJit() const;
     void EnableJit();
 
     bool IsEnableOsr() const
@@ -667,7 +680,7 @@ public:
         return thread_->GetThreadId();
     }
 
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetNativePointerCallbacks()
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetNativePointerCallbacks()
     {
         return nativePointerCallbacks_;
     }
@@ -682,22 +695,107 @@ public:
         return isJitCompileVM_;
     }
 
+    void SetEnableAotCrashEscapeVM(bool enableAotCrashEscape)
+    {
+        enableAotCrashEscape_ = enableAotCrashEscape;
+    }
+
+    bool IsEnableAotCrashEscapeVM() const
+    {
+        return enableAotCrashEscape_;
+    }
+
+    static void SetMultiThreadCheck(bool multiThreadCheck)
+    {
+        multiThreadCheck_ = multiThreadCheck;
+    }
+
+    PUBLIC_API static bool GetMultiThreadCheck()
+    {
+        return multiThreadCheck_;
+    }
+
     static void InitializeIcuData(const JSRuntimeOptions &options);
 
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
     {
         return sharedNativePointerCallbacks_;
     }
-
-    void *GetEnv() const
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+    void ResetScopeLockStats()
     {
-        return env_;
+        enterThreadManagedScopeCount_ = 0;
+        enterJsiNativeScopeCount_ = 0;
+        enterFastNativeScopeCount_ = 0;
+        updateThreadStateTransCount_ = 0;
+        stringTableLockCount_ = 0;
     }
 
-    void SetEnv(void *env)
+    bool IsCollectingScopeLockStats() const
     {
-        env_ = env;
+        return isCollectingScopeLockStats_;
     }
+
+    void StartCollectingScopeLockStats()
+    {
+        isCollectingScopeLockStats_ = true;
+    }
+    
+    void StopCollectingScopeLockStats()
+    {
+        isCollectingScopeLockStats_ = false;
+    }
+    
+    int GetEnterThreadManagedScopeCount() const
+    {
+        return enterThreadManagedScopeCount_;
+    }
+
+    void IncreaseEnterThreadManagedScopeCount()
+    {
+        enterThreadManagedScopeCount_++;
+    }
+
+    int GetEnterFastNativeScopeCount() const
+    {
+        return enterFastNativeScopeCount_;
+    }
+
+    void IncreaseEnterFastNativeScopeCount()
+    {
+        enterFastNativeScopeCount_++;
+    }
+
+    int GetEnterJsiNativeScopeCount() const
+    {
+        return enterJsiNativeScopeCount_;
+    }
+
+    void IncreaseEnterJsiNativeScopeCount()
+    {
+        enterJsiNativeScopeCount_++;
+    }
+
+    int GetUpdateThreadStateTransCount() const
+    {
+        return updateThreadStateTransCount_;
+    }
+
+    void IncreaseUpdateThreadStateTransCount()
+    {
+        updateThreadStateTransCount_++;
+    }
+
+    int GetStringTableLockCount() const
+    {
+        return stringTableLockCount_;
+    }
+
+    void IncreaseStringTableLockCount()
+    {
+        stringTableLockCount_++;
+    }
+#endif
 
 protected:
 
@@ -720,6 +818,7 @@ private:
     GCStats *gcStats_ {nullptr};
     GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
+    PUBLIC_API static bool multiThreadCheck_;
 
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
@@ -729,9 +828,9 @@ private:
     ObjectFactory *factory_ {nullptr};
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
     CList<JSNativePointer *> sharedNativePointerList_;
-    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
 
@@ -817,8 +916,18 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
+    bool enableAotCrashEscape_ {true};
     bool overLimit_ {false};
-    void *env_ = nullptr;
+
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+    // Stats for Thread-State-Transition and String-Table Locks
+    bool isCollectingScopeLockStats_ = false;
+    int enterThreadManagedScopeCount_ = 0;
+    int enterFastNativeScopeCount_ = 0;
+    int enterJsiNativeScopeCount_ = 0;
+    int updateThreadStateTransCount_ = 0;
+    int stringTableLockCount_ = 0;
+#endif
 };
 }  // namespace ecmascript
 }  // namespace panda

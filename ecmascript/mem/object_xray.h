@@ -109,15 +109,12 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/tagged_node.h"
-#include "ecmascript/ts_types/ts_type.h"
-#include "ecmascript/ts_types/ts_type_table.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
@@ -158,17 +155,6 @@ public:
             case JSType::JS_SHARED_OBJECT: {
                 auto jsSharedObject = JSSharedObject::Cast(object);
                 jsSharedObject->VisitRangeSlot<visitType>(visitor);
-                break;
-            }
-            case JSType::JS_SHARED_JSON_OBJECT:
-            case JSType::JS_SHARED_JSON_NULL:
-            case JSType::JS_SHARED_JSON_TRUE:
-            case JSType::JS_SHARED_JSON_FALSE:
-            case JSType::JS_SHARED_JSON_NUMBER:
-            case JSType::JS_SHARED_JSON_STRING:
-            case JSType::JS_SHARED_JSON_ARRAY: {
-                auto jsSharedJSONValue = JSSharedJSONValue::Cast(object);
-                jsSharedJSONValue->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
@@ -442,6 +428,7 @@ public:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:
             case JSType::LEXICAL_ENV:
+            case JSType::SENDABLE_ENV:
             case JSType::AOT_LITERAL_INFO:
             case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:
@@ -615,36 +602,6 @@ public:
                 break;
             case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
                 JSAPILightWeightSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_OBJECT_TYPE:
-                TSObjectType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_CLASS_TYPE:
-                TSClassType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_UNION_TYPE:
-                TSUnionType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_INTERFACE_TYPE:
-                TSInterfaceType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_CLASS_INSTANCE_TYPE:
-                break;
-            case JSType::TS_FUNCTION_TYPE:
-                TSFunctionType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                break;
-            case JSType::TS_ARRAY_TYPE:
-                if (visitType == VisitType::ALL_VISIT) {
-                    TSArrayType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                }
-                break;
-            case JSType::TS_ITERATOR_INSTANCE_TYPE:
-                if (visitType == VisitType::ALL_VISIT) {
-                    TSIteratorInstanceType::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                }
-                break;
-            case JSType::TS_NAMESPACE_TYPE:
-                TSNamespaceType::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::RB_TREENODE:
                 RBTreeNode::Cast(object)->VisitRangeSlot<visitType>(visitor);

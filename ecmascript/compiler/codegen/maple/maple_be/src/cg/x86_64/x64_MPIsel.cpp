@@ -33,7 +33,7 @@ MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, Fie
         DEBUG_ASSERT((mirType->IsMIRStructType() || mirType->IsMIRUnionType()), "non-structure");
         MIRStructType *structType = static_cast<MIRStructType *>(mirType);
         symType = structType->GetFieldType(fieldId)->GetPrimType();
-        fieldOffset = static_cast<uint32>(cgFunc->GetBecommon().GetFieldOffset(*structType, fieldId).first);
+        fieldOffset = static_cast<int32>(cgFunc->GetBecommon().GetFieldOffset(*structType, fieldId).first);
     }
     uint32 opndSz = (symType == PTY_agg) ? k64BitSize : GetPrimTypeBitSize(symType);
     return GetOrCreateMemOpndFromSymbol(symbol, opndSz, fieldOffset);
@@ -147,7 +147,7 @@ void X64MPIsel::SelectReturn()
 
 void X64MPIsel::CreateCallStructParamPassByStack(MemOperand &memOpnd, int32 symSize, int32 baseOffset)
 {
-    int32 copyTime = RoundUp(symSize, GetPointerSize()) / GetPointerSize();
+    int32 copyTime = static_cast<int32>(RoundUp(symSize, GetPointerSize()) / GetPointerSize());
     for (int32 i = 0; i < copyTime; ++i) {
         MemOperand &addrMemOpnd = cgFunc->GetOpndBuilder()->CreateMem(k64BitSize);
         addrMemOpnd.SetBaseRegister(*memOpnd.GetBaseRegister());
@@ -756,7 +756,7 @@ void X64MPIsel::GenCVaStartIntrin(RegOperand &opnd, uint32 stkOffset)
 
     /* __vr_top */
     int32 grAreaSize = static_cast<int32>(static_cast<X64MemLayout *>(cgFunc->GetMemlayout())->GetSizeOfGRSaveArea());
-    stkOffset += grAreaSize;
+    stkOffset += static_cast<uint32>(grAreaSize);
     stkOffset += k8BitSize;
     ImmOperand &vaListVRTopOffset = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, stkOffset);
     SelectSub(vReg, fpOpnd, vaListVRTopOffset, PTY_a64);
@@ -1502,26 +1502,41 @@ Operand *X64MPIsel::SelectCctz(IntrinsicopNode &node, Operand &opnd0, const Base
 Operand *X64MPIsel::SelectCclz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent)
 {
     CHECK_FATAL(opnd0.IsImmediate() || opnd0.IsRegister(), "unhandled operand type here!");
+    CHECK_FATAL(node.GetIntrinsic() == INTRN_C_clz32, "only support clz32");
     PrimType origPrimType = node.Opnd(0)->GetPrimType();
     RegOperand &opnd = SelectCopy2Reg(opnd0, origPrimType);
-
-    bool is64BitClz = node.GetIntrinsic() == INTRN_C_clz64;
-    MOperator mopBsr = is64BitClz ? x64::MOP_bsrq_r_r : x64::MOP_bsrl_r_r;
-    Insn &bsrInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopBsr, X64CG::kMd[mopBsr]);
-    bsrInsn.AddOpndChain(opnd).AddOpndChain(opnd);
-    cgFunc->GetCurBB()->AppendInsn(bsrInsn);
-
-    MOperator mopXor = is64BitClz ? x64::MOP_xorq_i_r : MOP_xorl_i_r;
+    // bsr opnd tmp2
     ImmOperand &imm =
-        cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(origPrimType), GetPrimTypeBitSize(origPrimType) - 1);
-    Insn &xorInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopXor, X64CG::kMd[mopXor]);
-    xorInsn.AddOpndChain(imm).AddOpndChain(opnd);
-    cgFunc->GetCurBB()->AppendInsn(xorInsn);
-
+        cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(origPrimType), -1);
+    RegOperand &tmp1 = SelectCopy2Reg(imm, origPrimType);
+    RegOperand &tmp2 =
+        cgFunc->GetOpndBuilder()->CreateVReg(
+            GetPrimTypeBitSize(origPrimType), cgFunc->GetRegTyFromPrimTy(origPrimType));
+    MOperator mopBsr = x64::MOP_bsrl_r_r;
+    Insn &bsrInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopBsr, X64CG::kMd[mopBsr]);
+    bsrInsn.AddOpndChain(opnd).AddOpndChain(tmp2);
+    cgFunc->GetCurBB()->AppendInsn(bsrInsn);
+    // cmove -1, tmp2
+    MOperator mopComv = x64::MOP_cmovel_r_r;
+    Insn &cmovInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopComv, X64CG::kMd[mopComv]);
+    cmovInsn.AddOpndChain(tmp1).AddOpndChain(tmp2);
+    cgFunc->GetCurBB()->AppendInsn(cmovInsn);
+    // neg tmp2
+    MOperator mopNeg = x64::MOP_negl_r;
+    Insn &negInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopNeg, X64CG::kMd[mopNeg]);
+    negInsn.AddOpndChain(tmp2);
+    cgFunc->GetCurBB()->AppendInsn(negInsn);
+    // add res 31 tmp2
+    ImmOperand &imm2 =
+        cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(origPrimType), k32BitSize - 1);
+    RegOperand &tmp3 =
+        cgFunc->GetOpndBuilder()->CreateVReg(
+            GetPrimTypeBitSize(origPrimType), cgFunc->GetRegTyFromPrimTy(origPrimType));
+    SelectAdd(tmp3, imm2, tmp2, origPrimType);
     PrimType retType = node.GetPrimType();
     RegOperand &destReg =
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType), cgFunc->GetRegTyFromPrimTy(retType));
-    SelectIntCvt(destReg, opnd, retType, origPrimType);
+    SelectIntCvt(destReg, tmp3, retType, origPrimType);
     return &destReg;
 }
 

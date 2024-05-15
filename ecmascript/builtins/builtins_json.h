@@ -31,7 +31,6 @@ public:
     static JSTaggedValue Parse(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Stringify(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ParseWithTransformType(EcmaRuntimeCallInfo *argv, TransformType transformType);
-    static JSTaggedValue StringifyWithTransformType(EcmaRuntimeCallInfo *argv, TransformType transformType);
 private:
     static JSTaggedValue ParseWithTransformType(const EcmaVM *vm, JSHandle<JSTaggedValue> &msg,
                                                 JSHandle<JSTaggedValue> &reviverVal, TransformType transformType);
@@ -40,7 +39,6 @@ private:
 class BuiltinsSendableJson : public base::BuiltinsBase {
 public:
     static JSTaggedValue Parse(EcmaRuntimeCallInfo *argv);
-    static JSTaggedValue Stringify(EcmaRuntimeCallInfo *argv);
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_JSON_H

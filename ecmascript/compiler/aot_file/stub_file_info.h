@@ -75,6 +75,7 @@ public:
     void AddAsmStubELFInfo(const std::vector<const CallSignature*> &asmCallSigns,
                            const std::vector<size_t> &stubsOffset)
     {
+        ASSERT(stubsOffset.size() > 0);
         if (asmCallSigns.size() != stubsOffset.size() - 1) {
             return;
         }
@@ -90,7 +91,7 @@ public:
     void Dump() const DUMP_API_ATTR;
 
 private:
-    static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
+    static constexpr uint32_t ASMSTUB_MODULE_NUM = 4;
 
     bool MmapLoad(const std::string &fileName);
     bool Load();

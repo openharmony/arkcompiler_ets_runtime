@@ -23,12 +23,14 @@
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -48,6 +50,7 @@
 #include "ecmascript/platform/log.h"
 #include "ecmascript/global_index_map.h"
 #include "ecmascript/sustaining_js_handle.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -81,14 +84,6 @@ bool EcmaContext::Destroy(EcmaContext *context)
         return true;
     }
     return false;
-}
-
-void EcmaContext::SetTSManager(TSManager *set)
-{
-    if (tsManager_ != nullptr) {
-        delete tsManager_;
-    }
-    tsManager_ = set;
 }
 
 bool EcmaContext::Initialize()
@@ -125,7 +120,6 @@ bool EcmaContext::Initialize()
     SetupStringToListResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
-    tsManager_ = new TSManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
@@ -201,7 +195,15 @@ EcmaContext::~EcmaContext()
     handleScopeCount_ = 0;
     handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
 
-    if (vm_->IsEnableJit()) {
+    for (auto n : primitiveStorageNodes_) {
+        delete n;
+    }
+    primitiveStorageNodes_.clear();
+    currentPrimitiveStorageIndex_ = -1;
+    primitiveScopeCount_ = 0;
+    primitiveScopeStorageNext_ = primitiveScopeStorageEnd_ = nullptr;
+
+    if (vm_->IsEnableBaselineJit() || vm_->IsEnableFastJit()) {
         // clear jit task
         vm_->GetJit()->ClearTask(this);
     }
@@ -216,7 +218,7 @@ EcmaContext::~EcmaContext()
         }
     }
     // clear icu cache
-    ClearIcuCache();
+    ClearIcuCache(thread_);
 
     if (runtimeStat_ != nullptr) {
         vm_->GetChunk()->Delete(runtimeStat_);
@@ -233,10 +235,6 @@ EcmaContext::~EcmaContext()
     if (moduleManager_ != nullptr) {
         delete moduleManager_;
         moduleManager_ = nullptr;
-    }
-    if (tsManager_ != nullptr) {
-        delete tsManager_;
-        tsManager_ = nullptr;
     }
     if (ptManager_ != nullptr) {
         delete ptManager_;
@@ -315,6 +313,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             module = moduleManager_->HostGetImportedModule(moduleName);
         }
         // esm -> SourceTextModule; cjs or script -> string of recordName
+        module->SetSendableEnv(thread_, JSTaggedValue::Undefined());
         func->SetModule(thread_, module);
     } else {
         // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
@@ -332,9 +331,15 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else if (vm_->GetJSOptions().IsEnableForceJitCompileMain()) {
-            Jit::Compile(vm_, func);
+            Jit::Compile(vm_, func, CompilerTier::FAST);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, entryPoint, nullptr);
+        } else if (vm_->GetJSOptions().IsEnableForceBaselineCompileMain()) {
+            Jit::Compile(vm_, func, CompilerTier::BASELINE);
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
+            EcmaRuntimeStatScope runtimeStatScope(vm_);
+            result = EcmaInterpreter::Execute(info);
         } else {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
@@ -350,7 +355,9 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
 #endif
     }
     if (!executeFromJob) {
+        JSHandle<JSTaggedValue> handleResult(thread_, result);
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        result = handleResult.GetTaggedValue();
     }
     return result;
 }
@@ -778,6 +785,9 @@ bool EcmaContext::ExecutePromisePendingJob()
     if (!thread_->HasPendingException()) {
         isProcessingPendingJob_ = true;
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        if (thread_->HasPendingException()) {
+            JsStackInfo::BuildCrashInfo(true);
+        }
         isProcessingPendingJob_ = false;
         return true;
     }
@@ -870,6 +880,22 @@ void EcmaContext::SetupStringToListResultCache()
     stringToListResultCache_ = builtins::StringToListResultCache::CreateCacheTable(thread_);
 }
 
+void EcmaContext::IterateJitMachineCodeCache(const RootVisitor &v)
+{
+    if (thread_->IsMachineCodeLowMemory()) {
+        jitMachineCodeCache_ = {};
+        LOG_JIT(DEBUG) << "clear jit machine code, as low code memory";
+    } else {
+        for (auto &iter : jitMachineCodeCache_) {
+            if (iter.first == 0) {
+                continue;
+            }
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter.first))));
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter.second))));
+        }
+    }
+}
+
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     // visit global Constant
@@ -901,9 +927,6 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (moduleManager_) {
         moduleManager_->Iterate(v);
     }
-    if (tsManager_) {
-        tsManager_->Iterate(v);
-    }
     if (ptManager_) {
         ptManager_->Iterate(v);
     }
@@ -922,6 +945,10 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
             rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
+    }
+
+    if (vm_->IsEnableFastJit()) {
+        IterateJitMachineCodeCache(v);
     }
 
     if (sustainingJSHandleList_) {
@@ -1004,6 +1031,58 @@ void EcmaContext::ShrinkHandleStorage(int prevIndex)
             auto node = handleStorageNodes_.back();
             delete node;
             handleStorageNodes_.pop_back();
+        }
+    }
+}
+
+uintptr_t *EcmaContext::ExpandPrimitiveStorage()
+{
+    uintptr_t *result = nullptr;
+    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size() - 1);
+    if (currentPrimitiveStorageIndex_ == lastIndex) {
+        auto n = new std::array<JSTaggedType, NODE_BLOCK_SIZE>();
+        primitiveStorageNodes_.push_back(n);
+        currentPrimitiveStorageIndex_++;
+        result = reinterpret_cast<uintptr_t *>(&n->data()[0]);
+        primitiveScopeStorageEnd_ = &n->data()[NODE_BLOCK_SIZE];
+    } else {
+        currentPrimitiveStorageIndex_++;
+        auto lastNode = primitiveStorageNodes_[currentPrimitiveStorageIndex_];
+        result = reinterpret_cast<uintptr_t *>(&lastNode->data()[0]);
+        primitiveScopeStorageEnd_ = &lastNode->data()[NODE_BLOCK_SIZE];
+    }
+
+    return result;
+}
+
+void EcmaContext::ShrinkPrimitiveStorage(int prevIndex)
+{
+    currentPrimitiveStorageIndex_ = prevIndex;
+    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size() - 1);
+#if ECMASCRIPT_ENABLE_ZAP_MEM
+    uintptr_t size = ToUintPtr(primitiveScopeStorageEnd_) - ToUintPtr(primitiveScopeStorageNext_);
+    if (currentPrimitiveStorageIndex_ != -1) {
+        if (memset_s(primitiveScopeStorageNext_, size, 0, size) != EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
+    }
+    for (int32_t i = currentPrimitiveStorageIndex_ + 1; i < lastIndex; i++) {
+        if (memset_s(primitiveStorageNodes_[i],
+                     NODE_BLOCK_SIZE * sizeof(JSTaggedType), 0,
+                     NODE_BLOCK_SIZE * sizeof(JSTaggedType)) !=
+                     EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
+    }
+#endif
+
+    if (lastIndex > MIN_PRIMITIVE_STORAGE_SIZE && currentPrimitiveStorageIndex_ < MIN_PRIMITIVE_STORAGE_SIZE) {
+        for (int i = MIN_PRIMITIVE_STORAGE_SIZE; i < lastIndex; i++) {
+            auto node = primitiveStorageNodes_.back();
+            delete node;
+            primitiveStorageNodes_.pop_back();
         }
     }
 }

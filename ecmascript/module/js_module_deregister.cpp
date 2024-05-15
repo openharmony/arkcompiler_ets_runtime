@@ -30,7 +30,7 @@
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 
-void ModuleDeregister::FreeModuleRecord(void *pointer, void *hint)
+void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointer, void *hint)
 {
     if (pointer == nullptr) {
         LOG_FULL(FATAL) << "Lacking deregister module's name.";

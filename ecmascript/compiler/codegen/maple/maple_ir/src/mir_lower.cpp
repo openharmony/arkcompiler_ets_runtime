@@ -783,6 +783,7 @@ BaseNode *MIRLower::LowerCArray(ArrayNode *array)
         }
     }
 
+    CHECK_FATAL(array->NumOpnds() > 0, "must not be zero");
     size_t numIndex = array->NumOpnds() - 1;
     MIRArrayType *curArrayType = arrayType;
     BaseNode *resNode = array->GetIndex(0);
@@ -864,7 +865,7 @@ BaseNode *MIRLower::LowerCArray(ArrayNode *array)
             BaseNode *newResNode = mirModule.CurFuncCodeMemPool()->New<BinaryNode>(OP_add);
             newResNode->SetPrimType(array->GetPrimType());
             newResNode->SetOpnd(mpyNode, 0);
-            if (NeedCvtOrRetype(prevNode->GetPrimType(), array->GetPrimType())) {
+            if (prevNode != nullptr && NeedCvtOrRetype(prevNode->GetPrimType(), array->GetPrimType())) {
                 prevNode = mirModule.CurFuncCodeMemPool()->New<TypeCvtNode>(
                     OP_cvt, array->GetPrimType(), GetRegPrimType(prevNode->GetPrimType()), prevNode);
             }

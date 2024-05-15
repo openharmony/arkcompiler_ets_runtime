@@ -32,6 +32,7 @@
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
+#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
@@ -41,11 +42,12 @@
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/patch/quick_fix_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
+#include "ecmascript/sendable_env.h"
 #include "ecmascript/template_string.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
 using ArrayHelper = base::ArrayHelper;
@@ -806,6 +808,7 @@ JSTaggedValue RuntimeStubs::RuntimeResolveClass(JSThread *thread, const JSHandle
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     uint32_t literalBufferLength = literal->GetLength();
+    ASSERT(literalBufferLength > 0);
 
     // only traverse the value of key-value pair
     for (uint32_t index = 1; index < literalBufferLength - 1; index += 2) {  // 2: key-value pair
@@ -895,7 +898,12 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
         chc.Update(aotLiteralInfo->GetChc());
     }
 
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, cp, literalId, entry);
+    JSHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
+    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
+        JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
+        sendableEnv = JSHandle<JSTaggedValue>(thread, moduleRecord->GetSendableEnv());
+    }
+    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, cp, literalId, entry, sendableEnv);
 
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
@@ -918,6 +926,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
 
     cls->SetLexicalEnv(thread, lexenv.GetTaggedValue());
     cls->SetModule(thread, module.GetTaggedValue());
+    const JSHandle<Method> methodHandle(thread, methodObj);
+    QuickFixHelper::SetPatchModule(thread, methodHandle, cls);
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), length.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -941,11 +951,17 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
 
-    auto literalObj =
-        ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry, ClassKind::SENDABLE);
+    JSHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
+    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
+        JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
+        sendableEnv = JSHandle<JSTaggedValue>(thread, moduleRecord->GetSendableEnv());
+    }
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(
+        thread, constpoolHandle, literalId, entry, sendableEnv, ClassKind::SENDABLE);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     auto literalLength = arrayHandle->GetLength();
+    ASSERT(literalLength > 0);
     // fieldTypeId is the last element in literal buffer
     auto fieldTypeId = static_cast<uint32_t>(arrayHandle->Get(literalLength - 1).GetInt());
     // Don't trim array, because define class maybe called on muilt-time in the same vm or diferrent vm
@@ -959,6 +975,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
         SendableClassDefiner::DefineSendableClassFromExtractor(thread, extractor, staticFieldArray);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> sendableClsModule = moduleManager->GenerateSendableFuncModule(module);
+    JSHandle<SourceTextModule> sendableClsModuleRecord(sendableClsModule);
+    sendableClsModuleRecord->SetSendableEnv(thread, sendableEnv);
     cls->SetModule(thread, sendableClsModule.GetTaggedValue());
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2073,6 +2091,19 @@ JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnv(JSThread *thread, uint16_t numV
     return newEnv.GetTaggedValue();
 }
 
+JSTaggedValue RuntimeStubs::RuntimeNewSendableEnv(JSThread *thread, uint16_t numVars)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SendableEnv> newEnv = factory->NewSendableEnv(numVars);
+
+    JSTaggedValue module = JSFunction::Cast(thread->GetCurrentFunction())->GetModule();
+    JSHandle<SourceTextModule> moduleHandle(thread, module);
+    newEnv->SetParentEnv(thread, moduleHandle->GetSendableEnv());
+    newEnv->SetScopeInfo(thread, JSTaggedValue::Hole());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return newEnv.GetTaggedValue();
+}
+
 JSTaggedValue RuntimeStubs::RuntimeNewObjRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
     const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx, uint16_t length)
 {
@@ -2145,7 +2176,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     result->SetLexicalEnv(thread, envHandle.GetTaggedValue());
     result->SetHomeObject(thread, homeObject.GetTaggedValue());
     result->SetModule(thread, module.GetTaggedValue());
-
+    QuickFixHelper::SetPatchModule(thread, methodHandle, result);
     return result.GetTaggedValue();
 }
 
@@ -2276,6 +2307,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
     func->SetLength(length);
     func->SetLexicalEnv(thread, env);
     func->SetModule(thread, module);
+    QuickFixHelper::SetPatchModule(thread, methodHandle, func);
     return func.GetTaggedValue();
 }
 
@@ -2307,6 +2339,17 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(length, coretypesArray);
     return EcmaInterpreter::Execute(info);
+}
+
+void RuntimeStubs::RuntimeSetPatchModule(JSThread *thread, const JSHandle<JSFunction> &func)
+{
+    JSHandle<Method> methodHandle(thread, Method::Cast(func->GetMethod()));
+    const JSHandle<JSTaggedValue> coldReloadRecordName =
+            thread->GetCurrentEcmaContext()->FindPatchModule(MethodLiteral::GetRecordName(
+                methodHandle->GetJSPandaFile(), methodHandle->GetMethodId()));
+    if (!coldReloadRecordName->IsHole()) {
+        func->SetModule(thread, coldReloadRecordName.GetTaggedValue());
+    }
 }
 
 JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, const JSHandle<JSObject> &obj,
@@ -2478,6 +2521,20 @@ JSTaggedValue RuntimeStubs::RuntimeThrowSyntaxError(JSThread *thread, const char
 JSTaggedValue RuntimeStubs::RuntimeLdBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &numberBigInt)
 {
     return JSTaggedValue::ToBigInt(thread, numberBigInt);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsIntN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint)
+{
+    auto biginteger = JSHandle<BigInt>(thread, bigint);
+    JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    return BigInt::AsintN(thread, bitness, biginteger);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsUintN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint)
+{
+    auto biginteger = JSHandle<BigInt>(thread, bigint);
+    JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    return BigInt::AsUintN(thread, bitness, biginteger);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId)
@@ -2720,7 +2777,9 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructBoundFunction(JSThread *thread, J
                                                              JSHandle<TaggedArray> args)
 {
     JSHandle<JSTaggedValue> target(thread, ctor->GetBoundTarget());
-    ASSERT(target->IsConstructor());
+    if (!target->IsConstructor()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
+    }
 
     JSHandle<TaggedArray> boundArgs(thread, ctor->GetBoundArguments());
     JSMutableHandle<JSTaggedValue> newPreArgs(thread, preArgs.GetTaggedValue());
@@ -2842,6 +2901,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t ar
     JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     const size_t firstArgOffset = 1;
+    ASSERT(argc > 0);
     size_t arrLength = argc - firstArgOffset;
     JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(arrLength);
     for (size_t i = 0; i < arrLength; ++i) {
@@ -3011,10 +3071,12 @@ JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue o
 JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
     uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ObjectFactory* factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> handleLexicalEnv(thread, lexicalEnv);
     JSHandle<ConstantPool> handleConstpool(thread, constpool);
     JSHandle<JSTaggedValue> handleModule(thread, module);
+    JSHandle<ConstantPool> unsharedConstpoolHandle(
+        thread, thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool));
     CString entry = ModuleManager::GetRecordName(handleModule.GetTaggedValue());
     uint32_t length = handleLexicalEnv->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH;
     uint32_t startIndex = 0;
@@ -3022,17 +3084,27 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         startIndex++;
     }
 
+    JSTaggedValue aotSymbolInfo = unsharedConstpoolHandle->GetAotSymbolInfo();
+    JSHandle<TaggedArray> aotSymbolInfoHandle(thread, aotSymbolInfo);
+    FrameHandler frameHandler(thread);
+    uint32_t abcId = frameHandler.GetAbcId();
     ASSERT(startIndex + count <= length);
     for (uint32_t i = 0; i < count; i++) {
-        JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
-        handleLexicalEnv->SetProperties(thread, startIndex + i, symbol.GetTaggedValue());
+        auto index = startIndex + i;
+        uint64_t id = JSSymbol::GeneratePrivateId(abcId, literalId, index);
+        JSHandle<JSSymbol> symbolHandle;
+        JSTaggedValue symbol = ConstantPool::GetSymbolFromSymbolInfo(aotSymbolInfoHandle, id);
+        if (ConstantPool::IsAotSymbolInfoExist(aotSymbolInfoHandle, symbol)) {
+            symbolHandle = JSHandle<JSSymbol>(thread, symbol);
+        } else {
+            symbolHandle = factory->NewJSSymbol();
+            symbolHandle->SetPrivateId(id);
+        }
+        handleLexicalEnv->SetProperties(thread, index, symbolHandle.GetTaggedValue());
     }
 
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->
-        FindOrCreateUnsharedConstpool(handleConstpool.GetTaggedValue());
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(
-        thread, JSHandle<ConstantPool>(thread, cp), literalId, entry);
-
+    JSTaggedValue literalObj =
+        ConstantPool::GetClassLiteralFromCache(thread, unsharedConstpoolHandle, literalId, entry);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> literalBuffer(thread, classLiteral->GetArray());
     uint32_t literalBufferLength = literalBuffer->GetLength();
@@ -3052,9 +3124,17 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         handleLexicalEnv->SetProperties(thread, startIndex + count + i, literalValue);
     }
     if (instacePropertyCount > 0) {
-        JSHandle<JSSymbol> methodSymbol = factory->NewPublicSymbolWithChar("method");
-        handleLexicalEnv->SetProperties(thread, startIndex + count + literalBufferLength - 1,
-                                        methodSymbol.GetTaggedValue());
+        auto index = startIndex + count + literalBufferLength - 1;
+        uint64_t id = JSSymbol::GeneratePrivateId(abcId, literalId, index);
+        JSHandle<JSSymbol> symbolHandle;
+        JSTaggedValue symbol = ConstantPool::GetSymbolFromSymbolInfo(aotSymbolInfoHandle, id);
+        if (ConstantPool::IsAotSymbolInfoExist(aotSymbolInfoHandle, symbol)) {
+            symbolHandle = JSHandle<JSSymbol>(thread, symbol);
+        } else {
+            symbolHandle = factory->NewPublicSymbolWithChar("method");
+            symbolHandle->SetPrivateId(id);
+        }
+        handleLexicalEnv->SetProperties(thread, index, symbolHandle.GetTaggedValue());
     }
     return JSTaggedValue::Undefined();
 }

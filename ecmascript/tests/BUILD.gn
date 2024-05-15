@@ -44,6 +44,7 @@ host_unittest_action("EcmaVm_001_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -77,6 +78,7 @@ host_unittest_action("EcmaVm_002_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -135,6 +137,7 @@ host_unittest_action("EcmaVm_004_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -354,6 +357,7 @@ host_unittest_action("EcmaVm_011_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -379,6 +383,7 @@ host_unittest_action("EcmaVm_012_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -408,6 +413,7 @@ host_unittest_action("EcmaVm_013_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -462,6 +468,7 @@ host_unittest_action("EcmaVm_015_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -547,6 +554,7 @@ host_unittest_action("EcmaVm_018_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -578,6 +586,7 @@ host_unittest_action("EcmaVm_019_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -696,6 +705,7 @@ host_unittest_action("EcmaVm_023_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -1034,6 +1044,7 @@ host_unittest_action("EcmaVm_036_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -1196,6 +1207,7 @@ host_unittest_action("EcmaVm_042_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 

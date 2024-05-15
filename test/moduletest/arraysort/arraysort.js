@@ -68,6 +68,23 @@ arr1.sort((a, b) => {
 });
 print(JSON.stringify(arr1));
 
+/*
+ * Test Case Description:
+ * 1. This use case is used to verify the logical processing order of the quick sorting algorithm.
+ * 2. If there are any changes to the use case, please confirm if the use case needs to be modified.
+ */
+for (let i = 0; i < 100; i++) {
+    arr1[i] = i;
+}
+arr1[0] = 99;
+arr1[99] = 0;
+arr1[49] = 50;
+arr1[50] = 49;
+arr1.sort((a, b) => {
+    return a - b;
+})
+print(JSON.stringify(arr1));
+
 // Modification of objects during the comparison process.
 let arr2 = [1, 3, 2];
 arr2.sort((a, b) => {
@@ -245,4 +262,24 @@ try {
     proxy.sort();
 } catch (e) {
     print(e.name);
+}
+
+try {
+    const vSort = new Float64Array(Float64Array);
+    vSort.__proto__.sort();
+} catch (e) {
+    print(e.message);
+}
+
+const v4 = [1, 255];
+class C5 extends Int16Array{
+    toString(a7, a8, a9, a10) {
+        super.includes();
+    }
+}
+try {
+    const v12 = new C5();
+    v4.sort(C5.prototype.toString);
+} catch (e) {
+    print(e.message);
 }

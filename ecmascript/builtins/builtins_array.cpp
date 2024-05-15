@@ -1810,7 +1810,7 @@ JSTaggedValue BuiltinsArray::ReduceRight(EcmaRuntimeCallInfo *argv)
     //     v. Decrease k by 1.
     //   c. If kPresent is false, throw a TypeError exception.
     JSMutableHandle<JSTaggedValue> accumulator(thread, JSTaggedValue::Undefined());
-    if (argc == 2) {  // 2:2 means the number of parameters
+    if (argc >= 2) {  // 2:2 means the number of parameters
         accumulator.Update(GetCallArg(argv, 1).GetTaggedValue());
     } else {
         bool kPresent = false;

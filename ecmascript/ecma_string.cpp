@@ -272,7 +272,7 @@ bool IsSubStringAtSpan(Span<T1> &lhsSp, Span<T2> &rhsSp, uint32_t offset)
     int rhsSize = static_cast<int>(rhsSp.size());
     ASSERT(rhsSize + offset <= lhsSp.size());
     for (int i = 0; i < rhsSize; ++i) {
-        auto left = static_cast<int32_t>(lhsSp[offset + i]);
+        auto left = static_cast<int32_t>(lhsSp[offset + static_cast<uint32_t>(i)]);
         auto right = static_cast<int32_t>(rhsSp[i]);
         if (left != right) {
             return false;
@@ -306,8 +306,8 @@ bool EcmaString::IsSubStringAt(const EcmaVM *vm, const JSHandle<EcmaString>& lef
         Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
         return IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else if (!rhs.IsUtf16()) {
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), rhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), lhsCount);
+        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
+        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
         return IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else {
         Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
@@ -845,6 +845,7 @@ bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len, cons
         utf8Data += nbytes;
         utf8Pos += nbytes;
         if (pHigh != 0) {
+            ASSERT(utf16Len > 0);
             if (utf16Pos >= utf16Len - 1 || *utf16Data != pHigh) {
                 return false;
             }

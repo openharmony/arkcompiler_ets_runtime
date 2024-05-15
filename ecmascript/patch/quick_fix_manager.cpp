@@ -76,7 +76,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
         LOG_ECMA(ERROR) << "Load patch fail of: " << baseFileName;
         return;
     }
-
+    thread->GetCurrentEcmaContext()->SetStageOfColdReload(StageOfColdReload::IS_COLD_RELOAD);
     methodInfos_.emplace(baseFileName, patchInfo);
 }
 
@@ -198,6 +198,10 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
     PatchInfo patchInfo = iter->second;
     MethodLiteral *patchMethodLiteral = PatchLoader::FindSameMethod(patchInfo, baseFile, baseMethodId, baseClassInfo_);
     if (patchMethodLiteral == nullptr) {
+        return JSTaggedValue::Hole();
+    }
+
+    if (!HasQueryQuickFixInfoFunc()) {
         return JSTaggedValue::Hole();
     }
 

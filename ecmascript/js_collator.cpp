@@ -61,7 +61,7 @@ JSHandle<TaggedArray> JSCollator::GetAvailableLocales(JSThread *thread, bool ena
 
 /* static */
 void JSCollator::SetIcuCollator(JSThread *thread, const JSHandle<JSCollator> &collator,
-    icu::Collator *icuCollator, const DeleteEntryPoint &callback)
+    icu::Collator *icuCollator, const NativePointerCallback &callback)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -70,7 +70,7 @@ void JSCollator::SetIcuCollator(JSThread *thread, const JSHandle<JSCollator> &co
     JSTaggedValue data = collator->GetIcuField();
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
-        native->ResetExternalPointer(icuCollator);
+        native->ResetExternalPointer(thread, icuCollator);
         return;
     }
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuCollator, callback);
@@ -449,8 +449,17 @@ JSHandle<JSObject> JSCollator::ResolvedOptions(JSThread *thread, const JSHandle<
 
     // [[Collation]]
     JSMutableHandle<JSTaggedValue> collationValue(thread, collator->GetCollation());
+    UErrorCode status = U_ZERO_ERROR;
+    icu::Collator *icuCollator = collator->GetIcuCollator();
+    icu::Locale icu_locale(icuCollator->getLocale(ULOC_VALID_LOCALE, status));
+    std::string collation_value =
+        icu_locale.getUnicodeKeywordValue<std::string>("co", status);
     if (collationValue->IsUndefined()) {
-        collationValue.Update(globalConst->GetDefaultString());
+        if (collation_value != "search" && collation_value != "") {
+            collationValue.Update(factory->NewFromStdString(collation_value).GetTaggedValue());
+        } else {
+            collationValue.Update(globalConst->GetDefaultString());
+        }
     }
     JSObject::CreateDataProperty(thread, options, globalConst->GetHandledCollationString(), collationValue);
 

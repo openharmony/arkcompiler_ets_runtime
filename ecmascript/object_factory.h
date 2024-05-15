@@ -31,7 +31,6 @@
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/byte_array.h"
-#include "ecmascript/shared_objects/js_shared_json_value.h"
 
 namespace panda::ecmascript {
 struct MethodLiteral;
@@ -51,6 +50,7 @@ class GlobalEnvConstants;
 class AccessorData;
 class JSGlobalObject;
 class LexicalEnv;
+class SendableEnv;
 class JSDate;
 class JSProxy;
 class JSRealm;
@@ -106,19 +106,6 @@ class LayoutInfo;
 class JSIntlBoundFunction;
 class FreeObject;
 class JSNativePointer;
-class TSModuleTable;
-class TSTypeTable;
-class TSObjLayoutInfo;
-class TSType;
-class TSObjectType;
-class TSClassType;
-class TSUnionType;
-class TSInterfaceType;
-class TSClassInstanceType;
-class TSFunctionType;
-class TSArrayType;
-class TSIteratorInstanceType;
-class TSNamespaceType;
 class JSAPIArrayList;
 class JSAPIArrayListIterator;
 class JSAPIDeque;
@@ -336,19 +323,11 @@ public:
 
     JSHandle<JSArray> NewJSArray();
     JSHandle<JSSharedArray> PUBLIC_API NewJSSArray();
-    JSHandle<JSSharedMap> PUBLIC_API NewJSSMap();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONArray();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONTrue();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONFalse();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONString();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNumber();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONNull();
-    JSHandle<JSSharedJSONValue> PUBLIC_API NewSJSONObject();
     JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
     JSHandle<TaggedArray> PUBLIC_API NewSJsonFixedArray(size_t start, size_t length,
-                                                    const std::vector<JSHandle<JSTaggedValue>> &vec);
+                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
 
     JSHandle<JSProxy> NewJSProxy(const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &handler);
     JSHandle<JSRealm> NewJSRealm();
@@ -512,11 +491,13 @@ public:
     void NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length);
     void NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayBuffer> &array, int32_t length);
     JSHandle<JSSendableArrayBuffer> NewJSSendableArrayBuffer(int32_t length);
+    JSHandle<JSSendableArrayBuffer> NewJSSendableArrayBuffer(void *buffer, int32_t length,
+                                                             const NativePointerCallback &deleter, void *data);
 
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length);
 
-    JSHandle<JSArrayBuffer> NewJSArrayBuffer(void *buffer, int32_t length, const DeleteEntryPoint &deleter, void *data,
-                                             bool share = false);
+    JSHandle<JSArrayBuffer> NewJSArrayBuffer(void *buffer, int32_t length, const NativePointerCallback &deleter,
+                                             void *data, bool share = false);
 
     JSHandle<JSDataView> NewJSDataView(JSHandle<JSArrayBuffer> buffer, uint32_t offset, uint32_t length);
 
@@ -529,12 +510,12 @@ public:
     void NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, void *buffer, size_t size);
 
     template<typename T, typename S>
-    inline void NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const DeleteEntryPoint &callback);
+    inline void NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const NativePointerCallback &callback);
 
     EcmaString *PUBLIC_API InternString(const JSHandle<JSTaggedValue> &key);
 
     inline JSHandle<JSNativePointer> NewJSNativePointer(void *externalPointer,
-                                                        const DeleteEntryPoint &callBack = nullptr,
+                                                        const NativePointerCallback &callBack = nullptr,
                                                         void *data = nullptr,
                                                         bool nonMovable = false,
                                                         size_t nativeBindingsize = 0,
@@ -561,40 +542,33 @@ public:
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 const JSHandle<JSTaggedValue> &newTarget);
+    JSHandle<JSObject> NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
+        const JSHandle<JSFunction> &constructor, uint32_t inlinedProps);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);
 
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
-    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc *desc, JSHandle<Method> &method);
+    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc, JSHandle<Method> &method);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 
-    // ----------------------------------- new TSType ----------------------------------------
-    JSHandle<TSObjLayoutInfo> CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal = JSTaggedValue::Hole());
-    JSHandle<TSObjectType> NewTSObjectType(uint32_t numOfKeys);
-    JSHandle<TSClassType> NewTSClassType();
-    JSHandle<TSUnionType> NewTSUnionType(uint32_t length);
-    JSHandle<TSInterfaceType> NewTSInterfaceType();
-    JSHandle<TSClassInstanceType> NewTSClassInstanceType();
-    JSHandle<TSTypeTable> NewTSTypeTable(uint32_t length);
-    JSHandle<TSModuleTable> NewTSModuleTable(uint32_t length);
-    JSHandle<TSFunctionType> NewTSFunctionType(uint32_t length);
-    JSHandle<TSArrayType> NewTSArrayType();
-    JSHandle<TSIteratorInstanceType> NewTSIteratorInstanceType();
-    JSHandle<TSNamespaceType> NewTSNamespaceType();
-
     // ----------------------------------- new string ----------------------------------------
     JSHandle<EcmaString> PUBLIC_API NewFromASCII(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf8WithoutStringTable(std::string_view data);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf8(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf8ReadOnly(std::string_view data);
     JSHandle<EcmaString> NewFromASCIISkippingStringTable(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf16WithoutStringTable(std::u16string_view data);
     JSHandle<EcmaString> NewFromUtf16(std::u16string_view data);
 
     JSHandle<EcmaString> NewFromStdString(const std::string &data);
 
+    JSHandle<EcmaString> NewFromUtf8WithoutStringTable(const uint8_t *utf8Data, uint32_t utf8Len);
     JSHandle<EcmaString> NewFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len);
 
+    JSHandle<EcmaString> NewFromUtf16WithoutStringTable(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf16(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16Compress(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16NotCompress(const uint16_t *utf16Data, uint32_t utf16Len);
@@ -733,14 +707,16 @@ public:
 
     TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
 
+    JSHandle<JSTaggedValue> CreateSObjectWithProperties(std::vector<PropertyDescriptor> &descs);
+
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
 
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
         uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    
+
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
         const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout);
-    
+
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClassDictMode(uint32_t size, uint32_t inlinedProps, JSType type,
                                               const JSHandle<JSTaggedValue> &prototype);
 
@@ -781,12 +757,12 @@ public:
 
     JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
-    JSHandle<Method> NewSMethod(const JSPandaFile *jsPandaFile,
-                                MethodLiteral *methodLiteral,
-                                JSHandle<ConstantPool> constpool,
-                                uint32_t entryIndex,
-                                bool needSetAotFlag,
-                                bool *canFastCall = nullptr);
+    JSHandle<Method> PUBLIC_API NewSMethod(const JSPandaFile *jsPandaFile,
+                                           MethodLiteral *methodLiteral,
+                                           JSHandle<ConstantPool> constpool,
+                                           uint32_t entryIndex,
+                                           bool needSetAotFlag,
+                                           bool *canFastCall = nullptr);
 
     JSHandle<ConstantPool> NewSConstantPool(uint32_t capacity);
 
@@ -807,6 +783,8 @@ public:
     JSHandle<AccessorData> NewSAccessorData();
 
     JSHandle<SourceTextModule> NewSSourceTextModule();
+
+    JSHandle<ModuleNamespace> NewSModuleNamespace();
 
     JSHandle<ImportEntry> NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                          const JSHandle<JSTaggedValue> &importName,
@@ -834,7 +812,7 @@ public:
     JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord();
 
     JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord(
-        const JSHandle<EcmaString> &moduleRecord, int32_t index);
+        const JSHandle<EcmaString> &moduleRecord, const JSHandle<EcmaString> &abcFileName, int32_t index);
 
     JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord();
 
@@ -857,7 +835,7 @@ public:
                                             const JSHandle<JSTaggedValue> &prototype, bool isAccessor = true);
 
     JSHandle<JSNativePointer> NewSJSNativePointer(void *externalPointer,
-                                                  const DeleteEntryPoint &callBack,
+                                                  const NativePointerCallback &callBack,
                                                   void *data = nullptr,
                                                   bool nonMovable = false,
                                                   size_t nativeBindingsize = 0,
@@ -871,13 +849,13 @@ public:
     JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
     JSHandle<Method> CloneMethodTemporaryForJIT(JSHandle<Method> method);
+    JSHandle<SendableEnv> NewSendableEnv(int numSlots);
 
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
     friend class EcmaString;
     friend class SnapshotProcessor;
-    friend class TSManager;
     friend class SingleCharTable;
     void InitObjectFields(const TaggedObject *object);
 
@@ -909,7 +887,7 @@ private:
 
     // used to create nonmovable utf8 string at global constants
     JSHandle<EcmaString> NewFromASCIINonMovable(std::string_view data);
-    // used to create nonmovable utf8 string at global constants
+    // used to create read only utf8 string at global constants
     JSHandle<EcmaString> NewFromASCIIReadOnly(std::string_view data);
 
     // used for creating Function
@@ -930,7 +908,8 @@ private:
     JSHandle<EcmaString> GetCompressedSubStringFromStringTable(const JSHandle<EcmaString> &string, uint32_t offset,
                                                                uint32_t utf8Len) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
-    JSHandle<EcmaString> GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len) const;
+    JSHandle<EcmaString> GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len,
+                                                          bool canBeCompress = true) const;
     // For MUtf-8 string data
     EcmaString *PUBLIC_API GetRawStringFromStringTable(StringData sd,
                                                        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE,

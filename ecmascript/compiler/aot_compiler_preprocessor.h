@@ -49,7 +49,7 @@ private:
 };
 
 struct CompilationOptions {
-    explicit CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions);
+    explicit CompilationOptions(JSRuntimeOptions &runtimeOptions);
     void ParseOption(const std::string &option, std::map<std::string, std::vector<std::string>> &optionMap) const;
     std::vector<std::string> SplitString(const std::string &str, const char ch) const;
     std::string triple_;
@@ -73,20 +73,19 @@ struct CompilationOptions {
     bool isEnableValueNumbering_;
     bool isEnableOptInlining_;
     bool isEnableOptString_;
-    bool isEnableTypeInfer_;
     bool isEnableOptPGOType_;
     bool isEnableOptTrackField_;
     bool isEnableOptLoopPeeling_;
     bool isEnableOptLoopInvariantCodeMotion_;
-    bool isEnableCollectLiteralInfo_;
     bool isEnableOptConstantFolding_;
     bool isEnableLexenvSpecialization_;
     bool isEnableNativeInline_;
-    bool isEnablePGOHCRLowering_;
+    bool isEnablePGOHCRLowering_ {false};
     bool isEnableLoweringBuiltin_;
     bool isEnableOptBranchProfiling_;
     bool isEnableEscapeAnalysis_;
     bool isEnableInductionVariableAnalysis_;
+    bool isEnableVerifierPass_;
     std::map<std::string, std::vector<std::string>> optionSelectMethods_;
     std::map<std::string, std::vector<std::string>> optionSkipMethods_;
 };
@@ -110,8 +109,6 @@ public:
     bool HandlePandaFileNames(const int argc, const char **argv);
 
     void AOTInitialize();
-
-    void SetShouldCollectLiteralInfo(CompilationOptions &cOptions, const CompilerLog *log);
 
     uint32_t GenerateAbcFileInfos();
 

@@ -19,6 +19,10 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+print("string".length);
+print("string"[3]);
+print("string".at(-1));
+
 let tmp = '今天吃什么:告诉了会晤今天吃什么促“让今天吃什么下来好起来”今天吃今天吃什么于6月1日于北京今天吃什么面。大杂烩中国都五年来首位访华\
 的今天吃什么王刚说,你吵的菜今天吃什么了赞不绝口,但是今天吃什么吃,他接到一个快递单号为#nsExpress3SF#123456789的包裹';
 let flag = tmp;
@@ -286,3 +290,76 @@ print(strFromCodePoint);
         print(err);
     }
 }
+
+// startsWith 边界值测试
+const textStr = "abcd"
+const matchStr = "abcd"
+const offset = 0
+
+// case offset = 0, match true
+class C3 {
+    constructor() {
+        let bb = textStr.startsWith(matchStr, offset);
+        print(bb); // true
+    }
+}
+
+new C3();
+
+// case offset = 1, match false
+const offset1 = 1
+
+class C4 {
+    constructor() {
+        let flag = textStr.startsWith(matchStr, offset1);
+        print(flag); // false
+    }
+}
+
+new C4();
+
+print("abcd汉字".startsWith("abcd"));
+
+let greeting = "          Hello World!          ";
+let fooStr = "foo     ";
+let barStr = "     bar";
+let chinese = "          我，是一个中文句子    我前面有一些空格，我中间有一些空格。     我后面也有一些空格。          ";
+// test for trimStart()
+print(greeting.trimStart());
+print(fooStr.trimStart());
+print(barStr.trimStart());
+print(chinese.trimStart());
+// test for trimEnd()
+print(greeting.trimEnd());
+print(fooStr.trimEnd());
+print(barStr.trimEnd());
+print(chinese.trimEnd());
+// test for trimLeft()
+print(greeting.trimLeft());
+print(fooStr.trimLeft());
+print(barStr.trimLeft());
+print(chinese.trimLeft());
+// test for trimRight()
+print(greeting.trimRight());
+print(fooStr.trimRight());
+print(barStr.trimRight());
+print(chinese.trimRight());
+
+// Test case for padStart()
+let start_str = "abc";
+print(start_str.padStart(10, "123"));
+print(start_str.padStart(5.666, "123"));
+print(start_str.padStart(NaN, "123"));
+print(start_str.padStart(-Infinity, "123"));
+print(start_str.padStart(0, "123"));
+print(start_str.padStart(10, ""));
+
+// test for padEnd()
+print("abc".padEnd(5, 'abc'));
+print('abc'.padEnd(undefined, 'def'));
+print('abc'.padEnd(null, 'def') );
+print('abc'.padEnd(NaN, 'def') );
+print('abc'.padEnd(-Infinity, 'def') );
+print('abc'.padEnd(0, 'def') );
+print('abc'.padEnd(-1, 'def') );
+print('abc'.padEnd(5, ''))

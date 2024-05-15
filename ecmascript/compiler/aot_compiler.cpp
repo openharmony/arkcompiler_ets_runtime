@@ -32,17 +32,26 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
 
+#include "ecmascript/compiler/aot_compiler_stats.h"
+
 namespace panda::ecmascript::kungfu {
 namespace {
+enum ErrCode {
+    ERR_OK = (0),
+    ERR_FAIL = (-1),
+    ERR_HELP = (1),
+    ERR_NO_AP = (2),
+};
+
 void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bool &ret,
-                       const CVector<AbcFileInfo> &fileInfos)
+                       const CVector<AbcFileInfo> &fileInfos, AotCompilerStats &compilerStats)
 {
     for (const AbcFileInfo &fileInfo : fileInfos) {
         JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
         const std::string &extendedFilePath = fileInfo.extendedFilePath_;
         LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;
         generator.SetCurrentCompileFileName(jsPandaFile->GetNormalizedFileDesc());
-        if (passManager.Compile(jsPandaFile, extendedFilePath, generator) == false) {
+        if (passManager.Compile(jsPandaFile, extendedFilePath, generator, compilerStats) == false) {
             ret = false;
             continue;
         }
@@ -68,24 +77,16 @@ std::pair<bool, int> CheckVersion(JSRuntimeOptions &runtimeOptions, bool result)
 
 int Main(const int argc, const char **argv)
 {
-    auto startTime =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch())
-                    .count();
-    LOG_ECMA(DEBUG) << "Print ark_aot_compiler received args:";
-    for (int i = 0; i < argc; i++) {
-        LOG_ECMA(DEBUG) << argv[i];
-    }
-
     if (argc < 2) { // 2: at least have two arguments
         LOG_COMPILER(ERROR) << AotCompilerPreprocessor::GetHelper();
-        return -1;
+        return ERR_FAIL;
     }
 
     JSRuntimeOptions runtimeOptions;
     bool retOpt = runtimeOptions.ParseCommand(argc, argv);
     if (!retOpt) {
         LOG_COMPILER(ERROR) << AotCompilerPreprocessor::GetHelper();
-        return 1;
+        return ERR_HELP;
     }
 
     if (runtimeOptions.WasSetDeviceState()) {
@@ -93,10 +94,6 @@ int Main(const int argc, const char **argv)
         if (!deviceIsScreenOff) {
             BindSmallCpuCore();
         }
-    }
-
-    if (runtimeOptions.IsStartupTime()) {
-        LOG_COMPILER(DEBUG) << "Startup start time: " << startTime;
     }
 
     bool ret = true;
@@ -107,7 +104,11 @@ int Main(const int argc, const char **argv)
     EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot Create vm";
-        return -1;
+        return ERR_FAIL;
+    }
+    if (JSNApi::IsAotEscape(vm)) {
+        LOG_COMPILER(ERROR) << " Stop compile AOT because there are more crashes";
+        return ERR_FAIL;
     }
 
     {
@@ -116,7 +117,7 @@ int Main(const int argc, const char **argv)
         LocalScope scope(vm);
         arg_list_t pandaFileNames {};
         std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
-        CompilationOptions cOptions(vm, runtimeOptions);
+        CompilationOptions cOptions(runtimeOptions);
 
         CompilerLog log(cOptions.logOption_);
         log.SetEnableCompilerLogTime(cOptions.compilerLogTime_);
@@ -125,21 +126,36 @@ int Main(const int argc, const char **argv)
 
         AotCompilerPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgsMap, profilerDecoder, pandaFileNames);
         if (!cPreprocessor.HandleTargetCompilerMode(cOptions) || !cPreprocessor.HandlePandaFileNames(argc, argv)) {
-            return 1;
+            return ERR_HELP;
         }
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
             // no need to compile in partial mode without any ap files.
-            return 0;
+            return ERR_NO_AP;
         }
+
+        AotCompilerStats compilerStats;
+        std::string bundleName = "";
+        if (cPreprocessor.GetMainPkgArgs()) {
+            bundleName = cPreprocessor.GetMainPkgArgs()->GetBundleName();
+        }
+        compilerStats.SetBundleName(bundleName);
+        compilerStats.SetAotFilePath(cOptions.outputFileName_);
+        compilerStats.SetPgoPath(cOptions.profilerIn_);
+        compilerStats.StartCompiler();
         profilerDecoder.SetHotnessThreshold(cOptions.hotnessThreshold_);
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
-        cPreprocessor.SetShouldCollectLiteralInfo(cOptions, &log);
         uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
         // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
         // need support muilt abc
         auto result = CheckVersion(runtimeOptions, cPreprocessor.HandleMergedPgoFile(checksum));
         if (result.first) {
+            if (result.second != 0) {
+                compilerStats.SetPgoFileLegal(false);
+            }
+            if (runtimeOptions.IsTargetCompilerMode()) {
+                compilerStats.PrintCompilerStatsLog();
+            }
             return result.second;
         }
         cPreprocessor.GeneratePGOTypes(cOptions);
@@ -155,14 +171,12 @@ int Main(const int argc, const char **argv)
                 .EnableEarlyElimination(cOptions.isEnableEarlyElimination_)
                 .EnableLaterElimination(cOptions.isEnableLaterElimination_)
                 .EnableValueNumbering(cOptions.isEnableValueNumbering_)
-                .EnableTypeInfer(cOptions.isEnableTypeInfer_)
                 .EnableOptInlining(cOptions.isEnableOptInlining_)
                 .EnableOptString(cOptions.isEnableOptString_)
                 .EnableOptPGOType(cOptions.isEnableOptPGOType_)
                 .EnableOptTrackField(cOptions.isEnableOptTrackField_)
                 .EnableOptLoopPeeling(cOptions.isEnableOptLoopPeeling_)
                 .EnableOptLoopInvariantCodeMotion(cOptions.isEnableOptLoopInvariantCodeMotion_)
-                .EnableCollectLiteralInfo(cOptions.isEnableCollectLiteralInfo_)
                 .EnableOptConstantFolding(cOptions.isEnableOptConstantFolding_)
                 .EnableLexenvSpecialization(cOptions.isEnableLexenvSpecialization_)
                 .EnableInlineNative(cOptions.isEnableNativeInline_)
@@ -170,6 +184,7 @@ int Main(const int argc, const char **argv)
                 .EnableOptBranchProfiling(cOptions.isEnableOptBranchProfiling_)
                 .EnableEscapeAnalysis(cOptions.isEnableEscapeAnalysis_)
                 .EnableInductionVariableAnalysis(cOptions.isEnableInductionVariableAnalysis_)
+                .EnableVerifierPass(cOptions.isEnableVerifierPass_)
                 .Build();
 
         PassManager passManager(&aotCompilationEnv,
@@ -187,26 +202,27 @@ int Main(const int argc, const char **argv)
                                 cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
-        if (cPreprocessor.GetMainPkgArgs()) {
-            std::string bundleName = cPreprocessor.GetMainPkgArgs()->GetBundleName();
-            if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
-                isEnableLiteCG = true;
-            }
+        if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+            isEnableLiteCG = true;
         }
         vm->GetJSOptions().SetCompilerEnableLiteCG(isEnableLiteCG);
+        compilerStats.SetIsLiteCg(isEnableLiteCG);
 
         AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);
 
-        CompileValidFiles(passManager, generator, ret, fileInfos);
+        CompileValidFiles(passManager, generator, ret, fileInfos, compilerStats);
         std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();
         generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature);
         generator.SaveSnapshotFile();
         log.Print();
+        if (runtimeOptions.IsTargetCompilerMode()) {
+            compilerStats.PrintCompilerStatsLog();
+        }
     }
 
     LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");
     JSNApi::DestroyJSVM(vm);
-    return ret ? 0 : -1;
+    return ret ? ERR_OK : ERR_FAIL;
 }
 } // namespace panda::ecmascript::kungfu
 

@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "ecmascript/compiler/codegen/maple/maple_util/include/profile_type.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/ic/ic_handler.h"
@@ -253,7 +254,6 @@ void JITProfiler::ProfileBytecode(JSHandle<ProfileTypeInfo> &profileTypeInfo, En
         }
         bcIns = bcIns.GetNext();
     }
-    ptManager_->GenJITHClassInfoLocal();
 }
 
 // PGOSampleType
@@ -692,9 +692,10 @@ JSTaggedValue JITProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSH
     return JSTaggedValue::Undefined();
 }
 
-void JITProfiler::InsertProfileType(JSTaggedType root, JSTaggedType child, ProfileType rootType, ProfileType childType)
+void JITProfiler::InsertProfileType(JSTaggedType root, JSTaggedType child, ProfileType rootType, ProfileType childType,
+                                    bool update)
 {
-    ptManager_->RecordHClass(rootType, childType, child, true);
+    ptManager_->RecordHClass(rootType, childType, child, update);
     LockHolder lock(mutex_);
     auto iter = tracedProfiles_.find(root);
     if (iter != tracedProfiles_.end()) {
@@ -754,14 +755,12 @@ void JITProfiler::UpdateRootProfileType(JSHClass *oldHClass, JSHClass *newHClass
     }
     auto generator = iter->second;
     auto rootProfileType = generator->GetProfileType(JSTaggedType(oldRootHClass));
-    if (rootProfileType.IsNone()) {
+    {
+        vm_->GetNativeAreaAllocator()->Delete(iter->second);
         tracedProfiles_.erase(iter);
-        return;
     }
-    tracedProfiles_.erase(iter);
-    InsertProfileType(JSTaggedType(newHClass), JSTaggedType(newHClass), rootProfileType, rootProfileType);
+    InsertProfileType(JSTaggedType(newHClass), JSTaggedType(newHClass), rootProfileType, rootProfileType, true);
 }
-
 
 void JITProfiler::AddObjectInfoWithMega(int32_t bcOffset)
 {

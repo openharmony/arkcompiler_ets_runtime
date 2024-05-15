@@ -248,6 +248,11 @@ public:
         return TypedCallMetaData::Cast(meta_);
     }
 
+    const NewConstructMetaData* GetNewConstructMetaData() const
+    {
+        return NewConstructMetaData::Cast(meta_);
+    }
+
     std::string MachineTypeStr(MachineType machineType) const;
     std::string GateTypeStr(GateType gateType) const;
     ~Gate() = default;

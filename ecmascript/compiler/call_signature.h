@@ -51,6 +51,7 @@ public:
         JSFUNCTION,
         BUILTINS_STUB,
         BUILTINS_WITH_ARGV_STUB,
+        BASELINE_STUB,
 
         STUB_BEGIN = COMMON_STUB,
         STUB_END = BYTECODE_HANDLER,
@@ -79,6 +80,13 @@ public:
         SetTailCall(false);
         SetGCLeafFunction(false);
         SetVariadicArgs(flags);
+    }
+
+    CallSignature(std::string name, int flags, ArgumentsOrder order, VariableType returnType,
+                  std::initializer_list<VariableType> params)
+        : CallSignature(std::move(name), flags, params.size(), order, returnType)
+    {
+        paramsType_ = std::make_unique<std::vector<VariableType>>(params);
     }
 
     CallSignature() = default;
@@ -185,6 +193,11 @@ public:
     bool IsDeoptStub() const
     {
         return (GetTargetKind() == TargetKind::DEOPT_STUB);
+    }
+
+    bool IsBaselineStub() const
+    {
+        return (GetTargetKind() == TargetKind::BASELINE_STUB);
     }
 
     void SetParameters(VariableType *paramsType)
@@ -390,6 +403,18 @@ private:
     V(BytecodeDebuggerHandler)                  \
     V(CallRuntime)                              \
     V(AsmInterpreterEntry)                      \
+    V(CallArg0AndCheckToBaseline)               \
+    V(CallArg1AndCheckToBaseline)               \
+    V(CallArgs2AndCheckToBaseline)              \
+    V(CallArgs3AndCheckToBaseline)              \
+    V(CallThisArg0AndCheckToBaseline)           \
+    V(CallThisArg1AndCheckToBaseline)           \
+    V(CallThisArgs2AndCheckToBaseline)          \
+    V(CallThisArgs3AndCheckToBaseline)          \
+    V(CallRangeAndCheckToBaseline)              \
+    V(CallNewAndCheckToBaseline)                \
+    V(SuperCallAndCheckToBaseline)              \
+    V(CallThisRangeAndCheckToBaseline)          \
     V(GeneratorReEnterAsmInterp)                \
     V(CallRuntimeWithArgv)                      \
     V(OptimizedCallAndPushUndefined)            \
@@ -425,6 +450,8 @@ private:
     V(StringsAreEquals)                         \
     V(BigIntEquals)                             \
     V(BigIntSameValueZero)                      \
+    V(CallBigIntAsIntN)                         \
+    V(CallBigIntAsUintN)                        \
     V(Dump)                                     \
     V(DebugDump)                                \
     V(DumpWithHint)                             \
@@ -439,6 +466,7 @@ private:
     V(GetActualArgvNoGC)                        \
     V(InsertOldToNewRSet)                       \
     V(InsertLocalToShareRSet)                   \
+    V(SetBitAtomic)                             \
     V(DoubleToInt)                              \
     V(DoubleToLength)                           \
     V(FloatMod)                                 \
@@ -467,6 +495,7 @@ private:
     V(FloatFloor)                               \
     V(FloatPow)                                 \
     V(FloatCeil)                                \
+    V(CallDateNow)                              \
     V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
@@ -505,6 +534,17 @@ private:
     V(CreateJSSetIterator)                      \
     V(CreateJSMapIterator)                      \
     V(JSMapGet)                                 \
+    V(JSMapHas)                                 \
+    V(JSMapKeys)                                \
+    V(JSMapValues)                              \
+    V(JSSetHas)                                 \
+    V(JSSetAdd)                                 \
+    V(JSMapDelete)                              \
+    V(JSSetDelete)                              \
+    V(CreateJSTypedArrayEntries)                \
+    V(CreateJSTypedArrayKeys)                   \
+    V(CreateJSTypedArrayValues)                 \
+    V(JSSetEntries)                             \
     V(JSHClassFindProtoTransitions)             \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \
@@ -515,7 +555,31 @@ private:
     V(ArrayTrim)                                \
     V(OptimizedFastJmp)                         \
     V(ClearJitCompiledCodeFlags)                \
-    V(CopyTypedArrayBuffer)
+    V(CopyTypedArrayBuffer)                     \
+    V(CallArg0AndDispatchFromBaseline)          \
+    V(CallArg1AndDispatchFromBaseline)          \
+    V(CallArgs2AndDispatchFromBaseline)         \
+    V(CallArgs3AndDispatchFromBaseline)         \
+    V(CallThisArg0AndDispatchFromBaseline)      \
+    V(CallThisArg1AndDispatchFromBaseline)      \
+    V(CallThisArgs2AndDispatchFromBaseline)     \
+    V(CallThisArgs3AndDispatchFromBaseline)     \
+    V(CallRangeAndDispatchFromBaseline)         \
+    V(CallNewAndDispatchFromBaseline)           \
+    V(SuperCallAndDispatchFromBaseline)         \
+    V(CallThisRangeAndDispatchFromBaseline)     \
+    V(CallArg0AndCheckToBaselineFromBaseline)        \
+    V(CallArg1AndCheckToBaselineFromBaseline)        \
+    V(CallArgs2AndCheckToBaselineFromBaseline)       \
+    V(CallArgs3AndCheckToBaselineFromBaseline)       \
+    V(CallThisArg0AndCheckToBaselineFromBaseline)    \
+    V(CallThisArg1AndCheckToBaselineFromBaseline)    \
+    V(CallThisArgs2AndCheckToBaselineFromBaseline)   \
+    V(CallThisArgs3AndCheckToBaselineFromBaseline)   \
+    V(CallRangeAndCheckToBaselineFromBaseline)       \
+    V(CallNewAndCheckToBaselineFromBaseline)         \
+    V(SuperCallAndCheckToBaselineFromBaseline)       \
+    V(CallThisRangeAndCheckToBaselineFromBaseline)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

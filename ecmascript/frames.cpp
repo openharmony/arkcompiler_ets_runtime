@@ -94,6 +94,7 @@ JSTaggedValue FrameIterator::GetFunction() const
         case FrameType::OPTIMIZED_ENTRY_FRAME:
         case FrameType::ASM_BRIDGE_FRAME:
         case FrameType::LEAVE_FRAME:
+        case FrameType::BASELINE_BUILTIN_FRAME:
         case FrameType::LEAVE_FRAME_WITH_ARGV:
         case FrameType::INTERPRETER_ENTRY_FRAME:
         case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
@@ -169,6 +170,15 @@ void FrameIterator::Advance()
             if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = 0;
                 optimizedCallSiteSp_ = 0;
+            }
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
+        case FrameType::BASELINE_BUILTIN_FRAME: {
+            auto frame = GetFrame<BaselineBuiltinFrame>();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
+                optimizedCallSiteSp_ = 0;
+                optimizedReturnAddr_ = 0;
             }
             current_ = frame->GetPrevFrameFp();
             break;
@@ -273,13 +283,22 @@ void FrameIterator::Advance()
             current_ = frame->GetPrevFrameFp();
             break;
         }
-        case FrameType::BUILTIN_FRAME:
-        case FrameType::BUILTIN_ENTRY_FRAME : {
+        case FrameType::BUILTIN_FRAME : {
             auto frame = GetFrame<BuiltinFrame>();
             if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 needCalCallSiteInfo = true;
+            }
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
+        case FrameType::BUILTIN_ENTRY_FRAME : {
+            auto frame = GetFrame<BuiltinFrame>();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                needCalCallSiteInfo = false;
             }
             current_ = frame->GetPrevFrameFp();
             break;
@@ -390,6 +409,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
             return frame->GetCallSiteSp();
         }
         case FrameType::OPTIMIZED_FRAME:
+        case FrameType::BASELINE_BUILTIN_FRAME:
         case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             ASSERT(thread_ != nullptr);
@@ -530,6 +550,19 @@ ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
     }
 }
 
+ARK_INLINE void BaselineBuiltinFrame::GCIterate([[maybe_unused]]const FrameIterator &it,
+    [[maybe_unused]]const RootVisitor &visitor,
+    [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
+    [[maybe_unused]]const RootBaseAndDerivedVisitor &derivedVisitor) const
+{
+    bool ret = it.IteratorStackMap(visitor, derivedVisitor);
+    if (!ret) {
+#ifndef NDEBUG
+        LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
+#endif
+    }
+}
+
 void FrameIterator::CollectPcOffsetInfo(ConstInfo &info) const
 {
     arkStackMapParser_->GetConstInfo(optimizedReturnAddr_, info, stackMapAddr_);
@@ -608,7 +641,8 @@ void OptimizedJSFunctionFrame::GetFuncCalleeRegAndOffset(
 ARK_INLINE void AsmInterpretedFrame::GCIterate(const FrameIterator &it,
     const RootVisitor &visitor,
     const RootRangeVisitor &rangeVisitor,
-    const RootBaseAndDerivedVisitor &derivedVisitor) const
+    const RootBaseAndDerivedVisitor &derivedVisitor,
+    bool isBaselineFrame) const
 {
     AsmInterpretedFrame *frame = AsmInterpretedFrame::GetFrameFromSp(it.GetSp());
     uintptr_t start = ToUintPtr(it.GetSp());
@@ -616,11 +650,14 @@ ARK_INLINE void AsmInterpretedFrame::GCIterate(const FrameIterator &it,
     rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
     visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->function)));
     visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->thisObj)));
-    if (frame->pc != nullptr) {
+    if (frame->pc != nullptr || isBaselineFrame) {
         visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->acc)));
         visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->env)));
     }
 
+    if (isBaselineFrame) {
+        return;
+    }
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG

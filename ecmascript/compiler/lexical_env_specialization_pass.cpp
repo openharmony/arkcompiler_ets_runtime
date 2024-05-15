@@ -156,11 +156,11 @@ bool LexicalEnvSpecializationPass::SearchStLexVar(GateRef gate, GateRef ldLexVar
 
 bool LexicalEnvSpecializationPass::CheckStLexVar(GateRef gate, GateRef ldldLexVar)
 {
-    int32_t ldLevel = acc_.TryGetValue(acc_.GetValueIn(ldldLexVar, 0));
-    int32_t ldSlot = acc_.TryGetValue(acc_.GetValueIn(ldldLexVar, 1)); // 1: slot
+    int32_t ldLevel = static_cast<int32_t>(acc_.TryGetValue(acc_.GetValueIn(ldldLexVar, 0)));
+    int32_t ldSlot = static_cast<int32_t>(acc_.TryGetValue(acc_.GetValueIn(ldldLexVar, 1))); // 1: slot
 
-    int32_t stLevel = acc_.TryGetValue(acc_.GetValueIn(gate, 0));
-    int32_t stSlot = acc_.TryGetValue(acc_.GetValueIn(gate, 1)); // 1: slot
+    int32_t stLevel = static_cast<int32_t>(acc_.TryGetValue(acc_.GetValueIn(gate, 0)));
+    int32_t stSlot = static_cast<int32_t>(acc_.TryGetValue(acc_.GetValueIn(gate, 1))); // 1: slot
     if (stSlot != ldSlot) {
         return false;
     }
@@ -323,6 +323,7 @@ GateRef GetEnvSpecializationPass::VisitGate(GateRef gate)
 
 GateRef GetEnvSpecializationPass::TryGetReplaceEnv(GateRef func)
 {
+    ASSERT(acc_.GetNumValueIn(func) >= 1);
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(func);
     switch (ecmaOpcode) {
         case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:

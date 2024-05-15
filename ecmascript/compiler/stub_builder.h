@@ -156,6 +156,7 @@ public:
     GateRef FastCallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
     GateRef CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
     GateRef GetAotCodeAddr(GateRef jsFunc);
+    GateRef GetBaselineCodeAddr(GateRef baselineCode);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
     GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args);
@@ -272,6 +273,7 @@ public:
     GateRef Int64ToTaggedInt(GateRef x);
     GateRef Int64ToTaggedIntPtr(GateRef x);
     GateRef DoubleToTaggedDoublePtr(GateRef x);
+    GateRef BooleanToTaggedBooleanPtr(GateRef x);
     GateRef TaggedPtrToTaggedDoublePtr(GateRef x);
     GateRef TaggedPtrToTaggedIntPtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
@@ -283,6 +285,7 @@ public:
     GateRef Int8Equal(GateRef x, GateRef y);
     GateRef Int8GreaterThanOrEqual(GateRef x, GateRef y);
     GateRef Equal(GateRef x, GateRef y);
+    GateRef NotEqual(GateRef x, GateRef y);
     GateRef Int32Equal(GateRef x, GateRef y);
     GateRef Int32NotEqual(GateRef x, GateRef y);
     GateRef Int64Equal(GateRef x, GateRef y);
@@ -306,6 +309,7 @@ public:
     GateRef Int64LessThanOrEqual(GateRef x, GateRef y);
     GateRef Int64GreaterThanOrEqual(GateRef x, GateRef y);
     GateRef Int64UnsignedLessThanOrEqual(GateRef x, GateRef y);
+    GateRef Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y);
     GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     // cast operation
     GateRef ChangeInt64ToIntPtr(GateRef val);
@@ -317,10 +321,12 @@ public:
     GateRef Sqrt(GateRef x);
     GateRef GetSetterFromAccessor(GateRef accessor);
     GateRef GetElementsArray(GateRef object);
-    void SetElementsArray(VariableType type, GateRef glue, GateRef object, GateRef elementsArray);
+    void SetElementsArray(VariableType type, GateRef glue, GateRef object, GateRef elementsArray,
+                          MemoryOrder order = MemoryOrder::Default());
     GateRef GetPropertiesArray(GateRef object);
     // SetProperties in js_object.h
-    void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray);
+    void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray,
+                            MemoryOrder order = MemoryOrder::Default());
     GateRef GetHash(GateRef object);
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
@@ -330,6 +336,7 @@ public:
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
     void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
+    void StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass);
     void StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass);
     void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
@@ -480,7 +487,8 @@ public:
     inline void SetIsTS(GateRef glue, GateRef hClass, GateRef value);
     GateRef IsProtoTypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
-        GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY());
+        GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY(),
+        MemoryOrder order = MemoryOrder::Default());
     GateRef GetPropertyInlinedProps(GateRef obj, GateRef hClass,
         GateRef index);
     GateRef GetInlinedPropOffsetFromHClass(GateRef hclass, GateRef attrOffset);
@@ -666,17 +674,27 @@ public:
     GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
         ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
     GateRef GetParentEnv(GateRef object);
+    GateRef GetSendableParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
+    GateRef GetPropertiesFromSendableEnv(GateRef object, GateRef index);
+    GateRef GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex);
     void SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
+    void SetPropertiesToSendableEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
     inline GateRef GetBuiltinId(GateRef method);
-    void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv);
-    void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetMethodToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
+                                 MemoryOrder order = MemoryOrder::Default());
+    void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value,
+                                    MemoryOrder order = MemoryOrder::Default());
+    void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value,
+                                      MemoryOrder order = MemoryOrder::Default());
+    void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value,
+                                 MemoryOrder order = MemoryOrder::Default());
+    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value,
+                             MemoryOrder order = MemoryOrder::Default());
+    void SetMethodToFunction(GateRef glue, GateRef function, GateRef value,
+                             MemoryOrder order = MemoryOrder::Default());
     void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetGlobalObject(GateRef glue);
@@ -717,6 +735,7 @@ public:
     GateRef FastAdd(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastSub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastToBoolean(GateRef value, bool flag = true);
+    GateRef FastToBooleanBaseline(GateRef value, bool flag = true);
 
     // Add SpecialContainer
     GateRef GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType);
@@ -812,6 +831,9 @@ public:
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args,
                            ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
+    GateRef JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
+                                      GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
+                                      ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
@@ -855,6 +877,17 @@ public:
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
+    GateRef GetLastLeaveFrame(GateRef glue);
+    inline GateRef GetPropertiesCache(GateRef glue);
+    GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key);
+    inline void SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result);
+    GateRef HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key);
+    GateRef GetKeyHashCode(GateRef glue, GateRef key);
+    inline GateRef GetSortedKey(GateRef layoutInfo, GateRef index);
+    inline GateRef GetSortedIndex(GateRef layoutInfo, GateRef index);
+    inline GateRef GetSortedIndex(GateRef attr);
+    inline void StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
+    GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

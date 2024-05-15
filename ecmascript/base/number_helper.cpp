@@ -157,6 +157,7 @@ JSTaggedValue NumberHelper::Int32ToString(JSThread *thread, int32_t number, uint
     }
     std::string buf;
     buf.resize(length);
+    ASSERT(length > 0);
     uint32_t index = length - 1;
     uint32_t digit = 0;
     while (n > 0) {
@@ -170,21 +171,6 @@ JSTaggedValue NumberHelper::Int32ToString(JSThread *thread, int32_t number, uint
         buf[index] = '-';
     }
     return thread->GetEcmaVM()->GetFactory()->NewFromUtf8(buf).GetTaggedValue();
-}
-
-bool inline IsDenormal(uint64_t x)
-{
-    return (x & kINFINITY) == 0;
-}
-
-int inline Exponent(double x)
-{
-    uint64_t value =  base::bit_cast<uint64_t>(x);
-    if (IsDenormal(value)) {
-        return kDENORMAL;
-    }
-    int biased = static_cast<int>((value & kINFINITY) >> DOUBLE_SIGNIFICAND_SIZE);
-    return biased - EXPONENTBIAS;
 }
 
 JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int radix)
@@ -265,8 +251,50 @@ JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int 
     return BuiltinsBase::GetTaggedString(thread, result.get());
 }
 
-JSTaggedValue NumberHelper::DoubleToASCII(JSThread *thread, double valueNumber, int digitNumber, int flags)
+JSTaggedValue NumberHelper::DoubleToFixedString(JSThread *thread, double valueNumber, int digitNumber)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    bool negative = false;
+    double absValue = valueNumber;
+    std::string result;
 
+    if (valueNumber < 0) {
+        result += "-";
+        absValue = -valueNumber;
+        negative = true;
+    }
+    int decimalPoint;
+    const int decimalRepCapacity = MAX_DIGITS + MAX_FRACTION + 1; // Add space for the '\0' byte.
+    char decimalRep[decimalRepCapacity];
+    int length;
+    bool isFast = DtoaHelper::FixedDtoa(absValue, digitNumber,
+        BufferVector<char>(decimalRep, decimalRepCapacity), &length, &decimalPoint);
+    if (!isFast) {
+        return DoubleToASCII(thread, valueNumber, digitNumber, base::FRAC_FORMAT); // slow
+    }
+    int zeroPrefixLen = 0;
+    int zeroPostfixLen = 0;
+    if (decimalPoint <= 0) {
+        zeroPrefixLen = -decimalPoint + 1;
+        decimalPoint = 1;
+    }
+    if (zeroPrefixLen + length < decimalPoint + digitNumber) {
+        zeroPostfixLen = decimalPoint + digitNumber - length - zeroPrefixLen;
+    }
+    result += std::string(zeroPrefixLen, '0');
+    result += decimalRep;
+    result += std::string(zeroPostfixLen, '0');
+    if (digitNumber > 0) {
+        if (negative) {
+            result.insert(decimalPoint + 1, 1, '.');
+        } else {
+            result.insert(decimalPoint, 1, '.');
+        }
+    }
+    return factory->NewFromASCII(result.c_str()).GetTaggedValue();
+}
+
+JSTaggedValue NumberHelper::DoubleToASCII(JSThread *thread, double valueNumber, int digitNumber, int flags)
 {
     std::string buffer(JS_DTOA_BUF_SIZE, '\0');
     DoubleToASCIIWithFlag(buffer, valueNumber, digitNumber, flags);
@@ -393,21 +421,55 @@ void NumberHelper::CustomFcvt(std::string& buf, int bufSize, double valueNumber,
     CustomFcvtHelper(buf, bufSize, valueNumber, digits, roundingMode);
 }
 
+JSTaggedValue NumberHelper::DoubleToPrecisionString(JSThread *thread, double number, int digit)
+{
+    if (number == 0.0) {
+        return DoubleToFixedString(thread, number, digit - 1);
+    }
+    double positiveNumber = number > 0 ? number : -number;
+    int logDigit = std::floor(log10(positiveNumber));
+    int radixDigit = digit - logDigit - 1;
+    const int MIN_EXPONENT_DIGIT = -6;
+    if ((logDigit >= MIN_EXPONENT_DIGIT && logDigit < digit)) {
+        return DoubleToFixedString(thread, number, std::abs(radixDigit));
+    }
+    return DoubleToExponential(thread, number, digit);
+}
+
 JSTaggedValue NumberHelper::DoubleToExponential(JSThread *thread, double number, int digit)
 {
-    CStringStream ss;
-    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
+    char tmpbuf[JS_DTOA_BUF_SIZE] = {0};
+    // Can use std::to_chars for performance.
     if (digit == 0) {
-        int decimalPoint = 0;
-        int sign = 0;
-        int digitNumber = CustomEcvt(number, digit, &decimalPoint, buffer, false, &sign);
-        ss << std::setiosflags(std::ios::scientific) << std::setprecision(digitNumber - 1) << number;
+        if (number == 0.0) {
+            return BuiltinsBase::GetTaggedString(thread, "0e+0");
+        }
+        std::string res;
+        if (number < 0) {
+            res += "-";
+            number = -number;
+        }
+        int n;
+        int k;
+        DtoaHelper::Dtoa(number, tmpbuf, &n, &k);
+        std::string base = tmpbuf;
+        base.erase(1, k - 1);
+        if (k != 1) {
+            base += std::string(".") + std::string(tmpbuf + 1);
+        }
+        base += "e" + (n >= 1 ? std::string("+") : "") + std::to_string(n - 1);
+        res += base;
+        return BuiltinsBase::GetTaggedString(thread, res.c_str());
     } else {
-        ss << std::setiosflags(std::ios::scientific) << std::setprecision(digit - 1) << number;
+        int result = snprintf_s(tmpbuf, sizeof(tmpbuf), sizeof(tmpbuf) - 1, "%.*e", digit - 1, number);
+        if (result == -1) {
+            LOG_FULL(FATAL) << "snprintf_s failed";
+            UNREACHABLE();
+        }
     }
-    CString result = ss.str();
+    std::string result = tmpbuf;
     size_t found = result.find_last_of('e');
-    if (found != CString::npos && found < result.size() - 2 && result[found + 2] == '0') {
+    if (found != CString::npos && found < result.size() - 2 && result[found + 2] == '0') { // 2:offset of e
         result.erase(found + 2, 1); // 2:offset of e
     }
     if (digit < 0) {
@@ -637,7 +699,7 @@ JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, do
     char buffer[JS_DTOA_BUF_SIZE] = {0};
     int n; // decimal point
     int k; // length
-    dtoa::DtoaHelper::Dtoa(d, buffer, &n, &k); //Fast Double To Ascii.
+    DtoaHelper::Dtoa(d, buffer, &n, &k); //Fast Double To Ascii.
     std::string base = buffer;
     if (n > 0 && n <= MAX_DIGITS) {
         if (k <= n) {
@@ -1150,7 +1212,7 @@ int NumberHelper::GetMinmumDigits(double d, int *decimalPoint, char *buf)
     int MinDigits = 1;
     int MaxDigits = DOUBLE_MAX_PRECISION;
     while (MinDigits < MaxDigits) {
-        digits = (MinDigits + MaxDigits) / 2;
+        digits = (MinDigits + MaxDigits) / 2; // 2 :  Divide by 2
         GetBase(d, digits, decimalPoint, buf, bufTmp, sizeof(bufTmp));
         if (strtod(bufTmp, NULL) == d) {
             // no need to keep the trailing zeros

@@ -382,14 +382,24 @@ namespace panda::ecmascript::kungfu {
     T(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8)       \
     T(HandleCallRuntimeLdSendableClassPrefImm16)                          \
     T(HandleCallRuntimeLdsendableexternalmodulevarImm8)                   \
-    T(HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16)
+    T(HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16)          \
+    T(HandleCallRuntimeNewSendableEnvImm8)                                \
+    T(HandleCallRuntimeNewSendableEnvImm16)                               \
+    T(HandleCallRuntimeStSendableVarImm4Imm4)                             \
+    T(HandleCallRuntimeStSendableVarImm8Imm8)                             \
+    T(HandleCallRuntimeStSendableVarImm16Imm16)                           \
+    T(HandleCallRuntimeLdSendableVarImm4Imm4)                             \
+    T(HandleCallRuntimeLdSendableVarImm8Imm8)                             \
+    T(HandleCallRuntimeLdSendableVarImm16Imm16)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \
     V(BCDebuggerEntry)                                  \
     V(BCDebuggerExceptionEntry)                         \
     V(NewObjectRangeThrowException)                     \
-    V(ThrowStackOverflowException)
+    V(ThrowStackOverflowException)                      \
+    V(HandleDefinefuncImm8Id16Imm8ColdReload)           \
+    V(HandleDefinefuncImm16Id16Imm8ColdReload)
 
 #define APPEND_JIT_SUFFIX(name, V) \
     V(name##WithJitProf, name, SlotIDFormat::IMM8)
@@ -523,6 +533,8 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleStobjbynameImm8Id16V8, V)                           \
     APPEND_SUFFIX_IMM16(HandleStobjbynameImm16Id16V8, V)                    \
     APPEND_SUFFIX(HandleDefineFieldByNameImm8Id16V8, V)                     \
+    APPEND_SUFFIX(HandleLdPrivatePropertyImm8Imm16Imm16, V)                 \
+    APPEND_SUFFIX(HandleStPrivatePropertyImm8Imm16Imm16V8, V)               \
     APPEND_SUFFIX(HandleStobjbyvalueImm8V8V8, V)                            \
     APPEND_SUFFIX(HandleStobjbyindexImm8V8Imm16, V)                         \
     APPEND_SUFFIX_IMM16(HandleStobjbyindexImm16V8Imm16, V)                  \

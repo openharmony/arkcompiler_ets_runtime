@@ -24,7 +24,6 @@ namespace panda::ecmascript {
 namespace kungfu {
 class PGOTypeManager;
 };
-class TSManager;
 class ConstantPool;
 namespace pgo {
 class PGOProfiler;
@@ -56,11 +55,6 @@ public:
         return ptManager_;
     }
 
-    TSManager *GetTSManager() const
-    {
-        return tsManager_;
-    }
-
     NativeAreaAllocator *GetNativeAreaAllocator() const;
     virtual JSRuntimeOptions &GetJSOptions() = 0;
     virtual std::shared_ptr<pgo::PGOProfiler> GetPGOProfiler() const;
@@ -82,6 +76,7 @@ public:
     // ConstantPool
     virtual JSTaggedValue GetArrayLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const = 0;
     virtual JSTaggedValue GetObjectLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const = 0;
+    virtual JSTaggedValue GetMethodFromCache(JSTaggedValue constpool, uint32_t index) const = 0;
     virtual panda_file::File::EntityId GetIdFromCache(JSTaggedValue constpool, uint32_t index) const = 0;
     virtual JSTaggedValue GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const = 0;
 
@@ -124,7 +119,6 @@ public:
 protected:
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
-    TSManager *tsManager_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ {nullptr};
 };
 } // namespace panda::ecmascript

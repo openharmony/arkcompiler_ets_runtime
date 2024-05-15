@@ -16,6 +16,8 @@
 #include <cmath>
 #include <cfenv>
 #include <sstream>
+#include <sys/time.h>
+
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
@@ -30,6 +32,7 @@
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_iterator.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
@@ -53,6 +56,7 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_map_iterator.h"
@@ -71,10 +75,8 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/stubs/runtime_stubs.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_node.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/builtins/builtins_object.h"
 #include "libpandafile/bytecode_instruction-inl.h"
@@ -165,13 +167,59 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
     return JSTaggedValue(result).GetRawData();
 }
 
+#define ALLOCATE_IN_SHARED_HEAP(SPACE)                                                     \
+    DEF_RUNTIME_STUBS(AllocateInS##SPACE)                                                  \
+    {                                                                                      \
+        RUNTIME_STUBS_HEADER(AllocateInS##SPACE);                                          \
+        JSTaggedValue allocateSize = GetArg(argv, argc, 0);                                \
+        auto size = static_cast<size_t>(allocateSize.GetInt());                            \
+        auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());              \
+        ASSERT(size <= MAX_REGULAR_HEAP_OBJECT_SIZE);                                      \
+        auto result = sharedHeap->Allocate##SPACE##OrHugeObject(thread, size);             \
+        ASSERT(result != nullptr);                                                         \
+        if (argc > 1) {                                                                    \
+            JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);            \
+            auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject()); \
+            sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);         \
+        }                                                                                  \
+        return JSTaggedValue(result).GetRawData();                                         \
+    }
+
+#undef ALLOCATE_IN_SHARED_HEAP
+
+DEF_RUNTIME_STUBS(AllocateInSNonMovable)
+{
+    RUNTIME_STUBS_HEADER(AllocateInSNonMovable);
+    JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto size = static_cast<size_t>(allocateSize.GetInt());
+    auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+    auto result = heap->AllocateSharedNonMovableSpaceFromTlab(thread, size);
+    if (result != nullptr) {
+        return JSTaggedValue(result).GetRawData();
+    }
+    auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());
+    result = sharedHeap->AllocateNonMovableOrHugeObject(thread, size);
+    ASSERT(result != nullptr);
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+    }
+    return JSTaggedValue(result).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(AllocateInSOld)
 {
     RUNTIME_STUBS_HEADER(AllocateInSOld);
     JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     auto size = static_cast<size_t>(allocateSize.GetInt());
+    auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+    auto result = heap->AllocateSharedOldSpaceFromTlab(thread, size);
+    if (result != nullptr) {
+        return JSTaggedValue(result).GetRawData();
+    }
     auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());
-    auto result = sharedHeap->AllocateOldOrHugeObject(thread, size);
+    result = sharedHeap->AllocateOldOrHugeObject(thread, size);
     ASSERT(result != nullptr);
     if (argc > 1) { // 1: means the first parameter
         JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
@@ -202,8 +250,8 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
     JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
-    uint32_t srcByteIndex = srcStartPos * elementSize + srcArray->GetByteOffset();
-    uint32_t targetByteIndex = tarStartPos * elementSize + targetArray->GetByteOffset();
+    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize + srcArray->GetByteOffset());
+    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize + targetArray->GetByteOffset());
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);
@@ -228,7 +276,7 @@ DEF_RUNTIME_STUBS(CallInternalSetter)
     RUNTIME_STUBS_HEADER(CallInternalSetter);
     JSHandle<JSObject> receiver = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedType argSetter = GetTArg(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
     auto setter = AccessorData::Cast((reinterpret_cast<TaggedObject *>(argSetter)));
     auto result = setter->CallInternalSet(thread, receiver, value, true);
     if (!result) {
@@ -538,9 +586,6 @@ DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
 
     JSHClass::AddPropertyToNewHClass(thread, oldHClassHandle, newHClassHandle, keyHandle, attrValue);
 
-    if (oldHClassHandle->HasTSSubtyping()) {
-        SubtypingOperator::TryMaintainTSSubtyping(thread, oldHClassHandle, newHClassHandle, keyHandle);
-    }
     return JSTaggedValue::Hole().GetRawData();
 }
 
@@ -913,12 +958,51 @@ DEF_RUNTIME_STUBS(ToPropertyKey)
     return res.GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ToPropertyKeyValue)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyValue);
+    std::string string_key = "value";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyWritable)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyWritable);
+    std::string string_key = "writable";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyEnumerable)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyEnumerable);
+    std::string string_key = "enumerable";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyConfigurable)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyConfigurable);
+    std::string string_key = "configurable";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(Exp)
 {
     RUNTIME_STUBS_HEADER(Exp);
     JSTaggedValue baseValue = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue exponentValue = GetArg(argv, argc, 1);  // 1: means the first parameter
-
     if (baseValue.IsNumber() && exponentValue.IsNumber()) {
         // fast path
         double doubleBase = baseValue.IsInt() ? baseValue.GetInt() : baseValue.GetDouble();
@@ -971,6 +1055,13 @@ DEF_RUNTIME_STUBS(DumpObject)
     target->Dump(oss);
     LOG_ECMA(INFO) << "dump log for instance of target: " << oss.str();
     return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(BigIntConstructor)
+{
+    RUNTIME_STUBS_HEADER(BigIntConstructor);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);
+    return builtins::BuiltinsBigInt::BigIntConstructorInternal(thread, value).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateGeneratorObj)
@@ -1098,9 +1189,9 @@ DEF_RUNTIME_STUBS(SuperCallSpread)
 DEF_RUNTIME_STUBS(OptSuperCallSpread)
 {
     RUNTIME_STUBS_HEADER(OptSuperCallSpread);
-    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
-    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);
-    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 2);
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the first parameter
+    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
     return RuntimeSuperCallSpread(thread, func, newTarget, array).GetRawData();
 }
 
@@ -1566,7 +1657,16 @@ DEF_RUNTIME_STUBS(JitCompile)
     RUNTIME_STUBS_HEADER(JitCompile);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue offset = GetArg(argv, argc, 1);  // 1: means the first parameter
-    Jit::Compile(thread->GetEcmaVM(), thisFunc, offset.GetInt(), JitCompileMode::ASYNC);
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::FAST, offset.GetInt(), JitCompileMode::ASYNC);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(BaselineJitCompile)
+{
+    RUNTIME_STUBS_HEADER(BaselineJitCompile);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::BASELINE,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -2402,6 +2502,14 @@ DEF_RUNTIME_STUBS(DefineMethod)
     return RuntimeDefineMethod(thread, method, homeObject, length, env, module).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SetPatchModule)
+{
+    RUNTIME_STUBS_HEADER(SetPatchModule);
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    RuntimeSetPatchModule(thread, func);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CallSpread)
 {
     RUNTIME_STUBS_HEADER(CallSpread);
@@ -2520,6 +2628,22 @@ DEF_RUNTIME_STUBS(LdBigInt)
     return RuntimeLdBigInt(thread, numberBigInt).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CallBigIntAsIntN)
+{
+    RUNTIME_STUBS_HEADER(CallBigIntAsIntN);
+    JSTaggedValue bits = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue bigint = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeCallBigIntAsIntN(thread, bits, bigint).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallBigIntAsUintN)
+{
+    RUNTIME_STUBS_HEADER(CallBigIntAsUintN);
+    JSTaggedValue bits = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue bigint = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeCallBigIntAsUintN(thread, bits, bigint).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ToNumeric)
 {
     RUNTIME_STUBS_HEADER(ToNumeric);
@@ -2555,6 +2679,13 @@ DEF_RUNTIME_STUBS(NewLexicalEnvWithName)
     return RuntimeNewLexicalEnvWithName(thread,
         static_cast<uint16_t>(numVars.GetInt()),
         static_cast<uint16_t>(scopeId.GetInt())).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewSendableEnv)
+{
+    RUNTIME_STUBS_HEADER(NewSendableEnv);
+    JSTaggedValue numVars = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeNewSendableEnv(thread, static_cast<uint16_t>(numVars.GetInt())).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(OptGetUnmapedArgs)
@@ -3062,6 +3193,17 @@ bool RuntimeStubs::NumberIsFinite(double x)
     return std::isfinite(x);
 }
 
+double RuntimeStubs::CallDateNow()
+{
+    // time from now is in ms.
+    int64_t ans;
+    struct timeval tv {
+    };
+    gettimeofday(&tv, nullptr);
+    ans = static_cast<int64_t>(tv.tv_sec) * MS_PER_SECOND + (tv.tv_usec / MS_PER_SECOND);
+    return static_cast<double>(ans);
+}
+
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)
 {
     return base::NumberHelper::DoubleToInt(x, bits);
@@ -3093,6 +3235,23 @@ void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
     Region *region = Region::ObjectAddressToRange(object);
     uintptr_t slotAddr = object + offset;
     region->AtomicInsertLocalToShareRSet(slotAddr);
+}
+
+void RuntimeStubs::SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
+                                GCBitset::GCBitsetWord oldValue)
+{
+    volatile auto atomicWord = reinterpret_cast<volatile std::atomic<GCBitset::GCBitsetWord> *>(word);
+    GCBitset::GCBitsetWord oldValueBeforeCAS = oldValue;
+    std::atomic_compare_exchange_strong_explicit(atomicWord, &oldValue, oldValue | mask,
+        std::memory_order_release, std::memory_order_relaxed);
+    while (oldValue != oldValueBeforeCAS) {
+        if (oldValue & mask) {
+            return;
+        }
+        oldValueBeforeCAS = oldValue;
+        std::atomic_compare_exchange_strong_explicit(atomicWord, &oldValue, oldValue | mask,
+            std::memory_order_release, std::memory_order_relaxed);
+    }
 }
 
 void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,

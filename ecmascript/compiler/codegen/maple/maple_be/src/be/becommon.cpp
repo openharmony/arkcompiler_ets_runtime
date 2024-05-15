@@ -627,6 +627,7 @@ std::pair<int32, int32> BECommon::GetFieldOffset(MIRStructType &structType, Fiel
                  * We know that A zero-width bit field can cause the next field to be aligned on the next container
                  * boundary where the container is the same size as the underlying type of the bit field.
                  */
+                CHECK_FATAL(allocedSizeInBits <= UINT64_MAX - fieldSize, "must not be zero");
                 if ((!structType.GetTypeAttrs().IsPacked() &&
                      ((allocedSizeInBits / fieldSizeBits) != ((allocedSizeInBits + fieldSize - 1u) / fieldSizeBits))) ||
                     fieldSize == 0) {

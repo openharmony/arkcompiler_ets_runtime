@@ -34,6 +34,7 @@ public:
           circuit_(circuit),
           acc_(circuit),
           builder_(circuit, cmpCfg),
+          compilationEnv_(ctx->GetCompilationEnv()),
           isLiteCG_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerEnableLiteCG()) {}
     ~TypedNativeInlineLowering() = default;
     GateRef VisitGate(GateRef gate) override;
@@ -58,6 +59,9 @@ private:
     void LowerClz32Float64(GateRef gate);
     void LowerClz32Int32(GateRef gate);
     void LowerMathSqrt(GateRef gate);
+    void LowerNewNumber(GateRef gate);
+    template <bool IS_UNSIGNED>
+    void LowerBigIntAsIntN(GateRef gate);
     GateRef BuildRounding(GateRef gate, GateRef value, OpCode op);
     void LowerTaggedRounding(GateRef gate);
     void LowerDoubleRounding(GateRef gate);
@@ -67,6 +71,14 @@ private:
     void LowerNumberIsInteger(GateRef gate);
     void LowerNumberIsNaN(GateRef gate);
     void LowerNumberIsSafeInteger(GateRef gate);
+    void LowerNumberParseFloat(GateRef gate);
+    void LowerDateGetTime(GateRef gate);
+    void LowerBigIntConstructor(GateRef gate);
+    void LowerStringSubstring(GateRef gate);
+    void LowerStringSubStr(GateRef gate);
+    void LowerStringSlice(GateRef gate);
+    template <bool IS_SIGNED>
+    void LowerBigIntConstructorInt32(GateRef gate);
     GateRef BuiltinIdToSize(GateRef ID);
     GateRef GetValueFromBuffer(GateRef bufferIndex, GateRef dataPointer, GateRef isLittleEndian, GateRef builtinId);
     GateRef SetValueInBuffer(GateRef bufferIndex,
@@ -101,9 +113,14 @@ private:
     void LowerIntMinMax(GateRef gate);
     template<bool IS_MAX>
     void LowerDoubleMinMax(GateRef gate);
+    GateRef NumberToInt32(GateRef gate);
     void LowerMathImul(GateRef gate);
     void LowerGlobalIsFinite(GateRef gate);
     void LowerGlobalIsNan(GateRef gate);
+    void LowerGeneralWithoutArgs(GateRef gate, RuntimeStubCSigns::ID stubId);
+    GateRef AllocateTypedArrayIterator(GateRef glue, GateRef self,
+                                       GateRef iteratorHClass, IterationKind iterationKind);
+    void LowerTypedArrayIterator(GateRef gate, CommonStubCSigns::ID index, IterationKind iterationKind);
 
     GateRef LowerGlobalDoubleIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsFinite(GateRef value);
@@ -117,6 +134,7 @@ private:
     Circuit* circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
+    const CompilationEnv *compilationEnv_ {nullptr};
     bool isLiteCG_ {false};
 };
 }

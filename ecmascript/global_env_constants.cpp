@@ -80,9 +80,8 @@
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_node.h"
-#include "ecmascript/ts_types/ts_type.h"
+#include "ecmascript/vtable.h"
 
 namespace panda::ecmascript {
 void GlobalEnvConstants::Init(JSThread *thread)
@@ -108,7 +107,7 @@ void GlobalEnvConstants::Init(JSThread *thread)
 void GlobalEnvConstants::InitSharedStrings(ObjectFactory *factory)
 {
     #define INIT_GLOBAL_ENV_CONSTANT_STRING(Name, Index, Token) \
-        SetConstant(ConstantIndex::Index, factory->NewFromASCIINonMovable(Token));
+        SetConstant(ConstantIndex::Index, factory->NewFromASCIIReadOnly(Token));
         SHARED_GLOBAL_ENV_CONSTANT_STRING(INIT_GLOBAL_ENV_CONSTANT_STRING)
     #undef INIT_GLOBAL_ENV_CONSTANT_STRING
 }
@@ -231,26 +230,6 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
     SetConstant(ConstantIndex::CLASS_INFO_EXTRACTOR_HCLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ClassInfoExtractor::SIZE,
                                         JSType::CLASS_INFO_EXTRACTOR));
-    SetConstant(ConstantIndex::TS_OBJECT_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSObjectType::SIZE, JSType::TS_OBJECT_TYPE));
-    SetConstant(ConstantIndex::TS_CLASS_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSClassType::SIZE, JSType::TS_CLASS_TYPE));
-    SetConstant(ConstantIndex::TS_UNION_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSUnionType::SIZE, JSType::TS_UNION_TYPE));
-    SetConstant(ConstantIndex::TS_INTERFACE_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSInterfaceType::SIZE, JSType::TS_INTERFACE_TYPE));
-    SetConstant(ConstantIndex::TS_CLASS_INSTANCE_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSClassInstanceType::SIZE,
-                                        JSType::TS_CLASS_INSTANCE_TYPE));
-    SetConstant(ConstantIndex::TS_FUNCTION_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSFunctionType::SIZE, JSType::TS_FUNCTION_TYPE));
-    SetConstant(ConstantIndex::TS_ARRAY_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSArrayType::SIZE, JSType::TS_ARRAY_TYPE));
-    SetConstant(ConstantIndex::TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSIteratorInstanceType::SIZE,
-                                        JSType::TS_ITERATOR_INSTANCE_TYPE));
-    SetConstant(ConstantIndex::TS_NAMESPACE_TYPE_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, TSNamespaceType::SIZE, JSType::TS_NAMESPACE_TYPE));
     SetConstant(ConstantIndex::CELL_RECORD_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, CellRecord::SIZE, JSType::CELL_RECORD));
     SetConstant(ConstantIndex::METHOD_CLASS_INDEX,
@@ -266,6 +245,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         JSType::RESOLVEDRECORDINDEXBINDING_RECORD));
     SetConstant(ConstantIndex::RESOLVED_RECORD_BINDING_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ResolvedRecordBinding::SIZE, JSType::RESOLVEDRECORDBINDING_RECORD));
+    SetConstant(ConstantIndex::SENDABLE_ENV_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SENDABLE_ENV));
 }
 
 void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory)
@@ -383,7 +364,7 @@ void GlobalEnvConstants::InitMiscellanious(JSThread *thread, ObjectFactory *fact
     SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
     SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
-                WeakVector::Create(thread, SubtypingOperator::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
+                WeakVector::Create(thread, VTable::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
 
     // non ECMA standard jsapi containers iterators, init to Undefined first
     InitJSAPIContainers();

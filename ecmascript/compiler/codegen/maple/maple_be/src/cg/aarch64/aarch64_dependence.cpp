@@ -595,6 +595,7 @@ void AArch64DepAnalysis::BuildDepsMemBar(Insn &insn)
 /* A pseudo separator node depends all the other nodes. */
 void AArch64DepAnalysis::BuildDepsSeparator(DepNode &newSepNode, MapleVector<DepNode *> &nodes)
 {
+    CHECK_FATAL(nodes.size() >= 1, "value overlfow");
     uint32 nextSepIndex = (separatorIndex + kMaxDependenceNum) < nodes.size() ? (separatorIndex + kMaxDependenceNum)
                                                                               : static_cast<uint32>(nodes.size() - 1);
     newSepNode.ReservePreds(nextSepIndex - separatorIndex);

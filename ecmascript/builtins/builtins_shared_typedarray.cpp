@@ -187,31 +187,12 @@ JSTaggedValue BuiltinsSharedTypedArray::From(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> source = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
     JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, source, iteratorSymbol);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> arrIter = JSObject::GetMethod(thread, env->GetArrayProtoValuesFunction(), iteratorSymbol);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> typedArrIter = JSObject::GetMethod(thread, env->GetTypedArrayPrototype(), iteratorSymbol);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    bool isArrIter = JSTaggedValue::SameValue(usingIterator, arrIter);
-    bool isTypedArrIter = JSTaggedValue::SameValue(usingIterator, typedArrIter);
-    bool isNativeFunc = true;
-    if (source->IsTypedArray() && !typedArrIter->IsUndefined()) {
-        JSHandle<JSTaggedValue> typedArrIterator = JSIterator::GetIterator(thread, source, typedArrIter);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        JSHandle<JSTaggedValue> nextKey(thread->GlobalConstants()->GetHandledNextString());
-        JSHandle<JSTaggedValue> typedArrIterNext(JSObject::GetMethod(thread, typedArrIterator, nextKey));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (typedArrIterNext->IsJSFunction()) {
-            JSTaggedValue method = JSHandle<JSFunction>::Cast(typedArrIterNext)->GetMethod();
-            Method *target = Method::Cast(method.GetTaggedObject());
-            isNativeFunc = target->IsNativeWithCallField();
-        }
-    }
     // 6. If usingIterator is not undefined, then
     //   a. Let values be ? IterableToList(source, usingIterator).
     //   b. Let len be the number of elements in values.
     //   c. Let targetObj be ? TypedArrayCreate(C, « len »).
-    if (!usingIterator->IsUndefined() && !(isArrIter || (isTypedArrIter && isNativeFunc))) {
+    if (!usingIterator->IsUndefined() &&
+        !TypedArrayHelper::IsNativeArrayIterator(thread, source, usingIterator)) {
         CVector<JSHandle<JSTaggedValue>> vec;
         JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, source, usingIterator);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -394,8 +375,8 @@ JSTaggedValue BuiltinsSharedTypedArray::GetBuffer(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
-    JSHandle<JSTypedArray> typedArray = JSHandle<JSTypedArray>::Cast(thisHandle);
-    JSTaggedValue buffer = JSTypedArray::GetSharedOffHeapBuffer(thread, typedArray);
+    JSHandle<JSSharedTypedArray> typedArray = JSHandle<JSSharedTypedArray>::Cast(thisHandle);
+    JSTaggedValue buffer = JSSharedTypedArray::GetSharedOffHeapBuffer(thread, typedArray);
     // 5. Return buffer.
     return buffer;
 }
@@ -1467,7 +1448,8 @@ JSTaggedValue BuiltinsSharedTypedArray::Slice(EcmaRuntimeCallInfo *argv)
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
-        while (srcBuffer == targetBuffer && count--) {
+        while (srcBuffer == targetBuffer && count > 0) {
+            count--;
             if (memcpy_s(targetBuf, elementSize, srcBuf, elementSize) != EOK) {
                 LOG_FULL(FATAL) << "memcpy_s failed";
                 UNREACHABLE();
@@ -1642,7 +1624,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
     ASSERT((static_cast<uint64_t>(srcByteOffset) + static_cast<uint64_t>(beginIndex) *
             static_cast<uint64_t>(elementSize)) <= static_cast<uint64_t>(UINT32_MAX));
     uint32_t beginByteOffset = srcByteOffset + beginIndex * elementSize;
-    JSTaggedValue buffer = JSTypedArray::GetSharedOffHeapBuffer(thread, thisObj);
+    JSTaggedValue buffer = JSSharedTypedArray::GetSharedOffHeapBuffer(thread, JSHandle<JSSharedTypedArray>(thisObj));
     // 21. Let argumentsList be «buffer, beginByteOffset, newLength».
     // 5. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     // 22. Return Construct(constructor, argumentsList).

@@ -89,6 +89,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotJSCallTarget2,                NOTJSCALLTGT2)                 \
     V(NotJSCallTarget3,                NOTJSCALLTGT3)                 \
     V(NotJSCallTarget4,                NOTJSCALLTGT4)                 \
+    V(NotJSNewCallTarget,              NOTJSNEWCALLTGT)               \
     V(DivideZero1,                     DIVZERO1)                      \
     V(DivideZero2,                     DIVZERO2)                      \
     V(InlineFail1,                     INLINEFAIL1)                   \
@@ -115,13 +116,18 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(IsUndefinedOrHole,               ISUNDEFINEDORHOLE)             \
     V(IsNotUndefinedOrHole,            ISNOTUNDEFINEDORHOLE)          \
     V(BuiltinInliningTypeGuard,        BUILTIN_INLINING_TYPE_GUARD)   \
+    V(RangeError,                      RANGE_ERROR)                   \
+    V(NotBigInt,                       NOT_BIG_INT)                   \
     V(OsrLoopExit,                     OSRLOOPEXIT)                   \
+    V(IsNotMap,                        ISNOTMAP)                      \
     V(IsNotEcmaObject,                 ISNOTECMAOBJECT)               \
     V(IsNotDataView,                   ISNOTDATAVIEW)                 \
     V(IsNotTaggedBoolean,              ISNOTTAGGEDBOOLEAN)            \
     V(IndexLessZeroOrInfinity,         INDEXLESSZEROORINFINITY)       \
     V(ArrayBufferIsDetached,           ARRAYBUFFERISDETACHED)         \
-    V(TotalSizeOverflow,               TOTALSIZEOVERFLOW)
+    V(TotalSizeOverflow,               TOTALSIZEOVERFLOW)             \
+    V(NotJSFunction,                   NOTJSFUNCTION)                 \
+    V(NotSymbol,                       NOTSYMBOL)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,
@@ -155,6 +161,7 @@ public:
         TYPED_BINARY_OP,
         TYPED_CALLTARGETCHECK_OP,
         TYPED_CALL,
+        CALL_NEW,
     };
     GateMetaData() = default;
     GateMetaData(OpCode opcode, GateFlags flags,
@@ -230,7 +237,8 @@ public:
     bool IsOneParameterKind() const
     {
         return GetKind() == Kind::IMMUTABLE_ONE_PARAMETER || GetKind() == Kind::MUTABLE_ONE_PARAMETER ||
-            GetKind() == Kind::TYPED_BINARY_OP || GetKind() == Kind::TYPED_CALLTARGETCHECK_OP;
+            GetKind() == Kind::TYPED_BINARY_OP || GetKind() == Kind::TYPED_CALLTARGETCHECK_OP ||
+            GetKind() == Kind::CALL_NEW;
     }
 
     bool IsStringType() const

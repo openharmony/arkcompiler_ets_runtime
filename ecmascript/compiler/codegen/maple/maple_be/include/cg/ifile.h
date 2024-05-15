@@ -392,6 +392,7 @@ public:
 
     void AppendIdxInSymbols(int64 symIdx)
     {
+        CHECK_FATAL(GetSymbolsSize() > 0, "must not be zero");
         symbolIdxMap[symIdx] = static_cast<uint64>(GetSymbolsSize() - 1);
     }
 

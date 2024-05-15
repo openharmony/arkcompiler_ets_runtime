@@ -274,6 +274,7 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(
     if (ElementAccessor::GetElementsLength(argObj) < len) {
         TypedArrayHelper::CreateFromOrdinaryObject<typedArrayKind>(argv, obj, arrayType);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return obj.GetTaggedValue();
     }
 
     TypedArrayHelper::AllocateTypedArrayBuffer<typedArrayKind>(thread, obj, len, arrayType);
@@ -503,7 +504,7 @@ JSTaggedValue TypedArrayHelper::CreateSharedFromTypedArray(EcmaRuntimeCallInfo *
     // 6. Let srcData be srcArray.[[ViewedArrayBuffer]].
     JSTaggedValue buffer;
     if (srcArray->IsSharedTypedArray()) {
-        buffer = JSTypedArray::GetSharedOffHeapBuffer(thread, srcObj);
+        buffer = JSSharedTypedArray::GetSharedOffHeapBuffer(thread, JSHandle<JSSharedTypedArray>(srcObj));
     } else {
         buffer = JSTypedArray::GetOffHeapBuffer(thread, srcObj);
     }
@@ -905,7 +906,7 @@ JSHandle<JSObject> TypedArrayHelper::TypedArraySpeciesCreate(JSThread *thread, c
     if (isCtrUnchanged && isCtrBylen) {
         JSType type = obj->GetJSHClass()->GetObjectType();
         DataViewType arrayType = GetType(type);
-        uint32_t length = buffHandle->GetInt();
+        uint32_t length = static_cast<uint32_t>(buffHandle->GetInt());
         // 3. Let result be ? AllocateTypedArray(constructorName, defaultConstructor, length, arrayType).
         if constexpr (typedArrayKind == TypedArrayKind::NON_SHARED) {
             JSHandle<JSTaggedValue> constructorName = GetConstructorNameFromType(thread, arrayType);
@@ -1100,5 +1101,32 @@ int32_t TypedArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedV
         }
     }
     return +0;
+}
+
+bool TypedArrayHelper::IsNativeArrayIterator(JSThread *thread,
+    const JSHandle<JSTaggedValue> &obj, JSHandle<JSTaggedValue> &iterMethod)
+{
+    if (iterMethod->IsUndefined() || (!obj->IsTypedArray() && !obj->IsArray(thread))) {
+        return false;
+    }
+
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    if (!JSTaggedValue::SameValue(iterMethod, env->GetTypedArrayProtoValuesFunction()) &&
+        !JSTaggedValue::SameValue(iterMethod, env->GetArrayProtoValuesFunction())) {
+        return false;
+    }
+
+    JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, obj, iterMethod);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    JSHandle<JSTaggedValue> nextKey = thread->GlobalConstants()->GetHandledNextString();
+    JSHandle<JSTaggedValue> iterNext = JSObject::GetMethod(thread, iterator, nextKey);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    Method *nextMethod = nullptr;
+    if (iterNext->IsJSFunction()) {
+        nextMethod = Method::Cast(
+            JSHandle<JSFunction>::Cast(iterNext)->GetMethod().GetTaggedObject());
+    }
+    // Array and TypedArray use the same JSArrayIterator.
+    return nextMethod->GetNativePointer() == reinterpret_cast<void*>(JSArrayIterator::Next);
 }
 }  // namespace panda::ecmascript::base

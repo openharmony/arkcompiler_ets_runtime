@@ -20,6 +20,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/baseline/baseline_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
@@ -28,6 +29,7 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/method.h"
 #include "triple.h"
@@ -68,9 +70,11 @@ LiteCGIRBuilder::LiteCGIRBuilder(const std::vector<std::vector<GateRef>> *schedu
       methodLiteral_(methodLiteral),
       jsPandaFile_(jsPandaFile),
       funcName_(funcName),
-      acc_(circuit)
+      acc_(circuit),
+      cf_(*module->GetModule())
 {
     lmirBuilder_ = new LMIRBuilder(*module->GetModule());
+    maple::theMIRModule = module->GetModule();
     ASSERT(compCfg_->Is64Bit());
     slotSize_ = sizeof(uint64_t);
     slotType_ = lmirBuilder_->i64Type;
@@ -189,7 +193,7 @@ void LiteCGIRBuilder::CollectDerivedRefInfo()
     auto GetPregFromGate = [&](GateRef gate)->PregIdx {
         LiteCGValue value = gate2Expr_[gate];
         ASSERT(value.kind == LiteCGValueKind::kPregKind);
-        return value.pregIdx;
+        return std::get<PregIdx>(value.data);
     };
 
     // collect base references for derived phi reference
@@ -207,7 +211,7 @@ void LiteCGIRBuilder::CollectDerivedRefInfo()
     std::set<PregIdx> baseRefSet;
     // set common derived reference
     for (auto it : derivedGate2BaseGate_) {
-        if (acc_.GetOpCode(it.second) == OpCode::CONSTANT) {
+        if (GetExprFromGate(it.second).IsConstValue() || GetExprFromGate(it.first).IsConstValue()) {
             continue;
         }
         ASSERT(!GetExprFromGate(it.second).IsDread());
@@ -292,7 +296,7 @@ void LiteCGIRBuilder::Build()
 void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
 {
     auto frameType = circuit_->GetFrameType();
-    if (IsInterpreted()) {
+    if (IsInterpreted() || IsBaselineBuiltin()) {
         return;
     }
     lmirBuilder_->SetFuncFramePointer("all");
@@ -374,30 +378,31 @@ Expr LiteCGIRBuilder::GetGlue(const std::vector<GateRef> &inList)
     return glue;
 }
 
-void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, Expr expr)
+void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, Expr expr, bool isGlueAdd)
 {
-    if (expr.IsDread()) {
-        LiteCGValue value;
-        value.kind = LiteCGValueKind::kSymbolKind;
-        value.symbol = lmirBuilder_->GetLocalVarFromExpr(expr);
-        gate2Expr_[gate] = value;
+    if (isGlueAdd) {
+        gate2Expr_[gate] = {LiteCGValueKind::kGlueAdd, lmirBuilder_->GetConstFromExpr(expr)};
+        return;
+    } else if (expr.IsDread()) {
+        gate2Expr_[gate] = {LiteCGValueKind::kSymbolKind, lmirBuilder_->GetLocalVarFromExpr(expr)};
+        return;
+    } else if (expr.IsRegread()) {
+        gate2Expr_[gate] = {LiteCGValueKind::kPregKind, lmirBuilder_->GetPregIdxFromExpr(expr)};
+        return;
+    } else if (expr.IsConstValue()) {
+        gate2Expr_[gate] = {LiteCGValueKind::kConstKind, lmirBuilder_->GetConstFromExpr(expr)};
         return;
     }
-    if (expr.IsRegread()) {
-        LiteCGValue value;
-        value.kind = LiteCGValueKind::kPregKind;
-        value.pregIdx = lmirBuilder_->GetPregIdxFromExpr(expr);
-        gate2Expr_[gate] = value;
+    auto *newNode = cf_.Fold(expr.GetNode());
+    if (newNode == nullptr || !newNode->IsConstval()) {
+        // check expr is not agg
+        BB &curBB = GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]);
+        PregIdx pregIdx = lmirBuilder_->CreatePreg(expr.GetType());
+        lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Regassign(expr, pregIdx));
+        gate2Expr_[gate] = {LiteCGValueKind::kPregKind, pregIdx};
         return;
     }
-    // check expr is not agg
-    BB &curBB = GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]);
-    PregIdx pregIdx = lmirBuilder_->CreatePreg(expr.GetType());
-    lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Regassign(expr, pregIdx));
-    LiteCGValue value;
-    value.kind = LiteCGValueKind::kPregKind;
-    value.pregIdx = pregIdx;
-    gate2Expr_[gate] = value;
+    gate2Expr_[gate] = {LiteCGValueKind::kConstKind, static_cast<maple::ConstvalNode*>(newNode)->GetConstVal()};
 }
 
 Expr LiteCGIRBuilder::GetConstant(GateRef gate)
@@ -447,10 +452,16 @@ Expr LiteCGIRBuilder::GetExprFromGate(GateRef gate)
     }
     LiteCGValue value = gate2Expr_[gate];
     if (value.kind == LiteCGValueKind::kSymbolKind) {
-        return lmirBuilder_->Dread(*value.symbol);
+        return lmirBuilder_->Dread(*std::get<maple::MIRSymbol*>(value.data));
+    } else if (value.kind == LiteCGValueKind::kConstKind) {
+        return lmirBuilder_->ConstVal(*std::get<maple::MIRConst*>(value.data));
+    } else if (value.kind == LiteCGValueKind::kGlueAdd) {
+        auto glue = acc_.GetGlueFromArgList();
+        return lmirBuilder_->Add(ConvertLiteCGTypeFromGate(glue), GetExprFromGate(glue),
+            lmirBuilder_->ConstVal(*std::get<maple::MIRConst*>(value.data)));
     }
     ASSERT(value.kind == LiteCGValueKind::kPregKind);
-    return lmirBuilder_->Regread(value.pregIdx);
+    return lmirBuilder_->Regread(std::get<PregIdx>(value.data));
 }
 
 void LiteCGIRBuilder::InitializeHandlers()
@@ -516,6 +527,14 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::ADD_WITH_OVERFLOW, &LiteCGIRBuilder::HandleAddWithOverflow},
         {OpCode::SUB_WITH_OVERFLOW, &LiteCGIRBuilder::HandleSubWithOverflow},
         {OpCode::MUL_WITH_OVERFLOW, &LiteCGIRBuilder::HandleMulWithOverflow},
+        {OpCode::EXP, &LiteCGIRBuilder::HandleExp},
+        {OpCode::ABS, &LiteCGIRBuilder::HandleAbs},
+        {OpCode::MIN, &LiteCGIRBuilder::HandleMin},
+        {OpCode::MAX, &LiteCGIRBuilder::HandleMax},
+        {OpCode::CLZ32, &LiteCGIRBuilder::HandleClz32},
+        {OpCode::DOUBLE_TRUNC, &LiteCGIRBuilder::HandleDoubleTrunc},
+        {OpCode::CEIL, &LiteCGIRBuilder::HandleCeil},
+        {OpCode::FLOOR, &LiteCGIRBuilder::HandleFloor},
         {OpCode::EXTRACT_VALUE, &LiteCGIRBuilder::HandleExtractValue},
         {OpCode::SQRT, &LiteCGIRBuilder::HandleSqrt},
         {OpCode::READSP, &LiteCGIRBuilder::HandleReadSp},
@@ -631,6 +650,11 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
 {
     Expr e1Value = GetExprFromGate(e1);
     Expr e2Value = GetExprFromGate(e2);
+    // save glue + offset
+    if (e1 == acc_.GetGlueFromArgList() && acc_.GetOpCode(e2) == OpCode::CONSTANT) {
+        SaveGate2Expr(gate, e2Value, true);
+        return;
+    }
 
     Expr result;
     /*
@@ -1233,7 +1257,7 @@ void LiteCGIRBuilder::CollectExraCallSiteInfo(std::unordered_map<int, maple::lit
     auto pcIndex = static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX);
     ASSERT(pcOffset.IsConstValue());
     deoptBundleInfo.insert(std::pair<int, LiteCGValue>(
-        pcIndex, {0, nullptr, lmirBuilder_->GetConstFromExpr(pcOffset), LiteCGValueKind::kConstKind}));
+        pcIndex, {LiteCGValueKind::kConstKind, lmirBuilder_->GetConstFromExpr(pcOffset)}));
 
     if (!enableOptInlining_) {
         return;
@@ -1266,7 +1290,7 @@ void LiteCGIRBuilder::CollectExraCallSiteInfo(std::unordered_map<int, maple::lit
         auto constMethodOffset = lmirBuilder_->GetConstFromExpr(
             lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->i32Type, methodOffset)));
         deoptBundleInfo.insert(
-            std::pair<int, LiteCGValue>(encodeIndex, {0, nullptr, constMethodOffset, LiteCGValueKind::kConstKind}));
+            std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kConstKind, constMethodOffset}));
     }
 }
 
@@ -1310,9 +1334,14 @@ bool LiteCGIRBuilder::IsInterpreted() const
     return circuit_->GetFrameType() == FrameType::ASM_INTERPRETER_FRAME;
 }
 
+bool LiteCGIRBuilder::IsBaselineBuiltin() const
+{
+    return circuit_->GetFrameType() == FrameType::BASELINE_BUILTIN_FRAME;
+}
+
 Expr LiteCGIRBuilder::CallingFp(bool /*isCaller*/)
 {
-    ASSERT(!IsInterpreted());
+    ASSERT(!IsInterpreted() && !IsBaselineBuiltin());
     /* 0:calling 1:its caller */
     Function &func = lmirBuilder_->GetCurFunction();
     return lmirBuilder_->LiteCGGetPregFP(func);
@@ -1585,6 +1614,21 @@ void LiteCGIRBuilder::VisitChangeInt64ToTagged(GateRef gate, GateRef e1)
     SaveGate2Expr(gate, result);
 }
 
+void LiteCGIRBuilder::HandleDoubleTrunc(GateRef gate)
+{
+    GateRef param = acc_.GetIn(gate, 0);
+    VisitDoubleTrunc(gate, param);
+}
+
+void LiteCGIRBuilder::VisitDoubleTrunc(GateRef gate, GateRef e1)
+{
+    Expr e1Value = GetExprFromGate(e1);
+    LiteCGType *type = ConvertLiteCGTypeFromGate(gate);
+    ASSERT(acc_.GetMachineType(e1) == acc_.GetMachineType(gate));
+    Expr result = lmirBuilder_->Trunc(type, type, e1Value);
+    SaveGate2Expr(gate, result);
+}
+
 void LiteCGIRBuilder::HandleSub(GateRef gate)
 {
     auto g0 = acc_.GetIn(gate, 0);
@@ -1826,6 +1870,123 @@ void LiteCGIRBuilder::VisitSqrt(GateRef gate, GateRef e1)
     }
     SaveGate2Expr(gate, result);
 }
+
+void LiteCGIRBuilder::HandleExp(GateRef gate)
+{
+    (void)gate;
+    CHECK_FATAL(false, "not support exp !");
+}
+
+void LiteCGIRBuilder::HandleCeil(GateRef gate)
+{
+    VisitCeil(gate, acc_.GetIn(gate, 0));
+}
+
+void LiteCGIRBuilder::VisitCeil(GateRef gate, GateRef e1)
+{
+    Expr e1Value = GetExprFromGate(e1);
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr result = lmirBuilder_->Ceil(type, type, e1Value);
+    SaveGate2Expr(gate, result);
+}
+
+void LiteCGIRBuilder::HandleAbs(GateRef gate)
+{
+    VisitAbs(gate, acc_.GetIn(gate, 0));
+}
+
+void LiteCGIRBuilder::VisitAbs(GateRef gate, GateRef e1)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    Expr result;
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr e1Value = GetExprFromGate(e1);
+    if (machineType == MachineType::I32 || machineType == MachineType::F64) {
+        result = lmirBuilder_->Abs(type, e1Value);
+    } else {
+        LOG_ECMA(FATAL) << "`Abs` type should be untagged double or signed int";
+        UNREACHABLE();
+    }
+    SaveGate2Expr(gate, result);
+    return;
+}
+
+void LiteCGIRBuilder::HandleMin(GateRef gate)
+{
+    VisitMin(gate, acc_.GetIn(gate, 0), acc_.GetIn(gate, 1U));
+}
+
+void LiteCGIRBuilder::VisitMin(GateRef gate, GateRef e1, GateRef e2)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    ASSERT(acc_.GetMachineType(e2) == machineType);
+    Expr result;
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr e1Value = GetExprFromGate(e1);
+    Expr e2Value = GetExprFromGate(e2);
+    if (machineType == MachineType::I32 || machineType == MachineType::F64) {
+        result = lmirBuilder_->Min(type, e1Value, e2Value);
+    } else {
+        LOG_ECMA(FATAL) << "`Min` type should be untagged double or signed int";
+        UNREACHABLE();
+    }
+    SaveGate2Expr(gate, result);
+    return;
+}
+
+void LiteCGIRBuilder::HandleMax(GateRef gate)
+{
+    VisitMax(gate, acc_.GetIn(gate, 0), acc_.GetIn(gate, 1U));
+}
+
+void LiteCGIRBuilder::VisitMax(GateRef gate, GateRef e1, GateRef e2)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    ASSERT(acc_.GetMachineType(e2) == machineType);
+    Expr result;
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr e1Value = GetExprFromGate(e1);
+    Expr e2Value = GetExprFromGate(e2);
+    if (machineType == MachineType::I32 || machineType == MachineType::F64) {
+        result = lmirBuilder_->Max(type, e1Value, e2Value);
+    } else {
+        LOG_ECMA(FATAL) << "`Max` type should be untagged double or signed int";
+        UNREACHABLE();
+    }
+    SaveGate2Expr(gate, result);
+    return;
+}
+
+void LiteCGIRBuilder::HandleFloor(GateRef gate)
+{
+    VisitFloor(gate, acc_.GetIn(gate, 0));
+}
+
+void LiteCGIRBuilder::VisitFloor(GateRef gate, GateRef e1)
+{
+    Expr e1Value = GetExprFromGate(e1);
+    LiteCGType *type = ConvertLiteCGTypeFromGate(e1);
+    Expr result = lmirBuilder_->Floor(type, type, e1Value);
+    SaveGate2Expr(gate, result);
+}
+
+void LiteCGIRBuilder::HandleClz32(GateRef gate)
+{
+    VisitClz32(gate, acc_.GetIn(gate, 0));
+}
+
+void LiteCGIRBuilder::VisitClz32(GateRef gate,  GateRef param)
+{
+    std::vector<Expr> params;
+    params.push_back(GetExprFromGate(param));
+    LiteCGType *type = ConvertLiteCGTypeFromGate(param);
+    Expr result = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_C_clz32, type, params);
+    SaveGate2Expr(gate, result);
+}
+
 
 void LiteCGIRBuilder::HandleReadSp(GateRef gate)
 {
@@ -2508,11 +2669,9 @@ void LiteCGIRBuilder::SaveDeoptVregInfo(std::unordered_map<int, LiteCGValue> &de
     Expr value = ConvertToTagged(gate);
     PregIdx pregIdx = lmirBuilder_->CreatePreg(value.GetType());
     lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(value, pregIdx));
-    LiteCGValue deoptVal;
-    deoptVal.kind = LiteCGValueKind::kPregKind;
-    deoptVal.pregIdx = pregIdx;
-    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, deoptVal));
+    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kPregKind, pregIdx}));
 }
+
 void LiteCGIRBuilder::SaveDeoptVregInfoWithI64(std::unordered_map<int, LiteCGValue> &deoptBundleInfo, BB &bb,
                                                int32_t index, size_t curDepth, size_t shift, GateRef gate)
 {
@@ -2521,10 +2680,7 @@ void LiteCGIRBuilder::SaveDeoptVregInfoWithI64(std::unordered_map<int, LiteCGVal
     Expr value = ConvertInt32ToTaggedInt(lmirBuilder_->Cvt(expr.GetType(), lmirBuilder_->i32Type, expr));
     PregIdx pregIdx = lmirBuilder_->CreatePreg(value.GetType());
     lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(value, pregIdx));
-    LiteCGValue deoptVal;
-    deoptVal.kind = LiteCGValueKind::kPregKind;
-    deoptVal.pregIdx = pregIdx;
-    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, deoptVal));
+    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kPregKind, pregIdx}));
 }
 
 void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
@@ -2560,6 +2716,7 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
         GateRef frameValues = acc_.GetValueIn(frameState, 1);  // 1: frame values
         const size_t numValueIn = acc_.GetNumValueIn(frameValues);
         const size_t envIndex = numValueIn - 2;  // 2: env valueIn index
+        CHECK_FATAL(numValueIn > 0, "must not be zero");
         const size_t accIndex = numValueIn - 1;  // 1: acc valueIn index
         GateRef env = acc_.GetValueIn(frameValues, envIndex);
         GateRef acc = acc_.GetValueIn(frameValues, accIndex);
@@ -2590,10 +2747,7 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
         int32_t specPcOffsetIndex = static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX);
         int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(specPcOffsetIndex, curDepth, shift);
         Const &pcConst = lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, pc);
-        LiteCGValue deoptVal;
-        deoptVal.kind = LiteCGValueKind::kConstKind;
-        deoptVal.constVal = &pcConst;
-        deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, deoptVal));
+        deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kConstKind, &pcConst}));
 
         // func
         int32_t specCallTargetIndex = static_cast<int32_t>(SpecVregIndex::FUNC_INDEX);

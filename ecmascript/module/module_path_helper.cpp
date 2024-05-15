@@ -22,16 +22,15 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
     CString &baseFileName, CString recordName, CString requestName)
 {
     if (thread->GetEcmaVM()->IsNormalizedOhmUrlPack()) {
-        if (!StringHelper::StringStartWith(requestName, PREFIX_NORMALIZED)) {
-            THROW_REFERENCE_ERROR_AND_RETURN(thread, "can not use different packing ways in same app", "");
-        } else {
-            return ParseNormalizedOhmUrl(thread, baseFileName, requestName);
-        }
+        return ConcatMergeFileNameToNormalized(thread, jsPandaFile, baseFileName, recordName, requestName);
     }
 
     if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE)) {
         return ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName, recordName);
     } else if (StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
+        if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
+            baseFileName = thread->GetEcmaVM()->GetAssetPath();
+        }
         return requestName.substr(PREFIX_PACKAGE_LEN);
     } else if (IsImportFile(requestName)) {
         // this branch save for require/dynamic import/old version sdk
@@ -55,6 +54,44 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
     }
     LOG_FULL(FATAL) << "this branch is unreachable";
     UNREACHABLE();
+}
+
+CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
+    CString &baseFileName, CString recordName, CString requestName)
+{
+    if (!StringHelper::StringStartWith(requestName, PREFIX_NORMALIZED)) {
+        if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE) ||
+            StringHelper::StringStartWith(requestName, PREFIX_PACKAGE) ||
+            StringHelper::StringStartWith(requestName, PREFIX_ETS)) {
+            CString msg = "can not use different packing ways in same app, current requestName is " + requestName;
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), "");
+        }
+    }
+    if (IsImportFile(requestName)) {
+        ConcatImportFileNormalizedOhmurlWithRecordName(recordName, requestName);
+    } else {
+        // this branch save for require npm
+        TranslateExpressionToNormalized(thread, jsPandaFile, baseFileName, recordName, requestName);
+    }
+    return ParseNormalizedOhmUrl(thread, baseFileName, requestName);
+}
+
+CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(CString &recordName, CString &requestName)
+{
+    CVector<CString> res = SplitNormalizedRecordName(recordName);
+    CString path = PathHelper::NORMALIZED_OHMURL_TAG + res[NORMALIZED_IMPORT_PATH_INDEX];
+    CString version = res[NORMALIZED_VERSION_INDEX];
+    requestName = RemoveSuffix(requestName);
+    size_t pos = requestName.find(PathHelper::CURRENT_DIREATORY_TAG);
+    if (pos == 0) {
+        requestName = requestName.substr(CURRENT_DIREATORY_TAG_LEN);
+    }
+    pos = path.rfind(PathHelper::SLASH_TAG);
+    if (pos != CString::npos) {
+        requestName = ConcatImportFileNormalizedOhmurl(path.substr(0, pos + 1),
+            requestName, version);
+    }
+    return requestName;
 }
 
 CString ModulePathHelper::ReformatPath(CString requestName)
@@ -132,14 +169,19 @@ void ModulePathHelper::ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFil
         outEntryPoint.erase(outEntryPoint.length() - EXT_NAME_ABC_LEN, EXT_NAME_ABC_LEN);
     }
     if (vm->IsNormalizedOhmUrlPack()) {
-        outEntryPoint = TransformToNormalizedOhmUrl(vm, outEntryPoint);
+        outEntryPoint = TransformToNormalizedOhmUrl(vm, inputFileName, outBaseFileName, outEntryPoint);
     }
 }
 
 // Unified ohmUrl used be cached: [<bundle name>?]&<pkg name + /src/main + path>&[<version>?]
-CString ModulePathHelper::ConcatUnifiedOhmUrl(const CString &bundleName, const CString &pkgname, const CString &path,
-                                              const CString &version)
+CString ModulePathHelper::ConcatUnifiedOhmUrl(const CString &bundleName, const CString &pkgname,
+    const CString &entryPath, const CString &path, const CString &version)
 {
+    if (entryPath.size() != 0) {
+        // entryPath is src/xxx/
+        return bundleName + PathHelper::NORMALIZED_OHMURL_TAG + pkgname + PathHelper::SLASH_TAG + entryPath + path +
+            PathHelper::NORMALIZED_OHMURL_TAG + version;
+    }
     return bundleName + PathHelper::NORMALIZED_OHMURL_TAG + pkgname + PHYCICAL_FILE_PATH + path +
         PathHelper::NORMALIZED_OHMURL_TAG + version;
 }
@@ -148,6 +190,13 @@ CString ModulePathHelper::ConcatUnifiedOhmUrl(const CString &bundleName, const C
     const CString &version)
 {
     return bundleName + PathHelper::NORMALIZED_OHMURL_TAG + normalizedpath + PathHelper::NORMALIZED_OHMURL_TAG +
+        version;
+}
+
+CString ModulePathHelper::ConcatPreviewTestUnifiedOhmUrl(const CString &bundleName, const CString &pkgname,
+    const CString &path, const CString &version)
+{
+    return bundleName + PathHelper::NORMALIZED_OHMURL_TAG + pkgname + path + PathHelper::NORMALIZED_OHMURL_TAG +
         version;
 }
 
@@ -164,7 +213,8 @@ CString ModulePathHelper::ConcatHspFileName(const CString &moduleName)
     return bundlePath + moduleName + MERGE_ABC_ETS_MODULES;
 }
 
-CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &oldEntryPoint)
+CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &inputFileName,
+    const CString &baseFileName, const CString &oldEntryPoint)
 {
     CString prefix(1, PathHelper::NORMALIZED_OHMURL_TAG);
     if (oldEntryPoint == ENTRY_MAIN_FUNCTION || StringHelper::StringStartWith(oldEntryPoint, prefix)) {
@@ -186,8 +236,30 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
     if (pkgname.size() == 0) {
         return oldEntryPoint;
     }
-    // bundleName and version is empty.
-    return ConcatUnifiedOhmUrl("", pkgname, path, "");
+    CString currentModuleName = GetModuleNameWithBaseFile(baseFileName);
+    if (currentModuleName.size() == 0) {
+        currentModuleName = moduleName;
+    }
+    CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgname);
+    CString version;
+    CString entryPath;
+    if (data.size() > 0) {
+        version = data[PKGINFO_VERSION_INDEX];
+        entryPath = data[PKGINFO_ENTRY_PATH_INDEX];
+    }
+    // If the inputFileName contains '.test', it is a preview test, no need to splice the entry path.
+    if (inputFileName.find(PREVIER_TEST_DIR) != CString::npos) {
+        return ConcatPreviewTestUnifiedOhmUrl("", pkgname, path, version);
+    }
+    // When the entry path ends with a slash (/), use the entry path to concatenate ohmurl.
+    CString endStr(1, PathHelper::SLASH_TAG);
+    if (entryPath.size() != 0 && StringHelper::StringEndWith(entryPath, endStr)) {
+        size_t endPos = entryPath.rfind(PathHelper::SLASH_TAG);
+        entryPath = entryPath.substr(0, endPos);
+        return ConcatUnifiedOhmUrl("", pkgname, entryPath, path, version);
+    }
+    // bundleName and entryPath is empty.
+    return ConcatUnifiedOhmUrl("", pkgname, "", path, version);
 }
 
 /*
@@ -350,6 +422,7 @@ CString ModulePathHelper::FindOhpmEntryPoint(const JSPandaFile *jsPandaFile,
 {
     CVector<CString> vec;
     StringHelper::SplitString(requestName, vec, 0);
+    ASSERT(vec.size() > 0);
     size_t maxIndex = vec.size() - 1;
     CString ohpmKey;
     size_t index = 0;
@@ -471,7 +544,9 @@ CString ModulePathHelper::ParseThirdPartyPackage(const JSPandaFile *jsPandaFile,
             if (!entryPoint.empty()) {
                 return entryPoint;
             }
-            pos = packageName.rfind(packagePath) - 1;
+            size_t index = packageName.rfind(packagePath);
+            ASSERT(index > 0);
+            pos = index - 1;
             if (pos == CString::npos || pos < 0) {
                 break;
             }
@@ -583,7 +658,7 @@ CString ModulePathHelper::RemoveSuffix(const CString &requestName)
     size_t pos = res.rfind(PathHelper::POINT_TAG);
     if (pos != CString::npos) {
         CString suffix = res.substr(pos);
-        if (suffix == EXT_NAME_JS || suffix == EXT_NAME_TS || suffix == EXT_NAME_ETS || suffix == EXT_NAME_JSON) {
+        if (IsShouldRemoveSuffix(suffix)) {
             res.erase(pos, suffix.length());
         }
     }
@@ -625,7 +700,8 @@ void ModulePathHelper::TranstaleExpressionInput(const JSPandaFile *jsPandaFile, 
 }
 
 /*
- * Before: /data/storage/el1/bundle/moduleName/ets/xxx/xxx.abc
+ * Before: 1. /data/storage/el1/bundle/moduleName/ets/xxx/xxx.abc
+ *         2. /data/storage/el1/bundle/bundleName/moduleName/moduleName/ets/modules.abc
  * After:  moduleName
  */
 CString ModulePathHelper::GetModuleNameWithBaseFile(const CString &baseFileName)
@@ -643,6 +719,13 @@ CString ModulePathHelper::GetModuleNameWithBaseFile(const CString &baseFileName)
             LOG_FULL(FATAL) << "Invalid Ohm url, please check.";
         }
         moduleName = baseFileName.substr(BUNDLE_INSTALL_PATH_LEN, pos - BUNDLE_INSTALL_PATH_LEN);
+        // baseFileName /data/storage/el1/bundle/bundleName/moduleName/moduleName/ets/modules.abc
+        if (moduleName.find(PathHelper::POINT_STRING_TAG) != CString::npos) {
+            // length of /data/storage/el1/bundle/bundleName/
+            size_t pathLength = BUNDLE_INSTALL_PATH_LEN + moduleName.size() + 1;
+            pos = baseFileName.find(PathHelper::SLASH_TAG, pathLength);
+            moduleName = baseFileName.substr(pathLength, pos - pathLength);
+        }
     }
     return moduleName;
 }
@@ -725,14 +808,13 @@ CString ModulePathHelper::ParseFileNameToVMAName(const CString &filename)
     return tag;
 }
 
-CVector<CString> ModulePathHelper::GetPkgContextInfoListElements(JSThread *thread, CString &moduleName,
+CVector<CString> ModulePathHelper::GetPkgContextInfoListElements(EcmaVM *vm, CString &moduleName,
                                                                  CString &packageName)
 {
     CVector<CString> resultList;
     if (packageName.size() == 0) {
         return resultList;
     }
-    EcmaVM *vm = thread->GetEcmaVM();
     CMap<CString, CMap<CString, CVector<CString>>> pkgContextList = vm->GetPkgContextInfoLit();
     if (pkgContextList.find(moduleName) == pkgContextList.end()) {
         return resultList;
@@ -745,11 +827,12 @@ CVector<CString> ModulePathHelper::GetPkgContextInfoListElements(JSThread *threa
     return resultList;
 }
 
-CString ModulePathHelper::ConcatImportFileNormalizedOhmurl(const CString &recordPath, const CString &requestName)
+CString ModulePathHelper::ConcatImportFileNormalizedOhmurl(const CString &recordPath, const CString &requestName,
+    const CString &version)
 {
     CString prefix = PREFIX_NORMALIZED_NOT_SO;
     return prefix + PathHelper::NORMALIZED_OHMURL_TAG + PathHelper::NORMALIZED_OHMURL_TAG +
-        recordPath + requestName + PathHelper::NORMALIZED_OHMURL_TAG;
+        recordPath + requestName + PathHelper::NORMALIZED_OHMURL_TAG + version;
 }
 
 CString ModulePathHelper::ConcatNativeSoNormalizedOhmurl(const CString &moduleName, const CString &bundleName,
@@ -806,7 +889,7 @@ void ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, const J
     } else {
         CString currentModuleName = GetModuleNameWithBaseFile(baseFileName);
         CString pkgName = vm->GetPkgNameWithAlias(requestPath);
-        CVector<CString> data = GetPkgContextInfoListElements(thread, currentModuleName, pkgName);
+        CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgName);
         if (data.size() == 0) {
             CString outEntryPoint;
             if (jsPandaFile->FindOhmUrlInPF(requestPath, outEntryPoint)) {
@@ -867,5 +950,27 @@ bool ModulePathHelper::SkipDefaultBundleFile(JSThread *thread, const CString &mo
     // just to skip misunderstanding error log in LoadJSPandaFile when we ignore Module Resolving Failure.
     return !thread->GetEcmaVM()->EnableReportModuleResolvingFailure() &&
         (IsSandboxPath(moduleFileName) || IsRelativeFilePath(moduleFileName));
+}
+
+CVector<CString> ModulePathHelper::SplitNormalizedRecordName(const CString &recordName)
+{
+    CVector<CString> res(NORMALIZED_OHMURL_ARGS_NUM);
+    int index = NORMALIZED_OHMURL_ARGS_NUM - 1;
+    CString temp;
+    int endIndex = static_cast<int>(recordName.size()) - 1;
+    for (int i = endIndex; i >= 0; i--) {
+        char element = recordName[i];
+        if (element == PathHelper::NORMALIZED_OHMURL_TAG) {
+            res[index] = temp;
+            index--;
+            temp = "";
+            continue;
+        }
+        temp = element + temp;
+    }
+    if (temp.size()) {
+        res[index] = temp;
+    }
+    return res;
 }
 }  // namespace panda::ecmascript

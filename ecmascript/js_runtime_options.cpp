@@ -46,8 +46,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--ark-bundle-name:                    Set ark bundle name\n"
     "--asm-interpreter:                    Enable asm interpreter. Default: 'true'\n"
     "--asm-opcode-disable-range:           Opcode range when asm interpreter is enabled.\n"
-    "--compiler-assert-types:              Enable type assertion for type inference tests. Default: 'false'\n"
-    "--builtins-dts:                       Builtins.d.abc file path for AOT.\n"
     "--builtins-lazy:                     Load some builtins function later.This option is only valid in workervm.\n"
     "--compiler-log:                       Log Option For aot compiler and stub compiler,\n"
     "                                      'none': no log,\n"
@@ -65,7 +63,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'none'\n"
     "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
-    "--compiler-opt-global-typeinfer:      Enable global typeinfer for aot compiler: Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
     "--compiler-trace-bc:                  Enable tracing bytecode for aot runtime. Default: 'false'\n"
@@ -104,30 +101,29 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-worker:                      Whether is worker vm. Default: 'false'\n"
     "--log-level:                          Log level: ['debug', 'info', 'warning', 'error', 'fatal'].\n"
     "--log-components:                     Enable logs from specified components: ['all', 'gc', 'ecma','interpreter',\n"
-    "                                      'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all']. \n"
+    "                                      'debugger', 'compiler', 'builtins', 'trace', 'jit', 'baselinejit', 'all']. \n"
     "                                      Default: 'all'\n"
     "--log-debug:                          Enable debug or above logs for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
-    "                                      Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit',\n"
+    "                                      'baselinejit', 'all']. Default: 'all'\n"
     "--log-error:                          Enable error log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
-    "                                      Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit',\n"
+    "                                      'baselinejit', 'all']. Default: 'all'\n"
     "--log-fatal:                          Enable fatal log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
-    "                                      Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit',\n"
+    "                                      'baselinejit', 'all']. Default: 'all'\n"
     "--log-info:                           Enable info log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
-    "                                      Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit',\n"
+    "                                      'baselinejit', 'all']. Default: 'all'\n"
     "--log-warning:                        Enable warning log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'trace', 'jit', 'builtins', \n"
-    "                                      'all']. Default: 'all'\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'trace', 'jit', \n"
+    "                                      'baselinejit', 'builtins', 'all']. Default: 'all'\n"
     "--compiler-opt-max-method:            Enable aot compiler to skip method larger than limit (KB). Default: '32'\n"
     "--compiler-module-methods:            The number of max compiled methods in a module. Default: '100'\n"
     "--max-unmovable-space:                Set max unmovable space capacity\n"
     "--merge-abc:                          ABC file is merge abc. Default: 'false'\n"
     "--compiler-opt-level:                 Optimization level configuration of aot compiler. Default: '3'\n"
     "--options:                            Print compiler and runtime options\n"
-    "--compiler-print-type-info:           Enable print type info. Default: 'false'\n"
     "--serializer-buffer-size-limit:       Max serializer buffer size used by the VM in Byte. Default size is 2GB\n"
     "--snapshot-file:                      Snapshot file. Default: '/system/etc/snapshot'\n"
     "--startup-time:                       Print the start time of command execution. Default: 'false'\n"
@@ -135,6 +131,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'stub.an'\n"
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
+    "--enable-aot-crash-escape:            Enable AOT crash escape. "
+                                           "Default: 'true'\n"
     "--enable-elements-kind:               Enable elementsKind sampling and usage. Default: 'false'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
@@ -168,6 +166,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
     "--compiler-enable-osr:                Enable osr: Default: 'false'\n"
     "--compiler-jit-hotness-threshold:     Set hotness threshold for jit. Default: '2'\n"
+    "--compiler-jit-call-threshold:        Set call threshold for jit. Default: '0'\n"
     "--compiler-osr-hotness-threshold:     Set hotness threshold for osr. Default: '2'\n"
     "--compiler-force-jit-compile-main:    Enable jit compile main function: Default: 'false'\n"
     "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n"
@@ -191,14 +190,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"ark-bundleName", required_argument, nullptr, OPTION_ARK_BUNDLENAME},
         {"asm-interpreter", required_argument, nullptr, OPTION_ENABLE_ASM_INTERPRETER},
         {"asm-opcode-disable-range", required_argument, nullptr, OPTION_ASM_OPCODE_DISABLE_RANGE},
-        {"compiler-assert-types", required_argument, nullptr, OPTION_COMPILER_ASSERT_TYPES},
-        {"builtins-dts", required_argument, nullptr, OPTION_BUILTINS_DTS},
         {"builtins-lazy", required_argument, nullptr, OPTION_ENABLE_BUILTINS_LAZY},
         {"compiler-log", required_argument, nullptr, OPTION_COMPILER_LOG_OPT},
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
-        {"compiler-opt-global-typeinfer", required_argument, nullptr, OPTION_COMPILER_OPT_GLOBAL_TYPEINFER},
         {"compiler-type-threshold", required_argument, nullptr, OPTION_COMPILER_TYPE_THRESHOLD},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"compiler-trace-bc", required_argument, nullptr, OPTION_COMPILER_TRACE_BC},
@@ -251,7 +247,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
         {"enable-context", required_argument, nullptr, OPTION_ENABLE_CONTEXT},
         {"compiler-opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
-        {"compiler-print-type-info", required_argument, nullptr, OPTION_COMPILER_PRINT_TYPE_INFO},
         {"reloc-mode", required_argument, nullptr, OPTION_RELOCATION_MODE},
         {"serializer-buffer-size-limit", required_argument, nullptr, OPTION_SERIALIZER_BUFFER_SIZE_LIMIT},
         {"startup-time", required_argument, nullptr, OPTION_STARTUP_TIME},
@@ -259,6 +254,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-target-triple", required_argument, nullptr, OPTION_COMPILER_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
+        {"enable-aot-crash-escape", required_argument, nullptr, OPTION_ENABLE_AOT_CRASH_ESCAPE},
         {"enable-elements-kind", required_argument, nullptr, OPTION_ENABLE_ELEMENTSKIND},
         {"compiler-pgo-profiler-path", required_argument, nullptr, OPTION_COMPILER_PGO_PROFILER_PATH},
         {"compiler-pgo-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_PGO_HOTNESS_THRESHOLD},
@@ -287,6 +283,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-osr", required_argument, nullptr, OPTION_COMPILER_ENABLE_OSR},
         {"compiler-trace-jit", required_argument, nullptr, OPTION_COMPILER_TRACE_JIT},
         {"compiler-jit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_JIT_HOTNESS_THRESHOLD},
+        {"compiler-jit-call-threshold", required_argument, nullptr, OPTION_COMPILER_JIT_CALL_THRESHOLD},
         {"compiler-osr-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_OSR_HOTNESS_THRESHOLD},
         {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
         {"compiler-enable-jit-pgo", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_PGO},
@@ -303,6 +300,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-trace-induction-variable", required_argument, nullptr, OPTION_COMPILER_TRACE_INDUCTION_VARIABLE},
         {"compiler-memory-analysis", required_argument, nullptr, OPTION_COMPILER_MEMORY_ANALYSIS},
         {"compiler-check-pgo-version", required_argument, nullptr, OPTION_COMPILER_CHECK_PGO_VERSION},
+        {"compiler-enable-baselinejit", required_argument, nullptr, OPTION_COMPILER_ENABLE_BASELINEJIT},
+        {"compiler-baselinejit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD},
+        {"compiler-force-baselinejit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -371,17 +371,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 break;
             case OPTION_ASM_OPCODE_DISABLE_RANGE:
                 SetAsmOpcodeDisableRange(optarg);
-                break;
-            case OPTION_COMPILER_ASSERT_TYPES:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetAssertTypes(argBool);
-                } else {
-                    return false;
-                }
-                break;
-            case OPTION_BUILTINS_DTS:
-                SetBuiltinsDTS(optarg);
                 break;
             case OPTION_ENABLE_BUILTINS_LAZY:
                 ret = ParseBoolParam(&argBool);
@@ -655,14 +644,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_COMPILER_PRINT_TYPE_INFO:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetPrintTypeInfo(argBool);
-                } else {
-                    return false;
-                }
-                break;
             case OPTION_PRINT_EXECUTE_TIME:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -675,6 +656,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnablePGOProfiler(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_AOT_CRASH_ESCAPE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableAotCrashEscape(argBool);
                 } else {
                     return false;
                 }
@@ -846,14 +835,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_COMPILER_OPT_GLOBAL_TYPEINFER:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetEnableGlobalTypeInfer(argBool);
-                } else {
-                    return false;
-                }
-                break;
             case OPTION_COMPILER_VERIFY_VTABLE:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -1001,6 +982,16 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_JIT_CALL_THRESHOLD:
+                ret = ParseUint32Param("compiler-jit-call-threshold", &argUint32);
+                if (ret) {
+                    uint8_t val =  argUint32 > std::numeric_limits<uint8_t>::max() ?
+                        std::numeric_limits<uint8_t>::max() : static_cast<uint8_t>(argUint32);
+                    SetJitCallThreshold(val);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_OSR_HOTNESS_THRESHOLD:
                 ret = ParseUint32Param("compiler-osr-hotness-threshold", &argUint32);
                 if (ret) {
@@ -1075,6 +1066,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_ENABLE_BASELINEJIT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableBaselineJIT(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_METHODS_RANGE:
                 ParseListArgParam(optarg, &argListStr, COLON);
                 SetCompilerMethodsRange(&argListStr);
@@ -1115,6 +1114,16 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD:
+                ret = ParseUint32Param("compiler-baselinejit-hotness-threshold", &argUint32);
+                if (ret) {
+                    uint16_t val = argUint32 > std::numeric_limits<uint16_t>::max() ?
+                        std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(argUint32);
+                    SetBaselineJitHotnessThreshold(val);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_MEMORY_ANALYSIS:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -1127,6 +1136,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCheckPgoVersion(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetForceBaselineCompileMain(argBool);
                 } else {
                     return false;
                 }
@@ -1241,18 +1258,11 @@ void JSRuntimeOptions::ParseListArgParam(const std::string &option, arg_list_t *
     return;
 }
 
-void JSRuntimeOptions::SetTargetBuiltinsDtsPath()
-{
-    WasSet(CommandValues::OPTION_BUILTINS_DTS);
-    std::string builtinsDtsPath = TARGET_BUILTINS_DTS_PATH;
-    SetBuiltinsDTS(builtinsDtsPath);
-}
-
 void JSRuntimeOptions::SetOptionsForTargetCompilation()
 {
     if (IsTargetCompilerMode()) {
-        SetTargetBuiltinsDtsPath();
         SetTargetTriple("aarch64-unknown-linux-gnu");
+        SetMaxAotMethodSize(1_KB);
         SetEnableOptTrackField(false);
         SetEnableOptInlining(false);
         if (IsPartialCompilerMode()) {

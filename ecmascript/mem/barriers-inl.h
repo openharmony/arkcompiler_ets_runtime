@@ -58,7 +58,9 @@ inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset
 {
     // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
-    WriteBarrier(thread, obj, offset, value);
+    if (need_write_barrier) {
+        WriteBarrier(thread, obj, offset, value);
+    }
 }
 
 inline void Barriers::SynchronizedSetClass(const JSThread *thread, void *obj, JSTaggedType value)

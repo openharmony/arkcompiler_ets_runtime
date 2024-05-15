@@ -38,7 +38,7 @@ static inline void InitializeAllTargetInfos(maple::MemPool * m)
     #undef MAPLE_TARGET
 }
 
-static inline void InitializeAllTargets()
+static inline void InitializeAllTargets(void)
 {
     #define MAPLE_TARGET(TargetName) MAPLEInitialize##TargetName##Target()
     MAPLE_TARGET(AArch64);

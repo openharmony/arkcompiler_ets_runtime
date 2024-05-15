@@ -24,8 +24,10 @@ class ModuleNamespace final : public JSObject {
 public:
     CAST_CHECK(ModuleNamespace, IsModuleNamespace);
 
+    static JSHandle<JSTaggedValue> CreateSortedExports(JSThread *thread, const JSHandle<TaggedArray> &exports);
+
     static void SetModuleDeregisterProcession(JSThread *thread, const JSHandle<ModuleNamespace> &nameSpace,
-        const DeleteEntryPoint &callback);
+        const NativePointerCallback &callback);
 
     // 9.4.6.11ModuleNamespaceCreate ( module, exports )
     static JSHandle<ModuleNamespace> ModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,

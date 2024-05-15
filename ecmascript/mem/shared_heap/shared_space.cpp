@@ -62,7 +62,12 @@ uintptr_t SharedSparseSpace::AllocateWithoutGC(JSThread *thread, size_t size)
 
 uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowGC)
 {
-    ASSERT(thread->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     thread->CheckSafepointIfSuspended();
     // jit thread no heap
     allowGC = allowGC && (!thread->IsJitThread());
@@ -92,8 +97,12 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
 
 uintptr_t SharedSparseSpace::AllocateNoGCAndExpand(JSThread *thread, size_t size)
 {
-    ASSERT(thread->IsInRunningStateOrProfiling());
-    thread->CheckSafepointIfSuspended();
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     uintptr_t object = TryAllocate(thread, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (sweepState_ == SweepState::SWEEPING) {
@@ -128,6 +137,9 @@ bool SharedSparseSpace::Expand(JSThread *thread)
         return false;
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedSparseSpace::Expand:region is nullptr";
+    }
     region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
@@ -137,6 +149,9 @@ bool SharedSparseSpace::Expand(JSThread *thread)
 Region *SharedSparseSpace::AllocateDeserializeRegion(JSThread *thread)
 {
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedSparseSpace::AllocateDeserializeRegion:region is nullptr";
+    }
     region->InitializeFreeObjectSets();
     return region;
 }
@@ -165,7 +180,7 @@ uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(JSThread *thread, si
         }
     }
     // Parallel sweep and fill
-    sHeap_->GetSweeper()->EnsureTaskFinished(thread, spaceType_);
+    sHeap_->GetSweeper()->EnsureTaskFinished(spaceType_);
     return allocator_->Allocate(size);
 }
 
@@ -400,6 +415,9 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
         currentRegion->SetHighWaterMark(top);
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, heap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedReadOnlySpace::Expand:region is nullptr";
+    }
     allocator_.Reset(region->GetBegin(), region->GetEnd());
     AddRegion(region);
     return true;
@@ -407,7 +425,12 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
 
 uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
 {
-    ASSERT(thread->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     thread->CheckSafepointIfSuspended();
     LockHolder holder(allocateLock_);
     auto object = allocator_.Allocate(size);
@@ -428,26 +451,36 @@ SharedHugeObjectSpace::SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator
 }
 
 
-uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize)
+uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, AllocateEventType allocType)
 {
-    ASSERT(thread->IsInRunningStateOrProfiling());
-    thread->CheckSafepointIfSuspended();
-    LockHolder lock(allocateLock_);
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
     size_t alignedSize = AlignUp(objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
+    if (allocType == AllocateEventType::NORMAL) {
+        thread->CheckSafepointIfSuspended();
+        CheckAndTriggerLocalFullMark(thread, alignedSize);
+    }
+    LockHolder lock(allocateLock_);
     if (CommittedSizeExceed(alignedSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread, heap_);
+    if (region == nullptr) {
+        LOG_ECMA(FATAL) << "SharedHugeObjectSpace::Allocate:region is nullptr";
+    }
     AddRegion(region);
     // It need to mark unpoison when huge object being allocated.
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     InvokeAllocationInspector(region->GetBegin(), objectSize);
 #endif
-    CheckAndTriggerLocalFullMark(thread, alignedSize);
     return region->GetBegin();
 }
 

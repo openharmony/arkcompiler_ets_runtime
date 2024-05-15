@@ -191,9 +191,10 @@ Mem X64Emitter::TransferMem(Operand *opnd, uint32 funcUniqueId)
             if (symbolName.size() > 2 && symbolName[2] == '.') {
                 string delimiter = "__";
                 size_t pos = symbolName.find(delimiter);
-                uint32 itsFuncUniqueId =
-                    pos > 3 ? stoi(symbolName.substr(3, pos)) : 0; /* 3: index starts after ".L." */
-                uint32 labelIdx = stoi(symbolName.substr(pos + 2, symbolName.length())); /* 2: delimiter.length() */
+                /* 3: index starts after ".L." */
+                uint32 itsFuncUniqueId = pos > 3 ? static_cast<uint32>(stoi(symbolName.substr(3, pos))) : 0;
+                /* 2: delimiter.length() */
+                uint32 labelIdx = static_cast<uint32_t>(stoi(symbolName.substr(pos + 2, symbolName.length())));
                 symIdx = CalculateLabelSymIdx(itsFuncUniqueId, labelIdx);
             } else {
                 symIdx = symbol->GetNameStrIdx().get();
@@ -763,6 +764,12 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
             break;
         case x64::MOP_xorq_i_m:
             assmbler.Xor(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            break;
+        case x64::MOP_bsrq_r_r:
+            assmbler.Bsr(kQ, TransferReg(opnd1), TransferReg(opnd0));
+            break;
+        case x64::MOP_bsrl_r_r:
+            assmbler.Bsr(kL, TransferReg(opnd1), TransferReg(opnd0));
             break;
         /* not */
         case x64::MOP_notb_r:
@@ -1767,7 +1774,8 @@ uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
             DEBUG_ASSERT(false, "should not run here");
         }
     }
-    int64 iNum = (arrayType.GetSizeArrayItem(0) > 0) ? (static_cast<int64>(arrayType.GetSizeArrayItem(0))) - uNum : 0;
+    int64 iNum = (static_cast<int64>(arrayType.GetSizeArrayItem(0)) > 0) ?
+        (static_cast<int64>(arrayType.GetSizeArrayItem(0))) - static_cast<int64>(uNum) : 0;
     if (iNum > 0) {
         if (uNum > 0) {
             uint64 unInSizeInByte =
@@ -1827,6 +1835,7 @@ uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, 
             MIRSymbol *symAddrSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
 
             uint32 symIdx = symAddrSym->GetNameStrIdx();
+            ASSERT_NOT_NULL(symAddrSym);
             const string &name = symAddrSym->GetName();
             assmbler.StoreNameIntoSymMap(symIdx, name);
             assmbler.EmitAddrOfFuncValue(symIdx, belongsToDataSec);

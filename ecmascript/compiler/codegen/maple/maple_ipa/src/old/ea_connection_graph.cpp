@@ -216,6 +216,7 @@ bool EACGObjectNode::ReplaceByGlobalNode()
         eaCG->expr2Nodes[meExpr]->insert(eaCG->GetGlobalObject());
     }
     DEBUG_ASSERT(eaCG->nodes[id - 1] == this, "must be");
+    CHECK_FATAL(id > 0, "must not be zero");
     eaCG->nodes[id - 1] = nullptr;
     return true;
 }
@@ -321,6 +322,7 @@ bool EACGRefNode::ReplaceByGlobalNode()
         eaCG->expr2Nodes[meExpr]->insert(eaCG->GetGlobalReference());
     }
     DEBUG_ASSERT(eaCG->nodes[id - 1] == this, "must be this");
+    CHECK_FATAL(id > 0, "must not be zero");
     eaCG->nodes[id - 1] = nullptr;
     return true;
 }
@@ -469,6 +471,7 @@ bool EACGFieldNode::ReplaceByGlobalNode()
     }
     if (canDelete) {
         DEBUG_ASSERT(eaCG->nodes[id - 1] == this, "must be this");
+        CHECK_FATAL(id > 0, "must not be zero");
         eaCG->nodes[id - 1] = nullptr;
         for (EACGBaseNode *inNode : in) {
             DEBUG_ASSERT(!inNode->IsObjectNode(), "must be ObjectNode");
@@ -691,6 +694,7 @@ EACGActualNode *EAConnectionGraph::GetReturnNode() const
     if (funcArgNodes.size() == 0) {
         return nullptr;
     }
+    CHECK_FATAL(funcArgNodes.size() > 0, "must not be zero");
     EACGActualNode *ret = static_cast<EACGActualNode *>(funcArgNodes[funcArgNodes.size() - 1]);
     if (ret->IsReturn()) {
         return ret;
@@ -804,6 +808,7 @@ void EAConnectionGraph::UpdateEACGFromCaller(const MapleVector<EACGBaseNode *> &
         EACGBaseNode *callerNode = callerCallSiteArg[i];
         ASSERT_NOT_NULL(callerNode);
         DEBUG_ASSERT(callerNode->IsActualNode(), "must be ActualNode");
+        CHECK_FATAL(callerCallSiteArg.size() - 1, "must not be zero");
         if ((i == callerCallSiteArg.size() - 1) && static_cast<EACGActualNode *>(callerNode)->IsReturn()) {
             continue;
         }
@@ -1065,6 +1070,7 @@ void EAConnectionGraph::UpdateNodes(const EACGBaseNode &actualInCallee, EACGBase
                 DEBUG_ASSERT(false, "must be belong to this");
             } else {
                 EACGObjectNode *phantom = CreateObjectNode(nullptr, actualInCaller.GetEAStatus(), true, TyIdx(0));
+                ASSERT_NOT_NULL(phantom);
                 (void)actualInCaller.AddOutNode(*phantom);
                 AddMaps2Object(phantom, objInCallee);
                 UpdateCallerWithCallee(*phantom, *objInCallee, firstTime);

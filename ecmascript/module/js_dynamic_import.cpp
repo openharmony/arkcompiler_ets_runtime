@@ -33,7 +33,7 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, JSHandl
 {
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    if (moduleManager->IsImportedModuleLoaded(specifierString.GetTaggedValue())) {
+    if (moduleManager->IsLocalModuleLoaded(specifierString.GetTaggedValue())) {
         ModuleDeregister::ReviseLoadedModuleCount(thread, specifierString.GetTaggedValue());
         JSHandle<SourceTextModule> moduleRecord =
             moduleManager->HostGetImportedModule(specifierString.GetTaggedValue());

@@ -880,15 +880,17 @@ int32 X64CGFunc::GetBaseOffset(const SymbolAlloc &symbolAlloc)
     auto *memLayout = static_cast<X64MemLayout *>(this->GetMemlayout());
     if (sgKind == kMsSpillReg) {
         /* spill = -(Locals + ArgsReg + baseOffset + ReseverdSlot + kSizeOfPtr) */
-        return -(memLayout->GetSizeOfLocals() + memLayout->SizeOfArgsRegisterPassed() + baseOffset +
-                 GetFunction().GetFrameReseverdSlot() + GetPointerSize());
+        return -(static_cast<int32>(memLayout->GetSizeOfLocals()) +
+            static_cast<int32>(memLayout->SizeOfArgsRegisterPassed()) + baseOffset +
+            GetFunction().GetFrameReseverdSlot() + static_cast<int32>(GetPointerSize()));
     } else if (sgKind == kMsLocals) {
         /* Locals = baseOffset - (ReseverdSlot + Locals + ArgsReg) */
-        return baseOffset - (GetFunction().GetFrameReseverdSlot() + memLayout->GetSizeOfLocals() +
-                             memLayout->SizeOfArgsRegisterPassed());
+        return baseOffset - (GetFunction().GetFrameReseverdSlot() + static_cast<int32>(memLayout->GetSizeOfLocals()) +
+            static_cast<int32>(memLayout->SizeOfArgsRegisterPassed()));
     } else if (sgKind == kMsArgsRegPassed) {
         /* ArgsReg = baseOffset - ReseverdSlot  - ArgsReg */
-        return baseOffset - GetFunction().GetFrameReseverdSlot() - memLayout->SizeOfArgsRegisterPassed();
+        return baseOffset - static_cast<int32_t>(GetFunction().GetFrameReseverdSlot()) -
+            static_cast<int32_t>(memLayout->SizeOfArgsRegisterPassed());
     } else if (sgKind == kMsArgsStkPassed) {
         return baseOffset + sizeofFplr;
     } else {

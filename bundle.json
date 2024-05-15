@@ -20,16 +20,16 @@
         ],
         "rom": "20MB",
         "ram": "~8000KB",
-	"hisysevent_config": [
-	      "//arkcompiler/ets_runtime/hisysevent.yaml"
-	],
+        "hisysevent_config": [
+            "//arkcompiler/ets_runtime/hisysevent.yaml"
+        ],
         "deps": {
             "components": [
               "faultloggerd",
               "init",
               "hitrace",
               "hilog",
-	      "hisysevent",
+              "hisysevent",
               "qos_manager",
               "runtime_core",
               "c_utils",
@@ -37,7 +37,15 @@
               "libuv",
               "zlib",
               "bounds_checking_function",
-              "icu"
+              "icu",
+              "access_token",
+              "eventhandler",
+              "hisysevent",
+              "ipc",
+              "safwk",
+              "samgr",
+              "common_event_service",
+              "ffrt"
             ],
             "third_party": [
             ]
@@ -48,7 +56,8 @@
                 "//arkcompiler/ets_runtime:app_aot_disable_list",
                 "//arkcompiler/ets_runtime:app_jit_enable_list",
                 "//arkcompiler/ets_runtime:ark_js_packages",
-                "//arkcompiler/ets_runtime/etc:arkcompiler.para.dac"
+                "//arkcompiler/ets_runtime/etc:arkcompiler.para.dac",
+                "//arkcompiler/ets_runtime/compiler_service:compiler_service"
             ],
             "inner_kits": [
                 {
@@ -72,10 +81,20 @@
                       ],
                       "header_base": "//arkcompiler/ets_runtime/ecmascript/napi/include"
                     }
+                },
+                {
+                    "name": "//arkcompiler/ets_runtime/compiler_service:libcompiler_service",
+                    "header": {
+                      "header_files": [
+                        "aot_compiler_client.h"
+                      ],
+                      "header_base": "//arkcompiler/ets_runtime/compiler_service/include"
+                    }
                 }
             ],
             "test": [
-                "//arkcompiler/ets_runtime:ark_js_unittest"
+                "//arkcompiler/ets_runtime:ark_js_unittest",
+                "//arkcompiler/ets_runtime/compiler_service/test:compiler_service_unittest"
             ]
         }
     }

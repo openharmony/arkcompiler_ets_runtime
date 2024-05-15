@@ -291,7 +291,7 @@ HWTEST_F_L0(JSNApiTests, BufferRef_New01_ByteLength_GetBuffer_BufferToStringCall
         int32_t length;
     };
     const int32_t length = 15;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = []([[maybe_unused]] void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         delete currentData;
@@ -524,7 +524,7 @@ HWTEST_F_L0(JSNApiTests, New2)
     const int32_t length = 15;
     Data *data = new Data();
     data->length = length;
-    Deleter deleter = [](void *buffer, void *data) -> void {
+    NativePointerCallback deleter = []([[maybe_unused]] void *env, void *buffer, void *data) -> void {
         delete[] reinterpret_cast<uint8_t *>(buffer);
         Data *currentData = reinterpret_cast<Data *>(data);
         ASSERT_EQ(currentData->length, 15); // 5 : size of arguments
@@ -1124,4 +1124,85 @@ HWTEST_F_L0(JSNApiTests, NapiFastPathGetNamedProperty)
     ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
 }
 
+HWTEST_F_L0(JSNApiTests, NewObjectWithPropertiesDuplicateWithKeyNotFromStringTable)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> keys[] = {
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "duplicateKey"),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "simpleKey"),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "duplicateKey"),
+    };
+    Local<JSValueRef> values[] = {
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "value1"),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "value2"),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, "value3"),
+    };
+    PropertyAttribute attributes[] = {
+        PropertyAttribute(values[0], true, true, true),
+        PropertyAttribute(values[1], true, true, true),
+        PropertyAttribute(values[2], true, true, true),
+    };
+    Local<ObjectRef> object = ObjectRef::NewWithProperties(vm_, 3, keys, attributes);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(object);
+    EXPECT_TRUE(obj.GetTaggedValue() == JSTaggedValue::Undefined());
+    thread_->ClearException();
+}
+
+HWTEST_F_L0(JSNApiTests, EcmaObjectToInt)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> toPrimitiveFunc = FunctionRef::New(vm_,
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            return JSValueRef::True(vm);
+        });
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    PropertyAttribute attribute(toPrimitiveFunc, true, true, true);
+    Local<JSValueRef> toPrimitiveKey = JSNApiHelper::ToLocal<JSValueRef>(vm_->GetGlobalEnv()->GetToPrimitiveSymbol());
+    obj->DefineProperty(vm_, toPrimitiveKey, attribute);
+    {
+        // Test that Uint32Value and Int32Value should transition to Running if needed.
+        ThreadNativeScope nativeScope(thread_);
+        uint32_t res = obj->Uint32Value(vm_);
+        EXPECT_TRUE(res == 1);
+        res = obj->Int32Value(vm_);
+        EXPECT_TRUE(res == 1);
+    }
+}
+
+HWTEST_F_L0(JSNApiTests, NapiFastPathGetHasDeleteTest)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    JSTaggedValue a(0);
+    JSHandle<JSTaggedValue> handle(thread_, a);
+    Local<JSValueRef> key = JSNApiHelper::ToLocal<JSValueRef>(handle);
+    const char* utf8Key = "TestKey";
+    Local<JSValueRef> key2 = StringRef::NewFromUtf8(vm_, utf8Key);
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    object->Set(vm_, key, value);
+    object->Set(vm_, key2, value);
+    Local<JSValueRef> value1 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+                                                       reinterpret_cast<uintptr_t>(*key));
+    ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
+    Local<JSValueRef> value2 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+                                                       reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_TRUE(value->IsStrictEquals(vm_, value2));
+    
+    Local<JSValueRef> flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+                                                     reinterpret_cast<uintptr_t>(*key));
+    ASSERT_TRUE(flag->BooleaValue());
+    flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_TRUE(flag->BooleaValue());
+
+    flag = JSNApi::NapiDeleteProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key));
+    ASSERT_TRUE(flag->BooleaValue());
+    flag = JSNApi::NapiDeleteProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_TRUE(flag->BooleaValue());
+
+    flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key));
+    ASSERT_FALSE(flag->BooleaValue());
+    flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_FALSE(flag->BooleaValue());
+}
 } // namespace panda::test

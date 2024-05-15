@@ -43,13 +43,18 @@ namespace panda::ecmascript::kungfu {
 #define HCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
     V(Construct, CONSTRUCT, GateFlags::HAS_FRAME_STATE, 1, 1, value)
 
+#define HCR_GATE_META_DATA_LIST_FOR_NEW(V)                                     \
+    V(CallNew, CALL_NEW, GateFlags::HAS_FRAME_STATE, 1, 1, value)
+
 #define HCR_GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(V)                                   \
+    V(CallPrivateGetter, CALL_PRIVATE_GETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 2)              \
+    V(CallPrivateSetter, CALL_PRIVATE_SETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 3)              \
     V(CallGetter, CALL_GETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 3)                             \
     V(CallSetter, CALL_SETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 4)                             \
     V(MonoCallGetterOnProto, MONO_CALL_GETTER_ON_PROTO, GateFlags::HAS_FRAME_STATE, 1, 1, 4)    \
     V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 1)                                 \
     V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 3)           \
-    V(CreateArguments, CREATE_ARGUMENTS, GateFlags::CHECKABLE, 1, 1, 1)
+    V(CreateArguments, CREATE_ARGUMENTS, GateFlags::HAS_FRAME_STATE, 1, 1, 1)
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                           \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 0, 1)

@@ -1176,6 +1176,7 @@ void GraphColorRegAllocator::ComputeLiveRangesUpdateLiveUnitInsnRange(BB &bb, ui
             /* since bb is empty, then use pointer as is */
             lu->second->SetBegin(currPoint);
         }
+        CHECK_FATAL(lu->second->GetBegin() >= 1, "value overflow");
         lu->second->SetBegin(lu->second->GetBegin() - 1);
     }
 }
