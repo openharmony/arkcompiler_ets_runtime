@@ -61,7 +61,6 @@ constexpr int32_t INT_VALUE_4 = 4;
 constexpr int32_t INT_VALUE_9 = 9;
 
 class BuiltinsTypedArrayTest : public BaseTestWithScope<false> {
-
 protected:
     class TestClass : public base::BuiltinsBase {
     public:

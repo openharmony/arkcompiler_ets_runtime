@@ -190,7 +190,8 @@ HWTEST_F_L0(BuiltinsSegmenterTest, ResolvedOptions)
         JSObject::GetProperty(thread, resultObj, granularityKey).GetValue(), defaultGranularityValue), true);
 }
 
-void SegmentsPrototypeCommon(JSThread* thread, JSHandle<JSTaggedValue>& result, std::vector<JSHandle<JSTaggedValue>>& values)
+void SegmentsPrototypeCommon(JSThread *thread, JSHandle<JSTaggedValue> &result,
+                             std::vector<JSHandle<JSTaggedValue>> &values)
 {
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> segmentKey = globalConst->GetHandledSegmentString();

@@ -231,7 +231,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, toString)
 }
 
 void ExecCommon(JSThread* thread, EcmaVM* instance, JSHandle<JSTaggedValue>& execResult,
-    JSHandle<EcmaString>& inputString, std::vector<JSHandle<EcmaString>> result)
+    JSHandle<EcmaString>& inputString, std::vector<JSHandle<EcmaString>>& result)
 {
     JSHandle<JSTaggedValue> input(thread->GetEcmaVM()->GetFactory()->NewFromASCII("input"));
     JSHandle<JSTaggedValue> inputHandle(JSObject::GetProperty(thread, execResult, input).GetValue());
@@ -246,12 +246,12 @@ void ExecCommon(JSThread* thread, EcmaVM* instance, JSHandle<JSTaggedValue>& exe
     JSHandle<JSTaggedValue> first(thread->GetEcmaVM()->GetFactory()->NewFromASCII("1"));
     JSHandle<JSTaggedValue> oneHandle(JSObject::GetProperty(thread, execResult, first).GetValue());
     JSHandle<EcmaString> outputOne = JSTaggedValue::ToString(thread, oneHandle);
-    ASSERT_EQ(EcmaStringAccessor::Compare(instance, outputOne, result[1]), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, outputOne, result[1]), 0); // 1: second value
 
     JSHandle<JSTaggedValue> second(thread->GetEcmaVM()->GetFactory()->NewFromASCII("2"));
     JSHandle<JSTaggedValue> twoHandle(JSObject::GetProperty(thread, execResult, second).GetValue());
     JSHandle<EcmaString> outputTwo = JSTaggedValue::ToString(thread, twoHandle);
-    ASSERT_EQ(EcmaStringAccessor::Compare(instance, outputTwo, result[2]), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, outputTwo, result[2]), 0); // 2: third value
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, Exec1)

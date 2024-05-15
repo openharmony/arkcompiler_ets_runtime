@@ -40,7 +40,7 @@ using BuiltinsBase = panda::ecmascript::base::BuiltinsBase;
 class BuiltinsSymbolTest : public BaseTestWithScope<false> {
 };
 
-enum class AlgorithmType{
+enum class AlgorithmType {
     TO_STRING,
     VALUE_OF,
     KEY_FOR,
@@ -247,7 +247,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolKeyFor)
 
     // not symbol
     args[0] = JSTaggedValue::Undefined();
-    result = SymbolAlgorithm(thread, JSTaggedValue::Undefined(), args, 4, AlgorithmType::KEY_FOR);
+    result = SymbolAlgorithm(thread, JSTaggedValue::Undefined(), args, 6, AlgorithmType::KEY_FOR);
     EXPECT_TRUE(thread->HasPendingException());
     EXPECT_EQ(result, JSTaggedValue::Exception());
     thread->ClearException();
@@ -271,7 +271,8 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolToPrimitive)
     JSHandle<JSTaggedValue> symbolValue(symbol);
     JSHandle<JSPrimitiveRef> symbolRef = ecmaVM->GetFactory()->NewJSPrimitiveRef(symbolObject, symbolValue);
 
-    auto otherResult = SymbolAlgorithm(thread, symbolRef.GetTaggedValue(), args, 4, AlgorithmType::BUILTIN_TO_PRIMITIVE);
+    auto otherResult =
+        SymbolAlgorithm(thread, symbolRef.GetTaggedValue(), args, 4, AlgorithmType::BUILTIN_TO_PRIMITIVE);
     EXPECT_TRUE(otherResult.IsSymbol());
     ASSERT_EQ(otherResult.GetRawData() == (JSTaggedValue(*symbol)).GetRawData(), true);
 }

@@ -212,6 +212,6 @@ HWTEST_F_L0(BuiltinsWeakSetTest, SymbolKey)
     }
     // whether jsWeakSet has delete lastKey
 
-   HasAndDeleteCommon(thread, weakSet, lastKey);
+    HasAndDeleteCommon(thread, weakSet, lastKey);
 }
 }  // namespace panda::test

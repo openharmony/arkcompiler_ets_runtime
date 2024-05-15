@@ -97,8 +97,7 @@ JSTaggedValue TestPromiseThenOnRejected(EcmaRuntimeCallInfo *argv)
     return JSTaggedValue::Undefined();
 }
 
-enum class AlgorithmType
-{
+enum class AlgorithmType {
     REJECT,
     RESOLVE,
     RACE,

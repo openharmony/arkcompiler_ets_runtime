@@ -71,7 +71,7 @@ JSSet *CreateBuiltinsSet(JSThread *thread)
     return JSSet::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData()));
 }
 
-enum class AlgorithmType{
+enum class AlgorithmType {
     ADD,
     HAS,
 };

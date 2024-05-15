@@ -55,7 +55,7 @@ JSTaggedValue CreateBuiltinsStringRegExpObjByPatternAndFlags(JSThread *thread, c
     return result;
 }
 
-enum class AlgorithmType{
+enum class AlgorithmType {
     FROM_CHAR_CODE,
     FROM_CODE_POINT,
     CHAR_AT,
@@ -1073,12 +1073,14 @@ HWTEST_F_L0(BuiltinsStringTest, Replace4)
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
 }
 
-void SplitCommon(JSThread* thread, std::vector<JSHandle<EcmaString>> expecteds, JSHandle<JSArray>& resultArray)
+void SplitCommon(JSThread *thread, std::vector<JSHandle<EcmaString>> expecteds, JSHandle<JSArray> &resultArray)
 {
     JSHandle<JSTaggedValue> resultObj(resultArray);
     for (size_t i = 0; i < expecteds.size(); i++) {
         JSHandle<EcmaString> str(
-        JSObject::GetProperty(thread, resultObj, JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i)))).GetValue());
+            JSObject::GetProperty(thread, resultObj,
+                                  JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i))))
+                .GetValue());
         ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*str, *expecteds[i]));
     }
 }

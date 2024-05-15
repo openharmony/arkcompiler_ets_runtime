@@ -74,10 +74,11 @@ static JSTaggedValue JSRelativeTimeFormatCreateWithLocaleTest(JSThread *thread, 
     return result;
 }
 
-JSTaggedValue FormatCommon(JSThread* thread, JSHandle<JSRelativeTimeFormat>& jsPluralRules,
-    JSHandle<JSTaggedValue>& numberValue, JSHandle<JSTaggedValue>& unitValue)
+JSTaggedValue FormatCommon(JSThread *thread, JSHandle<JSRelativeTimeFormat> &jsPluralRules,
+                           JSHandle<JSTaggedValue> &numberValue, JSHandle<JSTaggedValue> &unitValue)
 {
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8: arg max len
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);  // 8: arg max len
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
     ecmaRuntimeCallInfo->SetCallArg(0, numberValue.GetTaggedValue());
