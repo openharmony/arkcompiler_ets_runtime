@@ -22,30 +22,7 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSArrayIteratorTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JSArrayIteratorTest : public BaseTestWithScope<false> {
 };
 
 /*
@@ -98,15 +75,7 @@ HWTEST_F_L0(JSArrayIteratorTest, SetIteratedArray)
     }
 }
 
-/*
- * Feature: JSArrayIterator
- * Function: SetNextIndex
- * SubFunction: GetNextIndex
- * FunctionPoints: Set Next Index
- * CaseDescription: Call the "SetNextIndex" function, check whether the result returned through "GetNextIndex" function
- *                  from the JSArrayIterator is within expectations.
- */
-HWTEST_F_L0(JSArrayIteratorTest, SetNextIndex)
+static JSHandle<JSObject> SetCommon(JSThread *thread)
 {
     EcmaVM *ecmaVMPtr = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVMPtr->GetFactory();
@@ -118,6 +87,21 @@ HWTEST_F_L0(JSArrayIteratorTest, SetNextIndex)
         handleTaggedArray->Set(thread, i, JSTaggedValue(array[i]));
     }
     JSHandle<JSObject> handleJSObjectTaggedArray(JSArray::CreateArrayFromList(thread, handleTaggedArray));
+    return handleJSObjectTaggedArray;
+}
+/*
+ * Feature: JSArrayIterator
+ * Function: SetNextIndex
+ * SubFunction: GetNextIndex
+ * FunctionPoints: Set Next Index
+ * CaseDescription: Call the "SetNextIndex" function, check whether the result returned through "GetNextIndex" function
+ *                  from the JSArrayIterator is within expectations.
+ */
+HWTEST_F_L0(JSArrayIteratorTest, SetNextIndex)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    auto handleJSObjectTaggedArray = SetCommon(thread);
 
     // Call "SetNextIndex" function through "NewJSArrayIterator" function of "object_factory.cpp".
     JSHandle<JSArrayIterator> handleJSArrayIter = factory->NewJSArrayIterator(handleJSObjectTaggedArray,
@@ -142,17 +126,9 @@ HWTEST_F_L0(JSArrayIteratorTest, SetNextIndex)
  */
 HWTEST_F_L0(JSArrayIteratorTest, SetIterationKind)
 {
-    EcmaVM *ecmaVMPtr = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVMPtr->GetFactory();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
-    int32_t array[10] = {0, 6, 8, 99, 200, 1, -1, -199, 33, 100};
-    int numArray = sizeof(array)/sizeof(array[0]);
-    JSHandle<TaggedArray> handleTaggedArray(factory->NewTaggedArray(numArray));
-    for (int i = 0; i < numArray; i++) {
-        handleTaggedArray->Set(thread, i, JSTaggedValue(array[i]));
-    }
-    JSHandle<JSObject> handleJSObjectTaggedArray(JSArray::CreateArrayFromList(thread, handleTaggedArray));
-
+    auto handleJSObjectTaggedArray = SetCommon(thread);
     // Call "SetIterationKind" function through "NewJSArrayIterator" function of "object_factory.cpp".
     JSHandle<JSArrayIterator> handleJSArrayIter = factory->NewJSArrayIterator(handleJSObjectTaggedArray,
         IterationKind::KEY);

@@ -24,42 +24,7 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSListFormatTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data/icudt67l.dat as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JSListFormatTest : public BaseTestWithScope<true> {
 };
 
 HWTEST_F_L0(JSListFormatTest, Set_Get_IcuListFormatter_001)
@@ -182,93 +147,74 @@ HWTEST_F_L0(JSListFormatTest, InitializeListFormat)
     EXPECT_TRUE(resStr.compare(expectResStr) == 0);
 }
 
-HWTEST_F_L0(JSListFormatTest, FormatList_001)
+JSHandle<JSArray> FormatCommon(JSThread *thread, std::vector<std::string>& strs)
+{
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> valueObj = JSHandle<JSObject>::Cast(factory->NewJSArray());
+    for (size_t i = 0; i < strs.size(); i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(static_cast<int32_t>(i)));
+        JSHandle<JSTaggedValue> value(factory->NewFromStdString(strs[i]));
+        JSObject::SetProperty(thread, valueObj, key, value);
+    }
+    JSHandle<JSArray> valueArr = JSHandle<JSArray>::Cast(valueObj);
+    return valueArr;
+}
+
+JSHandle<JSListFormat> GetFormatter(JSThread *thread, std::map<std::string, std::string>& options,
+    icu::Locale& icuLocale)
 {
     auto vm = thread->GetEcmaVM();
     auto factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
-    icu::Locale icuLocale("en", "Latn", "US");
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> object = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    SetFormatterOptionsTest(thread, object, options);
+    JSHandle<JSListFormat> jsFormatter = CreateJSListFormatterTest(thread, icuLocale, object);
+    return jsFormatter;
+}
+
+HWTEST_F_L0(JSListFormatTest, FormatList_001)
+{
+    icu::Locale icuLocale("en", "Latn", "US");
     std::map<std::string, std::string> options {
         { "localeMatcher", "best fit" },
         { "type", "conjunction" },
         { "style", "long" }
     };
-    SetFormatterOptionsTest(thread, object, options);
-    JSHandle<JSListFormat> jsFormatter = CreateJSListFormatterTest(thread, icuLocale, object);
-    JSHandle<JSObject> valueObj = JSHandle<JSObject>::Cast(factory->NewJSArray());
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> value0(factory->NewFromStdString("Zero"));
-    JSHandle<JSTaggedValue> value1(factory->NewFromStdString("One"));
-    JSHandle<JSTaggedValue> value2(factory->NewFromStdString("Two"));
-    JSObject::SetProperty(thread, valueObj, key0, value0);
-    JSObject::SetProperty(thread, valueObj, key1, value1);
-    JSObject::SetProperty(thread, valueObj, key2, value2);
-    JSHandle<JSArray> valueArr = JSHandle<JSArray>::Cast(valueObj);
+    JSHandle<JSListFormat> jsFormatter = GetFormatter(thread, options, icuLocale);
+    std::vector<std::string> strs{"Zero", "One", "Two"};
+    JSHandle<JSArray> valueArr = FormatCommon(thread, strs);
     JSHandle<EcmaString> valueStr = JSListFormat::FormatList(thread, jsFormatter, valueArr);
     EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString().c_str(), "Zero, One, and Two");
 }
 
 HWTEST_F_L0(JSListFormatTest, FormatList_002)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
     icu::Locale icuLocale("en", "Latn", "US");
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> object = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     // when style is narrow, type can only be unit
     std::map<std::string, std::string> options {
         { "localeMatcher", "best fit" },
         { "type", "unit" },
         { "style", "narrow" }
     };
-    SetFormatterOptionsTest(thread, object, options);
-    JSHandle<JSListFormat> jsFormatter = CreateJSListFormatterTest(thread, icuLocale, object);
-    JSHandle<JSObject> valueObj = JSHandle<JSObject>::Cast(factory->NewJSArray());
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> value0(factory->NewFromStdString("Zero"));
-    JSHandle<JSTaggedValue> value1(factory->NewFromStdString("One"));
-    JSHandle<JSTaggedValue> value2(factory->NewFromStdString("Two"));
-    JSObject::SetProperty(thread, valueObj, key0, value0);
-    JSObject::SetProperty(thread, valueObj, key1, value1);
-    JSObject::SetProperty(thread, valueObj, key2, value2);
-    JSHandle<JSArray> valueArr = JSHandle<JSArray>::Cast(valueObj);
+    JSHandle<JSListFormat> jsFormatter = GetFormatter(thread, options, icuLocale);
+    std::vector<std::string> strs{"Zero", "One", "Two"};
+    JSHandle<JSArray> valueArr = FormatCommon(thread, strs);
     JSHandle<EcmaString> valueStr = JSListFormat::FormatList(thread, jsFormatter, valueArr);
     EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString().c_str(), "Zero One Two");
 }
 
 HWTEST_F_L0(JSListFormatTest, FormatList_003)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
     icu::Locale icuLocale("zh", "Hans", "Cn");
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> object = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     std::map<std::string, std::string> options {
         { "localeMatcher", "best fit" },
         { "type", "disjunction" },
         { "style", "long" }
     };
-    SetFormatterOptionsTest(thread, object, options);
-    JSHandle<JSListFormat> jsFormatter = CreateJSListFormatterTest(thread, icuLocale, object);
-    JSHandle<JSObject> valueObj = JSHandle<JSObject>::Cast(factory->NewJSArray());
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> value0(factory->NewFromStdString("苹果"));
-    JSHandle<JSTaggedValue> value1(factory->NewFromStdString("梨子"));
-    JSHandle<JSTaggedValue> value2(factory->NewFromStdString("桃"));
-    JSObject::SetProperty(thread, valueObj, key0, value0);
-    JSObject::SetProperty(thread, valueObj, key1, value1);
-    JSObject::SetProperty(thread, valueObj, key2, value2);
-    JSHandle<JSArray> valueArr = JSHandle<JSArray>::Cast(valueObj);
+    JSHandle<JSListFormat> jsFormatter = GetFormatter(thread, options, icuLocale);
+    std::vector<std::string> strs{"苹果", "梨子", "桃"};
+    JSHandle<JSArray> valueArr = FormatCommon(thread, strs);
     JSHandle<EcmaString> valueStr = JSListFormat::FormatList(thread, jsFormatter, valueArr);
     EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString().c_str(), "苹果、梨子或桃");
 }
@@ -284,34 +230,19 @@ std::string GetListPartStringTest(JSThread *thread, JSHandle<JSTaggedValue> key,
 
 HWTEST_F_L0(JSListFormatTest, FormatListToParts)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
-    auto globalConst = thread->GlobalConstants();
     icu::Locale icuLocale("zh", "Hans", "Cn");
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> object = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     std::map<std::string, std::string> options {
         { "localeMatcher", "best fit" },
         { "type", "conjunction" },
         { "style", "long" }
     };
-    SetFormatterOptionsTest(thread, object, options);
-    JSHandle<JSListFormat> jsFormatter = CreateJSListFormatterTest(thread, icuLocale, object);
-    JSHandle<JSObject> valueObj = JSHandle<JSObject>::Cast(factory->NewJSArray());
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> value0(factory->NewFromStdString("苹果"));
-    JSHandle<JSTaggedValue> value1(factory->NewFromStdString("梨子"));
-    JSHandle<JSTaggedValue> value2(factory->NewFromStdString("桃"));
-    JSObject::SetProperty(thread, valueObj, key0, value0);
-    JSObject::SetProperty(thread, valueObj, key1, value1);
-    JSObject::SetProperty(thread, valueObj, key2, value2);
-    JSHandle<JSArray> valueArr = JSHandle<JSArray>::Cast(valueObj);
+    JSHandle<JSListFormat> jsFormatter = GetFormatter(thread, options, icuLocale);
+    std::vector<std::string> strs{"苹果", "梨子", "桃"};
+    JSHandle<JSArray> valueArr = FormatCommon(thread, strs);
     JSHandle<EcmaString> valueStr = JSListFormat::FormatList(thread, jsFormatter, valueArr);
     EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString().c_str(), "苹果、梨子和桃");
 
+    auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> typeKey = globalConst->GetHandledTypeString();
     JSHandle<JSTaggedValue> valueKey = globalConst->GetHandledValueString();
     JSHandle<JSArray> parts = JSListFormat::FormatListToParts(thread, jsFormatter, valueArr);

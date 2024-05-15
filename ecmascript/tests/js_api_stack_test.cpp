@@ -25,7 +25,7 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
@@ -34,56 +34,32 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
 namespace panda::test {
-class JSAPIStackTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPIStackTest : public BaseTestWithScope<false> {
 protected:
     JSAPIStack *CreateStack()
     {
+        return *EcmaContainerCommon::CreateJSApiStack(thread);
+    }
+
+    JSHandle<JSAPIStack> SearchAndEmptyCommon(JSMutableHandle<JSTaggedValue>& value, std::string& myValue,
+        uint32_t len, bool search = false)
+    {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::Stack)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPIStack> stack(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        stack->SetTop(-1);
-        return *stack;
+        JSHandle<JSAPIStack> toor(thread, CreateStack());
+        for (uint32_t i = 0; i < len; i++) {
+            std::string ivalue = myValue + std::to_string(i);
+            value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+            JSTaggedValue result = JSAPIStack::Push(thread, toor, value);
+            EXPECT_EQ(result, value.GetTaggedValue());
+            if (search) {
+                EXPECT_EQ(toor->Search(value), static_cast<int>(i));
+            } else {
+                EXPECT_EQ(toor->Peek(), value.GetTaggedValue());
+                EXPECT_EQ(toor->Empty(), false);
+            }
+        }
+        return toor;
     }
 };
 
@@ -150,21 +126,11 @@ HWTEST_F_L0(JSAPIStackTest, Pop)
 HWTEST_F_L0(JSAPIStackTest, Empty)
 {
     constexpr uint32_t NODE_NUMBERS = 9;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-
-    JSHandle<JSAPIStack> toor(thread, CreateStack());
-
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string ivalue = myValue + std::to_string(i);
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSTaggedValue result = JSAPIStack::Push(thread, toor, value);
-        EXPECT_EQ(result, value.GetTaggedValue());
-        EXPECT_EQ(toor->Peek(), value.GetTaggedValue());
-        EXPECT_EQ(toor->Empty(), false);
-    }
+    auto toor = SearchAndEmptyCommon(value, myValue, NODE_NUMBERS);
 
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     int num = 8;
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
@@ -183,17 +149,8 @@ HWTEST_F_L0(JSAPIStackTest, Search)
     constexpr uint32_t NODE_NUMBERS = 9;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-
-    JSHandle<JSAPIStack> toor(thread, CreateStack());
-
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string ivalue = myValue + std::to_string(i);
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSTaggedValue result = JSAPIStack::Push(thread, toor, value);
-        EXPECT_EQ(result, value.GetTaggedValue());
-        EXPECT_EQ(toor->Search(value), static_cast<int>(i));
-    }
+    auto toor = SearchAndEmptyCommon(value, myValue, NODE_NUMBERS, true);
     value.Update(factory->NewFromStdString(myValue).GetTaggedValue());
     EXPECT_EQ(toor->Search(value), -1);
 

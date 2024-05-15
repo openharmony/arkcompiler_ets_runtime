@@ -21,31 +21,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class TaggedHashArrayTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class TaggedHashArrayTest : public BaseTestWithScope<false> {
 };
 
 /**
@@ -108,6 +84,38 @@ HWTEST_F_L0(TaggedHashArrayTest, NewTreeNode)
     EXPECT_TRUE(treeNode->GetRight().IsHole());
 }
 
+void HashCommon1(JSThread *thread, JSHandle<TaggedHashArray>& taggedHashArray, std::string& myKey,
+    std::string& myValue, uint32_t nums)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<RBTreeNode> rootTreeNode(thread, JSTaggedValue::Hole());
+    for (uint32_t i = 0; i < nums; i++) {
+        std::string iKey = myKey + std::to_string(i);
+        std::string iValue = myValue + std::to_string(i);
+        JSHandle<JSTaggedValue> treeKey(thread, factory->NewFromStdString(iKey).GetTaggedValue());
+        JSHandle<JSTaggedValue> treeValue(thread, factory->NewFromStdString(iValue).GetTaggedValue());
+        auto keyHash = TaggedNode::Hash(thread, treeKey.GetTaggedValue());
+        JSHandle<RBTreeNode> rootTreeWithValueNode =
+            RBTreeNode::Set(thread, rootTreeNode, keyHash, treeKey, treeValue);
+        uint32_t hashArrayIndex = static_cast<uint32_t>(nums - 1) & keyHash;
+        taggedHashArray->Set(thread, hashArrayIndex, rootTreeWithValueNode.GetTaggedValue());
+    }
+}
+
+void HashCommon2(JSThread *thread, JSHandle<TaggedHashArray>& taggedHashArray, std::string& myKey,
+    std::string& myValue, uint32_t nums)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    for (uint32_t i = 0; i < nums; i++) {
+        std::string iKey = myKey + std::to_string(i);
+        std::string iValue = myValue + std::to_string(i);
+        JSHandle<JSTaggedValue> listKey(thread, factory->NewFromStdString(iKey).GetTaggedValue());
+        JSHandle<JSTaggedValue> listValue(thread, factory->NewFromStdString(iValue).GetTaggedValue());
+        auto keyHash = TaggedNode::Hash(thread, listKey.GetTaggedValue());
+        TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, listKey, listValue);
+    }
+}
+
 /**
  * @tc.name: SetValAndGetLinkNode
  * @tc.desc: Call "Create" function Create TaggedHashArray object and "SetVal" function to add a key value pair to
@@ -129,17 +137,9 @@ HWTEST_F_L0(TaggedHashArrayTest, SetValAndGetLinkNode)
     JSHandle<JSTaggedValue> myKey8Value(factory->NewFromStdString("myvalue8"));
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    int keyHash = 0;
     // set key and value
-    for (uint32_t i = 0; i < static_cast<uint32_t>(numOfElement); i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> listKey(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> listValue(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        keyHash = TaggedNode::Hash(thread, listKey.GetTaggedValue());
-        TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, listKey, listValue);
-    }
-    keyHash = TaggedNode::Hash(thread, myKey4.GetTaggedValue());
+    HashCommon2(thread, taggedHashArray, myKey, myValue, static_cast<uint32_t>(numOfElement));
+    auto keyHash = TaggedNode::Hash(thread, myKey4.GetTaggedValue());
     // change value and add new key
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey4, myKey4Value);
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey8, myKey8Value);
@@ -166,27 +166,15 @@ HWTEST_F_L0(TaggedHashArrayTest, SetValAndGetTreeNode)
     int numOfElement = 8;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedHashArray> taggedHashArray(thread, TaggedHashArray::Create(thread, numOfElement));
-    JSHandle<RBTreeNode> rootTreeNode(thread, JSTaggedValue::Hole());
     JSHandle<JSTaggedValue> myKey5(factory->NewFromStdString("mykey5"));
     JSHandle<JSTaggedValue> myKey5Value(factory->NewFromStdString("myvalue50"));
     JSHandle<JSTaggedValue> myKey8(factory->NewFromStdString("mykey8"));
     JSHandle<JSTaggedValue> myKey8Value(factory->NewFromStdString("myvalue8"));
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    int keyHash = 0;
     // set key and value
-    for (uint32_t i = 0; i < static_cast<uint32_t>(numOfElement); i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> treeKey(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> treeValue(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        keyHash = TaggedNode::Hash(thread, treeKey.GetTaggedValue());
-        JSHandle<RBTreeNode> rootTreeWithValueNode =
-            RBTreeNode::Set(thread, rootTreeNode, keyHash, treeKey, treeValue);
-        uint32_t hashArrayIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
-        taggedHashArray->Set(thread, hashArrayIndex, rootTreeWithValueNode.GetTaggedValue());
-    }
-    keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
+    HashCommon1(thread, taggedHashArray, myKey, myValue, static_cast<uint32_t>(numOfElement));
+    auto keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
     // change value and add new key
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey5, myKey5Value);
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey8, myKey8Value);
@@ -219,17 +207,9 @@ HWTEST_F_L0(TaggedHashArrayTest, RemoveLinkNode)
     JSHandle<JSTaggedValue> myKey8Value(factory->NewFromStdString("myvalue8"));
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    int keyHash = 0;
     // set key and value
-    for (uint32_t i = 0; i < static_cast<uint32_t>(numOfElement); i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> listKey(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> listValue(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        keyHash = TaggedNode::Hash(thread, listKey.GetTaggedValue());
-        TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, listKey, listValue);
-    }
-    keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
+    HashCommon2(thread, taggedHashArray, myKey, myValue, static_cast<uint32_t>(numOfElement));
+    auto keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey8, myKey8Value);
 
     // test Remove()
@@ -256,26 +236,14 @@ HWTEST_F_L0(TaggedHashArrayTest, RemoveTreeNode)
     int numOfElement = 8;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedHashArray> taggedHashArray(thread, TaggedHashArray::Create(thread, numOfElement));
-    JSHandle<RBTreeNode> rootTreeNode(thread, JSTaggedValue::Hole());
     JSHandle<JSTaggedValue> myKey5(factory->NewFromStdString("mykey5"));
     JSHandle<JSTaggedValue> myKey8(factory->NewFromStdString("mykey8"));
     JSHandle<JSTaggedValue> myKey8Value(factory->NewFromStdString("myvalue8"));
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    int keyHash = 0;
     // set key and value
-    for (uint32_t i = 0; i < static_cast<uint32_t>(numOfElement); i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> treeKey(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> treeValue(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        keyHash = TaggedNode::Hash(thread, treeKey.GetTaggedValue());
-        JSHandle<RBTreeNode> rootTreeWithValueNode =
-            RBTreeNode::Set(thread, rootTreeNode, keyHash, treeKey, treeValue);
-        uint32_t hashArrayIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
-        taggedHashArray->Set(thread, hashArrayIndex, rootTreeWithValueNode.GetTaggedValue());
-    }
-    keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
+    HashCommon1(thread, taggedHashArray, myKey, myValue, static_cast<uint32_t>(numOfElement));
+    auto keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey8, myKey8Value);
     uint32_t keyHashIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
     JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
@@ -308,17 +276,9 @@ HWTEST_F_L0(TaggedHashArrayTest, ResetLinkNodeSize)
     JSHandle<JSTaggedValue> myKey9Value(factory->NewFromStdString("myvalue9"));
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    int keyHash = 0;
     // set key and value
-    for (uint32_t i = 0; i < static_cast<uint32_t>(numOfElement); i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> listKey(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> listValue(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        keyHash = TaggedNode::Hash(thread, listKey.GetTaggedValue());
-        TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, listKey, listValue);
-    }
-    keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
+    HashCommon2(thread, taggedHashArray, myKey, myValue, static_cast<uint32_t>(numOfElement));
+    auto keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey8, myKey8Value);
     // remove node
     taggedHashArray->RemoveNode(thread, keyHash, myKey5.GetTaggedValue());
@@ -360,20 +320,9 @@ HWTEST_F_L0(TaggedHashArrayTest, GetCurrentNode)
     JSHandle<JSTaggedValue> myKey8Value(factory->NewFromStdString("myvalue8"));
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    int keyHash = 0;
-    // set key and value
-    for (uint32_t i = 0; i < static_cast<uint32_t>(numOfElement); i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        JSHandle<JSTaggedValue> treeKey(thread, factory->NewFromStdString(iKey).GetTaggedValue());
-        JSHandle<JSTaggedValue> treeValue(thread, factory->NewFromStdString(iValue).GetTaggedValue());
-        keyHash = TaggedNode::Hash(thread, treeKey.GetTaggedValue());
-        JSHandle<RBTreeNode> rootTreeWithValueNode =
-            RBTreeNode::Set(thread, rootTreeNode, keyHash, treeKey, treeValue);
-        uint32_t hashArrayIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
-        taggedHashArray->Set(thread, hashArrayIndex, rootTreeWithValueNode.GetTaggedValue());
-    }
-    keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
+
+    HashCommon1(thread, taggedHashArray, myKey, myValue, static_cast<uint32_t>(numOfElement));
+    auto keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey8, myKey8Value);
     // test GetCurrentNode()
     uint32_t nodeIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;

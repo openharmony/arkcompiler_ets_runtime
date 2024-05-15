@@ -25,64 +25,30 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSAPIHashMapTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPIHashMapTest : public BaseTestWithScope<false> {
 protected:
     JSAPIHashMap *CreateHashMap()
     {
+        return EcmaContainerCommon::CreateHashMap(thread);
+    }
+
+    void Update(JSHandle<JSAPIHashMap>& hashMap, JSMutableHandle<JSTaggedValue>& key,
+        JSMutableHandle<JSTaggedValue>& value, std::pair<std::string, std::string> myKeyVal, uint32_t numbers)
+    {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::HashMap)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPIHashMap> map(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSTaggedValue hashMapArray = TaggedHashArray::Create(thread);
-        map->SetTable(thread, hashMapArray);
-        map->SetSize(0);
-        return *map;
+        for (uint32_t i = 0; i < numbers; i++) {
+            std::string iKey = myKeyVal.first + std::to_string(i);
+            std::string iValue = myKeyVal.second + std::to_string(i);
+            key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
+            value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+            JSAPIHashMap::Set(thread, hashMap, key, value);
+        }
     }
 };
 
@@ -112,13 +78,8 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapSetAndGet)
 
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
-        JSAPIHashMap::Set(thread, hashMap, key, value);
-    }
+    auto pair = std::make_pair(myKey, myValue);
+    Update(hashMap, key, value, pair, NODE_NUMBERS);
     EXPECT_EQ(hashMap->GetSize(), NODE_NUMBERS);
 
     // test isEmpty
@@ -156,13 +117,8 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapRemoveAndHas)
 
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
-        JSAPIHashMap::Set(thread, hashMap, key, value);
-    }
+    auto pair = std::make_pair(myKey, myValue);
+    Update(hashMap, key, value, pair, NODE_NUMBERS);
     EXPECT_EQ(hashMap->GetSize(), NODE_NUMBERS);
 
     // test Remove non-existent
@@ -277,13 +233,8 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapReplaceAndClear)
     JSHandle<JSAPIHashMap> hashMap(thread, CreateHashMap());
     std::string myKey("mykey");
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
-        JSAPIHashMap::Set(thread, hashMap, key, value);
-    }
+    auto pair = std::make_pair(myKey, myValue);
+    Update(hashMap, key, value, pair, NODE_NUMBERS);
     EXPECT_EQ(hashMap->GetSize(), NODE_NUMBERS);
 
     // test replace

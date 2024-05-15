@@ -21,25 +21,15 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class GCTest : public testing::Test {
+class GCTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
     void SetUp() override
     {
         JSRuntimeOptions options;
@@ -52,15 +42,6 @@ public:
         heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
         heap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
     }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
 };
 
 HWTEST_F_L0(GCTest, FullGCOne)
@@ -183,37 +164,11 @@ HWTEST_F_L0(GCTest, NotifyMemoryPressure)
 HWTEST_F_L0(GCTest, NativeBindingCheckGCTest)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     size_t oldNativeSize = heap->GetNativeBindingSize();
-    size_t newNativeSize = heap->GetNativeBindingSize();
-    {
-        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-        auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
-        [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(newData,
-            NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1 * 1024 * 1024);
-        newNativeSize = heap->GetNativeBindingSize();
-        EXPECT_EQ(newNativeSize - oldNativeSize, 1UL * 1024 * 1024);
-
-        auto newData1 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
-        [[maybe_unused]] JSHandle<JSNativePointer> obj2 = factory->NewJSNativePointer(newData1,
-            NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024);
-
-        EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
-        EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
-        for (int i = 0; i < 2048; i++) {
-            [[maybe_unused]] ecmascript::EcmaHandleScope baseScopeForeach(thread);
-            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024);
-            // malloc size is smaller to avoid test fail in the small devices.
-            [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(newData2,
-                NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1 * 1024 * 1024);
-        }
-        newNativeSize = heap->GetNativeBindingSize();
-        // Old GC should be trigger here, so the size should be reduced.
-        EXPECT_TRUE(newNativeSize - oldNativeSize < 2048 * 1024 *1024);
-    }
+    EcmaTestCommon::GcCommonCase(thread, heap);
     heap->CollectGarbage(TriggerGCType::FULL_GC);
-    newNativeSize = heap->GetNativeBindingSize();
+    auto newNativeSize = heap->GetNativeBindingSize();
     EXPECT_EQ(newNativeSize - oldNativeSize, 0UL);
 }
 

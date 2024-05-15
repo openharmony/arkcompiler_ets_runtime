@@ -26,51 +26,19 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class ObjectOperatorTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class ObjectOperatorTest : public BaseTestWithScope<false> {
 };
-
-JSTaggedValue TestDefinedSetter([[maybe_unused]] EcmaRuntimeCallInfo *argv)
-{
-    // 12 : test case
-    return JSTaggedValue(12);
-}
-
-bool TestBoolSetter([[maybe_unused]] JSThread *thread,
-                    [[maybe_unused]] JSHandle<JSObject> &jsObject,
-                    [[maybe_unused]] JSHandle<JSTaggedValue> &value,
-                    [[maybe_unused]] bool success)
-{
-    return true;
-}
 
 static JSFunction *JSObjectTestCreate(JSThread *thread)
 {
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
     return globalEnv->GetObjectFunction().GetObject<JSFunction>();
+}
+
+JSTaggedValue TestDefinedSetter([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+{
+    // 12 : test case
+    return JSTaggedValue(12);
 }
 
 HWTEST_F_L0(ObjectOperatorTest, WriteDataProperty_001)
