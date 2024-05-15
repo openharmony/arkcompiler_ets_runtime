@@ -320,6 +320,19 @@ new C4();
 
 print("abcd汉字".startsWith("abcd"));
 
+{
+    class C2 {
+        constructor(a4) {
+            a4(-3, parseFloat, ..."isFrozen");
+        }
+    }    
+
+    try {
+        new C2(new C2);
+    } catch (err) {
+        print(err);
+    }
+}
 let greeting = "          Hello World!          ";
 let fooStr = "foo     ";
 let barStr = "     bar";
