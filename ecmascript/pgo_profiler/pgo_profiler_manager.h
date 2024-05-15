@@ -246,6 +246,16 @@ public:
                                         uint32_t hotnessThreshold, ApGenMode mode);
     static bool PUBLIC_API MergeApFiles(uint32_t checksum, PGOProfilerDecoder &merger);
 
+    void SetIsApFileCompatible(bool isCompatible)
+    {
+        isApFileCompatible_ = isCompatible;
+    }
+
+    bool GetIsApFileCompatible() const
+    {
+        return isApFileCompatible_;
+    }
+
 private:
     bool InitializeData()
     {
@@ -265,6 +275,7 @@ private:
     std::atomic_bool enableSignalSaving_ { false };
     os::memory::Mutex *mutex_ = new os::memory::Mutex();
     std::set<std::shared_ptr<PGOProfiler>> profilers_;
+    bool isApFileCompatible_ {true};
 };
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_MANAGER_H

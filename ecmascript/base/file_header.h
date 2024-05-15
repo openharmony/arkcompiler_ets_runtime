@@ -175,6 +175,16 @@ public:
         return endianTag_;
     }
 
+    VersionType GetCompatibleAnVersion() const
+    {
+        return compatibleAnVersion_;
+    }
+
+    void SetCompatibleAnVersion(VersionType version)
+    {
+        compatibleAnVersion_ = version;
+    }
+
 protected:
     explicit FileHeaderElastic(const VersionType &lastVersion) : FileHeaderBase(lastVersion) {}
 
@@ -183,6 +193,7 @@ private:
     uint32_t fileSize_ {0};
     uint32_t headerSize_ {0};
     uint32_t endianTag_ {ENDIAN_VALUE};
+    VersionType compatibleAnVersion_;
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_FILE_HEADER_H
