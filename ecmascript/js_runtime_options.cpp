@@ -163,6 +163,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-litecg:             Enable LiteCG: Default: 'false'\n"
     "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
     "--compiler-enable-osr:                Enable osr: Default: 'false'\n"
+    "--compiler-enable-framework-aot:      Enable frame aot: Default: 'true'\n"
     "--compiler-jit-hotness-threshold:     Set hotness threshold for jit. Default: '2'\n"
     "--compiler-jit-call-threshold:        Set call threshold for jit. Default: '0'\n"
     "--compiler-osr-hotness-threshold:     Set hotness threshold for osr. Default: '2'\n"
@@ -286,6 +287,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
         {"compiler-enable-jit-pgo", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_PGO},
         {"compiler-enable-aot-pgo", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_PGO},
+        {"compiler-enable-framework-aot", required_argument, nullptr, OPTION_COMPILER_ENABLE_FRAMEWORK_AOT},
         {"compiler-enable-profile-dump", required_argument, nullptr, OPTION_COMPILER_ENABLE_PROPFILE_DUMP},
         {"compiler-typed-op-profiler", required_argument, nullptr, OPTION_COMPILER_TYPED_OP_PROFILER},
         {"compiler-opt-branch-profiling", required_argument, nullptr, OPTION_COMPILER_OPT_BRANCH_PROFILING},
@@ -1053,6 +1055,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableAOTPGO(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_FRAMEWORK_AOT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableFrameworkAOT(argBool);
                 } else {
                     return false;
                 }

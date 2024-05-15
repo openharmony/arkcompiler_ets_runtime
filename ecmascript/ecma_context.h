@@ -254,7 +254,7 @@ public:
                                   JSHandle<ConstantPool> constpool,
                                   int32_t index);
 
-    void UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index = 0);
+    void UpdateAOTConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index = 0);
 
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
 

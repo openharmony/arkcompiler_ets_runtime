@@ -592,7 +592,7 @@ void EcmaContext::SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue uns
     unsharedConstpools_[constpoolIndex] = unsharedConstpool;
 }
 
-void EcmaContext::UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index)
+void EcmaContext::UpdateAOTConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index)
 {
     auto pf = JSPandaFileManager::GetInstance()->FindJSPandaFile(fileName.c_str());
     if (pf == nullptr) {
@@ -604,11 +604,15 @@ void EcmaContext::UpdateConstpool(const std::string& fileName, JSTaggedValue con
     }
     JSTaggedValue unsharedConstpool = FindOrCreateUnsharedConstpool(sharedConstpool);
     ConstantPool *taggedUnsharedConstpoolpool = ConstantPool::Cast(unsharedConstpool.GetTaggedObject());
+    ConstantPool *taggedSharedConstpoolpool = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
     const ConstantPool *taggedConstpoolpool = ConstantPool::Cast(constpool.GetTaggedObject());
     uint32_t constpoolLen = taggedConstpoolpool->GetCacheLength();
     for (uint32_t i = 0; i < constpoolLen; i++) {
         auto val = taggedConstpoolpool->GetObjectFromCache(i);
-        if (val.IsAOTLiteralInfo()) {
+        if (ConstantPool::IsAotMethodLiteralInfo(val)) {
+            JSHandle<AOTLiteralInfo> valHandle(thread_, val);
+            JSHandle<AOTLiteralInfo> methodLiteral = ConstantPool::CopySharedMethodAOTLiteralInfo(vm_, valHandle);
+            taggedSharedConstpoolpool->SetObjectToCache(thread_, i, methodLiteral.GetTaggedValue());
             taggedUnsharedConstpoolpool->SetObjectToCache(thread_, i, val);
         }
     }

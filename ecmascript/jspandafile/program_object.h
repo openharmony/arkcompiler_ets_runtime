@@ -236,15 +236,17 @@ public:
     }
 
     static JSHandle<AOTLiteralInfo> CopySharedMethodAOTLiteralInfo(EcmaVM *vm,
-                                                                   JSHandle<AOTLiteralInfo> methodLiteralInfo)
+                                                                   JSHandle<AOTLiteralInfo> src)
     {
         ObjectFactory *factory = vm->GetFactory();
-        JSHandle<AOTLiteralInfo> SAOTLiteralInfo = factory->NewSAOTLiteralInfo(1);
-        for (uint32_t i = 0; i < methodLiteralInfo->GetCacheLength(); i++) {
-            SAOTLiteralInfo->SetObjectToCache(vm->GetJSThread(), i, methodLiteralInfo->GetObjectFromCache(i));
+        JSHandle<AOTLiteralInfo> dst = factory->NewSAOTLiteralInfo(1);
+        for (uint32_t i = 0; i < src->GetCacheLength(); i++) {
+            JSTaggedValue val = src->GetObjectFromCache(i);
+            ASSERT(!val.IsHeapObject() || val.IsJSShared());
+            dst->SetObjectToCache(vm->GetJSThread(), i, val);
         }
-        SAOTLiteralInfo->SetLiteralType(JSTaggedValue(methodLiteralInfo->GetLiteralType()));
-        return SAOTLiteralInfo;
+        dst->SetLiteralType(JSTaggedValue(src->GetLiteralType()));
+        return dst;
     }
 
     static bool CheckUnsharedConstpool(JSTaggedValue constpool)
