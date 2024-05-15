@@ -31,31 +31,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 
 namespace panda::test {
-class JSProxyTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JSProxyTest : public BaseTestWithScope<false> {
 };
 
 static JSFunction *JSObjectTestCreate(JSThread *thread)
@@ -89,6 +65,24 @@ HWTEST_F_L0(JSProxyTest, ProxyCreate)
     EXPECT_EQ(desc.GetValue()->GetInt(), 1);
 }
 
+JSHandle<JSProxy> SetPropertyCommon(JSThread *thread, JSHandle<JSTaggedValue>& targetHandle,
+    JSHandle<JSTaggedValue>& handlerHandle, JSHandle<JSTaggedValue>& key, JSHandle<JSTaggedValue>& value)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 1. handler has no "get"
+    JSHandle<JSTaggedValue> hclass(thread, JSObjectTestCreate(thread));
+    targetHandle = JSHandle<JSTaggedValue>(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
+    EXPECT_TRUE(targetHandle->IsECMAObject());
+    JSObject::SetProperty(thread, targetHandle, key, value);
+    EXPECT_EQ(JSObject::GetProperty(thread, targetHandle, key).GetValue()->GetInt(), 1);
+
+    handlerHandle = JSHandle<JSTaggedValue>(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
+    EXPECT_TRUE(handlerHandle->IsECMAObject());
+
+    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
+    return proxyHandle;
+}
+
 // ES6 9.5.8 [[Get]] (P, Receiver)
 // Called by the following function
 JSTaggedValue HandlerGetProperty([[maybe_unused]] EcmaRuntimeCallInfo *argv)
@@ -98,21 +92,12 @@ JSTaggedValue HandlerGetProperty([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 
 HWTEST_F_L0(JSProxyTest, GetProperty)
 {
+    JSHandle<JSTaggedValue> targetHandle;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1. handler has no "get"
-    JSHandle<JSTaggedValue> hclass(thread, JSObjectTestCreate(thread));
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(targetHandle->IsECMAObject());
-
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
-    JSObject::SetProperty(thread, targetHandle, key, value);
-    EXPECT_EQ(JSObject::GetProperty(thread, targetHandle, key).GetValue()->GetInt(), 1);
-
-    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(handlerHandle->IsECMAObject());
-
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
+    JSHandle<JSTaggedValue> handlerHandle;
+    JSHandle<JSProxy> proxyHandle = SetPropertyCommon(thread, targetHandle, handlerHandle, key, value);
     EXPECT_TRUE(*proxyHandle != nullptr);
 
     EXPECT_EQ(JSProxy::GetProperty(thread, proxyHandle, key).GetValue()->GetInt(), 1);
@@ -140,20 +125,11 @@ JSTaggedValue HandlerGetOwnProperty([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 HWTEST_F_L0(JSProxyTest, GetOwnProperty)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1. handler has no "get"
-    JSHandle<JSTaggedValue> hclass(thread, JSObjectTestCreate(thread));
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(targetHandle->IsECMAObject());
-
+    JSHandle<JSTaggedValue> targetHandle;
+    JSHandle<JSTaggedValue> handlerHandle;
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
-    JSObject::SetProperty(thread, targetHandle, key, value);
-    EXPECT_EQ(JSObject::GetProperty(thread, targetHandle, key).GetValue()->GetInt(), 1);
-
-    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(handlerHandle->IsECMAObject());
-
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
+    JSHandle<JSProxy> proxyHandle = SetPropertyCommon(thread, targetHandle, handlerHandle, key, value);
     EXPECT_TRUE(*proxyHandle != nullptr);
 
     PropertyDescriptor desc(thread);
@@ -180,22 +156,33 @@ JSTaggedValue HandlerSetProperty([[maybe_unused]] EcmaRuntimeCallInfo *argv)
     return JSTaggedValue(JSTaggedValue::False());
 }
 
-HWTEST_F_L0(JSProxyTest, SetProperty)
+JSHandle<JSProxy> PropertyCommon(JSThread *thread, JSHandle<JSTaggedValue>& targetHandle,
+    JSHandle<JSTaggedValue>& handlerHandle, JSHandle<JSTaggedValue>& key, uint32_t value = 0)
 {
-    // 1. handler has no "get"
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1. handler has no "get"
     JSHandle<JSTaggedValue> hclass(thread, JSObjectTestCreate(thread));
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
+    targetHandle = JSHandle<JSTaggedValue>(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
     EXPECT_TRUE(targetHandle->IsECMAObject());
 
-    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
-
-    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
+    if (value) {
+        PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(value)));
+        JSObject::DefineOwnProperty(thread, JSHandle<JSObject>::Cast(targetHandle), key, desc);
+    }
+    handlerHandle = JSHandle<JSTaggedValue>(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
     EXPECT_TRUE(handlerHandle->IsECMAObject());
 
     JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
+    return proxyHandle;
+}
+
+HWTEST_F_L0(JSProxyTest, SetProperty)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> targetHandle;
+    JSHandle<JSTaggedValue> handlerHandle;
+    JSHandle<JSProxy> proxyHandle = PropertyCommon(thread, targetHandle, handlerHandle, key);
     EXPECT_TRUE(*proxyHandle != nullptr);
 
     EXPECT_TRUE(JSProxy::SetProperty(thread, proxyHandle, key, value));
@@ -225,18 +212,11 @@ JSTaggedValue HandlerDefineOwnProperty([[maybe_unused]] EcmaRuntimeCallInfo *arg
 HWTEST_F_L0(JSProxyTest, DefineOwnProperty)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1. handler has no "defineProperty"
-    JSHandle<JSTaggedValue> hclass(thread, JSObjectTestCreate(thread));
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(targetHandle->IsECMAObject());
-
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
-
-    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(handlerHandle->IsECMAObject());
-
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
+    JSHandle<JSTaggedValue> targetHandle;
+    JSHandle<JSTaggedValue> handlerHandle;
+    JSHandle<JSProxy> proxyHandle = PropertyCommon(thread, targetHandle, handlerHandle, key);
     EXPECT_TRUE(*proxyHandle != nullptr);
 
     PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)));
@@ -267,18 +247,11 @@ JSTaggedValue HandlerDeleteProperty([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 HWTEST_F_L0(JSProxyTest, DeleteProperty)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1. handler has no "deleteProperty"
-    JSHandle<JSTaggedValue> hclass(thread, JSObjectTestCreate(thread));
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(targetHandle->IsECMAObject());
-
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
-
-    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(handlerHandle->IsECMAObject());
-
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
+    JSHandle<JSTaggedValue> targetHandle;
+    JSHandle<JSTaggedValue> handlerHandle;
+    JSHandle<JSProxy> proxyHandle = PropertyCommon(thread, targetHandle, handlerHandle, key);
     EXPECT_TRUE(*proxyHandle != nullptr);
 
     PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
@@ -463,19 +436,10 @@ JSTaggedValue HandlerHasProperty([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 HWTEST_F_L0(JSProxyTest, HasProperty)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1. handler has no "HasProperty"
-    JSHandle<JSTaggedValue> hclass(thread, JSObjectTestCreate(thread));
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(targetHandle->IsECMAObject());
-
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)));
-    JSObject::DefineOwnProperty(thread, JSHandle<JSObject>::Cast(targetHandle), key, desc);
-
-    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(handlerHandle->IsECMAObject());
-
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
+    JSHandle<JSTaggedValue> targetHandle;
+    JSHandle<JSTaggedValue> handlerHandle;
+    JSHandle<JSProxy> proxyHandle = PropertyCommon(thread, targetHandle, handlerHandle, key, 1); // 1: value
     EXPECT_TRUE(*proxyHandle != nullptr);
 
     EXPECT_TRUE(JSProxy::HasProperty(thread, proxyHandle, key));
@@ -504,19 +468,10 @@ JSTaggedValue HandlerOwnPropertyKeys([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 HWTEST_F_L0(JSProxyTest, OwnPropertyKeys)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1. handler has no "OwnPropertyKeys"
-    JSHandle<JSTaggedValue> hclass(thread, JSObjectTestCreate(thread));
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(targetHandle->IsECMAObject());
-
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)));
-    JSObject::DefineOwnProperty(thread, JSHandle<JSObject>::Cast(targetHandle), key, desc);
-
-    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
-    EXPECT_TRUE(handlerHandle->IsECMAObject());
-
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
+    JSHandle<JSTaggedValue> targetHandle;
+    JSHandle<JSTaggedValue> handlerHandle;
+    JSHandle<JSProxy> proxyHandle = PropertyCommon(thread, targetHandle, handlerHandle, key, 1); // 1: value
     EXPECT_TRUE(*proxyHandle != nullptr);
     JSHandle<TaggedArray> res = JSProxy::OwnPropertyKeys(thread, proxyHandle);
 

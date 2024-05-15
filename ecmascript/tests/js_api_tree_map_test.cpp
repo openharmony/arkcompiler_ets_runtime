@@ -26,64 +26,18 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_tree.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSAPITreeMapTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPITreeMapTest : public BaseTestWithScope<false> {
 protected:
     JSAPITreeMap *CreateTreeMap()
     {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::TreeMap)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPITreeMap> map(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSTaggedValue internal = TaggedTreeMap::Create(thread);
-        map->SetTreeMap(thread, internal);
-        return *map;
+        return *EcmaContainerCommon::CreateTreeMap(thread);
     }
 };
 

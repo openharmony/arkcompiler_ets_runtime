@@ -17,62 +17,17 @@
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_stack.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
 namespace panda::test {
-class JSAPIStackIteratorTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPIStackIteratorTest : public BaseTestWithScope<false> {
 protected:
     static JSHandle<JSAPIStack> CreateJSApiStack(JSThread *thread)
     {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(value.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::Stack)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPIStack> jsStack(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        jsStack->SetTop(-1);
-        return jsStack;
+        return EcmaContainerCommon::CreateJSApiStack(thread);
     }
 };
 

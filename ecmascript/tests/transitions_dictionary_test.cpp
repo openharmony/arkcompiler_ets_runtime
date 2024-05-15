@@ -24,31 +24,7 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class TransitionsDictionaryTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class TransitionsDictionaryTest : public BaseTestWithScope<false> {
 };
 
 HWTEST_F_L0(TransitionsDictionaryTest, IsMatch)
@@ -155,55 +131,59 @@ HWTEST_F_L0(TransitionsDictionaryTest, Get_Set_Attributes)
     }
 }
 
-HWTEST_F_L0(TransitionsDictionaryTest, SetEntry)
+using TestCommonCB = std::function<void(JSThread *, int index,
+                                        JSHandle<JSTaggedValue> &, JSHandle<JSTaggedValue> &)>;
+void TestCommon(JSThread *thread, int numberOfElements, TestCommonCB cb)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    int numberOfElements = 8;
-    JSHandle<TransitionsDictionary> transDic = TransitionsDictionary::Create(thread, numberOfElements);
-    JSHandle<JSTaggedValue> metaData(thread, JSTaggedValue::Undefined());
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    
     for (int index = 0; index < numberOfElements; index++) {
         std::string keyStr = "key" + std::to_string(index);
         std::string valueStr = "value" + std::to_string(index);
         JSHandle<JSTaggedValue> key(factory->NewFromStdString(keyStr));
         JSHandle<JSTaggedValue> value(factory->NewFromStdString(valueStr));
-        transDic->SetEntry(thread, index, key.GetTaggedValue(), value.GetTaggedValue(), metaData.GetTaggedValue());
-        EXPECT_EQ(transDic->GetKey(index), key.GetTaggedValue());
+        cb(thread, index, key, value);
     }
+}
+
+HWTEST_F_L0(TransitionsDictionaryTest, SetEntry)
+{
+    int numberOfElements = 8;
+    JSHandle<TransitionsDictionary> transDic = TransitionsDictionary::Create(thread, numberOfElements);
+
+    JSHandle<JSTaggedValue> metaData(thread, JSTaggedValue::Undefined());
+    TestCommon(thread, numberOfElements,
+                [&](JSThread *thread, int index, JSHandle<JSTaggedValue> &key, JSHandle<JSTaggedValue> &value) {
+                    transDic->SetEntry(thread, index, key.GetTaggedValue(), value.GetTaggedValue(),
+                                       metaData.GetTaggedValue());
+                    EXPECT_EQ(transDic->GetKey(index), key.GetTaggedValue());
+                });
 }
 
 HWTEST_F_L0(TransitionsDictionaryTest, FindEntry)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
     int numberOfElements = 8;
     JSHandle<TransitionsDictionary> transDic = TransitionsDictionary::Create(thread, numberOfElements);
+
     JSHandle<JSTaggedValue> metaData(thread, JSTaggedValue::Undefined());
-    for (int index = 0; index < numberOfElements; index++) {
-        std::string keyStr = "key" + std::to_string(index);
-        std::string valueStr = "value" + std::to_string(index);
-        JSHandle<JSTaggedValue> key(factory->NewFromStdString(keyStr));
-        JSHandle<JSTaggedValue> value(factory->NewFromStdString(valueStr));
-        transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
-        int foundEntry = transDic->FindEntry(key.GetTaggedValue(), metaData.GetTaggedValue());
-        EXPECT_EQ(index + 3, foundEntry); // 3 : table header size
-    }
+    TestCommon(thread, numberOfElements,
+               [&](JSThread *thread, int index, JSHandle<JSTaggedValue> &key, JSHandle<JSTaggedValue> &value) {
+                   transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
+                   int foundEntry = transDic->FindEntry(key.GetTaggedValue(), metaData.GetTaggedValue());
+                   EXPECT_EQ(index + 3, foundEntry);  // 3 : table header size
+               });
 }
 
 HWTEST_F_L0(TransitionsDictionaryTest, RemoveElement)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
     int numberOfElements = 8;
     JSHandle<TransitionsDictionary> transDic = TransitionsDictionary::Create(thread, numberOfElements);
     JSHandle<JSTaggedValue> metaData(thread, JSTaggedValue::Undefined());
-    for (int index = 0; index < numberOfElements; index++) {
-        std::string keyStr = "key" + std::to_string(index);
-        std::string valueStr = "value" + std::to_string(index);
-        JSHandle<JSTaggedValue> key(factory->NewFromStdString(keyStr));
-        JSHandle<JSTaggedValue> value(factory->NewFromStdString(valueStr));
-        transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
-    }
+    TestCommon(thread, numberOfElements,
+               [&](JSThread *thread, int index, JSHandle<JSTaggedValue> &key, JSHandle<JSTaggedValue> &value) {
+                   transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
+               });
+    auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> key7(factory->NewFromStdString("key7")); // test remove element by "key7"
     int foundEntry = transDic->FindEntry(key7.GetTaggedValue(), metaData.GetTaggedValue());
     EXPECT_EQ(foundEntry, 7 + 3);
@@ -241,19 +221,15 @@ HWTEST_F_L0(TransitionsDictionaryTest, PutIfAbsent)
 
 HWTEST_F_L0(TransitionsDictionaryTest, Remove)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
     int numberOfElements = 64;
     int eleNum = 7;
     JSHandle<TransitionsDictionary> transDic = TransitionsDictionary::Create(thread, numberOfElements);
     JSHandle<JSTaggedValue> metaData(thread, JSTaggedValue::Undefined());
-    for (int index = 0; index < eleNum; index++) {
-        std::string keyStr = "key" + std::to_string(index);
-        std::string valueStr = "value" + std::to_string(index);
-        JSHandle<JSTaggedValue> key(factory->NewFromStdString(keyStr));
-        JSHandle<JSTaggedValue> value(factory->NewFromStdString(valueStr));
-        transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
-    }
+    TestCommon(thread, eleNum,
+               [&](JSThread *thread, int index, JSHandle<JSTaggedValue> &key, JSHandle<JSTaggedValue> &value) {
+                   transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
+               });
+    auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> key6(factory->NewFromStdString("key6")); // test remove element by "key6"
     EXPECT_EQ(transDic->EntriesCount(), 7);
     EXPECT_EQ(transDic->GetLength(), 195U); // 195 : 3 + 64 * 3
@@ -265,19 +241,14 @@ HWTEST_F_L0(TransitionsDictionaryTest, Remove)
 
 HWTEST_F_L0(TransitionsDictionaryTest, Rehash)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
     int numberOfElements = 64;
     int eleNum = 7;
     JSHandle<TransitionsDictionary> transDic = TransitionsDictionary::Create(thread, numberOfElements);
     JSHandle<JSTaggedValue> metaData(thread, JSTaggedValue::Undefined());
-    for (int index = 0; index < eleNum; index++) {
-        std::string keyStr = "key" + std::to_string(index);
-        std::string valueStr = "value" + std::to_string(index);
-        JSHandle<JSTaggedValue> key(factory->NewFromStdString(keyStr));
-        JSHandle<JSTaggedValue> value(factory->NewFromStdString(valueStr));
-        transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
-    }
+    TestCommon(thread, eleNum,
+               [&](JSThread *thread, int index, JSHandle<JSTaggedValue> &key, JSHandle<JSTaggedValue> &value) {
+                   transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
+               });
     EXPECT_EQ(transDic->HoleEntriesCount(), 0);
 
     int lastEntry = 7 + 3;
