@@ -172,13 +172,15 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRange_001)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("zh"));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
     double days1 = BuiltinsDateCreate(2020, 10, 1);
     double days2 = BuiltinsDateCreate(2021, 6, 1);
 
-    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(days1)), JSTaggedValue(static_cast<double>(days2))};
-    auto result = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8, AlgorithmType::ALGORITHM_FORMAT_RANGE); // 8: args length
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(days1)),
+                                    JSTaggedValue(static_cast<double>(days2))};
+    auto result =
+        AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8, AlgorithmType::ALGORITHM_FORMAT_RANGE);  // 8: args length
 
     JSHandle<EcmaString> handleStr(thread, result);
     JSHandle<EcmaString> resultStr = factory->NewFromUtf8("2020/11/1周日 24:00:00 – 2021/7/1周四 24:00:00");

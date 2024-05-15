@@ -290,7 +290,7 @@ HWTEST_F_L0(BuiltinsAtomicsTest, Add_3)
     JSHandle<JSTaggedValue> obj;
     auto result = AddCommon(thread, DataViewType::UINT16, obj);
     ASSERT_EQ(result.GetInt(), 0);
-    std::vector<int32_t> vals{0 ,2};
+    std::vector<int32_t> vals{0, 2};
     result = AtomicsAlgorithm(thread, obj, vals, 10, AlgorithmType::ALGORITHM_ADD);
     ASSERT_EQ(result.GetInt(), 2);
 }
@@ -323,7 +323,7 @@ HWTEST_F_L0(BuiltinsAtomicsTest, And_1)
     auto array = CreateArrayList(thread, arrVals, 10);
 
     JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, CreateTypedArray(thread, array, DataViewType::INT32));
-    std::vector<int32_t> vals{0 ,2};
+    std::vector<int32_t> vals{0, 2};
     auto result = AtomicsAlgorithm(thread, obj, vals, 10, AlgorithmType::ALGORITHM_AND);
     ASSERT_EQ(result.GetInt(), 7);
 }
@@ -336,7 +336,7 @@ HWTEST_F_L0(BuiltinsAtomicsTest, And_2)
 
     JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, CreateTypedArray(thread, array,
                                                                                    DataViewType::UINT32));
-    std::vector<int32_t> vals{0 ,2};
+    std::vector<int32_t> vals{0, 2};
     auto result = AtomicsAlgorithm(thread, obj, vals, 10, AlgorithmType::ALGORITHM_AND);
     ASSERT_EQ(result.GetInt(), 7);
 
@@ -592,7 +592,7 @@ HWTEST_F_L0(BuiltinsAtomicsTest, Store_1)
     auto array = CreateArrayList(thread, arrVals, arrVals.size());
 
     JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, BuiltTestUtil::CreateTypedArray(thread, array));
-    std::vector<int32_t> vals{0 ,2};
+    std::vector<int32_t> vals{0, 2};
     auto result = AtomicsAlgorithm(thread, obj, vals, 10, AlgorithmType::ALGORITHM_STORE);
     ASSERT_EQ(result.GetDouble(), 2);
 }
@@ -639,7 +639,7 @@ HWTEST_F_L0(BuiltinsAtomicsTest, Notify)
     JSHandle<JSArrayBuffer> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
     JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, CreateInt32TypedArray(thread, arrBuf));
 
-    std::vector<int32_t> vals{0 ,2};
+    std::vector<int32_t> vals{0, 2};
     auto result = AtomicsAlgorithm(thread, obj, vals, 10, AlgorithmType::ALGORITHM_NOTIFY);
     ASSERT_EQ(result, JSTaggedValue(0));
 }

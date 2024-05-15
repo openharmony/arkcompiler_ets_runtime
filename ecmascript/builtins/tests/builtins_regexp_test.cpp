@@ -592,6 +592,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpParseCache)
     ASSERT_TRUE(regExpParserCache->GetCache(*string1,
                                             RegExpParserCache::CACHE_SIZE, vec).first.IsHole());
     ASSERT_TRUE(regExpParserCache->GetCache(*string2, 0, vec).first.IsHole());
+    ASSERT_TRUE(regExpParserCache->GetCache(*string2, UINT32_MAX, vec).first.IsHole());
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, FlagD)

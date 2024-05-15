@@ -255,9 +255,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetCaseFirst)
     auto result =
         LocaleAlgorithm(thread, jsLocale.GetTaggedValue(), args, 4, AlgorithmType::GET_CASE_FIRST);  // 4 : arg len
 
-    EXPECT_TRUE(result.IsString());
-    JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("undefined", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_TRUE(result.IsUndefined());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetCollation)
@@ -462,7 +460,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, NormalizeKeywordValue)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSLocale> jsInitLocale(thread, result);
-    JSHandle<EcmaString> keyWords = JSLocale::NormalizeKeywordValue(thread, jsInitLocale, "kf");
+    JSTaggedValue keyWords = JSLocale::NormalizeKeywordValue(thread, jsInitLocale, "kf");
     EXPECT_STREQ("false", EcmaStringAccessor(keyWords).ToCString().c_str());
 }
 }  // namespace panda::test

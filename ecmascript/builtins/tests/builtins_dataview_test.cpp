@@ -186,7 +186,7 @@ JSTaggedValue CreateBuiltinsDataView(JSThread *thread, int32_t length, int32_t b
 void SetUint8(JSThread *thread, const JSHandle<JSDataView> &view, int32_t offset, JSTaggedValue value)
 {
     std::vector<JSTaggedValue> vals{JSTaggedValue(offset), value};
-    DataViewAlgorithm(thread, vals, 8, AlgorithmType::SET_UINT8, view.GetTaggedValue());
+    DataViewAlgorithm(thread, vals, 8, AlgorithmType::SET_UINT8, view.GetTaggedValue());  // 8: data max len
 }
 
 // new DataView(new ArrayBuffer(10), 1)

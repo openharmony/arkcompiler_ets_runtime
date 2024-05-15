@@ -91,15 +91,15 @@ EcmaRuntimeCallInfo *CreateTypedArrayCallInfo(JSThread *thread, const JSHandle<T
     return ecmaRuntimeCallInfo;
 }
 
-void CreateArrayList(JSThread *thread, JSHandle<JSTaggedValue>& arrayVal)
+void CreateArrayList(JSThread *thread, JSHandle<JSTaggedValue> &arrayVal)
 {
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> array(factory->NewTaggedArray(0));
-    EcmaRuntimeCallInfo* argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT32);
+    EcmaRuntimeCallInfo *argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT32);
     JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint32ArrayString();
     auto prev = TestHelper::SetupFrame(thread, argv);
-    JSHandle<JSTaggedValue> uint32Array(thread, TypedArrayHelper::TypedArrayConstructor(argv, constructorName,
-                                                                                      DataViewType::UINT32));
+    JSHandle<JSTaggedValue> uint32Array(
+        thread, TypedArrayHelper::TypedArrayConstructor(argv, constructorName, DataViewType::UINT32));
     TestHelper::TearDownFrame(thread, prev);
     arrayVal = uint32Array;
 }
