@@ -129,7 +129,9 @@ void MacroAssemblerX64::MovParameterIntoParamReg(MacroParameter param, x64::Regi
             case BaselineSpecialParameter::PROFILE_TYPE_INFO: {
                 assembler.Movq(x64::Operand(x64::rbp, FUNCTION_OFFSET_FROM_SP), LOCAL_SCOPE_REGISTER);
                 assembler.Movq(
-                    x64::Operand(LOCAL_SCOPE_REGISTER, JSFunction::PROFILE_TYPE_INFO_OFFSET), paramReg);
+                    x64::Operand(LOCAL_SCOPE_REGISTER, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET),
+                    LOCAL_SCOPE_REGISTER);
+                assembler.Movq(x64::Operand(LOCAL_SCOPE_REGISTER, ProfileTypeInfoCell::VALUE_OFFSET), paramReg);
                 break;
             }
             case BaselineSpecialParameter::SP: {

@@ -91,6 +91,9 @@ class ObjectFactory;
     V(JSTaggedValue, LinkedNode, LINKED_NODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, RBTreeNode, RB_TREENODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
+    V(JSTaggedValue, ProfileTypeInfoCell0Class, PROFILE_TYPE_INFO_CELL_0_CLASS_INDEX, ecma_roots_class)               \
+    V(JSTaggedValue, ProfileTypeInfoCell1Class, PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX, ecma_roots_class)               \
+    V(JSTaggedValue, ProfileTypeInfoCellNClass, PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ResolvedRecordIndexBindingClass, RESOLVED_RECORD_INEDX_BINDING_CLASS_INDEX, ecma_roots_class)    \
     V(JSTaggedValue, ResolvedRecordBindingClass, RESOLVED_RECORD_BINDING_CLASS_INDEX, ecma_roots_class)               \
@@ -605,7 +608,8 @@ class ObjectFactory;
     V(JSTaggedValue, SingleCharTable, SINGLE_CHAR_TABLE_INDEX, ecma_roots_special)                \
     V(JSTaggedValue, EmptySLayoutInfo, EMPTY_SLAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)       \
     V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)                    \
-    V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)
+    V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)       \
+    V(JSTaggedValue, EmptyProfileTypeInfoCell, EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, ecma_roots_special)
 
 #define GLOBAL_ENV_CACHES(V)                \
     V(JSTaggedValue, CachedJSCollatorLocales, CACHED_JSCOLLATOR_LOCALES_INDEX, cachedCollatorLocales)
@@ -636,7 +640,7 @@ enum class ConstantIndex : size_t {
     CONSTANT_END = CONSTANT_COUNT,
 
     SHARED_BEGIN = HCLASS_CLASS_INDEX,
-    SHARED_END = EMPTY_MUTANT_ARRAY_OBJECT_INDEX,
+    SHARED_END = EMPTY_PROFILE_TYPE_INFO_CELL_INDEX,
 
     SHARED_HCLASS_BEGIN = HCLASS_CLASS_INDEX,
     SHARED_HCLASS_END = VTABLE_CLASS_INDEX,

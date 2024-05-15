@@ -1108,7 +1108,7 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
         profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX, JSTaggedValue::Hole());
         ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + 1);
     }
-    function->SetProfileTypeInfo(thread, profileTypeInfo.GetTaggedValue());
+    JSFunction::SetProfileTypeInfo(thread, function, JSHandle<JSTaggedValue>::Cast(profileTypeInfo));
     return profileTypeInfo.GetTaggedValue();
 }
 

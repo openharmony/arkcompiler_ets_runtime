@@ -101,7 +101,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetBaselineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
@@ -885,6 +885,12 @@ JSTaggedValue JSFunction::GetRecordName() const
     return JSTaggedValue::Hole();
 }
 
+JSTaggedValue JSFunction::GetProfileTypeInfo() const
+{
+    JSTaggedValue raw = GetRawProfileTypeInfo();
+    return ProfileTypeInfoCell::Cast(raw.GetTaggedObject())->GetValue();
+}
+
 // Those interface below is discarded
 void JSFunction::InitializeJSFunction(JSThread *thread, [[maybe_unused]] const JSHandle<GlobalEnv> &env,
                                       const JSHandle<JSFunction> &func, FunctionKind kind)
@@ -987,6 +993,19 @@ void JSFunction::SetSFunctionExtraInfo(
         newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
     }
+}
+
+void JSFunction::SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
+                                    const JSHandle<JSTaggedValue> &value, BarrierMode mode)
+{
+    JSHandle<ProfileTypeInfoCell> handleRaw(thread, func->GetRawProfileTypeInfo());
+    if (handleRaw->IsEmptyProfileTypeInfoCell(thread)) {
+        JSHandle<ProfileTypeInfoCell> handleProfileTypeInfoCell =
+            thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(value);
+        func->SetRawProfileTypeInfo(thread, handleProfileTypeInfoCell, WRITE_BARRIER);
+        return;
+    }
+    handleRaw->SetValue(thread, value, mode);
 }
 
 JSTaggedValue JSFunction::GetFunctionExtraInfo() const

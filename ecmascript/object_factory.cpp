@@ -4780,6 +4780,16 @@ JSHandle<AOTLiteralInfo> ObjectFactory::NewAOTLiteralInfo(uint32_t length, JSTag
     return aotLiteralInfo;
 }
 
+JSHandle<ProfileTypeInfoCell> ObjectFactory::NewProfileTypeInfoCell(const JSHandle<JSTaggedValue> &value)
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
+    JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
+    profileTypeInfoCell->SetValue(thread_, value.GetTaggedValue());
+    return profileTypeInfoCell;
+}
+
 JSHandle<VTable> ObjectFactory::NewVTable(uint32_t length, JSTaggedValue initVal)
 {
     NewObjectHook();

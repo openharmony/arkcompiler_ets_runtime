@@ -1003,6 +1003,25 @@ std::pair<JSTaggedValue, JSTaggedValue> EcmaInterpreter::GetCurrentEntryPoint(JS
         JSTaggedValue::Undefined()));
 }
 
+void EcmaInterpreter::UpdateProfileTypeInfoCellToFunction(JSThread *thread, JSHandle<JSFunction> &function,
+                                                          JSTaggedValue profileTypeInfo, uint16_t slotId)
+{
+    if (!profileTypeInfo.IsUndefined()) {
+        JSHandle<ProfileTypeInfo> profileTypeArray(thread, profileTypeInfo);
+        JSTaggedValue slotValue = profileTypeArray->Get(slotId);
+        if (slotValue.IsUndefined()) {
+            JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
+            JSHandle<ProfileTypeInfoCell> newProfileTypeInfoCell =
+                thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(handleUndefined);
+            profileTypeArray->Set(thread, slotId, newProfileTypeInfoCell);
+            function->SetRawProfileTypeInfo(thread, newProfileTypeInfoCell);
+        } else {
+            ProfileTypeInfoCell::Cast(slotValue.GetTaggedObject())->UpdateProfileTypeInfoCellType(thread);
+            function->SetRawProfileTypeInfo(thread, slotValue);
+        }
+    }
+}
+
 #ifndef EXCLUDE_C_INTERPRETER
 // NOLINTNEXTLINE(readability-function-size)
 NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp)
@@ -4985,9 +5004,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, currentFunc->GetModule(),
             length, envHandle, currentFunc->GetHomeObject());
-        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
-
-        SET_ACC(JSTaggedValue(jsFunc));
+        JSHandle<JSFunction> jsFunc(thread, res);
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        uint16_t slotId = READ_INST_8_0();
+        UpdateProfileTypeInfoCellToFunction(thread, jsFunc, profileTypeInfo, slotId);
+#endif
+        SET_ACC(jsFunc.GetTaggedValue());
         DISPATCH(DEFINEFUNC_IMM8_ID16_IMM8);
     }
     HANDLE_OPCODE(DEFINEFUNC_IMM16_ID16_IMM8) {
@@ -5002,9 +5025,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, currentFunc->GetModule(),
             length, envHandle, currentFunc->GetHomeObject());
-        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
-
-        SET_ACC(JSTaggedValue(jsFunc));
+        JSHandle<JSFunction> jsFunc(thread, res);
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        uint16_t slotId = READ_INST_16_0();
+        UpdateProfileTypeInfoCellToFunction(thread, jsFunc, profileTypeInfo, slotId);
+#endif
+        SET_ACC(jsFunc.GetTaggedValue());
         DISPATCH(DEFINEFUNC_IMM16_ID16_IMM8);
     }
     HANDLE_OPCODE(DEFINEMETHOD_IMM8_ID16_IMM8) {

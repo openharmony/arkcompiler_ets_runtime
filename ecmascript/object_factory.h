@@ -172,6 +172,7 @@ class ProfileTypeInfo;
 class MachineCode;
 class ClassInfoExtractor;
 class AOTLiteralInfo;
+class ProfileTypeInfoCell;
 class VTable;
 namespace kungfu {
 class TSHClassGenerator;
@@ -688,6 +689,7 @@ public:
 
     // ---------------------------------------Used by AOT------------------------------------------------
     JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<ProfileTypeInfoCell> NewProfileTypeInfoCell(const JSHandle<JSTaggedValue> &value);
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
                                      uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
@@ -822,6 +824,8 @@ public:
     JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
 
     JSHandle<LayoutInfo> PUBLIC_API CreateSLayoutInfo(uint32_t properties);
+
+    JSHandle<ProfileTypeInfoCell> NewSEmptyProfileTypeInfoCell();
 
     JSHandle<TaggedArray> NewSEmptyArray(); // only used for EcmaVM.
 

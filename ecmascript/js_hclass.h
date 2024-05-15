@@ -289,6 +289,10 @@ struct Reference;
         MACHINE_CODE_OBJECT,                                                                                           \
         CLASS_INFO_EXTRACTOR, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
+        PROFILE_TYPE_INFO_CELL_0,  /* PROFILE_TYPE_INFO_CELL_FIRST ////////////////////////////////////////-PADDING */ \
+        PROFILE_TYPE_INFO_CELL_1,  /* /////////////////////////////////////////////////////////////////////-PADDING */ \
+        PROFILE_TYPE_INFO_CELL_N,  /* PROFILE_TYPE_INFO_CELL_LAST /////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
         VTABLE,                       /* //////////////////////////////////////////////////////////////////-PADDING */ \
         AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TYPE_LAST = AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////-PADDING */ \
@@ -321,7 +325,10 @@ struct Reference;
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         STRING_FIRST = LINE_STRING, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
-        STRING_LAST = TREE_STRING  /* /////////////////////////////////////////////////////////////////////-PADDING */
+        STRING_LAST = TREE_STRING,  /* ////////////////////////////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
+        PROFILE_TYPE_INFO_CELL_FIRST = PROFILE_TYPE_INFO_CELL_0,  /* //////////////////////////////////////-PADDING */ \
+        PROFILE_TYPE_INFO_CELL_LAST = PROFILE_TYPE_INFO_CELL_N    /* //////////////////////////////////////-PADDING */
 
 enum class JSType : uint8_t {
     JSTYPE_DECL,
@@ -1611,6 +1618,12 @@ public:
     inline bool IsAOTLiteralInfo() const
     {
         return GetObjectType() == JSType::AOT_LITERAL_INFO;
+    }
+
+    inline bool IsProfileTypeInfoCell() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType >= JSType::PROFILE_TYPE_INFO_CELL_FIRST && jsType <= JSType::PROFILE_TYPE_INFO_CELL_LAST;
     }
 
     inline bool IsVTable() const
