@@ -943,14 +943,9 @@ bool JSValueRef::IsVector()
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIVector();
 }
 
-bool JSValueRef::IsSharedObject()
+bool JSValueRef::IsSendableObject()
 {
     return IsJSShared() && IsObject();
-}
-
-bool JSValueRef::IsSharedFunction()
-{
-    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedFunction();
 }
 
 bool JSValueRef::IsJSShared()
