@@ -26,7 +26,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_list.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
@@ -35,57 +35,11 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
 namespace panda::test {
-class JSAPILinkedListTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPILinkedListTest : public BaseTestWithScope<false> {
 protected:
     JSAPILinkedList *CreateLinkedList()
     {
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSHandle<JSTaggedValue> contianer =
-            JSHandle<JSTaggedValue>(thread, ContainersPrivate::Load(objCallInfo));
-        JSHandle<JSAPILinkedList> linkedList =
-            JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer),
-                                                                              contianer));
-        JSTaggedValue doubleList = TaggedDoubleList::Create(thread);
-        linkedList->SetDoubleList(thread, doubleList);
-        return *linkedList;
+        return EcmaContainerCommon::CreateLinkedList(thread);
     }
 };
 
@@ -111,19 +65,7 @@ HWTEST_F_L0(JSAPILinkedListTest, AddAndHas)
     }
     EXPECT_EQ(toor->Length(), NODE_NUMBERS);
 
-    for (int i = 0; i < NODE_NUMBERS; i++) {
-        std::string ivalue = myValue + std::to_string(i);
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-
-        JSTaggedValue gValue = toor->Get(i);
-        EXPECT_EQ(gValue, value.GetTaggedValue());
-    }
-    JSTaggedValue gValue = toor->Get(10);
-    EXPECT_EQ(gValue, JSTaggedValue::Undefined());
-
-    std::string ivalue = myValue + std::to_string(1);
-    value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-    EXPECT_TRUE(toor->Has(value.GetTaggedValue()));
+    EcmaTestCommon::ListAddHasCommon(thread, toor, value, myValue, NODE_NUMBERS) ;
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, AddFirstAndGetFirst)
@@ -141,95 +83,23 @@ HWTEST_F_L0(JSAPILinkedListTest, AddFirstAndGetFirst)
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, InsertAndGetLast)
-{    // create jsMap
-    constexpr uint32_t NODE_NUMBERS = 9;
-    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-
+{
     JSHandle<JSAPILinkedList> toor(thread, CreateLinkedList());
-    EXPECT_EQ(toor->GetLast(), JSTaggedValue::Undefined());
-    EXPECT_EQ(toor->GetFirst(), JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        value.Update(JSTaggedValue(i + 1));
-        JSAPILinkedList::Add(thread, toor, value);
-    }
-    EXPECT_EQ(toor->GetLast().GetInt(), 9);
-    EXPECT_EQ(toor->GetFirst().GetInt(), 1);
-
-    value.Update(JSTaggedValue(99));
-    int len = toor->Length();
-    toor->Insert(thread, toor, value, len);
-    EXPECT_EQ(toor->GetLast().GetInt(), 99);
-    EXPECT_EQ(toor->Length(), 10);
-
-    value.Update(JSTaggedValue(100));
-    toor->Insert(thread, toor, value, 0);
-    EXPECT_EQ(toor->GetFirst().GetInt(), 100);
-    EXPECT_EQ(toor->Length(), 11);
-
-    toor->Dump();
-
-    value.Update(JSTaggedValue(101));
-    toor->Insert(thread, toor, value, 5);
-    EXPECT_EQ(toor->Length(), 12);
-    toor->Dump();
-    EXPECT_EQ(toor->Get(5).GetInt(), 101);
+    EcmaTestCommon::InsertAndGetLastCommon<JSAPILinkedList>(thread, toor);
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, GetIndexOfAndGetLastIndexOf)
-{    // create jsMap
-    constexpr uint32_t NODE_NUMBERS = 9;
-    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-
+{
     JSHandle<JSAPILinkedList> toor(thread, CreateLinkedList());
-    EXPECT_EQ(toor->GetLast(), JSTaggedValue::Undefined());
-    EXPECT_EQ(toor->GetFirst(), JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        value.Update(JSTaggedValue(i + 1));
-        JSAPILinkedList::Add(thread, toor, value);
-    }
-    EXPECT_EQ(toor->GetLast().GetInt(), 9);
-    EXPECT_EQ(toor->GetFirst().GetInt(), 1);
-
-    value.Update(JSTaggedValue(99));
-    int len = toor->Length();
-    toor->Insert(thread, toor, value, len);
-    EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), 9);
-    EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), 9);
-    EXPECT_EQ(toor->Length(), 10);
-
-    value.Update(JSTaggedValue(100));
-    toor->Insert(thread, toor, value, 0);
-    EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), 0);
-    EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), 0);
-    EXPECT_EQ(toor->Length(), 11);
-
-    value.Update(JSTaggedValue(101));
-    toor->Insert(thread, toor, value, 5);
-    EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), 5);
-    EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), 5);
-    EXPECT_EQ(toor->Length(), 12);
-
-    toor->Dump();
+    EcmaTestCommon::GetIndexOfAndGetLastIndexOfCommon<JSAPILinkedList>(thread, toor);
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, Remove)
 {
-    constexpr uint32_t NODE_NUMBERS = 20;
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-
     JSHandle<JSAPILinkedList> toor(thread, CreateLinkedList());
-    EXPECT_EQ(toor->GetLast(), JSTaggedValue::Undefined());
-    EXPECT_EQ(toor->GetFirst(), JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        value.Update(JSTaggedValue(i));
-        JSAPILinkedList::Add(thread, toor, value);
-    }
-    EXPECT_EQ(toor->Length(), 20);
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        value.Update(JSTaggedValue(i));
-        JSTaggedValue gValue = toor->Get(i);
-        EXPECT_EQ(gValue, value.GetTaggedValue());
-    }
+
+    EcmaTestCommon::ListRemoveCommon<JSAPILinkedList>(thread, toor, value);
 
     EXPECT_EQ(JSAPILinkedList::RemoveFirst(thread, toor), JSTaggedValue(0));
     value.Update(JSTaggedValue(0));
@@ -307,21 +177,9 @@ HWTEST_F_L0(JSAPILinkedListTest, Set)
 {
     constexpr uint32_t NODE_NUMBERS = 20;
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-
     JSHandle<JSAPILinkedList> toor(thread, CreateLinkedList());
-    EXPECT_EQ(toor->GetLast(), JSTaggedValue::Undefined());
-    EXPECT_EQ(toor->GetFirst(), JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        value.Update(JSTaggedValue(i));
-        JSAPILinkedList::Add(thread, toor, value);
-    }
-    EXPECT_EQ(toor->Length(), 20);
 
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        value.Update(JSTaggedValue(i));
-        JSTaggedValue gValue = toor->Get(i);
-        EXPECT_EQ(gValue, value.GetTaggedValue());
-    }
+    EcmaTestCommon::ListRemoveCommon<JSAPILinkedList>(thread, toor, value);
 
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         value.Update(JSTaggedValue(i + 1));

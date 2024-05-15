@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/tests/test_helper.h"
@@ -19,25 +20,7 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class EcmaVMTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-    }
-
-    void TearDown() override
-    {
-    }
+class EcmaVMTest : public BaseTestWithOutScope {
 };
 
 /*
@@ -50,7 +33,11 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
 {
     RuntimeOption options;
     options.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM::SetMultiThreadCheck(true);
     EcmaVM *ecmaVm1 = JSNApi::CreateJSVM(options);
+    EXPECT_TRUE(ecmaVm1->GetMultiThreadCheck());
+    auto jsthread1 = ecmaVm1->GetJSThread();
+    EXPECT_TRUE(jsthread1 != nullptr);
 
     std::thread t1([&]() {
         JSRuntimeOptions options2;
@@ -60,8 +47,11 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
         options2.SetArkProperties(ArkProperties::GC_STATS_PRINT);
         options2.SetMemConfigProperty("jsHeap500");
         // A non-production gc strategy. Prohibit stw-gc 10 times.
+        EcmaVM::SetMultiThreadCheck(false);
         EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);
-
+        auto jsthread2 = ecmaVm2->GetJSThread();
+        EXPECT_FALSE(ecmaVm2->GetMultiThreadCheck());
+        EXPECT_TRUE(jsthread2 != nullptr);
         EXPECT_TRUE(ecmaVm1 != ecmaVm2);
 
         JSRuntimeOptions options1Out = ecmaVm1->GetJSOptions();

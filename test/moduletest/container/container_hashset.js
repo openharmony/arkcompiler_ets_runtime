@@ -59,8 +59,8 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     // test forEach:
     set.forEach((i, d) => {
-    })
-    map.set("test forEach:", true)
+    });
+    map.set("test forEach:", true);
     // test isEmpty: false
     map.set("test isEmpty:", !set.isEmpty());
 
@@ -117,7 +117,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     // test forEach:
     proxy.forEach((i, d) => {
     })
-    map.set("test forEach:", true)
+    map.set("test forEach:", true);
 
     // test isEmpty: false
     map.set("test isEmpty:", !proxy.isEmpty());
@@ -155,15 +155,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test set throw error", flag);
 
     flag = undefined;
-    function elements(value, key, map) {
-        if (!value) {
+    function elementsHashSet(valueHash, keyHash, map) {
+        if (!valueHash) {
             if (!flag) {
                 flag = [];
             }
-            flag.push(key);
+            flag.push(keyHash);
         }
     }
-    map.forEach(elements);
+    map.forEach(elementsHashSet);
     let de = new fastset();
     try {
         de.forEach(123);

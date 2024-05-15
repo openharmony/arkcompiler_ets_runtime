@@ -22,43 +22,19 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class ConcurrentSweepTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(vm, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(vm, scope);
-    }
-
-    EcmaVM *vm {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread;
+class ConcurrentSweepTest : public BaseTestWithScope<false> {
 };
 
 TEST_F(ConcurrentSweepTest, ConcurrentSweep)
 {
     const uint8_t *utf8 = reinterpret_cast<const uint8_t *>("test");
     JSHandle<EcmaString> test1(thread,
-        EcmaStringAccessor::CreateFromUtf8(vm, utf8, 4, true)); // 4 : utf8 encoding length
-    if (vm->IsInitialized()) {
-        vm->CollectGarbage(ecmascript::TriggerGCType::OLD_GC);
+        EcmaStringAccessor::CreateFromUtf8(instance, utf8, 4, true)); // 4 : utf8 encoding length
+    if (instance->IsInitialized()) {
+        instance->CollectGarbage(ecmascript::TriggerGCType::OLD_GC);
     }
     JSHandle<EcmaString> test2(thread,
-        EcmaStringAccessor::CreateFromUtf8(vm, utf8, 4, true)); // 4 : utf8 encoding length
+        EcmaStringAccessor::CreateFromUtf8(instance, utf8, 4, true)); // 4 : utf8 encoding length
     ASSERT_EQ(EcmaStringAccessor(test1).GetLength(), 4U);
     ASSERT_NE(test1.GetTaggedValue().GetTaggedObject(), test2.GetTaggedValue().GetTaggedObject());
 }

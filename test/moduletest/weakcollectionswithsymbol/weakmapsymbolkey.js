@@ -42,7 +42,7 @@ print("wm.has(s2) " + wm.has(s2));
 print("wm.get(s2) " + wm.get(s2));
 print("wm.delete(s2) " + wm.delete(s2));
 
-[
+const symbolFuncsSet = [
     Symbol.asyncIterator,
     Symbol.hasInstance,
     Symbol.isConcatSpreadable,
@@ -56,7 +56,9 @@ print("wm.delete(s2) " + wm.delete(s2));
     Symbol.toPrimitive,
     Symbol.toStringTag,
     Symbol.unscopables
-].forEach(function (ctor, i) {
+];
+
+symbolFuncsSet.forEach(function (ctor, i) {
     wm.set(ctor, i);
 });
 

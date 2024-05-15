@@ -20,25 +20,15 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class GCTest : public testing::Test {
+class GCTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
     void SetUp() override
     {
         JSRuntimeOptions options;
@@ -51,15 +41,6 @@ public:
         heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
         heap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
     }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
 };
 
 HWTEST_F_L0(GCTest, HighSensitiveForceExpand)
@@ -77,14 +58,7 @@ HWTEST_F_L0(GCTest, HighSensitiveForceExpand)
     }
     size_t expandHeapSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
     const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->NotifyHighSensitive(false);
-    {
-        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-        for (int i = 0; i < 100; i++) {
-            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
-                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
-        }
-    }
-    size_t newSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
+    size_t newSize = EcmaTestCommon::GcCommonCase(thread);
     EXPECT_TRUE(originalHeapSize < expandHeapSize);
     EXPECT_TRUE(expandHeapSize > newSize);
 }

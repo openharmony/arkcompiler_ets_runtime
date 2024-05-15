@@ -407,8 +407,8 @@ public:
             if (loopInfo.loopHead == nullptr) {
                 loopInfo.loopHead = loopHead;
                 loopInfo.loopBodys = chunk_->New<BitSet>(chunk_, size);
-                loopInfo.loopIndex = loopNumber;
-                loopInfo.loopHead->loopIndex_ = loopInfo.loopIndex;
+                loopInfo.loopIndex = static_cast<size_t>(loopNumber);
+                loopInfo.loopHead->loopIndex_ = static_cast<int32_t>(loopInfo.loopIndex);
             }
             if (curRegion != loopHead) {
                 loopInfo.loopBodys->SetBit(curRegion->GetId());
@@ -536,7 +536,7 @@ public:
             } else {
                 innerLoop.loopDepth = 1;
             }
-            succ->loopDepth_ = innerLoop.loopDepth;
+            succ->loopDepth_ = static_cast<int32_t>(innerLoop.loopDepth);
             loopInfo = &innerLoop;
         } else if (loopInfo != nullptr) {
             succ->loopIndex_ = static_cast<int32_t>(loopInfo->loopIndex);

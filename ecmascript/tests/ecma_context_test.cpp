@@ -22,31 +22,7 @@
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 namespace panda::test {
-class EcmaContextTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(ecmaVMPtr, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(ecmaVMPtr, scope);
-    }
-
-    EcmaVM *ecmaVMPtr {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class EcmaContextTest : public BaseTestWithScope<false> {
 };
 
 HWTEST_F_L0(EcmaContextTest, Create)

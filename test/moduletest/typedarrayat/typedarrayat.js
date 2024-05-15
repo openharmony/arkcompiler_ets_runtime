@@ -19,17 +19,13 @@
  * @tc.type: FUNC
  * @tc.require: issueI7F8N1
  */
-[
-    Float64Array,
-    Float32Array,
-    Int32Array,
-    Int16Array,
-    Int8Array,
-    Uint32Array,
-    Uint16Array,
-    Uint8Array,
+
+const typedArrayAtConstructors = [
+    Float64Array, Float32Array, Int32Array, Int16Array, Int8Array, Uint32Array, Uint16Array, Uint8Array,
     Uint8ClampedArray
-].forEach(function (ctor, i) {
+];
+
+typedArrayAtConstructors.forEach(function (ctor, i) {
     if (testTypeArrayAt1(ctor)) {
         print(ctor.name + " test success !!!")
     } else {

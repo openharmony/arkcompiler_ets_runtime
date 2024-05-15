@@ -575,7 +575,7 @@ GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)
 GateRef CircuitBuilder::GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool)
 {
     GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
-    GateRef unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env_->Is32Bit());
+    GateRef unshareCpOffset = static_cast<int32_t>(JSThread::GlueData::GetUnSharedConstpoolsOffset(env_->Is32Bit()));
     GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
     return GetUnsharedConstpool(unshareCpAddr, unshareIdx);
 }

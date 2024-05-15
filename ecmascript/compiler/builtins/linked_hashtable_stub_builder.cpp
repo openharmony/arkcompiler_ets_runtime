@@ -382,7 +382,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     BRANCH(Equal(cap, minCapacity), &reuseExistingTable, &createNewTable);
 
     Bind(&reuseExistingTable);
-    size_t length = LinkedHashTableType::GetLengthOfTable(LinkedHashTableType::MIN_CAPACITY);
+    size_t length = static_cast<size_t>(LinkedHashTableType::GetLengthOfTable(LinkedHashTableType::MIN_CAPACITY));
     for (size_t i = LinkedHashTableType::ELEMENTS_START_INDEX; i < length; ++i) {
         SetValueToTaggedArray(VariableType::JS_NOT_POINTER(), glue_, linkedTable, Int32(i), Hole());
     }

@@ -22,7 +22,7 @@
     const time2 = Date.now()
     const time3 = time2 - time1;
 
-    print("string replace regexp flag is g: " + time3);
+    print("string replace regexp flag is g: " + time3.toString());
 }
 
 {
@@ -487,7 +487,7 @@
     }
     const time2 = Date.now()
     const time3 = time2 - time1;
-    print("  This is a test string to test the interface    string rim : " + time3);
+    print("  This is a test string to test the interface    string trim : " + time3);
 }
 
 {

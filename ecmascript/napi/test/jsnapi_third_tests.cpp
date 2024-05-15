@@ -1169,4 +1169,40 @@ HWTEST_F_L0(JSNApiTests, EcmaObjectToInt)
         EXPECT_TRUE(res == 1);
     }
 }
+
+HWTEST_F_L0(JSNApiTests, NapiFastPathGetHasDeleteTest)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    JSTaggedValue a(0);
+    JSHandle<JSTaggedValue> handle(thread_, a);
+    Local<JSValueRef> key = JSNApiHelper::ToLocal<JSValueRef>(handle);
+    const char* utf8Key = "TestKey";
+    Local<JSValueRef> key2 = StringRef::NewFromUtf8(vm_, utf8Key);
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    object->Set(vm_, key, value);
+    object->Set(vm_, key2, value);
+    Local<JSValueRef> value1 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+                                                       reinterpret_cast<uintptr_t>(*key));
+    ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
+    Local<JSValueRef> value2 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+                                                       reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_TRUE(value->IsStrictEquals(vm_, value2));
+    
+    Local<JSValueRef> flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+                                                     reinterpret_cast<uintptr_t>(*key));
+    ASSERT_TRUE(flag->BooleaValue());
+    flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_TRUE(flag->BooleaValue());
+
+    flag = JSNApi::NapiDeleteProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key));
+    ASSERT_TRUE(flag->BooleaValue());
+    flag = JSNApi::NapiDeleteProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_TRUE(flag->BooleaValue());
+
+    flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key));
+    ASSERT_FALSE(flag->BooleaValue());
+    flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_FALSE(flag->BooleaValue());
+}
 } // namespace panda::test

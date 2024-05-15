@@ -268,6 +268,9 @@ TaggedObject *ObjectFactory::NewSharedOldSpaceObject(const JSHandle<JSHClass> &h
 {
     NewSObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, *hclass);
+    if (header == nullptr) {
+        LOG_ECMA(FATAL) << "ObjectFactory::NewSharedOldSpaceObject:header is nullptr";
+    }
     uint32_t inobjPropCount = hclass->GetInlinedProperties();
     if (inobjPropCount > 0) {
         InitializeExtraProperties(hclass, header, inobjPropCount);

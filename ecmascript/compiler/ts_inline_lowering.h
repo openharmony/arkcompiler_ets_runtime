@@ -110,7 +110,7 @@ private:
         MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral *method, InlineTypeInfoAccessor &info);
     void ReplaceCallInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method);
     void ReplaceEntryGate(GateRef callGate, GateRef callerFunc, GateRef inlineFunc, GateRef glue);
-    void ReplaceReturnGate(GateRef callGate);
+    void ReplaceReturnGate(InlineTypeInfoAccessor &info, GateRef callGate, GateRef ctor, GateRef thisObj);
     void ReplaceHirAndDeleteState(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateRef MergeAllReturn(const std::vector<GateRef> &returnVector, GateRef &state, GateRef &depend);
     bool CheckParameter(GateRef gate, InlineTypeInfoAccessor &info, MethodLiteral* method);

@@ -218,6 +218,9 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoBinaryArithme
             }
 
             Bound *bound = GetBound(y);
+            if (bound == nullptr) {
+                LOG_ECMA(FATAL) << "ArrayBoundsCheckElimination::DoBinaryArithmeticOp:bound is nullptr";
+            }
             if (!bound->HasUpper() || !bound->HasLower()) {
                 return new Bound();
             }
@@ -235,6 +238,9 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoBinaryArithme
             }
         } else if (op == TypedBinOp::TYPED_SUB) {
             Bound *bound = GetBound(x);
+            if (bound == nullptr) {
+                LOG_ECMA(FATAL) << "ArrayBoundsCheckElimination::DoBinaryArithmeticOp:bound is nullptr";
+            }
             if (bound->LowerGate() == y) {
                 return new Bound(TypedBinOp::TYPED_GREATEREQ, Circuit::NullGate(), bound->Lower());
             } else {
@@ -320,6 +326,9 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoPhi(GateRef g
         }
 
         Bound *vBound = GetBound(value);
+        if (vBound == nullptr) {
+            LOG_ECMA(FATAL) << "ArrayBoundsCheckElimination::DoPhi:vBound is nullptr";
+        }
         Bound *curBound;
         GateRef curGate;
         int curConstant;

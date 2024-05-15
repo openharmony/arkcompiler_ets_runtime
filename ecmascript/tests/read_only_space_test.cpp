@@ -30,18 +30,8 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class ReadOnlySpaceTest : public testing::Test {
+class ReadOnlySpaceTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
     void SetUp() override
     {
         InitializeLogger();
@@ -57,15 +47,7 @@ public:
         ecmascript::Log::Initialize(runtimeOptions);
     }
 
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    JSThread *thread {nullptr};
     ObjectFactory *factory {nullptr};
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
 };
 
 static sigjmp_buf g_env;

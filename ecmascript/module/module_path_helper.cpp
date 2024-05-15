@@ -957,7 +957,7 @@ CVector<CString> ModulePathHelper::SplitNormalizedRecordName(const CString &reco
     CVector<CString> res(NORMALIZED_OHMURL_ARGS_NUM);
     int index = NORMALIZED_OHMURL_ARGS_NUM - 1;
     CString temp;
-    int endIndex = recordName.size() - 1;
+    int endIndex = static_cast<int>(recordName.size()) - 1;
     for (int i = endIndex; i >= 0; i--) {
         char element = recordName[i];
         if (element == PathHelper::NORMALIZED_OHMURL_TAG) {

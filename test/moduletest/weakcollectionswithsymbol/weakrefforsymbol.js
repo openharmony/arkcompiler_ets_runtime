@@ -33,7 +33,7 @@ try {
 
 print("wr1.deref() == target1 " + (wr1.deref() == target1));
 
-[
+const symbolFuncsRef = [
     Symbol.asyncIterator,
     Symbol.hasInstance,
     Symbol.isConcatSpreadable,
@@ -47,7 +47,9 @@ print("wr1.deref() == target1 " + (wr1.deref() == target1));
     Symbol.toPrimitive,
     Symbol.toStringTag,
     Symbol.unscopables
-].forEach(function (ctor, i) {
+];
+
+symbolFuncsRef.forEach(function (ctor, i) {
     let wr = new WeakRef(ctor);
     print(i + " wr.deref() == ctor " + (wr.deref() == ctor));
 });

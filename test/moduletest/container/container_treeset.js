@@ -177,15 +177,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test set throw error", flag);
 
     flag = undefined;
-    function elements(value, key, map) {
-        if (!value) {
+    function elementsTreeSet(valueTreeSet, keyTreeSet, map) {
+        if (!valueTreeSet) {
             if (!flag) {
                 flag = [];
             }
-            flag.push(key);
+            flag.push(keyTreeSet);
         }
     }
-    map.forEach(elements);
+    map.forEach(elementsTreeSet);
 
     let de = new fastset();
     try {

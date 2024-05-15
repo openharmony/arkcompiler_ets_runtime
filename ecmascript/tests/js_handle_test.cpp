@@ -23,31 +23,7 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSHandleTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JSHandleTest : public BaseTestWithScope<false> {
 };
 
 HWTEST_F_L0(JSHandleTest, NewGlobalHandle)
@@ -70,24 +46,27 @@ HWTEST_F_L0(JSHandleTest, NewGlobalHandle)
         0);
 }
 
-HWTEST_F_L0(JSHandleTest, NewGlobalHandle1)
+static void GlobalHandleCommon(JSThread *thread, uintptr_t* globalString, uint32_t nums)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
-    uintptr_t globalString[600] = {0};
-    {
-        [[maybe_unused]] EcmaHandleScope scope(thread);
-        for (int i = 0; i < 600; i++) {
-            std::string test = "test" + std::to_string(i);
-            auto string1 = factory->NewFromUtf8(test.c_str());
-            globalString[i] = thread->NewGlobalHandle(string1.GetTaggedType());
-        }
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+    for (uint32_t i = 0; i < nums; i++) {
+        std::string test = "test" + std::to_string(i);
+        auto string1 = factory->NewFromUtf8(test.c_str());
+        globalString[i] = thread->NewGlobalHandle(string1.GetTaggedType());
     }
+}
+
+HWTEST_F_L0(JSHandleTest, NewGlobalHandle1)
+{
+    uintptr_t globalString[600] = {0};
+    GlobalHandleCommon(thread, globalString, sizeof(globalString)/sizeof(uintptr_t));
     // trigger GC
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     for (int i = 300; i > 200; i--) {
         thread->DisposeGlobalHandle(globalString[i]);
     }
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // check result
     for (int i = 0; i <= 200; i++) {
         std::string test = "test" + std::to_string(i);
@@ -109,17 +88,8 @@ HWTEST_F_L0(JSHandleTest, NewGlobalHandle1)
 
 HWTEST_F_L0(JSHandleTest, DisposeGlobalHandle)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     uintptr_t globalString[600] = {0};
-    {
-        [[maybe_unused]] EcmaHandleScope scope(thread);
-        for (int i = 0; i < 600; i++) {
-            std::string test = "test" + std::to_string(i);
-            auto string1 = factory->NewFromUtf8(test.c_str());
-            globalString[i] = thread->NewGlobalHandle(string1.GetTaggedType());
-        }
-    }
+    GlobalHandleCommon(thread, globalString, sizeof(globalString)/sizeof(uintptr_t));
     for (int i = 512; i > 200; i--) {
         thread->DisposeGlobalHandle(globalString[i]);
     }
