@@ -304,18 +304,17 @@ HWTEST_F_L0(BuiltinsDataViewTest, getInt16)
     std::vector<JSTaggedValue> vals2{JSTaggedValue(0), JSTaggedValue::True()};
     auto result1 = DataViewAlgorithm(thread, vals2, 8, AlgorithmType::GET_INT16, view.GetTaggedValue());
     ASSERT_EQ(result1.GetRawData(), JSTaggedValue(-2048).GetRawData());
-
 }
 
 // new DataView(new ArrayBuffer(8), 0).SetUint8/GetUint32
 static JSHandle<JSDataView> GetCommonInt32(JSThread *thread)
 {
-    JSTaggedValue tagged = CreateBuiltinsDataView(thread, 8, 0);
+    JSTaggedValue tagged = CreateBuiltinsDataView(thread, 8, 0); // 8: data len
     JSHandle<JSDataView> view(thread, JSDataView::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
-    SetUint8(thread, view, 0, JSTaggedValue(127));
-    SetUint8(thread, view, 1, JSTaggedValue(255));
-    SetUint8(thread, view, 2, JSTaggedValue(255));
-    SetUint8(thread, view, 3, JSTaggedValue(255));
+    SetUint8(thread, view, 0, JSTaggedValue(127)); // 127:value
+    SetUint8(thread, view, 1, JSTaggedValue(255)); // 1: the second value, 255:value
+    SetUint8(thread, view, 2, JSTaggedValue(255)); // 2: the third value, 255:value
+    SetUint8(thread, view, 3, JSTaggedValue(255)); // 3: the forth value, 255:value
     return view;
 }
 

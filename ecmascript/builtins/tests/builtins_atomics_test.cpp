@@ -268,7 +268,7 @@ HWTEST_F_L0(BuiltinsAtomicsTest, Add_1)
 static JSTaggedValue AddCommon(JSThread *thread, DataViewType type, JSHandle<JSTaggedValue>& obj)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(10));
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(10)); // 10： array len
 
     obj = JSHandle<JSTaggedValue>(thread, CreateTypedArray(thread, array, type));
     std::vector<int32_t> vals{0, 2};
@@ -604,7 +604,7 @@ HWTEST_F_L0(BuiltinsAtomicsTest, Store_2)
     auto array = CreateArrayList(thread, arrVals, arrVals.size());
 
     JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, BuiltTestUtil::CreateTypedArray(thread, array));
-    std::vector<int32_t> vals{0 ,2};
+    std::vector<int32_t> vals{0, 2};
     auto result = AtomicsAlgorithm(thread, obj, vals, 10, AlgorithmType::ALGORITHM_STORE);
     ASSERT_EQ(result.GetDouble(), 2);
 
@@ -621,14 +621,14 @@ HWTEST_F_L0(BuiltinsAtomicsTest, Wait)
     JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, CreateInt32TypedArray(thread, arrBuf));
 
     // Not Equal
-    std::vector<int32_t> vals{0 ,2, 2};
-    auto result = AtomicsAlgorithm(thread, obj, vals, 12, AlgorithmType::ALGORITHM_WAIT);
+    std::vector<int32_t> vals{0, 2, 2};
+    auto result = AtomicsAlgorithm(thread, obj, vals, 12, AlgorithmType::ALGORITHM_WAIT); // 12 : arg max len
     ASSERT_EQ(result, thread->GlobalConstants()->GetNotEqualString());
 
     // timeout
     vals[1] = 0;
     vals[2] = 100;
-    result = AtomicsAlgorithm(thread, obj, vals, 12, AlgorithmType::ALGORITHM_WAIT);
+    result = AtomicsAlgorithm(thread, obj, vals, 12, AlgorithmType::ALGORITHM_WAIT); // 12 : arg max len
     ASSERT_EQ(result, thread->GlobalConstants()->GetTimeoutString());
 }
 

@@ -278,7 +278,8 @@ HWTEST_F_L0(BuiltinsCollatorTest, ResolvedOptions)
     JSHandle<JSCollator> jsCollator = JSHandle<JSCollator>(thread, JSCollatorCreateWithLocaleTest(thread, locale));
 
     std::vector<JSTaggedValue> vals{};
-    auto result = CollatorAlgorithm(thread, vals, 4, AlgorithmType::COLLATOR_RESOLVED_OPTIONS, jsCollator.GetTaggedValue());
+    auto result =
+        CollatorAlgorithm(thread, vals, 4, AlgorithmType::COLLATOR_RESOLVED_OPTIONS, jsCollator.GetTaggedValue());
 
     JSHandle<JSTaggedValue> resultObj =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
@@ -287,12 +288,14 @@ HWTEST_F_L0(BuiltinsCollatorTest, ResolvedOptions)
     EXPECT_EQ(JSTaggedValue::SameValue(JSObject::GetProperty(thread, resultObj, localeKey).GetValue(), locale), true);
     JSHandle<JSTaggedValue> usageKey = globalConst->GetHandledUsageString();
     JSHandle<JSTaggedValue> defaultUsageValue(factory->NewFromASCII("sort"));
-    EXPECT_EQ(JSTaggedValue::SameValue(
-        JSObject::GetProperty(thread, resultObj, usageKey).GetValue(), defaultUsageValue), true);
+    EXPECT_EQ(
+        JSTaggedValue::SameValue(JSObject::GetProperty(thread, resultObj, usageKey).GetValue(), defaultUsageValue),
+        true);
     JSHandle<JSTaggedValue> handledCaseFirstKey = globalConst->GetHandledCaseFirstString();
     JSHandle<JSTaggedValue> handledCaseFirstValue(factory->NewFromASCII("upper"));
     EXPECT_EQ(JSTaggedValue::SameValue(JSObject::GetProperty(thread, resultObj, handledCaseFirstKey).GetValue(),
-                                       handledCaseFirstValue), true);
+                                       handledCaseFirstValue),
+              true);
 }
 
 HWTEST_F_L0(BuiltinsCollatorTest, SupportedLocalesOf)

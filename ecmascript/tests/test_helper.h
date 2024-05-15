@@ -39,7 +39,9 @@ using panda::ecmascript::JSTaggedType;
 using panda::ecmascript::JSTaggedValue;
 using panda::ecmascript::JSThread;
 using panda::ecmascript::NUM_MANDATORY_JSFUNC_ARGS;
-using ecmascript::JSRuntimeOptions;
+using panda::ecmascript::JSRuntimeOptions;
+using panda::ecmascript::JSFunction;
+using panda::ecmascript::JSHandle;
 
 #define HWTEST_F_L0(testsuit, testcase) HWTEST_F(testsuit, testcase, testing::ext::TestSize.Level0)
 #define HWTEST_P_L0(testsuit, testcase) HWTEST_P(testsuit, testcase, testing::ext::TestSize.Level0)
@@ -132,6 +134,30 @@ public:
         scope = nullptr;
         instance->SetEnableForceGC(false);
         JSNApi::DestroyJSVM(instance);
+    }
+
+    static EcmaRuntimeCallInfo* CreateEcmaRuntimeCallInfo(JSThread *thread, std::vector<JSTaggedValue>& args,
+        int32_t maxArgLen, JSTaggedValue thisValue = JSTaggedValue::Undefined())
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), maxArgLen);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(thisValue);
+        for (size_t i = 0; i < args.size(); i++) {
+            ecmaRuntimeCallInfo->SetCallArg(i, args[i]);
+        }
+        return ecmaRuntimeCallInfo;
+    }
+
+    static EcmaRuntimeCallInfo* CreateEcmaRuntimeCallInfo(JSThread *thread, JSHandle<JSFunction>& newTarget,
+        std::vector<JSTaggedValue>& args, int32_t maxArgLen, JSTaggedValue thisValue = JSTaggedValue::Undefined())
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), maxArgLen);
+        ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetThis(thisValue);
+        for (size_t i = 0; i < args.size(); i++) {
+            ecmaRuntimeCallInfo->SetCallArg(i, args[i]);
+        }
+        return ecmaRuntimeCallInfo;
     }
 };
 

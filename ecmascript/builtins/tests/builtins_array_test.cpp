@@ -1702,11 +1702,5 @@ HWTEST_F_L0(BuiltinsArrayTest, ToReversed)
 
     std::vector<int> vals{50, 200, 3};
     CheckKeyValueCommon(thread, obj, descRes, keys, vals);
-    // JSObject::GetOwnProperty(thread, obj, key0, descRes);
-    // ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_50));
-    // JSObject::GetOwnProperty(thread, obj, key1, descRes);
-    // ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_200));
-    // JSObject::GetOwnProperty(thread, obj, key2, descRes);
-    // ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_3));
 }
 }  // namespace panda::test

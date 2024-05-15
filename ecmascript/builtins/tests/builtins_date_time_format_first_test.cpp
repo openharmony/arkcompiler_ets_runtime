@@ -99,15 +99,16 @@ static JSTaggedValue AtomicsAlgorithm(JSThread *thread, JSHandle<JSDateTimeForma
     return result;
 }
 
-JSHandle<EcmaString> FormatCommon(JSThread* thread, std::string_view localeStr, double days)
+JSHandle<EcmaString> FormatCommon(JSThread *thread, std::string_view localeStr, double days)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII(localeStr));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
     std::vector<JSTaggedValue> vals{JSTaggedValue::Undefined()};
-    auto result1 = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 6, AlgorithmType::ALGORITHM_FORMAT); // 6: args length
+    auto result1 =
+        AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 6, AlgorithmType::ALGORITHM_FORMAT);  // 6: args length
     JSHandle<JSFunction> jsFunction(thread, result1);
     JSArray *jsArray =
         JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
@@ -155,13 +156,14 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatToParts)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
     std::vector<JSTaggedValue> vals{JSTaggedValue::Undefined()};
-    auto result = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 6, AlgorithmType::ALGORITHM_FORMAT_TO_PARTS); // 6: args length
+    auto result = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 6,
+                                   AlgorithmType::ALGORITHM_FORMAT_TO_PARTS);  // 6: args length
     JSHandle<JSArray> resultHandle(thread, result);
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
-    EXPECT_EQ(elements->GetLength(), 16U); // sixteen formatters
+    EXPECT_EQ(elements->GetLength(), 16U);  // sixteen formatters
 }
 
 // FormatRange(zh)
@@ -189,13 +191,15 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRange_002)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
     double days1 = BuiltinsDateCreate(2020, 12, 1);
     double days2 = BuiltinsDateCreate(2021, 2, 1);
 
-    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(days1)), JSTaggedValue(static_cast<double>(days2))};
-    auto result = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8, AlgorithmType::ALGORITHM_FORMAT_RANGE); // 8: args length
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(days1)),
+                                    JSTaggedValue(static_cast<double>(days2))};
+    auto result =
+        AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8, AlgorithmType::ALGORITHM_FORMAT_RANGE);  // 8: args length
 
     JSHandle<EcmaString> handleStr(thread, result);
     JSHandle<EcmaString> resultStr = factory->NewFromUtf8("Fri, 1/1/2021, 24:00:00 – Mon, 3/1/2021, 24:00:00");
@@ -207,16 +211,18 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRangeToParts)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
     double days1 = BuiltinsDateCreate(2020, 12, 1);
     double days2 = BuiltinsDateCreate(2021, 2, 1);
-    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(days1)), JSTaggedValue(static_cast<double>(days2))};
-    auto result = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8, AlgorithmType::ALGORITHM_FORMAT_RANGE_TO_PARTS); // 8: args length
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(days1)),
+                                    JSTaggedValue(static_cast<double>(days2))};
+    auto result = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8,
+                                   AlgorithmType::ALGORITHM_FORMAT_RANGE_TO_PARTS);  // 8: args length
 
     JSHandle<JSArray> resultHandle(thread, result);
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
-    EXPECT_EQ(elements->GetLength(), 39U); // The number of characters of "Fri1/1/202124:00:00–Mon3/1/202124:00:00"
+    EXPECT_EQ(elements->GetLength(), 39U);  // The number of characters of "Fri1/1/202124:00:00–Mon3/1/202124:00:00"
 }
 }  // namespace panda::test
 
