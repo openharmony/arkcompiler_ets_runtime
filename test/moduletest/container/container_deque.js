@@ -19,6 +19,8 @@
  * @tc.type: FUNC
  * @tc.require: 
  */
+import {testdProxyArray1}  from "./utility";
+
 var Deque = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     Deque = ArkPrivate.Load(ArkPrivate.Deque);
@@ -72,21 +74,9 @@ if (globalThis["ArkPrivate"] != undefined) {
       }
       j++;
     }
-    map.set("test deque for of:", res)
-
-    let itr = proxy[Symbol.iterator]();
-    let tmp = undefined;
-    let testArray1 = []
-    do {
-      tmp = itr.next().value;
-      testArray1.push(tmp);
-    } while (tmp != undefined);
-
-    for (let k = 0; k < proxy.length; k++) {
-      if (testArray1[k] !== testArray[k]) {
-        res = false
-      }
-    }
+    map.set("test deque for of:", res);
+    
+    testdProxyArray1(proxy, res, testArray);
     map.set("test deque Symbol.iterator:", res)
 
     map.set("test deque has:",  proxy.has(7))
@@ -149,3 +139,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test Deque fail: " + flag);
     }
 }
+export let dequeRes = "Test Deque done";

@@ -442,3 +442,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test List fail!!!");
     }
 }
+export let listRes = "Test List done";

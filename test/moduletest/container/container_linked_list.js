@@ -366,3 +366,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test LinkedList fail!!!");
     }
 }
+export let linked_listRes = "Test LinkedList done";

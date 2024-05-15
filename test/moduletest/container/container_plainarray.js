@@ -150,3 +150,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test PlainArray fail: " + res);
     }
 }
+export let plainarrayRes = "Test PlainArray done";

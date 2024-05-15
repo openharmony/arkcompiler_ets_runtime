@@ -178,3 +178,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test HashSet fail: " + flag);
     }
 }
+export let hashsetRes = "Test hashset done";
