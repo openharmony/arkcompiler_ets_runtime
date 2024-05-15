@@ -1536,7 +1536,7 @@ public:
     static bool KeyIsNumber(const char* utf8);
 
     static bool IsJitEscape();
-    static bool IsAotEscape(const EcmaVM *vm);
+    static bool IsAotEscape();
 private:
     static int vmCount_;
     static bool initialize_;

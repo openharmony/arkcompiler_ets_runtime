@@ -993,16 +993,6 @@ public:
         return enablePGOProfiler_;
     }
 
-    void SetEnableAotCrashEscape(bool value)
-    {
-        enableAotCrashEscape_ = value;
-    }
-
-    bool IsEnableAotCrashEscape() const
-    {
-        return enableAotCrashEscape_;
-    }
-
     uint32_t GetPGOHotnessThreshold() const
     {
         return pgoHotnessThreshold_;
@@ -1823,7 +1813,6 @@ private:
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
-    bool enableAotCrashEscape_ {true};
     bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};
