@@ -330,6 +330,7 @@ public:
     RetypeNode(PrimType typ, PrimType fromtyp, TyIdx idx, BaseNode *expr)
         : TypeCvtNode(OP_retype, typ, fromtyp, expr), tyIdx(idx)
     {
+        DEBUG_ASSERT(GetPrimTypeSize(fromtyp) == GetPrimTypeSize(typ), "retype bit widith doesn' match");
     }
 
     virtual ~RetypeNode() = default;

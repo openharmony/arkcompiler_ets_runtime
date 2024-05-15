@@ -913,10 +913,12 @@ void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
 bool AccBuiltinObjTypeInfoAccessor::CheckDuplicatedBuiltinType(ProfileType newType) const
 {
     for (auto &type : types_) {
-        if (type.GetBuiltinsType() == newType.GetBuiltinsType() &&
-            type.GetElementsKindBeforeTransition() == newType.GetElementsKindBeforeTransition() &&
-            type.GetElementsKindAfterTransition() == newType.GetElementsKindAfterTransition()) {
-            // When elementsKind switch on, we should check elementsKind too.
+        if (type.GetBuiltinsType() == newType.GetBuiltinsType()) {
+            if (type.IsBuiltinsArray()) {
+                // When array elementsKind switch on, we should check elementsKind too.
+                return (type.GetElementsKindBeforeTransition() == newType.GetElementsKindBeforeTransition() &&
+                    type.GetElementsKindAfterTransition() == newType.GetElementsKindAfterTransition());
+            }
             return true;
         }
     }
