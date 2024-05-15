@@ -44,7 +44,6 @@
  *   Emit and insert spills.
  */
 namespace maplebe {
-#define JAVALANG (cgFunc->GetMirModule().IsJavaModule())
 #define CLANG (cgFunc->GetMirModule().IsCModule())
 
 /*
@@ -240,7 +239,6 @@ std::vector<Insn *> LiveRange::Rematerialize(AArch64CGFunc *cgFunc, RegOperand &
                 insns.push_back(insn);
                 if (!addrUpper && CGOptions::IsPIC() &&
                     ((symbol->GetStorageClass() == kScGlobal) || (symbol->GetStorageClass() == kScExtern))) {
-                    /* ldr     x0, [x0, #:got_lo12:Ljava_2Flang_2FSystem_3B_7Cout] */
                     OfstOperand &offsetOp = cgFunc->CreateOfstOpnd(*symbol, offset, 0);
                     MemOperand &memOpnd =
                         cgFunc->GetOrCreateMemOpnd(MemOperand::kAddrModeBOi, GetPointerSize() * kBitsPerByte,
@@ -585,21 +583,6 @@ void GraphColorRegAllocator::InitFreeRegPool()
     uint32 fpNum = 0;
     for (regno_t regNO = kRinvalid; regNO < kMaxRegNum; ++regNO) {
         if (!AArch64Abi::IsAvailableReg(static_cast<AArch64reg>(regNO))) {
-            continue;
-        }
-
-        /*
-         * Because of the try-catch scenario in JAVALANG,
-         * we should use specialized spill register to prevent register changes when exceptions occur.
-         */
-        if (JAVALANG && AArch64Abi::IsSpillRegInRA(static_cast<AArch64reg>(regNO), needExtraSpillReg)) {
-            if (AArch64isa::IsGPRegister(static_cast<AArch64reg>(regNO))) {
-                /* Preset int spill registers */
-                (void)intSpillRegSet.insert(regNO - R0);
-            } else {
-                /* Preset float spill registers */
-                (void)fpSpillRegSet.insert(regNO - V0);
-            }
             continue;
         }
 
@@ -3380,18 +3363,6 @@ regno_t GraphColorRegAllocator::PickRegForSpill(uint64 &usedRegMask, RegType reg
     } else {
         base = V0;
         pregInterval = V0 - R30;
-    }
-
-    if (JAVALANG) {
-        /* Use predetermined spill register */
-        MapleSet<uint32> &spillRegSet = isIntReg ? intSpillRegSet : fpSpillRegSet;
-        DEBUG_ASSERT(spillIdx < spillRegSet.size(), "spillIdx large than spillRegSet.size()");
-        auto regNumIt = spillRegSet.begin();
-        for (; spillIdx > 0; --spillIdx) {
-            ++regNumIt;
-        }
-        spillReg = *regNumIt + base;
-        return spillReg;
     }
 
     /* Temporary find a unused reg to spill */

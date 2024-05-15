@@ -1310,9 +1310,6 @@ void AArch64GenProEpilog::Run()
     for (auto *exitBB : cgFunc.GetExitBBsVec()) {
         GenerateEpilog(*exitBB);
     }
-    if (cgFunc.GetFunction().IsJava()) {
-        GenerateEpilogForCleanup(*(cgFunc.GetCleanupBB()));
-    }
 
     // insert ret insn for exitBB
     for (auto *exitBB : cgFunc.GetExitBBsVec()) {

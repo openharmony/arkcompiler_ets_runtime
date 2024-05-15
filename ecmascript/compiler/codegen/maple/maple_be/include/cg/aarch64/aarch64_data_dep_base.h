@@ -51,9 +51,6 @@ public:
     void BuildPredPathMemUseDependencyDFS(BB &curBB, std::vector<bool> &visited, DepNode &depNode) override;
 
     void DumpNodeStyleInDot(std::ofstream &file, DepNode &depNode) override;
-
-protected:
-    void BuildSpecialBLDepsForJava(Insn &insn);
 };
 }  // namespace maplebe
 

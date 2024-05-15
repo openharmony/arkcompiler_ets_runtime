@@ -26,13 +26,9 @@ public:
     AArch64AsmEmitter(CG &cg, const std::string &asmFileName) : AsmEmitter(cg, asmFileName) {}
     ~AArch64AsmEmitter() = default;
 
-    void EmitRefToMethodDesc(FuncEmitInfo &funcEmitInfo, Emitter &emitter) override;
-    void EmitRefToMethodInfo(FuncEmitInfo &funcEmitInfo, Emitter &emitter) override;
-    void EmitMethodDesc(FuncEmitInfo &funcEmitInfo, Emitter &emitter) override;
     void EmitFastLSDA(FuncEmitInfo &funcEmitInfo) override;
     void EmitFullLSDA(FuncEmitInfo &funcEmitInfo) override;
     void EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std::string &name, LabelIdx labIdx) override;
-    void EmitJavaInsnAddr(FuncEmitInfo &funcEmitInfo) override;
     void RecordRegInfo(FuncEmitInfo &funcEmitInfo) const;
     void Run(FuncEmitInfo &funcEmitInfo) override;
 

@@ -25,15 +25,6 @@ namespace maplebe {
  *  register holding polling page address:
  *  ldr  wzr, [RYP]
  */
-static bool IsYieldPoint(const Insn &insn)
-{
-    if (insn.IsLoad() && !insn.IsLoadLabel()) {
-        auto mem = static_cast<MemOperand *>(insn.GetMemOpnd());
-        return (mem != nullptr && mem->GetBaseRegister() != nullptr &&
-                mem->GetBaseRegister()->GetRegisterNumber() == RYP);
-    }
-    return false;
-}
 
 static bool IsLazyLoad(MOperator op)
 {
@@ -208,18 +199,8 @@ void AArch64DataDepBase::BuildDepsDefMem(Insn &insn, MemOperand &memOpnd)
 
     if (isIntra || curRegion->GetRegionNodeSize() == 1 || curRegion->GetRegionRoot() == curCDGNode) {
         BuildDepsForMemDefCommon(insn, *curCDGNode);
-
-        // Memory definition can not across may-throw insns for java
-        if (cgFunc.GetMirModule().IsJavaModule()) {
-            MapleVector<Insn *> &mayThrows = curCDGNode->GetMayThrowInsns();
-            AddDependence4InsnInVectorByType(mayThrows, insn, kDependenceTypeThrow);
-        }
     } else if (curRegion->GetRegionRoot() != curCDGNode) {
         BuildInterBlockMemDefUseDependency(*insn.GetDepNode(), true);
-
-        if (cgFunc.GetMirModule().IsJavaModule()) {
-            BuildInterBlockSpecialDataInfoDependency(*insn.GetDepNode(), false, kDependenceTypeThrow, kMayThrows);
-        }
     }
 
     if (baseRegister->GetRegisterNumber() == RSP) {
@@ -344,13 +325,6 @@ void AArch64DataDepBase::BuildMemOpndDependency(Insn &insn, Operand &opnd, const
         BuildDepsUseMem(insn, *memOpnd);
     } else {
         BuildDepsDefMem(insn, *memOpnd);
-        BuildDepsAmbiInsn(insn);
-    }
-
-    // Build dependency for yield point in java
-    if (cgFunc.GetMirModule().IsJavaModule() && IsYieldPoint(insn)) {
-        BuildDepsMemBar(insn);
-        BuildDepsDefReg(insn, kRFLAG);
     }
 }
 
@@ -396,23 +370,6 @@ void AArch64DataDepBase::BuildOpndDependency(Insn &insn)
     }
 }
 
-// Build dependencies in some special cases for MOP_xbl
-void AArch64DataDepBase::BuildSpecialBLDepsForJava(Insn &insn)
-{
-    DEBUG_ASSERT(insn.GetMachineOpcode() == MOP_xbl, "invalid insn");
-    auto &target = static_cast<FuncNameOperand &>(insn.GetOperand(0));
-    if ((target.GetName() == "MCC_InitializeLocalStackRef") || (target.GetName() == "MCC_ClearLocalStackRef") ||
-        (target.GetName() == "MCC_DecRefResetPair")) {
-        // Write stack memory
-        BuildDepsDirtyStack(insn);
-    } else if ((target.GetName() == "MCC_CleanupLocalStackRef_NaiveRCFast") ||
-               (target.GetName() == "MCC_CleanupLocalStackRefSkip_NaiveRCFast") ||
-               (target.GetName() == "MCC_CleanupLocalStackRefSkip")) {
-        // Use Stack Memory
-        BuildDepsUseStack(insn);
-    }
-}
-
 // Build dependencies for call insns which do not obey standard call procedure
 void AArch64DataDepBase::BuildSpecialCallDeps(Insn &insn)
 {
@@ -438,10 +395,6 @@ void AArch64DataDepBase::BuildSpecialInsnDependency(Insn &insn, const MapleVecto
         BuildCallerSavedDeps(insn);
         BuildDepsDirtyStack(insn);
         BuildDepsDirtyHeap(insn);
-        BuildDepsAmbiInsn(insn);
-        if (mOp == MOP_xbl) {
-            BuildSpecialBLDepsForJava(insn);
-        }
         BuildDepsLastCallInsn(insn);
     } else if (insn.IsClinit() || IsLazyLoad(insn.GetMachineOpcode()) ||
                insn.GetMachineOpcode() == MOP_arrayclass_cache_ldr) {

@@ -79,7 +79,7 @@ MIRSymbol *BinaryMplImport::ImportLocalSymbol(MIRFunction *func)
     if (sym->GetSKind() == kStVar || sym->GetSKind() == kStFunc) {
         ImportSrcPos(sym->GetSrcPosition());
     }
-    sym->SetTyIdx(ImportType());
+    sym->SetTyIdx(ImportJType());
     if (sym->GetSKind() == kStPreg) {
         PregIdx pregidx = ImportPreg(func);
         MIRPreg *preg = func->GetPregTab()->PregFromPregIdx(pregidx);
@@ -138,7 +138,7 @@ void BinaryMplImport::ImportLocalTypeNameTable(MIRTypeNameTable *typeNameTab)
     int64 size = ReadNum();
     for (int64 i = 0; i < size; ++i) {
         GStrIdx strIdx = ImportStr();
-        TyIdx tyIdx = ImportType();
+        TyIdx tyIdx = ImportJType();
         typeNameTab->SetGStrIdxToTyIdx(strIdx, tyIdx);
     }
 }
@@ -162,7 +162,7 @@ void BinaryMplImport::ImportAliasMap(MIRFunction *func)
         MIRAliasVars aliasvars;
         GStrIdx strIdx = ImportStr();
         aliasvars.mplStrIdx = ImportStr();
-        aliasvars.tyIdx = ImportType();
+        aliasvars.tyIdx = ImportJType();
         (void)ImportStr();  // not assigning to mimic parser
         func->GetAliasVarMap()[strIdx] = aliasvars;
     }
@@ -210,7 +210,7 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func)
             return addrNode;
         }
         case OP_sizeoftype: {
-            TyIdx tidx = ImportType();
+            TyIdx tidx = ImportJType();
             SizeoftypeNode *sot = mod.CurFuncCodeMemPool()->New<SizeoftypeNode>(tidx);
             return sot;
         }
@@ -256,7 +256,7 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func)
         case OP_gcmalloc:
         case OP_gcpermalloc:
         case OP_stackmalloc: {
-            TyIdx tyIdx = ImportType();
+            TyIdx tyIdx = ImportJType();
             GCMallocNode *gcNode = mod.CurFuncCodeMemPool()->New<GCMallocNode>(op, typ, tyIdx);
             return gcNode;
         }
@@ -284,14 +284,14 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func)
         }
         case OP_retype: {
             RetypeNode *retypeNode = mod.CurFuncCodeMemPool()->New<RetypeNode>(typ);
-            retypeNode->SetTyIdx(ImportType());
+            retypeNode->SetTyIdx(ImportJType());
             retypeNode->SetOpnd(ImportExpression(func), kFirstOpnd);
             return retypeNode;
         }
         case OP_iread:
         case OP_iaddrof: {
             IreadNode *irNode = mod.CurFuncCodeMemPool()->New<IreadNode>(op, typ);
-            irNode->SetTyIdx(ImportType());
+            irNode->SetTyIdx(ImportJType());
             irNode->SetFieldID(static_cast<FieldID>(ReadNum()));
             irNode->SetOpnd(ImportExpression(func), kFirstOpnd);
             return irNode;
@@ -327,7 +327,7 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func)
         case OP_gcmallocjarray:
         case OP_gcpermallocjarray: {
             JarrayMallocNode *gcNode = mod.CurFuncCodeMemPool()->New<JarrayMallocNode>(op, typ);
-            gcNode->SetTyIdx(ImportType());
+            gcNode->SetTyIdx(ImportJType());
             gcNode->SetOpnd(ImportExpression(func), kFirstOpnd);
             return gcNode;
         }
@@ -387,7 +387,7 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func)
         }
         // nary
         case OP_array: {
-            TyIdx tidx = ImportType();
+            TyIdx tidx = ImportJType();
             bool boundsCheck = static_cast<bool>(Read());
             ArrayNode *arrNode =
                 mod.CurFuncCodeMemPool()->New<ArrayNode>(func->GetCodeMPAllocator(), typ, tidx, boundsCheck);
@@ -413,7 +413,7 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func)
             IntrinsicopNode *intrnNode =
                 mod.CurFuncCodeMemPool()->New<IntrinsicopNode>(func->GetCodeMPAllocator(), OP_intrinsicopwithtype, typ);
             intrnNode->SetIntrinsic((MIRIntrinsicID)ReadNum());
-            intrnNode->SetTyIdx(ImportType());
+            intrnNode->SetTyIdx(ImportJType());
             auto n = static_cast<uint32>(ReadNum());
             for (uint32 i = 0; i < n; ++i) {
                 intrnNode->GetNopnd().push_back(ImportExpression(func));
@@ -523,7 +523,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
             }
             case OP_iassign: {
                 IassignNode *s = func->GetCodeMemPool()->New<IassignNode>();
-                s->SetTyIdx(ImportType());
+                s->SetTyIdx(ImportJType());
                 s->SetFieldID(static_cast<FieldID>(ReadNum()));
                 s->SetAddrExpr(ImportExpression(func));
                 s->SetRHS(ImportExpression(func));
@@ -611,7 +611,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
                 MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(s->GetPUIdx());
                 CHECK_FATAL(f != nullptr, "null ptr");
                 f->GetFuncSymbol()->SetAppearsInCode(true);
-                s->SetTyIdx(ImportType());
+                s->SetTyIdx(ImportJType());
                 numOpr = static_cast<uint8>(ReadNum());
                 s->SetNumOpnds(numOpr);
                 for (int32 i = 0; i < numOpr; ++i) {
@@ -626,7 +626,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
                 MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(s->GetPUIdx());
                 CHECK_FATAL(f != nullptr, "null ptr");
                 f->GetFuncSymbol()->SetAppearsInCode(true);
-                s->SetTyIdx(ImportType());
+                s->SetTyIdx(ImportJType());
                 ImportReturnValues(func, &s->GetReturnVec());
                 numOpr = static_cast<uint8>(ReadNum());
                 s->SetNumOpnds(numOpr);
@@ -639,7 +639,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
             case OP_icallproto:
             case OP_icall: {
                 IcallNode *s = func->GetCodeMemPool()->New<IcallNode>(mod, op);
-                s->SetRetTyIdx(ImportType());
+                s->SetRetTyIdx(ImportJType());
                 numOpr = static_cast<uint8>(ReadNum());
                 s->SetNumOpnds(numOpr);
                 for (int32 i = 0; i < numOpr; ++i) {
@@ -651,7 +651,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
             case OP_icallprotoassigned:
             case OP_icallassigned: {
                 IcallNode *s = func->GetCodeMemPool()->New<IcallNode>(mod, op);
-                s->SetRetTyIdx(ImportType());
+                s->SetRetTyIdx(ImportJType());
                 ImportReturnValues(func, &s->GetReturnVec());
                 numOpr = static_cast<uint8>(ReadNum());
                 s->SetNumOpnds(numOpr);
@@ -695,7 +695,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
             case OP_intrinsiccallwithtype: {
                 IntrinsiccallNode *s = func->GetCodeMemPool()->New<IntrinsiccallNode>(mod, op);
                 s->SetIntrinsic((MIRIntrinsicID)ReadNum());
-                s->SetTyIdx(ImportType());
+                s->SetTyIdx(ImportJType());
                 numOpr = static_cast<uint8>(ReadNum());
                 s->SetNumOpnds(numOpr);
                 for (int32 i = 0; i < numOpr; ++i) {
@@ -707,7 +707,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
             case OP_intrinsiccallwithtypeassigned: {
                 IntrinsiccallNode *s = func->GetCodeMemPool()->New<IntrinsiccallNode>(mod, op);
                 s->SetIntrinsic((MIRIntrinsicID)ReadNum());
-                s->SetTyIdx(ImportType());
+                s->SetTyIdx(ImportJType());
                 ImportReturnValues(func, &s->GetReturnVec());
                 numOpr = static_cast<uint8>(ReadNum());
                 s->SetNumOpnds(numOpr);
@@ -830,7 +830,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
                 CatchNode *s = mod.CurFuncCodeMemPool()->New<CatchNode>(mod);
                 auto numTys = static_cast<uint32>(ReadNum());
                 for (uint32 i = 0; i < numTys; ++i) {
-                    s->PushBack(ImportType());
+                    s->PushBack(ImportJType());
                 }
                 stmt = s;
                 break;

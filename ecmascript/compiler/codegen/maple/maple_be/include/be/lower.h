@@ -149,8 +149,6 @@ public:
 
     std::string GetNewArrayFuncName(const uint32 elemSize, const bool perm) const;
 
-    void LowerJarrayMalloc(const StmtNode &stmt, const JarrayMallocNode &node, BlockNode &block, bool perm = false);
-
     BaseNode *LowerAddrof(AddrofNode &addrof) const
     {
         return &addrof;
@@ -316,10 +314,6 @@ private:
                                             BaseNode *extraInfo = nullptr) const;
     StmtNode *CreateStmtCallWithReturnValue(const IntrinsicopNode &intrinNode, PregIdx retPregIdx, PUIdx bFunc,
                                             BaseNode *extraInfo = nullptr) const;
-    BaseNode *LowerIntrinsicop(const BaseNode &parent, IntrinsicopNode &intrinNode);
-    BaseNode *LowerIntrinJavaMerge(const BaseNode &parent, IntrinsicopNode &intrinNode);
-    BaseNode *LowerIntrinJavaArrayLength(const BaseNode &parent, IntrinsicopNode &intrinNode);
-    BaseNode *LowerIntrinsicopWithType(const BaseNode &parent, IntrinsicopNode &intrinNode);
 
     MIRType *GetArrayNodeType(BaseNode &baseNode);
     IreadNode &GetLenNode(BaseNode &opnd0);
@@ -332,8 +326,6 @@ private:
     StmtNode *GenIcallNode(PUIdx &funcCalled, IcallNode &origCall);
     BlockNode *GenBlockNode(StmtNode &newCall, const CallReturnVector &p2nRets, const Opcode &opcode,
                             const PUIdx &funcCalled, bool handledAtLowerLevel, bool uselvar);
-    BaseNode *GetClassInfoExprFromRuntime(const std::string &classInfo);
-    BaseNode *GetClassInfoExprFromArrayClassCache(const std::string &classInfo);
     BaseNode *GetClassInfoExpr(const std::string &classInfo) const;
     BaseNode *GetBaseNodeFromCurFunc(MIRFunction &curFunc, bool isJarray);
 

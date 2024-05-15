@@ -1467,7 +1467,7 @@ bool MIRParser::ParseStmtCatch(StmtNodePtr &stmt)
     while (lexer.GetTokenKind() != TK_rbrace) {
         TyIdx tyidx(0);
         if (!ParseType(tyidx)) {
-            Error("expect type parsing java catch statement");
+            Error("expect type parsing j catch statement");
             return false;
         }
         catchNode->PushBack(tyidx);
@@ -3021,7 +3021,6 @@ bool MIRParser::ParseExprGCMalloc(BaseNodePtr &expr)
 
 bool MIRParser::ParseExprJarray(BaseNodePtr &expr)
 {
-    // syntax op <prim-type> <java-array-type> <label>
     Opcode op = GetUnaryOp(lexer.GetTokenKind());
     if (op != OP_gcmallocjarray && op != OP_gcpermallocjarray) {
         Error("expect gcmallocjarray or gcpermallocjarray but get ");
@@ -3347,7 +3346,7 @@ bool MIRParser::ParseConstAddrLeafExpr(MIRConstPtr &cexpr)
         var->SetNeedForwDecl();
         mod.SetSomeSymbolNeedForDecl(true);
         TyIdx ptyIdx = var->GetTyIdx();
-        MIRPtrType ptrType(ptyIdx, (mod.IsJavaModule() ? PTY_ref : GetExactPtrPrimType()));
+        MIRPtrType ptrType(ptyIdx, GetExactPtrPrimType());
         ptyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&ptrType);
         MIRType *exprTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ptyIdx);
         uint32 ofst = 0;

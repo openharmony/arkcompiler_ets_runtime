@@ -44,47 +44,11 @@ void DataDepBase::BuildDepsLastCallInsn(Insn &insn)
     }
 }
 
-// Build dependency for may throw insn
-void DataDepBase::BuildMayThrowInsnDependency(DepNode &depNode, Insn &insn, const Insn &locInsn)
-{
-    if (!insn.MayThrow() || !cgFunc.GetMirModule().IsJavaModule()) {
-        return;
-    }
-
-    depNode.SetLocInsn(locInsn);
-    curCDGNode->AddMayThrowInsn(&insn);
-    // Build dependency in local BB
-    if (isIntra || curRegion->GetRegionNodeSize() == 1 || curRegion->GetRegionRoot() == curCDGNode) {
-        // Build dependency between may-throw-insn and ambiguous-insn
-        AddDependence4InsnInVectorByType(curCDGNode->GetAmbiguousInsns(), insn, kDependenceTypeThrow);
-        // Build dependency between may-throw-insn and stack-def-insn
-        AddDependence4InsnInVectorByType(curCDGNode->GetStackDefInsns(), insn, kDependenceTypeThrow);
-        // Build dependency between may-throw-insn and heap-def-insn
-        AddDependence4InsnInVectorByType(curCDGNode->GetHeapDefInsns(), insn, kDependenceTypeThrow);
-    } else if (curRegion->GetRegionRoot() != curCDGNode) {
-        // Build dependency across BB
-        // Build dependency between may-throw-insn and ambiguous-insn
-        BuildInterBlockSpecialDataInfoDependency(*insn.GetDepNode(), false, kDependenceTypeThrow, kAmbiguous);
-        // Build dependency between may-throw-insn and stack-def-insn
-        BuildInterBlockSpecialDataInfoDependency(depNode, false, kDependenceTypeThrow, kStackDefs);
-        // Build dependency between may-throw-insn and heap-def-insn
-        BuildInterBlockSpecialDataInfoDependency(depNode, false, kDependenceTypeThrow, kHeapDefs);
-    }
-    // Build dependency between may-throw-insn and last-frame-def-insn
-    Insn *lastFrameDef = curCDGNode->GetLastFrameDefInsn();
-    if (lastFrameDef != nullptr) {
-        AddDependence(*lastFrameDef->GetDepNode(), *insn.GetDepNode(), kDependenceTypeThrow);
-    } else if (!isIntra && curRegion->GetRegionRoot() != curCDGNode) {
-        BuildInterBlockSpecialDataInfoDependency(*insn.GetDepNode(), false, kDependenceTypeThrow, kLastFrameDef);
-    }
-}
-
 void DataDepBase::BuildAmbiInsnDependency(Insn &insn)
 {
     const auto &defRegnos = insn.GetDepNode()->GetDefRegnos();
     for (const auto &regNO : defRegnos) {
         if (IfInAmbiRegs(regNO)) {
-            BuildDepsAmbiInsn(insn);
             break;
         }
     }
@@ -114,22 +78,6 @@ void DataDepBase::BuildDepsControlAll(Insn &insn, const MapleVector<DepNode *> &
     for (auto *dataNode : nodes) {
         AddDependence(*dataNode, *depNode, kDependenceTypeControl);
     }
-}
-
-// Build data dependence of ambiguous instruction.
-// ambiguous instruction: instructions that can not across may throw instructions
-void DataDepBase::BuildDepsAmbiInsn(Insn &insn)
-{
-    if (!cgFunc.GetMirModule().IsJavaModule()) {
-        return;
-    }
-    if (isIntra || curRegion->GetRegionNodeSize() == 1 || curRegion->GetRegionRoot() == curCDGNode) {
-        MapleVector<Insn *> &mayThrows = curCDGNode->GetMayThrowInsns();
-        AddDependence4InsnInVectorByType(mayThrows, insn, kDependenceTypeThrow);
-    } else if (curRegion->GetRegionRoot() != curCDGNode) {
-        BuildInterBlockSpecialDataInfoDependency(*insn.GetDepNode(), false, kDependenceTypeThrow, kMayThrows);
-    }
-    curCDGNode->AddAmbiguousInsn(&insn);
 }
 
 // Build data dependence of destination register operand
@@ -358,20 +306,6 @@ void DataDepBase::BuildPredPathSpecialDataInfoDependencyDFS(BB &curBB, std::vect
             BuildForStackHeapDefUseInfoData(needCmp, heapDefs, depNode, depType);
             break;
         }
-        case kMayThrows: {
-            CHECK_FATAL(cgFunc.GetMirModule().IsJavaModule(), "do not need build dependency for throw");
-            visited[curBB.GetId()] = true;
-            MapleVector<Insn *> &mayThrows = cdgNode->GetMayThrowInsns();
-            AddDependence4InsnInVectorByType(mayThrows, *depNode.GetInsn(), depType);
-            break;
-        }
-        case kAmbiguous: {
-            CHECK_FATAL(cgFunc.GetMirModule().IsJavaModule(), "do not need build dependency for ambiguous");
-            visited[curBB.GetId()] = true;
-            MapleVector<Insn *> &ambiInsns = cdgNode->GetAmbiguousInsns();
-            AddDependence4InsnInVectorByType(ambiInsns, *depNode.GetInsn(), depType);
-            break;
-        }
         default: {
             visited[curBB.GetId()] = true;
             break;
@@ -477,13 +411,6 @@ void DataDepBase::RemoveSelfDeps(Insn &insn)
 // Check if regNO is in ehInRegs.
 bool DataDepBase::IfInAmbiRegs(regno_t regNO) const
 {
-    if (!curCDGNode->HasAmbiRegs() || !cgFunc.GetMirModule().IsJavaModule()) {
-        return false;
-    }
-    MapleSet<regno_t> &ehInRegs = curCDGNode->GetEhInRegs();
-    if (ehInRegs.find(regNO) != ehInRegs.end()) {
-        return true;
-    }
     return false;
 }
 

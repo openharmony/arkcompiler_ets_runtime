@@ -28,7 +28,6 @@ include_directories = [
 src_libmpl2mpl = [
   "src/class_init.cpp",
   "src/simplify.cpp",
-  "src/java_eh_lower.cpp",
   "src/class_hierarchy.cpp",
   "src/class_hierarchy_phase.cpp",
   "src/constantfold.cpp",

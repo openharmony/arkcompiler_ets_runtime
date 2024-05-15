@@ -81,9 +81,7 @@ public:
     void RemoveSelfDeps(Insn &insn);
     void BuildDepsUseReg(Insn &insn, regno_t regNO);
     void BuildDepsDefReg(Insn &insn, regno_t regNO);
-    void BuildDepsAmbiInsn(Insn &insn);
     void BuildAmbiInsnDependency(Insn &insn);
-    void BuildMayThrowInsnDependency(DepNode &depNode, Insn &insn, const Insn &locInsn);
     void BuildDepsControlAll(Insn &insn, const MapleVector<DepNode *> &nodes);
     void BuildDepsBetweenControlRegAndCall(Insn &insn, bool isDest);
     void BuildDepsLastCallInsn(Insn &insn);

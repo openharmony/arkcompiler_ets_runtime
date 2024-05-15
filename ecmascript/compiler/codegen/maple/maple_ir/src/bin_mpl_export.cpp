@@ -707,7 +707,6 @@ void BinaryMplExport::OutputSymbol(MIRSymbol *sym)
         OutputConst(sym->GetKonst());
     } else if (sym->GetSKind() == kStFunc) {
         OutputFunction(sym->GetFunction()->GetPuidx());
-    } else if (sym->GetSKind() == kStJavaClass || sym->GetSKind() == kStJavaInterface) {
     } else {
         CHECK_FATAL(false, "should not used");
     }
@@ -1243,31 +1242,6 @@ void BinaryMplExport::WriteContentField4nonmplt(int fieldNum, uint64 *fieldStart
     fieldStartP[kFirstField] = buf.size();
     ExpandFourBuffSize();
 
-    WriteNum(kBinSymStart);
-    fieldStartP[kSecondField] = buf.size();
-    ExpandFourBuffSize();
-
-    WriteNum(kBinFunctionBodyStart);
-    fieldStartP[kThirdField] = buf.size();
-    ExpandFourBuffSize();
-
-    Fixup(totalSizeIdx, buf.size() - totalSizeIdx);
-    WriteNum(~kBinContentStart);
-}
-
-void BinaryMplExport::WriteContentField4nonJava(int fieldNum, uint64 *fieldStartP)
-{
-    CHECK_FATAL(fieldStartP != nullptr, "fieldStartP is null.");
-    WriteNum(kBinContentStart);
-    size_t totalSizeIdx = buf.size();
-    ExpandFourBuffSize();  // total size of this field to ~BIN_SYM_START
-
-    WriteInt(fieldNum);  // size of Content item
-
-    WriteNum(kBinHeaderStart);
-    fieldStartP[kFirstField] = buf.size();
-    ExpandFourBuffSize();
-
     WriteNum(kBinStrStart);
     fieldStartP[kSecondField] = buf.size();
     ExpandFourBuffSize();
@@ -1300,17 +1274,10 @@ void BinaryMplExport::Export(const std::string &fname, std::unordered_set<std::s
         importFileName = fname;
     } else {
         WriteInt(kMpltMagicNumber + 0x10);
-        if (mod.IsJavaModule()) {
-            WriteContentField4nonmplt(kFourthFieldInt, fieldStartPoint);
-            WriteHeaderField(fieldStartPoint[kFirstField]);
-            WriteSymField(fieldStartPoint[kSecondField]);
-            WriteFunctionBodyField(fieldStartPoint[kThirdField], dumpFuncSet);
-        } else {
-            WriteContentField4nonJava(kSixthFieldInt, fieldStartPoint);
-            WriteHeaderField(fieldStartPoint[kFirstField]);
-            WriteSymField(fieldStartPoint[kFourthField]);
-            WriteFunctionBodyField(fieldStartPoint[kFifthField], dumpFuncSet);
-        }
+        WriteContentField4nonmplt(kSixthFieldInt, fieldStartPoint);
+        WriteHeaderField(fieldStartPoint[kFirstField]);
+        WriteSymField(fieldStartPoint[kFourthField]);
+        WriteFunctionBodyField(fieldStartPoint[kFifthField], dumpFuncSet);
     }
     WriteNum(kBinFinish);
     DumpBuf(fname);

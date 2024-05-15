@@ -50,7 +50,6 @@ extern PrimType GetUnsignedPrimType(PrimType pty);                   // return u
 extern uint32 GetVecEleSize(PrimType primType);                      // element size of each lane in vector
 extern uint32 GetVecLanes(PrimType primType);                        // lane size if vector
 extern const char *GetPrimTypeName(PrimType primType);
-extern const char *GetPrimTypeJavaName(PrimType primType);
 extern int64 MinValOfSignedInteger(PrimType primType);
 extern PrimType GetVecElemPrimType(PrimType primType);
 constexpr uint32 k0BitSize = 0;
@@ -238,7 +237,7 @@ enum MIRTypeKind : std::uint8_t {
     kTypeFunction,
     kTypeVoid,
     kTypeByName,          // type definition not yet seen
-    kTypeParam,           // to support java generics
+    kTypeParam,           // to support j generics
     kTypeInstantVector,   // represent a vector of instantiation pairs
     kTypeGenericInstant,  // type to be formed by instantiation of a generic type
 };
@@ -1905,7 +1904,6 @@ private:
     void ComputeLayout();
 };
 
-// java array type, must not be nested inside another aggregate
 class MIRJarrayType : public MIRFarrayType {
 public:
     MIRJarrayType()
@@ -1931,11 +1929,10 @@ public:
     }
 
     MIRStructType *GetParentType();
-    const std::string &GetJavaName();
 
     bool IsPrimitiveArray()
     {
-        if (javaNameStrIdx == 0u) {
+        if (jNameStrIdx == 0u) {
             DetermineName();
         }
         return fromPrimitive;
@@ -1943,7 +1940,7 @@ public:
 
     int GetDim()
     {
-        if (javaNameStrIdx == 0u) {
+        if (jNameStrIdx == 0u) {
             DetermineName();
         }
         return dim;
@@ -1958,8 +1955,8 @@ public:
 
 private:
     void DetermineName();        // determine the internal name of this type
-    TyIdx parentTyIdx {0};       // since Jarray is also an object, this is java.lang.Object
-    GStrIdx javaNameStrIdx {0};  // for internal java name of Jarray. nameStrIdx is used for other purpose
+    TyIdx parentTyIdx {0};       // since Jarray is also an object, this is j.lang.Object
+    GStrIdx jNameStrIdx {0};     // for internal j name of Jarray. nameStrIdx is used for other purpose
     bool fromPrimitive = false;  // the lowest dimension is primitive type
     int dim = 0;                 // the dimension if decidable at compile time. otherwise 0
 };
@@ -2098,9 +2095,6 @@ public:
 
     FieldID GetFirstLocalFieldID() const;
     // return class id or superclass id accroding to input string
-    MIRClassType *GetExceptionRootType();
-    const MIRClassType *GetExceptionRootType() const;
-    bool IsExceptionType() const;
     void AddImplementedInterface(TyIdx interfaceTyIdx)
     {
         if (std::find(interfacesImplemented.begin(), interfacesImplemented.end(), interfaceTyIdx) ==

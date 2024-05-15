@@ -33,19 +33,9 @@
 #include "me_safety_warning.h"
 
 namespace maplebe {
-namespace arrayNameForLower {
-const std::set<std::string> kArrayKlassName {
-#include "array_klass_name.def"
-};
-
-const std::set<std::string> kArrayBaseName {
-#include "array_base_name.def"
-};
-}  // namespace arrayNameForLower
 
 using namespace maple;
 
-#define JAVALANG (mirModule.IsJavaModule())
 #define TARGARM32 0
 
 enum ExtFuncT : uint8 { kFmodDouble, kFmodFloat };
@@ -59,17 +49,6 @@ struct ExtFuncDescrT {
 
 namespace {
 std::pair<MIRIntrinsicID, const std::string> cgBuiltins[] = {
-    {INTRN_JAVA_ARRAY_LENGTH, "MCC_DexArrayLength"},
-    {INTRN_JAVA_ARRAY_FILL, "MCC_DexArrayFill"},
-    {INTRN_JAVA_CHECK_CAST, "MCC_DexCheckCast"},
-    {INTRN_JAVA_INSTANCE_OF, "MCC_DexInstanceOf"},
-    {INTRN_JAVA_INTERFACE_CALL, "MCC_DexInterfaceCall"},
-    {INTRN_JAVA_POLYMORPHIC_CALL, "MCC_DexPolymorphicCall"},
-    {INTRN_MCC_DeferredFillNewArray, "MCC_DeferredFillNewArray"},
-    {INTRN_MCC_DeferredInvoke, "MCC_DeferredInvoke"},
-    {INTRN_JAVA_CONST_CLASS, "MCC_GetReferenceToClass"},
-    {INTRN_JAVA_GET_CLASS, "MCC_GetClass"},
-    {INTRN_MPL_SET_CLASS, "MCC_SetJavaClass"},
     {INTRN_MPL_MEMSET_LOCALVAR, "memset_s"},
 };
 
@@ -425,7 +404,7 @@ BaseNode *CGLowerer::LowerFarray(ArrayNode &array)
         const ConstvalNode *constvalNode = static_cast<const ConstvalNode *>(array.GetIndex(0));
         if (constvalNode->GetConstVal()->GetKind() == kConstInt) {
             const MIRIntConst *pIntConst = static_cast<const MIRIntConst *>(constvalNode->GetConstVal());
-            CHECK_FATAL(JAVALANG || !pIntConst->IsNegative(), "Array index should >= 0.");
+            CHECK_FATAL(!pIntConst->IsNegative(), "Array index should >= 0.");
             uint64 eleOffset = static_cast<uint64>(pIntConst->GetExtValue() * eSize);
 
             if (farrayType->GetKind() == kTypeJArray) {
@@ -540,24 +519,6 @@ BaseNode *CGLowerer::LowerArrayDim(ArrayNode &array, int32 dim)
 
 BaseNode *CGLowerer::LowerArrayForLazyBiding(BaseNode &baseNode, BaseNode &offsetNode, const BaseNode &parent)
 {
-    if (parent.GetOpCode() == OP_iread && (baseNode.GetOpCode() == maple::OP_addrof)) {
-        const MIRSymbol *st =
-            mirModule.CurFunction()->GetLocalOrGlobalSymbol(static_cast<AddrofNode &>(baseNode).GetStIdx());
-        if (StringUtils::StartsWith(st->GetName(), namemangler::kDecoupleStaticValueStr) ||
-            ((StringUtils::StartsWith(st->GetName(), namemangler::kMuidFuncUndefTabPrefixStr) ||
-              StringUtils::StartsWith(st->GetName(), namemangler::kMuidFuncDefTabPrefixStr) ||
-              StringUtils::StartsWith(st->GetName(), namemangler::kMuidDataDefTabPrefixStr) ||
-              StringUtils::StartsWith(st->GetName(), namemangler::kMuidDataUndefTabPrefixStr)) &&
-              CGOptions::IsLazyBinding())) {
-            /* for decouple static or lazybinding def/undef tables, replace it with intrinsic */
-            MapleVector<BaseNode *> args(mirBuilder->GetCurrentFuncCodeMpAllocator()->Adapter());
-            args.emplace_back(&baseNode);
-            args.emplace_back(&offsetNode);
-            return mirBuilder->CreateExprIntrinsicop(INTRN_MPL_READ_STATIC_OFFSET_TAB, OP_intrinsicop,
-                                                     *GlobalTables::GetTypeTable().GetPrimType(parent.GetPrimType()),
-                                                     args);
-        }
-    }
     return nullptr;
 }
 
@@ -859,7 +820,6 @@ BaseNode *CGLowerer::LowerIreadBitfield(IreadNode &iread)
     if (pointedTy->GetKind() != kTypeJArray) {
         structTy = static_cast<MIRStructType *>(pointedTy);
     } else {
-        /* it's a Jarray type. using it's parent's field info: java.lang.Object */
         structTy = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
     }
     TyIdx fTyIdx = structTy->GetFieldTyIdx(iread.GetFieldID());
@@ -981,7 +941,6 @@ StmtNode *CGLowerer::LowerIassignBitfield(IassignNode &iassign, BlockNode &newBl
     if (pointedTy->GetKind() != kTypeJArray) {
         structTy = static_cast<MIRStructType *>(pointedTy);
     } else {
-        /* it's a Jarray type. using it's parent's field info: java.lang.Object */
         structTy = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
     }
 
@@ -1395,16 +1354,6 @@ BlockNode *CGLowerer::LowerCallAssignedStmt(StmtNode &stmt, bool uselvar)
             auto intrinsicID = intrincall.GetIntrinsic();
             if (IntrinDesc::intrinTable[intrinsicID].IsAtomic()) {
                 return LowerIntrinsiccallAassignedToAssignStmt(intrincall);
-            }
-            if (intrinsicID == INTRN_JAVA_POLYMORPHIC_CALL) {
-                BaseNode *contextClassArg = GetBaseNodeFromCurFunc(*mirModule.CurFunction(), false);
-                constexpr int kContextIdx = 4; /* stable index in MCC_DexPolymorphicCall, never out of range */
-                intrincall.InsertOpnd(contextClassArg, kContextIdx);
-
-                BaseNode *firstArg = intrincall.GetNopndAt(0);
-                BaseNode *baseVal = mirBuilder->CreateExprBinary(OP_add, *GlobalTables::GetTypeTable().GetPtr(),
-                                                                 firstArg, mirBuilder->CreateIntConst(1, PTY_ref));
-                intrincall.SetNOpndAt(0, baseVal);
             }
             newCall = GenIntrinsiccallNode(stmt, funcCalled, handledAtLowerLevel, intrincall);
             p2nRets = &intrincall.GetReturnVec();
@@ -1916,15 +1865,8 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
                 newBlk->AddStatement(stmt);
                 break;
             case OP_throw:
-                if (mirModule.IsJavaModule()) {
-                    if (GenerateExceptionHandlingCode()) {
-                        LowerStmt(*stmt, *newBlk);
-                        newBlk->AddStatement(stmt);
-                    }
-                } else {
-                    LowerStmt(*stmt, *newBlk);
-                    newBlk->AddStatement(stmt);
-                }
+                LowerStmt(*stmt, *newBlk);
+                newBlk->AddStatement(stmt);
                 break;
             case OP_syncenter:
             case OP_syncexit: {
@@ -2369,17 +2311,6 @@ void CGLowerer::CleanupBranches(MIRFunction &func) const
     CHECK_FATAL(func.GetBody()->GetLast() == prev, "make sure the return value of GetLast equal prev");
 }
 
-/*
- * We want to place catch blocks so that they don't come before any of java trys that refer to them.
- * In order to do that, we take advantage of the fact that the mpl. source we get is already flattened and
- * no java-try-end-try block is enclosed in any other java-try-end-try block. they appear in the mpl file.
- * We process each bb in bbList from the front to the end, and while doing so, we maintain a list of catch blocks
- * we have seen. When we get to an end-try block, we examine each catch block label it has (offsets),
- * and if we find any catch block in the "seen" list, we move the block after the end-try block.
- * Note that we need to find a basic block which does not have 'fallthruBranch' control path.
- * (Appending the catch block to any basic block that has the 'fallthruBranch' control path
- * will alter the program semantics)
- */
 void CGLowerer::LowerTryCatchBlocks(BlockNode &body)
 {
     if (!hasTry) {
@@ -2617,10 +2548,6 @@ LabelIdx CGLowerer::GetLabelIdx(MIRFunction &curFunc) const
 
 void CGLowerer::ProcessArrayExpr(BaseNode &expr, BlockNode &blkNode)
 {
-    bool needProcessArrayExpr = !ShouldOptarray() && mirModule.IsJavaModule();
-    if (!needProcessArrayExpr) {
-        return;
-    }
     /* Array boundary check */
     MIRFunction *curFunc = mirModule.CurFunction();
     auto &arrayNode = static_cast<ArrayNode &>(expr);
@@ -2668,20 +2595,11 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
     if (expr.GetPrimType() == PTY_u1) {
         expr.SetPrimType(PTY_u8);
     }
-    if (expr.GetOpCode() == OP_intrinsicopwithtype) {
-        return LowerIntrinsicopwithtype(parent, static_cast<IntrinsicopNode &>(expr), blkNode);
-    }
 
     if (expr.GetOpCode() == OP_iread && expr.Opnd(0)->GetOpCode() == OP_array) {
-        /* iread ptr <* <$MUIDDataDefTabEntry>> 1 (
-         *     array 0 ptr <* <[5] <$MUIDDataDefTabEntry>>> (addrof ...
-         * ==>
-         * intrinsicop a64 MPL_READ_STATIC_OFFSET_TAB (addrof ..
-         */
         BaseNode *node = LowerExpr(expr, *expr.Opnd(0), blkNode);
         if (node->GetOpCode() == OP_intrinsicop) {
             auto *binNode = static_cast<IntrinsicopNode *>(node);
-            CHECK_FATAL(binNode->GetIntrinsic() == INTRN_MPL_READ_STATIC_OFFSET_TAB, "Something wrong here");
             return binNode;
         } else {
             expr.SetOpnd(node, 0);
@@ -2801,9 +2719,6 @@ void CGLowerer::LowerRegassign(RegassignNode &regNode, BlockNode &newBlk)
     if ((op == OP_gcmalloc) || (op == OP_gcpermalloc)) {
         LowerGCMalloc(regNode, static_cast<GCMallocNode &>(*rhsOpnd), newBlk, op == OP_gcpermalloc);
         return;
-    } else if ((op == OP_gcmallocjarray) || (op == OP_gcpermallocjarray)) {
-        LowerJarrayMalloc(regNode, static_cast<JarrayMallocNode &>(*rhsOpnd), newBlk, op == OP_gcpermallocjarray);
-        return;
     } else {
         regNode.SetOpnd(LowerExpr(regNode, *rhsOpnd, newBlk), 0);
         newBlk.AddStatement(&regNode);
@@ -2897,10 +2812,6 @@ void CGLowerer::LowerDassign(DassignNode &dsNode, BlockNode &newBlk)
     } else if ((op == OP_gcmalloc) || (op == OP_gcpermalloc)) {
         LowerGCMalloc(dsNode, static_cast<GCMallocNode &>(*dsNode.GetRHS()), newBlk, op == OP_gcpermalloc);
         return;
-    } else if ((op == OP_gcmallocjarray) || (op == OP_gcpermallocjarray)) {
-        LowerJarrayMalloc(dsNode, static_cast<JarrayMallocNode &>(*dsNode.GetRHS()), newBlk,
-                          op == OP_gcpermallocjarray);
-        return;
     } else {
         rhs = LowerExpr(dsNode, *dsNode.GetRHS(), newBlk);
         dsNode.SetRHS(rhs);
@@ -2978,21 +2889,6 @@ StmtNode *CGLowerer::LowerIntrinsicopDassign(const DassignNode &dsNode, Intrinsi
     return callStmt;
 }
 
-/*   From maple_ir/include/d ex2mpl/dexintrinsic.def
- *   JAVA_ARRAY_LENGTH
- *   JAVA_ARRAY_FILL
- *   JAVA_FILL_NEW_ARRAY
- *   JAVA_CHECK_CAST
- *   JAVA_CONST_CLASS
- *   JAVA_INSTANCE_OF
- *   JAVA_MERGE
- *   JAVA_RANDOM
- *   #if DEXHACK
- *   JAVA_PRINTLN
- *   #endif
- *   INTRN_<<name>>
- *   intrinsic
- */
 BaseNode *CGLowerer::LowerJavascriptIntrinsicop(IntrinsicopNode &intrinNode, const IntrinDesc &desc)
 {
     MIRSymbol *st = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
@@ -3085,159 +2981,11 @@ StmtNode *CGLowerer::CreateStmtCallWithReturnValue(const IntrinsicopNode &intrin
     return mirBuilder->CreateStmtCallRegassigned(bFunc, args, retpIdx, OP_callassigned);
 }
 
-BaseNode *CGLowerer::LowerIntrinJavaMerge(const BaseNode &parent, IntrinsicopNode &intrinNode)
-{
-    BaseNode *resNode = &intrinNode;
-    CHECK_FATAL(intrinNode.GetNumOpnds() > 0, "invalid JAVA_MERGE intrinsic node");
-    BaseNode *candidate = intrinNode.Opnd(0);
-    DEBUG_ASSERT(candidate != nullptr, "candidate should not be nullptr");
-    resNode = candidate;
-    if (parent.GetOpCode() == OP_regassign) {
-        PrimType sTyp = resNode->GetPrimType();
-        auto &regAssign = static_cast<const RegassignNode &>(parent);
-        PrimType pType = GetCurrentFunc()->GetPregTab()->PregFromPregIdx(regAssign.GetRegIdx())->GetPrimType();
-        if (sTyp != pType) {
-            resNode = MergeToCvtType(pType, sTyp, *resNode);
-        }
-        return resNode;
-    }
-    if (parent.GetOpCode() == OP_dassign) {
-        auto &dassign = static_cast<const DassignNode &>(parent);
-        if (candidate->GetOpCode() == OP_constval) {
-            MIRSymbol *dest = GetCurrentFunc()->GetLocalOrGlobalSymbol(dassign.GetStIdx());
-            MIRType *toType = dest->GetType();
-            PrimType dTyp = toType->GetPrimType();
-            PrimType sTyp = resNode->GetPrimType();
-            if (dTyp != sTyp) {
-                resNode = MergeToCvtType(dTyp, sTyp, *resNode);
-            }
-            return resNode;
-        }
-        CHECK_FATAL((candidate->GetOpCode() == OP_dread) || (candidate->GetOpCode() == OP_regread),
-                    "candidate's opcode should be OP_dread or OP_regread");
-        bool differentLocation =
-            (candidate->GetOpCode() == OP_dread)
-                ? !IsAccessingTheSameMemoryLocation(dassign, static_cast<DreadNode &>(*candidate))
-                : !IsAccessingTheSameMemoryLocation(dassign, static_cast<RegreadNode &>(*candidate), *this);
-        if (differentLocation) {
-            bool simpleMove = false;
-            /* res_node already contains the 0-th operand. */
-            for (size_t i = 1; i < intrinNode.GetNumOpnds(); ++i) {
-                candidate = intrinNode.Opnd(i);
-                DEBUG_ASSERT(candidate != nullptr, "candidate should not be nullptr");
-                bool sameLocation =
-                    (candidate->GetOpCode() == OP_dread)
-                        ? IsAccessingTheSameMemoryLocation(dassign, static_cast<DreadNode &>(*candidate))
-                        : IsAccessingTheSameMemoryLocation(dassign, static_cast<RegreadNode &>(*candidate), *this);
-                if (sameLocation) {
-                    simpleMove = true;
-                    resNode = candidate;
-                    break;
-                }
-            }
-            if (!simpleMove) {
-                /* if source and destination types don't match, insert 'retype' */
-                MIRSymbol *dest = GetCurrentFunc()->GetLocalOrGlobalSymbol(dassign.GetStIdx());
-                MIRType *toType = dest->GetType();
-                PrimType dTyp = toType->GetPrimType();
-                CHECK_FATAL((dTyp != PTY_agg) && (dassign.GetFieldID() <= 0),
-                            "dType should not be PTY_agg and dassign's filedId <= 0");
-                PrimType sType = resNode->GetPrimType();
-                if (dTyp != sType) {
-                    resNode = MergeToCvtType(dTyp, sType, *resNode);
-                }
-            }
-        }
-        return resNode;
-    }
-    CHECK_FATAL(false, "should not run here");
-    return resNode;
-}
-
-BaseNode *CGLowerer::LowerIntrinJavaArrayLength(const BaseNode &parent, IntrinsicopNode &intrinNode)
-{
-    BaseNode *resNode = &intrinNode;
-    PUIdx bFunc = GetBuiltinToUse(intrinNode.GetIntrinsic());
-    CHECK_FATAL(bFunc != kFuncNotFound, "bFunc should not be kFuncNotFound");
-    MIRFunction *biFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(bFunc);
-
-    BaseNode *arrAddr = intrinNode.Opnd(0);
-    DEBUG_ASSERT(arrAddr != nullptr, "arrAddr should not be nullptr");
-    if (((arrAddr->GetPrimType() == PTY_a64) || (arrAddr->GetPrimType() == PTY_ref)) &&
-        ((parent.GetOpCode() == OP_regassign) || (parent.GetOpCode() == OP_dassign) || (parent.GetOpCode() == OP_ge))) {
-        MIRType *addrType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(arrAddr->GetPrimType()));
-        MIRIntConst *arrayHeaderNode = GlobalTables::GetIntConstTable().GetOrCreateIntConst(
-            RTSupport::GetRTSupportInstance().GetArrayLengthOffset(), *addrType);
-        BaseNode *arrayHeaderCstNode = mirModule.CurFuncCodeMemPool()->New<ConstvalNode>(arrayHeaderNode);
-        arrayHeaderCstNode->SetPrimType(arrAddr->GetPrimType());
-
-        BaseNode *refLenAddr = mirBuilder->CreateExprBinary(OP_add, *addrType, arrAddr, arrayHeaderCstNode);
-        MIRType *infoLenType = GlobalTables::GetTypeTable().GetInt32();
-        MIRType *ptrType = beCommon.BeGetOrCreatePointerType(*infoLenType);
-        resNode = mirBuilder->CreateExprIread(*infoLenType, *ptrType, 0, refLenAddr);
-        auto curFunc = mirModule.CurFunction();
-        std::string suffix = std::to_string(curFunc->GetLabelTab()->GetLabelTableSize());
-        GStrIdx labelStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName("__label_nonnull_" + suffix);
-        LabelIdx labIdx = curFunc->GetLabelTab()->AddLabel(labelStrIdx);
-        LabelNode *labelNonNull = mirBuilder->CreateStmtLabel(labIdx);
-
-        BaseNode *cond = mirBuilder->CreateExprCompare(OP_ne, *GlobalTables::GetTypeTable().GetUInt1(),
-                                                       *GlobalTables::GetTypeTable().GetRef(), arrAddr,
-                                                       mirBuilder->CreateIntConst(0, PTY_ref));
-        CondGotoNode *brtureNode = mirBuilder->CreateStmtCondGoto(cond, OP_brtrue, labIdx);
-
-        MIRFunction *newFunc = mirBuilder->GetOrCreateFunction("MCC_ThrowNullArrayNullPointerException",
-                                                               GlobalTables::GetTypeTable().GetVoid()->GetTypeIndex());
-        newFunc->GetFuncSymbol()->SetAppearsInCode(true);
-        beCommon.UpdateTypeTable(*newFunc->GetMIRFuncType());
-        newFunc->AllocSymTab();
-        MapleVector<BaseNode *> args(mirBuilder->GetCurrentFuncCodeMpAllocator()->Adapter());
-        StmtNode *call = mirBuilder->CreateStmtCallAssigned(newFunc->GetPuidx(), args, nullptr, OP_callassigned);
-
-        currentBlock->AddStatement(brtureNode);
-        currentBlock->AppendStatementsFromBlock(*LowerCallAssignedStmt(*call));
-        currentBlock->AddStatement(labelNonNull);
-        return resNode;
-    }
-
-    if (parent.GetOpCode() == OP_regassign) {
-        auto &regAssign = static_cast<const RegassignNode &>(parent);
-        StmtNode *biCall = CreateStmtCallWithReturnValue(intrinNode, regAssign.GetRegIdx(), bFunc);
-        currentBlock->AppendStatementsFromBlock(*LowerCallAssignedStmt(*biCall));
-        PrimType pType = GetCurrentFunc()->GetPregTab()->PregFromPregIdx(regAssign.GetRegIdx())->GetPrimType();
-        resNode = mirBuilder->CreateExprRegread(pType, regAssign.GetRegIdx());
-        return resNode;
-    }
-
-    if (parent.GetOpCode() == OP_dassign) {
-        auto &dassign = static_cast<const DassignNode &>(parent);
-        MIRSymbol *ret = GetCurrentFunc()->GetLocalOrGlobalSymbol(dassign.GetStIdx());
-        StmtNode *biCall = CreateStmtCallWithReturnValue(intrinNode, *ret, bFunc);
-        currentBlock->AppendStatementsFromBlock(*LowerCallAssignedStmt(*biCall));
-        resNode = mirBuilder->CreateExprDread(*biFunc->GetReturnType(), 0, *ret);
-        return resNode;
-    }
-    CHECK_FATAL(false, "should not run here");
-    return resNode;
-}
-
-BaseNode *CGLowerer::LowerIntrinsicop(const BaseNode &parent, IntrinsicopNode &intrinNode)
-{
-    BaseNode *resNode = &intrinNode;
-    if (intrinNode.GetIntrinsic() == INTRN_JAVA_MERGE) {
-        resNode = LowerIntrinJavaMerge(parent, intrinNode);
-    } else if (intrinNode.GetIntrinsic() == INTRN_JAVA_ARRAY_LENGTH) {
-        resNode = LowerIntrinJavaArrayLength(parent, intrinNode);
-    }
-
-    return resNode;
-}
-
 void CGLowerer::ProcessClassInfo(MIRType &classType, bool &classInfoFromRt, std::string &classInfo) const
 {
     MIRPtrType &ptrType = static_cast<MIRPtrType &>(classType);
     MIRType *pType = ptrType.GetPointedType();
-    CHECK_FATAL(pType != nullptr, "Class type not found for INTRN_JAVA_CONST_CLASS");
+    CHECK_FATAL(pType != nullptr, "Class type not found for INTRN_J_CONST_CLASS");
     MIRType *typeScalar = nullptr;
 
     if (pType->GetKind() == kTypeScalar) {
@@ -3246,8 +2994,7 @@ void CGLowerer::ProcessClassInfo(MIRType &classType, bool &classInfoFromRt, std:
         typeScalar = &classType;
     }
     if (typeScalar != nullptr) {
-        std::string eName(GetPrimTypeJavaName(typeScalar->GetPrimType()));
-        classInfo = PRIMITIVECLASSINFO_PREFIX_STR + eName;
+        classInfo = PRIMITIVECLASSINFO_PREFIX_STR;
     }
     if ((pType->GetKind() == kTypeByName) || (pType->GetKind() == kTypeClass) || (pType->GetKind() == kTypeInterface)) {
         MIRStructType *classTypeSecond = static_cast<MIRStructType *>(pType);
@@ -3255,11 +3002,9 @@ void CGLowerer::ProcessClassInfo(MIRType &classType, bool &classInfoFromRt, std:
     } else if ((pType->GetKind() == kTypeArray) || (pType->GetKind() == kTypeJArray)) {
         MIRJarrayType *jarrayType = static_cast<MIRJarrayType *>(pType);
         CHECK_FATAL(jarrayType != nullptr, "jarrayType is null in CGLowerer::LowerIntrinsicopWithType");
-        std::string baseName = jarrayType->GetJavaName();
+        std::string baseName = "";
         if (jarrayType->IsPrimitiveArray() && (jarrayType->GetDim() <= kThreeDimArray)) {
             classInfo = PRIMITIVECLASSINFO_PREFIX_STR + baseName;
-        } else if (arrayNameForLower::kArrayBaseName.find(baseName) != arrayNameForLower::kArrayBaseName.end()) {
-            classInfo = CLASSINFO_PREFIX_STR + baseName;
         } else {
             classInfoFromRt = true;
             classInfo = baseName;
@@ -3282,7 +3027,7 @@ BaseNode *CGLowerer::GetBaseNodeFromCurFunc(MIRFunction &curFunc, bool isFromJar
         if (callerClassInfoSym == nullptr) {
             if (isFromJarray) {
                 MIRType *mType = GlobalTables::GetTypeTable().GetVoidPtr();
-                CHECK_FATAL(mType != nullptr, "type is null in CGLowerer::LowerJarrayMalloc");
+                CHECK_FATAL(mType != nullptr, "type is null");
                 callerClassInfoSym = mirBuilder->CreateGlobalDecl(callerName.c_str(), *mType);
                 callerClassInfoSym->SetStorageClass(kScExtern);
             } else {
@@ -3322,68 +3067,6 @@ BaseNode *CGLowerer::GetBaseNodeFromCurFunc(MIRFunction &curFunc, bool isFromJar
     return baseNode;
 }
 
-BaseNode *CGLowerer::GetClassInfoExprFromRuntime(const std::string &classInfo)
-{
-    /*
-     * generate runtime call to get class information
-     * jclass __mrt_getclass(jobject caller, const char *name)
-     * if the calling function is an instance function, it's the calling obj
-     * if the calling function is a static function, it's the calling class
-     */
-    BaseNode *classInfoExpr = nullptr;
-    PUIdx getClassFunc = GetBuiltinToUse(INTRN_JAVA_GET_CLASS);
-    CHECK_FATAL(getClassFunc != kFuncNotFound, "classfunc is not found");
-    /* return jclass */
-    MIRType *voidPtrType = GlobalTables::GetTypeTable().GetPtr();
-    MIRSymbol *ret0 = CreateNewRetVar(*voidPtrType, kIntrnRetValPrefix);
-
-    BaseNode *arg0 = GetBaseNodeFromCurFunc(*mirModule.CurFunction(), false);
-    BaseNode *arg1 = nullptr;
-    /* classname */
-    std::string klassJavaDescriptor;
-    namemangler::DecodeMapleNameToJavaDescriptor(classInfo, klassJavaDescriptor);
-    UStrIdx classNameStrIdx = GlobalTables::GetUStrTable().GetOrCreateStrIdxFromName(klassJavaDescriptor);
-    arg1 = mirModule.GetMemPool()->New<ConststrNode>(classNameStrIdx);
-    arg1->SetPrimType(PTY_ptr);
-
-    MapleVector<BaseNode *> args(mirBuilder->GetCurrentFuncCodeMpAllocator()->Adapter());
-    args.emplace_back(arg0);
-    args.emplace_back(arg1);
-    StmtNode *getClassCall = mirBuilder->CreateStmtCallAssigned(getClassFunc, args, ret0, OP_callassigned);
-    currentBlock->AppendStatementsFromBlock(*LowerCallAssignedStmt(*getClassCall));
-    classInfoExpr = mirBuilder->CreateExprDread(*voidPtrType, 0, *ret0);
-    return classInfoExpr;
-}
-
-BaseNode *CGLowerer::GetClassInfoExprFromArrayClassCache(const std::string &classInfo)
-{
-    std::string klassJavaDescriptor;
-    namemangler::DecodeMapleNameToJavaDescriptor(classInfo, klassJavaDescriptor);
-    if (arrayClassCacheIndex.find(klassJavaDescriptor) == arrayClassCacheIndex.end()) {
-        return nullptr;
-    }
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetStrIdxFromName(namemangler::kArrayClassCacheTable +
-                                                                   mirModule.GetFileNameAsPostfix());
-    MIRSymbol *arrayClassSt = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(strIdx);
-    if (arrayClassSt == nullptr) {
-        return nullptr;
-    }
-    auto index = arrayClassCacheIndex[klassJavaDescriptor];
-#ifdef USE_32BIT_REF
-    const int32 width = 4;
-#else
-    const int32 width = 8;
-#endif /* USE_32BIT_REF */
-    int64 offset = static_cast<int64>(index) * width;
-    ConstvalNode *offsetExpr = mirBuilder->CreateIntConst(offset, PTY_u32);
-    AddrofNode *baseExpr = mirBuilder->CreateExprAddrof(0, *arrayClassSt, mirModule.GetMemPool());
-    MapleVector<BaseNode *> args(mirBuilder->GetCurrentFuncCodeMpAllocator()->Adapter());
-    args.emplace_back(baseExpr);
-    args.emplace_back(offsetExpr);
-    return mirBuilder->CreateExprIntrinsicop(INTRN_MPL_READ_ARRAYCLASS_CACHE_ENTRY, OP_intrinsicop,
-                                             *GlobalTables::GetTypeTable().GetPrimType(PTY_ref), args);
-}
-
 BaseNode *CGLowerer::GetClassInfoExpr(const std::string &classInfo) const
 {
     BaseNode *classInfoExpr = nullptr;
@@ -3409,57 +3092,6 @@ BaseNode *CGLowerer::GetClassInfoExpr(const std::string &classInfo) const
     return classInfoExpr;
 }
 
-BaseNode *CGLowerer::LowerIntrinsicopWithType(const BaseNode &parent, IntrinsicopNode &intrinNode)
-{
-    BaseNode *resNode = &intrinNode;
-    if ((intrinNode.GetIntrinsic() == INTRN_JAVA_CONST_CLASS) ||
-        (intrinNode.GetIntrinsic() == INTRN_JAVA_INSTANCE_OF)) {
-        PUIdx bFunc = GetBuiltinToUse(intrinNode.GetIntrinsic());
-        CHECK_FATAL(bFunc != kFuncNotFound, "bFunc not founded");
-        MIRFunction *biFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(bFunc);
-        MIRType *classType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(intrinNode.GetTyIdx());
-        std::string classInfo;
-        BaseNode *classInfoExpr = nullptr;
-        bool classInfoFromRt = false; /* whether the classinfo is generated by RT */
-        ProcessClassInfo(*classType, classInfoFromRt, classInfo);
-        if (classInfoFromRt) {
-            classInfoExpr = GetClassInfoExprFromArrayClassCache(classInfo);
-            if (classInfoExpr == nullptr) {
-                classInfoExpr = GetClassInfoExprFromRuntime(classInfo);
-            }
-        } else {
-            classInfoExpr = GetClassInfoExpr(classInfo);
-        }
-
-        if (intrinNode.GetIntrinsic() == INTRN_JAVA_CONST_CLASS) {
-            CHECK_FATAL(classInfoExpr != nullptr, "classInfoExpr should not be nullptr");
-            resNode = classInfoExpr;
-            return resNode;
-        }
-
-        if (parent.GetOpCode() == OP_regassign) {
-            auto &regAssign = static_cast<const RegassignNode &>(parent);
-            StmtNode *biCall = CreateStmtCallWithReturnValue(intrinNode, regAssign.GetRegIdx(), bFunc, classInfoExpr);
-            currentBlock->AppendStatementsFromBlock(*LowerCallAssignedStmt(*biCall));
-            PrimType pTyp = GetCurrentFunc()->GetPregTab()->PregFromPregIdx(regAssign.GetRegIdx())->GetPrimType();
-            resNode = mirBuilder->CreateExprRegread(pTyp, regAssign.GetRegIdx());
-            return resNode;
-        }
-
-        if (parent.GetOpCode() == OP_dassign) {
-            auto &dassign = static_cast<const DassignNode &>(parent);
-            MIRSymbol *ret = GetCurrentFunc()->GetLocalOrGlobalSymbol(dassign.GetStIdx());
-            StmtNode *biCall = CreateStmtCallWithReturnValue(intrinNode, *ret, bFunc, classInfoExpr);
-            currentBlock->AppendStatementsFromBlock(*LowerCallAssignedStmt(*biCall));
-            resNode = mirBuilder->CreateExprDread(*biFunc->GetReturnType(), 0, *ret);
-            return resNode;
-        }
-        CHECK_FATAL(false, "should not run here");
-    }
-    CHECK_FATAL(false, "should not run here");
-    return resNode;
-}
-
 BaseNode *CGLowerer::LowerIntrinsicop(const BaseNode &parent, IntrinsicopNode &intrinNode, BlockNode &newBlk)
 {
     for (size_t i = 0; i < intrinNode.GetNumOpnds(); ++i) {
@@ -3470,9 +3102,6 @@ BaseNode *CGLowerer::LowerIntrinsicop(const BaseNode &parent, IntrinsicopNode &i
     IntrinDesc &intrinDesc = IntrinDesc::intrinTable[intrnID];
     if (intrinDesc.IsJS()) {
         return LowerJavascriptIntrinsicop(intrinNode, intrinDesc);
-    }
-    if (intrinDesc.IsJava()) {
-        return LowerIntrinsicop(parent, intrinNode);
     }
     if (intrinNode.GetIntrinsic() == INTRN_MPL_READ_OVTABLE_ENTRY_LAZY) {
         return &intrinNode;
@@ -3506,9 +3135,6 @@ BaseNode *CGLowerer::LowerIntrinsicopwithtype(const BaseNode &parent, Intrinsico
     MIRIntrinsicID intrnID = intrinNode.GetIntrinsic();
     IntrinDesc *intrinDesc = &IntrinDesc::intrinTable[intrnID];
     CHECK_FATAL(!intrinDesc->IsJS(), "intrinDesc should not be js");
-    if (intrinDesc->IsJava()) {
-        return LowerIntrinsicopWithType(parent, intrinNode);
-    }
     CHECK_FATAL(false, "should not run here");
     return &intrinNode;
 }
@@ -3840,96 +3466,6 @@ std::string CGLowerer::GetNewArrayFuncName(const uint32 elemSize, const bool per
     return perm ? "MCC_NewPermArray64" : "MCC_NewArray64";
 }
 
-void CGLowerer::LowerJarrayMalloc(const StmtNode &stmt, const JarrayMallocNode &node, BlockNode &blkNode, bool perm)
-{
-    /* Extract jarray type */
-    TyIdx tyIdx = node.GetTyIdx();
-    MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-    CHECK_FATAL(type->GetKind() == kTypeJArray, "Type param of gcmallocjarray is not a MIRJarrayType");
-    auto jaryType = static_cast<MIRJarrayType *>(type);
-    CHECK_FATAL(jaryType != nullptr, "Type param of gcmallocjarray is not a MIRJarrayType");
-
-    /* Inspect element type */
-    MIRType *elemType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(jaryType->GetElemTyIdx());
-    PrimType elemPrimType = elemType->GetPrimType();
-    uint32 elemSize = GetPrimTypeSize(elemPrimType);
-    if (elemType->GetKind() != kTypeScalar) { /* element is reference */
-        elemSize = static_cast<uint32>(RTSupport::GetRTSupportInstance().GetFieldSize());
-    }
-
-    std::string klassName = jaryType->GetJavaName();
-    std::string arrayClassInfoName;
-    bool isPredefinedArrayClass = false;
-    BaseNode *arrayCacheNode = nullptr;
-    if (jaryType->IsPrimitiveArray() && (jaryType->GetDim() <= kThreeDimArray)) {
-        arrayClassInfoName = PRIMITIVECLASSINFO_PREFIX_STR + klassName;
-        isPredefinedArrayClass = true;
-    } else if (arrayNameForLower::kArrayKlassName.find(klassName) != arrayNameForLower::kArrayKlassName.end()) {
-        arrayClassInfoName = CLASSINFO_PREFIX_STR + klassName;
-        isPredefinedArrayClass = true;
-    } else {
-        arrayCacheNode = GetClassInfoExprFromArrayClassCache(klassName);
-    }
-
-    std::string funcName;
-    MapleVector<BaseNode *> args(mirModule.GetMPAllocator().Adapter());
-    auto *curFunc = mirModule.CurFunction();
-    if (isPredefinedArrayClass || (arrayCacheNode != nullptr)) {
-        funcName = GetNewArrayFuncName(elemSize, perm);
-        args.emplace_back(node.Opnd(0)); /* n_elems */
-        if (isPredefinedArrayClass) {
-            GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(arrayClassInfoName);
-            MIRSymbol *arrayClassSym = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(
-                GlobalTables::GetStrTable().GetStrIdxFromName(arrayClassInfoName));
-            if (arrayClassSym == nullptr) {
-                arrayClassSym = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
-                arrayClassSym->SetNameStrIdx(strIdx);
-                arrayClassSym->SetStorageClass(kScGlobal);
-                arrayClassSym->SetSKind(kStVar);
-                if (CGOptions::IsPIC()) {
-                    arrayClassSym->SetStorageClass(kScExtern);
-                } else {
-                    arrayClassSym->SetAttr(ATTR_weak);
-                }
-                GlobalTables::GetGsymTable().AddToStringSymbolMap(*arrayClassSym);
-                arrayClassSym->SetTyIdx(static_cast<TyIdx>(PTY_ptr));
-            }
-            args.emplace_back(mirBuilder->CreateExprAddrof(0, *arrayClassSym));
-        } else {
-            args.emplace_back(arrayCacheNode);
-        }
-    } else {
-        funcName = perm ? "MCC_NewPermanentArray" : "MCC_NewObj_flexible_cname";
-        args.emplace_back(mirBuilder->CreateIntConst(elemSize, PTY_u32)); /* elem_size */
-        args.emplace_back(node.Opnd(0));                                  /* n_elems */
-        std::string klassJavaDescriptor;
-        namemangler::DecodeMapleNameToJavaDescriptor(klassName, klassJavaDescriptor);
-        UStrIdx classNameStrIdx = GlobalTables::GetUStrTable().GetOrCreateStrIdxFromName(klassJavaDescriptor);
-        ConststrNode *classNameExpr = mirModule.GetMemPool()->New<ConststrNode>(classNameStrIdx);
-        classNameExpr->SetPrimType(PTY_ptr);
-        args.emplace_back(classNameExpr); /* class_name */
-        args.emplace_back(GetBaseNodeFromCurFunc(*curFunc, true));
-        /* set class flag 0 */
-        args.emplace_back(mirBuilder->CreateIntConst(0, PTY_u32));
-    }
-    MIRFunction *func = mirBuilder->GetOrCreateFunction(funcName, static_cast<TyIdx>(PTY_ref));
-    func->GetFuncSymbol()->SetAppearsInCode(true);
-    beCommon.UpdateTypeTable(*func->GetMIRFuncType());
-    func->AllocSymTab();
-    CallNode *callAssign = nullptr;
-    if (stmt.GetOpCode() == OP_dassign) {
-        auto &dsNode = static_cast<const DassignNode &>(stmt);
-        MIRSymbol *ret = curFunc->GetLocalOrGlobalSymbol(dsNode.GetStIdx());
-
-        callAssign = mirBuilder->CreateStmtCallAssigned(func->GetPuidx(), args, ret, OP_callassigned);
-    } else {
-        auto &regNode = static_cast<const RegassignNode &>(stmt);
-        callAssign =
-            mirBuilder->CreateStmtCallRegassigned(func->GetPuidx(), args, regNode.GetRegIdx(), OP_callassigned);
-    }
-    blkNode.AppendStatementsFromBlock(*LowerCallAssignedStmt(*callAssign));
-}
-
 bool CGLowerer::IsIntrinsicCallHandledAtLowerLevel(MIRIntrinsicID intrinsic) const
 {
     switch (intrinsic) {
@@ -4137,9 +3673,6 @@ void CGLowerer::LowerFunc(MIRFunction &func)
         CleanupBranches(func);
     }
 
-    if (mirModule.IsJavaModule() && func.GetBody()->GetFirst() && GenerateExceptionHandlingCode()) {
-        LowerTryCatchBlocks(*func.GetBody());
-    }
     uint32 oldTypeTableSize = GlobalTables::GetTypeTable().GetTypeTableSize();
     // We do the simplify work here because now all the intrinsic calls and potential expansion work of memcpy or other
     // functions are handled well. So we can concentrate to do the replacement work.

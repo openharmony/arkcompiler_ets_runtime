@@ -61,22 +61,6 @@ void GenCfi::GenerateStartDirective(BB &bb)
     } else {
         bb.AppendInsn(startProcInsn);
     }
-
-#ifndef ONLY_C
-#if !defined(TARGARM32)
-    /*
-     * always generate ".cfi_personality 155, DW.ref.__mpl_personality_v0" for Java methods.
-     * we depend on this to tell whether it is a java method. (maybe we can get a function attribute to determine it)
-     */
-    if (cgFunc.GetFunction().IsJava()) {
-        Insn &personality = cgFunc.GetInsnBuilder()
-                                ->BuildCfiInsn(cfi::OP_CFI_personality_symbol)
-                                .AddOpndChain(cgFunc.CreateCfiImmOperand(EHFunc::kTypeEncoding, k8BitSize))
-                                .AddOpndChain(cgFunc.CreateCfiStrOperand("DW.ref.__mpl_personality_v0"));
-        bb.InsertInsnAfter(startProcInsn, personality);
-    }
-#endif
-#endif
 }
 
 void GenCfi::GenerateEndDirective(BB &bb)

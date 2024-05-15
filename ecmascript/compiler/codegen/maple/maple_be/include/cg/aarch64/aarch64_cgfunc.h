@@ -124,7 +124,6 @@ public:
     void IntrinsifyGetAndAddInt(ListOperand &srcOpnds, PrimType pty);
     void IntrinsifyGetAndSetInt(ListOperand &srcOpnds, PrimType pty);
     void IntrinsifyCompareAndSwapInt(ListOperand &srcOpnds, PrimType pty);
-    void IntrinsifyStringIndexOf(ListOperand &srcOpnds, const MIRSymbol &funcSym);
     void GenSaveMethodInfoCode(BB &bb) override;
     void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) override;
     bool GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool forEA = false);

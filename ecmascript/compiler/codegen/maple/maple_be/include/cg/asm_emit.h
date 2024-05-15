@@ -34,13 +34,9 @@ protected:
 
     virtual ~AsmEmitter() = default;
 
-    virtual void EmitRefToMethodDesc(FuncEmitInfo &funcEmitInfo, Emitter &emitter) = 0;
-    virtual void EmitRefToMethodInfo(FuncEmitInfo &funcEmitInfo, Emitter &emitter) = 0;
-    virtual void EmitMethodDesc(FuncEmitInfo &funcEmitInfo, Emitter &emitter) = 0;
     virtual void EmitFastLSDA(FuncEmitInfo &funcEmitInfo) = 0;
     virtual void EmitFullLSDA(FuncEmitInfo &funcEmitInfo) = 0;
     virtual void EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std::string &name, LabelIdx labIdx) = 0;
-    virtual void EmitJavaInsnAddr(FuncEmitInfo &funcEmitInfo) = 0;
     virtual void Run(FuncEmitInfo &funcEmitInfo) = 0;
 };
 } /* namespace maplebe */

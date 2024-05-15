@@ -26,12 +26,6 @@ namespace maple {
 
 namespace {
 
-constexpr char kClassNameOfMath[] = "Ljava_2Flang_2FMath_3B";
-constexpr char kFuncNamePrefixOfMathSqrt[] = "Ljava_2Flang_2FMath_3B_7Csqrt_7C_28D_29D";
-constexpr char kFuncNamePrefixOfMathAbs[] = "Ljava_2Flang_2FMath_3B_7Cabs_7C";
-constexpr char kFuncNamePrefixOfMathMax[] = "Ljava_2Flang_2FMath_3B_7Cmax_7C";
-constexpr char kFuncNamePrefixOfMathMin[] = "Ljava_2Flang_2FMath_3B_7Cmin_7C";
-constexpr char kFuncNameOfMathAbs[] = "abs";
 constexpr char kFuncNameOfMemset[] = "memset";
 constexpr char kFuncNameOfMemcpy[] = "memcpy";
 constexpr char kFuncNameOfMemsetS[] = "memset_s";
@@ -107,23 +101,22 @@ static void MayPrintLog(bool debug, bool success, MemOpKind memOpKind, const cha
 
 bool Simplify::IsMathSqrt(const std::string funcName)
 {
-    return (mirMod.IsJavaModule() && (strcmp(funcName.c_str(), kFuncNamePrefixOfMathSqrt) == 0));
+    return false;
 }
 
 bool Simplify::IsMathAbs(const std::string funcName)
 {
-    return (mirMod.IsCModule() && (strcmp(funcName.c_str(), kFuncNameOfMathAbs) == 0)) ||
-           (mirMod.IsJavaModule() && (strcmp(funcName.c_str(), kFuncNamePrefixOfMathAbs) == 0));
+    return false;
 }
 
 bool Simplify::IsMathMax(const std::string funcName)
 {
-    return (mirMod.IsJavaModule() && (strcmp(funcName.c_str(), kFuncNamePrefixOfMathMax) == 0));
+    return false;
 }
 
 bool Simplify::IsMathMin(const std::string funcName)
 {
-    return (mirMod.IsJavaModule() && (strcmp(funcName.c_str(), kFuncNamePrefixOfMathMin) == 0));
+    return false;
 }
 
 bool Simplify::SimplifyMathMethod(const StmtNode &stmt, BlockNode &block)
@@ -138,10 +131,7 @@ bool Simplify::SimplifyMathMethod(const StmtNode &stmt, BlockNode &block)
     if (funcName.empty()) {
         return false;
     }
-    if (!mirMod.IsCModule() && !mirMod.IsJavaModule()) {
-        return false;
-    }
-    if (mirMod.IsJavaModule() && funcName.find(kClassNameOfMath) == std::string::npos) {
+    if (!mirMod.IsCModule()) {
         return false;
     }
     if (cnode.GetNumOpnds() == 0 || cnode.GetReturnVec().empty()) {

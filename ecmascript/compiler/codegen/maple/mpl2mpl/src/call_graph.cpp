@@ -415,11 +415,7 @@ CGNode *CallGraph::GetOrGenCGNode(PUIdx puIdx, bool isVcall, bool isIcall)
         MIRFunction *mirFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
         Klass *klass = nullptr;
         CHECK_NULL_FATAL(mirFunc);
-        if (StringUtils::StartsWith(mirFunc->GetBaseClassName(), JARRAY_PREFIX_STR)) {  // Array
-            klass = klassh->GetKlassFromName(namemangler::kJavaLangObjectStr);
-        } else {
-            klass = klassh->GetKlassFromStrIdx(mirFunc->GetBaseClassNameStrIdx());
-        }
+        klass = klassh->GetKlassFromStrIdx(mirFunc->GetBaseClassNameStrIdx());
         if (klass == nullptr) {  // Incomplete
             node->SetVcallCandidatesValid();
             return node;
@@ -458,22 +454,14 @@ CGNode *CallGraph::GetOrGenCGNode(PUIdx puIdx, bool isVcall, bool isIcall)
     }
     if (isIcall && !node->IsIcallCandidatesValid()) {
         Klass *CallerKlass = nullptr;
-        if (StringUtils::StartsWith(CurFunction()->GetBaseClassName(), JARRAY_PREFIX_STR)) {  // Array
-            CallerKlass = klassh->GetKlassFromName(namemangler::kJavaLangObjectStr);
-        } else {
-            CallerKlass = klassh->GetKlassFromStrIdx(CurFunction()->GetBaseClassNameStrIdx());
-        }
+        CallerKlass = klassh->GetKlassFromStrIdx(CurFunction()->GetBaseClassNameStrIdx());
         if (CallerKlass == nullptr) {  // Incomplete
             CHECK_FATAL(false, "class is incomplete, impossible.");
             return node;
         }
         MIRFunction *mirFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
         Klass *klass = nullptr;
-        if (StringUtils::StartsWith(mirFunc->GetBaseClassName(), JARRAY_PREFIX_STR)) {  // Array
-            klass = klassh->GetKlassFromName(namemangler::kJavaLangObjectStr);
-        } else {
-            klass = klassh->GetKlassFromStrIdx(mirFunc->GetBaseClassNameStrIdx());
-        }
+        klass = klassh->GetKlassFromStrIdx(mirFunc->GetBaseClassNameStrIdx());
         if (klass == nullptr) {  // Incomplete
             node->SetIcallCandidatesValid();
             return node;
@@ -1002,7 +990,7 @@ void IPODevirtulize::SearchDefInClinit(const Klass &klass)
     std::string typeName = klass.GetKlassName();
     typeName.append(namemangler::kClinitSuffix);
     GStrIdx clinitFuncGstrIdx =
-        GlobalTables::GetStrTable().GetStrIdxFromName(namemangler::GetInternalNameLiteral(typeName));
+        GlobalTables::GetStrTable().GetStrIdxFromName(typeName);
     if (clinitFuncGstrIdx == 0u) {
         return;
     }
@@ -1086,13 +1074,6 @@ void IPODevirtulize::SearchDefInClinit(const Klass &klass)
                     DreadNode *dreadNode = static_cast<DreadNode *>(node);
                     MIRSymbol *tmpSymbol = func->GetLocalOrGlobalSymbol(dreadNode->GetStIdx());
                     ResetInferredType(gcmallocSymbols, tmpSymbol);
-                }
-                break;
-            }
-            case OP_intrinsiccallwithtype: {
-                IntrinsiccallNode *callNode = static_cast<IntrinsiccallNode *>(stmt);
-                if (callNode->GetIntrinsic() != INTRN_JAVA_CLINIT_CHECK) {
-                    ResetInferredType(gcmallocSymbols);
                 }
                 break;
             }
@@ -1184,13 +1165,6 @@ void IPODevirtulize::SearchDefInMemberMethods(const Klass &klass)
                         DreadNode *dreadNode = static_cast<DreadNode *>(node);
                         MIRSymbol *tmpSymbol = func->GetLocalOrGlobalSymbol(dreadNode->GetStIdx());
                         ResetInferredType(gcmallocSymbols, tmpSymbol);
-                    }
-                    break;
-                }
-                case OP_intrinsiccallwithtype: {
-                    IntrinsiccallNode *callNode = static_cast<IntrinsiccallNode *>(stmt);
-                    if (callNode->GetIntrinsic() != INTRN_JAVA_CLINIT_CHECK) {
-                        ResetInferredType(gcmallocSymbols);
                     }
                     break;
                 }

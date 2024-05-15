@@ -310,11 +310,6 @@ public:
     void EmitHugeSoRoutines(bool lastRoutine = false);
     void EmitInlineAsmSection();
 
-    uint64 GetJavaInsnCount() const
-    {
-        return javaInsnCount;
-    }
-
     uint64 GetFuncInsnCount() const
     {
         return funcInsnCount;
@@ -340,24 +335,9 @@ public:
         funcInsnCount = 0;
     }
 
-    void IncreaseJavaInsnCount(uint64 n = 1, bool alignToQuad = false)
-    {
-        if (alignToQuad) {
-            javaInsnCount = (javaInsnCount + 1) & (~0x1UL);
-            funcInsnCount = (funcInsnCount + 1) & (~0x1UL);
-        }
-        javaInsnCount += n;
-        funcInsnCount += n;
-#ifdef EMIT_INSN_COUNT
-        Emit(" /* InsnCount: ");
-        Emit(javaInsnCount *);
-        Emit("*/ ");
-#endif
-    }
-
     bool NeedToDealWithHugeSo() const
     {
-        return javaInsnCount > kHugeSoInsnCountThreshold;
+        return soInsnCount > kHugeSoInsnCountThreshold;
     }
 
     std::string HugeSoPostFix() const
@@ -418,7 +398,7 @@ private:
     MapleVector<UStrIdx> localStrPtr;
 #if 1 /* REQUIRE TO SEPERATE TARGAARCH64 TARGARM32 */
       /* Following code is under TARGAARCH64 condition */
-    uint64 javaInsnCount = 0;
+    uint64 soInsnCount = 0;
     uint64 funcInsnCount = 0;
     MapleSet<std::string> hugeSoTargets;
     uint32 hugeSoSeqence = 2;

@@ -38,17 +38,6 @@ BECommon::BECommon(MIRModule &mod)
     for (uint32 i = 1; i < GlobalTables::GetTypeTable().GetTypeTable().size(); ++i) {
         MIRType *ty = GlobalTables::GetTypeTable().GetTypeTable()[i];
         ComputeTypeSizesAligns(*ty);
-        LowerTypeAttribute(*ty);
-    }
-
-    if (mirModule.IsJavaModule()) {
-        for (uint32 i = 0; i < GlobalTables::GetGsymTable().GetSymbolTableSize(); ++i) {
-            MIRSymbol *sym = GlobalTables::GetGsymTable().GetSymbol(i);
-            if (sym == nullptr) {
-                continue;
-            }
-            LowerJavaVolatileForSymbol(*sym);
-        }
     }
 }
 
@@ -121,7 +110,6 @@ void BECommon::AddNewTypeAfterBecommon(uint32 oldTypeTableSize, uint32 newTypeTa
         typeHasFlexibleArray.emplace_back(0);
         structFieldCountTable.emplace_back(0);
         ComputeTypeSizesAligns(*ty);
-        LowerTypeAttribute(*ty);
     }
 }
 
@@ -355,7 +343,6 @@ void BECommon::ComputeFArrayOrJArrayTypeSizesAligns(MIRType &ty, const TyIdx &ty
     SetTypeAlign(tyIdx, GetTypeAlign(elemType->GetTypeIndex()));
 }
 
-/* Note: also do java class layout */
 void BECommon::ComputeTypeSizesAligns(MIRType &ty, uint8 align)
 {
     TyIdx tyIdx = ty.GetTypeIndex();
@@ -409,46 +396,11 @@ void BECommon::ComputeTypeSizesAligns(MIRType &ty, uint8 align)
     SetTypeAlign(tyIdx, std::max(GetTypeAlign(tyIdx), align));
 }
 
-void BECommon::LowerTypeAttribute(MIRType &ty)
-{
-    if (mirModule.IsJavaModule()) {
-        LowerJavaTypeAttribute(ty);
-    }
-}
-
-void BECommon::LowerJavaTypeAttribute(MIRType &ty)
-{
-    /* we process volatile only for now */
-    switch (ty.GetKind()) {
-        case kTypeClass: /* cannot have union or bitfields */
-            LowerJavaVolatileInClassType(static_cast<MIRClassType &>(ty));
-            break;
-
-        default:
-            break;
-    }
-}
-
-void BECommon::LowerJavaVolatileInClassType(MIRClassType &ty)
-{
-    for (auto &field : ty.GetFields()) {
-        if (field.second.second.GetAttr(FLDATTR_volatile)) {
-            field.second.second.SetAttr(FLDATTR_memory_order_acquire);
-            field.second.second.SetAttr(FLDATTR_memory_order_release);
-        } else {
-            MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(field.second.first);
-            if (fieldType->GetKind() == kTypeClass) {
-                LowerJavaVolatileInClassType(static_cast<MIRClassType &>(*fieldType));
-            }
-        }
-    }
-}
-
 bool BECommon::IsRefField(MIRStructType &structType, FieldID fieldID) const
 {
     if (structType.GetKind() == kTypeClass) {
         CHECK_FATAL(HasJClassLayout(static_cast<MIRClassType &>(structType)),
-                    "Cannot found java class layout information");
+                    "Cannot found jclass layout information");
         const JClassLayout &layout = GetJClassLayout(static_cast<MIRClassType &>(structType));
         if (layout.empty()) {
             ERR(kLncErr, "layout is null in BECommon::IsRefField");
@@ -457,15 +409,6 @@ bool BECommon::IsRefField(MIRStructType &structType, FieldID fieldID) const
         return layout[fieldID - 1].IsRef();
     }
     return false;
-}
-
-void BECommon::LowerJavaVolatileForSymbol(MIRSymbol &sym) const
-{
-    /* type attr is associated with symbol */
-    if (sym.GetAttr(ATTR_volatile)) {
-        sym.SetAttr(ATTR_memory_order_acquire);
-        sym.SetAttr(ATTR_memory_order_release);
-    }
 }
 
 void BECommon::GenFieldOffsetMap(const std::string &className)
@@ -564,14 +507,13 @@ void BECommon::GenObjSize(const MIRClassType &classType, FILE &outFile)
     fprintf(&outFile, "__MRT_CLASS(%s, %" PRIu64 ", %s)\n", className.c_str(), objSize, parentName);
 }
 
-// compute the offset of the field given by fieldID within the java class
 FieldInfo BECommon::GetJClassFieldOffset(MIRStructType &classType, FieldID fieldID) const
 {
     CHECK_FATAL(fieldID <= GetStructFieldCount(classType.GetTypeIndex()), "GetFieldOFfset: fieldID too large");
     if (fieldID == 0) {
         return {0, 0};
     }
-    CHECK_FATAL(HasJClassLayout(static_cast<MIRClassType &>(classType)), "Cannot found java class layout information");
+    CHECK_FATAL(HasJClassLayout(static_cast<MIRClassType &>(classType)), "Cannot found jclass layout information");
     const JClassLayout &layout = GetJClassLayout(static_cast<MIRClassType &>(classType));
     CHECK_FATAL(static_cast<uint32>(fieldID) - 1 < layout.size(), "subscript out of range");
     return {static_cast<uint32>(layout[static_cast<unsigned long>(fieldID) - 1].GetOffset()), 0};
@@ -595,7 +537,7 @@ std::pair<int32, int32> BECommon::GetFieldOffset(MIRStructType &structType, Fiel
 
     if (structType.GetKind() == kTypeClass) {
         CHECK_FATAL(HasJClassLayout(static_cast<MIRClassType &>(structType)),
-                    "Cannot found java class layout information");
+                    "Cannot found jclass layout information");
         const JClassLayout &layout = GetJClassLayout(static_cast<MIRClassType &>(structType));
         CHECK_FATAL(static_cast<uint32>(fieldID) - 1 < layout.size(), "subscript out of range");
         return std::pair<int32, int32>(static_cast<int32>(layout[fieldID - 1].GetOffset()), 0);

@@ -1878,7 +1878,6 @@ void AArch64CGFunc::SelectIassign(IassignNode &stmt)
         if (pointedTy->GetKind() != kTypeJArray) {
             structType = static_cast<MIRStructType *>(pointedTy);
         } else {
-            /* it's a Jarray type. using it's parent's field info: java.lang.Object */
             structType = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
         }
         DEBUG_ASSERT(structType != nullptr, "SelectIassign: non-zero fieldID for non-structure");
@@ -1887,13 +1886,6 @@ void AArch64CGFunc::SelectIassign(IassignNode &stmt)
         isRefField = GetBecommon().IsRefField(*structType, stmt.GetFieldID());
     } else {
         pointedType = GetPointedToType(*pointerType);
-        if (GetFunction().IsJava() && (pointedType->GetKind() == kTypePointer)) {
-            MIRType *nextPointedType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(
-                static_cast<MIRPtrType *>(pointedType)->GetPointedTyIdx());
-            if (nextPointedType->GetKind() != kTypeScalar) {
-                isRefField = true; /* write into an object array or a high-dimensional array */
-            }
-        }
     }
 
     PrimType styp = stmt.GetRHS()->GetPrimType();
@@ -2505,16 +2497,6 @@ void AArch64CGFunc::SelectAddrof(Operand &result, StImmOperand &stImm, FieldID f
                 offset = &CreateImmOperand(GetBaseOffset(*symLoc) + stImm.GetOffset(), k64BitSize, false);
                 immOpndsRequiringOffsetAdjustmentForRefloc[symLoc] = offset;
             }
-        } else if (mirModule.IsJavaModule()) {
-            auto it = immOpndsRequiringOffsetAdjustment.find(symLoc);
-            if ((it != immOpndsRequiringOffsetAdjustment.end()) && (symbol->GetType()->GetPrimType() != PTY_agg)) {
-                offset = (*it).second;
-            } else {
-                offset = &CreateImmOperand(GetBaseOffset(*symLoc) + stImm.GetOffset(), k64BitSize, false);
-                if (symbol->GetType()->GetKind() != kTypeClass) {
-                    immOpndsRequiringOffsetAdjustment[symLoc] = offset;
-                }
-            }
         } else {
             /* Do not cache modified symbol location */
             offset = &CreateImmOperand(GetBaseOffset(*symLoc) + stImm.GetOffset(), k64BitSize, false);
@@ -2555,7 +2537,6 @@ void AArch64CGFunc::SelectAddrof(Operand &result, StImmOperand &stImm, FieldID f
             GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(MOP_xadrp, result, stImm));
         }
         if (CGOptions::IsPIC() && symbol->NeedPIC()) {
-            /* ldr     x0, [x0, #:got_lo12:Ljava_2Flang_2FSystem_3B_7Cout] */
             OfstOperand &offset = CreateOfstOpnd(*stImm.GetSymbol(), stImm.GetOffset(), stImm.GetRelocs());
 
             auto size = GetPointerSize() * kBitsPerByte;
@@ -2657,11 +2638,6 @@ Operand *AArch64CGFunc::SelectAddrof(AddrofNode &expr, const BaseNode &parent, b
     PrimType ptype = expr.GetPrimType();
     Operand &result = GetOrCreateResOperand(parent, ptype);
     if (symbol->IsReflectionClassInfo() && !symbol->IsReflectionArrayClassInfo() && !GetCG()->IsLibcore()) {
-        /*
-         * Turn addrof __cinf_X  into a load of _PTR__cinf_X
-         * adrp    x1, _PTR__cinf_Ljava_2Flang_2FSystem_3B
-         * ldr     x1, [x1, #:lo12:_PTR__cinf_Ljava_2Flang_2FSystem_3B]
-         */
         std::string ptrName = namemangler::kPtrPrefixStr + symbol->GetName();
         MIRType *ptrType = GlobalTables::GetTypeTable().GetPtr();
         symbol = GetMirModule().GetMIRBuilder()->GetOrCreateGlobalDecl(ptrName, *ptrType);
@@ -2868,7 +2844,6 @@ Operand *AArch64CGFunc::SelectIread(const BaseNode &parent, IreadNode &expr, int
         if (pointedTy->GetKind() != kTypeJArray) {
             structType = static_cast<MIRStructType *>(pointedTy);
         } else {
-            /* it's a Jarray type. using it's parent's field info: java.lang.Object */
             structType = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
         }
 
@@ -2878,13 +2853,6 @@ Operand *AArch64CGFunc::SelectIread(const BaseNode &parent, IreadNode &expr, int
         isRefField = GetBecommon().IsRefField(*structType, expr.GetFieldID());
     } else {
         pointedType = GetPointedToType(*pointerType);
-        if (GetFunction().IsJava() && (pointedType->GetKind() == kTypePointer)) {
-            MIRType *nextPointedType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(
-                static_cast<MIRPtrType *>(pointedType)->GetPointedTyIdx());
-            if (nextPointedType->GetKind() != kTypeScalar) {
-                isRefField = true; /* read from an object array, or an high-dimentional array */
-            }
-        }
     }
 
     RegType regType = GetRegTyFromPrimTy(expr.GetPrimType());
@@ -3314,9 +3282,6 @@ void AArch64CGFunc::SelectCondGoto(LabelOperand &targetOpnd, Opcode jmpOp, Opcod
         MOperator mOp = is64Bits ? MOP_xcmprr : MOP_wcmprr;
 
         if (isImm) {
-            /* Special cases, i.e., comparing with zero
-             * Do not perform optimization for C, unlike Java which has no unsigned int.
-             */
             if (static_cast<ImmOperand *>(opnd1)->IsZero() &&
                 (Globals::GetInstance()->GetOptimLevel() > CGOptions::kLevel0)) {
                 bool finish = GenerateCompareWithZeroInstruction(jmpOp, cmpOp, is64Bits, primType, targetOpnd, *opnd0);
@@ -5509,7 +5474,7 @@ void AArch64CGFunc::SelectCvtInt2Int(const BaseNode *parent, Operand *&resOpnd, 
             }
         } else {
             /* same size, so resOpnd can be set */
-            if ((mirModule.IsJavaModule()) || (IsSignedInteger(fromType) == IsSignedInteger(toType)) ||
+            if ((IsSignedInteger(fromType) == IsSignedInteger(toType)) ||
                 (GetPrimTypeSize(toType) >= k4BitSize)) {
                 resOpnd = opnd0;
             } else if (IsUnsignedInteger(toType)) {
@@ -6494,10 +6459,6 @@ void AArch64CGFunc::GenSaveMethodInfoCode(BB &bb)
         BB *formerCurBB = GetCurBB();
         GetDummyBB()->ClearInsns();
         SetCurBB(*GetDummyBB());
-        /*
-         * FUNCATTR_bridge for function: Ljava_2Flang_2FString_3B_7CcompareTo_7C_28Ljava_2Flang_2FObject_3B_29I, to
-         * exclude this funciton this function is a bridge function generated for Java Genetic
-         */
         if ((GetFunction().GetAttr(FUNCATTR_native) || GetFunction().GetAttr(FUNCATTR_fast_native)) &&
             !GetFunction().GetAttr(FUNCATTR_critical_native) && !GetFunction().GetAttr(FUNCATTR_bridge)) {
             RegOperand &fpReg = GetOrCreatePhysicalRegisterOperand(RFP, GetPointerSize() * kBitsPerByte, kRegTyInt);
@@ -6688,21 +6649,6 @@ void AArch64CGFunc::HandleRetCleanup(NaryStmtNode &retNode)
             }
         }
 
-        if (cleanupNode->GetOpCode() == OP_intrinsiccall) {
-            IntrinsiccallNode *tempNode = static_cast<IntrinsiccallNode *>(cleanupNode);
-            if ((tempNode->GetIntrinsic() == INTRN_MPL_CLEANUP_LOCALREFVARS) ||
-                (tempNode->GetIntrinsic() == INTRN_MPL_CLEANUP_LOCALREFVARS_SKIP)) {
-                GenRetCleanup(tempNode);
-                if (cleanEANode != nullptr) {
-                    GenRetCleanup(cleanEANode, true);
-                }
-                found = true;
-                break;
-            }
-            if (tempNode->GetIntrinsic() == INTRN_MPL_CLEANUP_NORETESCOBJS) {
-                cleanEANode = tempNode;
-            }
-        }
         cleanupNode = cleanupNode->GetPrev();
     }
 
@@ -6733,35 +6679,6 @@ bool AArch64CGFunc::GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool for
     int32 skipIndex = -1;
     MIRSymbol *skipSym = nullptr;
     size_t refSymNum = 0;
-    if (cleanupNode->GetIntrinsic() == INTRN_MPL_CLEANUP_LOCALREFVARS) {
-        refSymNum = cleanupNode->GetNopndSize();
-        if (refSymNum < 1) {
-            return true;
-        }
-    } else if (cleanupNode->GetIntrinsic() == INTRN_MPL_CLEANUP_LOCALREFVARS_SKIP) {
-        refSymNum = cleanupNode->GetNopndSize();
-        /* refSymNum == 0, no local refvars; refSymNum == 1 and cleanup skip, so nothing to do */
-        if (refSymNum <= 1) {
-            return true;
-        }
-        BaseNode *skipExpr = cleanupNode->Opnd(refSymNum - 1);
-
-        CHECK_FATAL(skipExpr->GetOpCode() == OP_dread, "should be dread");
-        DreadNode *refNode = static_cast<DreadNode *>(skipExpr);
-        skipSym = GetFunction().GetLocalOrGlobalSymbol(refNode->GetStIdx());
-
-        refSymNum -= 1;
-    } else if (cleanupNode->GetIntrinsic() == INTRN_MPL_CLEANUP_NORETESCOBJS) {
-        refSymNum = cleanupNode->GetNopndSize();
-        /* the number of operands of intrinsic call INTRN_MPL_CLEANUP_NORETESCOBJS must be more than 1 */
-        if (refSymNum <= 1) {
-            return true;
-        }
-        BaseNode *skipexpr = cleanupNode->Opnd(0);
-        CHECK_FATAL(skipexpr->GetOpCode() == OP_dread, "should be dread");
-        DreadNode *refnode = static_cast<DreadNode *>(skipexpr);
-        skipSym = GetFunction().GetLocalOrGlobalSymbol(refnode->GetStIdx());
-    }
 
     /* now compute the offset range */
     std::vector<int32> offsets;
@@ -7983,89 +7900,6 @@ void AArch64CGFunc::GenerateIntrnInsnForStrIndexOf(BB &bb, RegOperand &srcString
     bb.SetKind(BB::kBBGoto);
 }
 
-/*
- * intrinsify String.indexOf
- * generate an intrinsic instruction instead of a function call if both the source string and the specified substring
- * are compressed and the length of the substring is not less than 8, i.e.
- * bl  String.indexOf, srcString, patternString ===>>
- *
- * ldr srcCountOpnd, [srcString, offset]
- * and srcCountLowestBitOpnd, srcCountOpnd, #1
- * cmp wzr, srcCountLowestBitOpnd
- * beq Label.call
- * ldr patternCountOpnd, [patternString, offset]
- * and patternCountLowestBitOpnd, patternCountOpnd, #1
- * cmp wzr, patternCountLowestBitOpnd
- * beq Label.call
- * lsr patternLengthOpnd, patternCountOpnd, #1
- * cmp patternLengthOpnd, #8
- * blt Label.call
- * lsr srcLengthOpnd, srcCountOpnd, #1
- * add srcStringBaseOpnd, srcString, immStringBaseOffset
- * add patternStringBaseOpnd, patternString, immStringBaseOffset
- * intrinsic_string_indexof retVal, srcStringBaseOpnd, srcLengthOpnd, patternStringBaseOpnd, patternLengthOpnd,
- *                          tmpOpnd1, tmpOpnd2, tmpOpnd3, tmpOpnd4, tmpOpnd5, tmpOpnd6,
- *                          label1, label2, label3, lable3, label4, label5, label6, label7
- * b   Label.joint
- * Label.call:
- * bl  String.indexOf, srcString, patternString
- * Label.joint:
- */
-void AArch64CGFunc::IntrinsifyStringIndexOf(ListOperand &srcOpnds, const MIRSymbol &funcSym)
-{
-    MapleList<RegOperand *> &opnds = srcOpnds.GetOperands();
-    /* String.indexOf opnd size must be more than 2 */
-    DEBUG_ASSERT(opnds.size() >= 2, "ensure the operands number");
-    auto iter = opnds.begin();
-    RegOperand *srcString = *iter;
-    RegOperand *patternString = *(++iter);
-    GStrIdx gStrIdx = GlobalTables::GetStrTable().GetStrIdxFromName(namemangler::kJavaLangStringStr);
-    MIRType *type =
-        GlobalTables::GetTypeTable().GetTypeFromTyIdx(GlobalTables::GetTypeNameTable().GetTyIdxFromGStrIdx(gStrIdx));
-    auto stringType = static_cast<MIRStructType *>(type);
-    CHECK_FATAL(stringType != nullptr, "Ljava_2Flang_2FString_3B type can not be null");
-    FieldID fieldID = GetMirModule().GetMIRBuilder()->GetStructFieldIDFromFieldNameParentFirst(stringType, "count");
-    MIRType *fieldType = stringType->GetFieldType(fieldID);
-    PrimType countPty = fieldType->GetPrimType();
-    int32 offset = GetBecommon().GetFieldOffset(*stringType, fieldID).first;
-    LabelIdx callBBLabIdx = CreateLabel();
-    RegOperand *srcCountOpnd = CheckStringIsCompressed(*GetCurBB(), *srcString, offset, countPty, callBBLabIdx);
-
-    BB *srcCompressedBB = CreateNewBB();
-    GetCurBB()->AppendBB(*srcCompressedBB);
-    RegOperand *patternCountOpnd =
-        CheckStringIsCompressed(*srcCompressedBB, *patternString, offset, countPty, callBBLabIdx);
-
-    BB *patternCompressedBB = CreateNewBB();
-    RegOperand *patternLengthOpnd =
-        CheckStringLengthLessThanEight(*patternCompressedBB, *patternCountOpnd, countPty, callBBLabIdx);
-
-    BB *intrinsicBB = CreateNewBB();
-    LabelIdx jointLabIdx = CreateLabel();
-    GenerateIntrnInsnForStrIndexOf(*intrinsicBB, *srcString, *patternString, *srcCountOpnd, *patternLengthOpnd,
-                                   countPty, jointLabIdx);
-
-    BB *callBB = CreateNewBB();
-    callBB->AddLabel(callBBLabIdx);
-    SetLab2BBMap(callBBLabIdx, *callBB);
-    SetCurBB(*callBB);
-    Insn &callInsn = AppendCall(funcSym, srcOpnds);
-    MIRType *retType = funcSym.GetFunction()->GetReturnType();
-    if (retType != nullptr) {
-        callInsn.SetRetSize(static_cast<uint32>(retType->GetSize()));
-    }
-    GetFunction().SetHasCall();
-
-    BB *jointBB = CreateNewBB();
-    jointBB->AddLabel(jointLabIdx);
-    SetLab2BBMap(jointLabIdx, *jointBB);
-    srcCompressedBB->AppendBB(*patternCompressedBB);
-    patternCompressedBB->AppendBB(*intrinsicBB);
-    intrinsicBB->AppendBB(*callBB);
-    callBB->AppendBB(*jointBB);
-    SetCurBB(*jointBB);
-}
-
 void AArch64CGFunc::SelectCall(CallNode &callNode)
 {
     MIRFunction *fn = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode.GetPUIdx());
@@ -8092,15 +7926,6 @@ void AArch64CGFunc::SelectCall(CallNode &callNode)
     }
 
     SelectParmListWrapper(callNode, *srcOpnds, false);
-
-    const std::string &funcName = fsym->GetName();
-    if (Globals::GetInstance()->GetOptimLevel() >= CGOptions::kLevel2 &&
-        funcName == "Ljava_2Flang_2FString_3B_7CindexOf_7C_28Ljava_2Flang_2FString_3B_29I") {
-        GStrIdx strIdx = GlobalTables::GetStrTable().GetStrIdxFromName(funcName);
-        MIRSymbol *st = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(strIdx, true);
-        IntrinsifyStringIndexOf(*srcOpnds, *st);
-        return;
-    }
 
     Insn &callInsn = AppendCall(*fsym, *srcOpnds);
     GetCurBB()->SetHasCall();
@@ -8492,7 +8317,6 @@ void AArch64CGFunc::SelectAddrofAfterRa(Operand &result, StImmOperand &stImm, st
     Operand *srcOpnd = &result;
     rematInsns.emplace_back(&GetInsnBuilder()->BuildInsn(MOP_xadrp, result, stImm));
     if (CGOptions::IsPIC() && symbol->NeedPIC()) {
-        /* ldr     x0, [x0, #:got_lo12:Ljava_2Flang_2FSystem_3B_7Cout] */
         OfstOperand &offset = CreateOfstOpnd(*stImm.GetSymbol(), stImm.GetOffset(), stImm.GetRelocs());
         MemOperand &memOpnd = GetOrCreateMemOpnd(MemOperand::kAddrModeBOi, GetPointerSize() * kBitsPerByte,
                                                  static_cast<RegOperand *>(srcOpnd), nullptr, &offset, nullptr);
@@ -8534,10 +8358,8 @@ MemOperand &AArch64CGFunc::GetOrCreateMemOpndAfterRa(const MIRSymbol &symbol, in
             } else {
                 StImmOperand &stOpnd = CreateStImmOperand(symbol, offset, 0);
                 RegOperand &stAddrOpnd = *regOp;
-                /* adrp    x1, _PTR__cinf_Ljava_2Flang_2FSystem_3B */
                 Insn &insn = GetInsnBuilder()->BuildInsn(MOP_xadrp, stAddrOpnd, stOpnd);
                 rematInsns.emplace_back(&insn);
-                /* ldr     x1, [x1, #:lo12:_PTR__cinf_Ljava_2Flang_2FSystem_3B] */
                 return *CreateMemOperand(MemOperand::kAddrModeLo12Li, size, stAddrOpnd, nullptr,
                                          &GetOrCreateOfstOpnd(static_cast<uint64>(offset), k32BitSize), &symbol);
             }
@@ -8574,8 +8396,6 @@ MemOperand &AArch64CGFunc::GetOrCreateMemOpnd(const MIRSymbol &symbol, int64 off
                 if (!forLocalRef) {
                     return *(it->second);
                 }
-            } else if (mirModule.IsJavaModule()) {
-                return *(it->second);
             } else {
                 Operand *offOpnd = (it->second)->GetOffset();
                 if (((static_cast<OfstOperand *>(offOpnd))->GetOffsetValue() == (stOffset + offset)) &&
@@ -8665,7 +8485,6 @@ MemOperand &AArch64CGFunc::CreateMemOpndForStatic(const MIRSymbol &symbol, int64
                 regOp = static_cast<RegOperand *>(&CreateRegisterOperandOfType(PTY_u64));
             }
             RegOperand &stAddrOpnd = *regOp;
-            /* adrp    x1, _PTR__cinf_Ljava_2Flang_2FSystem_3B */
             Insn &insn = GetInsnBuilder()->BuildInsn(MOP_xadrp, stAddrOpnd, stOpnd);
             GetCurBB()->AppendInsn(insn);
             if (GetCG()->GetOptimizeLevel() == CGOptions::kLevel0 ||
@@ -8677,7 +8496,6 @@ MemOperand &AArch64CGFunc::CreateMemOpndForStatic(const MIRSymbol &symbol, int64
                                          &GetOrCreateOfstOpnd(static_cast<uint64>(0), k32BitSize), nullptr);
             }
 
-            /* ldr     x1, [x1, #:lo12:_PTR__cinf_Ljava_2Flang_2FSystem_3B] */
             return *CreateMemOperand(MemOperand::kAddrModeLo12Li, size, stAddrOpnd, nullptr,
                                      &GetOrCreateOfstOpnd(static_cast<uint64>(offset), k32BitSize), &symbol);
         }
@@ -9967,16 +9785,8 @@ void AArch64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
      * of local variables (See @stackmap in LLVM), in which case knowing their
      * locations will suffice.
      */
-    if (intrinsic == INTRN_MPL_CLINIT_CHECK) { /* special case */
-        SelectMPLClinitCheck(intrinsiccallNode);
-        return;
-    }
     if (intrinsic == INTRN_MPL_PROF_COUNTER_INC) { /* special case */
         SelectMPLProfCounterInc(intrinsiccallNode);
-        return;
-    }
-    if ((intrinsic == INTRN_MPL_CLEANUP_LOCALREFVARS) || (intrinsic == INTRN_MPL_CLEANUP_LOCALREFVARS_SKIP) ||
-        (intrinsic == INTRN_MPL_CLEANUP_NORETESCOBJS)) {
         return;
     }
     // js
@@ -10080,30 +9890,6 @@ void AArch64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
             GetCurBB()->SetNext(origFtBB);
 
             SaveReturnValueInLocal(*retVals, 0, kValPrimType, *oldVal, intrinsiccallNode);
-            break;
-        }
-        case INTRN_GET_AND_ADDI: {
-            IntrinsifyGetAndAddInt(*srcOpnds, PTY_i32);
-            break;
-        }
-        case INTRN_GET_AND_ADDL: {
-            IntrinsifyGetAndAddInt(*srcOpnds, PTY_i64);
-            break;
-        }
-        case INTRN_GET_AND_SETI: {
-            IntrinsifyGetAndSetInt(*srcOpnds, PTY_i32);
-            break;
-        }
-        case INTRN_GET_AND_SETL: {
-            IntrinsifyGetAndSetInt(*srcOpnds, PTY_i64);
-            break;
-        }
-        case INTRN_COMP_AND_SWAPI: {
-            IntrinsifyCompareAndSwapInt(*srcOpnds, PTY_i32);
-            break;
-        }
-        case INTRN_COMP_AND_SWAPL: {
-            IntrinsifyCompareAndSwapInt(*srcOpnds, PTY_i64);
             break;
         }
         case INTRN_C___atomic_exchange_n: {

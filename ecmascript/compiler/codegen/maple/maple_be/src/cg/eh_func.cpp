@@ -30,11 +30,6 @@ void EHFunc::CollectEHInformation(std::vector<std::pair<LabelIdx, CatchNode *>> 
     BlockNode *blkNode = mirFunc.GetBody();
     CHECK_FATAL(blkNode != nullptr, "current function body is nullptr in CGFunc::BuildEHFunc");
     EHTry *lastTry = nullptr; /* record last try */
-    /*
-     * curTry: record the current try wrapping the current statement,
-     *         reset to null when meet a endtry
-     */
-    EHTry *curTry = nullptr;
     StmtNode *nextStmt = nullptr;
 
     /* collect all try-catch blocks */
@@ -46,7 +41,6 @@ void EHFunc::CollectEHInformation(std::vector<std::pair<LabelIdx, CatchNode *>> 
                 TryNode *tryNode = static_cast<TryNode *>(stmt);
                 EHTry *ehTry = cgFunc->GetMemoryPool()->New<EHTry>(*(cgFunc->GetFuncScopeAllocator()), *tryNode);
                 lastTry = ehTry;
-                curTry = ehTry;
                 AddTry(*ehTry);
                 break;
             }
@@ -54,7 +48,6 @@ void EHFunc::CollectEHInformation(std::vector<std::pair<LabelIdx, CatchNode *>> 
                 DEBUG_ASSERT(lastTry != nullptr, "lastTry is nullptr when current node is endtry");
                 lastTry->SetEndtryNode(*stmt);
                 lastTry = nullptr;
-                curTry = nullptr;
                 break;
             }
             case OP_catch: {
@@ -88,7 +81,6 @@ void EHFunc::CollectEHInformation(std::vector<std::pair<LabelIdx, CatchNode *>> 
                 }
                 UnaryStmtNode *throwNode = static_cast<UnaryStmtNode *>(stmt);
                 EHThrow *ehReThrow = cgFunc->GetMemoryPool()->New<EHThrow>(*throwNode);
-                ehReThrow->SetJavaTry(curTry);
                 AddRethrow(*ehReThrow);
                 break;
             }
@@ -153,8 +145,6 @@ void EHThrow::Lower(CGFunc &cgFunc)
                  "except a dread of a pointer to get its type");
     MIRFunction &mirFunc = cgFunc.GetFunction();
     MIRModule *mirModule = mirFunc.GetModule();
-    MIRBuilder *mirBuilder = mirModule->GetMIRBuilder();
-    DEBUG_ASSERT(mirBuilder != nullptr, "get mirBuilder failed in EHThrow::Lower");
     MIRSymbol *mirSymbol = nullptr;
     BaseNode *arg = nullptr;
     MIRType *pstType = nullptr;
@@ -177,7 +167,6 @@ void EHThrow::Lower(CGFunc &cgFunc)
                 if (pointedTy->GetKind() != kTypeJArray) {
                     structTy = static_cast<MIRStructType *>(pointedTy);
                 } else {
-                    /* it's a Jarray type. using it's parent's field info: java.lang.Object */
                     structTy = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
                 }
                 DEBUG_ASSERT(structTy != nullptr, "structTy is nullptr in EHThrow::Lower ");
@@ -225,19 +214,6 @@ void EHThrow::Lower(CGFunc &cgFunc)
 
     MIRType *stType =
         GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<MIRPtrType *>(pstType)->GetPointedTyIdx());
-    if (!IsUnderTry()) {
-        /*
-         * in this case the throw happens without a try...endtry wrapping it, need to generate lsda.
-         * insert 2 labels before and after throw
-         */
-        LabelNode *throwBeginLbl = mirBuilder->CreateStmtLabel(mirBuilder->CreateLabIdx(mirFunc));
-        LabelNode *throwEndLbl = mirBuilder->CreateStmtLabel(mirBuilder->CreateLabIdx(mirFunc));
-        BlockNode *bodyNode = mirFunc.GetBody();
-        bodyNode->InsertBefore(rethrow, throwBeginLbl);
-        bodyNode->InsertAfter(rethrow, throwEndLbl);
-        startLabel = throwBeginLbl;
-        endLabel = throwEndLbl;
-    }
 
     if (stType->GetKind() == kTypeClass) {
         ConvertThrowToRuntime(cgFunc, *arg);
@@ -264,7 +240,6 @@ EHFunc *CGFunc::BuildEHFunc()
     newEHFunc->MergeCatchToTry(catchVec);
     newEHFunc->BuildEHTypeTable(catchVec);
     newEHFunc->InsertEHSwitchTable();
-    newEHFunc->InsertCxaAfterEachCatch(catchVec);
     newEHFunc->GenerateCleanupLabel();
 
     GetBecommon().BeGetOrCreatePointerType(*GlobalTables::GetTypeTable().GetVoid());
@@ -282,20 +257,12 @@ EHFunc *CGFunc::BuildEHFunc()
 
 bool EHFunc::NeedFullLSDA() const
 {
-    if (cgFunc->GetFunction().IsJava()) {
-        return HasTry();
-    } else {
-        return false;
-    }
+    return false;
 }
 
 bool EHFunc::NeedFastLSDA() const
 {
-    if (cgFunc->GetFunction().IsJava()) {
-        return !HasTry();
-    } else {
-        return false;
-    }
+    return false;
 }
 
 bool EHFunc::HasTry() const
@@ -322,10 +289,6 @@ void EHFunc::CreateTypeInfoSt()
     DEBUG_ASSERT(classType != nullptr, "");
     if (classType->GetMethods().empty() && (classType->GetFieldsSize() == 0)) {
         return;
-    }
-
-    if (classType->GetExceptionRootType() == nullptr) {
-        return; /* not a exception type */
     }
 }
 
@@ -365,7 +328,6 @@ void EHFunc::LowerThrow()
                     if (pointedTy->GetKind() != kTypeJArray) {
                         structTy = static_cast<MIRStructType *>(pointedTy);
                     } else {
-                        /* it's a Jarray type. using it's parent's field info: java.lang.Object */
                         structTy = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
                     }
                     DEBUG_ASSERT(structTy != nullptr, "structTy is nullptr in EHFunc::LowerThrow");
@@ -467,14 +429,6 @@ void EHFunc::BuildEHTypeTable(const std::vector<std::pair<LabelIdx, CatchNode *>
 
             ty2IndexTable[ehTyIdx] = ehTyTable.size();
             ehTyTable.emplace_back(ehTyIdx);
-            MIRClassType *catchType =
-                static_cast<MIRClassType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(ehTyIdx));
-            MIRClassType *rootType = catchType->GetExceptionRootType();
-            if (rootType == nullptr) {
-                rootType = static_cast<MIRClassType *>(GlobalTables::GetTypeTable().GetOrCreateClassType(
-                    "Ljava_2Flang_2FThrowable_3B", *GlobalTables::GetGsymTable().GetModule()));
-                catchType->SetParentTyIdx(rootType->GetTypeIndex());
-            }
         }
     }
 }
@@ -615,27 +569,6 @@ LabelIdx EHFunc::CreateLabel(const std::string &cstr)
     return cgFunc->GetFunction().GetOrCreateLableIdxFromName(labStr);
 }
 
-/* think about moving this to BELowerer where LowerThrownval is already written */
-void EHFunc::InsertCxaAfterEachCatch(const std::vector<std ::pair<LabelIdx, CatchNode *>> &catchVec)
-{
-    MIRModule &mirModule = *cgFunc->GetFunction().GetModule();
-    BlockNode *funcBody = cgFunc->GetFunction().GetBody();
-    CatchNode *jCatchNode = nullptr;
-    TyIdx voidPTy = GlobalTables::GetTypeTable().GetVoidPtr()->GetTypeIndex();
-    for (const auto &catchVecPair : catchVec) {
-        jCatchNode = catchVecPair.second;
-        MIRFunction *calleeFunc = mirModule.GetMIRBuilder()->GetOrCreateFunction("MCC_JavaBeginCatch", voidPTy);
-        cgFunc->GetBecommon().UpdateTypeTable(*calleeFunc->GetMIRFuncType());
-        RegreadNode *retRegRead0 = mirModule.CurFuncCodeMemPool()->New<RegreadNode>();
-        retRegRead0->SetRegIdx(-kSregRetval0);
-        retRegRead0->SetPrimType(GetLoweredPtrType());
-        MapleVector<BaseNode *> args(mirModule.GetMIRBuilder()->GetCurrentFuncCodeMpAllocator()->Adapter());
-        args.emplace_back(retRegRead0);
-        CallNode *callAssign = mirModule.GetMIRBuilder()->CreateStmtCall(calleeFunc->GetPuidx(), args);
-        funcBody->InsertAfter(jCatchNode, callAssign);
-    }
-}
-
 void EHFunc::CreateLSDAHeader()
 {
     constexpr uint8 startEncoding = 0xff;
@@ -718,7 +651,6 @@ void EHFunc::CreateLSDA()
 
     for (auto *rethrow : rethrowVec) {
         DEBUG_ASSERT(rethrow != nullptr, "null ptr check");
-        /* replace throw (void * obj) with call __java_rethrow and unwind resume */
         rethrow->Lower(*cgFunc);
         if (rethrow->HasLSDA()) {
             LSDACallSite *lsdaCallSite = cgFunc->GetMemoryPool()->New<LSDACallSite>();
