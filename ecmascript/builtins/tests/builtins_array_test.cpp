@@ -40,8 +40,6 @@ constexpr int32_t INT_VALUE_1 = 1;
 constexpr int32_t INT_VALUE_2 = 2;
 constexpr int32_t INT_VALUE_3 = 3;
 constexpr int32_t INT_VALUE_4 = 4;
-constexpr int32_t INT_VALUE_50 = 50;
-constexpr int32_t INT_VALUE_200 = 200;
 constexpr int32_t INT_VALUE_666 = 666;
 constexpr uint32_t RUNTIME_CALL_INFO_PARA_0 = 0;
 constexpr uint32_t RUNTIME_CALL_INFO_PARA_1 = 1;
@@ -58,32 +56,8 @@ enum class ArrayIndex {
 
 namespace panda::test {
 using Array = ecmascript::builtins::BuiltinsArray;
-class BuiltinsArrayTest : public testing::Test {
+class BuiltinsArrayTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
     class TestClass : public base::BuiltinsBase {
     public:
         static JSTaggedValue TestForEachFunc(EcmaRuntimeCallInfo *argv)
@@ -229,10 +203,8 @@ JSTaggedValue CreateBuiltinsArrayJSObject(JSThread *thread, const CString keyCSt
 
 HWTEST_F_L0(BuiltinsArrayTest, ArrayConstructor)
 {
-    auto ecmaVM = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
-    JSHandle<JSFunction> array(env->GetArrayFunction());
-    JSHandle<JSObject> globalObject(thread, env->GetGlobalObject());
+    JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
+    JSHandle<JSObject> globalObject(thread, thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalObject());
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
     ecmaRuntimeCallInfo1->SetFunction(array.GetTaggedValue());
@@ -259,6 +231,40 @@ HWTEST_F_L0(BuiltinsArrayTest, ArrayConstructor)
     ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(5));
 }
 
+std::vector<JSHandle<JSTaggedValue>> DefineOwnPropertyCommonTest(JSThread* thread, JSHandle<JSObject>& obj,
+    std::vector<int>& vals)
+{
+    std::vector<JSHandle<JSTaggedValue>> keys;
+    for (size_t i = 0; i < vals.size(); i++) {
+        keys.push_back(JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i))));
+        PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(vals[i])), true, true, true);
+        JSArray::DefineOwnProperty(thread, obj, keys[i], desc0);
+    }
+    return keys;
+}
+
+std::vector<JSHandle<JSTaggedValue>> DefineOwnPropertyCommonTest(JSThread* thread, JSHandle<JSTaggedValue>& obj,
+    std::vector<int>& vals)
+{
+    JSHandle<JSObject> jsObj(obj);
+    std::vector<JSHandle<JSTaggedValue>> keys;
+    for (size_t i = 0; i < vals.size(); i++) {
+        keys.push_back(JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i))));
+        PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(vals[i])), true, true, true);
+        JSArray::DefineOwnProperty(thread, jsObj, keys[i], desc0);
+    }
+    return keys;
+}
+
+void CheckKeyValueCommon(JSThread* thread, JSHandle<JSObject>& valueHandle, PropertyDescriptor& descRes,
+    std::vector<JSHandle<JSTaggedValue>>& keys, std::vector<int32_t>& vals)
+{
+    for (size_t i = 0; i < vals.size(); i++) {
+        JSObject::GetOwnProperty(thread, valueHandle, keys[i], descRes);
+        ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(vals[i]));
+    }
+}
+
 // 22.1.2.1 Array.from ( items [ , mapfn [ , thisArg ] ] )
 HWTEST_F_L0(BuiltinsArrayTest, From)
 {
@@ -268,21 +274,8 @@ HWTEST_F_L0(BuiltinsArrayTest, From)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
-    JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
-    PropertyDescriptor desc3(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key3, desc3);
-    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
-    PropertyDescriptor desc4(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(5)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key4, desc4);
+    std::vector<int> descVals{1, 2, 3, 4, 5};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -296,16 +289,8 @@ HWTEST_F_L0(BuiltinsArrayTest, From)
     ASSERT_TRUE(value.IsECMAObject());
     PropertyDescriptor descRes(thread);
     JSHandle<JSObject> valueHandle(thread, value);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(1));
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(2));
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
-    JSObject::GetOwnProperty(thread, valueHandle, key3, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(4));
-    JSObject::GetOwnProperty(thread, valueHandle, key4, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(5));
+    std::vector<int> vals{1, 2, 3, 4, 5};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
 
 // 22.1.2.2 Array.isArray(arg)
@@ -362,13 +347,9 @@ HWTEST_F_L0(BuiltinsArrayTest, Of)
     JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
     JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
     JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(1));
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(5));
+    std::vector<JSHandle<JSTaggedValue>> keys{key0, key1, key2};
+    std::vector<int> vals{1, 3, 5};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, Species)
@@ -394,28 +375,16 @@ HWTEST_F_L0(BuiltinsArrayTest, Concat)
     JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    std::vector<int> descVals{1, 2, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSArray *arr1 = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetObject<JSArray>();
     EXPECT_TRUE(arr1 != nullptr);
     JSHandle<JSObject> obj1(thread, arr1);
-    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(0));
-    PropertyDescriptor desc4(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj1, key4, desc4);
-    JSHandle<JSTaggedValue> key5(thread, JSTaggedValue(1));
-    PropertyDescriptor desc5(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(5)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj1, key5, desc5);
-    JSHandle<JSTaggedValue> key6(thread, JSTaggedValue(2));
-    PropertyDescriptor desc6(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(6)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj1, key6, desc6);
+
+    std::vector<int> descVals2{4, 5, 6};
+    keys = DefineOwnPropertyCommonTest(thread, obj1, descVals2);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -440,27 +409,13 @@ HWTEST_F_L0(BuiltinsArrayTest, Concat)
 // 22.1.3.3 new Array(1,2,3,4,5).CopyWithin(0,3,5)
 HWTEST_F_L0(BuiltinsArrayTest, CopyWithin)
 {
+    std::vector<int> descVals{1, 2, 3, 4, 5};
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
-    JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
-    PropertyDescriptor desc3(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key3, desc3);
-    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
-    PropertyDescriptor desc4(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(5)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key4, desc4);
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -476,16 +431,8 @@ HWTEST_F_L0(BuiltinsArrayTest, CopyWithin)
     ASSERT_TRUE(value.IsECMAObject());
     PropertyDescriptor descRes(thread);
     JSHandle<JSObject> valueHandle(thread, value);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(4));
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(5));
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
-    JSObject::GetOwnProperty(thread, valueHandle, key3, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(4));
-    JSObject::GetOwnProperty(thread, valueHandle, key4, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(5));
+    std::vector<int> vals{4, 5, 3, 4, 5};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, Every)
@@ -500,16 +447,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Every)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(100)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(200)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(300)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{100, 200, 300};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<JSArray> jsArray = factory->NewJSArray();
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestEveryFunc));
@@ -538,15 +477,10 @@ HWTEST_F_L0(BuiltinsArrayTest, Map)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(200)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    std::vector<int> descVals{50, 200, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
+
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestMapFunc));
 
@@ -564,15 +498,10 @@ HWTEST_F_L0(BuiltinsArrayTest, Map)
 
     PropertyDescriptor descRes(thread);
     JSHandle<JSObject> valueHandle(thread, value);
+    std::vector<int> vals{100, 400, 6};
     EXPECT_EQ(
         JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle).GetValue()->GetInt(), 3);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-
-    ASSERT_EQ(descRes.GetValue()->GetInt(), 100);
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue()->GetInt(), 400);
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue()->GetInt(), 6);
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, Reverse)
@@ -582,15 +511,9 @@ HWTEST_F_L0(BuiltinsArrayTest, Reverse)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(200)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    std::vector<int> descVals{50, 200, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -606,19 +529,10 @@ HWTEST_F_L0(BuiltinsArrayTest, Reverse)
     JSHandle<JSObject> valueHandle(thread, value);
     EXPECT_EQ(
         JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle).GetValue()->GetInt(), 3);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(200));
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(50));
+    std::vector<int> vals{3, 200, 50};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 3);
-    JSObject::GetOwnProperty(thread, obj, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
-    JSObject::GetOwnProperty(thread, obj, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(200));
-    JSObject::GetOwnProperty(thread, obj, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(50));
+    CheckKeyValueCommon(thread, obj, descRes, keys, vals);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, COWArrayReverse)
@@ -628,15 +542,9 @@ HWTEST_F_L0(BuiltinsArrayTest, COWArrayReverse)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(200)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    std::vector<int> descVals{50, 200, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<JSArray> cloneArray = thread->GetEcmaVM()->GetFactory()->CloneArrayLiteral(JSHandle<JSArray>(obj));
 
@@ -654,20 +562,14 @@ HWTEST_F_L0(BuiltinsArrayTest, COWArrayReverse)
     JSHandle<JSObject> valueHandle(thread, value);
     EXPECT_EQ(
         JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle).GetValue()->GetInt(), 3);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(200));
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(50));
+    
+    std::vector<int> vals{3, 200, 50};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
+
+    JSHandle<JSObject> cloneHandle(cloneArray);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(cloneArray),
         lengthKeyHandle).GetValue()->GetInt(), 3);
-    JSObject::GetOwnProperty(thread, JSHandle<JSObject>(cloneArray), key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
-    JSObject::GetOwnProperty(thread, JSHandle<JSObject>(cloneArray), key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(200));
-    JSObject::GetOwnProperty(thread, JSHandle<JSObject>(cloneArray), key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(50));
+    CheckKeyValueCommon(thread, cloneHandle, descRes, keys, vals);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, Slice)
@@ -677,21 +579,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Slice)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
-    JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
-    PropertyDescriptor desc3(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key3, desc3);
-    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
-    PropertyDescriptor desc4(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key4, desc4);
+    std::vector<int> descVals{1, 2, 3, 4, 5};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -709,12 +598,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Slice)
     JSHandle<JSObject> valueHandle(thread, value);
     EXPECT_EQ(
         JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle).GetValue()->GetInt(), 3);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(2));
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(4));
+    std::vector<int> vals{2, 3, 4};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, Splice)
@@ -724,21 +609,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Splice)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
-    JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
-    PropertyDescriptor desc3(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key3, desc3);
-    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
-    PropertyDescriptor desc4(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(5)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key4, desc4);
+    std::vector<int> descVals{1, 2, 3, 4, 5};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -758,7 +630,7 @@ HWTEST_F_L0(BuiltinsArrayTest, Splice)
     JSHandle<JSObject> valueHandle(thread, value);
     EXPECT_EQ(
         JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle).GetValue()->GetInt(), 2);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
+    JSObject::GetOwnProperty(thread, valueHandle, keys[0], descRes);
     ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(2));
 }
 
@@ -771,21 +643,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Fill)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
-    JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
-    PropertyDescriptor desc3(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key3, desc3);
-    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
-    PropertyDescriptor desc4(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(5)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key4, desc4);
+    std::vector<int> descVals{1, 2, 3, 4, 5};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -801,16 +660,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Fill)
     ASSERT_TRUE(value.IsECMAObject());
     PropertyDescriptor descRes(thread);
     JSHandle<JSObject> valueHandle(thread, value);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(1));
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(0));
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(0));
-    JSObject::GetOwnProperty(thread, valueHandle, key3, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(4));
-    JSObject::GetOwnProperty(thread, valueHandle, key4, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(5));
+    std::vector<int32_t> vals{1, 0, 0, 4, 5};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
 
 // 22.1.3.6 new Array(1,2,3,4,5).Fill(0,1,3)
@@ -847,16 +698,9 @@ HWTEST_F_L0(BuiltinsArrayTest, COWArrayFill)
     JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
     JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
 
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(1));
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(0));
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(0));
-    JSObject::GetOwnProperty(thread, valueHandle, key3, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(4));
-    JSObject::GetOwnProperty(thread, valueHandle, key4, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(5));
+    std::vector<JSHandle<JSTaggedValue>> keys{key0, key1, key2, key3, key4};
+    std::vector<int32_t> vals{1, 0, 0, 4, 5};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, Find)
@@ -870,15 +714,9 @@ HWTEST_F_L0(BuiltinsArrayTest, Find)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(102)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    std::vector<int> vals{1, 102, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, vals);
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFindFunc));
 
@@ -907,16 +745,8 @@ HWTEST_F_L0(BuiltinsArrayTest, FindIndex)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(30)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{1, 2, 30};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFindIndexFunc));
@@ -946,15 +776,8 @@ HWTEST_F_L0(BuiltinsArrayTest, ForEach)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{1, 2, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachFunc));
@@ -1240,15 +1063,9 @@ HWTEST_F_L0(BuiltinsArrayTest, Reduce)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    std::vector<int> descVals{1, 2, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestReduceFunc));
 
@@ -1275,15 +1092,9 @@ HWTEST_F_L0(BuiltinsArrayTest, ReduceRight)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    std::vector<int> descVals{1, 2, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestReduceRightFunc));
 
@@ -1307,15 +1118,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Shift)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{1, 2, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -1362,15 +1166,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Some)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(20)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{1, 20, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestSomeFunc));
@@ -1395,15 +1192,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Sort)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{3, 2, 1};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -1416,9 +1206,9 @@ HWTEST_F_L0(BuiltinsArrayTest, Sort)
     EXPECT_TRUE(result2.IsECMAObject());
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result2.GetRawData())));
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key0).GetValue()->GetInt(), 1);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key1).GetValue()->GetInt(), 2);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key2).GetValue()->GetInt(), 3);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[0]).GetValue()->GetInt(), 1);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[1]).GetValue()->GetInt(), 2);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[2]).GetValue()->GetInt(), 3);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, Unshift)
@@ -1429,15 +1219,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Unshift)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{1, 2, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -1466,15 +1249,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Join)
     JSHandle<JSTaggedValue> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, obj, lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key2, desc2);
+    std::vector<int> descVals{2, 3, 4};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("2,3,4");
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -1491,21 +1267,13 @@ HWTEST_F_L0(BuiltinsArrayTest, Join)
 
 HWTEST_F_L0(BuiltinsArrayTest, ToString)
 {
+    std::vector<int> descVals{2, 3, 4};
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSTaggedValue> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, obj, lengthKeyHandle).GetValue()->GetInt(), 0);
-
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key2, desc2);
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("2,3,4");
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -1526,17 +1294,9 @@ HWTEST_F_L0(BuiltinsArrayTest, Includes)
     JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSTaggedValue> obj(thread, arr);
+    std::vector<int> descVals{2, 3, 4};
     EXPECT_EQ(JSArray::GetProperty(thread, obj, lengthKeyHandle).GetValue()->GetInt(), 0);
-
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key2, desc2);
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -1656,15 +1416,10 @@ HWTEST_F_L0(BuiltinsArrayTest, FlatMap)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    std::vector<int> descVals{1, 50, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
+
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFlatMapFunc));
 
@@ -1684,13 +1439,8 @@ HWTEST_F_L0(BuiltinsArrayTest, FlatMap)
     JSHandle<JSObject> valueHandle(thread, value);
     EXPECT_EQ(
         JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle).GetValue()->GetInt(), 3);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-
-    ASSERT_EQ(descRes.GetValue()->GetInt(), 2);
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue()->GetInt(), 100);
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue()->GetInt(), 6);
+    std::vector<int> vals{2, 100, 6};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, At)
@@ -1698,18 +1448,11 @@ HWTEST_F_L0(BuiltinsArrayTest, At)
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
+    std::vector<int> descVals{2, 3, 4};
     JSHandle<JSTaggedValue> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, obj, lengthKeyHandle).GetValue()->GetInt(), 0);
-
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)));
-    JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key2, desc2);
+    
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -1776,15 +1519,8 @@ HWTEST_F_L0(BuiltinsArrayTest, With)
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj),
                                    lengthKeyHandle).GetValue()->GetInt(), INT_VALUE_0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(static_cast<uint32_t>(ArrayIndex::ARRAY_INDEX_0)));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_0)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(static_cast<uint32_t>(ArrayIndex::ARRAY_INDEX_1)));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(static_cast<uint32_t>(ArrayIndex::ARRAY_INDEX_2)));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{0, 1, 2};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 =
         TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), RUNTIME_CALL_INFO_PARA_NUM_8);
@@ -1801,9 +1537,9 @@ HWTEST_F_L0(BuiltinsArrayTest, With)
     EXPECT_TRUE(result.IsECMAObject());
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key0).GetValue()->GetInt(), INT_VALUE_0);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key1).GetValue()->GetInt(), INT_VALUE_3);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key2).GetValue()->GetInt(), INT_VALUE_2);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[0]).GetValue()->GetInt(), INT_VALUE_0);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[1]).GetValue()->GetInt(), INT_VALUE_3);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[2]).GetValue()->GetInt(), INT_VALUE_2);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, ToSorted)
@@ -1815,15 +1551,8 @@ HWTEST_F_L0(BuiltinsArrayTest, ToSorted)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj),
                                    lengthKeyHandle).GetValue()->GetInt(), INT_VALUE_0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(INT_VALUE_0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(INT_VALUE_1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(INT_VALUE_2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{3, 2, 1};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 =
         TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), RUNTIME_CALL_INFO_PARA_NUM_4);
@@ -1837,9 +1566,9 @@ HWTEST_F_L0(BuiltinsArrayTest, ToSorted)
     EXPECT_TRUE(result2.IsECMAObject());
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result2.GetRawData())));
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key0).GetValue()->GetInt(), INT_VALUE_1);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key1).GetValue()->GetInt(), INT_VALUE_2);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key2).GetValue()->GetInt(), INT_VALUE_3);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[0]).GetValue()->GetInt(), INT_VALUE_1);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[1]).GetValue()->GetInt(), INT_VALUE_2);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[2]).GetValue()->GetInt(), INT_VALUE_3);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, ToSpliced)
@@ -1851,15 +1580,8 @@ HWTEST_F_L0(BuiltinsArrayTest, ToSpliced)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj),
                                    lengthKeyHandle).GetValue()->GetInt(), INT_VALUE_0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(INT_VALUE_0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_0)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(INT_VALUE_1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(INT_VALUE_2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{0, 1, 2};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 =
         TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), RUNTIME_CALL_INFO_PARA_NUM_10);
@@ -1876,9 +1598,9 @@ HWTEST_F_L0(BuiltinsArrayTest, ToSpliced)
     EXPECT_TRUE(result2.IsECMAObject());
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result2.GetRawData())));
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key0).GetValue()->GetInt(), INT_VALUE_0);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key1).GetValue()->GetInt(), INT_VALUE_666);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key2).GetValue()->GetInt(), INT_VALUE_2);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[0]).GetValue()->GetInt(), INT_VALUE_0);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[1]).GetValue()->GetInt(), INT_VALUE_666);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, keys[2]).GetValue()->GetInt(), INT_VALUE_2);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, FindLast)
@@ -1893,15 +1615,9 @@ HWTEST_F_L0(BuiltinsArrayTest, FindLast)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
     // arr [50, 40, 2]
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(40)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{50, 40, 2};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
+
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFindLastFunc));
 
@@ -1932,17 +1648,8 @@ HWTEST_F_L0(BuiltinsArrayTest, FindLastIndex)
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
     // arr [50, 40, 30]
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(40)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(30)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    std::vector<int> descVals{50, 40, 30};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFindLastIndexFunc));
@@ -1969,15 +1676,9 @@ HWTEST_F_L0(BuiltinsArrayTest, ToReversed)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj),
                                    lengthKeyHandle).GetValue()->GetInt(), INT_VALUE_0);
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(INT_VALUE_0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_50)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(INT_VALUE_1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_200)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(INT_VALUE_2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    
+    std::vector<int> descVals{50, 200, 3};
+    auto keys = DefineOwnPropertyCommonTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), INT_VALUE_4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -1993,19 +1694,19 @@ HWTEST_F_L0(BuiltinsArrayTest, ToReversed)
     JSHandle<JSObject> valueHandle(thread, value);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle),
                                    lengthKeyHandle).GetValue()->GetInt(), INT_VALUE_3);
-    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_3));
-    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_200));
-    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_50));
+
+    std::vector<int> vals2{3, 200, 50};
+    CheckKeyValueCommon(thread, valueHandle, descRes, keys, vals2);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj),
                                    lengthKeyHandle).GetValue()->GetInt(), INT_VALUE_3);
-    JSObject::GetOwnProperty(thread, obj, key0, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_50));
-    JSObject::GetOwnProperty(thread, obj, key1, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_200));
-    JSObject::GetOwnProperty(thread, obj, key2, descRes);
-    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_3));
+
+    std::vector<int> vals{50, 200, 3};
+    CheckKeyValueCommon(thread, obj, descRes, keys, vals);
+    // JSObject::GetOwnProperty(thread, obj, key0, descRes);
+    // ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_50));
+    // JSObject::GetOwnProperty(thread, obj, key1, descRes);
+    // ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_200));
+    // JSObject::GetOwnProperty(thread, obj, key2, descRes);
+    // ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(INT_VALUE_3));
 }
 }  // namespace panda::test
