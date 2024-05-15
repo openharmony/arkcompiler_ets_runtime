@@ -226,6 +226,7 @@ private:
     LoopDesc *GetOrCreateLoopDesc(BB &headBB);
     void SetLoopParent4BB(const BB &bb, LoopDesc &loopDesc);
     void SetExitBBs(LoopDesc &loop) const;
+    void GenerateLoop(BB *bb);
     void ProcessBB(BB &bb);
 };
 

@@ -598,7 +598,7 @@ void JSSharedArray::SortElementsByObject(JSThread *thread, const JSHandle<JSObje
 bool JSSharedArray::IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                          const JSHandle<JSTaggedValue> &value)
 {
-    ASSERT(obj->IsJSArray());
+    ASSERT(obj->IsJSSharedArray());
     JSHandle<JSSharedArray> arrayObj = JSHandle<JSSharedArray>::Cast(obj);
     int32_t length = static_cast<int32_t>(arrayObj->GetArrayLength());
     if (length == 0) {

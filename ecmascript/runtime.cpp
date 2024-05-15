@@ -118,6 +118,7 @@ void Runtime::DestroyIfLastVm()
 {
     LockHolder lock(*vmCreationLock_);
     if (--vmCount_ <= 0) {
+        SharedHeap::GetInstance()->Prepare();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();
         MemMapAllocator::GetInstance()->Finalize();
         PGOProfilerManager::GetInstance()->Destroy();

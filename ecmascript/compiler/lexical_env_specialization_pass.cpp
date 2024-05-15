@@ -323,6 +323,7 @@ GateRef GetEnvSpecializationPass::VisitGate(GateRef gate)
 
 GateRef GetEnvSpecializationPass::TryGetReplaceEnv(GateRef func)
 {
+    ASSERT(acc_.GetNumValueIn(func) >= 1);
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(func);
     switch (ecmaOpcode) {
         case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:

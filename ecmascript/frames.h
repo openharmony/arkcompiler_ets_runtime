@@ -1063,7 +1063,7 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
         return sizeof(AsmInterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor) const;
+        const RootBaseAndDerivedVisitor &derivedVisitor, bool isBaselineFrame) const;
 
     JSTaggedValue GetEnv() const
     {

@@ -334,16 +334,13 @@ void JSObject::OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObjec
     obj->SetProperties(thread, array);
 }
 
-void JSObject::SetSProperties(JSThread *thread,
-                              JSHandle<JSObject> obj,
-                              JSHandle<JSHClass> hclass,
-                              const std::vector<PropertyDescriptor> &descs)
+void JSObject::SetSProperties(JSThread *thread, JSHandle<JSObject> obj, const std::vector<PropertyDescriptor> &descs)
 {
     uint32_t length = descs.size();
     JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> propValue(thread, JSTaggedValue::Undefined());
 
-    if (LIKELY(!hclass->IsDictionaryMode())) {
+    if (LIKELY(!obj->GetJSHClass()->IsDictionaryMode())) {
         for (uint32_t i = 0; i < length; ++i) {
             propValue.Update(descs[i].GetValue());
             // note(lzl): IsSAccessor?
@@ -2131,6 +2128,12 @@ JSHandle<GlobalEnv> JSObject::GetFunctionRealm(JSThread *thread, const JSHandle<
         JSHandle<JSTaggedValue> proxyTarget(thread, JSHandle<JSProxy>(object)->GetTarget());
         return GetFunctionRealm(thread, proxyTarget);
     }
+
+    if (object->IsJSShared()) {
+        // LexicalEnv in sharedConstructor is constructor itself. And Shared Constructors shares the same GlobalEnv.
+        return thread->GetEcmaVM()->GetGlobalEnv();
+    }
+
     JSTaggedValue maybeGlobalEnv = JSHandle<JSFunction>(object)->GetLexicalEnv();
     while (!maybeGlobalEnv.IsJSGlobalEnv()) {
         if (maybeGlobalEnv.IsUndefined()) {
@@ -2382,14 +2385,20 @@ void JSObject::ToPropertyDescriptor(JSThread *thread, const JSHandle<JSTaggedVal
     // 23. Return desc.
 }
 
-const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj)
+const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj, bool noAllocate,
+                                                        bool *isCallGetter)
 {
     CString result = "";
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> contructorKey = globalConst->GetHandledConstructorString();
     JSTaggedValue objConstructor = ObjectFastOperator::GetPropertyByName(thread, JSTaggedValue(obj),
-                                                                         contructorKey.GetTaggedValue());
+                                                                         contructorKey.GetTaggedValue(), noAllocate,
+                                                                         isCallGetter);
+    if (*isCallGetter) {
+        return "JSObject";
+    }
+
     if (!objConstructor.IsJSFunction()) {
         return "JSObject";
     }

@@ -102,6 +102,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
 
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
+    jsThread->SetThreadId();
 
     RegisterThread(jsThread);
     return jsThread;
@@ -138,6 +139,8 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 JSThread::JSThread(EcmaVM *vm, bool isJit) : id_(os::thread::GetCurrentThreadId()), vm_(vm), isJitThread_(isJit)
 {
     ASSERT(isJit);
+    // jit thread no need GCIterating
+    readyForGCIterating_ = false;
     RegisterThread(this);
 };
 
@@ -195,6 +198,12 @@ JSTaggedValue JSThread::GetCurrentLexenv() const
 {
     FrameHandler frameHandler(this);
     return frameHandler.GetEnv();
+}
+
+JSTaggedValue JSThread::GetCurrentFunction() const
+{
+    FrameHandler frameHandler(this);
+    return frameHandler.GetFunction();
 }
 
 const JSTaggedType *JSThread::GetCurrentFrame() const
@@ -287,10 +296,12 @@ bool JSThread::IsInRunningStateOrProfiling() const
 {
     bool result = IsInRunningState();
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    return result || vm_->GetHeapProfile() != nullptr;
-#else
-    return result;
+    result |= vm_->GetHeapProfile() != nullptr;
 #endif
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    result |= GetIsProfiling();
+#endif
+    return result;
 }
 
 void JSThread::WriteToStackTraceFd(std::ostringstream &buffer) const
@@ -775,15 +786,33 @@ size_t JSThread::GetAsmStackLimit()
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     // js stack limit
     size_t result = GetCurrentStackPosition() - EcmaParamConfiguration::GetDefalutStackSize();
+    int ret = -1;
+    void *stackAddr = nullptr;
+    size_t size = 0;
+#if defined(ENABLE_FFRT_INTERFACES)
+    if (!ffrt_get_current_coroutine_stack(&stackAddr, &size)) {
+        pthread_attr_t attr;
+        ret = pthread_getattr_np(pthread_self(), &attr);
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "Get current thread attr failed";
+            return result;
+        }
+        ret = pthread_attr_getstack(&attr, &stackAddr, &size);
+        if (pthread_attr_destroy(&attr) != 0) {
+            LOG_ECMA(ERROR) << "Destroy current thread attr failed";
+        }
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "Get current thread stack size failed";
+            return result;
+        }
+    }
+#else
     pthread_attr_t attr;
-    int ret = pthread_getattr_np(pthread_self(), &attr);
+    ret = pthread_getattr_np(pthread_self(), &attr);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Get current thread attr failed";
         return result;
     }
-
-    void *stackAddr = nullptr;
-    size_t size = 0;
     ret = pthread_attr_getstack(&attr, &stackAddr, &size);
     if (pthread_attr_destroy(&attr) != 0) {
         LOG_ECMA(ERROR) << "Destroy current thread attr failed";
@@ -792,6 +821,7 @@ size_t JSThread::GetAsmStackLimit()
         LOG_ECMA(ERROR) << "Get current thread stack size failed";
         return result;
     }
+#endif
 
     bool isMainThread = IsMainThread();
     uintptr_t threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr);
@@ -919,7 +949,35 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterat
     glueData_.stackStart_ = currentContext->GetStackStart();
     if (!currentContext->GlobalEnvIsHole()) {
         SetGlueGlobalEnv(*(currentContext->GetGlobalEnv()));
-        SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
+        /**
+         * GlobalObject has two copies, one in GlueData and one in Context.GlobalEnv, when switch context, will save
+         * GlobalObject in GlueData to CurrentContext.GlobalEnv(is this nessary?), and then switch to new context,
+         * save the GlobalObject in NewContext.GlobalEnv to GlueData.
+         * The initial value of GlobalObject in Context.GlobalEnv is Undefined, but in GlueData is Hole,
+         * so if two SharedGC happened during the builtins initalization like this, maybe will cause incorrect scene:
+         *
+         * Default:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                 Undefined                   Hole
+         *
+         * First SharedGC(JSThread::SwitchCurrentContext), Set GlobalObject from Context.GlobalEnv to GlueData:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                 Undefined                 Undefined
+         *
+         * Builtins Initialize, Create GlobalObject and Set to Context.GlobalEnv:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                    Obj                    Undefined
+         *
+         * Second SharedGC(JSThread::SwitchCurrentContext), Set GlobalObject from GlueData to Context.GlobalEnv:
+         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
+         * value:                                 Undefined                 Undefined
+         *
+         * So when copy values between Context.GlobalEnv and GlueData, need to check if the value is Hole in GlueData,
+         * and if is Undefined in Context.GlobalEnv, because the initial value is different.
+        */
+        if (!currentContext->GetGlobalEnv()->GetGlobalObject().IsUndefined()) {
+            SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
+        }
     }
     if (!isInIterate) {
         // If isInIterate is true, it means it is in GC iterate and global variables are no need to change.

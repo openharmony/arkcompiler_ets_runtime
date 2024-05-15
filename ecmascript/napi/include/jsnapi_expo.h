@@ -388,6 +388,11 @@ public:
     int64_t IntegerValue(const EcmaVM *vm);
     uint32_t Uint32Value(const EcmaVM *vm);
     int32_t Int32Value(const EcmaVM *vm);
+    double GetValueDouble(bool &isNumber);
+    int32_t GetValueInt32(bool &isNumber);
+    uint32_t GetValueUint32(bool &isNumber);
+    int64_t GetValueInt64(bool &isNumber);
+    bool GetValueBool(bool &isBool);
 
     Local<NumberRef> ToNumber(const EcmaVM *vm);
     Local<BooleanRef> ToBoolean(const EcmaVM *vm);
@@ -450,6 +455,14 @@ public:
     bool IsJSPrimitiveBoolean();
     bool IsJSPrimitiveString();
 
+    bool IsJSSharedInt8Array();
+    bool IsJSSharedUint8Array();
+    bool IsJSSharedUint8ClampedArray();
+    bool IsJSSharedInt16Array();
+    bool IsJSSharedUint16Array();
+    bool IsJSSharedInt32Array();
+    bool IsJSSharedUint32Array();
+
     bool IsGeneratorObject();
     bool IsJSPrimitiveSymbol();
 
@@ -470,6 +483,7 @@ public:
 
     bool IsModuleNamespaceObject();
     bool IsSharedArrayBuffer();
+    bool IsSendableArrayBuffer();
 
     bool IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value);
     Local<StringRef> Typeof(const EcmaVM *vm);
@@ -491,12 +505,22 @@ public:
     bool IsTreeSet();
     bool IsVector();
     bool IsSharedObject();
+    bool IsSharedFunction();
     bool IsJSShared();
     bool IsSharedArray();
     bool IsSharedTypedArray();
     bool IsSharedSet();
     bool IsSharedMap();
     bool IsHeapObject();
+    void *GetNativePointerValue(const EcmaVM *vm, bool &isNativePointer);
+    bool IsDetachedArraybuffer(bool &isArrayBuffer);
+    void DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
+    void GetDataViewInfo(const EcmaVM *vm,
+                         bool &isDataView,
+                         size_t *byteLength,
+                         void **data,
+                         JSValueRef **arrayBuffer,
+                         size_t *byteOffset);
 
 private:
     JSTaggedType value_;
@@ -505,6 +529,7 @@ private:
     friend class Global;
     template<typename T>
     friend class Local;
+    void *GetNativePointerValueImpl(const EcmaVM *vm, bool &isNativePointer);
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
@@ -642,14 +667,26 @@ public:
 
 class ECMA_PUBLIC_API ObjectRef : public JSValueRef {
 public:
+    enum class SendableType {
+        NONE,
+        OBJECT,
+        GENERIC,
+    };
+    struct SendablePropertiesInfo {
+        std::vector<Local<JSValueRef>> keys;
+        std::vector<SendableType> types;
+        std::vector<PropertyAttribute> attributes;
+    };
     static constexpr int MAX_PROPERTIES_ON_STACK = 32;
     static inline ObjectRef *Cast(JSValueRef *value)
     {
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
+    static Local<ObjectRef> NewS(const EcmaVM *vm);
     static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
                                               const PropertyAttribute *attributes);
+    static Local<ObjectRef> NewSWithProperties(const EcmaVM *vm, SendablePropertiesInfo &info);
     static Local<ObjectRef> NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount, const char **keys,
                                                    const Local<JSValueRef> *values);
     static Local<ObjectRef> CreateAccessorData(const EcmaVM *vm, Local<FunctionRef> getter, Local<FunctionRef> setter);
@@ -678,6 +715,8 @@ public:
     bool Has(const EcmaVM *vm, Local<JSValueRef> key);
     bool Has(const EcmaVM *vm, uint32_t key);
 
+    bool HasOwnProperty(const EcmaVM *vm, Local<JSValueRef> key);
+
     bool Delete(const EcmaVM *vm, Local<JSValueRef> key);
     bool Delete(const EcmaVM *vm, uint32_t key);
 
@@ -703,15 +742,6 @@ using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 using InternalFunctionCallback = JSValueRef(*)(JsiRuntimeCallInfo*);
 class ECMA_PUBLIC_API FunctionRef : public ObjectRef {
 public:
-    enum class SendableType {
-        NONE,
-        OBJECT,
-    };
-    struct SendablePropertiesInfo {
-        std::vector<Local<JSValueRef>> keys;
-        std::vector<SendableType> types;
-        std::vector<PropertyAttribute> attributes;
-    };
     struct SendablePropertiesInfos {
         SendablePropertiesInfo instancePropertiesInfo;
         SendablePropertiesInfo staticPropertiesInfo;
@@ -887,9 +917,16 @@ protected:
     inline LocalScope(const EcmaVM *vm, JSTaggedType value);
 
 private:
+    void OpenLocalScope(EcmaContext *context);
+    void OpenPrimitiveScope(EcmaContext *context);
+    void CloseLocalScope(EcmaContext *context);
+    void ClosePrimitiveScope(EcmaContext *context);
     void *prevNext_ = nullptr;
     void *prevEnd_ = nullptr;
     int prevHandleStorageIndex_ {-1};
+    void *prevPrimitiveNext_ = nullptr;
+    void *prevPrimitiveEnd_ = nullptr;
+    int prevPrimitiveStorageIndex_ {-1};
     void *thread_ = nullptr;
 };
 
@@ -935,6 +972,19 @@ public:
     bool IsDetach();
 };
 
+class ECMA_PUBLIC_API SendableArrayBufferRef : public ObjectRef {
+public:
+    static Local<SendableArrayBufferRef> New(const EcmaVM *vm, int32_t length);
+    static Local<SendableArrayBufferRef> New(const EcmaVM *vm, void *buffer, int32_t length,
+                                             const NativePointerCallback &deleter, void *data);
+
+    int32_t ByteLength(const EcmaVM *vm);
+    void *GetBuffer();
+
+    void Detach(const EcmaVM *vm);
+    bool IsDetach();
+};
+
 class ECMA_PUBLIC_API DateRef : public ObjectRef {
 public:
     static Local<DateRef> New(const EcmaVM *vm, double time);
@@ -950,9 +1000,26 @@ public:
     Local<ArrayBufferRef> GetArrayBuffer(const EcmaVM *vm);
 };
 
+class ECMA_PUBLIC_API SendableTypedArrayRef : public ObjectRef {
+public:
+    uint32_t ByteLength(const EcmaVM *vm);
+    uint32_t ByteOffset(const EcmaVM *vm);
+    uint32_t ArrayLength(const EcmaVM *vm);
+    Local<SendableArrayBufferRef> GetArrayBuffer(const EcmaVM *vm);
+};
+
 class ECMA_PUBLIC_API ArrayRef : public ObjectRef {
 public:
     static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
+    static Local<ArrayRef> NewSendable(const EcmaVM *vm, uint32_t length = 0);
+    uint32_t Length(const EcmaVM *vm);
+    static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
+    static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
+};
+
+class ECMA_PUBLIC_API SendableArrayRef : public ObjectRef {
+public:
+    static Local<SendableArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
     uint32_t Length(const EcmaVM *vm);
     static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
@@ -963,9 +1030,21 @@ public:
     static Local<Int8ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
 };
 
+class ECMA_PUBLIC_API SharedInt8ArrayRef : public TypedArrayRef {
+public:
+    static Local<SharedInt8ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                                   int32_t byteOffset, int32_t length);
+};
+
 class ECMA_PUBLIC_API Uint8ArrayRef : public TypedArrayRef {
 public:
     static Local<Uint8ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
+};
+
+class ECMA_PUBLIC_API SharedUint8ArrayRef : public TypedArrayRef {
+public:
+    static Local<SharedUint8ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                                   int32_t byteOffset, int32_t length);
 };
 
 class ECMA_PUBLIC_API Uint8ClampedArrayRef : public TypedArrayRef {
@@ -979,10 +1058,22 @@ public:
     static Local<Int16ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
 };
 
+class ECMA_PUBLIC_API SharedInt16ArrayRef : public TypedArrayRef {
+public:
+    static Local<SharedInt16ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                                   int32_t byteOffset, int32_t length);
+};
+
 class ECMA_PUBLIC_API Uint16ArrayRef : public TypedArrayRef {
 public:
     static Local<Uint16ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                      int32_t length);
+};
+
+class ECMA_PUBLIC_API SharedUint16ArrayRef : public TypedArrayRef {
+public:
+    static Local<SharedUint16ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                                   int32_t byteOffset, int32_t length);
 };
 
 class ECMA_PUBLIC_API Int32ArrayRef : public TypedArrayRef {
@@ -990,10 +1081,22 @@ public:
     static Local<Int32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
 };
 
+class ECMA_PUBLIC_API SharedInt32ArrayRef : public TypedArrayRef {
+public:
+    static Local<SharedInt32ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                                   int32_t byteOffset, int32_t length);
+};
+
 class ECMA_PUBLIC_API Uint32ArrayRef : public TypedArrayRef {
 public:
     static Local<Uint32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                      int32_t length);
+};
+
+class ECMA_PUBLIC_API SharedUint32ArrayRef : public TypedArrayRef {
+public:
+    static Local<SharedUint32ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                                     int32_t byteOffset, int32_t length);
 };
 
 class ECMA_PUBLIC_API Float32ArrayRef : public TypedArrayRef {
@@ -1189,7 +1292,9 @@ public:
 class ECMA_PUBLIC_API PromiseCapabilityRef : public ObjectRef {
 public:
     static Local<PromiseCapabilityRef> New(const EcmaVM *vm);
+    bool Resolve(const EcmaVM *vm, uintptr_t value);
     bool Resolve(const EcmaVM *vm, Local<JSValueRef> value);
+    bool Reject(const EcmaVM *vm, uintptr_t reason);
     bool Reject(const EcmaVM *vm, Local<JSValueRef> reason);
     Local<PromiseRef> GetPromise(const EcmaVM *vm);
 };
@@ -1275,7 +1380,8 @@ public:
     static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
                                  bool needUpdate = false);
     // JS code
-    static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate = false);
+    static bool Execute(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
+                        bool needUpdate = false, bool executeFromJob = false);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
                         const std::string &filename = "", bool needUpdate = false);
     static int ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
@@ -1293,8 +1399,6 @@ public:
                                                        const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
                                                              const std::string &module_path);
-    // secure memory check
-    static bool CheckSecureMem(uintptr_t mem);
 
     /*
      * Execute panda file from secure mem. secure memory lifecycle managed externally.
@@ -1405,6 +1509,7 @@ public:
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
     static std::string GetModuleName(EcmaVM *vm);
     static std::pair<std::string, std::string> GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName = false);
+    static std::string NormalizePath(const std::string &string);
     static void AllowCrossThreadExecution(EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
     static void *GetEnv(EcmaVM *vm);
@@ -1416,8 +1521,13 @@ public:
                     int32_t triggerMode)> &cb);
     static void SetSearchHapPathTracker(EcmaVM *vm, std::function<bool(const std::string moduleName,
                     std::string &hapPath)> cb);
+    static void SetMultiThreadCheck(bool multiThreadCheck = true);
 
     // Napi Heavy Logics fast path
+    static Local<JSValueRef> NapiHasProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
+    static Local<JSValueRef> NapiHasOwnProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
+    static Local<JSValueRef> NapiGetProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
+    static Local<JSValueRef> NapiDeleteProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);
     static Local<JSValueRef> NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativeObj, const char* utf8Key);
 
     static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
@@ -1426,6 +1536,7 @@ public:
     static bool KeyIsNumber(const char* utf8);
 
     static bool IsJitEscape();
+    static bool IsAotEscape(const EcmaVM *vm);
 private:
     static int vmCount_;
     static bool initialize_;
@@ -1441,7 +1552,6 @@ private:
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
-    static bool IsAotEscape();
     static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
     template<typename T>
     friend class Global;

@@ -1677,10 +1677,11 @@ void AsmNode::Dump(int32 indent) const
     // print labels
     PrintIndentation(indent + 1);
     LogInfo::MapleLogger() << " :";
-    for (size_t i = 0; i < gotoLabels.size(); i++) {
+    size_t labelSize = gotoLabels.size();
+    for (size_t i = 0; i < labelSize; i++) {
         LabelIdx offset = gotoLabels[i];
         LogInfo::MapleLogger() << " @" << theMIRModule->CurFunction()->GetLabelName(offset);
-        if (i != gotoLabels.size() - 1) {
+        if (i != labelSize - 1) {
             LogInfo::MapleLogger() << ',';
         }
     }

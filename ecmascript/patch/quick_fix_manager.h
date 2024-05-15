@@ -39,7 +39,6 @@ public:
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
     JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId);
-
 private:
     // check whether the callback is registered.
     bool HasQueryQuickFixInfoFunc() const

@@ -36,6 +36,7 @@ namespace panda::ecmascript::tooling {
         }
         return jsDebuggerManagerMap_[tid];
     }
+
     void JsDebuggerManager::DeleteJsDebuggerManager(int tid)
     {
         std::unique_lock<std::shared_mutex> lock(mutex_);

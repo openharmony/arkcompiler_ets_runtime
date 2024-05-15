@@ -425,6 +425,7 @@ public:
 
     uint32_t GetLastBcIndex() const
     {
+        ASSERT(pcOffsets_.size() > 0);
         return static_cast<uint32_t>(pcOffsets_.size() - 1);
     }
 
@@ -549,7 +550,7 @@ public:
         int32_t preConstpoolId = 0;
         while (gateAcc_.GetOpCode(frameArgs) != OpCode::CIRCUIT_ROOT) {
             preConstpool = gateAcc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::CONST_POOL));
-            preConstpoolId = gateAcc_.GetConstpoolId(preConstpool);
+            preConstpoolId = static_cast<int32_t>(gateAcc_.GetConstpoolId(preConstpool));
             if (preConstpoolId == constpoolId) {
                 return preConstpool;
             }

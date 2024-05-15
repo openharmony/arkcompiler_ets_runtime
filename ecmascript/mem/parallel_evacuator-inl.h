@@ -25,10 +25,17 @@
 
 namespace panda::ecmascript {
 // Move regions with a survival rate of more than 75% to new space
+// Move regions when young space overshoot size is larger than max capacity.
 bool ParallelEvacuator::IsWholeRegionEvacuate(Region *region)
 {
-    return (static_cast<double>(region->AliveObject()) / region->GetSize()) > MIN_OBJECT_SURVIVAL_RATE &&
-        !region->HasAgeMark();
+    if ((static_cast<double>(region->AliveObject()) / region->GetSize()) > MIN_OBJECT_SURVIVAL_RATE &&
+        !region->HasAgeMark()) {
+        return true;
+    }
+    if (heap_->GetFromSpaceDuringEvacuation()->CommittedSizeIsLarge() && !region->HasAgeMark()) {
+        return true;
+    }
+    return false;
 }
 
 template <typename Callback>

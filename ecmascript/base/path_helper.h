@@ -57,11 +57,11 @@ public:
      * Before: moduleName@nameSpace
      * After:  nameSpace
      */
-    inline static CString GetHarName(CString &moduleName)
+    inline static CString GetHarName(const CString &moduleName)
     {
         size_t pos = moduleName.find(NAME_SPACE_TAG);
         ASSERT(pos != CString::npos);
-        return moduleName.substr(pos);
+        return moduleName.substr(pos + 1);
     }
 
     /*
@@ -102,6 +102,7 @@ public:
         if (pos == CString::npos) {
             LOG_FULL(FATAL) << "Unknown format " << moduleRequestName;
         }
+        ASSERT(pos != 0);
         return moduleRequestName.substr(1, pos - 1);
     }
 };

@@ -148,6 +148,7 @@ public:
 
     void VisitRegion(GateRegion* curRegion)
     {
+        ASSERT(curRegion->gateList_.size() > 0);
         replacement_.SetState(curRegion->GetState());
         currentIndex_ = static_cast<int32_t>(curRegion->gateList_.size() - 1); // 1: -1 for size
         TryLoadDependStart(curRegion);

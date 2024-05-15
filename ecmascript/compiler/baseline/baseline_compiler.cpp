@@ -111,8 +111,8 @@ void BaselineCompiler::Compile(JSHandle<JSFunction> &jsFunction)
     firstPC = bytecodeArray;
 
     auto *thread = vm->GetAssociatedJSThread();
-    Address bcAddr = thread->GetRTInterface(RuntimeStubCSigns::ID_BaselineCallArg1);
-    LOG_INST() << "    ID_BaselineCallArg1 Address: " << std::hex << bcAddr;
+    Address bcAddr = thread->GetRTInterface(RuntimeStubCSigns::ID_CallArg1AndCheckToBaseline);
+    LOG_INST() << "    ID_CallArg1AndCheckToBaseline Address: " << std::hex << bcAddr;
 
     std::unordered_set<size_t> jumpToOffsets;
     GetJumpToOffsets(bytecodeArray, methodBytecodeLast, jumpToOffsets);
@@ -484,7 +484,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(STGLOBALVAR_IMM16_ID16)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::PROFILE_TYPE_INFO);
     parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(slotId);
     parameters.emplace_back(stringId);
@@ -1096,8 +1095,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(STSUPERBYNAME_IMM16_ID16_V8)
 {
     int16_t stringId = READ_INST_16_2();
     int8_t object = READ_INST_8_4();
-
-
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
             thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineStsuperbynameImm16Id16V8);
@@ -2642,6 +2639,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(RETURN)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(ADD2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2650,8 +2648,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ADD2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(static_cast<int32_t>(slotId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2659,6 +2658,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ADD2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(SUB2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2667,8 +2667,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(SUB2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(static_cast<int32_t>(slotId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2676,6 +2677,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(SUB2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(MUL2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2684,8 +2686,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(MUL2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2693,6 +2696,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(MUL2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DIV2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2701,8 +2705,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DIV2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2710,6 +2715,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DIV2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(MOD2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2718,8 +2724,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(MOD2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2727,6 +2734,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(MOD2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(SHL2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2735,8 +2743,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(SHL2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2744,6 +2753,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(SHL2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(SHR2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2752,8 +2762,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(SHR2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2761,6 +2772,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(SHR2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(ASHR2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2769,8 +2781,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ASHR2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2778,6 +2791,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ASHR2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(AND2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2786,8 +2800,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(AND2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2795,6 +2810,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(AND2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(OR2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2803,8 +2819,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(OR2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2812,6 +2829,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(OR2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(XOR2_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2820,8 +2838,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(XOR2_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2829,6 +2848,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(XOR2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(EXP_IMM8_V8)
 {
     uint8_t vBaseId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2837,16 +2857,16 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(EXP_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vBaseId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(NEG_IMM8)
 {
-    (void)bytecodeArray;
-
+    uint8_t slotId = READ_INST_8_0();
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
             thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineNegImm8);
@@ -2854,15 +2874,15 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(NEG_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(NOT_IMM8)
 {
-    (void)bytecodeArray;
-
+    uint8_t slotId = READ_INST_8_0();
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
             thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineNotImm8);
@@ -2870,15 +2890,15 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(NOT_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(INC_IMM8)
 {
-    (void)bytecodeArray;
-
+    uint8_t slotId = READ_INST_8_0();
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
             thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineIncImm8);
@@ -2886,15 +2906,15 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(INC_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEC_IMM8)
 {
-    (void)bytecodeArray;
-
+    uint8_t slotId = READ_INST_8_0();
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
             thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDecImm8);
@@ -2902,7 +2922,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEC_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2944,6 +2965,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(TONUMERIC_IMM8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(EQ_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2952,8 +2974,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(EQ_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2961,6 +2984,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(EQ_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(NOTEQ_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2969,8 +2993,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(NOTEQ_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2978,6 +3003,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(NOTEQ_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(LESS_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -2986,8 +3012,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LESS_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2995,6 +3022,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LESS_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(LESSEQ_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -3003,8 +3031,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LESSEQ_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -3012,6 +3041,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LESSEQ_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(GREATER_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -3020,8 +3050,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(GREATER_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -3029,6 +3060,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(GREATER_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(GREATEREQ_IMM8_V8)
 {
     uint8_t vLeftId = READ_INST_8_1();
+    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -3037,8 +3069,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(GREATEREQ_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -3082,6 +3115,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(INSTANCEOF_IMM8_V8)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(STRICTNOTEQ_IMM8_V8)
 {
+    int8_t slotId = READ_INST_8_0();
     uint8_t vLeftId = READ_INST_8_1();
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -3091,14 +3125,16 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(STRICTNOTEQ_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(STRICTEQ_IMM8_V8)
 {
+    int8_t slotId = READ_INST_8_0();
     uint8_t vLeftId = READ_INST_8_1();
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -3108,8 +3144,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(STRICTEQ_IMM8_V8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vLeftId));
+    parameters.emplace_back(slotId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -4006,7 +4043,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(THROW_PREF_NONE)
 
 // ------- End parse throw bytecodes  -------
 
-
 // ------- parse SET/GET bytecodes -------
 
 // GLUE, ACC, INDEX0, INDEX1, ENV
@@ -4082,6 +4118,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(GETASYNCITERATOR_IMM8)
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::ACC);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
 }
 
 // GLUE, ACC, INDEX
@@ -4392,7 +4429,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_TONUMERIC_PREF_V8)
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
-
 // GLUE, SP, V0
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_NEG_PREF_V8)
 {
@@ -4567,6 +4603,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_CALLSPREAD_PREF_V8_V8_V8)
     parameters.emplace_back(v1);
     parameters.emplace_back(v2);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
 }
 
 //  GLUE, SP, INDEX, FUNC_REG, HOTNESS_COUNTER
@@ -5319,6 +5356,46 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF
 }
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16)
 {
     (void)bytecodeArray;
 }

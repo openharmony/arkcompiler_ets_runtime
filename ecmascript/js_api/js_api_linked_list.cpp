@@ -244,6 +244,7 @@ bool JSAPILinkedList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPILinke
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     uint32_t length = static_cast<uint32_t>(doubleList->Length());
     if (index >= length) {
+        ASSERT(length > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
             << ". Received value is: " << index;

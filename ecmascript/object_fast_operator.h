@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_OBJECT_FAST_OPERATOR_H
 #define ECMASCRIPT_OBJECT_FAST_OPERATOR_H
 
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/property_attributes.h"
@@ -44,11 +45,22 @@ public:
 
     static inline bool DefineSemantics(Status status)
     {
-        return (static_cast<int32_t>(status) & static_cast<int32_t>(Status::DefineSemantics)) > 0;
+        return (static_cast<uint32_t>(status) & static_cast<int32_t>(Status::DefineSemantics)) > 0;
     }
 
     static inline std::pair<JSTaggedValue, bool> HasOwnProperty(JSThread *thread,
                                                                 JSTaggedValue receiver, JSTaggedValue key);
+
+    template<Status status = Status::None>
+    static inline JSTaggedValue TryFastHasProperty(JSThread *thread, JSTaggedValue receiver,
+                                                   JSMutableHandle<JSTaggedValue> keyHandle);
+
+    template<Status status = Status::None>
+    static inline JSTaggedValue TryFastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver,
+                                                          JSMutableHandle<JSTaggedValue> keyHandle);
+
+    template<Status status = Status::None>
+    static inline JSTaggedValue TryFastGetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 
     template<Status status = Status::None>
     static inline JSTaggedValue TryGetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
@@ -56,7 +68,8 @@ public:
 
     template<Status status = Status::None>
     static inline JSTaggedValue GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
-                                                  JSTaggedValue key);
+                                                  JSTaggedValue key, bool noAllocate = false,
+                                                  bool *isCallGetter = nullptr);
 
     template <Status status = Status::None>
     static inline JSTaggedValue TrySetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
@@ -115,6 +128,10 @@ private:
     static inline bool IsJSSharedArray(JSType jsType);
 
     static inline bool IsFastTypeArray(JSType jsType);
+
+    static inline bool IsString(JSType jsType);
+
+    static inline bool IsJSPrimitiveRef(JSType jsType);
 
     static inline bool TryStringOrSymbolToIndex(JSTaggedValue key, uint32_t *output);
 

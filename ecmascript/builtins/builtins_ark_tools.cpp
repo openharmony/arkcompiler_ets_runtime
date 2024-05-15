@@ -541,6 +541,34 @@ JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *i
     ClockScope scope;
     return JSTaggedValue(scope.GetCurTime());
 }
+
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+JSTaggedValue BuiltinsArkTools::StartScopeLockStats(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    auto vm = thread->GetEcmaVM();
+    vm->StartCollectingScopeLockStats();
+    LOG_FULL(INFO) << "Start Collecting ArkCompiler Scope-Lock Stats";
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::StopScopeLockStats(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    auto vm = thread->GetEcmaVM();
+    LOG_FULL(INFO) << "Stop Collecting ArkCompiler Scope-Lock Stats: "
+                   << " ThreadStateTransition count: " << vm->GetUpdateThreadStateTransCount()
+                   << " , Entered Scope But NO State Transition count: " << (vm->GetEnterJsiNativeScopeCount() +
+                                                                     vm->GetEnterFastNativeScopeCount() +
+                                                                     vm->GetEnterThreadManagedScopeCount() -
+                                                                     vm->GetUpdateThreadStateTransCount())
+                   << " , String-Table Lock count: " << vm->GetStringTableLockCount();
+    vm->ResetScopeLockStats();
+    vm->StopCollectingScopeLockStats();
+    return JSTaggedValue::Undefined();
+}
+#endif
+
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
@@ -551,16 +579,7 @@ JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::OptimizeFunctionOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    JSThread *thread = info->GetThread();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
-    if (!thisValue->IsJSFunction()) {
-        return JSTaggedValue::Undefined();
-    }
-    JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction);
-
+    LOG_ECMA(DEBUG) << "Enter OptimizeFunctionOnNextCall()";
     return JSTaggedValue::Undefined();
 }
 

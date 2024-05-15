@@ -177,56 +177,56 @@ print(1283326536000 == Date.parse("2010-08-31T22:35:36-0900"));
 print(1283261736000 == Date.parse("2010-08-31T22:35:36+0900"));
 
 //mjsunit/compiler/regress-5538.js
+// callback parseInt for ark optimize
+function callbackParseInt(x, y=-1) {
+  x = x | 0;
+  if (y == -1) {
+    return Number.parseInt(x + 1);
+  } else {
+    return Number.parseInt(x + 1, y);
+  }
+}
+
+// ArkTools.optimize
+function arkOptimize(foo) {
+  ArkTools.prepareFunctionForOptimization(foo);
+  print(1 == foo(0));
+  print(2 == foo(1));
+  ArkTools.optimizeFunctionOnNextCall(foo);
+  print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
+}
+
+// case1: parseInt(x + 1)
 (function() {
-    function foo(x) {
-      x = x | 0;
-      return Number.parseInt(x + 1);
-    }
-  
-    ArkTools.prepareFunctionForOptimization(foo);
-    print(1 == foo(0));
-    print(2 == foo(1));
-    ArkTools.optimizeFunctionOnNextCall(foo);
-    print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-  })();
-  
-  (function() {
-    function foo(x) {
-      x = x | 0;
-      return Number.parseInt(x + 1, 0);
-    }
-  
-    ArkTools.prepareFunctionForOptimization(foo);
-    print(1 == foo(0));
-    print(2 == foo(1));
-    ArkTools.optimizeFunctionOnNextCall(foo);
-    print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-  })();
-  
-  (function() {
-    function foo(x) {
-      x = x | 0;
-      return Number.parseInt(x + 1, 10);
-    }
-  
-    ArkTools.prepareFunctionForOptimization(foo);
-    print(1 == foo(0));
-    print(2 == foo(1));
-    ArkTools.optimizeFunctionOnNextCall(foo);
-    print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-  })();
-  
-  (function() {
-    function foo(x) {
-      x = x | 0;
-      return Number.parseInt(x + 1, undefined);
-    }
-    ArkTools.prepareFunctionForOptimization(foo);
-    print(1 == foo(0));
-    print(2 == foo(1));
-    ArkTools.optimizeFunctionOnNextCall(foo);
-    print(Math.pow(2, 31) == foo(Math.pow(2, 31) - 1));
-  })();
+  function foo(x) {
+    return callbackParseInt(x);
+  }
+  arkOptimize(foo);
+})();
+
+// case2: parseInt(x + 1, 0)
+(function() {
+  function callbackfunc2(x) {
+    return callbackParseInt(x, 0);
+  }
+  arkOptimize(callbackfunc2);
+})();
+
+// case3: parseInt(x + 1, 10)
+(function() {
+  function callbackfunc3(x) {
+    return callbackParseInt(x, 10);
+  }
+  arkOptimize(callbackfunc3);
+})();
+
+// case4: parseInt(x + 1, undefined)
+(function() {
+  function callbackfunc4(x) {
+    return callbackParseInt(x, undefined);
+  }
+  arkOptimize(callbackfunc4);
+})();
 
   // mjsunit/regress/regress-12256.js
   const datesList = [{ year: '2021', month: '10', day: '22', hour: '10', minute: '12', second: '32' },

@@ -102,10 +102,10 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
         JSArray::SetCapacity(thread, obj, 0, normalArrayLength, true);
     }
 
-    JSHandle<JSArray> newArray(obj);
     // For new Array(Len), the elementsKind should be Hole
     if (thread->GetEcmaVM()->IsEnableElementsKind()) {
         if ((newTarget.GetTaggedValue() == arrayFunc.GetTaggedValue()) && normalArrayLength != 0) {
+            JSHandle<JSArray> newArray(obj);
             #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
             JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::GENERIC);
             #else

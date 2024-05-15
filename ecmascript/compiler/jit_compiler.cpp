@@ -33,6 +33,15 @@ JitCompiler *JitCompiler::GetInstance(JSRuntimeOptions *options)
     return &instance;
 }
 
+void JitCompiler::UpdatePassOptions(CompilationEnv *env)
+{
+    EcmaVM *vm = env->GetHostThread()->GetEcmaVM();
+    bool builtinsLazyEnabled = vm->GetJSOptions().IsWorker() && vm->GetJSOptions().GetEnableBuiltinsLazy();
+    if (builtinsLazyEnabled) {
+        passOptions_.SetLoweringBuiltin(false);
+    }
+}
+
 JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
 {
 #if defined(PANDA_TARGET_AMD64)
@@ -44,8 +53,6 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     UNREACHABLE();
 #endif
     // refactor: remove JitCompilationOptions, reuse CompilationOptions
-    bool isApp = runtimeOptions.IsEnableAPPJIT();
-
     optLevel_ = runtimeOptions.GetOptLevel();
     relocMode_ = runtimeOptions.GetRelocMode();
     logOption_ = runtimeOptions.GetCompilerLogOption();
@@ -55,7 +62,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
     profilerIn_ = std::string(runtimeOptions.GetPGOProfilerPath());
     isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();
-    isEnableTypeLowering_ = isApp ? false : runtimeOptions.IsEnableTypeLowering();
+    isEnableTypeLowering_ = runtimeOptions.IsEnableTypeLowering();
     isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
@@ -120,6 +127,7 @@ bool JitCompilerTask::Compile()
     }
 
     JitCompiler *jitCompiler = JitCompiler::GetInstance();
+    jitCompiler->UpdatePassOptions(jitCompilationEnv_.get());
     auto jitPassManager = new (std::nothrow) JitPassManager(jitCompilationEnv_.get(),
                                                             jitCompiler->GetJitOptions().triple_,
                                                             jitCompiler->GetJitOptions().optLevel_,

@@ -63,7 +63,8 @@ public:
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LENGTH_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, TASK_CONCURRENT_FUNC_FLAG_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(TaskConcurrentFuncFlag, uint32_t, TASK_CONCURRENT_FUNC_FLAG_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, CODE_ENTRY_OFFSET)
@@ -203,6 +204,11 @@ public:
     {
         return (kind >= FunctionKind::BASE_CONSTRUCTOR) && (kind <= FunctionKind::ASYNC_GENERATOR_FUNCTION) &&
             (kind != FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
+    }
+
+    inline static bool IsNormalFunctionAndCanSkipWbWhenInitialization(FunctionKind kind)
+    {
+        return kind != FunctionKind::LAST_FUNCTION_KIND;
     }
 
     inline static bool HasAccessor(FunctionKind kind)

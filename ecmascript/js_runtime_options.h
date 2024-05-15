@@ -49,7 +49,8 @@ enum ArkProperties {
     CPU_PROFILER_ANY_TIME_MAIN_THREAD = 1 << 17,
     CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
     ENABLE_HEAP_VERIFY = 1 << 19,
-    ENABLE_MICROJOB_TRACE = 1 << 20
+    ENABLE_MICROJOB_TRACE = 1 << 20,
+    ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21
 };
 
 // asm interpreter control parsed option
@@ -160,6 +161,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_JIT,
     OPTION_COMPILER_ENABLE_OSR,
     OPTION_COMPILER_JIT_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_JIT_CALL_THRESHOLD,
     OPTION_COMPILER_OSR_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
@@ -183,6 +185,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_BASELINEJIT,
     OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
+    OPTION_ENABLE_AOT_CRASH_ESCAPE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -548,6 +551,11 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MICROJOB_TRACE) != 0;
     }
 
+    bool EnableInitOldSocketSession() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_INIT_OLD_SOCKET_SESSION) != 0;
+    }
+
     void DisableReportModuleResolvingFailure()
     {
         reportModuleResolvingFailure_ = false;
@@ -720,9 +728,19 @@ public:
         isWorker_ = isWorker;
     }
 
+    void SetIsRestrictedWorker(bool isRestrictedWorker)
+    {
+        isRestrictedWorker_ = isRestrictedWorker;
+    }
+
     bool IsWorker() const
     {
         return isWorker_;
+    }
+
+    bool IsRestrictedWorker() const
+    {
+        return isRestrictedWorker_;
     }
 
     bool EnableIC() const
@@ -975,6 +993,16 @@ public:
         return enablePGOProfiler_;
     }
 
+    void SetEnableAotCrashEscape(bool value)
+    {
+        enableAotCrashEscape_ = value;
+    }
+
+    bool IsEnableAotCrashEscape() const
+    {
+        return enableAotCrashEscape_;
+    }
+
     uint32_t GetPGOHotnessThreshold() const
     {
         return pgoHotnessThreshold_;
@@ -1109,6 +1137,16 @@ public:
     uint16_t GetJitHotnessThreshold() const
     {
         return jitHotnessThreshold_;
+    }
+
+    void SetJitCallThreshold(uint8_t value)
+    {
+        jitCallThreshold_ = value;
+    }
+
+    uint8_t GetJitCallThreshold() const
+    {
+        return jitCallThreshold_;
     }
 
     void SetOsrHotnessThreshold(uint16_t value)
@@ -1743,6 +1781,7 @@ private:
     bool compilerLogTime_ {false};
     bool enableRuntimeStat_ {false};
     bool isWorker_ {false};
+    bool isRestrictedWorker_ {false};
     bool traceBc_ {false};
     std::string logLevel_ {"error"};
     arg_list_t logDebug_ {{"all"}};
@@ -1771,6 +1810,7 @@ private:
     bool enableAPPJIT_{false};
     bool enableOSR_{false};
     uint16_t jitHotnessThreshold_ {2};
+    uint8_t jitCallThreshold_ {0};
     uint16_t osrHotnessThreshold_ {2};
     bool forceJitCompileMain_{false};
     bool enableBaselineJIT_{false};
@@ -1783,6 +1823,7 @@ private:
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
+    bool enableAotCrashEscape_ {true};
     bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};

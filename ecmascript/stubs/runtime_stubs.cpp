@@ -250,8 +250,8 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
     JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
-    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize) + srcArray->GetByteOffset();
-    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize) + targetArray->GetByteOffset();
+    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize + srcArray->GetByteOffset());
+    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize + targetArray->GetByteOffset());
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);
@@ -954,6 +954,46 @@ DEF_RUNTIME_STUBS(ToPropertyKey)
 {
     RUNTIME_STUBS_HEADER(ToPropertyKey);
     JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyValue)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyValue);
+    std::string string_key = "value";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyWritable)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyWritable);
+    std::string string_key = "writable";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyEnumerable)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyEnumerable);
+    std::string string_key = "enumerable";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToPropertyKeyConfigurable)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKeyConfigurable);
+    std::string string_key = "configurable";
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
+        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
     JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
     return res.GetRawData();
 }
@@ -2462,6 +2502,14 @@ DEF_RUNTIME_STUBS(DefineMethod)
     return RuntimeDefineMethod(thread, method, homeObject, length, env, module).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SetPatchModule)
+{
+    RUNTIME_STUBS_HEADER(SetPatchModule);
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    RuntimeSetPatchModule(thread, func);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CallSpread)
 {
     RUNTIME_STUBS_HEADER(CallSpread);
@@ -2631,6 +2679,13 @@ DEF_RUNTIME_STUBS(NewLexicalEnvWithName)
     return RuntimeNewLexicalEnvWithName(thread,
         static_cast<uint16_t>(numVars.GetInt()),
         static_cast<uint16_t>(scopeId.GetInt())).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewSendableEnv)
+{
+    RUNTIME_STUBS_HEADER(NewSendableEnv);
+    JSTaggedValue numVars = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeNewSendableEnv(thread, static_cast<uint16_t>(numVars.GetInt())).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(OptGetUnmapedArgs)
@@ -3180,6 +3235,23 @@ void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
     Region *region = Region::ObjectAddressToRange(object);
     uintptr_t slotAddr = object + offset;
     region->AtomicInsertLocalToShareRSet(slotAddr);
+}
+
+void RuntimeStubs::SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
+                                GCBitset::GCBitsetWord oldValue)
+{
+    volatile auto atomicWord = reinterpret_cast<volatile std::atomic<GCBitset::GCBitsetWord> *>(word);
+    GCBitset::GCBitsetWord oldValueBeforeCAS = oldValue;
+    std::atomic_compare_exchange_strong_explicit(atomicWord, &oldValue, oldValue | mask,
+        std::memory_order_release, std::memory_order_relaxed);
+    while (oldValue != oldValueBeforeCAS) {
+        if (oldValue & mask) {
+            return;
+        }
+        oldValueBeforeCAS = oldValue;
+        std::atomic_compare_exchange_strong_explicit(atomicWord, &oldValue, oldValue | mask,
+            std::memory_order_release, std::memory_order_relaxed);
+    }
 }
 
 void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,

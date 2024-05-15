@@ -760,7 +760,7 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
     if (U_FAILURE(status)) {  // NOLINT(readability-implicit-bool-conversion)
         THROW_TYPE_ERROR(thread, "formattedNumber toString failed");
     }
-    ASSERT(x.IsNumber());
+    ASSERT(x.IsNumber() || x.IsBigInt());
 
     StyleOption styleOption = numberFormat->GetStyle();
 
@@ -854,13 +854,21 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
 JSHandle<JSArray> JSNumberFormat::FormatNumericToParts(JSThread *thread, const JSHandle<JSNumberFormat> &numberFormat,
                                                        JSTaggedValue x)
 {
-    ASSERT(x.IsNumber());
+    ASSERT(x.IsNumber() || x.IsBigInt());
     icu::number::LocalizedNumberFormatter *icuNumberFormatter = numberFormat->GetIcuCallTarget();
     ASSERT(icuNumberFormatter != nullptr);
 
     UErrorCode status = U_ZERO_ERROR;
-    double number = x.GetNumber();
-    icu::number::FormattedNumber formattedNumber = icuNumberFormatter->formatDouble(number, status);
+    icu::number::FormattedNumber formattedNumber;
+    if (x.IsBigInt()) {
+        JSHandle<BigInt> bigint(thread, x);
+        JSHandle<EcmaString> bigintStr = BigInt::ToString(thread, bigint);
+        std::string stdString = EcmaStringAccessor(bigintStr).ToStdString();
+        formattedNumber = icuNumberFormatter->formatDecimal(icu::StringPiece(stdString), status);
+    } else {
+        double number = x.GetNumber();
+        formattedNumber = icuNumberFormatter->formatDouble(number, status);
+    }
     if (U_FAILURE(status)) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSArray> emptyArray = factory->NewJSArray();

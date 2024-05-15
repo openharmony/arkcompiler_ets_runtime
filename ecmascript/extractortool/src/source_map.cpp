@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecmascript/extractortool/src/extractor.h"
 #include "source_map.h"
 
 #include <cerrno>
@@ -23,22 +22,34 @@
 #include <vector>
 #include <unistd.h>
 
+#include "ecmascript/base/string_helper.h"
+#include "ecmascript/extractortool/src/extractor.h"
+
 namespace panda {
 namespace ecmascript {
 namespace {
-constexpr char SOURCES[] = "sources";
-constexpr char MAPPINGS[] = "mappings";
-constexpr char DELIMITER_COMMA = ',';
-constexpr char DELIMITER_SEMICOLON = ';';
-constexpr char DOUBLE_SLASH = '\\';
-constexpr char WEBPACK[] = "webpack:///";
-constexpr int32_t INDEX_ONE = 1;
-constexpr int32_t INDEX_TWO = 2;
-constexpr int32_t INDEX_THREE = 3;
-constexpr int32_t INDEX_FOUR = 4;
-constexpr int32_t ANS_MAP_SIZE = 5;
-constexpr int32_t DIGIT_NUM = 64;
+static constexpr char DELIMITER_COMMA = ',';
+static constexpr char DELIMITER_SEMICOLON = ';';
+static constexpr char DOUBLE_SLASH = '\\';
+static constexpr char WEBPACK[] = "webpack:///";
+
+static constexpr int32_t INDEX_ONE = 1;
+static constexpr int32_t INDEX_TWO = 2;
+static constexpr int32_t INDEX_THREE = 3;
+static constexpr int32_t INDEX_FOUR = 4;
+static constexpr int32_t ANS_MAP_SIZE = 5;
+static constexpr int32_t DIGIT_NUM = 64;
+[[maybe_unused]] static constexpr int32_t MILLION_TIME = 1000;
+
 const std::string MEGER_SOURCE_MAP_PATH = "ets/sourceMaps.map";
+static const CString FLAG_SOURCES = "    \"sources\":";
+static const CString FLAG_MAPPINGS = "    \"mappings\": \"";
+static const CString FLAG_END = "  }";
+
+static constexpr size_t FLAG_MAPPINGS_LEN = 17;
+static constexpr size_t REAL_SOURCE_SIZE = 7;
+static constexpr size_t REAL_URL_INDEX = 3;
+static constexpr size_t REAL_SOURCE_INDEX = 7;
 } // namespace
 
 #if defined(PANDA_TARGET_OHOS)
@@ -62,18 +73,6 @@ bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& conte
     return true;
 }
 #endif
-
-int32_t StringToInt(const std::string& value)
-{
-    errno = 0;
-    char* pEnd = nullptr;
-    int64_t result = std::strtol(value.c_str(), &pEnd, 10);
-    if (pEnd == value.c_str() || (result < INT_MIN || result > INT_MAX) || errno == ERANGE) {
-        return 0;
-    } else {
-        return result;
-    }
-}
 
 uint32_t Base64CharToInt(char charCode)
 {
@@ -99,10 +98,14 @@ uint32_t Base64CharToInt(char charCode)
 #if defined(PANDA_TARGET_OHOS)
 void SourceMap::Init(const std::string& hapPath)
 {
+    auto start = Clock::now();
     std::string sourceMapData;
     if (ReadSourceMapData(hapPath, sourceMapData)) {
         SplitSourceMap(sourceMapData);
     }
+    auto end = Clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    LOG_ECMA(DEBUG) << "Init sourcemap time: " << (float) (duration.count() / MILLION_TIME) << "ms";
 }
 #endif
 
@@ -115,45 +118,39 @@ void SourceMap::Init(uint8_t *data, size_t dataSize)
 
 void SourceMap::SplitSourceMap(const std::string& sourceMapData)
 {
-    size_t urlLeft = 0;
-    size_t urlRight = 0;
-    size_t leftBracket = 0;
-    size_t rightBracket = 0;
-    while ((leftBracket = sourceMapData.find(": {", rightBracket)) != std::string::npos) {
-        urlLeft = leftBracket;
-        urlRight = sourceMapData.find("  \"", rightBracket) + INDEX_THREE;
-        if (urlRight == std::string::npos) {
+    std::stringstream ss(sourceMapData);
+    std::string tmp;
+    std::string url;
+
+    std::getline(ss, tmp);
+    bool isUrl = true;
+    while (std::getline(ss, tmp)) {
+        if (isUrl && tmp.size() > REAL_SOURCE_SIZE) {
+            url = tmp.substr(REAL_URL_INDEX, tmp.size() - REAL_SOURCE_SIZE);
+            isUrl = false;
             continue;
         }
-        std::string url = sourceMapData.substr(urlRight, urlLeft - urlRight - INDEX_ONE);
-        rightBracket = sourceMapData.find("},", leftBracket);
-        std::string value = sourceMapData.substr(leftBracket, rightBracket);
-        sourceMapsData_.emplace(url, value);
+
+        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_SOURCES)) {
+            std::getline(ss, tmp);
+            sources_.emplace(url, tmp);
+            continue;
+        }
+
+        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_MAPPINGS)) {
+            mappings_.emplace(url, tmp);
+            continue;
+        }
+
+        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_END)) {
+            isUrl = true;
+        }
     }
 }
 
-void SourceMap::ExtractSourceMapData(const std::string& sourceMapData, std::shared_ptr<SourceMapData>& curMapData)
+void SourceMap::ExtractSourceMapData(const std::string& allmappings, std::shared_ptr<SourceMapData>& curMapData)
 {
-    std::vector<std::string> sourceKey;
-    ExtractKeyInfo(sourceMapData, sourceKey);
-
-    std::string mark = "";
-    for (auto sourceKeyInfo : sourceKey) {
-        if (sourceKeyInfo == SOURCES || sourceKeyInfo == MAPPINGS) {
-            mark = sourceKeyInfo;
-        } else if (mark == SOURCES) {
-            curMapData->sources_.push_back(sourceKeyInfo);
-        } else if (mark == MAPPINGS) {
-            curMapData->mappings_.push_back(sourceKeyInfo);
-        }
-    }
-
-    if (curMapData->mappings_.empty()) {
-        return;
-    }
-
-    // transform to vector for mapping easily
-    curMapData->mappings_ = HandleMappings(curMapData->mappings_[0]);
+    curMapData->mappings_ = HandleMappings(allmappings);
 
     // the first bit: the column after transferring.
     // the second bit: the source file.
@@ -349,16 +346,38 @@ bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int
     if (url.rfind(".js") != std::string::npos) {
         return true;
     }
+
+    std::string tmp = sources_[url];
+    if (tmp.empty() || tmp.size() < REAL_SOURCE_SIZE + 1) {
+        LOG_ECMA(ERROR) << "Translate failed, url: " << url;
+        return false;
+    }
+    tmp = tmp.substr(REAL_SOURCE_INDEX, tmp.size() - REAL_SOURCE_SIZE - 1);
     auto iterData = sourceMaps_.find(url);
     if (iterData != sourceMaps_.end()) {
+        if (iterData->second == nullptr) {
+            LOG_ECMA(ERROR) << "Extract mappings failed, url: " << url;
+            return false;
+        }
+        url = tmp;
         return GetLineAndColumnNumbers(line, column, *(iterData->second));
     }
-    auto iter = sourceMapsData_.find(url);
-    if (iter != sourceMapsData_.end()) {
+    auto iter = mappings_.find(url);
+    if (iter != mappings_.end()) {
         std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
-        ExtractSourceMapData(iter->second, modularMap);
-        url = modularMap->sources_[0];
+        std::string mappings = mappings_[url];
+        if (mappings.size() < FLAG_MAPPINGS_LEN + 1) {
+            LOG_ECMA(ERROR) << "Translate failed, url: " << url << ", mappings: " << mappings;
+            return false;
+        }
+        ExtractSourceMapData(mappings.substr(FLAG_MAPPINGS_LEN, mappings.size() - FLAG_MAPPINGS_LEN - 1),
+                             modularMap);
+        if (modularMap == nullptr) {
+            LOG_ECMA(ERROR) << "Extract mappings failed, url: " << url << ", mappings: " << mappings;
+            return false;
+        }
         sourceMaps_.emplace(url, modularMap);
+        url = tmp;
         return GetLineAndColumnNumbers(line, column, *(modularMap));
     }
     return false;
@@ -369,9 +388,9 @@ bool SourceMap::GetLineAndColumnNumbers(int& line, int& column, SourceMapData& t
     int32_t offSet = 0;
     MappingInfo mapInfo;
 #if defined(WINDOWS_PLATFORM) || defined(MAC_PLATFORM)
-        mapInfo = Find(line - offSet + OFFSET_PREVIEW, column, targetMap);
+    mapInfo = Find(line - offSet + OFFSET_PREVIEW, column, targetMap);
 #else
-        mapInfo = Find(line - offSet, column, targetMap);
+    mapInfo = Find(line - offSet, column, targetMap);
 #endif
     if (mapInfo.row == 0 || mapInfo.col == 0) {
         return false;
@@ -381,5 +400,5 @@ bool SourceMap::GetLineAndColumnNumbers(int& line, int& column, SourceMapData& t
         return true;
     }
 }
-}   // namespace JsEnv
-}   // namespace OHOS
+}   // namespace panda
+}   // namespace ecmascript

@@ -22,3 +22,5 @@ Uint8Array test success !!!
 Uint8ClampedArray test success !!!
 BigInt64Array test success !!!
 BigUint64Array test success !!!
+10,20,30,NaN
+NaN,10,20,30

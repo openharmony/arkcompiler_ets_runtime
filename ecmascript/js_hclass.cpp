@@ -1143,6 +1143,7 @@ JSHandle<JSTaggedValue> JSHClass::ParseKeyFromPGOCString(ObjectFactory* factory,
         auto str = cstring.substr(0, 6); // `method` length is 6
         if (str == "method") { // cstring is `method_0ULL` after _ is private id of symbol
             symbol = factory->NewPublicSymbolWithChar("method");
+            ASSERT(cstring.size() > 0);
             str = cstring.substr(7, cstring.size() - 1); // `method_` length is 7
             symbol->SetPrivateId(CStringToULL(str));
         } else { // cstring is private id of symbol

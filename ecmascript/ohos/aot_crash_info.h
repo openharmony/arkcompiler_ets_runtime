@@ -146,6 +146,9 @@ public:
         if (!ecmascript::RealPath(soPath, realPath, false)) {
             return "";
         }
+        if (!FileExist(realPath.c_str())) {
+            return "";
+        }
         fileMap = ecmascript::FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
         if (fileMap.GetOriginAddr() == nullptr) {
             return "";

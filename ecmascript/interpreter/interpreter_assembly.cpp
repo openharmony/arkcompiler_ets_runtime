@@ -31,6 +31,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/sendable_env.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 
@@ -6621,6 +6622,164 @@ void InterpreterAssembly::HandleCallRuntimeLdsendableexternalmodulevarImm8(
     INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
     SET_ACC(moduleVar);
     DISPATCH(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeNewSendableEnvImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint8_t numVars = READ_INST_8_1();
+    LOG_INST() << "intrinsics::newsendableenv"
+               << " imm " << numVars;
+    JSTaggedValue res = SlowRuntimeStub::NewSendableEnv(thread, numVars);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    SourceTextModule *moduleRecord = SourceTextModule::Cast(GetModule(sp));
+    moduleRecord->SetSendableEnv(thread, res);
+    DISPATCH(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeNewSendableEnvImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t numVars = READ_INST_16_1();
+    LOG_INST() << "intrinsics::newsendableenv"
+                << " imm " << numVars;
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::NewSendableEnv(thread, numVars);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    SourceTextModule *moduleRecord = SourceTextModule::Cast(GetModule(sp));
+    moduleRecord->SetSendableEnv(thread, res);
+    DISPATCH(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16);
+}
+
+void InterpreterAssembly::HandleCallRuntimeStSendableVarImm4Imm4(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t level = READ_INST_4_2();
+    uint16_t slot = READ_INST_4_3();
+    LOG_INST() << "intrinsics::stsendablevar"
+               << " level:" << level << " slot:" << slot;
+
+    JSTaggedValue value = GET_ACC();
+    SourceTextModule *moduleRecord = SourceTextModule::Cast(GetModule(sp));
+    JSTaggedValue env = moduleRecord->GetSendableEnv();
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    SendableEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, value);
+
+    DISPATCH(CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4);
+}
+
+void InterpreterAssembly::HandleCallRuntimeStSendableVarImm8Imm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t level = READ_INST_8_1();
+    uint16_t slot = READ_INST_8_2();
+    LOG_INST() << "intrinsics::stsendablevar"
+                << " level:" << level << " slot:" << slot;
+
+    JSTaggedValue value = GET_ACC();
+    SourceTextModule *moduleRecord = SourceTextModule::Cast(GetModule(sp));
+    JSTaggedValue env = moduleRecord->GetSendableEnv();
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    SendableEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, value);
+
+    DISPATCH(CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeStSendableVarImm16Imm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t level = READ_INST_16_1();
+    uint16_t slot = READ_INST_16_3();
+    LOG_INST() << "intrinsics::stsendablevar"
+                << " level:" << level << " slot:" << slot;
+
+    JSTaggedValue value = GET_ACC();
+    SourceTextModule *moduleRecord = SourceTextModule::Cast(GetModule(sp));
+    JSTaggedValue env = moduleRecord->GetSendableEnv();
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    SendableEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, value);
+
+    DISPATCH(CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16);
+}
+
+void InterpreterAssembly::HandleCallRuntimeLdSendableVarImm4Imm4(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t level = READ_INST_4_2();
+    uint16_t slot = READ_INST_4_3();
+
+    LOG_INST() << "intrinsics::ldsendablevar"
+               << " level:" << level << " slot:" << slot;
+    SourceTextModule *moduleRecord = SourceTextModule::Cast(GetModule(sp));
+    JSTaggedValue env = moduleRecord->GetSendableEnv();
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    SET_ACC(SendableEnv::Cast(env.GetTaggedObject())->GetProperties(slot));
+    DISPATCH(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4);
+}
+
+void InterpreterAssembly::HandleCallRuntimeLdSendableVarImm8Imm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t level = READ_INST_8_1();
+    uint16_t slot = READ_INST_8_2();
+
+    LOG_INST() << "intrinsics::ldsendablevar"
+                << " level:" << level << " slot:" << slot;
+    SourceTextModule *moduleRecord = SourceTextModule::Cast(GetModule(sp));
+    JSTaggedValue env = moduleRecord->GetSendableEnv();
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    SET_ACC(SendableEnv::Cast(env.GetTaggedObject())->GetProperties(slot));
+    DISPATCH(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeLdSendableVarImm16Imm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t level = READ_INST_16_1();
+    uint16_t slot = READ_INST_16_3();
+
+    LOG_INST() << "intrinsics::ldsendablevar"
+                << " level:" << level << " slot:" << slot;
+    SourceTextModule *moduleRecord = SourceTextModule::Cast(GetModule(sp));
+    JSTaggedValue env = moduleRecord->GetSendableEnv();
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = SendableEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    SET_ACC(SendableEnv::Cast(env.GetTaggedObject())->GetProperties(slot));
+    DISPATCH(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16);
 }
 
 void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(

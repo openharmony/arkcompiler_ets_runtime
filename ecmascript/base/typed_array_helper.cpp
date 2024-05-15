@@ -504,7 +504,7 @@ JSTaggedValue TypedArrayHelper::CreateSharedFromTypedArray(EcmaRuntimeCallInfo *
     // 6. Let srcData be srcArray.[[ViewedArrayBuffer]].
     JSTaggedValue buffer;
     if (srcArray->IsSharedTypedArray()) {
-        buffer = JSTypedArray::GetSharedOffHeapBuffer(thread, srcObj);
+        buffer = JSSharedTypedArray::GetSharedOffHeapBuffer(thread, JSHandle<JSSharedTypedArray>(srcObj));
     } else {
         buffer = JSTypedArray::GetOffHeapBuffer(thread, srcObj);
     }

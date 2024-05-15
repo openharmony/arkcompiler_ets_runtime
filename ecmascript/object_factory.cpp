@@ -289,6 +289,9 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
     if (!data.IsUndefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
         auto newData = nativeAreaAllocator->AllocateBuffer(size);
+        if (newData == nullptr) {
+            LOG_ECMA(FATAL) << "ObjectFactory::NewJSSendableArrayBufferData:newData is nullptr";
+        }
         if (memset_s(newData, length, 0, length) != EOK) {
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
@@ -300,6 +303,9 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
     }
 
     auto newData = nativeAreaAllocator->AllocateBuffer(size);
+    if (newData == nullptr) {
+        LOG_ECMA(FATAL) << "ObjectFactory::NewJSSendableArrayBufferData:newData is nullptr";
+    }
     if (memset_s(newData, length, 0, length) != EOK) {
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
@@ -321,7 +327,27 @@ JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(int32_t 
     sendableArrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
         NewJSSendableArrayBufferData(sendableArrayBuffer, length);
-        sendableArrayBuffer->SetShared(true);
+        sendableArrayBuffer->SetShared(false);
+    }
+    return sendableArrayBuffer;
+}
+
+JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(void *buffer, int32_t length,
+                                                                        const NativePointerCallback &deleter,
+                                                                        void *data)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+
+    JSHandle<JSFunction> constructor(env->GetSBuiltininArrayBufferFunction());
+    JSHandle<JSSendableArrayBuffer> sendableArrayBuffer(NewJSObjectByConstructor(constructor));
+    length = buffer == nullptr ? 0 : length;
+    sendableArrayBuffer->SetArrayBufferByteLength(length);
+    if (length > 0) {
+        JSHandle<JSNativePointer> pointer = NewSJSNativePointer(buffer, deleter, data, false, length);
+        sendableArrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
+        sendableArrayBuffer->SetShared(false);
+        sendableArrayBuffer->SetWithNativeAreaAllocator(deleter == NativeAreaAllocator::FreeBufferFunc &&
+                                                data == vm_->GetNativeAreaAllocator());
     }
     return sendableArrayBuffer;
 }
@@ -647,14 +673,20 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object,
     for (uint32_t i = 0; i < length; i++) {
         auto layout = LayoutInfo::Cast(klass->GetLayout().GetTaggedObject());
         JSTaggedValue value = object->GetPropertyInlinedProps(i);
-        if (!layout->GetAttr(i).IsTaggedRep() || !value.IsJSFunction()) {
+        if (!layout->GetAttr(i).IsTaggedRep() || (!value.IsJSFunction() && !value.IsAccessorData())) {
             cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, value);
-        } else {
+        } else if (value.IsJSFunction()) {
             JSHandle<JSFunction> valueHandle(thread_, value);
             JSHandle<JSFunction> newFunc = CloneJSFunction(valueHandle);
             newFunc->SetLexicalEnv(thread_, env);
             newFunc->SetHomeObject(thread_, cloneObject);
             cloneObject->SetPropertyInlinedProps(thread_, i, newFunc.GetTaggedValue());
+        } else {
+            if (value.IsAccessorData()) {
+                JSHandle<AccessorData> accessor = NewAccessorData();
+                value = accessor.GetTaggedValue();
+            }
+            cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, value);
         }
     }
     return cloneObject;
@@ -1905,6 +1937,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
+    function->SetTaskConcurrentFuncFlag(0); // 0 : default value
     if (method->IsJitCompiledCode()) {
         // jit install code also set aot callfield, should clear flag when new function
         method->ClearJitCompiledCodeFlags();
@@ -2876,21 +2909,22 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     newArray->SetExtraLength(old->GetExtraLength());
 
     uint32_t oldLength = old->GetLength();
-    for (uint32_t i = 0; i < oldLength; i++) {
-        JSTaggedValue value = old->Get(i);
-        if (old->GetClass()->IsMutantTaggedArray()) {
-            newArray->Set<false>(thread_, i, value);
+    uint32_t index = 0;
+    auto isMutantTaggedArray = old->GetClass()->IsMutantTaggedArray();
+    for (; index < oldLength; ++index) {
+        if (isMutantTaggedArray) {
+            newArray->Set<false>(thread_, index, old->Get(index));
         } else {
-            newArray->Set(thread_, i, value);
+            newArray->Set(thread_, index, old->Get(index));
         }
     }
-
-    for (uint32_t i = oldLength; i < length; i++) {
-        if (initVal.IsHole() && old->GetClass()->IsMutantTaggedArray()) {
-            JSTaggedValue specialHole = JSTaggedValue(base::SPECIAL_HOLE);
-            newArray->Set<false>(thread_, i, specialHole);
+    auto isSpecialHole = initVal.IsHole() && isMutantTaggedArray;
+    JSTaggedValue specialHole = JSTaggedValue(base::SPECIAL_HOLE);
+    for (; index < length; ++index) {
+        if (isSpecialHole) {
+            newArray->Set<false>(thread_, index, specialHole);
         } else {
-            newArray->Set(thread_, i, initVal);
+            newArray->Set(thread_, index, initVal);
         }
     }
 
@@ -3258,6 +3292,8 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
         array->SetJitHotnessThreshold(threshold);
         threshold = vm_->GetJSOptions().GetOsrHotnessThreshold();
         array->SetOsrHotnessThreshold(threshold);
+        uint8_t jitCallThreshold = vm_->GetJSOptions().GetJitCallThreshold();
+        array->SetJitCallThreshold(jitCallThreshold);
     }
     if (vm_->IsEnableBaselineJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetBaselineJitHotnessThreshold();
@@ -4570,6 +4606,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
     obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    obj->SetSendableEnv(thread_, undefinedValue);
     return obj;
 }
 

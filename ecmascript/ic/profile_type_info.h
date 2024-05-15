@@ -107,6 +107,8 @@ public:
     static constexpr size_t INITIAL_PEROID_INDEX = 0;
     static constexpr size_t INITIAL_OSR_HOTNESS_THRESHOLD = 0;
     static constexpr size_t INITIAL_OSR_HOTNESS_CNT = 0;
+    static constexpr size_t INITIAL_JIT_CALL_THRESHOLD = 0;
+    static constexpr size_t INITIAL_JIT_CALL_CNT = 0;
     static constexpr uint16_t JIT_DISABLE_FLAG = 0xFFFF;
     static constexpr size_t PRE_DUMP_PEROID_INDEX = 1;
     static constexpr size_t DUMP_PEROID_INDEX = 2;
@@ -115,6 +117,9 @@ public:
     static constexpr size_t OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 8;  // 8 : 8 byte offset from bitfield
     static constexpr size_t OSR_CNT_OFFSET_FROM_OSR_THRESHOLD = 2;  // 2 : 2 byte offset from osr hotness threshold
     static constexpr size_t BASELINEJIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 12; // 12: bytes offset from bitfield
+    static constexpr size_t JIT_CALL_THRESHOLD_OFFSET_FROM_BITFIELD = 14;  // 12 : 12 byte offset from bitfield
+    // 1 : 1 byte offset from jit call threshold
+    static constexpr size_t JIT_CALL_CNT_OFFSET_FROM_JIT_CALL_THRESHOLD = 1;
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
@@ -160,8 +165,11 @@ public:
                                              JSTaggedValue::Undefined().GetRawData());
         SetPeriodIndex(INITIAL_PEROID_INDEX);
         SetJitHotnessThreshold(JIT_DISABLE_FLAG);
+        SetBaselineJitHotnessThreshold(JIT_DISABLE_FLAG);
         SetOsrHotnessThreshold(INITIAL_OSR_HOTNESS_THRESHOLD);
         SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
+        SetJitCallThreshold(INITIAL_JIT_CALL_THRESHOLD);
+        SetJitCallCnt(INITIAL_JIT_CALL_CNT);
     }
 
     void SetPreDumpPeriodIndex()
@@ -204,6 +212,16 @@ public:
         Barriers::SetPrimitive(GetData(), GetBaselineJitHotnessThresholdBitfiledOffset(), count);
     }
 
+    uint8_t GetJitCallThreshold() const
+    {
+        return Barriers::GetValue<uint8_t>(GetData(), GetJitCallThresholdBitfieldOffset());
+    }
+
+    void SetJitCallThreshold(uint8_t count)
+    {
+        Barriers::SetPrimitive(GetData(), GetJitCallThresholdBitfieldOffset(), count);
+    }
+
     uint16_t GetJitHotnessCnt() const
     {
         return Barriers::GetValue<uint16_t>(GetData(), GetJitHotnessCntBitfieldOffset());
@@ -217,6 +235,11 @@ public:
     void SetOsrHotnessCnt(uint16_t count)
     {
         Barriers::SetPrimitive(GetData(), GetOsrHotnessCntBitfieldOffset(), count);
+    }
+
+    void SetJitCallCnt(uint8_t count)
+    {
+        Barriers::SetPrimitive(GetData(), GetJitCallCntBitfieldOffset(), count);
     }
 
     DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength(), GetCacheLength());
@@ -265,6 +288,17 @@ private:
     inline size_t GetOsrHotnessCntBitfieldOffset() const
     {
         return GetOsrHotnessThresholdBitfieldOffset() + OSR_CNT_OFFSET_FROM_OSR_THRESHOLD;
+    }
+
+    // jit call threshold(8bits) + count(8bits)
+    inline size_t GetJitCallThresholdBitfieldOffset() const
+    {
+        return GetBitfieldOffset() + JIT_CALL_THRESHOLD_OFFSET_FROM_BITFIELD;
+    }
+
+    inline size_t GetJitCallCntBitfieldOffset() const
+    {
+        return GetJitCallThresholdBitfieldOffset() + JIT_CALL_CNT_OFFSET_FROM_JIT_CALL_THRESHOLD;
     }
 };
 

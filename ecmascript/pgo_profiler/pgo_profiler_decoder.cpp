@@ -136,7 +136,9 @@ bool PGOProfilerDecoder::SaveAPTextFile(const std::string &outPath)
         LOG_ECMA(ERROR) << "The file path(" << realOutPath << ") open failure!";
         return false;
     }
-
+    if (header_ == nullptr) {
+        LOG_ECMA(FATAL) << "PGOProfilerDecoder::SaveAPTextFile:header_ is nullptr";
+    }
     if (!header_->ProcessToText(fileStream)) {
         return false;
     }

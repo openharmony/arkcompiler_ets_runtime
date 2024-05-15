@@ -1619,7 +1619,7 @@ GateRef NumberSpeculativeRetype::VisitNumberIsInteger(GateRef gate)
     }
     input = CheckAndConvertToInt32(input, GateType::NumberType());
     acc_.ReplaceValueIn(gate, input, 0);
-    ResizeAndSetTypeInfo(input, TypeInfo::FLOAT64);
+    ResizeAndSetTypeInfo(input, TypeInfo::INT32);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();

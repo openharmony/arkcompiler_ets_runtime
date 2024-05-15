@@ -52,6 +52,12 @@ public:
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
 
+    JSTaggedNumber NumberFromASCII(std::string_view data)
+    {
+        JSHandle<JSTaggedValue> stringV(thread->GetEcmaVM()->GetFactory()->NewFromASCII(data));
+        return JSTaggedValue::ToNumber(thread, stringV);
+    }
+
     EcmaVM *instance {nullptr};
     ecmascript::EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
@@ -227,143 +233,47 @@ HWTEST_F_L0(JSTaggedValueTest, ToNumber)
     result = JSTaggedValue::ToNumber(thread, JSHandle<JSTaggedValue>(thread, trueV));
     EXPECT_EQ(result.GetNumber(), 1);
 
-    JSHandle<JSTaggedValue> stringV0(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 1234 "));
-    result = JSTaggedValue::ToNumber(thread, stringV0);
-    EXPECT_EQ(result.GetNumber(), 1234);
-
-    JSHandle<JSTaggedValue> stringV1(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0b1010 "));
-    result = JSTaggedValue::ToNumber(thread, stringV1);
-    EXPECT_EQ(result.GetNumber(), 10);
-
-    JSHandle<JSTaggedValue> stringV2(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0O11 "));
-    result = JSTaggedValue::ToNumber(thread, stringV2);
-    EXPECT_EQ(result.GetNumber(), 9);
-
-    JSHandle<JSTaggedValue> stringV3(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0x2d "));
-    result = JSTaggedValue::ToNumber(thread, stringV3);
-    EXPECT_EQ(result.GetNumber(), 45);
-
-    JSHandle<JSTaggedValue> stringV4(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0.000001 "));
-    result = JSTaggedValue::ToNumber(thread, stringV4);
-    EXPECT_EQ(result.GetNumber(), 0.000001);
-
-    JSHandle<JSTaggedValue> stringV5(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 1.23 "));
-    result = JSTaggedValue::ToNumber(thread, stringV5);
-    EXPECT_EQ(result.GetNumber(), 1.23);
-
-    JSHandle<JSTaggedValue> stringV6(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" -1.23e2  "));
-    result = JSTaggedValue::ToNumber(thread, stringV6);
-    EXPECT_EQ(result.GetNumber(), -123);
-
-    JSHandle<JSTaggedValue> stringV7(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" -123e-2"));
-    result = JSTaggedValue::ToNumber(thread, stringV7);
-    EXPECT_EQ(result.GetNumber(), -1.23);
-
-    JSHandle<JSTaggedValue> stringV8(thread->GetEcmaVM()->GetFactory()->NewFromASCII("  Infinity "));
-    result = JSTaggedValue::ToNumber(thread, stringV8);
-    EXPECT_TRUE(std::isinf(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV9(thread->GetEcmaVM()->GetFactory()->NewFromASCII("100e307"));
-    result = JSTaggedValue::ToNumber(thread, stringV9);
-    EXPECT_TRUE(std::isinf(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV10(thread->GetEcmaVM()->GetFactory()->NewFromASCII("  ."));
-    result = JSTaggedValue::ToNumber(thread, stringV10);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV11(thread->GetEcmaVM()->GetFactory()->NewFromASCII("12e+"));
-    result = JSTaggedValue::ToNumber(thread, stringV11);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV12(thread->GetEcmaVM()->GetFactory()->NewFromASCII(".e3"));
-    result = JSTaggedValue::ToNumber(thread, stringV12);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV13(thread->GetEcmaVM()->GetFactory()->NewFromASCII("23eE"));
-    result = JSTaggedValue::ToNumber(thread, stringV13);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV14(thread->GetEcmaVM()->GetFactory()->NewFromASCII("a"));
-    result = JSTaggedValue::ToNumber(thread, stringV14);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV15(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0o12e3"));
-    result = JSTaggedValue::ToNumber(thread, stringV15);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV16(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0x12.3"));
-    result = JSTaggedValue::ToNumber(thread, stringV16);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV17(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 12.4."));
-    result = JSTaggedValue::ToNumber(thread, stringV17);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV18(thread->GetEcmaVM()->GetFactory()->NewFromASCII("123test"));
-    result = JSTaggedValue::ToNumber(thread, stringV18);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV19(thread->GetEcmaVM()->GetFactory()->NewFromASCII("123test"));
-    result = JSTaggedValue::ToNumber(thread, stringV19);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV20(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0b "));
-    result = JSTaggedValue::ToNumber(thread, stringV20);
-    EXPECT_TRUE(std::isnan(result.GetNumber()));
-
-    JSHandle<JSTaggedValue> stringV21(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0b0000 "));
-    result = JSTaggedValue::ToNumber(thread, stringV21);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV22(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0o0000 "));
-    result = JSTaggedValue::ToNumber(thread, stringV22);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV23(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0X0000 "));
-    result = JSTaggedValue::ToNumber(thread, stringV23);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV24(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 000.00000 "));
-    result = JSTaggedValue::ToNumber(thread, stringV24);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV25(thread->GetEcmaVM()->GetFactory()->NewFromASCII(""));
-    result = JSTaggedValue::ToNumber(thread, stringV25);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV26(thread->GetEcmaVM()->GetFactory()->NewFromASCII("   "));
-    result = JSTaggedValue::ToNumber(thread, stringV26);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV27(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0"));
-    result = JSTaggedValue::ToNumber(thread, stringV27);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV28(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0 "));
-    result = JSTaggedValue::ToNumber(thread, stringV28);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV29(thread->GetEcmaVM()->GetFactory()->NewFromASCII("00000000"));
-    result = JSTaggedValue::ToNumber(thread, stringV29);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV30(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 00000000 "));
-    result = JSTaggedValue::ToNumber(thread, stringV30);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV31(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 000. "));
-    result = JSTaggedValue::ToNumber(thread, stringV31);
-    EXPECT_EQ(result.GetNumber(), 0);
-
-    JSHandle<JSTaggedValue> stringV32(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 123. "));
-    result = JSTaggedValue::ToNumber(thread, stringV32);
-    EXPECT_EQ(result.GetNumber(), 123);
-
     thread->ClearException();
     JSHandle<JSTaggedValue> symbolV1(thread->GetEcmaVM()->GetFactory()->NewJSSymbol());
     JSTaggedValue::ToNumber(thread, symbolV1);
     EXPECT_TRUE(thread->HasPendingException());
     EXPECT_TRUE(thread->GetException().IsJSError());
+}
+
+HWTEST_F_L0(JSTaggedValueTest, StringToNumber)
+{
+    EXPECT_EQ(NumberFromASCII(" 1234 ").GetNumber(), 1234);
+    EXPECT_EQ(NumberFromASCII(" 0b1010 ").GetNumber(), 10);
+    EXPECT_EQ(NumberFromASCII(" 0O11 ").GetNumber(), 9);
+    EXPECT_EQ(NumberFromASCII(" 0x2d ").GetNumber(), 45);
+    EXPECT_EQ(NumberFromASCII(" 0.000001 ").GetNumber(), 0.000001);
+    EXPECT_EQ(NumberFromASCII(" 1.23 ").GetNumber(), 1.23);
+    EXPECT_EQ(NumberFromASCII(" -1.23e2  ").GetNumber(), -123);
+    EXPECT_EQ(NumberFromASCII(" -123e-2").GetNumber(), -1.23);
+    EXPECT_TRUE(std::isinf(NumberFromASCII("  Infinity ").GetNumber()));
+    EXPECT_TRUE(std::isinf(NumberFromASCII("100e307").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII("  .").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII("12e+").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII(".e3").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII("23eE").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII("a").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII("0o12e3").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII("0x12.3").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII(" 12.4.").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII("123test").GetNumber()));
+    EXPECT_TRUE(std::isnan(NumberFromASCII(" 0b ").GetNumber()));
+    EXPECT_EQ(NumberFromASCII(" 0b0000 ").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII(" 0o0000 ").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII(" 0X0000 ").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII(" 000.00000 ").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII("").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII("   ").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII("0").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII(" 0 ").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII("00000000").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII(" 00000000 ").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII(" 000. ").GetNumber(), 0);
+    EXPECT_EQ(NumberFromASCII(" 123. ").GetNumber(), 123);
 }
 
 HWTEST_F_L0(JSTaggedValueTest, ToInteger)
@@ -1135,8 +1045,10 @@ HWTEST_F_L0(JSTaggedValueTest, Equal)
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::False())));
+}
 
-    // number compare
+HWTEST_F_L0(JSTaggedValueTest, NumberEqual)
+{
     ASSERT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)),
                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue(1))));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)),
@@ -1157,17 +1069,23 @@ HWTEST_F_L0(JSTaggedValueTest, Equal)
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined())));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0)),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null())));
+}
 
+HWTEST_F_L0(JSTaggedValueTest, StringEqual)
+{
     JSHandle<JSTaggedValue> test(thread->GetEcmaVM()->GetFactory()->NewFromASCII("test"));
     JSHandle<JSTaggedValue> test1(thread->GetEcmaVM()->GetFactory()->NewFromASCII("test1"));
     JSHandle<JSTaggedValue> empty(thread->GetEcmaVM()->GetFactory()->NewFromASCII(""));
     JSHandle<JSTaggedValue> char0(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0"));
-    JSHandle<JSTaggedValue> char0Point0(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0.0"));
     JSHandle<JSTaggedValue> char1(thread->GetEcmaVM()->GetFactory()->NewFromASCII("1"));
-    JSHandle<JSTaggedValue> char1Point0(thread->GetEcmaVM()->GetFactory()->NewFromASCII("1.0"));
     JSHandle<JSTaggedValue> charM1(thread->GetEcmaVM()->GetFactory()->NewFromASCII("-1"));
     JSHandle<JSTaggedValue> charM0Point0(thread->GetEcmaVM()->GetFactory()->NewFromASCII("-0.0"));
     JSHandle<JSTaggedValue> charM0Point1(thread->GetEcmaVM()->GetFactory()->NewFromASCII("-0.1"));
+
+    ASSERT_TRUE(JSTaggedValue::Equal(thread, test, test));
+    ASSERT_FALSE(JSTaggedValue::Equal(thread, test, test1));
+    ASSERT_FALSE(JSTaggedValue::Equal(thread, test, empty));
+    ASSERT_TRUE(JSTaggedValue::Equal(thread, empty, empty));
 
     ASSERT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0)), char0));
     ASSERT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0.0)), char0));
@@ -1176,19 +1094,23 @@ HWTEST_F_L0(JSTaggedValueTest, Equal)
     ASSERT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0.0)), charM0Point0));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0.0)), charM0Point1));
 
-    // string compare
-    ASSERT_TRUE(JSTaggedValue::Equal(thread, test, test));
-    ASSERT_FALSE(JSTaggedValue::Equal(thread, test, test1));
-    ASSERT_FALSE(JSTaggedValue::Equal(thread, test, empty));
-    ASSERT_TRUE(JSTaggedValue::Equal(thread, empty, empty));
-
     ASSERT_TRUE(JSTaggedValue::Equal(thread, char1, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1))));
     ASSERT_TRUE(JSTaggedValue::Equal(thread, char1, JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
     ASSERT_TRUE(JSTaggedValue::Equal(thread, char0, JSHandle<JSTaggedValue>(thread, JSTaggedValue::False())));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, char0, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined())));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, char0, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null())));
+}
 
-    // boolean compare
+HWTEST_F_L0(JSTaggedValueTest, BooleanEqual)
+{
+    JSHandle<JSTaggedValue> char0(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0"));
+    JSHandle<JSTaggedValue> char0Point0(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0.0"));
+    JSHandle<JSTaggedValue> char1(thread->GetEcmaVM()->GetFactory()->NewFromASCII("1"));
+    JSHandle<JSTaggedValue> char1Point0(thread->GetEcmaVM()->GetFactory()->NewFromASCII("1.0"));
+    JSHandle<JSTaggedValue> charM1(thread->GetEcmaVM()->GetFactory()->NewFromASCII("-1"));
+    JSHandle<JSTaggedValue> charM0Point0(thread->GetEcmaVM()->GetFactory()->NewFromASCII("-0.0"));
+    JSHandle<JSTaggedValue> charM0Point1(thread->GetEcmaVM()->GetFactory()->NewFromASCII("-0.1"));
+
     ASSERT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::True()),
                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
     ASSERT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::False()),
@@ -1219,7 +1141,11 @@ HWTEST_F_L0(JSTaggedValueTest, Equal)
     ASSERT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::True()), char1Point0));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::True()), char0));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::False()), char1));
+}
 
+HWTEST_F_L0(JSTaggedValueTest, SymbolEqual)
+{
+    JSHandle<JSTaggedValue> test(thread->GetEcmaVM()->GetFactory()->NewFromASCII("test"));
     JSHandle<JSTaggedValue> testSymbol(thread->GetEcmaVM()->GetFactory()->NewPublicSymbolWithChar("test"));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, testSymbol, test));
 }

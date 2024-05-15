@@ -51,6 +51,7 @@ public:
         } else {
             MapleVector<posPair> &posVec = it->second;
             if (alreadLive) {
+                CHECK_FATAL(posVec.size() > 0, "must not be zero");
                 posPair lastPos = posVec[posVec.size() - 1];
                 posVec[posVec.size() - 1] = std::pair(end, lastPos.second);
             } else {

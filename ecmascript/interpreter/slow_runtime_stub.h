@@ -70,6 +70,7 @@ public:
                                              JSTaggedValue instOfHandler);
 
     static JSTaggedValue NewLexicalEnv(JSThread *thread, uint16_t numVars);
+    static JSTaggedValue NewSendableEnv(JSThread *thread, uint16_t numVars);
     static JSTaggedValue NewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId);
     static JSTaggedValue CreateIterResultObj(JSThread *thread, JSTaggedValue value, JSTaggedValue flag);
 

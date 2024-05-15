@@ -14,6 +14,7 @@
  */
 #include "ecmascript/compiler/native_inline_lowering.h"
 #include "ecmascript/builtins/builtins_number.h"
+#include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
@@ -84,6 +85,15 @@ void NativeInlineLowering::RunNativeInlineLowering()
         switch (id) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 TryInlineStringFromCharCode(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::StringSubstring:
+                TryInlineStringSubstring(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::StringSubStr:
+                TryInlineStringSubStr(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::StringSlice:
+                TryInlineStringSlice(gate, argc, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::NumberIsFinite:
                 TryInlineNumberIsFinite(gate, argc, skipThis);
@@ -341,6 +351,135 @@ void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
+void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc != 1 && argc != 2) { // only optimize one or two parameters scene
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef ret = Circuit::NullGate();
+    if (argc == 1) {
+        CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
+        GateRef thisValue = acc_.GetValueIn(gate, 0);
+        GateRef startTag = tacc.GetArg0();
+        GateRef endTag = builder_.GetLengthFromString(thisValue);
+        if (!Uncheck()) {
+            builder_.CallTargetCheck(gate, tacc.GetFunc(),
+                                     builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSubstring)),
+                                     {tacc.GetArg0()});
+            builder_.EcmaStringCheck(thisValue);
+            auto param_check = builder_.TaggedIsNumber(startTag);
+            builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
+        }
+        ret = builder_.StringSubstring(thisValue, startTag, endTag);
+    } else {
+        GateRef thisValue = acc_.GetValueIn(gate, 0);
+        GateRef startTag = acc_.GetValueIn(gate, 1);
+        GateRef endTag = acc_.GetValueIn(gate, 2);
+        GateRef func = acc_.GetValueIn(gate, 3);
+        if (!Uncheck()) {
+            builder_.CallTargetCheck(gate, func,
+                                     builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSubstring)));
+            builder_.EcmaStringCheck(thisValue);
+            auto start_param_check = builder_.TaggedIsNumber(startTag);
+            auto end_param_check = builder_.TaggedIsNumber(endTag);
+            auto param_check = builder_.BoolAnd(start_param_check, end_param_check);
+            builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
+        }
+        ret = builder_.StringSubstring(thisValue, startTag, endTag);
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineStringSubStr(GateRef gate, size_t argc, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc != 1 && argc != 2) { // only optimize one or two parameters scene
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef ret = Circuit::NullGate();
+    if (argc == 1) {
+        CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
+        GateRef thisValue = acc_.GetValueIn(gate, 0);
+        GateRef intStart = tacc.GetArg0();
+        GateRef lengthTag = builder_.Int32(INT_MAX);
+        if (!Uncheck()) {
+            builder_.CallTargetCheck(gate, tacc.GetFunc(),
+                                     builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSubStr)),
+                                     {tacc.GetArg0()});
+            builder_.EcmaStringCheck(thisValue);
+            auto param_check = builder_.TaggedIsNumber(intStart);
+            builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
+        }
+        ret = builder_.StringSubStr(thisValue, intStart, lengthTag);
+    } else {
+        GateRef thisValue = acc_.GetValueIn(gate, 0);
+        GateRef intStart = acc_.GetValueIn(gate, 1);
+        GateRef lengthTag = acc_.GetValueIn(gate, 2);
+        GateRef func = acc_.GetValueIn(gate, 3);  //acc
+        if (!Uncheck()) {
+            builder_.CallTargetCheck(gate, func,
+                                     builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSubStr)));
+            builder_.EcmaStringCheck(thisValue);
+            auto start_param_check = builder_.TaggedIsNumber(intStart);
+            auto end_param_check = builder_.TaggedIsNumber(lengthTag);
+            auto param_check = builder_.BoolAnd(start_param_check, end_param_check);
+            builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
+        }
+        ret = builder_.StringSubStr(thisValue, intStart, lengthTag);
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc != 1 && argc != 2) { // only optimize one or two parameters scene
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef ret = Circuit::NullGate();
+    if (argc == 1) {
+        CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
+        GateRef thisValue = acc_.GetValueIn(gate, 0);
+        GateRef startTag = tacc.GetArg0();
+        GateRef endTag = builder_.GetLengthFromString(thisValue);
+        if (!Uncheck()) {
+            builder_.CallTargetCheck(gate, tacc.GetFunc(),
+                                     builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSlice)),
+                                     {tacc.GetArg0()});
+            builder_.EcmaStringCheck(thisValue);
+            auto param_check = builder_.TaggedIsNumber(startTag);
+            builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
+        }
+        ret = builder_.StringSlice(thisValue, startTag, endTag);
+    } else {
+        GateRef thisValue = acc_.GetValueIn(gate, 0);
+        GateRef startTag = acc_.GetValueIn(gate, 1);
+        GateRef endTag = acc_.GetValueIn(gate, 2);
+        GateRef func = acc_.GetValueIn(gate, 3);
+        if (!Uncheck()) {
+            builder_.CallTargetCheck(gate, func,
+                                     builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSlice)));
+            builder_.EcmaStringCheck(thisValue);
+            auto start_param_check = builder_.TaggedIsNumber(startTag);
+            auto end_param_check = builder_.TaggedIsNumber(endTag);
+            auto param_check = builder_.BoolAnd(start_param_check, end_param_check);
+            builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
+        }
+        ret = builder_.StringSlice(thisValue, startTag, endTag);
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
 void NativeInlineLowering::TryInlineNumberIsFinite(GateRef gate, size_t argc, bool skipThis)
 {
     if (!skipThis) {
@@ -356,7 +495,7 @@ void NativeInlineLowering::TryInlineNumberIsFinite(GateRef gate, size_t argc, bo
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsFinite)));
     }
     GateRef ret = builder_.NumberIsFinite(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, bool skipThis)
@@ -374,7 +513,7 @@ void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, b
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsInteger)));
     }
     GateRef ret = builder_.NumberIsInteger(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool skipThis)
@@ -392,7 +531,7 @@ void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool 
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsNaN)));
     }
     GateRef ret = builder_.NumberIsNaN(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberParseFloat(GateRef gate, size_t argc, bool skipThis)
@@ -428,7 +567,7 @@ void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t arg
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsSafeInteger)));
     }
     GateRef ret = builder_.NumberIsSafeInteger(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineBigIntAsIntN(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,

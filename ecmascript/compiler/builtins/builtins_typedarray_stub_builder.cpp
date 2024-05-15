@@ -778,10 +778,10 @@ void BuiltinsTypedArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, Ga
     Label isHeapObject(env);
     Label notFound(env);
     Label thisLenNotZero(env);
-    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
-    Bind(&typedArray);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
     GateRef thisLen = GetArrayLength(thisValue);
     BRANCH(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
     Bind(&thisLenNotZero);
@@ -2354,5 +2354,548 @@ void BuiltinsTypedArrayStubBuilder::BuildArrayIterator(GateRef glue, GateRef thi
     newBuilder.SetGlue(glue);
     GateRef kind = Int32(static_cast<int32_t>(iteratorKind));
     newBuilder.CreateJSTypedArrayIterator(result, exit, thisValue, kind);
+}
+
+void BuiltinsTypedArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label isHeapObject(env);
+    Label typedArray(env);
+    Label arg0HeapObject(env);
+    Label callable(env);
+
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+
+    DEFVARIABLE(i, VariableType::INT64(), Int64Sub(ZExtInt32ToInt64(GetArrayLength(thisValue)), Int64(1)));
+    DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+    GateRef argHandle = GetCallArg1(numArgs);
+    GateRef hclass = LoadHClass(thisValue);
+    GateRef jsType = GetObjectType(hclass);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label loopNext(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label hasException(env);
+        Label notHasException(env);
+        BRANCH(Int64LessThan(*i, Int64(0)), &loopExit, &loopNext);
+        Bind(&loopNext);
+        kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), jsType);
+        GateRef key = Int64ToTaggedInt(*i);
+        GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+            Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { argHandle, *kValue, key, thisValue });
+        BRANCH(HasPendingException(glue), &hasException, &notHasException);
+        Bind(&hasException);
+        {
+            result->WriteVariable(Exception());
+            Jump(exit);
+        }
+        Bind(&notHasException);
+        {
+            Label find(env);
+            BRANCH(TaggedIsTrue(FastToBoolean(retValue)), &find, &loopEnd);
+            Bind(&find);
+            result->WriteVariable(IntToTaggedPtr(*i));
+            Jump(exit);
+        }
+    }
+    Bind(&loopEnd);
+    i = Int64Sub(*i, Int64(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    result->WriteVariable(IntToTaggedPtr(Int32(-1)));
+    Jump(exit);
+}
+
+void BuiltinsTypedArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label typedArray(env);
+    Label defaultConstr(env);
+    Label argUndefined(env);
+    Label prototypeIsEcmaObj(env);
+    Label isProtoChangeMarker(env);
+    Label accessorNotChanged(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(thisValue))), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsUndefined(callbackFnHandle), &argUndefined, slowPath);
+    Bind(&argUndefined);
+
+    DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    GateRef jsType = GetObjectType(LoadHClass(thisValue));
+    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+    CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
+        { thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen),
+        newBuilder.GetElementSizeFromType(glue, jsType) });
+    DoSort(glue, newArray, result, exit, slowPath);
+    result->WriteVariable(newArray);
+    Jump(exit);
+}
+
+void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label isEcmaObject(env);
+    Label isConstructor(env);
+    Label thisObjIsECmaObject(env);
+    Label thisObjIsTypedArray(env);
+    Label thisObjIsFastTypedArray(env);
+    Label defaultConstr(env);
+    Label numArgsInRange(env);
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    Branch(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
+    Bind(&isEcmaObject);
+    Branch(IsConstructor(thisValue), &isConstructor, slowPath);
+    Bind(&isConstructor);
+    // 3: maximum of numArgs
+    BRANCH(Int32LessThanOrEqual(TruncPtrToInt32(numArgs), Int32(3)), &numArgsInRange, slowPath);
+    Bind(&numArgsInRange);
+
+    DEFVARIABLE(newArrayLen, VariableType::INT32(), TruncPtrToInt32(numArgs));
+    NewObjectStubBuilder newBuilder(this);
+    GateRef thisObj = newBuilder.FastNewThisObject(glue, thisValue);
+    GateRef arrayType = GetObjectType(LoadHClass(thisObj));
+
+    Branch(IsEcmaObject(thisObj), &thisObjIsECmaObject, slowPath);
+    Bind(&thisObjIsECmaObject);
+    Branch(IsTypedArray(thisObj), &thisObjIsTypedArray, slowPath);
+    Bind(&thisObjIsTypedArray);
+    Branch(IsFastTypeArray(arrayType), &thisObjIsFastTypedArray, slowPath);
+    Bind(&thisObjIsFastTypedArray);
+    Branch(HasConstructor(thisObj), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    newBuilder.SetParameters(glue, 0);
+    GateRef newArray = newBuilder.NewTypedArray(glue, thisObj, arrayType, *newArrayLen);
+
+    DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+    Label firstArg(env);
+    Label secondArg(env);
+    Label thirdArg(env);
+    Label writeResult(env);
+    // 1: first element
+    BRANCH(Int32LessThanOrEqual(Int32(1), *newArrayLen), &firstArg, &writeResult);
+    Bind(&firstArg);
+    {
+        Label setValue0(env);
+        Label hasException0(env);
+        Label notHasException0(env);
+        kValue = GetCallArg0(numArgs);
+        BRANCH(BoolOr(BoolOr(TaggedIsString(*kValue), TaggedIsNumber(*kValue)),
+            TaggedIsUndefined(*kValue)), &setValue0, slowPath);
+        Bind(&setValue0);
+        // 0: first element in newArray
+        StoreTypedArrayElement(glue, newArray, Int64(0), *kValue, arrayType);
+        BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+        Bind(&hasException0);
+        {
+            result->WriteVariable(Exception());
+            Jump(exit);
+        }
+        Bind(&notHasException0);
+        // 2: second element
+        BRANCH(Int32LessThanOrEqual(Int32(2), *newArrayLen), &secondArg, &writeResult);
+        Bind(&secondArg);
+        {
+            Label setValue1(env);
+            Label hasException1(env);
+            Label notHasException1(env);
+            kValue = GetCallArg1(numArgs);
+            BRANCH(BoolOr(BoolOr(TaggedIsString(*kValue), TaggedIsNumber(*kValue)),
+                TaggedIsUndefined(*kValue)), &setValue1, slowPath);
+            Bind(&setValue1);
+            // 1: second element in newArray
+            StoreTypedArrayElement(glue, newArray, Int64(1), *kValue, arrayType);
+            BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
+            Bind(&hasException1);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException1);
+            // 3: third element
+            BRANCH(Int32LessThanOrEqual(Int32(3), *newArrayLen), &thirdArg, &writeResult);
+            Bind(&thirdArg);
+            {
+                Label setValue2(env);
+                Label hasException2(env);
+                kValue = GetCallArg2(numArgs);
+                BRANCH(BoolOr(BoolOr(TaggedIsString(*kValue), TaggedIsNumber(*kValue)),
+                    TaggedIsUndefined(*kValue)), &setValue2, slowPath);
+                Bind(&setValue2);
+                // 2: third element in newArray
+                StoreTypedArrayElement(glue, newArray, Int64(2), *kValue, arrayType);
+                BRANCH(HasPendingException(glue), &hasException2, &writeResult);
+                Bind(&hasException2);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+        }
+    }
+
+    Bind(&writeResult);
+    {
+        result->WriteVariable(newArray);
+        Jump(exit);
+    }
+}
+
+void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label isHeapObject(env);
+    Label defaultConstr(env);
+    Label typedArray(env);
+    Label typedArrayIsFast(env);
+    Label prototypeIsEcmaObj(env);
+    Label isProtoChangeMarker(env);
+    Label accessorNotChanged(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    GateRef prototype = GetPrototypeFromHClass(LoadHClass(thisValue));
+    BRANCH(IsEcmaObject(prototype), &prototypeIsEcmaObj, slowPath);
+    Bind(&prototypeIsEcmaObj);
+    GateRef marker = GetProtoChangeMarkerFromHClass(LoadHClass(prototype));
+    Branch(TaggedIsProtoChangeMarker(marker), &isProtoChangeMarker, slowPath);
+    Bind(&isProtoChangeMarker);
+    Branch(GetAccessorHasChanged(marker), slowPath, &accessorNotChanged);
+    Bind(&accessorNotChanged);
+    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(thisValue))), &typedArrayIsFast, slowPath);
+    Bind(&typedArrayIsFast);
+    Label arg0HeapObject(env);
+    Label callable(env);
+    Label next(env);
+    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    GateRef jsType = GetObjectType(LoadHClass(thisValue));
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+    GateRef argHandle = GetCallArg1(numArgs);
+    Jump(&next);
+    Bind(&next);
+    {
+        DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+        DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label loopNext(env);
+        Label loopExit(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label hasException1(env);
+            Label notHasException1(env);
+            BRANCH(Int64LessThan(*i, thisLen), &loopNext, &loopExit);
+            Bind(&loopNext);
+            kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), jsType);
+            GateRef key = Int64ToTaggedInt(*i);
+            GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { argHandle, *kValue, key, thisValue });
+            BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
+            Bind(&hasException1);
+            result->WriteVariable(Exception());
+            Jump(exit);
+
+            Bind(&notHasException1);
+            {
+                StoreTypedArrayElement(glue, newArray, *i, retValue, jsType);
+                Jump(&loopEnd);
+            }
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        result->WriteVariable(newArray);
+        Jump(exit);
+    }
+}
+
+void BuiltinsTypedArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label typedArray(env);
+    Label defaultConstr(env);
+    Label isFastTypedArray(env);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    GateRef arrayType = GetObjectType(LoadHClass(thisValue));
+    Branch(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    Bind(&isFastTypedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*thisArrLen));
+    DEFVARIABLE(k, VariableType::INT64(), Int64(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label loopNext(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        BRANCH(Int64NotEqual(*k, *thisArrLen), &loopNext, &loopExit);
+        Bind(&loopNext);
+        {
+            DEFVARIABLE(from, VariableType::INT64(), Int64Sub(Int64Sub(*thisArrLen, *k), Int64(1)));
+            Label hasException0(env);
+            Label hasException1(env);
+            Label notHasException0(env);
+            GateRef fromValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*from), arrayType);
+            BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+            Bind(&hasException0);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException0);
+            {
+                StoreTypedArrayElement(glue, newArray, *k, fromValue, arrayType);
+                BRANCH(HasPendingException(glue), &hasException1, &loopEnd);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+        }
+    }
+    Bind(&loopEnd);
+    k = Int64Add(*k, Int64(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    result->WriteVariable(newArray);
+    Jump(exit);
+}
+
+void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef value, GateRef array,
+                                                           GateRef index, GateRef jsType)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    Label exit(env);
+    Label isDetached(env);
+    Label notDetached(env);
+    Label slowPath(env);
+    Label indexIsvalid(env);
+
+    GateRef buffer = GetViewedArrayBuffer(array);
+    BRANCH(IsDetachedBuffer(buffer), &isDetached, &notDetached);
+    Bind(&isDetached);
+    {
+        Jump(&slowPath);
+    }
+    Bind(&notDetached);
+    {
+        GateRef arrLen = GetArrayLength(array);
+        BRANCH(Int32GreaterThanOrEqual(index, arrLen), &exit, &indexIsvalid);
+        Bind(&indexIsvalid);
+        {
+            GateRef offset = GetByteOffset(array);
+            SetValueToBuffer(glue, value, buffer, index, offset, jsType);
+            Jump(&exit);
+        }
+    }
+    Bind(&slowPath);
+    {
+        CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
+            { array, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+    return;
+}
+
+void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value, GateRef buffer,
+                                                     GateRef index, GateRef offset, GateRef jsType)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    Label exit(env);
+    Label defaultLabel(env);
+    Label isInt8(env);
+    Label notInt8(env);
+    Label isInt16(env);
+    Label notInt16(env);
+
+    Label labelBuffer[3] = { Label(env), Label(env), Label(env) };
+    Label labelBuffer1[3] = { Label(env), Label(env), Label(env) };
+    Label labelBuffer2[3] = { Label(env), Label(env), Label(env) };
+    int64_t valueBuffer[3] = {
+        static_cast<int64_t>(JSType::JS_INT8_ARRAY), static_cast<int64_t>(JSType::JS_UINT8_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT8_CLAMPED_ARRAY) };
+    int64_t valueBuffer1[3] = {
+        static_cast<int64_t>(JSType::JS_INT16_ARRAY), static_cast<int64_t>(JSType::JS_UINT16_ARRAY),
+        static_cast<int64_t>(JSType::JS_INT32_ARRAY) };
+    int64_t valueBuffer2[3] = {
+        static_cast<int64_t>(JSType::JS_UINT32_ARRAY), static_cast<int64_t>(JSType::JS_FLOAT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_FLOAT64_ARRAY) };
+
+    BRANCH(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_UINT8_CLAMPED_ARRAY))),
+        &isInt8, &notInt8);
+    Bind(&isInt8);
+    {
+        // 3 : this switch has 3 cases
+        Switch(jsType, &defaultLabel, valueBuffer, labelBuffer, 3);
+        // 0 : index of this buffer
+        Bind(&labelBuffer[0]);
+        {
+            GateRef byteIndex = Int32Add(index, offset);
+            GateRef block = GetDataPointFromBuffer(buffer);
+            GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+            Store(VariableType::INT8(), glue, block, byteIndex, val);
+            Jump(&exit);
+        }
+        // 1 : index of this buffer
+        Bind(&labelBuffer[1]);
+        {
+            GateRef byteIndex = Int32Add(index, offset);
+            GateRef block = GetDataPointFromBuffer(buffer);
+            GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+            Store(VariableType::INT8(), glue, block, byteIndex, val);
+            Jump(&exit);
+        }
+        // 2 : index of this buffer
+        Bind(&labelBuffer[2]);
+        {
+            GateRef byteIndex = Int32Add(index, offset);
+            GateRef block = GetDataPointFromBuffer(buffer);
+            GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+            Store(VariableType::INT8(), glue, block, byteIndex, val);
+            Jump(&exit);
+        }
+    }
+
+    Bind(&notInt8);
+    {
+        BRANCH(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_INT32_ARRAY))),
+            &isInt16, &notInt16);
+        Bind(&isInt16);
+        {
+            // 3 : this switch has 3 case
+            Switch(jsType, &defaultLabel, valueBuffer1, labelBuffer1, 3);
+            // 0 : index of this buffer
+            Bind(&labelBuffer1[0]);
+            {
+                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::TWO)), offset);
+                GateRef block = GetDataPointFromBuffer(buffer);
+                GateRef val = TruncInt32ToInt16(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                Store(VariableType::INT16(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
+            // 1 : index of this buffer
+            Bind(&labelBuffer1[1]);
+            {
+                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::TWO)), offset);
+                GateRef block = GetDataPointFromBuffer(buffer);
+                GateRef val = TruncInt32ToInt16(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                Store(VariableType::INT16(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
+            // 2 : index of this buffer
+            Bind(&labelBuffer1[2]);
+            {
+                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
+                GateRef block = GetDataPointFromBuffer(buffer);
+                GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                Store(VariableType::INT32(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
+        }
+        Bind(&notInt16);
+        {
+            // 3 : this switch has 3 case
+            Switch(jsType, &defaultLabel, valueBuffer2, labelBuffer2, 3);
+            // 0 : index of this buffer
+            Bind(&labelBuffer2[0]);
+            {
+                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
+                GateRef block = GetDataPointFromBuffer(buffer);
+                GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                Store(VariableType::INT32(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
+            // 1 : index of this buffer
+            Bind(&labelBuffer2[1]);
+            {
+                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
+                GateRef block = GetDataPointFromBuffer(buffer);
+                GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                Store(VariableType::INT32(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
+            // 2 : index of this buffer
+            Bind(&labelBuffer2[2]);
+            {
+                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::EIGHT)), offset);
+                GateRef block = GetDataPointFromBuffer(buffer);
+                GateRef val = ChangeTaggedPointerToInt64(value);
+                Store(VariableType::INT64(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
+        }
+    }
+
+    Bind(&defaultLabel);
+    {
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+    return;
 }
 }  // namespace panda::ecmascript::kungfu

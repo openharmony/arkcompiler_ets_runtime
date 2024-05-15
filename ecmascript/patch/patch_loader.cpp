@@ -14,6 +14,8 @@
  */
 #include "ecmascript/patch/patch_loader.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/global_handle_collection.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -21,7 +23,6 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
 PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,
@@ -42,6 +43,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 
     if (!thread->GetCurrentEcmaContext()->HasCachedConstpool(baseFile)) {
         LOG_ECMA(INFO) << "cold patch!";
+        vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile, patchFile);
         return PatchErrorCode::SUCCESS;
     }
 
@@ -108,6 +110,22 @@ void PatchLoader::ExecuteFuncOrPatchMain(
 
     if (loadPatch) {
         context->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+        if (context->GetStageOfColdReload() == StageOfColdReload::IS_COLD_RELOAD) {
+            context->SetStageOfColdReload(StageOfColdReload::COLD_RELOADING);
+            // change bc stub entry when using assembly interpreter
+            if (thread->IsAsmInterpreter()) {
+                auto handleDefinefuncImm8Id16Imm8ColdReload = thread->GetBCStubEntry(
+                    kungfu::BytecodeStubCSigns::HandleDefinefuncImm8Id16Imm8ColdReload);
+                auto handleDefinefuncImm16Id16Imm8ColdReload = thread->GetBCStubEntry(
+                    kungfu::BytecodeStubCSigns::HandleDefinefuncImm16Id16Imm8ColdReload);
+                thread->SetBCStubEntry(
+                    kungfu::BytecodeStubCSigns::ID_HandleDefinefuncImm8Id16Imm8,
+                    handleDefinefuncImm8Id16Imm8ColdReload);
+                thread->SetBCStubEntry(
+                    kungfu::BytecodeStubCSigns::ID_HandleDefinefuncImm16Id16Imm8,
+                    handleDefinefuncImm16Id16Imm8ColdReload);
+            }
+        }
     } else {
         context->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
     }
@@ -534,6 +552,7 @@ CString PatchLoader::GetRealName(const JSPandaFile *jsPandaFile, EntityId entity
 {
     std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, entityId));
     size_t poiIndex = methodName.find_last_of('#');
+    ASSERT(methodName.size() > 0);
     if (poiIndex != std::string::npos && poiIndex < methodName.size() - 1 && className != "default") {
         methodName = methodName.substr(poiIndex + 1);
     }

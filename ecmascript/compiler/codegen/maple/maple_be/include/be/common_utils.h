@@ -314,6 +314,7 @@ inline bool IsPowerOf2Const(uint64 i)
 
 inline uint64 RoundUpConst(uint64 offset, uint64 align)
 {
+    CHECK_FATAL(offset <= UINT64_MAX - align, "must not be zero");
     return (-align) & (offset + align - 1);
 }
 
@@ -350,6 +351,7 @@ inline int64 RoundDown(int64 offset, int64 align)
 inline bool IsAlignedTo(uint64 offset, uint64 align)
 {
     DEBUG_ASSERT(IsPowerOf2(align), "align must be power of 2!");
+    CHECK_FATAL(align > 0, "must not be zero");
     return (offset & (align - 1)) == 0;
 }
 } /* namespace maplebe */

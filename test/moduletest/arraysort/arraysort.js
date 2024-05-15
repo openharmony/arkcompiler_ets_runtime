@@ -263,3 +263,23 @@ try {
 } catch (e) {
     print(e.name);
 }
+
+try {
+    const vSort = new Float64Array(Float64Array);
+    vSort.__proto__.sort();
+} catch (e) {
+    print(e.message);
+}
+
+const v4 = [1, 255];
+class C5 extends Int16Array{
+    toString(a7, a8, a9, a10) {
+        super.includes();
+    }
+}
+try {
+    const v12 = new C5();
+    v4.sort(C5.prototype.toString);
+} catch (e) {
+    print(e.message);
+}

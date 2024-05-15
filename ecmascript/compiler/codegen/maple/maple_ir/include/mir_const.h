@@ -193,7 +193,7 @@ public:
 
     bool operator==(const MIRConst &rhs) const override;
 
-    MIRIntConst *Clone(MemPool &memPool) const override
+    MIRIntConst *Clone([[maybe_unused]] MemPool &memPool) const override
     {
         CHECK_FATAL(false, "Can't Use This Interface in This Object");
     }

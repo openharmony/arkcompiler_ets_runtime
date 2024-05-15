@@ -14,27 +14,40 @@
  */
 
 #include "ecmascript/compiler/assembler/aarch64/macro_assembler_aarch64.h"
-#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
 void MacroAssemblerAArch64::Move(const StackSlotOperand &dstStackSlot, Immediate value)
 {
-    (void)dstStackSlot;
-    (void)value;
+    aarch64::Register baseReg = (dstStackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
+                                                               aarch64::Register(aarch64::SP);
+    aarch64::MemoryOperand dstOpnd(baseReg, static_cast<int64_t>(dstStackSlot.GetOffset()));
+    assembler.Mov(LOCAL_SCOPE_REGISTER, aarch64::Immediate(value.GetValue()));
+    assembler.Stur(LOCAL_SCOPE_REGISTER, dstOpnd);
 }
 
 void MacroAssemblerAArch64::Move(const StackSlotOperand &dstStackSlot,
                                  const StackSlotOperand &srcStackSlot)
 {
-    (void)dstStackSlot;
-    (void)srcStackSlot;
+    aarch64::Register dstBaseReg = (dstStackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
+                                                                  aarch64::Register(aarch64::SP);
+    aarch64::MemoryOperand dstOpnd(dstBaseReg, static_cast<int64_t>(dstStackSlot.GetOffset()));
+    aarch64::Register srcBaseReg = (srcStackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
+                                                                  aarch64::Register(aarch64::SP);
+    aarch64::MemoryOperand srcOpnd(srcBaseReg, static_cast<int64_t>(srcStackSlot.GetOffset()));
+    assembler.Ldur(LOCAL_SCOPE_REGISTER, srcOpnd);
+    assembler.Stur(LOCAL_SCOPE_REGISTER, dstOpnd);
 }
 
 void MacroAssemblerAArch64::Cmp(const StackSlotOperand &stackSlot, Immediate value)
 {
-    (void)stackSlot;
-    (void)value;
+    aarch64::Register baseReg = (stackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
+                                                            aarch64::Register(aarch64::SP);
+    aarch64::MemoryOperand opnd(baseReg, static_cast<int64_t>(stackSlot.GetOffset()));
+    aarch64::Operand immOpnd = aarch64::Immediate(value.GetValue());
+    assembler.Ldur(LOCAL_SCOPE_REGISTER, opnd);
+    assembler.Cmp(LOCAL_SCOPE_REGISTER, immOpnd);
 }
 
 void MacroAssemblerAArch64::Bind(JumpLabel &label)
@@ -60,13 +73,94 @@ void MacroAssemblerAArch64::Jump(JumpLabel &label)
 void MacroAssemblerAArch64::CallBuiltin(Address funcAddress,
                                         const std::vector<MacroParameter> &parameters)
 {
-    (void)funcAddress;
-    (void)parameters;
+    for (size_t i = 0; i < parameters.size(); ++i) {
+        auto param = parameters[i];
+        if (i == PARAM_REGISTER_COUNT) {
+            std::cout << "not support aarch64 baseline stack parameter " << std::endl;
+            std::abort();
+            break;
+        }
+        MovParameterIntoParamReg(param, registerParamVec[i]);
+    }
+    assembler.Mov(LOCAL_SCOPE_REGISTER, aarch64::Immediate(funcAddress));
+    assembler.Blr(LOCAL_SCOPE_REGISTER);
 }
 
 void MacroAssemblerAArch64::SaveReturnRegister(const StackSlotOperand &dstStackSlot)
 {
-    (void)dstStackSlot;
+    aarch64::Register baseReg = (dstStackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
+                                                               aarch64::Register(aarch64::SP);
+    aarch64::MemoryOperand dstOpnd(baseReg, static_cast<int64_t>(dstStackSlot.GetOffset()));
+    assembler.Stur(RETURN_REGISTER, dstOpnd);
+}
+
+void MacroAssemblerAArch64::MovParameterIntoParamReg(MacroParameter param, aarch64::Register paramReg)
+{
+    if (std::holds_alternative<BaselineSpecialParameter>(param)) {
+        auto specialParam = std::get<BaselineSpecialParameter>(param);
+        switch (specialParam) {
+            case BaselineSpecialParameter::GLUE: {
+                assembler.Mov(paramReg, GLUE_REGISTER);
+                break;
+            }
+            case BaselineSpecialParameter::PROFILE_TYPE_INFO: {
+                assembler.Ldur(LOCAL_SCOPE_REGISTER,
+                               aarch64::MemoryOperand(aarch64::Register(aarch64::X29),
+                                                      static_cast<int64_t>(FUNCTION_OFFSET_FROM_SP)));
+                assembler.Ldr(paramReg,
+                              aarch64::MemoryOperand(LOCAL_SCOPE_REGISTER, JSFunction::PROFILE_TYPE_INFO_OFFSET));
+                break;
+            }
+            case BaselineSpecialParameter::SP: {
+                assembler.Mov(paramReg, aarch64::Register(aarch64::X29));
+                break;
+            }
+            case BaselineSpecialParameter::HOTNESS_COUNTER: {
+                assembler.Ldur(LOCAL_SCOPE_REGISTER, aarch64::MemoryOperand(aarch64::Register(aarch64::X29),
+                    static_cast<int64_t>(FUNCTION_OFFSET_FROM_SP)));
+                assembler.Ldr(LOCAL_SCOPE_REGISTER,
+                              aarch64::MemoryOperand(LOCAL_SCOPE_REGISTER, JSFunctionBase::METHOD_OFFSET));
+                assembler.Ldr(paramReg,
+                              aarch64::MemoryOperand(LOCAL_SCOPE_REGISTER, Method::LITERAL_INFO_OFFSET));
+                break;
+            }
+            default: {
+                std::cout << "not supported other BaselineSpecialParameter currently" << std::endl;
+                std::abort();
+            }
+        }
+        return;
+    }
+    if (std::holds_alternative<int8_t>(param)) {
+        int16_t num = std::get<int8_t>(param);
+        assembler.Mov(paramReg, aarch64::Immediate(static_cast<int64_t>(num)));
+        return;
+    }
+    if (std::holds_alternative<int16_t>(param)) {
+        int16_t num = std::get<int16_t>(param);
+        assembler.Mov(paramReg, aarch64::Immediate(static_cast<int64_t>(num)));
+        return;
+    }
+    if (std::holds_alternative<int32_t>(param)) {
+        int32_t num = std::get<int32_t>(param);
+        assembler.Mov(paramReg, aarch64::Immediate(static_cast<int64_t>(num)));
+        return;
+    }
+    if (std::holds_alternative<int64_t>(param)) {
+        int64_t num = std::get<int64_t>(param);
+        assembler.Mov(paramReg, aarch64::Immediate(static_cast<int64_t>(num)));
+        return;
+    }
+    if (std::holds_alternative<StackSlotOperand>(param)) {
+        StackSlotOperand stackSlotOpnd = std::get<StackSlotOperand>(param);
+        aarch64::Register dstBaseReg = (stackSlotOpnd.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
+                                                                       aarch64::Register(aarch64::SP);
+        aarch64::MemoryOperand paramOpnd(dstBaseReg, static_cast<int64_t>(stackSlotOpnd.GetOffset()));
+        assembler.Ldur(paramReg, paramOpnd);
+        return;
+    }
+    std::cout << "not supported other type of aarch64 baseline parameters currently" << std::endl;
+    std::abort();
 }
 
 }  // namespace panda::ecmascript::kungfu

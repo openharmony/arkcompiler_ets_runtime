@@ -110,6 +110,7 @@ group("ark_js_moduletest") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "object",
     "objectcloneproperties",
     "objectdefineproperties",
     "objectgetownproperty",
@@ -173,11 +174,13 @@ group("ark_js_moduletest") {
     "sharedtypedarray",
     "sharedcollectionsexception",
     "definesendableclass",
+    "sendableenv",
     "sendablecontext",
     "sendableclassuseimport",
     "sharedmodule",
     "sharedset",
     "sharedmap",
+    "sharedJSON",
     "sharedic",
   ]
 
@@ -359,11 +362,13 @@ group("ark_asm_test") {
     "sharedtypedarray",
     "sharedcollectionsexception",
     "definesendableclass",
+    "sendableenv",
     "sendablecontext",
     "sendableclassuseimport",
     "sharedmodule",
     "sharedset",
     "sharedmap",
+    "sharedJSON",
     "sharedic",
   ]
 
@@ -523,12 +528,14 @@ group("ark_asm_single_step_test") {
     "sharedtypedarray",
     "sharedcollectionsexception",
     "definesendableclass",
+    "sendableenv",
     "sendablecontext",
     "sendableclassuseimport",
     "sharedmodule",
     "sharedic",
     "sharedset",
     "sharedmap",
+    "sharedJSON",
   ]
 
   deps = []

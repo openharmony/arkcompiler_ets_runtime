@@ -59,6 +59,7 @@ uint32_t ElfBuilder::AddAsmStubStrTab(std::ofstream &elfFile,
     const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo)
 {
     uint32_t size = 1;
+    ASSERT(asmStubELFInfo.size() > 0);
     uint32_t asmStubSymTabNum = asmStubELFInfo.size() - 1;
     for (size_t idx = 0; idx < asmStubSymTabNum; ++idx) {
         const std::string &str = asmStubELFInfo[idx].first;

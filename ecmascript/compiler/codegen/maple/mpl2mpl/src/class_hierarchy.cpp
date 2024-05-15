@@ -512,6 +512,7 @@ Klass *KlassHierarchy::GetLCA(Klass *klass1, Klass *klass2) const
     size_t size2 = v2.size();
     size_t min = (size1 < size2) ? size1 : size2;
     for (size_t i = 1; i <= min; ++i) {
+        CHECK_FATAL(size1 > 0, "must not be zero");
         if (v1[size1 - i] != v2[size2 - i]) {
             break;
         }
@@ -814,6 +815,7 @@ void KlassHierarchy::MarkClassFlags()
         }
         // Mark Finalizer
         if (super != nullptr && super->HasFinalizer()) {
+            ASSERT_NOT_NULL(klass);
             klass->SetHasFinalizer();
         } else {
             for (auto &method : klass->GetMethods()) {

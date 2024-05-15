@@ -105,6 +105,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
+    func->SetTaskConcurrentFuncFlag(0); // 0 : default value
 }
 
 JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func)
@@ -1078,9 +1079,5 @@ void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
     method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
     method->SetJitCompiledCode(true);
     method->SetIsFastCall(isFastCall);
-
-    MethodLiteral *methodLiteral = method->GetMethodLiteral();
-    methodLiteral->SetAotCodeBit(true);
-    methodLiteral->SetIsFastCall(isFastCall);
 }
 }  // namespace panda::ecmascript

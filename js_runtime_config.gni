@@ -24,6 +24,12 @@ declare_args() {
   # If true, enable fuzz option. Default false.
   enable_fuzz_option = false
 
+  # Enable pgo for building.
+  js_runtime_feature_enable_pgo = false
+
+  # Set pgo profdata path.
+  js_runtime_feature_pgo_path = ""
+
   TARGET = "x86_64"
   HOST_ARCH = 64
 }
@@ -142,6 +148,14 @@ template("libark_jsruntime_common_set") {
   forward_variables_from(invoker, "*")
 
   ohos_source_set(target_name) {
+    if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
+        is_standard_system && !is_arkui_x && target_cpu == "arm64") {
+      include_dirs = [
+        "$js_root",
+        "$js_root/ecmascript/napi/include",
+      ]
+    }
+
     stack_protector_ret = false
 
     if (is_ohos && is_standard_system) {
@@ -186,6 +200,14 @@ template("libark_jsruntime_common_set") {
       external_deps += [ "libuv:uv" ]
     }
 
+    if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
+        is_standard_system && !is_arkui_x && target_cpu == "arm64") {
+      defines += [ "ENABLE_FFRT_INTERFACES" ]
+      external_deps += [
+        "ffrt:libffrt",
+        "hilog:libhilog",
+      ]
+    }
     deps = []
     if (!is_arkui_x) {
       external_deps += [ "runtime_core:arkfile_header_deps" ]
@@ -204,7 +226,7 @@ template("libark_jsruntime_common_set") {
         is_ohos && is_standard_system) {
       external_deps += [ "init:libbegetutil" ]
       defines += [
-        "JIT_SWITCH_COMPILE_MODE",
+        "GET_PARAMETER_FOR_JIT",
         "JIT_ESCAPE_ENABLE",
       ]
     }

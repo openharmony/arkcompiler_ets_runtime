@@ -39,6 +39,11 @@ class JSSharedModule {
 public:
     static JSHandle<TaggedArray> CloneEnvForSModule(JSThread *thread, const JSHandle<SourceTextModule> &module,
         JSHandle<TaggedArray> &envRec);
+    static JSHandle<ModuleNamespace> SModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,
+                                                            const JSHandle<TaggedArray> &exports);
+private:
+    static JSHandle<JSTaggedValue> CreateSharedSortedExports(JSThread *thread, const JSHandle<TaggedArray> &exports);
+    static JSHandle<TaggedArray> GenerateSharedExports(JSThread *thread, const JSHandle<TaggedArray> &oldExports);
 };
 
 class ResolvedRecordIndexBinding final : public Record {
@@ -46,7 +51,8 @@ public:
     CAST_CHECK(ResolvedRecordIndexBinding, IsResolvedRecordIndexBinding);
 
     static constexpr size_t MODULE_RECORD_INDEX_OFFSET = Record::SIZE;
-    ACCESSORS(ModuleRecord, MODULE_RECORD_INDEX_OFFSET, INDEX_OFFSET);
+    ACCESSORS(ModuleRecord, MODULE_RECORD_INDEX_OFFSET, ABC_FILE_NAME);
+    ACCESSORS(AbcFileName, ABC_FILE_NAME, INDEX_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(Index, int32_t, INDEX_OFFSET, END_OFFSET);
     DEFINE_ALIGN_SIZE(END_OFFSET);
 

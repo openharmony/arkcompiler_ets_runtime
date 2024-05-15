@@ -152,7 +152,7 @@ public:
     }
 
 protected:
-    GateRef value_;
+    GateRef value_ {Circuit::NullGate()};
 };
 
 class ConditionJumpTypeInfoAccessor final : public UnOpTypeInfoAccessor {
@@ -598,6 +598,7 @@ enum CallKind : uint8_t {
     CALL_INIT,
     CALL_SETTER,
     CALL_GETTER,
+    CALL_NEW,
     INVALID
 };
 
@@ -646,6 +647,10 @@ public:
 
     uint32_t GetCallMethodId() const;
 
+    bool FindHClass() const;
+
+    JSTaggedValue GetHClass() const;
+
     GateRef GetCallGate() const
     {
         return GetGate();
@@ -663,7 +668,8 @@ public:
 
     bool IsNormalCall() const
     {
-        return kind_ == CallKind::CALL || kind_ == CallKind::CALL_THIS || kind_ == CallKind::CALL_INIT;
+        return kind_ == CallKind::CALL || kind_ == CallKind::CALL_THIS ||
+               kind_ == CallKind::CALL_INIT || kind_ == CallKind::CALL_NEW;
     }
 
     bool IsCallAccessor() const
@@ -681,6 +687,11 @@ public:
         return kind_ == CallKind::CALL_SETTER;
     }
 
+    bool IsCallNew() const
+    {
+        return kind_ == CallKind::CALL_NEW;
+    }
+
     uint32_t GetType() const
     {
         return GetFuncMethodOffsetFromPGO();
@@ -691,12 +702,18 @@ public:
         return plr_;
     }
 
+    int GetHClassIndex() const
+    {
+        return hclassIndex_;
+    }
+
 private:
     PropertyLookupResult GetAccessorPlr() const;
 
     GateRef receiver_;
     CallKind kind_ {CallKind::INVALID};
     PropertyLookupResult plr_ { PropertyLookupResult() };
+    mutable int hclassIndex_;
 };
 
 class ObjectAccessTypeInfoAccessor : public TypeInfoAccessor {
@@ -1228,7 +1245,7 @@ public:
     }
 
 private:
-    GateRef value_;
+    GateRef value_ {Circuit::NullGate()};
 };
 
 class GlobalObjAccTypeInfoAccessor : public ObjectAccessTypeInfoAccessor {

@@ -388,9 +388,56 @@ public:
         return lastHandleScope_;
     }
 
+    JSTaggedType *GetPrimitiveScopeStorageNext() const
+    {
+        return primitiveScopeStorageNext_;
+    }
+
+    void SetPrimitiveScopeStorageNext(JSTaggedType *value)
+    {
+        primitiveScopeStorageNext_ = value;
+    }
+
+    JSTaggedType *GetPrimitiveScopeStorageEnd() const
+    {
+        return primitiveScopeStorageEnd_;
+    }
+
+    void SetPrimitiveScopeStorageEnd(JSTaggedType *value)
+    {
+        primitiveScopeStorageEnd_ = value;
+    }
+
+    int GetCurrentPrimitiveStorageIndex() const
+    {
+        return currentPrimitiveStorageIndex_;
+    }
+
+    void PrimitiveScopeCountAdd()
+    {
+        primitiveScopeCount_++;
+    }
+
+    void PrimitiveScopeCountDec()
+    {
+        primitiveScopeCount_--;
+    }
+
+    void SetLastPrimitiveScope(EcmaHandleScope *scope)
+    {
+        lastPrimitiveScope_ = scope;
+    }
+
+    EcmaHandleScope *GetLastPrimitiveScope() const
+    {
+        return lastPrimitiveScope_;
+    }
+
     size_t IterateHandle(const RootRangeVisitor &rangeVisitor);
     uintptr_t *ExpandHandleStorage();
     void ShrinkHandleStorage(int prevIndex);
+    uintptr_t *ExpandPrimitiveStorage();
+    void ShrinkPrimitiveStorage(int prevIndex);
 
     JSTaggedType *GetCurrentFrame() const
     {
@@ -470,6 +517,27 @@ public:
         cachedPatchModules_.clear();
     }
 
+    void AddJitMachineCode(panda_file::File::EntityId id, std::pair<JSTaggedType, JSTaggedType> machineCode)
+    {
+        // replace the old one from some abcfile with the latest one
+        jitMachineCodeCache_.at(GetJitMachineCodeHash(id)) = machineCode;
+    }
+    bool MatchJitMachineCode(panda_file::File::EntityId id, const Method *method) const
+    {
+        auto methodCode = jitMachineCodeCache_.at(GetJitMachineCodeHash(id));
+        if (methodCode.first == 0) {
+            return false;
+        }
+        ASSERT(method != nullptr);
+        Method *methodCache = Method::Cast(JSTaggedValue(methodCode.first).GetTaggedObject());
+        return method == methodCache;
+    }
+    std::pair<JSTaggedType, JSTaggedType> GetJitMachineCode(panda_file::File::EntityId id) const
+    {
+        ASSERT(jitMachineCodeCache_.at(GetJitMachineCodeHash(id)).first != 0);
+        return jitMachineCodeCache_.at(GetJitMachineCodeHash(id));
+    }
+
     StageOfHotReload GetStageOfHotReload() const
     {
         return stageOfHotReload_;
@@ -477,6 +545,15 @@ public:
     void SetStageOfHotReload(StageOfHotReload stageOfHotReload)
     {
         stageOfHotReload_ = stageOfHotReload;
+    }
+
+    StageOfColdReload GetStageOfColdReload() const
+    {
+        return stageOfColdReload_;
+    }
+    void SetStageOfColdReload(StageOfColdReload stageOfColdReload)
+    {
+        stageOfColdReload_ = stageOfColdReload;
     }
 
     bool JoinStackPushFastPath(JSHandle<JSTaggedValue> receiver);
@@ -504,6 +581,11 @@ public:
     void AddSustainingJSHandle(SustainingJSHandle*);
     void RemoveSustainingJSHandle(SustainingJSHandle*);
 private:
+    void IterateJitMachineCodeCache(const RootVisitor &v);
+    uint32_t GetJitMachineCodeHash(panda_file::File::EntityId id) const
+    {
+        return id.GetOffset() % JIT_MACHINE_CODE_CACHE_SIZE;
+    }
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
@@ -558,6 +640,7 @@ private:
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};
     StageOfHotReload stageOfHotReload_ = StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD;
+    StageOfColdReload stageOfColdReload_ = StageOfColdReload::NOT_COLD_RELOAD;
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
@@ -600,6 +683,15 @@ private:
     int32_t currentHandleStorageIndex_ {-1};
     int32_t handleScopeCount_ {0};
     EcmaHandleScope *lastHandleScope_ {nullptr};
+    // PrimitveScope
+    static constexpr int32_t MIN_PRIMITIVE_STORAGE_SIZE = 2;
+    JSTaggedType *primitiveScopeStorageNext_ {nullptr};
+    JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
+    std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
+    int32_t currentPrimitiveStorageIndex_ {-1};
+    int32_t primitiveScopeCount_ {0};
+    EcmaHandleScope *lastPrimitiveScope_ {nullptr};
+
     // Frame pointer
     JSTaggedType *currentFrame_ {nullptr};
     JSTaggedType *leaveFrame_ {nullptr};
@@ -618,6 +710,8 @@ private:
 
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
+    static constexpr uint32_t JIT_MACHINE_CODE_CACHE_SIZE = 263;
+    std::array<std::pair<JSTaggedType, JSTaggedType>, JIT_MACHINE_CODE_CACHE_SIZE> jitMachineCodeCache_ {};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

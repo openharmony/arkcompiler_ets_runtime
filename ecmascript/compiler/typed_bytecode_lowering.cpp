@@ -654,6 +654,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
     size_t typeCount = tacc.GetTypeCount();
     std::vector<Label> loaders;
     std::vector<Label> fails;
+    ASSERT(typeCount > 0);
     for (size_t i = 0; i < typeCount - 1; ++i) {
         loaders.emplace_back(Label(&builder_));
         fails.emplace_back(Label(&builder_));
@@ -1450,8 +1451,8 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     GateRef thisObj = builder_.TypedNewAllocateThis(ctor, ihclass, size, frameState);
     size_t range = acc_.GetNumValueIn(gate);
     size_t expectedArgc = method->GetNumArgs();
-    size_t actualArgc = BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
-        EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8);
+    size_t actualArgc = static_cast<size_t>(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
     GateRef argc = builder_.Int64(actualArgc);
     std::vector<GateRef> args { glue_, argc, ctor, ctor, thisObj }; // func thisobj numofargs
     for (size_t i = 1; i < range; ++i) {  // 1:skip ctor

@@ -17,6 +17,7 @@
 #define ECMASCRIPT_LAYOUT_INFO_H
 
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_symbol.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array.h"
 
@@ -104,10 +105,11 @@ public:
 
     void DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
     bool UpdateFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
+    CString GetSymbolKeyString(JSTaggedValue key);
     DECL_DUMP()
 
 private:
-    bool IsUninitializedProperty(const JSObject *object, uint32_t index) const;
+    bool IsUninitializedProperty(const JSObject* object, uint32_t index) const;
 };
 }  // namespace panda::ecmascript
 

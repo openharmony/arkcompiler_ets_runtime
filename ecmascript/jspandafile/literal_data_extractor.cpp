@@ -24,6 +24,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/js_shared_module_manager.h"
+#include "ecmascript/patch/quick_fix_helper.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -238,6 +239,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                 literals->Set(thread, pos++, jt);
             } else {
                 uint32_t oldLength = literals->GetLength();
+                ASSERT(oldLength > 0);
                 literals->Trim(thread, oldLength - 1);
             }
         });
@@ -284,6 +286,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
                                                                  FunctionKind kind, uint16_t length,
                                                                  const CString &entryPoint,
                                                                  bool isLoadedAOT, uint32_t entryIndex,
+                                                                 JSHandle<JSTaggedValue> sendableEnv,
                                                                  ClassKind classKind)
 {
     EcmaVM *vm = thread->GetEcmaVM();
@@ -304,7 +307,12 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
     JSHandle<JSTaggedValue> module = SharedModuleManager::GetInstance()->GenerateFuncModule(thread, jsPandaFile,
                                                                                             entryPoint, classKind);
+    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
+        SourceTextModule::Cast(module->GetTaggedObject())->SetSendableEnv(thread, sendableEnv);
+    }
+
     jsFunc->SetModule(thread, module.GetTaggedValue());
+    QuickFixHelper::SetPatchModule(thread, method, jsFunc);
     jsFunc->SetLength(length);
     return jsFunc;
 }
@@ -469,7 +477,9 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                                                                EntityId id, JSHandle<ConstantPool> constpool,
                                                                const CString &entryPoint, bool isLoadedAOT,
                                                                JSHandle<AOTLiteralInfo> entryIndexes,
-                                                               ElementsKind *newKind, ClassKind classKind)
+                                                               ElementsKind *newKind,
+                                                               JSHandle<JSTaggedValue> sendableEnv,
+                                                               ClassKind classKind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
@@ -485,8 +495,8 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     FunctionKind kind;
     int index = 0;
     lda.EnumerateLiteralVals(
-        id, [literals, &pos, factory, thread, jsPandaFile,
-             &methodId, &kind, &constpool, &entryPoint, &entryIndexes, &index, isLoadedAOT, newKind, classKind]
+        id, [literals, &pos, factory, thread, jsPandaFile, &methodId, &kind, &constpool,
+            &entryPoint, &entryIndexes, &index, isLoadedAOT, newKind, classKind, &sendableEnv]
         (const LiteralValue &value, const LiteralTag &tag) {
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
@@ -545,7 +555,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                     }
                     JSHandle<JSFunction> jsFunc =
                         DefineMethodInLiteral(thread, jsPandaFile, methodId, constpool,
-                            kind, length, entryPoint, needSetAotFlag, entryIndex, classKind);
+                            kind, length, entryPoint, needSetAotFlag, entryIndex, sendableEnv, classKind);
                     jt = jsFunc.GetTaggedValue();
                     break;
                 }
@@ -575,6 +585,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 literals->Set(thread, pos++, jt);
             } else {
                 uint32_t oldLength = literals->GetLength();
+                ASSERT(oldLength > 0);
                 literals->Trim(thread, oldLength - 1);
             }
         });

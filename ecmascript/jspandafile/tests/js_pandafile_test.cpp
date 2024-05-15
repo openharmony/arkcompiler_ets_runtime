@@ -85,7 +85,7 @@ HWTEST_F_L0(JSPandaFileTest, GetJSPandaFileDesc)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     const CString expectFileName = pf->GetJSPandaFileDesc();
     EXPECT_STREQ(expectFileName.c_str(), "test.pa");
 }
@@ -96,7 +96,7 @@ HWTEST_F_L0(JSPandaFileTest, GetPandaFile)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     EXPECT_TRUE(file != nullptr);
 }
@@ -109,7 +109,7 @@ HWTEST_F_L0(JSPandaFileTest, GetMethodLiterals_GetNumMethods)
         .function void foo3() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     MethodLiteral *method = pf->GetMethodLiterals();
     EXPECT_TRUE(method != nullptr);
 
@@ -125,7 +125,7 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
         .function void foo3() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -159,7 +159,7 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
         .function void foo3() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -209,7 +209,7 @@ HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
         .function void func2() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -242,7 +242,7 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -276,7 +276,7 @@ HWTEST_F_L0(JSPandaFileTest, SetLoadedAOTStatus_IsLoadedAOT)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     bool isLoadedAOT = pf->IsLoadedAOT();
     EXPECT_EQ(isLoadedAOT, false);
 
@@ -291,7 +291,7 @@ HWTEST_F_L0(JSPandaFileTest, GetFileUniqId)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     EXPECT_EQ(pf->GetFileUniqId(), merge_hashes(panda_file::File::CalcFilenameHash(""),
         GetHash32(reinterpret_cast<const uint8_t *>(pf->GetPandaFile()->GetHeader()),
         sizeof(panda_file::File::Header))));
@@ -303,7 +303,7 @@ HWTEST_F_L0(JSPandaFileTest, IsParsedConstpoolOfCurrentVM)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     auto &recordInfo = pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
     EXPECT_TRUE(!recordInfo.IsParsedConstpoolOfCurrentVM(instance));
     recordInfo.SetParsedConstpoolVM(instance);

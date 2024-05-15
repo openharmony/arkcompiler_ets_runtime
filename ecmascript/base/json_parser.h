@@ -1016,7 +1016,7 @@ private:
         return true;
     }
 
-    const uint8_t *begin_;
+    const uint8_t *begin_ {nullptr};
     JSHandle<EcmaString> sourceString_;
 };
 

@@ -93,16 +93,19 @@ void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueu
 
 void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueue)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "MicroJobQueue::ExecutePendingJob");
+    if (thread->GetEcmaVM()->GetJSOptions().EnableMicroJobTrace()) {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "MicroJobQueue::ExecutePendingJob");
+    }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSMutableHandle<TaggedQueue> promiseQueue(thread, jobQueue->GetPromiseJobQueue());
     JSMutableHandle<PendingJob> pendingJob(thread, JSTaggedValue::Undefined());
     while (!promiseQueue->Empty()) {
         LOG_ECMA(VERBOSE) << "ExecutePendingJob length: " << promiseQueue->Size();
-        thread->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
         pendingJob.Update(promiseQueue->Pop(thread));
         PendingJob::ExecutePendingJob(pendingJob, thread);
-        thread->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
+        if (!thread->IsInConcurrentScope()) {
+            thread->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
+        }
         if (thread->HasPendingException()) {
             return;
         }

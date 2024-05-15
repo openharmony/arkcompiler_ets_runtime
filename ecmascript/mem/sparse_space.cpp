@@ -57,7 +57,12 @@ void SparseSpace::ResetTopPointer(uintptr_t top)
 
 uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 {
-    ASSERT(localHeap_->GetJSThread()->IsInRunningStateOrProfiling());
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
     auto object = allocator_->Allocate(size);
     CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
 

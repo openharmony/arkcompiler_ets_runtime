@@ -84,6 +84,7 @@ public:
 
     static inline bool ShouldTrim(uint32_t oldLength, uint32_t newLength)
     {
+        ASSERT(oldLength >= newLength);
         return (oldLength - newLength > MAX_END_UNUSED);
     }
     inline void Trim(const JSThread *thread, uint32_t newLength);

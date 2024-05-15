@@ -173,25 +173,32 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     JSType type = object->GetClass()->GetObjectType();
     // serialize prologue
     switch (type) {
-        case JSType::JS_ARRAY_BUFFER:
+        case JSType::JS_ARRAY_BUFFER: {
+            supportJSNativePointer_ = true;
             arrayBufferDeferDetach = SerializeJSArrayBufferPrologue(object);
             break;
-        case JSType::JS_SHARED_ARRAY_BUFFER:
+        }
+        case JSType::JS_SHARED_ARRAY_BUFFER: {
+            supportJSNativePointer_ = true;
             SerializeJSSharedArrayBufferPrologue(object);
             break;
+        }
         case JSType::JS_ARRAY: {
             JSArray *array = reinterpret_cast<JSArray *>(object);
             trackInfo = array->GetTrackInfo();
             array->SetTrackInfo(thread_, JSTaggedValue::Undefined());
             break;
         }
-        case JSType::JS_REG_EXP:
+        case JSType::JS_REG_EXP: {
+            supportJSNativePointer_ = true;
             SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
             break;
-        case JSType::JS_OBJECT:
+        }
+        case JSType::JS_OBJECT: {
             hashfield = Barriers::GetValue<JSTaggedType>(object, JSObject::HASH_OFFSET);
             Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, JSTaggedValue::VALUE_ZERO);
             break;
+        }
         default:
             break;
     }
@@ -200,15 +207,29 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     SerializeTaggedObject<SerializeType::VALUE_SERIALIZE>(object);
 
     // serialize epilogue
-    if (type == JSType::JS_ARRAY) {
-        JSArray *array = reinterpret_cast<JSArray *>(object);
-        array->SetTrackInfo(thread_, trackInfo);
-    } else if (type == JSType::JS_OBJECT) {
-        if (JSTaggedValue(hashfield).IsHeapObject()) {
-            Barriers::SetObject<true>(thread_, object, JSObject::HASH_OFFSET, hashfield);
-        } else {
-            Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, hashfield);
+    switch (type) {
+        case JSType::JS_ARRAY_BUFFER:
+        case JSType::JS_SHARED_ARRAY_BUFFER:
+        case JSType::JS_REG_EXP:
+            // JSNativePointer supports serialization only during serialize JSArrayBuffer,
+            // JSSharedArrayBuffer and JSRegExp
+            supportJSNativePointer_ = false;
+            break;
+        case JSType::JS_ARRAY: {
+            JSArray *array = reinterpret_cast<JSArray *>(object);
+            array->SetTrackInfo(thread_, trackInfo);
+            break;
         }
+        case JSType::JS_OBJECT: {
+            if (JSTaggedValue(hashfield).IsHeapObject()) {
+                Barriers::SetObject<true>(thread_, object, JSObject::HASH_OFFSET, hashfield);
+            } else {
+                Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, hashfield);
+            }
+            break;
+        }
+        default:
+            break;
     }
     if (cloneSharedObject) {
         serializeSharedEvent_--;
@@ -216,7 +237,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     if (arrayBufferDeferDetach) {
         ASSERT(object->GetClass()->IsArrayBuffer());
         JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(object);
-        arrayBuffer->Detach(thread_, arrayBuffer->GetWithNativeAreaAllocator());
+        arrayBuffer->Detach(thread_, arrayBuffer->GetWithNativeAreaAllocator(), true);
     }
 }
 

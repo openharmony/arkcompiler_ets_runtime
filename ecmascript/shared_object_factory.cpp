@@ -31,6 +31,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/sendable_env.h"
 
 // class Object;
 namespace panda::ecmascript {
@@ -233,6 +234,7 @@ JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const JSHandle<Method> 
     hclass->SetCallable(true);
     JSFunction::InitializeSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
+    function->SetTaskConcurrentFuncFlag(0); // 0 : default value
     if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
@@ -266,6 +268,9 @@ TaggedObject *ObjectFactory::NewSharedOldSpaceObject(const JSHandle<JSHClass> &h
 {
     NewSObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, *hclass);
+    if (header == nullptr) {
+        LOG_ECMA(FATAL) << "ObjectFactory::NewSharedOldSpaceObject:header is nullptr";
+    }
     uint32_t inobjPropCount = hclass->GetInlinedProperties();
     if (inobjPropCount > 0) {
         InitializeExtraProperties(hclass, header, inobjPropCount);
@@ -288,6 +293,18 @@ JSHandle<JSObject> ObjectFactory::NewSharedOldSpaceJSObject(const JSHandle<JSHCl
     obj->SetElements(thread_, emptyArray);
     obj->SetProperties(thread_, emptyArray);
     return obj;
+}
+
+JSHandle<JSTaggedValue> ObjectFactory::CreateSObjectWithProperties(std::vector<PropertyDescriptor> &descs)
+{
+    JSHandle<JSHClass> hclass = JSHClass::CreateSHClass(thread_, descs);
+    JSHandle<JSObject> object = NewSharedOldSpaceJSObject(hclass);
+    JSObject::SetSProperties(thread_, object, descs);
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFuncProto = env->GetSObjectFunctionPrototype();
+    hclass->SetPrototype(thread_, objFuncProto);
+    hclass->SetExtensible(false);
+    return JSHandle<JSTaggedValue>(object);
 }
 
 JSHandle<TaggedArray> ObjectFactory::SharedEmptyArray() const
@@ -654,7 +671,22 @@ JSHandle<SourceTextModule> ObjectFactory::NewSSourceTextModule()
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
     obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    obj->SetSendableEnv(thread_, undefinedValue);
     return obj;
+}
+
+JSHandle<ModuleNamespace> ObjectFactory::NewSModuleNamespace()
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedModuleNamespaceClass());
+    JSHandle<JSObject> obj = NewSharedOldSpaceJSObject(hclass);
+
+    JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
+    moduleNamespace->SetModule(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetExports(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetDeregisterProcession(thread_, JSTaggedValue::Undefined());
+    return moduleNamespace;
 }
 
 JSHandle<ImportEntry> ObjectFactory::NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
@@ -752,18 +784,20 @@ JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindi
 {
     JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
     JSHandle<EcmaString> ecmaModule(undefinedValue);
+    JSHandle<EcmaString> fileName(undefinedValue);
     int32_t index = 0;
-    return NewSResolvedRecordIndexBindingRecord(ecmaModule, index);
+    return NewSResolvedRecordIndexBindingRecord(ecmaModule, fileName, index);
 }
 
 JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord(
-    const JSHandle<EcmaString> &moduleRecord, int32_t index)
+    const JSHandle<EcmaString> &moduleRecord, const JSHandle<EcmaString> &abcFileName, int32_t index)
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordIndexBindingClass().GetTaggedObject()));
     JSHandle<ResolvedRecordIndexBinding> obj(thread_, header);
     obj->SetModuleRecord(thread_, moduleRecord);
+    obj->SetAbcFileName(thread_, abcFileName);
     obj->SetIndex(index);
     return obj;
 }
@@ -798,5 +832,16 @@ JSHandle<AOTLiteralInfo> ObjectFactory::NewSAOTLiteralInfo(uint32_t length, JSTa
     JSHandle<AOTLiteralInfo> aotLiteralInfo(thread_, header);
     aotLiteralInfo->InitializeWithSpecialValue(initVal, length);
     return aotLiteralInfo;
+}
+
+JSHandle<SendableEnv> ObjectFactory::NewSendableEnv(int numSlots)
+{
+    NewObjectHook();
+    size_t size = SendableEnv::ComputeSize(numSlots);
+    auto header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(sHeap_->GetGlobalConst()->GetSendableEnvClass().GetTaggedObject()), size);
+    JSHandle<SendableEnv> array(thread_, header);
+    array->InitializeWithSpecialValue(JSTaggedValue::Hole(), numSlots + SendableEnv::SENDABLE_RESERVED_ENV_LENGTH);
+    return array;
 }
 }  // namespace panda::ecmascript

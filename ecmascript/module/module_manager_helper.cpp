@@ -154,13 +154,12 @@ JSTaggedValue ModuleManagerHelper::GetModuleValueFromIndexBinding(JSThread *thre
     // moduleRecord is string, find at current vm
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<SourceTextModule> resolvedModule;
-    if (moduleManager->IsImportedModuleLoaded(moduleRecord.GetTaggedValue()) &&
-        moduleManager->IsEvaluatedModule(moduleRecord.GetTaggedValue())) {
+    if (moduleManager->IsEvaluatedModule(moduleRecord.GetTaggedValue())) {
         resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
     } else {
         auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
         CString record = ConvertToString(moduleRecord.GetTaggedValue());
-        CString fileName = ConvertToString(module->GetEcmaModuleFilename());
+        CString fileName = ConvertToString(binding->GetAbcFileName());
         if (!JSPandaFileExecutor::LazyExecuteModule(thread, record, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }

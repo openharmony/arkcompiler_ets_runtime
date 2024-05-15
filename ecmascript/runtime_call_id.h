@@ -95,6 +95,7 @@ namespace panda::ecmascript {
     V(CallSpread)                    \
     V(Newlexenv)                     \
     V(NewlexenvwithName)             \
+    V(NewSendableEnv)                \
     V(Stlexvar)                      \
     V(Ldlexvar)                      \
     V(Ldlexenv)                      \
@@ -206,6 +207,7 @@ namespace panda::ecmascript {
     V(SuperCall)                     \
     V(SuperCallSpread)               \
     V(DefineMethod)                  \
+    V(SetPatchModule)                \
     V(LdSuperByValue)                \
     V(StSuperByValue)                \
     V(ThrowDeleteSuperProperty)      \

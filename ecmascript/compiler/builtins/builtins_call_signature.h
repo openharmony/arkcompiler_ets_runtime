@@ -52,8 +52,15 @@ namespace panda::ecmascript::kungfu {
     V(CodePointAt,        String,   Undefined())                                        \
     V(IndexOf,            String,   IntToTaggedPtr(Int32(-1)))                          \
     V(Substring,          String,   IntToTaggedPtr(Int32(-1)))                          \
+    V(SubStr,             String,   Undefined())                                        \
     V(Replace,            String,   Undefined())                                        \
     V(Trim,               String,   Undefined())                                        \
+    V(TrimStart,          String,   Undefined())                                        \
+    V(TrimEnd,            String,   Undefined())                                        \
+    V(TrimLeft,           String,   Undefined())                                        \
+    V(TrimRight,          String,   Undefined())                                        \
+    V(PadStart,           String,   Undefined())                                        \
+    V(PadEnd,             String,   Undefined())                                        \
     V(Concat,             String,   Undefined())                                        \
     V(Slice,              String,   Undefined())                                        \
     V(ToLowerCase,        String,   Undefined())                                        \
@@ -62,11 +69,18 @@ namespace panda::ecmascript::kungfu {
     V(GetStringIterator,  String,   Undefined())
 
 #define BUILTINS_WITH_OBJECT_STUB_BUILDER(V)                                      \
-    V(ToString,        Object,   Undefined())                                     \
-    V(Create,          Object,   Undefined())                                     \
-    V(Assign,          Object,   Undefined())                                     \
-    V(HasOwnProperty,  Object,   TaggedFalse())                                   \
-    V(Keys,            Object,   Undefined())
+    V(ToString,                    Object,   Undefined())                         \
+    V(Create,                      Object,   Undefined())                         \
+    V(Assign,                      Object,   Undefined())                         \
+    V(HasOwnProperty,              Object,   TaggedFalse())                       \
+    V(Keys,                        Object,   Undefined())                         \
+    V(GetPrototypeOf,              Object,   Undefined())                         \
+    V(GetOwnPropertyNames,         Object,   Undefined())                         \
+    V(GetOwnPropertySymbols,       Object,   Undefined())                         \
+    V(Entries,                     Object,   Undefined())                         \
+    V(IsFrozen,                    Object,   Undefined())                         \
+    V(IsSealed,                    Object,   Undefined())                         \
+    V(GetOwnPropertyDescriptors,   Object,   Undefined())
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V)         \
     V(With,          Array,   Undefined())          \
@@ -148,7 +162,12 @@ namespace panda::ecmascript::kungfu {
     V(GetByteLength,   TypedArray,  Undefined())    \
     V(GetByteOffset,   TypedArray,  Undefined())    \
     V(Set,             TypedArray,  Undefined())    \
-    V(FindIndex,       TypedArray,  Undefined())
+    V(FindIndex,       TypedArray,  Undefined())    \
+    V(FindLastIndex,   TypedArray,  Undefined())    \
+    V(ToSorted,        TypedArray,  Undefined())    \
+    V(Of,              TypedArray,  Undefined())    \
+    V(Map,             TypedArray,  Undefined())    \
+    V(ToReversed,      TypedArray,  Undefined())
 
 #define BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)                           \
     V(SetInt32,     DataView,  INT32,     SetTypedValue, Undefined())    \
@@ -277,7 +296,7 @@ public:
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = JsonStringify,
         TYPED_BUILTINS_LAST = IteratorProtoReturn,
-        INVALID = 0xFF,
+        INVALID = 0xFFFF,
     };
     static_assert(ID::NONE == 0);
 
@@ -333,6 +352,9 @@ public:
         // NOTE(schernykh): try to remove this switch and move StringFromCharCode to TYPED_BUILTINS_INLINE list
         switch (builtinId) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
+            case BuiltinsStubCSigns::ID::StringSubstring:
+            case BuiltinsStubCSigns::ID::StringSubStr:
+            case BuiltinsStubCSigns::ID::StringSlice:
             case BuiltinsStubCSigns::ID::MapGet:
             case BuiltinsStubCSigns::ID::MapHas:
             case BuiltinsStubCSigns::ID::MapKeys:
@@ -494,6 +516,12 @@ public:
                 return ConstantIndex::SET_ADD_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::StringSubstring:
+                return ConstantIndex::STRING_SUB_STRING_INDEX;
+            case BuiltinsStubCSigns::ID::StringSubStr:
+                return ConstantIndex::STRING_SUB_STR_INDEX;
+            case BuiltinsStubCSigns::ID::StringSlice:
+                return ConstantIndex::STRING_SLICE_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
                 return ConstantIndex::ARRAY_SORT_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::JsonStringify:
@@ -646,6 +674,9 @@ public:
             {SetAdd, "Set.add"},
             {BigIntConstructor, "BigInt"},
             {NumberParseFloat, "Number.parseFloat"},
+            {StringSubstring, "String.prototype.substring"},
+            {StringSubStr, "String.prototype.substr"},
+            {StringSlice, "String.prototype.slice"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
@@ -702,6 +733,9 @@ public:
             {"mapDelete", MapDelete},
             {"setDelete", SetDelete},
             {"BigInt", BigIntConstructor},
+            {"substring", StringSubstring},
+            {"substr", StringSubStr},
+            {"slice", StringSlice},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);

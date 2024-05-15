@@ -1,0 +1,11 @@
+{
+  global:
+    extern "C++" {
+      OHOS::ArkCompiler::AotCompilerClient::GetInstance*;
+      OHOS::ArkCompiler::AotCompilerClient::AotCompiler*;
+      OHOS::ArkCompiler::AotCompilerClient::StopAotCompiler*;
+      OHOS::ArkCompiler::PowerDisconnectedListener::PowerDisconnectedListener*;
+    };
+  local:
+    *;
+};

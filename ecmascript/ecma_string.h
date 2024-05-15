@@ -557,6 +557,7 @@ private:
         if (UNLIKELY(IsUtf16())) {
             CVector<uint16_t> tmpBuf;
             const uint16_t *data = EcmaString::GetUtf16DataFlat(this, tmpBuf);
+            ASSERT(base::utf_helper::Utf16ToUtf8Size(data, strLen, modify) > 0);
             size_t len = base::utf_helper::Utf16ToUtf8Size(data, strLen, modify) - 1;
             buf.reserve(len);
             len = base::utf_helper::ConvertRegionUtf16ToUtf8(data, buf.data(), strLen, len, 0, modify);
@@ -663,8 +664,11 @@ private:
 
     static bool IsASCIICharacter(uint16_t data)
     {
+        if (data == 0) {
+            return false;
+        }
         // \0 is not considered ASCII in Ecma-Modified-UTF8 [only modify '\u0000']
-        return data - 1U < base::utf_helper::UTF8_1B_MAX;
+        return data <= base::utf_helper::UTF8_1B_MAX;
     }
 
     template<typename T1, typename T2>

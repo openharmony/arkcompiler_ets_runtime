@@ -117,7 +117,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
             moduleRecord = sharedModuleManager->ResolveImportedModuleWithMerge(thread, name, entry, executeFromJob);
         }
         
-        ASSERT(!SourceTextModule::IsSharedModule(JSHandle<SourceTextModule>(moduleRecord)));
         SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
         if (thread->HasPendingException()) {
             return Unexpected(false);
@@ -158,7 +157,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, normalName, entry);
     }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
@@ -211,7 +210,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
     } else if (!isBundle) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
@@ -313,7 +312,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, normalName, entry);
     }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
@@ -389,7 +388,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
     } else if (!jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
@@ -436,14 +435,18 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
     CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    CString newFileName = filename;
+    if (newFileName.empty()) {
+        newFileName = filename;
+    }
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, recordName);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, newFileName, recordName);
     if (jsPandaFile == nullptr) {
 #ifdef FUZZ_TEST
         CString msg = "jsPandaFile is nullptr";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
 #else
-        LOG_FULL(FATAL) << "Load file with filename '" << filename << "' failed, ";
+        LOG_FULL(FATAL) << "Load file with filename '" << newFileName << "' failed, ";
 #endif
     }
 
@@ -456,21 +459,22 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     }
 
     if (isMergedAbc && !jsPandaFile->HasRecord(recordName)) {
-        CString msg = "cannot find record '" + recordName + "', in lazy load abc: " + filename;
+        CString msg = "cannot find record '" + recordName + "', in lazy load abc: " + newFileName;
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
 
     const JSRecordInfo &recordInfo = jsPandaFile->GetRecordInfo(recordName);
     if (!jsPandaFile->IsModule(recordInfo)) {
-        return JSPandaFileExecutor::ExecuteSpecialModule(thread, recordName, filename, jsPandaFile.get(), recordInfo);
+        return JSPandaFileExecutor::ExecuteSpecialModule(thread, recordName, newFileName, jsPandaFile.get(),
+            recordInfo);
     }
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // The first js file should execute at current vm.
     JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
     if (isMergedAbc) {
-        moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(filename, recordName);
+        moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(newFileName, recordName);
     } else {
-        moduleRecord = moduleManager->HostResolveImportedModule(filename);
+        moduleRecord = moduleManager->HostResolveImportedModule(newFileName);
     }
     SourceTextModule::Instantiate(thread, moduleRecord);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));

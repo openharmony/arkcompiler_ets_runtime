@@ -105,6 +105,7 @@ JSTaggedValue JSAPIQueue::Get(JSThread *thread, const uint32_t index)
 {
     uint32_t length = GetSize();
     if (index >= length) {
+        ASSERT(length > 0);
         std::ostringstream oss;
         oss << "The value of \"Get property index\" is out of range. It must be >= 0 && <= "
             << (length - 1) << ". Received value is: " << index;
@@ -123,6 +124,7 @@ JSTaggedValue JSAPIQueue::Get(JSThread *thread, const uint32_t index)
 JSTaggedValue JSAPIQueue::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
     if (index < 0 || index >= GetLength().GetArrayLength()) {
+        ASSERT(GetLength().GetArrayLength() > 0);
         std::ostringstream oss;
         oss << "The value of \"Set property index\" is out of range. It must be >= 0 && <= "
             << (GetLength().GetArrayLength() - 1) << ". Received value is: " << index;
@@ -207,6 +209,7 @@ bool JSAPIQueue::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIQueue> &ob
 
     uint32_t length = obj->GetLength().GetArrayLength();
     if (index >= length) {
+        ASSERT(length > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
             << ". Received value is: " << index;

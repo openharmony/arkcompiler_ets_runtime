@@ -263,6 +263,7 @@ void AArch64Schedule::ClinitPairOpt()
 /* Return the next node's index who is kNodeTypeSeparator. */
 uint32 AArch64Schedule::GetNextSepIndex() const
 {
+    CHECK_FATAL(nodes.size() >= 1, "value overflow");
     return ((lastSeparatorIndex + kMaxDependenceNum) < nodeSize) ? (lastSeparatorIndex + kMaxDependenceNum)
                                                                  : (nodes.size() - 1);
 }
@@ -300,8 +301,9 @@ uint32 AArch64Schedule::ComputeEstart(uint32 cycle)
                     ++schedNum;
                 }
             }
-            CHECK_FATAL((node->GetPreds().size() - static_cast<uint32>(schedNum)) ==
-                node->GetValidPredsSize(), "validPredsSize error.");
+            CHECK_FATAL((static_cast<uint32>(node->GetPreds().size()) - static_cast<uint32>(schedNum)) ==
+                            node->GetValidPredsSize(),
+                        "validPredsSize error.");
         }
     }
 

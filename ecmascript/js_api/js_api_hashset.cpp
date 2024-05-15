@@ -100,6 +100,7 @@ JSTaggedValue JSAPIHashSet::Remove(JSThread *thread, JSHandle<JSAPIHashSet> hash
     }
     hashSet->SetSize(--nodeNum);
     uint32_t length = hashArray->GetLength();
+    ASSERT(length > 0);
     uint32_t index = (length - 1) & hash;
     JSTaggedValue rootVa = hashArray->Get(index);
     if (rootVa.IsRBTreeNode()) {

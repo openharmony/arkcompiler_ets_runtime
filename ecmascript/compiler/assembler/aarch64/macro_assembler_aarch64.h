@@ -47,6 +47,15 @@ public:
 
 private:
     aarch64::AssemblerAarch64 assembler;
+    const uint32_t PARAM_REGISTER_COUNT = 8;
+    const std::vector<aarch64::Register> registerParamVec {
+        aarch64::Register(aarch64::X0), aarch64::Register(aarch64::X1), aarch64::Register(aarch64::X2),
+        aarch64::Register(aarch64::X3), aarch64::Register(aarch64::X4), aarch64::Register(aarch64::X5),
+        aarch64::Register(aarch64::X6), aarch64::Register(aarch64::X7) };
+    const aarch64::Register GLUE_REGISTER = aarch64::Register(aarch64::X19);   // same with ghc callconv
+    const aarch64::Register LOCAL_SCOPE_REGISTER = aarch64::Register(aarch64::X11);
+    const aarch64::Register RETURN_REGISTER = aarch64::Register(aarch64::X0);
+    void MovParameterIntoParamReg(MacroParameter param, aarch64::Register paramReg);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_AARCH64_MACRO_ASSEMBLER_AARCH64_H

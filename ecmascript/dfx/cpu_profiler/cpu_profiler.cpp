@@ -47,26 +47,23 @@ CpuProfiler::CpuProfiler(const EcmaVM *vm, const int interval) : vm_(vm), interv
     }
 }
 
-void CpuProfiler::StartCpuProfilerForInfo()
+bool CpuProfiler::StartCpuProfilerForInfo()
 {
-    LOG_ECMA(INFO) << "StartCpuProfilerForInfo, Sampling interval is: " << interval_;
+    LOG_ECMA(INFO) << "CpuProfiler::StartCpuProfilerForInfo, sampling interval = " << interval_;
     if (isProfiling_) {
-        LOG_ECMA(ERROR) << "Can not StartCpuProfilerForInfo when CpuProfiler is Profiling";
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, can not start when CpuProfiler is Profiling";
+        return false;
     }
-    isProfiling_ = true;
     struct sigaction sa;
     sa.sa_sigaction = &GetStackSignalHandler;
     if (sigemptyset(&sa.sa_mask) != 0) {
-        LOG_ECMA(ERROR) << "Parameter set signal set initialization and emptying failed";
-        isProfiling_ = false;
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, sigemptyset failed, errno = " << errno;
+        return false;
     }
     sa.sa_flags = SA_RESTART | SA_SIGINFO;
     if (sigaction(SIGPROF, &sa, nullptr) != 0) {
-        LOG_ECMA(ERROR) << "sigaction failed to set signal";
-        isProfiling_ = false;
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, sigaction failed, errno = " << errno;
+        return false;
     }
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
     {
@@ -74,7 +71,6 @@ void CpuProfiler::StartCpuProfilerForInfo()
         profilerMap_[tid_] = vm_;
     }
 
-    vm_->GetJSThread()->SetIsProfiling(true);
     JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
     pandaFileManager->EnumerateJSPandaFiles([&](const std::shared_ptr<JSPandaFile> &file) -> bool {
         pandaFileManager->CpuProfilerGetJSPtExtractor(file.get());
@@ -85,59 +81,50 @@ void CpuProfiler::StartCpuProfilerForInfo()
     generator_->SetIsStart(true);
     params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
     if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
-        LOG_ECMA(ERROR) << "pthread_create fail!";
-        return;
-    }
-}
-
-void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
-{
-    LOG_ECMA(INFO) << "StartCpuProfilerForFile, Sampling interval is: " << interval_;
-    if (isProfiling_) {
-        LOG_ECMA(ERROR) << "Can not StartCpuProfilerForFile when CpuProfiler is Profiling";
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, pthread_create failed, errno = " << errno;
+        return false;
     }
     isProfiling_ = true;
+    vm_->GetJSThread()->SetIsProfiling(true);
+    outToFile_ = false;
+    return true;
+}
+
+bool CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
+{
+    LOG_ECMA(INFO) << "CpuProfiler::StartCpuProfilerForFile, sampling interval = " << interval_;
+    if (isProfiling_) {
+        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, can not start when CpuProfiler is Profiling";
+        return false;
+    }
     std::string absoluteFilePath("");
     if (!CheckFileName(fileName, absoluteFilePath)) {
-        LOG_ECMA(ERROR) << "The filename contains illegal characters";
-        isProfiling_ = false;
-        return;
+        return false;
     }
     fileName_ = absoluteFilePath;
-    if (fileName_.empty()) {
-        LOG_ECMA(ERROR) << "CpuProfiler filename is empty!";
-        isProfiling_ = false;
-        return;
-    }
     generator_->SetFileName(fileName_);
     generator_->fileHandle_.open(fileName_.c_str());
     if (generator_->fileHandle_.fail()) {
-        LOG_ECMA(ERROR) << "File open failed";
-        isProfiling_ = false;
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, fileHandle_ open failed";
+        return false;
     }
     struct sigaction sa;
     sa.sa_sigaction = &GetStackSignalHandler;
     if (sigemptyset(&sa.sa_mask) != 0) {
-        LOG_ECMA(ERROR) << "Parameter set signal set initialization and emptying failed";
-        isProfiling_ = false;
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, sigemptyset failed, errno = " << errno;
+        return false;
     }
     sa.sa_flags = SA_RESTART | SA_SIGINFO;
     if (sigaction(SIGPROF, &sa, nullptr) != 0) {
-        LOG_ECMA(ERROR) << "sigaction failed to set signal";
-        isProfiling_ = false;
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, sigaction failed, errno = " << errno;
+        return false;
     }
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
     {
         LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
     }
-    outToFile_ = true;
 
-    vm_->GetJSThread()->SetIsProfiling(true);
     JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
     pandaFileManager->EnumerateJSPandaFiles([&](const std::shared_ptr<JSPandaFile> &file) -> bool {
         pandaFileManager->CpuProfilerGetJSPtExtractor(file.get());
@@ -148,37 +135,39 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     generator_->SetIsStart(true);
     params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
     if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
-        LOG_ECMA(ERROR) << "pthread_create fail!";
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, pthread_create failed, errno = " << errno;
+        return false;
     }
+    isProfiling_ = true;
+    vm_->GetJSThread()->SetIsProfiling(true);
+    outToFile_ = true;
+    return true;
 }
 
-std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
+bool CpuProfiler::StopCpuProfilerForInfo(std::unique_ptr<struct ProfileInfo> &profileInfo)
 {
-    LOG_ECMA(INFO) << "StopCpuProfilerForInfo enter";
-    std::unique_ptr<struct ProfileInfo> profileInfo;
+    LOG_ECMA(INFO) << "CpuProfiler::StopCpuProfilerForInfo enter";
     if (!isProfiling_) {
-        LOG_ECMA(ERROR) << "Do not execute stop cpuprofiler twice in a row or didn't execute the start\
-                                or the sampling thread is not started";
-        return profileInfo;
+        LOG_ECMA(WARN) << "CpuProfiler::StopCpuProfilerForInfo, not isProfiling_";
+        return true;
     }
     if (outToFile_) {
-        LOG_ECMA(ERROR) << "Can not Stop a CpuProfiler sampling which is for file output by this stop method";
-        return profileInfo;
+        LOG_ECMA(ERROR) << "CpuProfiler::StopCpuProfilerForInfo, is outToFile_";
+        return false;
+    }
+    generator_->SetIsStart(false);
+    if (generator_->SemPost(0) != 0) {
+        LOG_ECMA(ERROR) << "CpuProfiler::StopCpuProfilerForInfo, sem_[0] post failed, errno = " << errno;
+        return false;
+    }
+    if (generator_->SemWait(1) != 0) {
+        LOG_ECMA(ERROR) << "CpuProfiler::StopCpuProfilerForInfo, sem_[1] wait failed, errno = " << errno;
+        return false;
     }
     isProfiling_ = false;
     vm_->GetJSThread()->SetIsProfiling(false);
-    generator_->SetIsStart(false);
-    if (generator_->SemPost(0) != 0) {
-        LOG_ECMA(ERROR) << "sem_[0] post failed, errno = " << errno;
-        return profileInfo;
-    }
-    if (generator_->SemWait(1) != 0) {
-        LOG_ECMA(ERROR) << "sem_[1] wait failed, errno = " << errno;
-        return profileInfo;
-    }
     profileInfo = generator_->GetProfileInfo();
-    return profileInfo;
+    return true;
 }
 
 void CpuProfiler::SetCpuSamplingInterval(int interval)
@@ -186,35 +175,32 @@ void CpuProfiler::SetCpuSamplingInterval(int interval)
     interval_ = static_cast<uint32_t>(interval);
 }
 
-void CpuProfiler::StopCpuProfilerForFile()
+bool CpuProfiler::StopCpuProfilerForFile()
 {
-    LOG_ECMA(INFO) << "StopCpuProfilerForFile enter";
+    LOG_ECMA(INFO) << "CpuProfiler::StopCpuProfilerForFile enter";
     if (!isProfiling_) {
-        LOG_ECMA(ERROR) << "Do not execute stop cpuprofiler twice in a row or didn't execute the start\
-                                or the sampling thread is not started";
-        return;
+        LOG_ECMA(WARN) << "CpuProfiler::StopCpuProfilerForFile, not isProfiling_";
+        return true;
     }
-
     if (!outToFile_) {
-        LOG_ECMA(ERROR) << "Can not Stop a CpuProfiler sampling which is for return profile info by\
-                                this stop method";
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StopCpuProfilerForFile, not outToFile_";
+        return false;
     }
-
-    isProfiling_ = false;
-    vm_->GetJSThread()->SetIsProfiling(false);
     generator_->SetIsStart(false);
     if (generator_->SemPost(0) != 0) {
-        LOG_ECMA(ERROR) << "sem_[0] post failed";
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StopCpuProfilerForFile, sem_[0] post failed, errno = " << errno;
+        return false;
     }
     if (generator_->SemWait(1) != 0) {
-        LOG_ECMA(ERROR) << "sem_[1] wait failed";
-        return;
+        LOG_ECMA(ERROR) << "CpuProfiler::StopCpuProfilerForFile, sem_[1] wait failed, errno = " << errno;
+        return false;
     }
+    isProfiling_ = false;
+    vm_->GetJSThread()->SetIsProfiling(false);
     generator_->StringifySampleData();
     std::string fileData = generator_->GetSampleData();
     generator_->fileHandle_ << fileData;
+    return true;
 }
 
 CpuProfiler::~CpuProfiler()
@@ -231,6 +217,10 @@ CpuProfiler::~CpuProfiler()
     if (generator_ != nullptr) {
         delete generator_;
         generator_ = nullptr;
+    }
+    if (params_ != nullptr) {
+        delete params_;
+        params_ = nullptr;
     }
 }
 
@@ -526,21 +516,24 @@ bool CpuProfiler::IsAddrAtStubOrAot(uint64_t pc) const
 bool CpuProfiler::CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const
 {
     if (fileName.empty()) {
-        return true;
+        LOG_ECMA(ERROR) << "CpuProfiler::CheckFileName, fileName is empty";
+        return false;
     }
 
     if (fileName.size() > PATH_MAX) {
+        LOG_ECMA(ERROR) << "CpuProfiler::CheckFileName, fileName exceed PATH_MAX";
         return false;
     }
 
     CVector<char> resolvedPath(PATH_MAX);
     auto result = realpath(fileName.c_str(), resolvedPath.data());
     if (result == nullptr) {
-        LOG_ECMA(INFO) << "The file path does not exist";
+        LOG_ECMA(ERROR) << "CpuProfiler::CheckFileName, realpath fail, errno = " << errno;
         return false;
     }
     std::ofstream file(resolvedPath.data());
     if (!file.good()) {
+        LOG_ECMA(ERROR) << "CpuProfiler::CheckFileName, file is not good, errno = " << errno;
         return false;
     }
     file.close();

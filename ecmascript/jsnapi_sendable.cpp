@@ -28,6 +28,7 @@ JSNapiSendable::JSNapiSendable(JSThread *thread, FunctionRef::SendableProperties
 {
     InitStaticDescription(thread, staticDescs_, name);
     InitNonStaticDescription(thread, nonStaticDescs_);
+    InitInstanceDescription(thread, instanceDescs_);
     InitWithPropertiesInfo(thread, infos.staticPropertiesInfo, staticDescs_);
     InitWithPropertiesInfo(thread, infos.nonStaticPropertiesInfo, nonStaticDescs_);
     InitWithPropertiesInfo(thread, infos.instancePropertiesInfo, instanceDescs_);
@@ -71,6 +72,18 @@ void JSNapiSendable::InitNonStaticDescription(JSThread *thread, std::vector<Prop
     descs.push_back(constructorDesc);
 }
 
+void JSNapiSendable::InitInstanceDescription(JSThread *thread, std::vector<PropertyDescriptor> &descs)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+
+    JSHandle<JSTaggedValue> napiWrapperKey = globalConst->GetHandledNapiWrapperString();
+    PropertyDescriptor napiWrapperDesc(thread, true, false, false);
+    napiWrapperDesc.SetKey(napiWrapperKey);
+    napiWrapperDesc.SetSharedFieldType(SharedFieldType::SENDABLE);
+    napiWrapperDesc.SetValue(globalConst->GetHandledNull());
+    descs.push_back(napiWrapperDesc);
+}
+
 void JSNapiSendable::InitWithPropertiesInfo(JSThread *thread,
                                             FunctionRef::SendablePropertiesInfo &info,
                                             std::vector<PropertyDescriptor> &descs)
@@ -89,6 +102,7 @@ void JSNapiSendable::InitWithPropertiesInfo(JSThread *thread,
         desc.SetValue(JSNApiHelper::ToJSHandle(info.attributes[i].GetValue(vm)));
         descs.push_back(desc);
     }
+    InitInstanceDescription(thread, descs);
 }
 
 SharedFieldType JSNapiSendable::GetSharedFieldType(JSThread *thread,
@@ -98,6 +112,8 @@ SharedFieldType JSNapiSendable::GetSharedFieldType(JSThread *thread,
     switch (type) {
         case FunctionRef::SendableType::OBJECT:
             return SharedFieldType::SENDABLE;
+        case FunctionRef::SendableType::GENERIC:
+            return SharedFieldType::GENERIC;
         case FunctionRef::SendableType::NONE: {
             auto valueHandle = JSNApiHelper::ToJSHandle(value);
             if (valueHandle->IsUndefined()) {

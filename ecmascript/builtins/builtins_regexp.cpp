@@ -198,7 +198,7 @@ JSTaggedValue BuiltinsRegExp::Test(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> string = JSHandle<JSTaggedValue>::Cast(stringHandle);
     // test fast path
     if (IsFastRegExp(thread, thisObj)) {
-        return RegExpTestFast(thread, thisObj, string, true);
+        return RegExpTestFast(thread, thisObj, string, false);
     }
 
     // 5. Let match be RegExpExec(R, string).
@@ -388,6 +388,9 @@ JSTaggedValue BuiltinsRegExp::GetAllFlagsInternal(JSThread *thread, JSHandle<JST
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
     uint8_t *flagsStr = new uint8_t[RegExpParser::FLAG_NUM + 1];  // FLAG_NUM flags + '\0'
+    if (flagsStr == nullptr) {
+        LOG_ECMA(FATAL) << "BuiltinsRegExp::GetAllFlagsInternal:flagsStr is nullptr";
+    }
     size_t flagsLen = 0;
     JSHandle<EcmaString> emptyString = factory->GetEmptyString();
     JSHandle<JSTaggedValue> hasIndicesKey(factory->NewFromASCII("hasIndices"));
@@ -999,6 +1002,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
         }
     } else {
         // 9. ReturnIfAbrupt(global).
+        useCache = false;
         isGlobal = GetFlag(thread, thisObj, RegExpParser::FLAG_GLOBAL, isFastPath);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // 10. If global is true, then

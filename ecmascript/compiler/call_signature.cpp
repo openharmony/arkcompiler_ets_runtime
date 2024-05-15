@@ -1003,64 +1003,184 @@ DEF_CALL_SIGNATURE(AsmInterpreterEntry)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC); \
     callSign->SetCallConv(CallSignature::CallConv::GHCCallConv);
 
-DEF_CALL_SIGNATURE(BaselineCallArg0)
+DEF_CALL_SIGNATURE(CallArg0AndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallArg0)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg0AndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallArg1)
+DEF_CALL_SIGNATURE(CallArg1AndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallArg1)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg1AndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallArgs2)
+DEF_CALL_SIGNATURE(CallArgs2AndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallArgs2)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs2AndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallArgs3)
+DEF_CALL_SIGNATURE(CallArgs3AndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallArgs3)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs3AndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallThisArg0)
+DEF_CALL_SIGNATURE(CallThisArg0AndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisArg0)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg0AndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallThisArg1)
+DEF_CALL_SIGNATURE(CallThisArg1AndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisArg1)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg1AndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallThisArgs2)
+DEF_CALL_SIGNATURE(CallThisArgs2AndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisArgs2)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs2AndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallThisArgs3)
+DEF_CALL_SIGNATURE(CallThisArgs3AndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisArgs3)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs3AndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallRange)
+DEF_CALL_SIGNATURE(CallRangeAndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallRange)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallRangeAndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallNew)
+DEF_CALL_SIGNATURE(CallNewAndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallNew)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallNewAndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineSuperCall)
+DEF_CALL_SIGNATURE(SuperCallAndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineSuperCall)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(SuperCallAndCheckToBaseline)
 }
 
-DEF_CALL_SIGNATURE(BaselineCallThisRange)
+DEF_CALL_SIGNATURE(CallThisRangeAndCheckToBaseline)
 {
-    BASELINE_CALL_ARGS_SIGNATURE_COMMON(BaselineCallThisRange)
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisRangeAndCheckToBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArg0AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg0AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArg1AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg1AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs2AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs2AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs3AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs3AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg0AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg0AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg1AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg1AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs2AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs2AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs3AndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs3AndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallRangeAndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallRangeAndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallNewAndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallNewAndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(SuperCallAndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(SuperCallAndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisRangeAndDispatchFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisRangeAndDispatchFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArg0AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg0AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArg1AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArg1AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs2AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs2AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallArgs3AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallArgs3AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg0AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg0AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArg1AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArg1AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs2AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs2AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisArgs3AndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisArgs3AndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallRangeAndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallRangeAndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallNewAndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallNewAndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(SuperCallAndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(SuperCallAndCheckToBaselineFromBaseline)
+}
+
+DEF_CALL_SIGNATURE(CallThisRangeAndCheckToBaselineFromBaseline)
+{
+    BASELINE_CALL_ARGS_SIGNATURE_COMMON(CallThisRangeAndCheckToBaselineFromBaseline)
 }
 
 DEF_CALL_SIGNATURE(GeneratorReEnterAsmInterp)
@@ -1994,6 +2114,22 @@ DEF_CALL_SIGNATURE(InsertLocalToShareRSet)
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(SetBitAtomic)
+{
+    // 3 : 3 input parameters
+    CallSignature index("SetBitAtomic", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = index;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32(),
+        VariableType::INT32()
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

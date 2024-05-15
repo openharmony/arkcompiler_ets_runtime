@@ -29,7 +29,7 @@ MethodLiteral::MethodLiteral(EntityId methodId)
     SetMethodId(methodId);
 }
 
-void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile)
+void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *thread)
 {
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     EntityId methodId = GetMethodId();
@@ -40,7 +40,10 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile)
     panda_file::CodeDataAccessor cda(*pf, codeId);
     nativePointerOrBytecodeArray_ = cda.GetInstructions();
     uint32_t codeSize = cda.GetCodeSize();
-    SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
+    // When triggering jit compile through the execution count of the js function, set the hotness counter value to 0
+    // to ensure that the profile type info object can be created on the first execution of the js function.
+    bool cancelThreshold = (thread != nullptr && thread->GetEcmaVM()->GetJSOptions().GetJitCallThreshold() != 0);
+    SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize, cancelThreshold));
 
     uint32_t callType = UINT32_MAX;  // UINT32_MAX means not found
     uint32_t slotSize = 0;
@@ -70,6 +73,8 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile)
 
     uint32_t numVregs = cda.GetNumVregs();
     uint32_t numArgs = cda.GetNumArgs();
+    ASSERT((numArgs - HaveFuncBit::Decode(callType) -
+        HaveNewTargetBit::Decode(callType) - HaveThisBit::Decode(callType)) >= 0);
     // Needed info for call can be got by loading callField only once.
     // Native bit will be set in NewMethodForNativeFunction();
     callField_ = (callType & CALL_TYPE_MASK) |

@@ -80,11 +80,12 @@ struct CompilationOptions {
     bool isEnableOptConstantFolding_;
     bool isEnableLexenvSpecialization_;
     bool isEnableNativeInline_;
-    bool isEnablePGOHCRLowering_;
+    bool isEnablePGOHCRLowering_ {false};
     bool isEnableLoweringBuiltin_;
     bool isEnableOptBranchProfiling_;
     bool isEnableEscapeAnalysis_;
     bool isEnableInductionVariableAnalysis_;
+    bool isEnableVerifierPass_;
     std::map<std::string, std::vector<std::string>> optionSelectMethods_;
     std::map<std::string, std::vector<std::string>> optionSkipMethods_;
 };

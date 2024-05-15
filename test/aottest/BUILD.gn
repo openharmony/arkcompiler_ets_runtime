@@ -73,6 +73,7 @@ group("ark_aot_ts_test") {
     "bind",
     "binaryop_special_value",
     "builtinmath",
+    "builtins_string",
     "call_same_bytecode_func",
     "callithisrange",
     "calls",
@@ -283,8 +284,10 @@ group("ark_aot_ts_test") {
     "sharedarray",
     "sharedcollectionsexception",
     "sharedmap",
+    "sharedJSON",
     "sharedset",
     "definesendableclass",
+    "sendableenv",
     "sendablecontext",
   ]
 

@@ -245,6 +245,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalArray[");
         case JSType::LEXICAL_ENV:
             return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
+        case JSType::SENDABLE_ENV:
+            return GetArrayString(TaggedArray::Cast(entry), "SendableEnv[");
         case JSType::CONSTANT_POOL:
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalConstantPool[");
         case JSType::PROFILE_TYPE_INFO:
@@ -819,6 +821,7 @@ void HeapSnapshot::AddTraceNodeId(MethodLiteral *methodLiteral)
     uint32_t traceNodeId = 0;
     auto result = methodToTraceNodeId_.find(methodLiteral);
     if (result == methodToTraceNodeId_.end()) {
+        ASSERT(traceInfoStack_.size() > 0);
         traceNodeId = traceInfoStack_.size() - 1;
         methodToTraceNodeId_.emplace(methodLiteral, traceNodeId);
     } else {
@@ -1113,7 +1116,8 @@ const CString HeapSnapshot::ParseObjectName(TaggedObject *obj)
 {
     ASSERT(JSTaggedValue(obj).IsJSObject());
     JSThread *thread = vm_->GetJSThread();
-    return JSObject::ExtractConstructorAndRecordName(thread, obj);
+    bool isCallGetter = false;
+    return JSObject::ExtractConstructorAndRecordName(thread, obj, true, &isCallGetter);
 }
 
 Node *HeapSnapshot::InsertNodeUnique(Node *node)

@@ -50,6 +50,7 @@ class GlobalEnvConstants;
 class AccessorData;
 class JSGlobalObject;
 class LexicalEnv;
+class SendableEnv;
 class JSDate;
 class JSProxy;
 class JSRealm;
@@ -490,6 +491,8 @@ public:
     void NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length);
     void NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayBuffer> &array, int32_t length);
     JSHandle<JSSendableArrayBuffer> NewJSSendableArrayBuffer(int32_t length);
+    JSHandle<JSSendableArrayBuffer> NewJSSendableArrayBuffer(void *buffer, int32_t length,
+                                                             const NativePointerCallback &deleter, void *data);
 
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length);
 
@@ -704,14 +707,16 @@ public:
 
     TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
 
+    JSHandle<JSTaggedValue> CreateSObjectWithProperties(std::vector<PropertyDescriptor> &descs);
+
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
 
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
         uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    
+
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
         const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout);
-    
+
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClassDictMode(uint32_t size, uint32_t inlinedProps, JSType type,
                                               const JSHandle<JSTaggedValue> &prototype);
 
@@ -752,12 +757,12 @@ public:
 
     JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
-    JSHandle<Method> NewSMethod(const JSPandaFile *jsPandaFile,
-                                MethodLiteral *methodLiteral,
-                                JSHandle<ConstantPool> constpool,
-                                uint32_t entryIndex,
-                                bool needSetAotFlag,
-                                bool *canFastCall = nullptr);
+    JSHandle<Method> PUBLIC_API NewSMethod(const JSPandaFile *jsPandaFile,
+                                           MethodLiteral *methodLiteral,
+                                           JSHandle<ConstantPool> constpool,
+                                           uint32_t entryIndex,
+                                           bool needSetAotFlag,
+                                           bool *canFastCall = nullptr);
 
     JSHandle<ConstantPool> NewSConstantPool(uint32_t capacity);
 
@@ -778,6 +783,8 @@ public:
     JSHandle<AccessorData> NewSAccessorData();
 
     JSHandle<SourceTextModule> NewSSourceTextModule();
+
+    JSHandle<ModuleNamespace> NewSModuleNamespace();
 
     JSHandle<ImportEntry> NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                          const JSHandle<JSTaggedValue> &importName,
@@ -805,7 +812,7 @@ public:
     JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord();
 
     JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord(
-        const JSHandle<EcmaString> &moduleRecord, int32_t index);
+        const JSHandle<EcmaString> &moduleRecord, const JSHandle<EcmaString> &abcFileName, int32_t index);
 
     JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord();
 
@@ -842,6 +849,7 @@ public:
     JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
     JSHandle<Method> CloneMethodTemporaryForJIT(JSHandle<Method> method);
+    JSHandle<SendableEnv> NewSendableEnv(int numSlots);
 
 private:
     friend class GlobalEnv;

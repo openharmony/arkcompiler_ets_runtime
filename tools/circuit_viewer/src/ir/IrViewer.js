@@ -78,7 +78,7 @@ class IrViewer {
         btn.name_ = INTYPE_STR[btn.inTypeId_] + (btn.inTypeMask_ === 1 ? '✔️' : '❌');
         this.mask_ = (this.mask_ & ~(1 << btn.inTypeId_)) | (btn.inTypeMask_ << btn.inTypeId_);
         this.changeVisable();
-      }
+      };
       this.btnGo_.push(btn);
       tx += bw + 10;
     }
@@ -102,7 +102,7 @@ class IrViewer {
     this.btnGo_.push(this.selectFile_, this.selectFunc_, this.selectMethod_);
     this.btnGo_.sort((a, b) => {
       return b.posY_ - a.posY_;
-    })
+    });
 
     this.scrollY_ = new XScroll({ type: 'right' });
     this.scrollX_ = new XScroll({ type: 'button' });
@@ -478,7 +478,7 @@ class IrViewer {
       x2: x2,
       y1: y1,
       y2: y2,
-    }
+    };
     let scrollW = x2 - x1;
     let scrollH = y2 - y1;
     this.dragScoll.hh = scrollH - Scr.logich;
@@ -693,22 +693,8 @@ class IrViewer {
     this.offy_ = (-this.scrollY_.getBarOff()) * this.dragScoll.hh - this.dragScoll.y1;
     this.offx_ = (-this.scrollX_.getBarOff()) * this.dragScoll.ww - this.dragScoll.x1;
   }
-  onTouch(msg, x, y) {
-    if (this.loading()) {
-      return true;
-    }
-    if (this.smallMapLocked_) {
-      if (msg === 2) {
-        this.resetOffset(x, y);
-      }
-      if (msg === 3) {
-        this.smallMapLocked_ = false;
-      }
-      return true;
-    }
-    if (msg === 6) {
-      this.drapBackground_ = null;
-    }
+
+  checkMsgAndDrapSelect_(msg, x, y){
     if (msg === 3 && this.drapSelect_) {
       let nodes = this.visable_.nodes;
       for (let k of this.selectPoint_) {
@@ -717,6 +703,9 @@ class IrViewer {
       }
       this.drapSelect_ = null;
     }
+  }
+
+  checkDrapBackground_(msg, x, y){
     if (this.drapBackground_) {
       if (msg === 2) {
         this.offx_ -= this.drapBackground_.x - x;
@@ -726,6 +715,9 @@ class IrViewer {
       }
       return true;
     }
+  }
+
+  checkDrapSelect_(msg, x, y){
     if (this.drapSelect_) {
       if (msg === 2) {
         if (Math.abs(this.drapSelect_.x - x) > 10 ||
@@ -740,19 +732,9 @@ class IrViewer {
       }
       return true;
     }
-    if (this.scrollX_.onTouch(msg, x, y)) {
-      return true;
-    }
-    if (this.scrollY_.onTouch(msg, x, y)) {
-      return true;
-    }
-    if (XTools.InRect(x, y, ...this.smallMapRect)) {
-      if (msg === 1) {
-        this.resetOffset(x, y);
-        this.smallMapLocked_ = true;
-      }
-      return true;
-    }
+  }
+
+  checkSearchInput(msg, x, y){
     if (this.searchInput) {
       if (XTools.InRect(x, y, ...this.searchInput.pos)) {
         if (this.searchInput.btnUp.onTouch(msg, x, y)) {
@@ -778,11 +760,9 @@ class IrViewer {
         return true;
       }
     }
-    for (let i = this.btnGo_.length - 1; i >= 0; i--) {
-      if (this.btnGo_[i].onTouch(msg, x, y)) {
-        return true;
-      }
-    }
+  }
+
+  checkMsg(msg, x, y){
     if (msg === 1) {
       let nodes = this.visable_.nodes;
       for (let k in nodes) {
@@ -804,18 +784,58 @@ class IrViewer {
             y: y,
             dx: 0,
             dy: 0,
-          }
+          };
           return true;
         }
       }
       this.selectPoint_ = [];
     }
+  }
 
+  onTouch(msg, x, y) {
+    if (this.loading()) {
+      return true;
+    }
+    if (this.smallMapLocked_) {
+      if (msg === 2) {
+        this.resetOffset(x, y);
+      }
+      if (msg === 3) {
+        this.smallMapLocked_ = false;
+      }
+      return true;
+    }
+    if (msg === 6) {
+      this.drapBackground_ = null;
+    }
+    this.checkMsgAndDrapSelect_(msg, x, y)
+    this.checkDrapBackground_(msg, x, y)
+    this.checkDrapSelect_(msg, x, y)
+    if (this.scrollX_.onTouch(msg, x, y)) {
+      return true;
+    }
+    if (this.scrollY_.onTouch(msg, x, y)) {
+      return true;
+    }
+    if (XTools.InRect(x, y, ...this.smallMapRect)) {
+      if (msg === 1) {
+        this.resetOffset(x, y);
+        this.smallMapLocked_ = true;
+      }
+      return true;
+    }
+    this.checkSearchInput(msg, x, y)
+    for (let i = this.btnGo_.length - 1; i >= 0; i--) {
+      if (this.btnGo_[i].onTouch(msg, x, y)) {
+        return true;
+      }
+    }
+    this.checkMsg(msg, x, y)
     if (msg === 4) {
       this.drapBackground_ = {
         x: x,
         y: y,
-      }
+      };
     }
     return false;
   }
@@ -907,4 +927,4 @@ class IrViewer {
 
 module.exports = {
   IrViewer
-}
+};

@@ -76,7 +76,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
         LOG_ECMA(ERROR) << "Load patch fail of: " << baseFileName;
         return;
     }
-
+    thread->GetCurrentEcmaContext()->SetStageOfColdReload(StageOfColdReload::IS_COLD_RELOAD);
     methodInfos_.emplace(baseFileName, patchInfo);
 }
 

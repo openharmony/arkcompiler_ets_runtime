@@ -98,6 +98,7 @@ public:
         GCBitsetWord *words = Words();
         uint32_t startIndex = Index(offsetBegin);
         uint32_t startIndexMask = Mask(IndexInWord(offsetBegin));
+        ASSERT(offsetEnd > 0);
         uint32_t endIndex = Index(offsetEnd - 1);
         uint32_t endIndexMask = Mask(IndexInWord(offsetEnd - 1));
         ASSERT(startIndex <= endIndex);

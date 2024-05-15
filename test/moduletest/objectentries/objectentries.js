@@ -27,9 +27,9 @@ let obj = {
 }
 print(Object.keys(obj));
 
-let obj2 = { 
+let obj2 = {
     a: "aa",
-    get b() { 
+    get b() {
         this.e = "ee";
         Object.defineProperty(obj, "c", {
             value: "c",
@@ -56,3 +56,86 @@ var obj3 = {
 for (const [key, value] of Object.entries(obj3)) {
     print(key + "," + value);
 }
+
+const objectEntries1 = {
+    a: 'somestring',
+    3: 30,
+    b: 42,
+    5: 50,
+};
+
+print(Object.entries(objectEntries1))
+
+const objectEntries2 = {
+    a: 'somestring',
+    3: 30,
+    b: 42,
+    5: 50,
+};
+objectEntries2[1] = 10;
+objectEntries2[4] = 40;
+print(Object.entries(objectEntries2))
+
+print(Object.entries("test"));
+
+let obj4 = new Int8Array([-5, 10, 20, 30, 40, 50, 60.6]);
+let obj5 = {
+    a: 1,
+    b: 2,
+    c: 3,
+};
+Object.defineProperty(obj5, '23', {
+    value: 31,
+    enumerable: false,
+})
+Object.defineProperty(obj5, 'abc', {
+    value: 31,
+    enumerable: false,
+})
+let obj6 = {
+    a: 1,
+    b: 2,
+    c: 3,
+};
+let obj7 = {
+    1: 1,
+    2: 2,
+    3: 3,
+};
+let obj8 = {
+    1: 1,
+    2: 2,
+    3: 3,
+    a: 1,
+    b: 2,
+    c: 3,
+};
+let obj9 = {
+    a: 1,
+    b: 2,
+    c: 3,
+};
+const a = Symbol('a');
+const b = Symbol.for('b');
+obj9[a] = 'aSymbol';
+obj9[b] = 'bSymbol';
+let obj10 = Object.create(
+    {},
+    {
+        getBar: {
+            value() {
+                return 55;
+            },
+            writable: false,
+            enumerable: false,
+            configurable: false,
+        },
+    },
+);
+print(JSON.stringify(Object.entries(obj4)));
+print(JSON.stringify(Object.entries(obj5)));
+print(JSON.stringify(Object.entries(obj6)));
+print(JSON.stringify(Object.entries(obj7)));
+print(JSON.stringify(Object.entries(obj8)));
+print(JSON.stringify(Object.entries(obj9)));
+print(JSON.stringify(Object.entries(obj10)));

@@ -1000,6 +1000,7 @@ JSHandle<TaggedArray> SendableClassDefiner::ExtractStaticFieldTypeArray(JSThread
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = fieldTypeArray->GetLength();
+    ASSERT(arrayLength > 0);
     auto instanceFieldNums = static_cast<uint32_t>(fieldTypeArray->Get(arrayLength - 1).GetInt());
     uint32_t staticFieldBegin = instanceFieldNums * 2; // 2: key-type
     if (staticFieldBegin >= arrayLength) {

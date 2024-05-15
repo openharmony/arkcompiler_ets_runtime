@@ -609,11 +609,13 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  base::AlignedSize> {
         enum class Index : size_t {
             FlagIndex = 0,
             MarkGCBitSetIndex,
             OldToNewSetIndex,
+            LocalToShareSetIndex,
             BeginIndex,
             BitSetSizeIndex,
             NumOfMembers
@@ -653,6 +655,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::OldToNewSetIndex)>(isArch32);
         }
 
+        static size_t GetLocalToShareSetOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::LocalToShareSetIndex)>(isArch32);
+        }
+
         static size_t GetBeginOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::BeginIndex)>(isArch32);
@@ -661,6 +668,7 @@ public:
         alignas(EAS) PackedPtr flags_;
         alignas(EAS) GCBitset *markGCBitset_ {nullptr};
         alignas(EAS) RememberedSet *oldToNewSet_ {nullptr};
+        alignas(EAS) RememberedSet *localToShareSet_ {nullptr};
         alignas(EAS) uintptr_t begin_ {0};
         alignas(EAS) size_t bitsetSize_ {0};
     };
@@ -690,7 +698,6 @@ private:
 
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingRSet_ {nullptr};
-    RememberedSet *localToShareSet_ {nullptr};
     Span<FreeObjectSet *> freeObjectSets_;
     Mutex *lock_ {nullptr};
     uint64_t wasted_;

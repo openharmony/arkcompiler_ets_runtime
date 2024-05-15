@@ -23,7 +23,7 @@ const INTYPE = {
   framestate: 3,
   root: 4,
   other: 5,
-}
+};
 
 class NODE_TYPE_MASK {
   static NONE = 0;
@@ -125,7 +125,7 @@ class IrToPicture {
         name: name,
         nameWidth: X2DFast.gi().getTextWidth(name, 14),
         ir: ir,
-      }
+      };
       if (entry === -1) {
         entry = ir.id;
       }
@@ -133,6 +133,15 @@ class IrToPicture {
 
     let lines = [];
     let lid = 0;
+    this.generateLine(nodes)
+    this.resetPicture(nodes, isBlock);
+
+    return {
+      nodes: nodes,
+      lines: lines,
+    };
+  }
+  static generateLine(nodes,lines,lid){
     for (let i in nodes) { //生成连接线
       let inId = parseInt(i);
       for (let inP1 = 0; inP1 < nodes[inId].ir.in.length; inP1++) {
@@ -160,14 +169,8 @@ class IrToPicture {
         }
       }
     }
-
-    this.resetPicture(nodes, isBlock);
-
-    return {
-      nodes: nodes,
-      lines: lines,
-    };
   }
+
   static deepTest(n, nodes, isBlock, stack, dist) {
     try {
       stack.push(n.ir.id);
@@ -385,4 +388,4 @@ class IrToPicture {
 
 module.exports = {
   IrToPicture
-}
+};

@@ -147,9 +147,9 @@ public:
         return appearsInCode;
     }
 
-    void SetTyIdx(TyIdx tyIdx)
+    void SetTyIdx(TyIdx newTyIdx)
     {
-        this->tyIdx = tyIdx;
+        this->tyIdx = newTyIdx;
     }
 
     TyIdx GetTyIdx() const
@@ -157,9 +157,9 @@ public:
         return tyIdx;
     }
 
-    void SetInferredTyIdx(TyIdx inferredTyIdx)
+    void SetInferredTyIdx(TyIdx newInferredTyIdx)
     {
-        this->inferredTyIdx = inferredTyIdx;
+        this->inferredTyIdx = newInferredTyIdx;
     }
 
     TyIdx GetInferredTyIdx() const
@@ -167,9 +167,9 @@ public:
         return inferredTyIdx;
     }
 
-    void SetStIdx(StIdx stIdx)
+    void SetStIdx(StIdx newStIdx)
     {
-        this->stIdx = stIdx;
+        this->stIdx = newStIdx;
     }
 
     StIdx GetStIdx() const
@@ -376,9 +376,9 @@ public:
         return value;
     }
 
-    void SetValue(SymbolType value)
+    void SetValue(SymbolType newValue)
     {
-        this->value = value;
+        this->value = newValue;
     }
 
     SrcPosition &GetSrcPosition()

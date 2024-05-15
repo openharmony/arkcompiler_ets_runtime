@@ -99,6 +99,7 @@ public:
     void Finalize();
     void PrepareCompile();
 
+    void SetHClassInfoForPGO(JSHandle<Method> &methodHandle);
     void InstallCode();
     void InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj);
     MachineCodeDesc &GetMachineCodeDesc()
@@ -166,14 +167,14 @@ public:
         return static_cast<JitVM*>(compilerThread_->GetEcmaVM());
     }
 
-    CString GetMethodInfo() const
+    CString GetMethodName() const
     {
-        return methodInfo_;
+        return methodName_;
     }
 
-    void SetMethodInfo(CString methodInfo)
+    void SetMethodInfo(CString methodName)
     {
-        methodInfo_ = methodInfo;
+        methodName_ = methodName;
     }
 
     uint32_t GetTaskThreadId() const
@@ -271,7 +272,7 @@ private:
     MachineCodeDesc codeDesc_;
     CompileState state_;
     CompilerTier compilerTier_;
-    CString methodInfo_;
+    CString methodName_;
     int32_t offset_;
     uint32_t taskThreadId_;
     std::unique_ptr<SustainingJSHandle> sustainingJSHandle_;
