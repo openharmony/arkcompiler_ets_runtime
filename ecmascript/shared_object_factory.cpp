@@ -458,7 +458,9 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
 {
     NewSObjectHook();
     TaggedObject *header;
-    auto jsNativePointerClass = JSHClass::Cast(thread_->GlobalConstants()->GetJSNativePointerClass().GetTaggedObject());
+    auto jsNativePointerClass =
+        JSHClass::Cast(thread_->GlobalConstants()->GetSJSNativePointerClass().GetTaggedObject());
+    jsNativePointerClass->SetIsJSShared(true);
     if (nonMovable) {
         header = sHeap_->AllocateNonMovableOrHugeObject(thread_, jsNativePointerClass);
     } else {

@@ -155,7 +155,7 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
     SetConstant(ConstantIndex::BIGINT_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, BigInt::SIZE, JSType::BIGINT));
-    SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
+    SetConstant(ConstantIndex::SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
     SetConstant(ConstantIndex::ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LEXICAL_ENV));
@@ -308,6 +308,9 @@ void GlobalEnvConstants::InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory
                 factory->CreateDefaultClassConstructorHClass(hClass));
     SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
+    // napi_wrap need set NativePointer to object, so only mark the shared bit in shared JSNativePointer hclass.
+    SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
+        factory->NewEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
 }
 
 void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory)
