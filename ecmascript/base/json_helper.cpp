@@ -136,67 +136,6 @@ CString JsonHelper::ValueToQuotedString(CString str)
     product += "\"";
     // 2. For each code unit C in value
     product = procEachCodeInValue(value, product);
-    // for (const char *c = value; *c != 0; ++c) {
-    //     switch (*c) {
-    //         /*
-    //          * a. If C is 0x0022 (QUOTATION MARK) or 0x005C (REVERSE SOLIDUS), then
-    //          * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-    //          * ii. Let product be the concatenation of product and C.
-    //          */
-    //         case '\"':
-    //             product += "\\\"";
-    //             break;
-    //         case '\\':
-    //             product += "\\\\";
-    //             break;
-    //         /*
-    //          * b. Else if C is 0x0008 (BACKSPACE), 0x000C (FORM FEED), 0x000A (LINE FEED), 0x000D (CARRIAGE RETURN),
-    //          * or 0x000B (LINE TABULATION), then
-    //          * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-    //          * ii. Let abbrev be the String value corresponding to the value of C as follows:
-    //          * BACKSPACE "b"
-    //          * FORM FEED (FF) "f"
-    //          * LINE FEED (LF) "n"
-    //          * CARRIAGE RETURN (CR) "r"
-    //          * LINE TABULATION "t"
-    //          * iii. Let product be the concatenation of product and abbrev.
-    //          */
-    //         case '\b':
-    //             product += "\\b";
-    //             break;
-    //         case '\f':
-    //             product += "\\f";
-    //             break;
-    //         case '\n':
-    //             product += "\\n";
-    //             break;
-    //         case '\r':
-    //             product += "\\r";
-    //             break;
-    //         case '\t':
-    //             product += "\\t";
-    //             break;
-    //         case ZERO_FIRST:
-    //             product += "\\u0000";
-    //             ++c;
-    //             break;
-    //         case ALONE_SURROGATE_3B_FIRST:
-    //             if (*(c + 1) && *(c + 1) >= ALONE_SURROGATE_3B_SECOND_START &&
-    //                 *(c + 1) <= ALONE_SURROGATE_3B_SECOND_END &&
-    //                 *(c + 2) >= ALONE_SURROGATE_3B_THIRD_START && // 2 : The third character after c
-    //                 *(c + 2) <= ALONE_SURROGATE_3B_THIRD_END) {   // 2 : The third character after c
-    //                 auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar((uint8_t *)c, 3);
-    //                 std::ostringstream oss;
-    //                 oss << "\\u" << std::hex << std::setfill('0') << std::setw(FOUR_HEX) <<
-    //                     static_cast<int>(unicodeRes.first);
-    //                 product += oss.str();
-    //                 c += 2; // 2 : Skip 2 characters
-    //                 break;
-    //             }
-    //         default:
-    //             product = DefaultValueToQuotedString(*c, product);
-    //     }
-    // }
     // 3. Let product be the concatenation of product and code unit 0x0022 (QUOTATION MARK).
     product += "\"";
     // Return product.
