@@ -659,16 +659,6 @@ public:
         isEnableOsr_ = state;
     }
 
-    bool isOverLimit() const
-    {
-        return overLimit_;
-    }
-
-    void SetOverLimit(bool state)
-    {
-        overLimit_ = state;
-    }
-
     AOTFileManager *GetAOTFileManager() const
     {
         return aotFileManager_;
@@ -905,7 +895,6 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
-    bool overLimit_ {false};
 
 #if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
     // Stats for Thread-State-Transition and String-Table Locks

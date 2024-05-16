@@ -434,20 +434,19 @@ size_t DFXJSNApi::GetProcessHeapLimitSize()
     return ecmascript::MemMapAllocator::GetInstance()->GetCapacity();
 }
 
-bool DFXJSNApi::isOverLimit(const EcmaVM *vm)
-{
-    return vm->isOverLimit();
-}
-
-void DFXJSNApi::SetOverLimit(EcmaVM *vm, bool state)
-{
-    vm->SetOverLimit(state);
-}
-
 void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare();
+}
+
+void DFXJSNApi::SetJsDumpThresholds([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] size_t thresholds)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    vm->GetHeap()->SetJsDumpThresholds(thresholds);
+#else
+    LOG_ECMA(ERROR) << "Not support set jsdump thresholds";
+#endif
 }
 
 void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)

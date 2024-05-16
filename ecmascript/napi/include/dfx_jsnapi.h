@@ -99,8 +99,6 @@ public:
     static size_t GetHeapObjectSize(const EcmaVM *vm);
     static size_t GetHeapLimitSize(const EcmaVM *vm);
     static size_t GetProcessHeapLimitSize();
-    static bool isOverLimit(const EcmaVM *vm);
-    static void SetOverLimit(EcmaVM *vm, bool state);
     static void GetHeapPrepare(const EcmaVM *vm);
     static void NotifyApplicationState(EcmaVM *vm, bool inBackground);
     static void NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback);
@@ -114,6 +112,7 @@ public:
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);
     static bool CpuProfilerSamplingAnyTime(const EcmaVM *vm);
+    static void SetJsDumpThresholds(EcmaVM *vm, size_t thresholds);
     static bool StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static void StopCpuProfilerForFile(const EcmaVM *vm);
