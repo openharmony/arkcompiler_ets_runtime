@@ -191,7 +191,7 @@ bool HeapProfiler::DoDump(DumpFormat dumpFormat, Stream *stream, Progress *progr
     return serializerResult;
 }
 
-static void WaitProcess(pid_t pid)
+[[maybe_unused]]static void WaitProcess(pid_t pid)
 {
     time_t startTime = time(nullptr);
     constexpr int DUMP_TIME_OUT = 300;
@@ -218,37 +218,42 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
     bool res = false;
     base::BlockHookScope blockScope;
     ThreadManagedScope managedScope(vm_->GetJSThread());
-    if (isFullGC) {
-        [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
-        ASSERT(heapClean);
-    }
-    // suspend All.
-    SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-    if (isFullGC) {
-        DISALLOW_GARBAGE_COLLECTION;
-        const_cast<Heap *>(vm_->GetHeap())->Prepare();
-    }
+
     pid_t pid = -1;
     {
-        // fork
-        if ((pid = fork()) < 0) {
-            LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
-            return false;
+        if (isFullGC) {
+            [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
+            ASSERT(heapClean);
         }
-        if (pid == 0) {
+        // suspend All.
+        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+        if (isFullGC) {
+            DISALLOW_GARBAGE_COLLECTION;
+            const_cast<Heap *>(vm_->GetHeap())->Prepare();
+        }
+        if (isSync) {
             vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
             res = DoDump(dumpFormat, stream, progress, isVmMode, isPrivate, captureNumericValue, isFullGC, isSimplify);
-            _exit(0);
+        } else {
+            // fork
+            if ((pid = fork()) < 0) {
+                LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
+                return false;
+            }
+            if (pid == 0) {
+                vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
+                prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
+                res = DoDump(dumpFormat, stream, progress, isVmMode, isPrivate,
+                             captureNumericValue, isFullGC, isSimplify);
+                _exit(0);
+            }
         }
     }
-    if (pid != 0) {
-        if (isSync) {
-            WaitProcess(pid);
-        } else {
-            std::thread thread(&WaitProcess, pid);
-            thread.detach();
-        }
+
+    if (pid != 0 && !isSync) {
+        std::thread thread(&WaitProcess, pid);
+        thread.detach();
         stream->EndOfStream();
     }
     return res;
