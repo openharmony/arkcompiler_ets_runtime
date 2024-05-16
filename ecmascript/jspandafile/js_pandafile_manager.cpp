@@ -86,14 +86,16 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         }
         uint8_t *data = nullptr;
         size_t dataSize = 0;
-        bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize);
+        std::string errorMsg;
+        bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
         if (!getBuffer) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
             if (vm->EnableReportModuleResolvingFailure()) {
                 LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
             }
 #endif
-            LOG_FULL(FATAL) << "resolveBufferCallback get hsp buffer failed, hsp path:" << filename;
+            LOG_FULL(FATAL) << "resolveBufferCallback get hsp buffer failed, hsp path:" << filename
+                << ", errorMsg:" << errorMsg;
             return nullptr;
         }
 #if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
@@ -565,9 +567,11 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
         }
         uint8_t *data = nullptr;
         size_t dataSize = 0;
-        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize);
+        std::string errorMsg;
+        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize, errorMsg);
         if (!getBuffer) {
-            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback get buffer failed";
+            LOG_FULL(ERROR)
+                << "When checking file path, resolveBufferCallback get buffer failed, errorMsg = " << errorMsg;
             return false;
         }
     }
