@@ -14,5 +14,5 @@
 ReferenceError: a is not defined
 exception_case10.js:18:18
 exception_case10.js:21:21
-exception_case10.js:23:1
+exception_case10.js:23:23
 

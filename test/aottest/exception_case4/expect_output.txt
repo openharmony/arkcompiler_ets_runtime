@@ -13,5 +13,5 @@
 
 RangeError: Invalid array length
 exception_case4.js:18:18
-exception_case4.js:20:1
+exception_case4.js:20:20
 

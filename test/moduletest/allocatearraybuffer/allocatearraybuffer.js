@@ -47,6 +47,7 @@ function f() {
     let a4 = new ArrayBuffer(1025*1025*1025);
     try {
         let arr = new ArrayBuffer(10);
+        print(a1.byteLength + a2.byteLength + a3.byteLength + a4.byteLength + arr.byteLength);
     } catch (error) {
         print(error);
     }
