@@ -172,6 +172,7 @@ bool Jit::SupportJIT(const Method *method) const
         case FunctionKind::BASE_CONSTRUCTOR:
         case FunctionKind::CLASS_CONSTRUCTOR:
         case FunctionKind::DERIVED_CONSTRUCTOR:
+        case FunctionKind::NONE_FUNCTION:
             return true;
         default:
             return false;
