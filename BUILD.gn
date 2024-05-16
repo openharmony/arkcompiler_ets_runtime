@@ -30,7 +30,6 @@ group("ark_js_packages") {
     deps += [
       "ecmascript/compiler:ark_aot_compiler",
       "ecmascript/compiler:libark_jsoptimizer",
-      "ecmascript/pgo_profiler/prof_dump:profdump",
     ]
   }
 }
