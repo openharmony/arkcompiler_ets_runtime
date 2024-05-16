@@ -626,7 +626,8 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy(thread_);
+                asyncNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 iter = nativePointerList_.erase(iter);
             } else {
                 ++iter;
@@ -639,9 +640,8 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
-                                                                    std::make_pair(object->GetExternalPointer(),
-                                                                                   object->GetData())));
+                concurrentNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 newIter = concurrentNativePointerList_.erase(newIter);
             } else {
                 ++newIter;
@@ -681,7 +681,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy(thread_);
+                asyncNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 iter = nativePointerList_.erase(iter);
                 continue;
             }
@@ -698,9 +699,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
-                                                                    std::make_pair(object->GetExternalPointer(),
-                                                                                   object->GetData())));
+                concurrentNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 newIter = concurrentNativePointerList_.erase(newIter);
                 continue;
             }
