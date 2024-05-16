@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_OBJECT_FAST_OPERATOR_H
 #define ECMASCRIPT_OBJECT_FAST_OPERATOR_H
 
-#include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/property_attributes.h"
@@ -50,17 +49,6 @@ public:
 
     static inline std::pair<JSTaggedValue, bool> HasOwnProperty(JSThread *thread,
                                                                 JSTaggedValue receiver, JSTaggedValue key);
-
-    template<Status status = Status::None>
-    static inline JSTaggedValue TryFastHasProperty(JSThread *thread, JSTaggedValue receiver,
-                                                   JSMutableHandle<JSTaggedValue> keyHandle);
-
-    template<Status status = Status::None>
-    static inline JSTaggedValue TryFastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver,
-                                                          JSMutableHandle<JSTaggedValue> keyHandle);
-
-    template<Status status = Status::None>
-    static inline JSTaggedValue TryFastGetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 
     template<Status status = Status::None>
     static inline JSTaggedValue TryGetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
