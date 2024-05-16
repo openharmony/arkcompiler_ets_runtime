@@ -80,7 +80,7 @@ bool IsSkip(const char second, const char third)
 CString procEachCodeInValue(const char *value, CString product)
 {
     if (value == nullptr) {
-        return product; 
+        return product;
     }
 
     for (const char *c = value; *c != 0; ++c) {

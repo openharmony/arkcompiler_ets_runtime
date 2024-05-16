@@ -729,11 +729,11 @@ bool JsonStringifier::OnlyOwnKeysProc(JSTaggedValue enumCache, JSHandle<JSHClass
 }
 
 bool JsonStringifier::NoChangedToDictionaryMode(JSTaggedValue key, LayoutInfo *layoutInfo,
-                                               JSHandle<TaggedArray> propertiesArr, bool IsEnumerable,
-                                               const JSHandle<JSObject> &obj, bool *isContinue,
-                                               bool *hasChangedToDictionaryMode,
-                                               const JSHandle<JSTaggedValue> &replacer,
-                                               JSHandle<JSHClass> jsHclass)
+    JSHandle<TaggedArray> propertiesArr, bool IsEnumerable,
+    const JSHandle<JSObject> &obj, bool *isContinue,
+    bool *hasChangedToDictionaryMode,
+    const JSHandle<JSTaggedValue> &replacer,
+    JSHandle<JSHClass> jsHclass)
 {
     bool hasContent = false;
     if (key.IsString() && IsEnumerable) { //layoutInfo->GetAttr(i).IsEnumerable()
