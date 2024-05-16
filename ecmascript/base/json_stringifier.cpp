@@ -650,6 +650,7 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
 void debugEnumCache(JSTaggedValue enumCache,  JSHandle<JSHClass> jsHclass, const JSHandle<JSObject> &obj)
 {
     enum ServType : uint8_t {
+        NUM_ZERO,
         NUM_ONE,
         NUM_TWO,
         NUM_THREE,
@@ -676,7 +677,7 @@ void debugEnumCache(JSTaggedValue enumCache,  JSHandle<JSHClass> jsHclass, const
         << ", [wxj] before7:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::NUM_SEVEN)
         << ", [wxj] before8:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::NUM_EIGHT)
         << ", [wxj] before9:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::NUM_NINE)
-        << ", [wxj] before10:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServTy::NUM_TEN)
+        << ", [wxj] before10:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::NUM_TEN)
         << ", [wxj] after0:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::NUM_ZERO)
         << ", [wxj] after1:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::NUM_ONE)
         << ", [wxj] after2:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::NUM_TWO)
@@ -687,7 +688,7 @@ void debugEnumCache(JSTaggedValue enumCache,  JSHandle<JSHClass> jsHclass, const
         << ", [wxj] after7:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::NUM_SEVEN)
         << ", [wxj] after8:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::NUM_EIGHT)
         << ", [wxj] after9:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::NUM_NINE)
-        << ", [wxj] after10:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServTyp::NUM_TEN);
+        << ", [wxj] after10:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::NUM_TEN);
     }
     return;
 }
