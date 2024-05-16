@@ -16,11 +16,13 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H
 #define ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H
 
+#include <list>
 #include <string>
 
 #include "ecmascript/common.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/platform/mutex.h"
 #include "libpandafile/file.h"
 #include "mem/mem.h"
 
@@ -59,44 +61,85 @@ private:
     static std::string GetBriefApName(const std::string &ohosModuleName);
 };
 
-struct ConcurrentGuardValues {
-    mutable std::atomic_int last_tid_ {0};
-    mutable std::atomic_int count_ {0};
-};
-
-class ConcurrentGuard {
-private:
-    const char* operation_;
-
+class ConcurrentGuardValues {
 public:
-    ConcurrentGuard(ConcurrentGuardValues& v, const char* operation = ""): operation_(operation), v_(v)
-    {
-        LOG_ECMA(DEBUG) << "[ConcurrentGuard] " << operation_ << " start";
-        auto tid = Gettid();
-        auto except = 0;
-        if (!v_.count_.compare_exchange_strong(except, 1)) {
-            LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 0, but get " << except
-                            << ", current tid: " << tid << ", last tid: " << v_.last_tid_;
-        }
-        v_.last_tid_ = tid;
-    }
-    ~ConcurrentGuard()
-    {
-        auto tid = Gettid();
-        auto except = 1;
-        if (!v_.count_.compare_exchange_strong(except, 0)) {
-            LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 1, but get " << except
-                            << ", current tid: " << tid << ", last tid: " << v_.last_tid_;
-        }
-        LOG_ECMA(DEBUG) << "[ConcurrentGuard] " << operation_ << " end";
-    };
+    mutable std::atomic_int last_tid {0};
+    mutable std::atomic_int count {0};
+    static const int MAX_LOG_COUNT = 30;
 
-private:
-    ConcurrentGuardValues& v_;
+    void AddLog(std::string str)
+    {
+        LockHolder lock(mutex_);
+        if (log_.size() >= MAX_LOG_COUNT) {
+            log_.pop_front();
+        }
+        log_.push_back(str + ", tid: " + std::to_string(Gettid()));
+    }
+
+    void AddLogWithDebugLog(std::string str)
+    {
+        AddLog(str);
+        LOG_ECMA(DEBUG) << str;
+    }
+
+    void ClearLog()
+    {
+        LockHolder lock(mutex_);
+        log_.clear();
+    }
+
+    void PrintLog()
+    {
+        LockHolder lock(mutex_);
+        std::ostringstream os;
+        os << "concurrent guard logs: " << std::endl;
+        for (auto& str: log_) {
+            os << str << std::endl;
+        }
+        LOG_ECMA(INFO) << os.str();
+    }
+
     int Gettid()
     {
         return os::thread::GetCurrentThreadId();
     }
+
+private:
+    std::list<std::string> log_;
+    Mutex mutex_;
+};
+
+class ConcurrentGuard {
+private:
+    std::string operation_;
+
+public:
+    ConcurrentGuard(ConcurrentGuardValues& v, std::string operation = ""): operation_(operation), v_(v)
+    {
+        v_.AddLogWithDebugLog("[ConcurrentGuard] " + operation_ + " start");
+        auto tid = v_.Gettid();
+        auto except = 0;
+        if (!v_.count.compare_exchange_strong(except, 1)) {
+            v_.PrintLog();
+            LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 0, but get " << except
+                            << ", current tid: " << tid << ", last tid: " << v_.last_tid;
+        }
+        v_.last_tid = tid;
+    }
+    ~ConcurrentGuard()
+    {
+        auto tid = v_.Gettid();
+        auto except = 1;
+        if (!v_.count.compare_exchange_strong(except, 0)) {
+            v_.PrintLog();
+            LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 1, but get " << except
+                            << ", current tid: " << tid << ", last tid: " << v_.last_tid;
+        }
+        v_.AddLogWithDebugLog("[ConcurrentGuard] " + operation_ + " end");
+    };
+
+private:
+    ConcurrentGuardValues& v_;
 };
 }  // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H

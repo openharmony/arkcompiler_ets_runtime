@@ -346,7 +346,7 @@ PGOProfiler::State PGOProfiler::GetState()
 
 void PGOProfiler::SetState(State state)
 {
-    LOG_ECMA(DEBUG) << "[PGODumpStateChange] " << StateToString(GetState()) << " -> " << StateToString(state);
+    v_.AddLogWithDebugLog("[PGODumpStateChange] " + StateToString(GetState()) + " -> " + StateToString(state));
     state_.store(state, std::memory_order_release);
 }
 
