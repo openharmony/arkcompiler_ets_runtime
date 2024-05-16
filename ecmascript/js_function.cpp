@@ -1070,6 +1070,15 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     }
 }
 
+bool JSFunction::IsSendableFunction() const
+{
+    if (this->GetClass()->IsJSSharedFunction() ||
+        this->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        return true;
+    }
+    return false;
+}
+
 void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
 {
     ASSERT(codeEntry != 0);
