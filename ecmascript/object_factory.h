@@ -533,6 +533,8 @@ public:
                                                MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSFunction> NewJSFunctionByHClassWithoutAccessor(const void *func,
+        const JSHandle<JSHClass> &clazz, FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = OLD_SPACE);
 
     JSHandle<Method> NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
@@ -607,6 +609,9 @@ public:
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> PUBLIC_API NewEcmaHClass(uint32_t size, JSType type,
                                                 uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+
+    JSHandle<JSHClass> PUBLIC_API NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+        const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout);
 
     // It is used to provide iterators for non ECMA standard jsapi containers.
     JSHandle<JSAPIPlainArray> NewJSAPIPlainArray(uint32_t capacity);

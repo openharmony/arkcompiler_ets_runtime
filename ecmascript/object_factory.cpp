@@ -213,6 +213,25 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(JSHClass *hclass, uint32_t size,
     return JSHandle<JSHClass>(thread_, newClass);
 }
 
+// This function don't UpdateProtoClass
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+    const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout)
+{
+    NewSObjectHook();
+    uint32_t classSize = JSHClass::SIZE;
+    auto *newClass = static_cast<JSHClass *>(heap_->AllocateNonMovableOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
+    newClass->Initialize(thread_, size, type, inlinedProps, layout);
+    JSHandle<JSHClass> hclass(thread_, newClass);
+    if (prototype->IsJSObject()) {
+        prototype->GetTaggedObject()->GetClass()->SetIsPrototype(true);
+    }
+    hclass->SetProto(thread_, prototype.GetTaggedValue());
+    hclass->SetNumberOfProps(inlinedProps);
+    hclass->SetExtensible(false);
+    return hclass;
+}
+
 JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                                         uint32_t inlinedProps)
 {
@@ -1956,6 +1975,19 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, cons
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, kind);
+    function->SetMethod(thread_, method);
+    return function;
+}
+
+// new function with name/length accessor
+JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClassWithoutAccessor(const void *func,
+    const JSHandle<JSHClass> &clazz, FunctionKind kind)
+{
+    JSHandle<Method> method = NewMethodForNativeFunction(func, kind);
+    JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
+    clazz->SetCallable(true);
+    clazz->SetExtensible(true);
+    JSFunction::InitializeWithDefaultValue(thread_, function);
     function->SetMethod(thread_, method);
     return function;
 }

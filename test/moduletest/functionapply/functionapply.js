@@ -97,3 +97,71 @@ try {
 } catch (error) {
     print(error.name)
 }
+
+print(Function.name);
+print(Function.length);
+print(Function.prototype.name);
+print(Function.prototype.length);
+
+for (let key in Function) {
+    print(key);
+}
+
+for (let key in Function.prototype) {
+    print(key);
+}
+
+Function.prototype.constructor = 1;
+Function.prototype.apply = 1;
+Function.prototype.bind = 1;
+Function.prototype.call = 1;
+Function.prototype.toString = 1;
+
+try{
+   Function.name = 1;
+} catch(e) {
+   print(e);
+}
+
+try{
+   Function.length = 1;
+} catch(e) {
+   print(e);
+}
+
+try{
+   Function.prototype = 1;
+} catch(e) {
+   print(e);
+}
+
+try{
+   Function.prototype.name = 1;
+} catch(e) {
+   print(e);
+}
+
+try{
+   Function.prototype.length = 1;
+} catch(e) {
+   print(e);
+}
+
+try{
+   Function.prototype.caller = 1;
+} catch(e) {
+   print(e);
+}
+
+try{
+   Function.prototype.arguments = 1;
+} catch(e) {
+   print(e);
+}
+
+
+try{
+   Function.prototype[Symbol.hasInstance] = 1;
+} catch(e) {
+   print(e);
+}

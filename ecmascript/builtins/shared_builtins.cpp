@@ -441,10 +441,10 @@ JSHandle<JSHClass> Builtins::CreateSFunctionHClass(const JSHandle<JSFunction> &s
     auto properties = Function::GetFunctionProperties();
     uint32_t length = properties.size();
     JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
-    for (const std::pair<std::string_view, bool> &each : properties) {
+    for (const base::BuiltinsPropertyConfig &each : properties) {
         attributes.SetOffset(index);
-        attributes.SetIsAccessor(each.second);
-        JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(each.first));
+        attributes.SetIsAccessor(each.GetIsAccessor());
+        JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(each.GetName()));
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
     JSHandle<JSHClass> sobjPrototypeHClass =
@@ -553,13 +553,13 @@ JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<JSTag
     uint32_t length = properties.size();
     JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
     JSHandle<JSTaggedValue> keyString;
-    for (const std::pair<std::string_view, bool> &each : properties) {
+    for (const base::BuiltinsPropertyConfig &each : properties) {
         attributes.SetOffset(index);
-        attributes.SetIsAccessor(each.second);
-        if (each.first == "[Symbol.hasInstance]") {
+        attributes.SetIsAccessor(each.GetIsAccessor());
+        if (each.GetName() == "[Symbol.hasInstance]") {
             keyString = env->GetHasInstanceSymbol();
         } else {
-            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(each.first));
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(each.GetName()));
         }
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
