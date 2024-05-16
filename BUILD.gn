@@ -683,7 +683,6 @@ ecma_source = [
   "ecmascript/interpreter/slow_runtime_stub.cpp",
   "ecmascript/intl/locale_helper.cpp",
   "ecmascript/jit/jit.cpp",
-  "ecmascript/jit/jit_dfx.cpp",
   "ecmascript/jit/jit_task.cpp",
   "ecmascript/jit/jit_thread.cpp",
   "ecmascript/jit/jit_profiler.cpp",

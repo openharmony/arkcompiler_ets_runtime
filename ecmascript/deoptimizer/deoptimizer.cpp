@@ -544,9 +544,6 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
             method->ClearAOTStatusWhenDeopt();
-            if (func->GetMachineCode().IsMachineCodeObject()) {
-                Jit::GetInstance()->GetJitDfx()->SetJitDeoptCount();
-            }
             func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
         }
     }

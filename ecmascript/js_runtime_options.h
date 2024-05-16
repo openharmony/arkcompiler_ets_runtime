@@ -1109,16 +1109,6 @@ public:
         return enableAPPJIT_;
     }
 
-    bool IsEnableJitDfxDump() const
-    {
-        return isEnableJitDfxDump_;
-    }
-
-    void SetEnableJitDfxDump(bool value)
-    {
-        isEnableJitDfxDump_ = value;
-    }
-
     void SetEnableOSR(bool value)
     {
         enableOSR_ = value;
@@ -1808,7 +1798,6 @@ private:
     bool enableOptPGOType_ {true};
     bool enableFastJIT_{false};
     bool enableAPPJIT_{false};
-    bool isEnableJitDfxDump_ {false};
     bool enableOSR_{false};
     uint16_t jitHotnessThreshold_ {2};
     uint8_t jitCallThreshold_ {0};
