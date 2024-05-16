@@ -121,12 +121,9 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
         if (!func.IsHeapObject()) {
             return {};
         }
-        MarkWord markWord(func.GetTaggedObject());
-        TaggedObject *f = markWord.IsForwardingAddress() ? markWord.ToForwardingAddress() : func.GetTaggedObject();
-        if (!f->GetClass()->IsJSFunction()) {
-            return {};
-        }
-        JSFunction *jsfunc = JSFunction::Cast(f);
+        // cast to jsfunction directly. JSFunction::Cast may fail,
+        // as jsfunction class may set forwardingAddress in Evacuate, but forwarding obj not init.
+        JSFunction *jsfunc = reinterpret_cast<JSFunction*>(func.GetTaggedObject());
         // machineCode non move
         JSTaggedValue machineCode = jsfunc->GetMachineCode();
         if (machineCode.IsMachineCodeObject() &&

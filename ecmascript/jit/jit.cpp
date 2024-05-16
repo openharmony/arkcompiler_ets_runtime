@@ -210,7 +210,7 @@ bool Jit::ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &jsFunction)
     if (thread->GetCurrentEcmaContext()->MatchJitMachineCode(id, method)) {
         CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
         CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
-        LOG_JIT(INFO) << "reuse fuction machine code : " << methodName;
+        LOG_JIT(DEBUG) << "reuse fuction machine code : " << methodName;
         auto machineCodeObj = thread->GetCurrentEcmaContext()->GetJitMachineCode(id).second;
         JSHandle<Method> methodHandle(thread, method);
         JSHandle<Method> newMethodHandle = thread->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
@@ -263,7 +263,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     }
 
     CString msg = "compile method:" + methodInfo + ", in work thread";
-    TimeScope scope(msg, tier);
+    TimeScope scope(msg, tier, true, true);
     if (vm->GetJSThread()->IsMachineCodeLowMemory()) {
         if (tier == CompilerTier::BASELINE) {
             LOG_BASELINEJIT(DEBUG) << "skip jit task, as low code memory:" << methodInfo;
@@ -280,9 +280,9 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         msgStr << "method does not support jit:" << methodInfo << ", kind:" << static_cast<int>(kind)
                <<", JSSharedFunction:" << isJSSharedFunction;
         if (tier == CompilerTier::BASELINE) {
-            LOG_BASELINEJIT(INFO) << msgStr.str();
+            LOG_BASELINEJIT(DEBUG) << msgStr.str();
         } else {
-            LOG_JIT(INFO) << msgStr.str();
+            LOG_JIT(DEBUG) << msgStr.str();
         }
         return;
     }
@@ -460,7 +460,17 @@ void Jit::ChangeTaskPoolState(bool inBackground)
 
 Jit::TimeScope::~TimeScope()
 {
-    if (outPutLog_) {
+    if (!outPutLog_) {
+        return;
+    }
+    if (isDebugLevel_) {
+        if (tier_ == CompilerTier::BASELINE) {
+            LOG_BASELINEJIT(DEBUG) << message_ << ": " << TotalSpentTime() << "ms";
+            return;
+        }
+        ASSERT(tier_ == CompilerTier::FAST);
+        LOG_JIT(DEBUG) << message_ << ": " << TotalSpentTime() << "ms";
+    } else {
         if (tier_ == CompilerTier::BASELINE) {
             LOG_BASELINEJIT(INFO) << message_ << ": " << TotalSpentTime() << "ms";
             return;

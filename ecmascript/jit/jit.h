@@ -98,14 +98,16 @@ public:
 
     class TimeScope : public ClockScope {
     public:
-        explicit TimeScope(CString message, CompilerTier tier = CompilerTier::FAST, bool outPutLog = true)
-            : message_(message), tier_(tier), outPutLog_(outPutLog) {}
-        explicit TimeScope() : message_(""), tier_(CompilerTier::FAST), outPutLog_(false) {}
+        explicit TimeScope(CString message, CompilerTier tier = CompilerTier::FAST, bool outPutLog = true,
+            bool isDebugLevel = false)
+            : message_(message), tier_(tier), outPutLog_(outPutLog), isDebugLevel_(isDebugLevel) {}
+        explicit TimeScope() : message_(""), tier_(CompilerTier::FAST), outPutLog_(false), isDebugLevel_(true) {}
         PUBLIC_API ~TimeScope();
     private:
         CString message_;
         CompilerTier tier_;
         bool outPutLog_;
+        bool isDebugLevel_;
     };
 
     class JitLockHolder {
