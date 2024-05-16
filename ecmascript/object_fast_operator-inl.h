@@ -19,6 +19,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/object_fast_operator.h"
 
 #include "ecmascript/base/array_helper.h"
@@ -129,8 +130,8 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
     }
 
     // Elements
-    uint32_t index = 0;
-    if (JSTaggedValue::ToElementIndex(key, &index)) {
+    auto index = TryToElementsIndex(key);
+    if (index >= 0) {
         ASSERT(index < JSObject::MAX_ELEMENT_INDEX);
         JSHandle<JSObject> receiverObj(thread, receiver);
         if (!ElementAccessor::IsDictionaryMode(receiverObj)) {
@@ -176,8 +177,8 @@ JSTaggedValue ObjectFastOperator::TryFastGetPropertyByValue(JSThread *thread, JS
     if (UNLIKELY(!key.IsNumber() && !key.IsString())) {
         return JSTaggedValue::Hole();
     }
-    uint32_t index = 0;
-    if (JSTaggedValue::ToElementIndex(key, &index)) {
+    auto index = TryToElementsIndex(key);
+    if (index >= 0) {
         return TryFastGetPropertyByIndex<status>(thread, receiver, index);
     }
     if (key.IsString()) {
