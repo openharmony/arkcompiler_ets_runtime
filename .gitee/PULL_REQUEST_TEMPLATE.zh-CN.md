@@ -4,35 +4,38 @@
 
 ### 修改描述（做了什么，变更了什么，例如：xx函数入口增加判空）
 
-### 自测试项（新增、改动、可能影响的功能）
-#### 使用独立编译进行编译（BUILD.gn改动）
+### 自测试项（测试结果截图，直接贴到每一个测试项底下）
+#### 独立编译进行编译（必须执行）
 - [ ] 已通过
 - [ ] 不涉及，无需验证
-#### Debug UT 本地执行（必须执行）
+#### debug UT 本地执行（必须执行）
 - [ ] 已通过
 - [ ] 不涉及，无需验证
-#### Release UT 本地执行（必须执行）
+#### release UT 本地执行（必须执行）
 - [ ] 已通过 
 - [ ] 不涉及，无需验证
-#### Release test262 本地执行（非Test代码必须执行）
+#### release test262 本地执行（非Test代码必须执行）
 - [ ] 已通过
 - [ ] 不涉及，无需验证
-#### Debug test262 本地执行（非Test代码必须执行）
+#### debug test262 本地执行（非Test代码必须执行）
 - [ ] 已通过
 - [ ] 不涉及，无需验证
-#### Release pgo-aot test262 本地执行（compiler/aot/isa/stub/ic/对象布局等修改必须执行）
+#### release pgo-aot test262 本地执行（compiler/aot/isa/stub/ic/对象布局等修改必须执行）
 - [ ] 已通过
 - [ ] 不涉及，无需验证
-#### Debug pgo-aot test262 本地执行（compiler/aot/isa/stub/ic/对象布局等修改必须执行）
+#### debug pgo-aot test262 本地执行（compiler/aot/isa/stub/ic/对象布局等修改必须执行）
 - [ ] 已通过
 - [ ] 不涉及，无需验证
-#### Regress测试套 本地执行（解释器/builtins/异常处理/对象布局/IC等修改必须执行）
+#### regress测试套 本地执行（解释器/builtins/异常处理/对象布局/IC等修改必须执行）
 - [ ] 已通过
 - [ ] 不涉及，无需验证
-#### js perf 性能测试（性能优化/性能敏感场景：IR化/ic/hclass/对象布局/isa/builtins等修改必须执行）
+#### interpreter-js_perf 性能测试（性能优化/性能敏感场景：IR化/ic/hclass/对象布局/isa/builtins等修改必须执行）
 - [ ] 已验证不劣化
 - [ ] 不涉及，无需验证
-#### 解释器workload性能测试（性能优化/性能敏感场景：IR化/ic/hclass/对象布局/isa/builtins等修改必须执行）
+#### aot-js_perf 性能测试（性能优化/性能敏感场景：IR化/ic/hclass/对象布局/isa/builtins等修改必须执行）
+- [ ] 已验证不劣化
+- [ ] 不涉及，无需验证
+#### interpreter-workload性能测试（性能优化/性能敏感场景：IR化/ic/hclass/对象布局/isa/builtins等修改必须执行）
 - [ ] 已验证不劣化
 - [ ] 不涉及，无需验证
 #### aot-workload性能测试（性能优化/性能敏感场景：IR化/compiler/aot/isa/stub/ic/对象布局等修改必须执行）
@@ -44,5 +47,3 @@
 #### rk3568 wukong压测2小时验证（非Test代码需要，可用原型机替代验证）
 - [ ] 无相关crash产生
 - [ ] 不涉及，无需验证
-
-# 将上述测试的截图贴到下面
