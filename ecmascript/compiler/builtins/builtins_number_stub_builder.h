@@ -34,6 +34,7 @@ BUILTINS_WITH_NUMBER_STUB_BUILDER(DECLARE_BUILTINS_NUMBER_STUB_BUILDER)
 #undef DECLARE_BUILTINS_NUMBER_STUB_BUILDER
 
     void GenNumberConstructor(GateRef nativeCode, GateRef func, GateRef newTarget);
+    GateRef NumberToString(GateRef number, GateRef radix);
 
 private:
     GateRef glue_ { Circuit::NullGate() };
