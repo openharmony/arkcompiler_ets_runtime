@@ -32,7 +32,7 @@ bool ElfReader::VerifyELFHeader(uint32_t version, bool strictMatch)
                         << header.e_ident[llvm::ELF::EI_MAG2] << header.e_ident[llvm::ELF::EI_MAG3];
         return false;
     }
-    if (!base::FileHeaderBase::VerifyVersion("Elf ", header.e_version, version, strictMatch)) {
+    if (!base::FileHeaderBase::VerifyVersion("Elf", header.e_version, version, strictMatch)) {
         return false;
     }
     if (ElfChecker(fileMapMem_).CheckValidElf() == false) {

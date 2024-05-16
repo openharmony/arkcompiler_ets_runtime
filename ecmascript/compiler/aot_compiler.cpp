@@ -142,6 +142,8 @@ int Main(const int argc, const char **argv)
         compilerStats.SetAotFilePath(cOptions.outputFileName_);
         compilerStats.SetPgoPath(cOptions.profilerIn_);
         compilerStats.StartCompiler();
+        cPreprocessor.CreateEmptyFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN);
+        cPreprocessor.CreateEmptyFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI);
         profilerDecoder.SetHotnessThreshold(cOptions.hotnessThreshold_);
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();

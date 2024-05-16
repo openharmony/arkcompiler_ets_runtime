@@ -23,6 +23,7 @@
 #include "macros.h"
 
 #include "ecmascript/base/file_header.h"
+#include "ecmascript/compiler/aot_file/aot_version.h"
 
 namespace panda::ecmascript::pgo {
 class PGOProfilerHeader;
@@ -107,14 +108,14 @@ public:
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 12};
-    static constexpr size_t SECTION_SIZE = 6;
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 13};
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
     static constexpr size_t LAYOUT_DESC_SECTION_INDEX = 2;
     static constexpr size_t RECORD_POOL_SECTION_INDEX = 3;
     static constexpr size_t CLASS_TYPE_POOL_SECTION_INDEX = 4;
     static constexpr size_t ABC_FILE_POOL_SECTION_INDEX = 5;
+    static constexpr size_t SECTION_SIZE = 6;
 
     PGOProfilerHeader() : base::FileHeaderElastic(LAST_VERSION), sectionNumber_(SECTION_SIZE)
     {
@@ -270,6 +271,11 @@ public:
     bool SupportElementsTrackInfo() const
     {
         return CompatibleVerify(ELEMENTS_TRACK_INFO_MINI_VERSION);
+    }
+
+    bool IsCompatibleWithAOTFile() const
+    {
+        return VerifyVersion("ap file compatible aot file", GetCompatibleAnVersion(), AOTFileVersion::AN_VERSION, true);
     }
 
     static bool IsStrictMatch()
