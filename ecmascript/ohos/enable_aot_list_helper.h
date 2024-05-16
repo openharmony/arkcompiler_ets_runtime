@@ -117,7 +117,7 @@ private:
     void ReadEnableAotList(const std::string &aotListName)
     {
         if (!panda::ecmascript::FileExist(aotListName.c_str())) {
-            LOG_ECMA(INFO) << "bundle enable list not exist and will pass by all. file: " << aotListName;
+            LOG_ECMA(DEBUG) << "bundle enable list not exist and will pass by all. file: " << aotListName;
             return;
         }
 

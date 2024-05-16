@@ -3778,7 +3778,7 @@ void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
     auto thread = vm->GetJSThread();
     ecmascript::ThreadManagedScope managedScope(thread);
     if (thread->HasPendingException()) {
-        LOG_ECMA(ERROR) << "An exception has already occurred before, keep old exception here.";
+        LOG_ECMA(DEBUG) << "An exception has already occurred before, keep old exception here.";
         return;
     }
     thread->SetException(JSNApiHelper::ToJSTaggedValue(*error));
@@ -3802,7 +3802,7 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     }
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, exceptionHandle);
     ecmascript::CString string = ConvertToString(*result);
-    LOG_ECMA(ERROR) << string;
+    LOG_ECMA(DEBUG) << string;
     ThrowException(vm, exception);
 }
 
@@ -4141,7 +4141,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
 #if !defined(PANDA_TARGET_IOS)
-    LOG_ECMA(INFO) << "JSNApi::StopDebugger";
+    LOG_ECMA(DEBUG) << "JSNApi::StopDebugger";
     if (vm == nullptr) {
         LOG_ECMA(ERROR) << "[StopDebugger] vm is nullptr";
         return false;
@@ -4184,7 +4184,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 bool JSNApi::StopDebugger([[maybe_unused]] int tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    LOG_ECMA(INFO) << "JSNApi::StopDebugger, tid = " << tid;
+    LOG_ECMA(DEBUG) << "JSNApi::StopDebugger, tid = " << tid;
     JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
     if (jsDebuggerManager == nullptr) {
         LOG_ECMA(ERROR) << "[StopDebugger] jsDebuggerManager is nullptr";
