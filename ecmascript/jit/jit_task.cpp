@@ -37,7 +37,8 @@ uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]]uint32_t threadNu
 }
 
 JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHandle<JSFunction> &jsFunction,
-    CompilerTier tier, CString &methodName, int32_t offset, uint32_t taskThreadId, JitCompileMode mode)
+    CompilerTier tier, CString &methodName, int32_t offset, uint32_t taskThreadId,
+    JitCompileMode mode, JitDfx *JitDfx)
     : hostThread_(hostThread),
     compilerThread_(compilerThread),
     jit_(jit),
@@ -50,6 +51,7 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     taskThreadId_(taskThreadId),
     ecmaContext_(nullptr),
     jitCompileMode_(mode),
+    jitDfx_(JitDfx),
     runState_(RunState::INIT)
 {
     ecmaContext_ = hostThread->GetCurrentEcmaContext();
@@ -73,6 +75,7 @@ void JitTask::PrepareCompile()
 
 void JitTask::Optimize()
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compiler frontend");
     bool res = jit_->JitCompile(compilerTask_, this);
     if (!res) {
         SetCompileFailed();
@@ -85,6 +88,7 @@ void JitTask::Finalize()
         return;
     }
 
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compiler backend");
     bool res = jit_->JitFinalize(compilerTask_, this);
     if (!res) {
         SetCompileFailed();
@@ -200,7 +204,9 @@ void JitTask::InstallCode()
                 methodHandle->GetMethodId(),
                 std::make_pair(methodHandle.GetTaggedType(), machineCodeObj.GetTaggedType()));
         }
-        LOG_JIT(DEBUG) <<"Install fast jit machine code:" << GetMethodName();
+        uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
+        LOG_JIT(DEBUG) <<"Install fast jit machine code:" << GetMethodName() << ", code range:" <<
+            reinterpret_cast<void*>(codeAddr) <<"--" << reinterpret_cast<void*>(codeAddrEnd);
 #if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
         auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
         if (profMap.find(GetMethodName()) != profMap.end()) {
@@ -276,6 +282,7 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
     }
     DISALLOW_HEAP_ACCESS;
 
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compile");
     // JitCompileMode ASYNC
     // check init ok
     jitTask_->SetRunState(RunState::RUNNING);
@@ -299,6 +306,15 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
             // info main thread compile complete
             jitTask_->jit_->RequestInstallCode(jitTask_);
         }
+        int compilerTime = scope.TotalSpentTimeInMicroseconds();
+        jitTask_->jitDfx_->SetTotalTimeOnJitThread(compilerTime);
+        if (jitTask_->jitDfx_->ReportBlockUIEvent(jitTask_->mainThreadCompileTime_)) {
+            jitTask_->jitDfx_->SetBlockUIEventInfo(
+                jitTask_->methodName_,
+                jitTask_->compilerTier_ == CompilerTier::BASELINE ? true : false,
+                jitTask_->mainThreadCompileTime_, compilerTime);
+        }
+        jitTask_->jitDfx_->PrintJitStatsLog();
     }
     jitvm->ReSetHostVM();
     jitTask_->SetRunStateFinish();

@@ -70,6 +70,13 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
             isApp_ = options.IsEnableAPPJIT();
             initJitCompiler_(options);
             JitTaskpool::GetCurrentTaskpool()->Initialize();
+
+            jitDfx_ = JitDfx::GetInstance();
+            if (options.IsEnableJitDfxDump()) {
+                jitDfx_->EnableDump();
+            }
+            jitDfx_->ResetCompilerTime();
+            jitDfx_->ResetBlockUIEventTime();
         }
     }
 }
@@ -236,11 +243,14 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         return;
     }
 
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compile");
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
     CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
     uint32_t codeSize = method->GetCodeSize();
-    CString methodInfo = methodName + ", code size:" + ToCString(codeSize);
+    jit->GetJitDfx()->SetBundleName(vm->GetBundleName());
+    jit->GetJitDfx()->SetPidNumber(vm->GetJSThread()->GetThreadId());
+    CString methodInfo = methodName + ", bytecode size:" + ToCString(codeSize);
     constexpr uint32_t maxSize = 9000;
     if (codeSize > maxSize) {
         if (tier == CompilerTier::BASELINE) {
@@ -251,6 +261,9 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 
         return;
     }
+
+    CString msg = "compile method:" + methodInfo + ", in work thread";
+    TimeScope scope(msg, tier);
     if (vm->GetJSThread()->IsMachineCodeLowMemory()) {
         if (tier == CompilerTier::BASELINE) {
             LOG_BASELINEJIT(DEBUG) << "skip jit task, as low code memory:" << methodInfo;
@@ -281,18 +294,18 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     // using hole value to indecate compiling. todo: reset when failed
     if (tier == CompilerTier::FAST) {
         jsFunction->SetMachineCode(vm->GetJSThread(), JSTaggedValue::Hole());
+        jit->GetJitDfx()->SetTriggerCount(false);
     } else {
         ASSERT(tier == CompilerTier::BASELINE);
         jsFunction->SetBaselineCode(vm->GetJSThread(), JSTaggedValue::Hole());
+        jit->GetJitDfx()->SetTriggerCount(true);
     }
 
     {
-        CString msg = "compile method:" + methodInfo + ", in work thread";
-        TimeScope scope(msg, tier);
         JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
         EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
         std::shared_ptr<JitTask> jitTask = std::make_shared<JitTask>(vm->GetJSThread(), compilerVm->GetJSThread(),
-            jit, jsFunction, tier, methodName, offset, vm->GetJSThread()->GetThreadId(), mode);
+            jit, jsFunction, tier, methodName, offset, vm->GetJSThread()->GetThreadId(), mode, jit->GetJitDfx());
 
         jitTask->PrepareCompile();
         JitTaskpool::GetCurrentTaskpool()->PostTask(
@@ -303,6 +316,10 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
             jitTask->WaitFinish();
             jitTask->InstallCode();
         }
+        int spendTime = scope.TotalSpentTimeInMicroseconds();
+        jitTask->SetMainThreadCompilerTime(spendTime);
+        jit->GetJitDfx()->SetTotalTimeOnMainThread(spendTime);
+        jit->GetJitDfx()->PrintJitStatsLog();
     }
 }
 

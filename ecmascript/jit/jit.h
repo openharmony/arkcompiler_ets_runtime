@@ -24,6 +24,7 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/jit/jit_thread.h"
+#include "ecmascript/jit/jit_dfx.h"
 
 namespace panda::ecmascript {
 class JitTask;
@@ -86,6 +87,11 @@ public:
     bool IsProfileNeedDump() const
     {
         return isProfileNeedDump_;
+    }
+
+    JitDfx *GetJitDfx() const
+    {
+        return jitDfx_;
     }
     NO_COPY_SEMANTIC(Jit);
     NO_MOVE_SEMANTIC(Jit);
@@ -156,7 +162,10 @@ public:
         {
             ASSERT(!thread->IsJitThread());
             if (Jit::GetInstance()->IsEnableFastJit() || Jit::GetInstance()->IsEnableBaselineJit()) {
+                Clock::time_point start = Clock::now();
                 thread_->GetJitLock()->Lock();
+                Jit::GetInstance()->GetJitDfx()->SetLockHoldingTime(
+                    std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - start).count());
                 locked_ = true;
             }
         }
@@ -188,6 +197,8 @@ private:
     std::unordered_map<uint32_t, std::deque<std::shared_ptr<JitTask>>> installJitTasks_;
     Mutex installJitTasksDequeMtx_;
     Mutex setEnableLock_;
+
+    JitDfx *jitDfx_ { nullptr };
     static constexpr int MIN_CODE_SPACE_SIZE = 1_KB;
 
     static void (*initJitCompiler_)(JSRuntimeOptions);
