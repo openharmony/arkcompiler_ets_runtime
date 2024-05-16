@@ -36,7 +36,7 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
         // this branch save for require/dynamic import/old version sdk
         // load a relative pathName.
         // requestName: ./ || ./xxx/xxx.js || ../xxx/xxx.js || ./xxx/xxx
-        return MakeNewRecord(jsPandaFile, baseFileName, recordName, requestName);
+        return MakeNewRecord(thread, jsPandaFile, baseFileName, recordName, requestName);
     } else if (StringHelper::StringStartWith(requestName, PREFIX_ETS)) {
         CString entryPoint = TranslateExpressionInputWithEts(thread, jsPandaFile, baseFileName, requestName);
         if (entryPoint.empty()) {
@@ -374,7 +374,7 @@ CString ModulePathHelper::ParseNormalizedOhmUrl(JSThread *thread, CString &baseF
  * After:  entryPoint: pkg_modules/.ohpm/pkgName/pkg_modules/pkgName/xxx1/xxx2 || b
  *         baseFileName: /data/storage/el1/bundle/moduleName/ets/modules.abc || /home/user/src/a
  */
-CString ModulePathHelper::MakeNewRecord(const JSPandaFile *jsPandaFile, CString &baseFileName,
+CString ModulePathHelper::MakeNewRecord(JSThread *thread, const JSPandaFile *jsPandaFile, CString &baseFileName,
     const CString &recordName, const CString &requestName)
 {
     CString entryPoint;
@@ -400,6 +400,11 @@ CString ModulePathHelper::MakeNewRecord(const JSPandaFile *jsPandaFile, CString 
     entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
     if (!entryPoint.empty()) {
         return entryPoint;
+    }
+    // An exception is thrown when the module cannot be found in bundlePack mode.
+    if (StringHelper::StringStartWith(baseFileName, BUNDLE_INSTALL_PATH) && !jsPandaFile->IsBundlePack() &&
+        !jsPandaFile->HasRecord(entryPoint)) {
+        THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestName, recordName, entryPoint);
     }
     // Execute abc locally
     pos = baseFileName.rfind(PathHelper::SLASH_TAG);
