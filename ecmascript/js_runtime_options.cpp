@@ -178,7 +178,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-escape-analysis:     Enable tracing escape analysis for aot compiler. Default: 'false'\n"
     "--compiler-opt-induction-variable:    Enable induciton variable analysis for aot compiler. Default: 'false'\n"
     "--compiler-trace-induction-variable:  Enable tracing induction variable for aot compiler. Default: 'false'\n"
-    "--compiler-memory-analysis:           Enable memory analysis for aot compiler. Default: 'true'\n\n";
+    "--compiler-memory-analysis:           Enable memory analysis for aot compiler. Default: 'true'\n"
+    "--compiler-enable-jit-fast-compile:   Enable jit fast compile. Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -300,6 +301,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-baselinejit", required_argument, nullptr, OPTION_COMPILER_ENABLE_BASELINEJIT},
         {"compiler-baselinejit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD},
         {"compiler-force-baselinejit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN},
+        {"compiler-enable-jit-fast-compile", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1133,6 +1135,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetForceBaselineCompileMain(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableJitFastCompile(argBool);
                 } else {
                     return false;
                 }

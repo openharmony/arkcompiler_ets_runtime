@@ -62,7 +62,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
     profilerIn_ = std::string(runtimeOptions.GetPGOProfilerPath());
     isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();
-    isEnableTypeLowering_ = runtimeOptions.IsEnableTypeLowering();
+    isEnableTypeLowering_ = (runtimeOptions.IsEnableTypeLowering()) && (!runtimeOptions.IsEnableJitFastCompile());
     isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
