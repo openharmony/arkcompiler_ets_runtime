@@ -15,13 +15,10 @@
 
 #include "maple_phase_manager.h"
 #include "clone.h"
-#include "java_eh_lower.h"
 
-#define JAVALANG (mirModule.IsJavaModule())
 #define CLANG (mirModule.IsCModule())
 
 namespace maple {
 MAPLE_ANALYSIS_PHASE_REGISTER(M2MKlassHierarchy, classhierarchy)
-MAPLE_TRANSFORM_PHASE_REGISTER(M2MJavaEHLowerer, javaehlower)
 
 }  // namespace maple

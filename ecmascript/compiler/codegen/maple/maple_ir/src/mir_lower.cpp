@@ -713,7 +713,7 @@ BaseNode *MIRLower::LowerFarray(ArrayNode *array)
         const ConstvalNode *constvalNode = static_cast<const ConstvalNode *>(array->GetIndex(0));
         if (constvalNode->GetConstVal()->GetKind() == kConstInt) {
             const MIRIntConst *pIntConst = static_cast<const MIRIntConst *>(constvalNode->GetConstVal());
-            CHECK_FATAL(mirModule.IsJavaModule() || !pIntConst->IsNegative(), "Array index should >= 0.");
+            CHECK_FATAL(!pIntConst->IsNegative(), "Array index should >= 0.");
             int64 eleOffset = pIntConst->GetExtValue() * static_cast<int64>(eSize);
 
             BaseNode *baseNode = array->GetBase();
@@ -957,43 +957,8 @@ void MIRLower::AddArrayMrtMpl(BaseNode &exp, BlockNode &newBlock)
         auto &arrayNode = static_cast<ArrayNode &>(exp);
         if (arrayNode.GetBoundsCheck()) {
             BaseNode *arrAddr = arrayNode.Opnd(0);
-            BaseNode *index = arrayNode.Opnd(1);
-            DEBUG_ASSERT(index != nullptr, "null ptr check");
-            MIRType *indexType = GlobalTables::GetTypeTable().GetPrimType(index->GetPrimType());
             UnaryStmtNode *nullCheck = builder->CreateStmtUnary(OP_assertnonnull, arrAddr);
             newBlock.AddStatement(nullCheck);
-#if DO_LT_0_CHECK
-            ConstvalNode *indexZero = builder->GetConstUInt32(0);
-            CompareNode *lessZero =
-                builder->CreateExprCompare(OP_lt, *GlobalTables::GetTypeTable().GetUInt1(),
-                                           *GlobalTables::GetTypeTable().GetUInt32(), index, indexZero);
-#endif
-            MIRType *infoLenType = GlobalTables::GetTypeTable().GetInt32();
-            MapleVector<BaseNode *> arguments(builder->GetCurrentFuncCodeMpAllocator()->Adapter());
-            arguments.push_back(arrAddr);
-            BaseNode *arrLen =
-                builder->CreateExprIntrinsicop(INTRN_JAVA_ARRAY_LENGTH, OP_intrinsicop, *infoLenType, arguments);
-            BaseNode *cpmIndex = index;
-            if (arrLen->GetPrimType() != index->GetPrimType()) {
-                cpmIndex = builder->CreateExprTypeCvt(OP_cvt, *infoLenType, *indexType, index);
-            }
-            CompareNode *largeLen =
-                builder->CreateExprCompare(OP_ge, *GlobalTables::GetTypeTable().GetUInt1(),
-                                           *GlobalTables::GetTypeTable().GetUInt32(), cpmIndex, arrLen);
-            // maybe should use cior
-#if DO_LT_0_CHECK
-            BinaryNode *indexCon =
-                builder->CreateExprBinary(OP_lior, *GlobalTables::GetTypeTable().GetUInt1(), lessZero, largeLen);
-#endif
-            MapleVector<BaseNode *> args(builder->GetCurrentFuncCodeMpAllocator()->Adapter());
-#if DO_LT_0_CHECK
-            args.push_back(indexCon);
-            IntrinsiccallNode *boundaryTrinsicCall = builder->CreateStmtIntrinsicCall(INTRN_MPL_BOUNDARY_CHECK, args);
-#else
-            args.push_back(largeLen);
-            IntrinsiccallNode *boundaryTrinsicCall = builder->CreateStmtIntrinsicCall(INTRN_MPL_BOUNDARY_CHECK, args);
-#endif
-            newBlock.AddStatement(boundaryTrinsicCall);
         }
     }
 }

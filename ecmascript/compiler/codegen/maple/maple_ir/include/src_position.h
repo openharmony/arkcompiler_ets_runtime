@@ -143,7 +143,7 @@ private:
         } fileColumn;
         uint32 word0;
     } u;
-    uint32 lineNum;     // line number of original src file, like foo.java
+    uint32 lineNum;
     uint32 mplLineNum;  // line number of mpl file
 };
 }  // namespace maple

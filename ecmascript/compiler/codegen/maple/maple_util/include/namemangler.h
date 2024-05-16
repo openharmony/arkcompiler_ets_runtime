@@ -79,7 +79,6 @@ static constexpr const char kMuidSuperclassPrefixStr[] = "__muid_superclass";
 static constexpr const char kMuidGlobalRootlistPrefixStr[] = "__muid_globalrootlist";
 static constexpr const char kMuidClassMetadataPrefixStr[] = "__muid_classmetadata";
 static constexpr const char kMuidClassMetadataBucketPrefixStr[] = "__muid_classmetadata_bucket";
-static constexpr const char kMuidJavatextPrefixStr[] = "java_text";
 static constexpr const char kMuidDataSectionStr[] = "__data_section";
 static constexpr const char kMuidRangeTabPrefixStr[] = "__muid_range_tab";
 static constexpr const char kMuidConststrPrefixStr[] = "__muid_conststr";
@@ -135,15 +134,6 @@ static constexpr const char kFileNameSplitterStr[] = "$$";
 static constexpr const char kNameSplitterStr[] = "_7C";  // 7C is the ascii code for |
 static constexpr const char kRightBracketStr[] = "_29";  // 29 is the ascii code for )
 static constexpr const char kClassNameSplitterStr[] = "_3B_7C";
-static constexpr const char kJavaLangClassStr[] = "Ljava_2Flang_2FClass_3B";
-static constexpr const char kJavaLangObjectStr[] = "Ljava_2Flang_2FObject_3B";
-static constexpr const char kJavaLangClassloader[] = "Ljava_2Flang_2FClassLoader_3B";
-static constexpr const char kJavaLangObjectStrJVersion[] = "Ljava/lang/Object;";
-static constexpr const char kJavaLangStringStr[] = "Ljava_2Flang_2FString_3B";
-static constexpr const char kJavaLangExceptionStr[] = "Ljava_2Flang_2FException_3B";
-static constexpr const char kThrowClassStr[] = "Ljava_2Flang_2FThrowable_3B";
-static constexpr const char kReflectionClassesPrefixStr[] = "Ljava_2Flang_2Freflect_2F";
-static constexpr const char kReflectionClassMethodStr[] = "Ljava_2Flang_2Freflect_2FMethod_241_3B";
 static constexpr const char kClassMetadataTypeName[] = "__class_meta__";
 static constexpr const char kPtrPrefixStr[] = "_PTR";
 static constexpr const char kClassINfoPtrPrefixStr[] = "_PTR__cinf_";
@@ -190,18 +180,10 @@ static constexpr const char kBindingProtectedRegionStr[] = "__BindingProtectRegi
 static constexpr const char kClassNamePrefixStr[] = "L";
 static constexpr const char kClassMethodSplitterStr[] = "_3B";
 static constexpr const char kFuncGetCurrentCl[] = "MCC_GetCurrentClassLoader";
-// Serve as a global flag to indicate whether frequent strings have been compressed
-extern bool doCompression;
-
-// Return the input string if the compression is not on; otherwise, return its compressed version
-std::string GetInternalNameLiteral(std::string name);
-std::string GetOriginalNameLiteral(std::string name);
 
 std::string EncodeName(const std::string &name);
 std::string DecodeName(const std::string &name);
-void DecodeMapleNameToJavaDescriptor(const std::string &nameIn, std::string &nameOut);
-
-std::string NativeJavaName(const std::string &name, bool overLoaded = true);
+void DecodeMapleNameToJDescriptor(const std::string &nameIn, std::string &nameOut);
 
 __attribute__((visibility("default"))) unsigned UTF16ToUTF8(std::string &str, const std::u16string &str16,
                                                             unsigned short num = 0, bool isBigEndian = false);

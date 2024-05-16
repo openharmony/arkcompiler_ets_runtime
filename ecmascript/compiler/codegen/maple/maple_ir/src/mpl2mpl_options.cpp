@@ -176,13 +176,6 @@ maplecl::Option<bool> emitVtableImpl({"--emitVtableImpl"},
                                      "  --no-emitVtableImpl         \tDon't generate VtableImpl file\n",
                                      {mpl2mplCategory}, maplecl::DisableWith("--no-emitVtableImpl"));
 
-#if MIR_JAVA
-maplecl::Option<bool> skipvirtual({"--skipvirtual"},
-                                  "  --skipvirtual\n"
-                                  "  --no-skipvirtual\n",
-                                  {mpl2mplCategory}, maplecl::DisableWith("--no-skipvirtual"));
-#endif
-
 maplecl::Option<bool> userc({"--userc"},
                             "  --userc                     \tEnable reference counting [default]\n"
                             "  --no-userc                  \tDisable reference counting [default]\n",

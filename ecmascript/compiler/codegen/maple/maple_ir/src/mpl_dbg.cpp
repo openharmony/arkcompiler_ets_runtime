@@ -44,8 +44,6 @@ int main(int argc, char **argv)
         } else if (strncmp(argv[i], "-dumpfunc=", k10BitSize) == 0 && strlen(argv[i]) > k10BitSize) {
             std::string funcName(&argv[i][k10BitSize]);
             dumpFuncSet.insert(funcName);
-        } else if (strcmp(argv[i], "-srclang=java") == 0) {
-            srcLang = kSrcLangJava;
         } else if (strcmp(argv[i], "-srclang=c") == 0) {
             srcLang = kSrcLangC;
         } else if (strcmp(argv[i], "-srclang=c++") == 0) {

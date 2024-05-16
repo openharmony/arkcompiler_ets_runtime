@@ -19,8 +19,6 @@
 namespace maplebe {
 using namespace maple;
 
-#define JAVALANG (mirModule->IsJavaModule())
-
 uint32 VregInfo::virtualRegCount = kBaseVirtualRegNO;
 uint32 VregInfo::maxRegCount = 0;
 std::vector<VirtualRegNode> VregInfo::vRegTable;
@@ -261,8 +259,8 @@ static void AppendReferenceOffsets64(const BECommon &beCommon, MIRStructType &cu
             (fieldTypeKind == kTypeInterface)) {
             if (!CGOptions::IsQuiet()) {
                 LogInfo::MapleLogger() << "    ** ERROR: We are not expecting nested aggregate type. ";
-                LogInfo::MapleLogger() << "All Java classes are flat -- no nested structs. ";
-                LogInfo::MapleLogger() << "Please extend me if we are going to work with non-java languages.\n";
+                LogInfo::MapleLogger() << "All J classes are flat -- no nested structs. ";
+                LogInfo::MapleLogger() << "Please extend me if we are going to work with non-j languages.\n";
             }
         }
 
@@ -274,7 +272,6 @@ static void AppendReferenceOffsets64(const BECommon &beCommon, MIRStructType &cu
 std::vector<int64> CG::GetReferenceOffsets64(const BECommon &beCommon, MIRStructType &structType)
 {
     std::vector<int64> result;
-    /* java class layout has already been done in previous phase. */
     if (structType.GetKind() == kTypeClass) {
         for (auto fieldInfo : beCommon.GetJClassLayout(static_cast<MIRClassType &>(structType))) {
             if (fieldInfo.IsRef()) {

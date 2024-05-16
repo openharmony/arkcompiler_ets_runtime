@@ -53,13 +53,13 @@ public:
     }
 
 protected:
-    static constexpr uint64_t kObjectAlignment = 8; /* Word size. Suitable for all Java types. */
+    static constexpr uint64_t kObjectAlignment = 8;
 
 #ifdef USE_32BIT_REF
-    static constexpr uint32_t kRefFieldSize = 4; /* reference field in java object */
+    static constexpr uint32_t kRefFieldSize = 4;
     static constexpr uint32_t kRefFieldAlign = 4;
 #else
-    static constexpr uint32_t kRefFieldSize = 8; /* reference field in java object */
+    static constexpr uint32_t kRefFieldSize = 8;
     static constexpr uint32_t kRefFieldAlign = 8;
 #endif /* USE_32BIT_REF */
     /* The array length offset is fixed since CONTENT_OFFSET is fixed to simplify code */
@@ -71,7 +71,6 @@ private:
     RTSupport() {}
     static const std::string kObjectMapSectionName;
     static const std::string kGctibLabelArrayOfObject;
-    static const std::string kGctibLabelJavaObject;
 };
 } /* namespace maplebe */
 

@@ -93,11 +93,6 @@ public:
     explicit EHThrow(UnaryStmtNode &rtNode) : rethrow(&rtNode) {}
     ~EHThrow() = default;
 
-    bool IsUnderTry() const
-    {
-        return javaTry != nullptr;
-    }
-
     bool HasLSDA() const
     {
         return startLabel != nullptr;
@@ -106,11 +101,6 @@ public:
     const UnaryStmtNode *GetRethrow() const
     {
         return rethrow;
-    }
-
-    void SetJavaTry(EHTry *javaTry)
-    {
-        this->javaTry = javaTry;
     }
 
     LabelNode *GetStartLabel()
@@ -129,7 +119,6 @@ public:
 
 private:
     UnaryStmtNode *rethrow;          /* must be a throw stmt */
-    EHTry *javaTry = nullptr;        /* the try statement wrapping this throw */
     LabelNode *startLabel = nullptr; /* the label that "MCC_RethrowException" or "MCC_ThrowException" begin */
     LabelNode *endLabel = nullptr;   /* the label that "MCC_RethrowException" or "MCC_ThrowException" end */
 };
@@ -145,7 +134,6 @@ public:
     void CreateLSDA();
     bool NeedFullLSDA() const;
     bool NeedFastLSDA() const;
-    void InsertCxaAfterEachCatch(const std::vector<std::pair<LabelIdx, CatchNode *>> &catchVec);
     void GenerateCleanupLabel();
     void MergeCatchToTry(const std::vector<std::pair<LabelIdx, CatchNode *>> &catchVec);
     void BuildEHTypeTable(const std::vector<std::pair<LabelIdx, CatchNode *>> &catchVec);

@@ -539,7 +539,6 @@ void CGCFG::RemoveBB(BB &curBB, bool isGotoIf) const
     cgFunc->ClearBBInVec(curBB.GetId());
     /* remove callsite */
     EHFunc *ehFunc = cgFunc->GetEHFunc();
-    /* only java try has ehFunc->GetLSDACallSiteTable */
     if (ehFunc != nullptr && ehFunc->GetLSDACallSiteTable() != nullptr) {
         ehFunc->GetLSDACallSiteTable()->RemoveCallSite(curBB);
     }

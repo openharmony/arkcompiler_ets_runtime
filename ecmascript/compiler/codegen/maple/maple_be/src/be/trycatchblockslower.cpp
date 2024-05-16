@@ -134,7 +134,6 @@ void TryCatchBlocksLower::RecoverBasicBlock()
             if (stmt->GetOpCode() != OP_label && stmt->GetOpCode() != OP_try && stmt->GetOpCode() != OP_endtry) {
                 curBB->Extend(commentB, stmt);
             } else {
-                /* java catch blockes always start with a label (i.e., OP_catch) */
                 CHECK_FATAL(curBB->GetCondJumpBranch() == nullptr, "expect curBB's condJumpBranch is nullptr");
                 CHECK_FATAL(curBB->GetFallthruBranch() == nullptr, "expect curBB's fallthruBranch is nullptr");
                 /* a 'label' statement starts a new basic block */
@@ -540,10 +539,6 @@ void TryCatchBlocksLower::ProcessEnclosedBBBetweenTryEndTry()
         }
         labeledBBsInTry.emplace_back(lowerBB);
 
-        /*
-         * It seems the way a finally is associated with its try is to put the catch block inside
-         * the java-try-end-try block. So, keep the 'catch(void*)' in it.
-         */
         LabelIdx ebbLabel = lowerBB->GetLabelIdx();
         bool found = CheckAndProcessCatchNodeInCurrTryBlock(*lowerBB, ebbLabel, i);
         /* fill cur_bb_thread until meet the next catch */
@@ -835,13 +830,11 @@ void TryCatchBlocksLower::TraverseBBList()
                             "make sure the opcode of bb's lastStmt is not OP_try"
                             "or the opcode of bb's lastStmt is OP_try but bb's lastStmt equals firstNonCommentStmt"
                             "or not generate EHCode");
-                /* prepare for processing a java try block */
                 tryEndTryBlock.Reset(*bb);
             }
             continue;
         }
 
-        /* We should have not a try block enclosed in another java try block!! */
         CHECK_FATAL(!bb->IsTry(), "bb should not be try");
         if (!bb->IsEndTry()) {
             tryEndTryBlock.PushToEnclosedBBs(*bb);

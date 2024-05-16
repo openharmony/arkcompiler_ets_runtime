@@ -567,36 +567,6 @@ const char *GetPrimTypeName(PrimType primType)
     // SIMD types to be defined
 }
 
-const char *GetPrimTypeJavaName(PrimType primType)
-{
-    switch (primType) {
-        case PTY_u1:
-            return "Z";
-        case PTY_i8:
-            return "B";
-        case PTY_i16:
-            return "S";
-        case PTY_u16:
-            return "C";
-        case PTY_i32:
-            return "I";
-        case PTY_i64:
-            return "J";
-        case PTY_f32:
-            return "F";
-        case PTY_f64:
-            return "D";
-        case PTY_void:
-            return "V";
-        case PTY_constStr:
-            return kJstrTypeName.c_str();
-        case kPtyInvalid:
-            return "invalid";
-        default:
-            return "invalid";
-    }
-}
-
 void StmtAttrs::DumpAttributes() const
 {
 #define STMT_ATTR
@@ -672,7 +642,7 @@ bool MIRType::ValidateClassOrInterface(const std::string &className, bool noWarn
         if (len > minClassNameLen && strncmp(className.c_str() + len - suffixLen, suffix, suffixLen) == 0) {
             LogInfo::MapleLogger(kLlErr) << "error: missing proper mplt file for " << className << '\n';
         } else {
-            LogInfo::MapleLogger(kLlErr) << "internal error: type is not java class or interface " << className << '\n';
+            LogInfo::MapleLogger(kLlErr) << "internal error: type is not j class or interface " << className << '\n';
         }
     }
     return false;
@@ -693,9 +663,6 @@ std::string MIRType::GetMplTypeName() const
 
 std::string MIRType::GetCompactMplTypeName() const
 {
-    if (typeKind == kTypeScalar) {
-        return GetPrimTypeJavaName(primType);
-    }
     return "";
 }
 
@@ -935,39 +902,21 @@ std::string MIRFarrayType::GetCompactMplTypeName() const
     return ss.str();
 }
 
-const std::string &MIRJarrayType::GetJavaName()
-{
-    if (javaNameStrIdx == 0u) {
-        DetermineName();
-    }
-    return GlobalTables::GetStrTable().GetStringFromStrIdx(javaNameStrIdx);
-}
-
 MIRStructType *MIRJarrayType::GetParentType()
 {
-    if (parentTyIdx == 0u) {
-        GStrIdx jloStrIdx = GlobalTables::GetStrTable().GetStrIdxFromName(
-            namemangler::GetInternalNameLiteral(namemangler::kJavaLangObjectStr));
-        parentTyIdx = GlobalTables::GetTypeNameTable().GetTyIdxFromGStrIdx(jloStrIdx);
-        DEBUG_ASSERT((parentTyIdx != 0u), "cannot find type for java.lang.Object");
-    }
     return static_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(parentTyIdx));
 }
 
 void MIRJarrayType::DetermineName()
 {
-    if (javaNameStrIdx != 0u) {
+    if (jNameStrIdx != 0u) {
         return;  // already determined
     }
     MIRType *elemType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(GetElemTyIdx());
     dim = 1;
     std::string baseName;
     while (true) {
-        if (elemType->GetKind() == kTypeScalar) {
-            baseName = GetPrimTypeJavaName(elemType->GetPrimType());
-            fromPrimitive = true;
-            break;
-        } else if (elemType->GetKind() == kTypePointer) {
+        if (elemType->GetKind() == kTypePointer) {
             auto *pType = static_cast<MIRPtrType *>(elemType)->GetPointedType();
             DEBUG_ASSERT(pType != nullptr, "pType is null in MIRJarrayType::DetermineName");
             if (pType->GetKind() == kTypeByName || pType->GetKind() == kTypeClass ||
@@ -993,7 +942,7 @@ void MIRJarrayType::DetermineName()
         name += JARRAY_PREFIX_STR;
     }
     name += baseName;
-    javaNameStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(name);
+    jNameStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(name);
 }
 
 MIRType *MIRPtrType::GetPointedType() const
@@ -1016,9 +965,7 @@ bool MIRPtrType::HasTypeParam() const
 
 bool MIRPtrType::PointsToConstString() const
 {
-    GStrIdx typeNameIdx = GetPointedType()->GetNameStrIdx();
-    std::string typeName = GlobalTables::GetStrTable().GetStringFromStrIdx(typeNameIdx);
-    return typeName == "Ljava_2Flang_2FString_3B";
+    return false;
 }
 
 void MIRPtrType::Dump(int indent, bool dontUseName) const
@@ -1079,33 +1026,6 @@ FieldID MIRClassType::GetFirstLocalFieldID() const
         static_cast<const MIRClassType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(parentTyIdx));
     return !parentClassType->IsLocal() ? parentClassType->GetLastFieldID() + lastFieldIDOffset
                                        : parentClassType->GetFirstLocalFieldID() + firstLocalFieldIDOffset;
-}
-
-const MIRClassType *MIRClassType::GetExceptionRootType() const
-{
-    GStrIdx ehTypeNameIdx = GlobalTables::GetStrTable().GetStrIdxFromName(namemangler::kJavaLangObjectStr);
-    const MIRClassType *subClassType = this;
-    while (subClassType != nullptr && subClassType->nameStrIdx != ehTypeNameIdx) {
-        subClassType =
-            static_cast<const MIRClassType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(subClassType->parentTyIdx));
-    }
-    return subClassType;
-}
-
-MIRClassType *MIRClassType::GetExceptionRootType()
-{
-    return const_cast<MIRClassType *>(const_cast<const MIRClassType *>(this)->GetExceptionRootType());
-}
-
-bool MIRClassType::IsExceptionType() const
-{
-    GStrIdx ehTypeNameIdx = GlobalTables::GetStrTable().GetStrIdxFromName("Ljava_2Flang_2FThrowable_3B");
-    const MIRClassType *parentClassType = this;
-    while (parentClassType != nullptr && parentClassType->nameStrIdx != ehTypeNameIdx) {
-        parentClassType =
-            static_cast<MIRClassType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(parentClassType->parentTyIdx));
-    }
-    return parentClassType != nullptr;
 }
 
 FieldID MIRClassType::GetLastFieldID() const

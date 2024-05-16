@@ -133,7 +133,6 @@ public:
 private:
     void VerifyModule(MIRModule &module, VerifyResult &result) const;
     void DeferredCheckFinalClassAndMethod(VerifyResult &result) const;
-    bool IsLazyBindingOrDecouple(const KlassHierarchy &klassHierarchy) const;
     bool NeedRuntimeFinalCheck(const KlassHierarchy &klassHierarchy, const std::string &className) const;
     void CheckExtendFinalClass(VerifyResult &result) const;
 };

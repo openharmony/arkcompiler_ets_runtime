@@ -29,7 +29,6 @@
 namespace maplebe {
 using namespace maple;
 
-#define JAVALANG (GetMirModule().IsJavaModule())
 // deal mem read/write node base info
 void MemRWNodeHelper::GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mirFunc)
 {
@@ -712,14 +711,6 @@ Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
         case INTRN_MPL_READ_OVTABLE_ENTRY_LAZY: {
             Operand *srcOpnd = cgFunc.HandleExpr(intrinsicopNode, *intrinsicopNode.Opnd(0));
             return cgFunc.SelectLazyLoad(*srcOpnd, intrinsicopNode.GetPrimType());
-        }
-        case INTRN_MPL_READ_STATIC_OFFSET_TAB: {
-            auto addrOfNode = static_cast<AddrofNode *>(intrinsicopNode.Opnd(0));
-            MIRSymbol *st = cgFunc.GetMirModule().CurFunction()->GetLocalOrGlobalSymbol(addrOfNode->GetStIdx());
-            auto constNode = static_cast<ConstvalNode *>(intrinsicopNode.Opnd(1));
-            CHECK_FATAL(constNode != nullptr, "null ptr check");
-            auto mirIntConst = static_cast<MIRIntConst *>(constNode->GetConstVal());
-            return cgFunc.SelectLazyLoadStatic(*st, mirIntConst->GetExtValue(), intrinsicopNode.GetPrimType());
         }
         case INTRN_MPL_READ_ARRAYCLASS_CACHE_ENTRY: {
             auto addrOfNode = static_cast<AddrofNode *>(intrinsicopNode.Opnd(0));
@@ -1775,9 +1766,6 @@ StmtNode *CGFunc::HandleFirstStmt()
     }
     curBB = StartNewBBImpl(false, *stmt);
     curBB->SetFrequency(frequency);
-    if (JAVALANG) {
-        HandleRCCall(true);
-    }
     return stmt;
 }
 
@@ -2111,20 +2099,6 @@ void CGFunc::GenerateCfiPrologEpilog()
         firstBB->AppendInsn(ipoint);
     }
 
-#if !defined(TARGARM32)
-    /*
-     * always generate ".cfi_personality 155, DW.ref.__mpl_personality_v0" for Java methods.
-     * we depend on this to tell whether it is a java method.
-     */
-    if (mirModule.IsJavaModule() && func.IsJava()) {
-        Insn &personality = GetInsnBuilder()
-                                ->BuildCfiInsn(cfi::OP_CFI_personality_symbol)
-                                .AddOpndChain(CreateCfiImmOperand(EHFunc::kTypeEncoding, k8BitSize))
-                                .AddOpndChain(CreateCfiStrOperand("DW.ref.__mpl_personality_v0"));
-        firstBB->InsertInsnAfter(ipoint, personality);
-    }
-#endif
-
     /* epilog */
     lastBB->AppendInsn(GetInsnBuilder()->BuildCfiInsn(cfi::OP_CFI_endproc));
 }
@@ -2312,15 +2286,10 @@ void CGFunc::HandleFunction()
     if (!func.GetModule()->IsCModule() || CGOptions::DoRetMerge() || CGOptions::OptimizeForSize()) {
         MergeReturn();
     }
-    if (func.IsJava()) {
-        DEBUG_ASSERT(exitBBVec.size() <= 1, "there are more than one BB_return in func");
-    }
     ProcessExitBBVec();
     LmbcGenSaveSpForAlloca();
 
-    if (func.IsJava()) {
-        GenerateCleanupCodeForExtEpilog(*cleanupBB);
-    } else if (!func.GetModule()->IsCModule()) {
+    if (!func.GetModule()->IsCModule()) {
         GenerateCleanupCode(*cleanupBB);
     }
     GenSaveMethodInfoCode(*firstBB);

@@ -166,7 +166,6 @@ private:
     void OutputCallInfo(CallInfo &callInfo);
     void WriteContentField4mplt(int fieldNum, uint64 *fieldStartP);
     void WriteContentField4nonmplt(int fieldNum, uint64 *fieldStartP);
-    void WriteContentField4nonJava(int fieldNum, uint64 *fieldStartP);
     void WriteStrField(uint64 contentIdx);
     void WriteHeaderField(uint64 contentIdx);
     void WriteTypeField(uint64 contentIdx, bool useClassList = true);

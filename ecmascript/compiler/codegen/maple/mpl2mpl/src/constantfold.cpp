@@ -2596,18 +2596,8 @@ StmtNode *ConstantFold::SimplifyIf(IfStmtNode *node)
     returnValue = Fold(node->Opnd());
     if (returnValue != nullptr) {
         node->SetOpnd(returnValue, 0);
-        ConstvalNode *cst = safe_cast<ConstvalNode>(node->Opnd());
         // do not delete c/c++ dead if-body here
-        if (cst == nullptr || (!mirModule->IsJavaModule())) {
-            return node;
-        }
-        MIRIntConst *intConst = safe_cast<MIRIntConst>(cst->GetConstVal());
-        ASSERT_NOT_NULL(intConst);
-        if (intConst->GetValue() == 0) {
-            return node->GetElsePart();
-        } else {
-            return node->GetThenPart();
-        }
+        return node;
     }
     return node;
 }
@@ -2625,18 +2615,8 @@ StmtNode *ConstantFold::SimplifyWhile(WhileStmtNode *node)
     returnValue = Fold(node->Opnd(0));
     if (returnValue != nullptr) {
         node->SetOpnd(returnValue, 0);
-        ConstvalNode *cst = safe_cast<ConstvalNode>(node->Opnd(0));
         // do not delete c/c++ dead while-body here
-        if (cst == nullptr || (!mirModule->IsJavaModule())) {
-            return node;
-        }
-        if (cst->GetConstVal()->IsZero()) {
-            if (node->GetOpCode() == OP_while) {
-                return nullptr;
-            } else {
-                return node->GetBody();
-            }
-        }
+        return node;
     }
     return node;
 }

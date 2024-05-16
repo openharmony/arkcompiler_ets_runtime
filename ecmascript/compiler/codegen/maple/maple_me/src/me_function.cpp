@@ -39,15 +39,6 @@ void MeFunction::PartialInit()
     hasEH = false;
     ConstantFold cf(mirModule);
     (void)cf.Simplify(mirFunc->GetBody());
-    if (mirModule.IsJavaModule() && (!mirFunc->GetInfoVector().empty())) {
-        std::string string("INFO_registers");
-        GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(string);
-        regNum = mirFunc->GetInfo(strIdx);
-        std::string tryNum("INFO_tries_size");
-        strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(tryNum);
-        uint32 num = mirFunc->GetInfo(strIdx);
-        hasEH = (num != 0);
-    }
 }
 
 void MeFunction::Release()

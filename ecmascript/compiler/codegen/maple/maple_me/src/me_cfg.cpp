@@ -38,46 +38,6 @@ namespace maple {
             return false;                                                \
         }                                                                \
     } while (0)  // END define
-// determine if need to be replaced by assertnonnull
-bool MeCFG::IfReplaceWithAssertNonNull(const BB &bb) const
-{
-    const StmtNode *stmt = bb.GetStmtNodes().begin().d();
-    constexpr const char npeTypeName[] = "Ljava_2Flang_2FNullPointerException_3B";
-    GStrIdx npeGStrIdx = GlobalTables::GetStrTable().GetStrIdxFromName(npeTypeName);
-    TyIdx npeTypeIdx = func.GetMIRModule().GetTypeNameTab()->GetTyIdxFromGStrIdx(npeGStrIdx);
-    // match first stmt
-    MATCH_STMT(stmt, OP_intrinsiccallwithtype);
-
-    auto *cNode = static_cast<const IntrinsiccallNode *>(stmt);
-    if (cNode->GetTyIdx() != npeTypeIdx) {
-        return false;
-    }
-    stmt = stmt->GetNext();
-    // match second stmt
-    MATCH_STMT(stmt, OP_dassign);
-
-    auto *dassignNode = static_cast<const DassignNode *>(stmt);
-    if (dassignNode->GetRHS()->GetOpCode() != OP_gcmalloc) {
-        return false;
-    }
-    auto *gcMallocNode = static_cast<GCMallocNode *>(dassignNode->GetRHS());
-    if (gcMallocNode->GetTyIdx() != npeTypeIdx) {
-        return false;
-    }
-    stmt = stmt->GetNext();
-    // match third stmt
-    MATCH_STMT(stmt, OP_callassigned);
-
-    auto *callNode = static_cast<const CallNode *>(stmt);
-    if (GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode->GetPUIdx())->GetName() !=
-        "Ljava_2Flang_2FNullPointerException_3B_7C_3Cinit_3E_7C_28_29V") {
-        return false;
-    }
-    stmt = stmt->GetNext();
-    MATCH_STMT(stmt, OP_throw);
-
-    return true;
-}
 
 bool MeCFG::FindExprUse(const BaseNode &expr, StIdx stIdx) const
 {
@@ -432,7 +392,6 @@ void MeCFG::CreateBasicBlocks()
         return;
     }
     // create common_entry/exit bb first as bbVec[0] and bb_vec[1]
-    bool isJavaModule = func.GetMIRModule().IsJavaModule();
     auto *commonEntryBB = NewBasicBlock();
     commonEntryBB->SetAttributes(kBBAttrIsEntry);
     auto *commonExitBB = NewBasicBlock();
@@ -486,18 +445,6 @@ void MeCFG::CreateBasicBlocks()
                 }
                 if (curBB->IsEmpty()) {
                     curBB->SetFirst(stmt);
-                }
-                if (isJavaModule && dass->GetRHS()->MayThrowException()) {
-                    stmt->SetOpCode(OP_maydassign);
-                    if (tryStmt != nullptr) {
-                        // breaks new BB only inside try blocks
-                        curBB->SetLast(stmt);
-                        curBB->SetKind(kBBFallthru);
-                        BB *newBB = NewBasicBlock();
-                        SetTryBlockInfo(nextStmt, tryStmt, lastTryBB, curBB, newBB);
-                        curBB = newBB;
-                        break;
-                    }
                 }
                 if ((nextStmt == nullptr) && to_ptr(curBB->GetStmtNodes().rbegin()) == nullptr) {
                     curBB->SetLast(stmt);
@@ -563,41 +510,11 @@ void MeCFG::CreateBasicBlocks()
                 break;
             }
             case OP_endtry:
-                if (isJavaModule) {
-                    if (tryStmt == nullptr) {
-                        break;
-                    }
-                    /* skip OP_entry and generate it in emit phase */
-                    DEBUG_ASSERT(lastTryBB != nullptr, "null ptr check");
-                    tryStmt = nullptr;  // reset intryblocks
-                    if (!curBB->IsEmpty()) {
-                        StmtNode *lastStmt = stmt->GetPrev();
-                        DEBUG_ASSERT(curBB->GetStmtNodes().rbegin().base().d() == nullptr ||
-                                         curBB->GetStmtNodes().rbegin().base().d() == lastStmt,
-                                     "something wrong building BB");
-                        curBB->SetLast(lastStmt);
-                        if (curBB->GetKind() == kBBUnknown) {
-                            curBB->SetKind(kBBFallthru);
-                        }
-                        curBB->SetAttributes(kBBAttrIsTryEnd);
-                        SetBBTryBBMap(curBB, lastTryBB);
-                        curBB = NewBasicBlock();
-                    } else if (curBB->GetBBLabel() != 0) {
-                        // create the empty BB
-                        curBB->SetKind(kBBFallthru);
-                        curBB->SetAttributes(kBBAttrIsTryEnd);
-                        SetBBTryBBMap(curBB, lastTryBB);
-                        curBB = NewBasicBlock();
-                    } else {
-                    }  // endtry has already been processed in SetTryBlockInfo()
-                    lastTryBB = nullptr;
-                } else {
-                    if (curBB->IsEmpty()) {
-                        curBB->SetFirst(stmt);
-                    }
-                    if ((nextStmt == nullptr) && (curBB->GetStmtNodes().rbegin().base().d() == nullptr)) {
-                        curBB->SetLast(stmt);
-                    }
+                if (curBB->IsEmpty()) {
+                    curBB->SetFirst(stmt);
+                }
+                if ((nextStmt == nullptr) && (curBB->GetStmtNodes().rbegin().base().d() == nullptr)) {
+                    curBB->SetLast(stmt);
                 }
                 break;
             case OP_try: {
@@ -651,25 +568,6 @@ void MeCFG::CreateBasicBlocks()
                 }
                 curBB->SetFirst(stmt);
                 curBB->SetAttributes(kBBAttrIsCatch);
-                auto *catchNode = static_cast<CatchNode *>(stmt);
-                const MapleVector<TyIdx> &exceptionTyIdxVec = catchNode->GetExceptionTyIdxVec();
-
-                for (TyIdx exceptIdx : exceptionTyIdxVec) {
-                    MIRType *eType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(exceptIdx);
-                    DEBUG_ASSERT(eType != nullptr &&
-                                     (eType->GetPrimType() == PTY_ptr || eType->GetPrimType() == PTY_ref),
-                                 "wrong exception type");
-                    auto *exceptType = static_cast<MIRPtrType *>(eType);
-                    MIRType *pointType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(exceptType->GetPointedTyIdx());
-                    const std::string &eName =
-                        GlobalTables::GetStrTable().GetStringFromStrIdx(pointType->GetNameStrIdx());
-                    if ((pointType->GetPrimType() == PTY_void) || (eName == "Ljava/lang/Throwable;") ||
-                        (eName == "Ljava/lang/Exception;")) {
-                        // "Ljava/lang/Exception;" is risk to set isJavaFinally because it
-                        // only deal with "throw exception". if throw error,  it's wrong
-                        curBB->SetAttributes(kBBAttrIsJavaFinally);  // this is a start of finally handler
-                    }
-                }
                 break;
             }
             case OP_label: {
@@ -686,20 +584,7 @@ void MeCFG::CreateBasicBlocks()
                                   curBB->GetStmtNodes().rbegin().base().d() == lastStmt),
                                  "something wrong building BB");
                     if (curBB->GetStmtNodes().rbegin().base().d() == nullptr && (lastStmt->GetOpCode() != OP_label)) {
-                        if (isJavaModule && lastStmt->GetOpCode() == OP_endtry) {
-                            if (curBB->GetStmtNodes().empty()) {
-                                curBB->SetLast(nullptr);
-                            } else {
-                                // find a valid stmt which is not label or endtry
-                                StmtNode *p = lastStmt->GetPrev();
-                                DEBUG_ASSERT(p != nullptr, "null ptr check");
-                                DEBUG_ASSERT(p->GetOpCode() != OP_label, "runtime check error");
-                                DEBUG_ASSERT(p->GetOpCode() != OP_endtry, "runtime check error");
-                                curBB->SetLast(p);
-                            }
-                        } else {
-                            curBB->SetLast(lastStmt);
-                        }
+                        curBB->SetLast(lastStmt);
                     }
                     if (curBB->GetKind() == kBBUnknown) {
                         curBB->SetKind(kBBFallthru);

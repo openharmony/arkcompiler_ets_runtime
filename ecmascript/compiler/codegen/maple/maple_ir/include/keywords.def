@@ -40,8 +40,6 @@
   KEYWORD(class)
   KEYWORD(classincomplete)
   KEYWORD(interfaceincomplete)
-  KEYWORD(javaclass)
-  KEYWORD(javainterface)
   // type attribute keywords
 #define FUNC_ATTR
 #define TYPE_ATTR

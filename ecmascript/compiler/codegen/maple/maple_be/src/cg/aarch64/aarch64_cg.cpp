@@ -241,13 +241,10 @@ void AArch64CG::FindOrCreateRepresentiveSym(std::vector<uint64> &bitmapWords, ui
     GCTIBKey *key = memPool->New<GCTIBKey>(allocator, rcHeader, bitmapWords);
     const std::string &gcTIBName = GCTIB_PREFIX_STR + name;
     MapleUnorderedMap<GCTIBKey *, GCTIBPattern *, Hasher, EqualFn>::const_iterator iter = keyPatternMap.find(key);
-    if (iter == keyPatternMap.end() || gcTIBName.compare("MCC_GCTIB__Ljava_2Flang_2FObject_3B") == 0) {
+    if (iter == keyPatternMap.end()) {
         /* Emit the GCTIB label for the class */
         GCTIBPattern *ptn = memPool->New<GCTIBPattern>(*key, *memPool);
 
-        if (gcTIBName.compare("MCC_GCTIB__Ljava_2Flang_2FObject_3B") == 0) {
-            ptn->SetName("MCC_GCTIB__Ljava_2Flang_2FObject_3B");
-        }
         (void)keyPatternMap.insert(std::make_pair(key, ptn));
         (void)symbolPatternMap.insert(std::make_pair(gcTIBName, ptn));
 
@@ -255,7 +252,7 @@ void AArch64CG::FindOrCreateRepresentiveSym(std::vector<uint64> &bitmapWords, ui
         std::string ptnString = "\t.type " + ptn->GetName() + ", %object\n" + "\t.data\n" + "\t.align 3\n";
 
         MIRSymbol *gcTIBSymbol = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(
-            GlobalTables::GetStrTable().GetStrIdxFromName(namemangler::GetInternalNameLiteral(gcTIBName)));
+            GlobalTables::GetStrTable().GetStrIdxFromName(gcTIBName));
         if (gcTIBSymbol != nullptr && gcTIBSymbol->GetStorageClass() == kScFstatic) {
             ptnString += "\t.local ";
         } else {

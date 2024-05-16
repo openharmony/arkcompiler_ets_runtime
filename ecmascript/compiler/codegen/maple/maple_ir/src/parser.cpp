@@ -278,7 +278,7 @@ bool MIRParser::ParseFarrayType(TyIdx &arrayTyIdx)
         return false;
     }
     DEBUG_ASSERT(tyIdx != 0u, "error encountered parsing flexible array element type ");
-    if (mod.IsJavaModule() || mod.IsCharModule()) {
+    if (mod.IsCharModule()) {
         MIRJarrayType jarrayType(tyIdx);
         arrayTyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&jarrayType);
     } else {
@@ -1311,7 +1311,7 @@ bool MIRParser::ParsePointType(TyIdx &tyIdx)
         return false;
     }
     DEBUG_ASSERT(pointTypeIdx != 0u, "something wrong with parsing element type ");
-    PrimType pty = mod.IsJavaModule() ? PTY_ref : GetExactPtrPrimType();
+    PrimType pty = GetExactPtrPrimType();
     if (pdtk == maple::TK_constStr) {
         pty = GetExactPtrPrimType();
     }
@@ -1704,53 +1704,6 @@ bool MIRParser::ParseTypedef()
         if (prevTyIdx == 0u) {
             GlobalTables::GetTypeNameTable().SetGStrIdxToTyIdx(strIdx, tyIdx);
         }
-        // setup eh root type
-        MIRType *ehType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-        if (mod.GetThrowableTyIdx() == 0u &&
-            (ehType->GetKind() == kTypeClass || ehType->GetKind() == kTypeClassIncomplete)) {
-            GStrIdx ehTypeNameIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(
-                namemangler::GetInternalNameLiteral(namemangler::kJavaLangObjectStr));
-            if (ehTypeNameIdx == ehType->GetNameStrIdx()) {
-                mod.SetThrowableTyIdx(tyIdx);
-            }
-        }
-    }
-    return true;
-}
-
-bool MIRParser::ParseJavaClassInterface(MIRSymbol &symbol, bool isClass)
-{
-    TokenKind tk = lexer.NextToken();
-    if (tk != TK_gname) {
-        Error("expect global name for javaclass but get ");
-        return false;
-    }
-    symbol.SetNameStrIdx(lexer.GetName());
-    if (!GlobalTables::GetGsymTable().AddToStringSymbolMap(symbol)) {
-        Error("duplicate symbol name used in javainterface at ");
-        return false;
-    }
-    lexer.NextToken();
-    TyIdx tyidx(0);
-    if (!ParseType(tyidx)) {
-        Error("ParseType failed trying parsing the type");
-        return false;
-    }
-    MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyidx);
-    if (isClass && type->GetKind() != kTypeClass && type->GetKind() != kTypeClassIncomplete) {
-        Error("type in javaclass declaration must be of class type at ");
-        return false;
-    } else if (!isClass && type->GetKind() != kTypeInterface && type->GetKind() != kTypeInterfaceIncomplete) {
-        Error("type in javainterface declaration must be of interface type at ");
-        return false;
-    }
-    symbol.SetTyIdx(tyidx);
-    if (!ParseTypeAttrs(symbol.GetAttrs())) {
-        Error("bad type attribute in variable declaration at ");
-        return false;
-    }
-    if (GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyidx)->HasTypeParam()) {
-        symbol.SetAttr(ATTR_generic);
     }
     return true;
 }
@@ -2148,9 +2101,6 @@ bool MIRParser::ParseFunction(uint32 fileIdx)
     }
     func->SetFileIndex(fileIdx);
     curFunc = func;
-    if (mod.IsJavaModule()) {
-        func->SetBaseClassFuncNames(funcSymbol->GetNameStrIdx());
-    }
     TyIdx funcTyidx;
     if (!ParsePrototype(*func, *funcSymbol, funcTyidx)) {
         return false;
@@ -2775,8 +2725,6 @@ std::map<TokenKind, MIRParser::FuncPtrParseMIRForElem> MIRParser::InitFuncPtrMap
     funcPtrMap[TK_func] = &MIRParser::ParseMIRForFunc;
     funcPtrMap[TK_tempvar] = &MIRParser::ParseMIRForVar;
     funcPtrMap[TK_var] = &MIRParser::ParseMIRForVar;
-    funcPtrMap[TK_javaclass] = &MIRParser::ParseMIRForClass;
-    funcPtrMap[TK_javainterface] = &MIRParser::ParseMIRForInterface;
     funcPtrMap[TK_type] = &MIRParser::ParseTypedef;
     funcPtrMap[TK_flavor] = &MIRParser::ParseMIRForFlavor;
     funcPtrMap[TK_srclang] = &MIRParser::ParseMIRForSrcLang;
@@ -2944,24 +2892,6 @@ bool MIRParser::ParseMIRForVar()
         mod.CurFunction()->ReleaseCodeMemory();
     }
     return true;
-}
-
-bool MIRParser::ParseMIRForClass()
-{
-    MIRSymbol *st = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
-    DEBUG_ASSERT(st != nullptr, "st nullptr check");
-    st->SetStorageClass(kScInvalid);
-    st->SetSKind(kStJavaClass);
-    return ParseJavaClassInterface(*st, true);
-}
-
-bool MIRParser::ParseMIRForInterface()
-{
-    MIRSymbol *st = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
-    DEBUG_ASSERT(st != nullptr, "st nullptr check");
-    st->SetStorageClass(kScInvalid);
-    st->SetSKind(kStJavaInterface);
-    return ParseJavaClassInterface(*st, false);
 }
 
 bool MIRParser::ParseMIRForFlavor()

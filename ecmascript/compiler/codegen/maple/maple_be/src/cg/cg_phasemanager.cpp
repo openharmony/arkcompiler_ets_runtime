@@ -41,7 +41,6 @@
 #include "triple.h"
 
 namespace maplebe {
-#define JAVALANG (module.IsJavaModule())
 #define CLANG (module.GetSrcLang() == kSrcLangC)
 
 #define RELEASE(pointer)            \
@@ -406,7 +405,6 @@ void CgFuncPM::DumpFuncCGIR(const CGFunc &f, const std::string &phaseName) const
 void CgFuncPM::EmitGlobalInfo(MIRModule &m) const
 {
     EmitDuplicatedAsmFunc(m);
-    EmitFastFuncs(m);
     if (cgOptions->IsGenerateObjectMap()) {
         cg->GenerateObjectMaps(*beCommon);
     }
@@ -494,9 +492,6 @@ void CgFuncPM::PrepareLower(MIRModule &m)
     cgLower =
         GetManagerMemPool()->New<CGLowerer>(m, *beCommon, cg->GenerateExceptionHandlingCode(), cg->GenerateVerboseCG());
     cgLower->RegisterBuiltIns();
-    if (m.IsJavaModule()) {
-        cgLower->InitArrayClassCacheTableIndex();
-    }
     cgLower->RegisterExternalLibraryFunctions();
     cgLower->SetCheckLoadStore(CGOptions::IsCheckArrayStore());
     if (cg->IsStackProtectorStrong() || cg->IsStackProtectorAll() || m.HasPartO2List()) {
@@ -556,29 +551,6 @@ void CgFuncPM::EmitDuplicatedAsmFunc(MIRModule &m) const
         (void)cg->GetEmitter()->Emit(contend + "\n");
     }
     duplicateAsmFileFD.close();
-}
-
-void CgFuncPM::EmitFastFuncs(const MIRModule &m) const
-{
-    if (CGOptions::IsFastFuncsAsmFileEmpty() || !(m.IsJavaModule())) {
-        return;
-    }
-
-    struct stat buffer;
-    if (stat(CGOptions::GetFastFuncsAsmFile().c_str(), &buffer) != 0) {
-        return;
-    }
-
-    std::ifstream fastFuncsAsmFileFD(CGOptions::GetFastFuncsAsmFile());
-    if (fastFuncsAsmFileFD.is_open()) {
-        std::string contend;
-        (void)cg->GetEmitter()->Emit("#define ENABLE_LOCAL_FAST_FUNCS 1\n");
-
-        while (getline(fastFuncsAsmFileFD, contend)) {
-            (void)cg->GetEmitter()->Emit(contend + "\n");
-        }
-    }
-    fastFuncsAsmFileFD.close();
 }
 
 void CgFuncPM::EmitDebugInfo(const MIRModule &m) const

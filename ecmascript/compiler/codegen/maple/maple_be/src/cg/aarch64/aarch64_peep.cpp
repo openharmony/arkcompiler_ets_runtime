@@ -24,7 +24,6 @@
 #include "aarch64_mem_reference.h"
 
 namespace maplebe {
-#define JAVALANG (cgFunc->GetMirModule().IsJavaModule())
 #define CG_PEEP_DUMP CG_DEBUG_FUNC(*cgFunc)
 namespace {
 const std::string kMccLoadRef = "MCC_LoadRefField";
@@ -2989,12 +2988,6 @@ void AArch64CGPeepHole::DoNormalOptimize(BB &bb, Insn &insn)
             break;
         }
         case MOP_xbl: {
-            if (JAVALANG) {
-                manager->NormalPatternOpt<RemoveIncRefPattern>(!cgFunc->IsAfterRegAlloc());
-                manager->NormalPatternOpt<RemoveDecRefPattern>(!cgFunc->IsAfterRegAlloc());
-                manager->NormalPatternOpt<ReplaceIncDecWithIncPattern>(!cgFunc->IsAfterRegAlloc());
-                manager->NormalPatternOpt<RemoveIncDecRefPattern>(cgFunc->IsAfterRegAlloc());
-            }
             if (CGOptions::IsGCOnly() && CGOptions::DoWriteRefFieldOpt()) {
                 manager->NormalPatternOpt<WriteFieldCallPattern>(!cgFunc->IsAfterRegAlloc());
             }
