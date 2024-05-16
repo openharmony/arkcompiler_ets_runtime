@@ -22,6 +22,7 @@
 #include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/dfx/dump_code/jit_dump_elf.h"
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/zip_file.h"
 #endif
@@ -75,6 +76,22 @@ struct JsFrameDebugInfo {
     std::string filePath;
     JsFrameDebugInfo(EntityId methodId, uint32_t offset, std::string &hapPath, std::string &filePath)
         : methodId(methodId), offset(offset), hapPath(hapPath), filePath(filePath) {}
+};
+
+struct ArkUnwindParam {
+    void *ctx;
+    ReadMemFunc readMem;
+    uintptr_t *fp;
+    uintptr_t *sp;
+    uintptr_t *pc;
+    uintptr_t *methodId;
+    bool *isJsFrame;
+    uintptr_t *jitCache;
+    size_t *jitSize;
+    ArkUnwindParam(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, uintptr_t *methodId,
+                   bool *isJsFrame, uintptr_t *jitCache, size_t *jitSize)
+        : ctx(ctx), readMem(readMem), fp(fp), sp(sp), pc(pc), methodId(methodId),
+          isJsFrame(isJsFrame), jitCache(jitCache), jitSize(jitSize) {}
 };
 
 struct JsFrame {
@@ -146,6 +163,7 @@ public:
     static AOTFileManager *loader;
     static JSRuntimeOptions *options;
     static void BuildCrashInfo(bool isJsCrash, uintptr_t pc = 0);
+    static std::unordered_map<EntityId, std::string> nameMap;
 };
 void CrashCallback(char *buf, size_t len, void *ucontext);
 uint64_t GetMicrosecondsTimeStamp();
@@ -160,6 +178,10 @@ extern "C" int ark_parse_js_frame_info(
     uint64_t dataSize, uintptr_t extractorptr, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int ark_translate_js_frame_info(
     uint8_t *data, size_t dataSize, panda::ecmascript::JsFunction *jsFunction);
+extern "C" int step_ark_with_record_jit(panda::ecmascript::ArkUnwindParam *arkUnwindParam);
+extern "C" int ark_write_jit_code(
+    void *ctx, panda::ecmascript::ReadMemFunc readMem, int fd, const uintptr_t *const jitCodeArray,
+    const size_t jitSize);
 extern "C" int step_ark(
     void *ctx, panda::ecmascript::ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp,
     uintptr_t *pc, uintptr_t *methodId, bool *isJsFrame);

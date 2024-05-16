@@ -649,6 +649,7 @@ ecma_source = [
   "ecmascript/debugger/js_debugger_manager.cpp",
   "ecmascript/deoptimizer/calleeReg.cpp",
   "ecmascript/deoptimizer/deoptimizer.cpp",
+  "ecmascript/dfx/dump_code/jit_dump_elf.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
   "ecmascript/dfx/vmstat/function_call_timer.cpp",

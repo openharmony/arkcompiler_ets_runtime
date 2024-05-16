@@ -37,6 +37,9 @@ namespace panda::ecmascript {
 
 const int USEC_PER_SEC = 1000 * 1000;
 const int NSEC_PER_USEC = 1000;
+
+std::unordered_map<EntityId, std::string> JsStackInfo::nameMap;
+
 std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
 {
     std::string data;
@@ -525,6 +528,16 @@ std::optional<CodeInfo> JSStackTrace::TranslateByteCodePc(uintptr_t realPc, cons
     return std::nullopt;
 }
 
+void SaveFuncName(EntityId entityId, const std::string &name)
+{
+    size_t length = 256; // maximum stack length
+    if (JsStackInfo::nameMap.size() > length) {
+        auto it = JsStackInfo::nameMap.begin();
+        JsStackInfo::nameMap.erase(it);
+    }
+    JsStackInfo::nameMap.emplace(entityId, name);
+}
+
 template<typename T>
 void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtractor,
                       EntityId methodId, uintptr_t offset, T &jsFrame, SourceMap *sourceMap = nullptr)
@@ -535,6 +548,7 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
     }
     std::string name = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
     name = name.empty() ? "anonymous" : name;
+    SaveFuncName(methodId, name);
     std::string url = debugExtractor->GetSourceFile(methodId);
 
     // line number and column number
@@ -806,6 +820,106 @@ bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr,
         return true;
     }
     return ArkGetNextFrame(ctx, readMem, currentPtr, frameType, pc, methodId);
+}
+
+bool ArkWriteJitCode(void *ctx, ReadMemFunc readMem, int fd, const uintptr_t *const jitCodeArray,
+                     const size_t jitSize)
+{
+    JsJitDumpElf jitDumpElf;
+    jitDumpElf.Init();
+    int64 idx = 0;
+    if (jitSize == 0) {
+        for (size_t i = 0; i < jitSize; i++) {
+            uintptr_t functionAddr = jitCodeArray[i];
+            uintptr_t machineCode = 0;
+            readMem(ctx, functionAddr + JSFunction::MACHINECODE_OFFSET, &machineCode);
+            if (!machineCode) {
+                continue;
+            }
+            uintptr_t method = ArkCheckAndGetMethod(ctx, readMem, functionAddr);
+            if (!method) {
+                LOG_ECMA(DEBUG) << std::hex << "Failed to get method: " << functionAddr;
+                continue;
+            }
+            uintptr_t methodId = 0;
+            if (!ArkGetMethodIdFromMethod(ctx, readMem, method, methodId)) {
+                LOG_ECMA(DEBUG) << std::hex << "ArkGetJsFrameDebugInfo failed, method: " << method;
+                continue;
+            }
+            std::string name = JsStackInfo::nameMap[EntityId(methodId)];
+            uintptr_t size = 0;
+            readMem(ctx, machineCode + MachineCode::INSTRSIZ_OFFSET, &size);
+            if (!size) {
+                continue;
+            }
+            size_t len = *reinterpret_cast<size_t*>(size);
+            uintptr_t funcAddr = 0;
+            readMem(ctx, machineCode + MachineCode::FUNCADDR_OFFSET, &funcAddr);
+            if (!funcAddr) {
+                continue;
+            }
+            std::vector<uint8> codeVec;
+            for (size_t l = 0; l < size; l++) {
+                uintptr_t tmp = 0;
+                readMem(ctx, funcAddr + l, &tmp);
+                codeVec.push_back(*reinterpret_cast<uint8*>(tmp));
+            }
+            jitDumpElf.AppendData(codeVec);
+            jitDumpElf.AppendSymbolToSymTab(idx++, 0, len, name);
+        }
+    }
+    jitDumpElf.WriteJitElfFile(fd);
+    JsStackInfo::nameMap.clear();
+    return true;
+}
+
+bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
+{
+    constexpr size_t FP_SIZE = sizeof(uintptr_t);
+    uintptr_t currentPtr = *arkUnwindParam->fp;
+    if (currentPtr == 0) {
+        LOG_ECMA(ERROR) << "fp is nullptr in StepArkWithRecordJit()!";
+        return false;
+    }
+
+    uintptr_t frameType = 0;
+    uintptr_t frameTypeTmp = 0;
+    uintptr_t tmpPtr = currentPtr;
+    tmpPtr -= sizeof(FrameType);
+    if (arkUnwindParam->readMem(arkUnwindParam->ctx, tmpPtr, &frameTypeTmp)) {
+        if (IsFunctionFrame(frameTypeTmp)) {
+            if (static_cast<FrameType>(frameTypeTmp) == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME ||
+                static_cast<FrameType>(frameTypeTmp) == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+                uintptr_t *function = 0;
+                uintptr_t funcAddr = tmpPtr;
+                funcAddr -= OptimizedJSFunctionFrame::GetTypeOffset();
+                funcAddr += OptimizedJSFunctionFrame::GetFunctionOffset();
+                arkUnwindParam->readMem(arkUnwindParam->ctx, funcAddr, function);
+                *(arkUnwindParam->jitCache + *arkUnwindParam->jitSize) = *function;
+                *arkUnwindParam->jitSize += 1;
+            }
+        }
+    }
+    if (ArkGetNextFrame(arkUnwindParam->ctx, arkUnwindParam->readMem, currentPtr, frameType, *arkUnwindParam->pc,
+        arkUnwindParam->methodId)) {
+        if (ArkFrameCheck(frameType)) {
+            currentPtr += sizeof(FrameType);
+            *arkUnwindParam->sp = currentPtr;
+            bool ret = arkUnwindParam->readMem(arkUnwindParam->ctx, currentPtr, arkUnwindParam->fp);
+            currentPtr += FP_SIZE;
+            ret &= arkUnwindParam->readMem(arkUnwindParam->ctx, currentPtr, arkUnwindParam->pc);
+            *arkUnwindParam->isJsFrame = false;
+            return ret;
+        } else {
+            *arkUnwindParam->fp = currentPtr;
+            *arkUnwindParam->sp = currentPtr;
+            *arkUnwindParam->isJsFrame = true;
+        }
+    } else {
+        LOG_ECMA(ERROR) << "ArkGetNextFrame failed, currentPtr: " << currentPtr << ", frameType: " << frameType;
+        return false;
+    }
+    return true;
 }
 
 bool StepArk(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp,
@@ -1733,6 +1847,24 @@ __attribute__((visibility("default"))) int ark_destory_local()
 {
     panda::ecmascript::ArkDestoryLocal();
     return 1;
+}
+
+__attribute__((visibility("default"))) int step_ark_with_record_jit(panda::ecmascript::ArkUnwindParam *arkUnwindParam)
+{
+    if (panda::ecmascript::StepArkWithRecordJit(arkUnwindParam)) {
+        return 1;
+    }
+    return -1;
+}
+
+__attribute__((visibility("default"))) int ark_write_jit_code(
+    void *ctx, panda::ecmascript::ReadMemFunc readMem, int fd, const uintptr_t *const jitCodeArray,
+    const size_t jitSize)
+{
+    if (panda::ecmascript::ArkWriteJitCode(ctx, readMem, fd, jitCodeArray, jitSize)) {
+        return 1;
+    }
+    return -1;
 }
 
 __attribute__((visibility("default"))) int step_ark(
