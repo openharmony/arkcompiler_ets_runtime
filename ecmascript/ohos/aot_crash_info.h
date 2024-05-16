@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_OHOS_AOT_CRASH_INFO_H
 
 #include "ecmascript/base/string_helper.h"
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#if defined(AOT_ESCAPE_ENABLE)
 #include "parameters.h"
 #endif
 
@@ -72,7 +72,7 @@ public:
 
     static bool GetAotEscapeDisable()
     {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#ifdef AOT_ESCAPE_ENABLE
         return OHOS::system::GetBoolParameter(AOT_ESCAPE_DISABLE, false);
 #endif
         return false;
