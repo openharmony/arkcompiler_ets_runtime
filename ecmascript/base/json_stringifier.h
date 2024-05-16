@@ -65,11 +65,14 @@ private:
     bool AppendJsonString(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     bool SerializeElements(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     bool SerializeKeys(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
-    bool OnlyOwnKeysProc(JSTaggedValue enumCache, JSHandle<JSHClass> jsHclass, const JSHandle<JSObject> &obj, 
+    bool OnlyOwnKeysProc(JSTaggedValue enumCache, JSHandle<JSHClass> jsHclass, const JSHandle<JSObject> &obj,
                          JSHandle<TaggedArray> propertiesArr, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
-    bool PropsProc(bool hasChangedToDictionaryMode, JSHandle<JSHClass> jsHclass, const JSHandle<JSObject> &obj, JSHandle<TaggedArray> propertiesArr, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
-    bool JSGlobalObjectProc(bool hasContent, const JSHandle<JSObject> &obj, JSHandle<TaggedArray> propertiesArr, const JSHandle<JSTaggedValue> &replacer);
-    bool NotJSGlobalObjectProc(bool hasContent, const JSHandle<JSObject> &obj, JSHandle<TaggedArray> propertiesArr, const JSHandle<JSTaggedValue> &replacer);
+    bool PropsProc(bool hasChangedToDictionaryMode, JSHandle<JSHClass> jsHclass, const JSHandle<JSObject> &obj,
+                   JSHandle<TaggedArray> propertiesArr, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
+    bool JSGlobalObjectProc(bool hasContent, const JSHandle<JSObject> &obj, JSHandle<TaggedArray> propertiesArr,
+                            const JSHandle<JSTaggedValue> &replacer);
+    bool NotJSGlobalObjectProc(bool hasContent, const JSHandle<JSObject> &obj, JSHandle<TaggedArray> propertiesArr,
+                               const JSHandle<JSTaggedValue> &replacer);
 
     CString gap_;
     CString result_;
