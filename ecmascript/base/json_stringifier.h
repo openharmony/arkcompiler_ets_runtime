@@ -23,6 +23,12 @@
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript::base {
+struct DictionaryModeInfo {
+    bool isContinue;
+    int hasChangedToDictionaryMode;
+    float hasContent;
+};
+
 class JsonStringifier {
 public:
     JsonStringifier() = default;
@@ -74,6 +80,9 @@ private:
     bool NotJSGlobalObjectProc(bool hasContent, const JSHandle<JSObject> &obj, JSHandle<TaggedArray> propertiesArr,
                                const JSHandle<JSTaggedValue> &replacer);
 
+    bool NoChangedToDictionaryMode(JSTaggedValue key, LayoutInfo *layoutInfo, JSHandle<TaggedArray> propertiesArr, bool IsEnumerable, 
+                                   const JSHandle<JSObject> &obj, bool *isContinue, bool *hasChangedToDictionaryMode,
+                                   const JSHandle<JSTaggedValue> &replacer, JSHandle<JSHClass> jsHclass);                              
     CString gap_;
     CString result_;
     CString indent_;

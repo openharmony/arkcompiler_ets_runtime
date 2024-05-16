@@ -43,7 +43,8 @@ bool JsonHelper::IsFastValueToQuotedString(const char *value)
     return true;
 }
 
-CString DefaultValueToQuotedString(const char ch, CString product) {
+CString DefaultValueToQuotedString(const char ch, CString product)
+{
     // c. Else if C has a code unit value less than 0x0020 (SPACE), then
     if (ch > 0 && ch < CODE_SPACE) {
         /*
@@ -64,7 +65,8 @@ CString DefaultValueToQuotedString(const char ch, CString product) {
     return product;
 }
 
-bool IsSkip(const char second, const char third) {
+bool IsSkip(const char second, const char third)
+{
     bool flag = false;
     if (second && second >= ALONE_SURROGATE_3B_SECOND_START &&
         second <= ALONE_SURROGATE_3B_SECOND_END &&
@@ -78,7 +80,7 @@ bool IsSkip(const char second, const char third) {
 CString procEachCodeInValue(const char *value, CString product)
 {
     if (value == nullptr) {
-        return product;        
+        return product;      
     }
 
     for (const char *c = value; *c != 0; ++c) {
