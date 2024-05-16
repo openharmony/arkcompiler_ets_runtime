@@ -102,7 +102,6 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
-using NativePointerCallback = void (*)(void *, void *, void *);
 
 class EcmaVM {
 public:
@@ -679,9 +678,14 @@ public:
         return thread_->GetThreadId();
     }
 
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetNativePointerCallbacks()
+    std::vector<NativePointerCallbackData> &GetConcurrentNativePointerCallbacks()
     {
-        return nativePointerCallbacks_;
+        return concurrentNativeCallbacks_;
+    }
+
+    std::vector<NativePointerCallbackData> &GetAsyncNativePointerCallbacks()
+    {
+        return asyncNativeCallbacks_;
     }
 
     void SetIsJitCompileVM(bool isJitCompileVM)
@@ -817,7 +821,8 @@ private:
     ObjectFactory *factory_ {nullptr};
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    std::vector<NativePointerCallbackData> concurrentNativeCallbacks_ {};
+    std::vector<NativePointerCallbackData> asyncNativeCallbacks_ {};
     CList<JSNativePointer *> sharedNativePointerList_;
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.

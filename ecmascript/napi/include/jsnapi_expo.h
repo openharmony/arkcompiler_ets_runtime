@@ -89,6 +89,9 @@ struct HmsMap {
 
 using WeakRefClearCallBack = void (*)(void *);
 using WeakFinalizeTaskCallback = std::function<void()>;
+using NativePointerCallback = void (*)(void *env, void* data, void* hint);
+using NativePointerCallbackData = std::pair<NativePointerCallback, std::tuple<void*, void*, void*>>;
+using NativePointerTaskCallback = std::function<void(std::vector<NativePointerCallbackData>& callbacks)>;
 using EcmaVM = ecmascript::EcmaVM;
 using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
@@ -647,7 +650,6 @@ private:
     bool hasConfigurable_ = false;
 };
 
-using NativePointerCallback = void (*)(void *env, void* data, void* hint);
 class ECMA_PUBLIC_API NativePointerRef : public JSValueRef {
 public:
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize = 0);
@@ -770,6 +772,12 @@ public:
                                           size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, NativePointerCallback deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewConcurrentClassFunction(EcmaVM *vm,
+                                                         InternalFunctionCallback nativeFunc,
+                                                         NativePointerCallback deleter,
+                                                         void *data,
+                                                         bool callNapi = false,
+                                                         size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm,
                                                InternalFunctionCallback nativeFunc,
                                                NativePointerCallback deleter,
@@ -1498,6 +1506,7 @@ public:
         std::vector<std::vector<std::string>>> &list);
     static void SetLoop(EcmaVM *vm, void *loop);
     static void SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback);
+    static void SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallback &callback);
     static std::string GetAssetPath(EcmaVM *vm);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func, void *taskInfo);
