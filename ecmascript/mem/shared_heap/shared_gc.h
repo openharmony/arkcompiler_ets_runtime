@@ -45,6 +45,7 @@ private:
 
     SharedHeap *sHeap_  {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
+    bool markingInProgress_ {false};
 };
 }  // namespace panda::ecmascript
 

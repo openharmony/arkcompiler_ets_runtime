@@ -41,12 +41,17 @@ void ObjectFactory::NewSObjectHook() const
 #ifndef NDEBUG
     static std::atomic<uint32_t> count = 0;
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
+    static constexpr uint32_t CONCURRENT_MARK_FREQUENCY_FACTOR = 2;
     if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !vm_->IsInitialized() ||
         !thread_->IsAllContextsInitialized()) {
         return;
     }
     if (count++ % frequency == 0) {
-        sHeap_->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::OTHER);
+        if (count % (CONCURRENT_MARK_FREQUENCY_FACTOR * frequency) == 0) {
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+        } else {
+            sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+        }
     }
 #endif
 }

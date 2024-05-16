@@ -48,7 +48,7 @@ void ConcurrentMarker::EnableConcurrentMarking(EnableConcurrentMarkType type)
     if (IsConfigDisabled()) {
         return;
     }
-    if (IsEnabled() && !thread_->IsReadyToMark() && type == EnableConcurrentMarkType::DISABLE) {
+    if (IsEnabled() && !thread_->IsReadyToConcurrentMark() && type == EnableConcurrentMarkType::DISABLE) {
         enableMarkType_ = EnableConcurrentMarkType::REQUEST_DISABLE;
     } else {
         enableMarkType_ = type;

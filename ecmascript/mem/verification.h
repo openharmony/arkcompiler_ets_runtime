@@ -112,6 +112,8 @@ public:
     ~SharedHeapVerification() = default;
 
     void VerifyAll() const;
+    void VerifyMark(bool cm) const;
+    void VerifySweep(bool cm) const;
 
     size_t VerifyRoot() const;
     size_t VerifyHeap() const;

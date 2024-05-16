@@ -21,17 +21,36 @@
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
-void SharedGCMarker::MarkRoots(uint32_t threadId, EcmaVM *localVm)
+void SharedGCMarker::MarkRoots(uint32_t threadId, SharedMarkType markType)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkRoots");
+    MarkSerializeRoots(threadId);
+    MarkSharedModule(threadId);
+    Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+        ASSERT(!thread->IsInRunningState());
+        auto vm = thread->GetEcmaVM();
+        MarkLocalVMRoots(threadId, vm, markType);
+    });
+}
+
+void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, SharedMarkType markType)
+{
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkLocalRoots");
+    Heap *heap = const_cast<Heap*>(localVm->GetHeap());
+    heap->GetSweeper()->EnsureAllTaskFinished();
+    heap->WaitClearTaskFinished();
     ObjectXRay::VisitVMRoots(
         localVm,
-        std::bind(&SharedGCMarker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2),
-        std::bind(&SharedGCMarker::HandleRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
+        std::bind(&SharedGCMarker::HandleLocalRoots, this, threadId, std::placeholders::_1, std::placeholders::_2),
+        std::bind(&SharedGCMarker::HandleLocalRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
                   std::placeholders::_3),
-        std::bind(&SharedGCMarker::HandleDerivedRoots, this, std::placeholders::_1, std::placeholders::_2,
+        std::bind(&SharedGCMarker::HandleLocalDerivedRoots, this, std::placeholders::_1, std::placeholders::_2,
                   std::placeholders::_3, std::placeholders::_4));
-    sWorkManager_->PushWorkNodeToGlobal(threadId, false);
+    WorkNode *&localBuffer = heap->GetMarkingObjectLocalBuffer();
+    if (localBuffer != nullptr) {
+        sWorkManager_->PushLocalBufferToGlobal(localBuffer);
+    }
+    ProcessLocalToShareNoMarkStack(threadId, const_cast<Heap*>(localVm->GetHeap()), markType);
 }
 
 void SharedGCMarker::MarkSerializeRoots(uint32_t threadId)
@@ -52,6 +71,21 @@ void SharedGCMarker::MarkSharedModule(uint32_t threadId)
 
 void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
 {
+#ifndef NDEBUG
+    DaemonThread *dThread = DaemonThread::GetInstance();
+    if (UNLIKELY(!dThread->IsRunning())) {
+        // This DAEMON_THREAD_INDEX not means in daemon thread, but the daemon thread is terminated, and
+        // SharedGC is directly running in the current js thread, this maybe happen only AppSpawn
+        // trigger GC after PreFork (which is not expected), and at this time ParallelGC is disabled
+        ASSERT(threadId == DAEMON_THREAD_INDEX);
+    } else {
+        if (os::thread::GetCurrentThreadId() != dThread->GetThreadId()) {
+            ASSERT(threadId != 0);
+        } else {
+            ASSERT(threadId == 0);
+        }
+    }
+#endif
     auto cb = [&](ObjectSlot slot) {
         MarkValue(threadId, slot);
     };

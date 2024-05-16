@@ -26,6 +26,7 @@
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory-inl.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "gtest/gtest.h"
 
 namespace panda::test {
@@ -125,11 +126,11 @@ public:
 
     static inline void DestroyEcmaVMWithScope(EcmaVM *instance, EcmaHandleScope *scope, bool exitManagedCode = true)
     {
+        delete scope;
+        scope = nullptr;
         if (exitManagedCode) {
             instance->GetJSThread()->ManagedCodeEnd();
         }
-        delete scope;
-        scope = nullptr;
         instance->SetEnableForceGC(false);
         JSNApi::DestroyJSVM(instance);
     }

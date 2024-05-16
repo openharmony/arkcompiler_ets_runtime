@@ -40,6 +40,7 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/shared_heap/shared_gc.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager.h"
@@ -71,19 +72,56 @@ static constexpr uint64_t HEAP_DUMP_REPORT_INTERVAL = 24 * 3600 * 1000;
 #endif
 
 namespace panda::ecmascript {
-SharedHeap* SharedHeap::GetInstance()
+SharedHeap *SharedHeap::instance_ = nullptr;
+
+void SharedHeap::CreateNewInstance()
 {
+    ASSERT(instance_ == nullptr);
     EcmaParamConfiguration config(EcmaParamConfiguration::HeapType::SHARED_HEAP,
         MemMapAllocator::GetInstance()->GetCapacity());
-    static SharedHeap *shareHeap = new SharedHeap(config);
-    return shareHeap;
+    instance_ = new SharedHeap(config);
+}
+
+SharedHeap *SharedHeap::GetInstance()
+{
+    ASSERT(instance_ != nullptr);
+    return instance_;
+}
+
+void SharedHeap::DestroyInstance()
+{
+    ASSERT(instance_ != nullptr);
+    instance_->Destroy();
+    delete instance_;
+    instance_ = nullptr;
+}
+
+void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread)
+{
+    ASSERT(gcType == TriggerGCType::SHARED_GC);
+    ASSERT(!dThread_->IsRunning());
+    SuspendAllScope scope(thread);
+    RecursionScope recurScope(this, HeapType::SHARED_HEAP);
+    GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
+    if (UNLIKELY(ShouldVerifyHeap())) {
+        // pre gc heap verify
+        LOG_ECMA(DEBUG) << "pre gc shared heap verify";
+        SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
+    }
+    sharedGC_->RunPhases();
+    if (UNLIKELY(ShouldVerifyHeap())) {
+        // pre gc heap verify
+        LOG_ECMA(DEBUG) << "after gc shared heap verify";
+        SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+    }
+    CollectGarbageFinish(false);
 }
 
 bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
 {
     if ((OldSpaceExceedLimit() || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
         !NeedStopCollection()) {
-        CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
+        CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
         return true;
     }
     return false;
@@ -93,7 +131,7 @@ bool SharedHeap::CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size)
 {
     if ((sHugeObjectSpace_->CommittedSizeExceed(size) || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
         !NeedStopCollection()) {
-        CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
+        CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
         return true;
     }
     return false;
@@ -106,6 +144,8 @@ void SharedHeap::AdjustGlobalSpaceAllocLimit()
                                       config_.GetDefaultGlobalAllocLimit() * 2); // 2: double
     globalSpaceAllocLimit_ = std::min(std::min(globalSpaceAllocLimit_, GetCommittedSize() + growingStep_),
                                       config_.GetMaxHeapSize());
+    globalSpaceConcurrentMarkLimit_ = static_cast<size_t>(globalSpaceAllocLimit_ *
+                                                          TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE);
     LOG_ECMA_IF(optionalLogEnabled_, INFO) << "Shared gc adjust global space alloc limit to: "
         << globalSpaceAllocLimit_;
 }
@@ -115,17 +155,20 @@ bool SharedHeap::ObjectExceedMaxHeapSize() const
     return OldSpaceExceedLimit() || sHugeObjectSpace_->CommittedSizeExceed();
 }
 
-bool SharedHeap::MainThreadInSensitiveStatus() const
+void SharedHeap::StartConcurrentMarking(TriggerGCType gcType, GCReason gcReason)
 {
-    JSThread *mainThread = Runtime::GetInstance()->GetMainThread();
-    if (mainThread == nullptr) {
-        return false;
-    }
-    return const_cast<Heap *>(mainThread->GetEcmaVM()->GetHeap())->InSensitiveStatus();
+    ASSERT(JSThread::GetCurrent() == dThread_);
+    sConcurrentMarker_->Mark(gcType, gcReason);
+}
+
+bool SharedHeap::CheckCanTriggerConcurrentMarking(JSThread *thread)
+{
+    return thread->IsReadyToSharedConcurrentMark() &&
+           sConcurrentMarker_ != nullptr && sConcurrentMarker_->IsEnabled();
 }
 
 void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
-    const JSRuntimeOptions &option)
+    const JSRuntimeOptions &option, DaemonThread *dThread)
 {
     sGCStats_ = new SharedGCStats(this, option.EnableGCTracer());
     nativeAreaAllocator_ = nativeAreaAllocator;
@@ -140,12 +183,67 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
     size_t oldSpaceCapacity = (maxHeapSize - nonmovableSpaceCapacity - readOnlySpaceCapacity) / 2; // 2: half
     globalSpaceAllocLimit_ = config_.GetDefaultGlobalAllocLimit();
+    globalSpaceConcurrentMarkLimit_ = static_cast<size_t>(globalSpaceAllocLimit_ *
+                                                          TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE);
 
     sOldSpace_ = new SharedOldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     sReadOnlySpace_ = new SharedReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     growingFactor_ = config_.GetSharedHeapLimitGrowingFactor();
     growingStep_ = config_.GetSharedHeapLimitGrowingStep();
+
+    dThread_ = dThread;
+}
+
+void SharedHeap::Destroy()
+{
+    if (sWorkManager_ != nullptr) {
+        delete sWorkManager_;
+        sWorkManager_ = nullptr;
+    }
+    if (sOldSpace_ != nullptr) {
+        sOldSpace_->Reset();
+        delete sOldSpace_;
+        sOldSpace_ = nullptr;
+    }
+    if (sNonMovableSpace_ != nullptr) {
+        sNonMovableSpace_->Reset();
+        delete sNonMovableSpace_;
+        sNonMovableSpace_ = nullptr;
+    }
+    if (sHugeObjectSpace_ != nullptr) {
+        sHugeObjectSpace_->Destroy();
+        delete sHugeObjectSpace_;
+        sHugeObjectSpace_ = nullptr;
+    }
+    if (sReadOnlySpace_ != nullptr) {
+        sReadOnlySpace_->ClearReadOnly();
+        sReadOnlySpace_->Destroy();
+        delete sReadOnlySpace_;
+        sReadOnlySpace_ = nullptr;
+    }
+    if (sharedGC_ != nullptr) {
+        delete sharedGC_;
+        sharedGC_ = nullptr;
+    }
+
+    nativeAreaAllocator_ = nullptr;
+    heapRegionAllocator_ = nullptr;
+
+    if (sSweeper_ != nullptr) {
+        delete sSweeper_;
+        sSweeper_ = nullptr;
+    }
+    if (sConcurrentMarker_ != nullptr) {
+        delete sConcurrentMarker_;
+        sConcurrentMarker_ = nullptr;
+    }
+    if (sharedGCMarker_ != nullptr) {
+        delete sharedGCMarker_;
+        sharedGCMarker_ = nullptr;
+    }
+
+    dThread_ = nullptr;
 }
 
 void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option)
@@ -155,6 +253,8 @@ void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants
     maxMarkTaskCount_ = totalThreadNum - 1;
     sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
     sharedGCMarker_ = new SharedGCMarker(sWorkManager_);
+    sConcurrentMarker_ = new SharedConcurrentMarker(option.EnableSharedConcurrentMark() ?
+        EnableConcurrentMarkType::ENABLE : EnableConcurrentMarkType::CONFIG_DISABLE);
     sSweeper_ = new SharedConcurrentSweeper(this, option.EnableConcurrentSweep() ?
         EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
     sharedGC_ = new SharedGC(this);
@@ -163,7 +263,7 @@ void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants
 void SharedHeap::PostGCMarkingTask()
 {
     IncreaseTaskCount();
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelMarkTask>(-1, this));
+    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelMarkTask>(dThread_->GetThreadId(), this));
 }
 
 bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
@@ -181,47 +281,92 @@ bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
     return true;
 }
 
-void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason reason)
+void SharedHeap::NotifyGCCompleted()
 {
-    // This lock can be removed after Shared Heap GC starts to run only in a special daemon thread
-    RuntimeLockHolder gcLockHolder(thread, gcCollectGarbageMutex_);
+    ASSERT(JSThread::GetCurrent() == dThread_);
+    LockHolder lock(waitGCFinishedMutex_);
+    gcFinished_ = true;
+    waitGCFinishedCV_.SignalAll();
+}
+
+void SharedHeap::WaitGCFinished(JSThread *thread)
+{
+    ASSERT(thread->GetThreadId() != dThread_->GetThreadId());
+    ASSERT(thread->IsInRunningState());
+    ThreadSuspensionScope scope(thread);
+    LockHolder lock(waitGCFinishedMutex_);
+    while (!gcFinished_) {
+        waitGCFinishedCV_.Wait(&waitGCFinishedMutex_);
+    }
+}
+
+void SharedHeap::WaitGCFinishedAfterAllJSThreadEliminated()
+{
+    ASSERT(Runtime::GetInstance()->vmCount_ == 0);
+    LockHolder lock(waitGCFinishedMutex_);
+    while (!gcFinished_) {
+        waitGCFinishedCV_.Wait(&waitGCFinishedMutex_);
+    }
+}
+
+void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason gcReason)
+{
+    RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     ASSERT(gcType == TriggerGCType::SHARED_GC);
-    gcType_ = gcType;
+    ASSERT(JSThread::GetCurrent() == dThread_);
     {
-        SuspendAllScope scope(thread);
-        CollectGarbageImpl(gcType, reason);
+        ThreadManagedScope runningScope(dThread_);
+        SuspendAllScope scope(dThread_);
+        gcType_ = gcType;
+        GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
+        if (UNLIKELY(ShouldVerifyHeap())) {
+            // pre gc heap verify
+            LOG_ECMA(DEBUG) << "pre gc shared heap verify";
+            SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
+        }
+        sharedGC_->RunPhases();
+        if (UNLIKELY(ShouldVerifyHeap())) {
+            // pre gc heap verify
+            LOG_ECMA(DEBUG) << "after gc shared heap verify";
+            SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+        }
+        CollectGarbageFinish(true);
     }
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
 }
 
-void SharedHeap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
+void SharedHeap::WaitAllTasksFinished(JSThread *thread)
 {
-    Prepare();
-    localFullMarkTriggered_ = false;
-    GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
-    if (UNLIKELY(ShouldVerifyHeap())) {
-        // pre gc heap verify
-        LOG_ECMA(DEBUG) << "pre gc shared heap verify";
-        SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
-    }
-    sharedGC_->RunPhases();
-    // Record alive object size after shared gc
-    NotifyHeapAliveSizeAfterGC(GetHeapObjectSize());
-    // Adjust shared gc trigger threshold
-    AdjustGlobalSpaceAllocLimit();
-    if (UNLIKELY(ShouldVerifyHeap())) {
-        // pre gc heap verify
-        LOG_ECMA(DEBUG) << "after gc shared heap verify";
-        SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
-    }
-    GetEcmaGCStats()->RecordStatisticAfterGC();
-    GetEcmaGCStats()->PrintGCStatistic();
+    WaitGCFinished(thread);
+    sSweeper_->WaitAllTaskFinished();
+    WaitClearTaskFinished();
 }
 
-void SharedHeap::Prepare()
+void SharedHeap::WaitAllTasksFinishedAfterAllJSThreadEliminated()
+{
+    WaitGCFinishedAfterAllJSThreadEliminated();
+    sSweeper_->WaitAllTaskFinished();
+    WaitClearTaskFinished();
+}
+
+bool SharedHeap::CheckOngoingConcurrentMarking()
+{
+    if (sConcurrentMarker_->IsEnabled() && !dThread_->IsReadyToConcurrentMark() &&
+        sConcurrentMarker_->IsTriggeredConcurrentMark()) {
+        // This is only called in SharedGC to decide whether to remark, so do not need to wait marking finish here
+        return true;
+    }
+    return false;
+}
+
+void SharedHeap::Prepare(bool inTriggerGCThread)
 {
     WaitRunningTaskFinished();
-    sSweeper_->EnsureAllTaskFinished();
+    if (inTriggerGCThread) {
+        sSweeper_->EnsureAllTaskFinished();
+    } else {
+        sSweeper_->WaitAllTaskFinished();
+    }
     WaitClearTaskFinished();
 }
 
@@ -239,7 +384,7 @@ void SharedHeap::Reclaim()
     if (parallelGC_) {
         clearTaskFinished_ = false;
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<AsyncClearTask>(JSThread::GetCurrentThreadId(), this));
+            std::make_unique<AsyncClearTask>(dThread_->GetThreadId(), this));
     } else {
         ReclaimRegions();
     }
@@ -261,12 +406,14 @@ void SharedHeap::ReclaimRegions()
     }
 }
 
-void SharedHeap::DisableParallelGC()
+void SharedHeap::DisableParallelGC(JSThread *thread)
 {
-    Prepare();
+    WaitAllTasksFinished(thread);
+    dThread_->WaitFinished();
     parallelGC_ = false;
     maxMarkTaskCount_ = 0;
     sSweeper_->ConfigConcurrentSweep(false);
+    sConcurrentMarker_->ConfigConcurrentMark(false);
 }
 
 void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
@@ -280,10 +427,17 @@ void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
                             << "totalThreadNum(taskpool): " << totalThreadNum + 1;
         delete sWorkManager_;
         sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
-        sharedGCMarker_->ResetWorkManager(sWorkManager_);
-        sharedGC_->ResetWorkManager(sWorkManager_);
+        UpdateWorkManager(sWorkManager_);
     }
+    sConcurrentMarker_->ConfigConcurrentMark(option.EnableSharedConcurrentMark());
     sSweeper_->ConfigConcurrentSweep(option.EnableConcurrentSweep());
+}
+
+void SharedHeap::UpdateWorkManager(SharedGCWorkManager *sWorkManager)
+{
+    sConcurrentMarker_->ResetWorkManager(sWorkManager);
+    sharedGCMarker_->ResetWorkManager(sWorkManager);
+    sharedGC_->ResetWorkManager(sWorkManager);
 }
 
 void SharedHeap::TryTriggerLocalConcurrentMarking(JSThread *thread)
@@ -323,7 +477,7 @@ size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
 
 bool SharedHeap::NeedStopCollection()
 {
-    if (!MainThreadInSensitiveStatus()) {
+    if (!InSensitiveStatus()) {
         return false;
     }
 
@@ -335,7 +489,7 @@ bool SharedHeap::NeedStopCollection()
 
 Heap::Heap(EcmaVM *ecmaVm)
     : BaseHeap(ecmaVm->GetEcmaParamConfiguration()),
-      ecmaVm_(ecmaVm), thread_(ecmaVm->GetJSThread()) {}
+      ecmaVm_(ecmaVm), thread_(ecmaVm->GetJSThread()), sHeap_(SharedHeap::GetInstance()) {}
 
 void Heap::Initialize()
 {
@@ -439,6 +593,10 @@ void Heap::FillBumpPointerForTlab()
 
 void Heap::Destroy()
 {
+    if (sharedConcurrentMarkingLocalBuffer_ != nullptr) {
+        ASSERT(thread_->IsSharedConcurrentMarkingOrFinished());
+        sHeap_->GetWorkManager()->PushLocalBufferToGlobal(sharedConcurrentMarkingLocalBuffer_);
+    }
     if (sOldTlab_ != nullptr) {
         sOldTlab_->Reset();
         delete sOldTlab_;
@@ -572,7 +730,7 @@ void Heap::GetHeapPrepare()
     // Ensure local and shared heap prepared.
     Prepare();
     SharedHeap *sHeap = SharedHeap::GetInstance();
-    sHeap->Prepare();
+    sHeap->Prepare(false);
 }
 
 void Heap::Resume(TriggerGCType gcType)
@@ -665,7 +823,7 @@ void Heap::EnableParallelGC()
 TriggerGCType Heap::SelectGCType() const
 {
     // If concurrent mark is enabled, the TryTriggerConcurrentMarking decide which GC to choose.
-    if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToMark()) {
+    if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToConcurrentMark()) {
         return YOUNG_GC;
     }
     if (!OldSpaceExceedLimit() && !OldSpaceExceedCapacity(activeSemiSpace_->GetCommittedSize()) &&
@@ -686,7 +844,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             UNREACHABLE();
         }
 #endif
-        RecursionScope recurScope(this);
+        RecursionScope recurScope(this, HeapType::LOCAL_HEAP);
         if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent() ||
             (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
             ProcessGCListeners();
@@ -705,7 +863,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 #if ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC
         gcType = TriggerGCType::FULL_GC;
 #endif
-        if (fullGCRequested_ && thread_->IsReadyToMark() && gcType != TriggerGCType::FULL_GC) {
+        if (fullGCRequested_ && thread_->IsReadyToConcurrentMark() && gcType != TriggerGCType::FULL_GC) {
             gcType = TriggerGCType::FULL_GC;
         }
         if (oldGCRequested_ && gcType != TriggerGCType::FULL_GC) {
@@ -717,7 +875,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
         memController_->StartCalculationBeforeGC();
         StatisticHeapObject(gcType);
-        if (!GetJSThread()->IsReadyToMark() && markType_ == MarkType::MARK_FULL) {
+        if (!GetJSThread()->IsReadyToConcurrentMark() && markType_ == MarkType::MARK_FULL) {
             GetEcmaGCStats()->SetGCReason(reason);
         } else {
             GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
@@ -741,7 +899,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                     bool fullConcurrentMarkRequested = false;
                     // Check whether it's needed to trigger full concurrent mark instead of trigger old gc
                     if (concurrentMarker_->IsEnabled() &&
-                        (thread_->IsReadyToMark() || markType_ == MarkType::MARK_YOUNG) &&
+                        (thread_->IsReadyToConcurrentMark() || markType_ == MarkType::MARK_YOUNG) &&
                         reason == GCReason::ALLOCATION_LIMIT) {
                         fullConcurrentMarkRequested = true;
                     }
@@ -1259,7 +1417,7 @@ bool Heap::CheckAndTriggerHintGC()
 
 bool Heap::CheckOngoingConcurrentMarking()
 {
-    if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToMark() &&
+    if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToConcurrentMark() &&
         concurrentMarker_->IsTriggeredConcurrentMark()) {
         TRACE_GC(GCStats::Scope::ScopeId::WaitConcurrentMarkFinished, GetEcmaVM()->GetEcmaGCStats());
         if (thread_->IsMarking()) {
@@ -1283,7 +1441,7 @@ void Heap::ClearIdleTask()
 
 void Heap::TryTriggerIdleCollection()
 {
-    if (idleTask_ != IdleTaskType::NO_TASK || !GetJSThread()->IsReadyToMark() || !enableIdleGC_) {
+    if (idleTask_ != IdleTaskType::NO_TASK || !GetJSThread()->IsReadyToConcurrentMark() || !enableIdleGC_) {
         return;
     }
     if (thread_->IsMarkFinished() && concurrentMarker_->IsTriggeredConcurrentMark()) {
@@ -1362,7 +1520,7 @@ void Heap::CalculateIdleDuration()
 
 void Heap::TryTriggerIncrementalMarking()
 {
-    if (!GetJSThread()->IsReadyToMark() || idleTask_ != IdleTaskType::NO_TASK || !enableIdleGC_) {
+    if (!GetJSThread()->IsReadyToConcurrentMark() || idleTask_ != IdleTaskType::NO_TASK || !enableIdleGC_) {
         return;
     }
     size_t oldSpaceAllocLimit = oldSpace_->GetInitialCapacity();
@@ -1388,7 +1546,7 @@ void Heap::TryTriggerIncrementalMarking()
 
 bool Heap::CheckCanTriggerConcurrentMarking()
 {
-    return concurrentMarker_->IsEnabled() && thread_->IsReadyToMark() &&
+    return concurrentMarker_->IsEnabled() && thread_->IsReadyToConcurrentMark() &&
         !incrementalMarker_->IsTriggeredIncrementalMark() &&
         (idleTask_ == IdleTaskType::NO_TASK || idleTask_ == IdleTaskType::YOUNG_GC);
 }
@@ -1588,9 +1746,8 @@ void Heap::ChangeGCParams(bool inBackground)
         if (GetHeapObjectSize() - heapAliveSizeAfterGC_ > BACKGROUND_GROW_LIMIT) {
             CollectGarbage(TriggerGCType::FULL_GC, GCReason::SWITCH_BACKGROUND);
         }
-        auto sharedHeap = SharedHeap::GetInstance();
-        if (sharedHeap->GetHeapObjectSize() - sharedHeap->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT) {
-            sharedHeap->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::SWITCH_BACKGROUND);
+        if (sHeap_->GetHeapObjectSize() - sHeap_->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT) {
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::SWITCH_BACKGROUND>(thread_);
         }
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
             SetMemGrowingType(MemGrowingType::CONSERVATIVE);
@@ -1688,23 +1845,20 @@ void Heap::NotifyMemoryPressure(bool inHighMemoryPressure)
 
 void Heap::NotifyFinishColdStart(bool isMainThread)
 {
-    {
-        LockHolder holder(finishColdStartMutex_);
-        if (!onStartupEvent_) {
-            return;
-        }
-        onStartupEvent_ = false;
-        LOG_GC(INFO) << "SmartGC: finish app cold start";
-
-        // set overshoot size to increase gc threashold larger 8MB than current heap size.
-        int64_t semiRemainSize =
-            static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
-        int64_t overshootSize =
-            static_cast<int64_t>(config_.GetOldSpaceOvershootSize()) - semiRemainSize;
-        // overshoot size should be larger than 0.
-        GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
-        GetNewSpace()->SetWaterLineWithoutGC();
+    if (!SetOnStartupEvent(false)) {
+        return;
     }
+    ASSERT(!OnStartupEvent());
+    LOG_GC(INFO) << "SmartGC: finish app cold start";
+
+    // set overshoot size to increase gc threashold larger 8MB than current heap size.
+    int64_t semiRemainSize =
+        static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
+    int64_t overshootSize =
+        static_cast<int64_t>(config_.GetOldSpaceOvershootSize()) - semiRemainSize;
+    // overshoot size should be larger than 0.
+    GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
+    GetNewSpace()->SetWaterLineWithoutGC();
 
     if (isMainThread && CheckCanTriggerConcurrentMarking()) {
         markType_ = MarkType::MARK_FULL;
@@ -1714,7 +1868,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
 
 void Heap::NotifyFinishColdStartSoon()
 {
-    if (!onStartupEvent_) {
+    if (!OnStartupEvent()) {
         return;
     }
 
@@ -1910,7 +2064,7 @@ void Heap::PrintHeapInfo(TriggerGCType gcType) const
 {
     OPTIONAL_LOG(ecmaVm_, INFO) << "-----------------------Statistic Heap Object------------------------";
     OPTIONAL_LOG(ecmaVm_, INFO) << "GC Reason:" << ecmaVm_->GetEcmaGCStats()->GCReasonToString()
-                                << ";OnStartUp:" << onStartUpEvent()
+                                << ";OnStartup:" << OnStartupEvent()
                                 << ";OnHighSensitive:" << static_cast<int>(GetSensitiveStatus())
                                 << ";ConcurrentMark Status:" << static_cast<int>(thread_->GetMarkStatus());
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("

@@ -50,7 +50,8 @@ enum ArkProperties {
     CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
     ENABLE_HEAP_VERIFY = 1 << 19,
     ENABLE_MICROJOB_TRACE = 1 << 20,
-    ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21
+    ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21,
+    SHARED_CONCURRENT_MARK = 1 << 22
 };
 
 // asm interpreter control parsed option
@@ -450,6 +451,15 @@ public:
     bool EnableConcurrentMark() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
+    }
+
+    bool EnableSharedConcurrentMark() const
+    {
+#ifndef NDEBUG
+        return true;
+#else
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::SHARED_CONCURRENT_MARK) != 0;
+#endif
     }
 
     bool EnableExceptionBacktrace() const

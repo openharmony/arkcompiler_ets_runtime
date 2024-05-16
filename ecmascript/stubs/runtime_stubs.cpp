@@ -40,6 +40,7 @@
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
@@ -3260,16 +3261,29 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t slotAddr = object + offset;
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
+    ASSERT(!valueRegion->InSharedHeap());
     auto thread = JSThread::GlueToJSThread(argGlue);
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
     if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
         LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrier checked value:" << value << " is invalid!";
     }
 #endif
-    if (!thread->IsConcurrentMarkingOrFinished()) {
-        return;
-    }
+    ASSERT(thread->IsConcurrentMarkingOrFinished());
     Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
+}
+
+void RuntimeStubs::SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, TaggedObject *value)
+{
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    ASSERT(valueRegion->InSharedSweepableSpace());
+    auto thread = JSThread::GlueToJSThread(argGlue);
+#if ECMASCRIPT_ENABLE_BARRIER_CHECK
+    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+        LOG_FULL(FATAL) << "RuntimeStubs::SharedGCMarkingBarrier checked value:" << value << " is invalid!";
+    }
+#endif
+    ASSERT(thread->IsSharedConcurrentMarkingOrFinished());
+    Barriers::UpdateShared(thread, value, valueRegion);
 }
 
 void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
@@ -3292,10 +3306,12 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
     if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
         objectRegion->AtomicInsertLocalToShareRSet(slotAddr);
     }
-    if (!thread->IsConcurrentMarkingOrFinished()) {
-        return;
+    if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
+        Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
     }
-    Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
+    if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
+        Barriers::UpdateShared(thread, value, valueRegion);
+    }
 }
 
 bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)

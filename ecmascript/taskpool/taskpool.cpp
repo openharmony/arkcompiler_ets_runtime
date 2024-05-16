@@ -36,6 +36,7 @@ void Taskpool::Initialize(int threadNum,
 
 void Taskpool::Destroy(int32_t id)
 {
+    ASSERT(id != 0);
     LockHolder lock(mutex_);
     if (isInitialized_ <= 0) {
         return;

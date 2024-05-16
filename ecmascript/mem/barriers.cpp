@@ -16,14 +16,13 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/mem/heap.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
                       Region *valueRegion, WriteBarrierType writeType)
 {
-    if (valueRegion->InSharedHeap()) {
-        return;
-    }
+    ASSERT(!valueRegion->InSharedHeap());
     auto heap = thread->GetEcmaVM()->GetHeap();
     if (heap->IsConcurrentFullMark()) {
         if (valueRegion->InCollectSet() && !objectRegion->InYoungSpaceOrCSet()) {
@@ -40,6 +39,21 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
     TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
     if (writeType != WriteBarrierType::DESERIALIZE && valueRegion->AtomicMark(heapValue)) {
         heap->GetWorkManager()->Push(MAIN_THREAD_INDEX, heapValue, valueRegion);
+    }
+}
+
+void Barriers::UpdateShared(const JSThread *thread, TaggedObject *value, Region *valueRegion)
+{
+    ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
+    ASSERT(valueRegion->InSharedSweepableSpace());
+
+    // Weak ref record and concurrent mark record maybe conflict.
+    // This conflict is solved by keeping alive weak reference. A small amount of floating garbage may be added.
+    TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
+    if (valueRegion->AtomicMark(heapValue)) {
+        Heap *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+        WorkNode *&localBuffer = heap->GetMarkingObjectLocalBuffer();
+        SharedHeap::GetInstance()->GetWorkManager()->PushToLocalMarkingBuffer(localBuffer, heapValue);
     }
 }
 }  // namespace panda::ecmascript

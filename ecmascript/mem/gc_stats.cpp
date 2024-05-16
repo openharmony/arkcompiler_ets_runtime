@@ -52,8 +52,8 @@ void GCStats::PrintGCStatistic()
                         << GetConcurrrentMarkDuration()
                         << ")ms, " << GCReasonToString();
         LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground();
-        LOG_GC(INFO) << "InSensitiveStatus: " << heap_->InSensitiveStatus();
-        LOG_GC(INFO) << "onStartUpEvent: " << heap_->onStartUpEvent();
+        LOG_GC(INFO) << "SensitiveStatus: " << heap_->GetSensitiveStatus();
+        LOG_GC(INFO) << "OnStartupEvent: " << heap_->OnStartupEvent();
         LOG_GC(INFO) << "BundleName: " << heap_->GetEcmaVM()->GetBundleName();
         
         // print verbose gc statsistics
@@ -539,7 +539,7 @@ void GCStats::RecordGCSpeed()
 
 GCType GCStats::GetGCType(TriggerGCType gcType)
 {
-    if (heap_ && !heap_->IsReadyToMark()) {
+    if (heap_ && !heap_->IsReadyToConcurrentMark()) {
         return heap_->IsConcurrentFullMark() ? GCType::PARTIAL_OLD_GC : GCType::PARTIAL_YOUNG_GC;
     }
     switch (gcType) {

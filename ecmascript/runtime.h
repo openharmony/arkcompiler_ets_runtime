@@ -196,6 +196,7 @@ private:
 
     friend class EcmaVM;
     friend class JSThread;
+    friend class SharedHeap;
 
     NO_COPY_SEMANTIC(Runtime);
     NO_MOVE_SEMANTIC(Runtime);

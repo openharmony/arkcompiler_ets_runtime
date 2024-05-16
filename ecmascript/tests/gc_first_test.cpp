@@ -178,7 +178,7 @@ HWTEST_F_L0(GCTest, SharedGC)
     constexpr size_t ALLOCATE_SIZE = 512;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto sHeap = SharedHeap::GetInstance();
-    sHeap->CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::OTHER);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     auto oldSizebase = sHeap->GetOldSpace()->GetHeapObjectSize();
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
@@ -188,7 +188,8 @@ HWTEST_F_L0(GCTest, SharedGC)
     }
     size_t oldSizeBefore = sHeap->GetOldSpace()->GetHeapObjectSize();
     EXPECT_TRUE(oldSizeBefore > oldSizebase);
-    sHeap->CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::OTHER);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     auto oldSizeAfter = sHeap->GetOldSpace()->GetHeapObjectSize();
     EXPECT_TRUE(oldSizeBefore > oldSizeAfter);
     EXPECT_EQ(oldSizebase, oldSizeAfter);

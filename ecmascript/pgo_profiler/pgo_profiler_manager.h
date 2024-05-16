@@ -114,8 +114,8 @@ public:
     void Destroy(std::shared_ptr<PGOProfiler> &profiler)
     {
         if (profiler != nullptr) {
-            profiler->HandlePGOPreDump();
             profiler->WaitPGODumpFinish();
+            profiler->HandlePGOPreDump();
             Merge(profiler.get());
             {
                 os::memory::LockHolder lock(*mutex_);

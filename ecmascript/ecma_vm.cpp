@@ -207,8 +207,8 @@ void EcmaVM::PreFork()
     heap_->CompactHeapBeforeFork();
     heap_->AdjustSpaceSizeForAppSpawn();
     heap_->GetReadOnlySpace()->SetReadOnly();
-    SharedHeap::GetInstance()->DisableParallelGC();
     heap_->DisableParallelGC();
+    SharedHeap::GetInstance()->DisableParallelGC(thread_);
 }
 
 void EcmaVM::PostFork()
@@ -222,6 +222,7 @@ void EcmaVM::PostFork()
     SignalAllReg();
 #endif
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
+    DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
@@ -391,6 +392,7 @@ bool EcmaVM::Initialize()
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     thread_->SetReadyForGCIterating(true);
+    thread_->SetSharedMarkStatus(DaemonThread::GetInstance()->GetSharedMarkStatus());
     snapshotEnv_ = new SnapshotEnv(this);
     context->Initialize();
     snapshotEnv_->AddGlobalConstToMap();
@@ -499,12 +501,10 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
-    SharedHeap *sHeap = SharedHeap::GetInstance();
-    const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
-    if (heap && IsWorkerThread() && Runtime::SharedGCRequest() && !heap->InSensitiveStatus()) {
+    if (IsWorkerThread() && Runtime::SharedGCRequest()) {
         // destory workervm to release mem.
         thread_->SetReadyForGCIterating(false);
-        sHeap->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION);
+        SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
     }
 
     if (debuggerManager_ != nullptr) {

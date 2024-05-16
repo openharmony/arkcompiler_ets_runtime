@@ -499,6 +499,7 @@ private:
     V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
+    V(SharedGCMarkingBarrier)                   \
     V(StoreBarrier)                             \
     V(CallArg0)                                 \
     V(CallArg1)                                 \
