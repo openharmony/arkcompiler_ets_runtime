@@ -74,6 +74,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
+// IDE interface.
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] Stream *stream, [[maybe_unused]] Progress *progress,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
@@ -113,15 +114,7 @@ void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm, [[maybe_unused
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
-bool DFXJSNApi::ForceFullGC(const EcmaVM *vm)
-{
-    if (vm->IsInitialized()) {
-        const_cast<ecmascript::Heap *>(vm->GetHeap())->CollectGarbage(ecmascript::TriggerGCType::FULL_GC);
-        return true;
-    }
-    return false;
-}
-
+// kill -39.
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
                                  [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
@@ -159,7 +152,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
-// tid = 0: dump all vm; tid != 0: dump tid vm
+// tid = 0: dump all vm; tid != 0: dump tid vm, hidumper.
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
                                  [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC,
