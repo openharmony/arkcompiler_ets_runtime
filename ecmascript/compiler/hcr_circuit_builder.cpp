@@ -470,30 +470,6 @@ GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
     return callGate;
 }
 
-GateRef CircuitBuilder::CallConstructCheck(GateRef callGate, GateRef depend, GateRef glue, GateRef ctor,
-                                           GateRef value, GateRef thisObj)
-{
-    const CallSignature *cs = CommonStubCSigns::Get(CommonStubCSigns::ConstructorCheck);
-    GateRef target = IntPtr(CommonStubCSigns::ConstructorCheck);
-    const std::vector<GateRef> &args = { glue, ctor, value, thisObj };
-    std::vector<GateRef> inputs { depend, target, glue };
-    inputs.insert(inputs.end(), args.begin(), args.end());
-    auto numValuesIn = args.size() + 2; // 2: target & glue
-    if (circuit_->IsOptimizedJSFunctionFrame() && callGate != Circuit::NullGate()) {
-        AppendFrameArgs(inputs, callGate);
-        numValuesIn += 1;
-
-        GateRef pcOffset = Int64(acc_.TryGetPcOffset(callGate));
-        inputs.emplace_back(pcOffset);
-        numValuesIn += 1;
-    }
-    const GateMetaData* meta = circuit_->Call(numValuesIn);
-    MachineType machineType = cs->GetReturnType().GetMachineType();
-    GateType type = cs->GetReturnType().GetGateType();
-    value = circuit_->NewGate(meta, machineType, inputs.size(), inputs.data(), type, nullptr);
-    return value;
-}
-
 GateRef CircuitBuilder::CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength)
 {
     auto currentLabel = env_->GetCurrentLabel();
