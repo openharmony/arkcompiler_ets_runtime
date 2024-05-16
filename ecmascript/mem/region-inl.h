@@ -179,6 +179,13 @@ inline void Region::AtomicInsertLocalToShareRSet(uintptr_t addr)
     set->AtomicInsert(ToUintPtr(this), addr);
 }
 
+inline void Region::ClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
+{
+    if (packedData_.localToShareSet_ != nullptr) {
+        packedData_.localToShareSet_->ClearRange(ToUintPtr(this), start, end);
+    }
+}
+
 inline void Region::AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
 {
     if (packedData_.localToShareSet_ != nullptr) {
