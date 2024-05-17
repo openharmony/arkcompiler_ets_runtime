@@ -22,31 +22,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 
 namespace panda::test {
-class TypedArrayHelperTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class TypedArrayHelperTest : public BaseTestWithScope<false> {
 };
 
 EcmaRuntimeCallInfo *CreateTypedArrayCallInfo(JSThread *thread, const JSHandle<TaggedArray> &array, DataViewType type)
@@ -113,6 +89,19 @@ EcmaRuntimeCallInfo *CreateTypedArrayCallInfo(JSThread *thread, const JSHandle<T
     ecmaRuntimeCallInfo->SetThis(JSTaggedValue(*globalObject));
     ecmaRuntimeCallInfo->SetCallArg(0, jsarray.GetTaggedValue());
     return ecmaRuntimeCallInfo;
+}
+
+void CreateArrayList(JSThread *thread, JSHandle<JSTaggedValue> &arrayVal)
+{
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(0));
+    EcmaRuntimeCallInfo *argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT32);
+    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint32ArrayString();
+    auto prev = TestHelper::SetupFrame(thread, argv);
+    JSHandle<JSTaggedValue> uint32Array(
+        thread, TypedArrayHelper::TypedArrayConstructor(argv, constructorName, DataViewType::UINT32));
+    TestHelper::TearDownFrame(thread, prev);
+    arrayVal = uint32Array;
 }
 
 HWTEST_F_L0(TypedArrayHelperTest, TypedArrayConstructor)
@@ -218,14 +207,8 @@ HWTEST_F_L0(TypedArrayHelperTest, TypedArrayCreate)
 
 HWTEST_F_L0(TypedArrayHelperTest, ValidateTypedArray)
 {
-    auto factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(0));
-    EcmaRuntimeCallInfo* argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT32);
-    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint32ArrayString();
-    auto prev = TestHelper::SetupFrame(thread, argv);
-    JSHandle<JSTaggedValue> uint32Array(thread, TypedArrayHelper::TypedArrayConstructor(argv, constructorName,
-                                                                                      DataViewType::UINT32));
-    TestHelper::TearDownFrame(thread, prev);
+    JSHandle<JSTaggedValue> uint32Array;
+    CreateArrayList(thread, uint32Array);
     JSHandle<JSTaggedValue> buffer(thread, TypedArrayHelper::ValidateTypedArray(thread, uint32Array));
     JSTaggedValue result = JSHandle<JSTypedArray>::Cast(uint32Array)->GetViewedArrayBufferOrByteArray();
     EXPECT_EQ(buffer.GetTaggedValue().GetRawData(), result.GetRawData());
@@ -411,14 +394,8 @@ HWTEST_F_L0(TypedArrayHelperTest, GetSizeFromType)
 
 HWTEST_F_L0(TypedArrayHelperTest, SortCompare)
 {
-    auto factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(0));
-    EcmaRuntimeCallInfo* argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT32);
-    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint32ArrayString();
-    auto prev = TestHelper::SetupFrame(thread, argv);
-    JSHandle<JSTaggedValue> uint32Array(thread, TypedArrayHelper::TypedArrayConstructor(argv, constructorName,
-                                                                                      DataViewType::UINT32));
-    TestHelper::TearDownFrame(thread, prev);
+    JSHandle<JSTaggedValue> uint32Array;
+    CreateArrayList(thread, uint32Array);
     JSHandle<JSTaggedValue> buffer(thread, TypedArrayHelper::ValidateTypedArray(thread, uint32Array));
     EXPECT_FALSE(builtins::BuiltinsArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue()));
 
