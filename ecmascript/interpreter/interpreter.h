@@ -78,6 +78,8 @@ public:
     static bool IsFastNewFrameExit(JSTaggedType *sp);
     static int16_t GetHotnessCounter(uint32_t codeSize, bool cancelThreshold);
     static JSTaggedType *GetInterpreterFrameEnd(JSThread *thread, JSTaggedType *sp);
+    static void UpdateProfileTypeInfoCellToFunction(JSThread *thread, JSHandle<JSFunction> &function,
+                                                    JSTaggedValue profileTypeInfo, uint16_t slotId);
 private:
     static void InitStackFrameForSP(JSTaggedType *prevSp);
     static EcmaRuntimeCallInfo* NewRuntimeCallInfoBase(

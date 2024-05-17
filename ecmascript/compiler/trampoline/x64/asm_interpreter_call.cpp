@@ -330,7 +330,8 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
         __ Movq(callTargetRegister, tempRegister);
         __ Movq(Operand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), r12);  // pc: r12
         // Reload constpool and profileInfo to make sure gc map work normally
-        __ Movq(Operand(tempRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);       // profileTypeInfo: r14
+        __ Movq(Operand(tempRegister, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET), r14);
+        __ Movq(Operand(r14, ProfileTypeInfoCell::VALUE_OFFSET), r14);                 // profileTypeInfo: r14
         __ Movq(Operand(methodRegister, Method::CONSTANT_POOL_OFFSET), rbx);           // constantPool: rbx
 
         __ Movq(kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException, tempRegister);
@@ -762,7 +763,8 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     __ PushAlignBytes();
     __ Bind(&dispatchCall);
     // profileTypeInfo: r14
-    __ Movq(Operand(callTargetRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);
+    __ Movq(Operand(callTargetRegister, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET), r14);
+    __ Movq(Operand(r14, ProfileTypeInfoCell::VALUE_OFFSET), r14);
     // glue may rdi
     if (glueRegister != r13) {
         __ Movq(glueRegister, r13);

@@ -914,6 +914,14 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(globalEnv->GetBigIntFunction());
                 break;
             }
+            case JSType::PROFILE_TYPE_INFO_CELL_0:
+            case JSType::PROFILE_TYPE_INFO_CELL_1:
+            case JSType::PROFILE_TYPE_INFO_CELL_N: {
+                JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
+                JSHandle<ProfileTypeInfoCell> profileTypeInfoCell = factory->NewProfileTypeInfoCell(handleUndefined);
+                DUMP_FOR_HANDLE(profileTypeInfoCell);
+                break;
+            }
             case JSType::TAGGED_ARRAY:
             case JSType::VTABLE:
             case JSType::LEXICAL_ENV:

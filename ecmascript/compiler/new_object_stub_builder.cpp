@@ -861,6 +861,9 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
         }
     }
     Bind(&exit);
+    auto emptyProfileTypeInfoCell = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                           ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX);
+    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell);
     env->SubCfgExit();
     return;
 }
@@ -1848,6 +1851,28 @@ void NewObjectStubBuilder::NewByteArray(Variable *result, Label *exit, GateRef e
         Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::BYTE_LENGTH_OFFSET), elementSize);
         Jump(exit);
     }
+}
+
+GateRef NewObjectStubBuilder::NewProfileTypeInfoCell(GateRef glue, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    Label initialize(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    auto hclass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                         ConstantIndex::PROFILE_TYPE_INFO_CELL_0_CLASS_INDEX);
+    GateRef size = GetObjectSizeFromHClass(hclass);
+    SetParameters(glue, size);
+    HeapAlloc(&result, &initialize, RegionSpaceFlag::IN_YOUNG_SPACE, hclass);
+    Bind(&initialize);
+    StoreHClassWithoutBarrier(glue, *result, hclass);
+    SetValueToProfileTypeInfoCell(glue, *result, value);
+
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 GateRef NewObjectStubBuilder::GetElementSizeFromType(GateRef glue, GateRef type)

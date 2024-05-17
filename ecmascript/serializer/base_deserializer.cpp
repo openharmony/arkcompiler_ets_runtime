@@ -177,6 +177,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
             // defer initialize concurrent function
             concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
         }
+        func->SetRawProfileTypeInfo(thread_, thread_->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     }
     UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
     if (!isRoot) {

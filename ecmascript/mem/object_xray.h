@@ -424,6 +424,11 @@ public:
                     JSNativePointer::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
+            case JSType::PROFILE_TYPE_INFO_CELL_0:
+            case JSType::PROFILE_TYPE_INFO_CELL_1:
+            case JSType::PROFILE_TYPE_INFO_CELL_N:
+                ProfileTypeInfoCell::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
             case JSType::TAGGED_ARRAY:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:

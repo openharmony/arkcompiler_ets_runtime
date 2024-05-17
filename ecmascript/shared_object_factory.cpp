@@ -435,6 +435,16 @@ JSHandle<TaggedArray> ObjectFactory::NewSDictionaryArray(uint32_t length)
     return array;
 }
 
+JSHandle<ProfileTypeInfoCell> ObjectFactory::NewSEmptyProfileTypeInfoCell()
+{
+    NewSObjectHook();
+    auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
+    JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
+    profileTypeInfoCell->SetValue(thread_, JSTaggedValue::Undefined());
+    return profileTypeInfoCell;
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewSEmptyArray()
 {
     NewSObjectHook();

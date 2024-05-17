@@ -3497,8 +3497,10 @@ void BaselineReturnStubBuilder::GenerateCircuit()
         Load(VariableType::JS_ANY(), curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));
     GateRef constpool =
         Load(VariableType::JS_POINTER(), curMethod, IntPtr(Method::CONSTANT_POOL_OFFSET));
+    GateRef raw =
+        Load(VariableType::JS_POINTER(), curFunction, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
     GateRef profileTypeInfo =
-        Load(VariableType::JS_POINTER(), curFunction, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
+        Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
     GateRef hotnessCounter =
         Load(VariableType::INT32(), curMethod, IntPtr(Method::LITERAL_INFO_OFFSET));
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
@@ -5672,8 +5674,10 @@ void BaselineReturnundefinedStubBuilder::GenerateCircuit()
         Load(VariableType::JS_ANY(), curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));
     GateRef constpool =
         Load(VariableType::JS_POINTER(), curMethod, IntPtr(Method::CONSTANT_POOL_OFFSET));
+    GateRef raw =
+        Load(VariableType::JS_POINTER(), curFunction, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
     GateRef profileTypeInfo =
-        Load(VariableType::JS_POINTER(), curFunction, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
+        Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
     GateRef hotnessCounter =
         Load(VariableType::INT16(), curMethod, IntPtr(Method::LITERAL_INFO_OFFSET));
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);

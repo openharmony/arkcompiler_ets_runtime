@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_INTERPRETER_STUB_INL_H
 
 #include "ecmascript/compiler/interpreter_stub.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/global_env.h"
@@ -274,7 +275,8 @@ GateRef InterpreterStubBuilder::GetEnvFromFunction(GateRef function)
 
 GateRef InterpreterStubBuilder::GetProfileTypeInfoFromFunction(GateRef function)
 {
-    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
+    GateRef raw = Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
@@ -536,6 +538,40 @@ GateRef InterpreterStubBuilder::GetStartIdxAndNumArgs(GateRef sp, GateRef restId
 GateRef InterpreterStubBuilder::GetCurrentFrame(GateRef glue)
 {
     return GetLastLeaveFrame(glue);
+}
+
+void InterpreterStubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
+                                                                 GateRef profileTypeInfo, GateRef slotId)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    Label profileTypeInfoNotUndefined(env);
+    Label slotValueUpdate(env);
+    Label slotValueNotUndefined(env);
+    Label profileTypeInfoEnd(env);
+    NewObjectStubBuilder newBuilder(this);
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
+    Bind(&profileTypeInfoNotUndefined);
+    {
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        BRANCH(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
+        Bind(&slotValueUpdate);
+        {
+            GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
+            SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell);
+            Jump(&profileTypeInfoEnd);
+        }
+        Bind(&slotValueNotUndefined);
+        UpdateProfileTypeInfoCellType(glue, slotValue);
+        SetRawProfileTypeInfoToFunction(glue, function, slotValue);
+        Jump(&profileTypeInfoEnd);
+    }
+    Bind(&profileTypeInfoEnd);
+
+    env->SubCfgExit();
 }
 
 GateRef InterpreterStubBuilder::ReadInst32_0(GateRef pc)

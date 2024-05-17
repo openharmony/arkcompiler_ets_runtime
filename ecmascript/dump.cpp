@@ -544,6 +544,10 @@ CString JSHClass::DumpJSType(JSType type)
             return "AOTLiteralInfo";
         case JSType::CLASS_LITERAL:
             return "ClassLiteral";
+        case JSType::PROFILE_TYPE_INFO_CELL_0:
+        case JSType::PROFILE_TYPE_INFO_CELL_1:
+        case JSType::PROFILE_TYPE_INFO_CELL_N:
+            return "ProfileTypeInfoCell";
         case JSType::VTABLE:
             return "VTable";
         case JSType::SOURCE_TEXT_MODULE_RECORD:
@@ -811,6 +815,11 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::PROFILE_TYPE_INFO:
             ProfileTypeInfo::Cast(obj)->Dump(os);
+            break;
+        case JSType::PROFILE_TYPE_INFO_CELL_0:
+        case JSType::PROFILE_TYPE_INFO_CELL_1:
+        case JSType::PROFILE_TYPE_INFO_CELL_N:
+            ProfileTypeInfoCell::Cast(obj)->Dump(os);
             break;
         case JSType::VTABLE:
             VTable::Cast(obj)->Dump(os);
@@ -1743,6 +1752,14 @@ void ProfileTypeInfo::Dump(std::ostream &os) const
     }
 }
 
+void ProfileTypeInfoCell::Dump(std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    os << " - Value: ";
+    GetValue().Dump(os);
+    os << "\n";
+}
+
 void VTable::Dump(std::ostream &os) const
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -1776,8 +1793,8 @@ void JSFunction::Dump(std::ostream &os) const
         GetLexicalEnv().Dump(os);
         os << "\n";
     }
-    os << " - ProfileTypeInfo: ";
-    GetProfileTypeInfo().Dump(os);
+    os << " - RawProfileTypeInfo: ";
+    GetRawProfileTypeInfo().Dump(os);
     os << "\n";
     os << " - HomeObject: ";
     GetHomeObject().Dump(os);
@@ -2782,6 +2799,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     globalConst->GetEmptyString().Dump(os);
     os << " - EmptyTaggedQueue: ";
     globalConst->GetEmptyTaggedQueue().Dump(os);
+    os << " - EmptyProfileTypeInfoCell: ";
+    globalConst->GetEmptyProfileTypeInfoCell().Dump(os);
     os << " - PrototypeString: ";
     globalConst->GetPrototypeString().Dump(os);
     os << " - HasInstanceSymbol: ";
@@ -3988,6 +4007,11 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
             break;
+        case JSType::PROFILE_TYPE_INFO_CELL_0:
+        case JSType::PROFILE_TYPE_INFO_CELL_1:
+        case JSType::PROFILE_TYPE_INFO_CELL_N:
+            ProfileTypeInfoCell::Cast(obj)->DumpForSnapshot(vec);
+            break;
         case JSType::VTABLE:
             VTable::Cast(obj)->DumpForSnapshot(vec);
             break;
@@ -4795,7 +4819,7 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ProtoOrHClass"), GetProtoOrHClass());
     vec.emplace_back(CString("LexicalEnv"), GetLexicalEnv());
-    vec.emplace_back(CString("ProfileTypeInfo"), GetProfileTypeInfo());
+    vec.emplace_back(CString("RawProfileTypeInfo"), GetRawProfileTypeInfo());
     vec.emplace_back(CString("HomeObject"), GetHomeObject());
     vec.emplace_back(CString("Module"), GetModule());
     vec.emplace_back(CString("Method"), GetMethod());
@@ -4834,6 +4858,11 @@ void LinkedNode::DumpForSnapshot(std::vector<Reference> &vec) const
 void ConstantPool::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DumpArrayClass(this, vec);
+}
+
+void ProfileTypeInfoCell::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("Value"), GetValue());
 }
 
 void VTable::DumpForSnapshot(std::vector<Reference> &vec) const
