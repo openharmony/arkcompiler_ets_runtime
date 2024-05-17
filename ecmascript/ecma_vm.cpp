@@ -235,19 +235,17 @@ void EcmaVM::PostFork()
         options_.SetEnablePGOProfiler(false);
     }
     ResetPGOProfiler();
-    bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
-    bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
-    if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
-        options_.SetEnableAPPJIT(true);
-        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
-        bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
-        if ((!jitEscapeDisable) && JSNApi::IsJitEscape()) {
-            isEnableFastJit = false;
-            isEnableBaselineJit = false;
-            options_.SetEnableJIT(false);
-        }
-        if (isEnableFastJit || isEnableBaselineJit) {
-            EnableJit();
+
+    bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
+    if (jitEscapeDisable || !JSNApi::IsJitEscape()) {
+        if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName)) {
+            bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
+            bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
+            options_.SetEnableAPPJIT(true);
+            Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
+            if (isEnableFastJit || isEnableBaselineJit) {
+                EnableJit();
+            }
         }
     }
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
