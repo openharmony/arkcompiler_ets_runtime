@@ -250,8 +250,8 @@ JSTaggedValue ObjectFastOperator::TryGetPropertyByNameThroughCacheAtLocal(JSThre
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
-                                                    JSTaggedValue key, [[maybe_unused]]bool noAllocate,
-                                                    [[maybe_unused]]bool *isCallGetter)
+                                                    JSTaggedValue key, [[maybe_unused]] bool noAllocate,
+                                                    [[maybe_unused]] bool *isCallGetter)
 {
     INTERPRETER_TRACE(thread, GetPropertyByName);
     // no gc when return hole

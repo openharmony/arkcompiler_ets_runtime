@@ -134,7 +134,7 @@ public:
         type_ |= type;
     }
 
-    explicit GateType([[maybe_unused]]GlobalTSTypeRef gt)
+    explicit GateType([[maybe_unused]] GlobalTSTypeRef gt)
     {
         // linxiang shoult remove in part3
         type_ = EMPTY;

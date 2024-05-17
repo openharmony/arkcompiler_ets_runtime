@@ -103,7 +103,7 @@ void LiteCGIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlF
 void LiteCGIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                                          const panda::ecmascript::MethodLiteral *methodLiteral,
                                          const JSPandaFile *jsPandaFile, const std::string &methodName,
-                                         bool enableOptInlining, [[maybe_unused]]bool enableBranchProfiling)
+                                         bool enableOptInlining, [[maybe_unused]] bool enableBranchProfiling)
 {
     circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
     CallSignature::CallConv conv;

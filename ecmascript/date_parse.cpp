@@ -30,7 +30,7 @@ bool DateParse::ParseDateString(const char *str, int length, int *time)
     if (isIso) {
         result = ParseIsoDateTime(&proxy, &dayValue, &timeValue, &timeZone);
     } else {
-        result =  ParseLegacyDates(&proxy, &dayValue, &timeValue, &timeZone);
+        result = ParseLegacyDates(&proxy, &dayValue, &timeValue, &timeZone);
     }
     if (result) {
         bool success = timeZone.SetTimeZone(time) && timeValue.SetTimeValue(time) && dayValue.SetDayValue(time);

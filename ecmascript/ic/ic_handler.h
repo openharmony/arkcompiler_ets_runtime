@@ -58,7 +58,7 @@ public:
     using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>; // 19
     using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;   // 29
     using IsOnHeapBit = AttrIndexBit::NextFlag;                                                             // 30
-    using NeedSkipInPGODumpBit  = IsOnHeapBit::NextFlag;                                                    // 31
+    using NeedSkipInPGODumpBit = IsOnHeapBit::NextFlag;                                                     // 31
     static_assert(
         NeedSkipInPGODumpBit::START_BIT + NeedSkipInPGODumpBit::SIZE <= MAX_BIT_SIZE, "Invalid");
     static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
