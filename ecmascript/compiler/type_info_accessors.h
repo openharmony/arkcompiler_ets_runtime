@@ -88,11 +88,17 @@ public:
 
     inline bool HasNumberType() const
     {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return false;
+        }
         return pgoType_.HasNumber();
     }
 
     inline bool IsStringType() const
     {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return false;
+        }
         return pgoType_.IsString();
     }
 
