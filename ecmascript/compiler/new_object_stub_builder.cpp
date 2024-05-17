@@ -1339,7 +1339,10 @@ GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superC
     Label checkJSObject(env);
     Label callRuntime(env);
     Label newObject(env);
-
+    Label isFunction(env);
+    
+    BRANCH(IsJSFunction(newTarget), &isFunction, &callRuntime);
+    Bind(&isFunction);
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(protoOrHclass, VariableType::JS_ANY(), Undefined());
     protoOrHclass = Load(VariableType::JS_ANY(), newTarget,
