@@ -771,10 +771,10 @@ bool JsonStringifier::PropsProc(bool hasChangedToDictionaryMode, JSHandle<JSHCla
                                 const JSHandle<JSTaggedValue> &replacer, bool hasContent)
 {
     int end = static_cast<int>(jsHclass->NumberOfProps());
+    bool hasChangedToDictionaryModeNew = hasChangedToDictionaryMode;
     for (int i = 0; i < end; i++) {
         LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
-        JSTaggedValue key = layoutInfo->GetKey(i);
-        bool hasChangedToDictionaryModeNew = hasChangedToDictionaryMode;
+        JSTaggedValue key = layoutInfo->GetKey(i);        
         if (!hasChangedToDictionaryModeNew) {
             bool isContinue = false;
             bool IsEnumerable = layoutInfo->GetAttr(i).IsEnumerable();
