@@ -1751,7 +1751,7 @@ void Heap::ChangeGCParams(bool inBackground)
         }
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
             SetMemGrowingType(MemGrowingType::CONSERVATIVE);
-            LOG_GC(INFO) << "Heap Growing Type CONSERVATIVE";
+            LOG_GC(DEBUG) << "Heap Growing Type CONSERVATIVE";
         }
         concurrentMarker_->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
         sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
@@ -1762,7 +1762,7 @@ void Heap::ChangeGCParams(bool inBackground)
         LOG_GC(INFO) << "app is not inBackground";
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
             SetMemGrowingType(MemGrowingType::HIGH_THROUGHPUT);
-            LOG_GC(INFO) << "Heap Growing Type HIGH_THROUGHPUT";
+            LOG_GC(DEBUG) << "Heap Growing Type HIGH_THROUGHPUT";
         }
         concurrentMarker_->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
         sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
