@@ -1161,6 +1161,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsArrayListIter);
                 break;
             }
+            case JSType::JS_API_BITVECTOR: {
+                break;
+            }
+            case JSType::JS_API_BITVECTOR_ITERATOR: {
+                break;
+            }
             case JSType::LINKED_NODE: {
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), LinkedNode::SIZE, 4U);
                 break;

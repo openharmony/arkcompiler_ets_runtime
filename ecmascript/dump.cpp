@@ -37,6 +37,8 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
@@ -508,6 +510,10 @@ CString JSHClass::DumpJSType(JSType type)
             return "Vector";
         case JSType::JS_API_VECTOR_ITERATOR:
             return "VectorIterator";
+        case JSType::JS_API_BITVECTOR:
+            return "BitVector";
+        case JSType::JS_API_BITVECTOR_ITERATOR:
+            return "BitVectorIterator";
         case JSType::JS_API_QUEUE:
             return "Queue";
         case JSType::JS_API_QUEUE_ITERATOR:
@@ -1212,6 +1218,12 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_API_ARRAYLIST_ITERATOR:
             JSAPIArrayListIterator::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_API_BITVECTOR:
+            JSAPIBitVector::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_API_BITVECTOR_ITERATOR:
+            JSAPIBitVectorIterator::Cast(obj)->Dump(os);
             break;
         case JSType::JS_API_LIGHT_WEIGHT_MAP:
             JSAPILightWeightMap::Cast(obj)->Dump(os);
@@ -2599,6 +2611,20 @@ void JSAPIVectorIterator::Dump(std::ostream &os) const
 {
     JSAPIVector *vector = JSAPIVector::Cast(GetIteratedVector().GetTaggedObject());
     os << " - length: " << std::dec << vector->GetSize() << "\n";
+    os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
+    JSObject::Dump(os);
+}
+
+void JSAPIBitVector::Dump(std::ostream &os) const
+{
+    os << " - length: " << std::dec << GetSize() << "\n";
+    JSObject::Dump(os);
+}
+
+void JSAPIBitVectorIterator::Dump(std::ostream &os) const
+{
+    JSAPIBitVector *bitVector = JSAPIBitVector::Cast(GetIteratedBitVector().GetTaggedObject());
+    os << " - length: " << std::dec << bitVector->GetSize() << "\n";
     os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
     JSObject::Dump(os);
 }
@@ -4375,6 +4401,12 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_API_VECTOR_ITERATOR:
             JSAPIVectorIterator::Cast(obj)->DumpForSnapshot(vec);
             break;
+        case JSType::JS_API_BITVECTOR:
+            JSAPIBitVector::Cast(obj)->DumpForSnapshot(vec);
+            break;
+        case JSType::JS_API_BITVECTOR_ITERATOR:
+            JSAPIBitVectorIterator::Cast(obj)->DumpForSnapshot(vec);
+            break;
         case JSType::JS_API_QUEUE:
             JSAPIQueue::Cast(obj)->DumpForSnapshot(vec);
             break;
@@ -5252,6 +5284,20 @@ void JSAPIVectorIterator::DumpForSnapshot(std::vector<Reference> &vec) const
         vector->DumpForSnapshot(vec);
     }
 
+    vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSAPIBitVector::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSAPIBitVectorIterator::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSAPIVector *vector = JSAPIVector::Cast(GetIteratedBitVector().GetTaggedObject());
+    vec.emplace_back("iteratedbitvector", GetIteratedBitVector());
+    vector->DumpForSnapshot(vec);
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }

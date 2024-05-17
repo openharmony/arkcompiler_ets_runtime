@@ -632,6 +632,8 @@ public:
     bool IsJSAPITreeSetIterator() const;
     bool IsJSAPIVector() const;
     bool IsJSAPIVectorIterator() const;
+    bool IsJSAPIBitVector() const;
+    bool IsJSAPIBitVectorIterator() const;
     bool IsJSAPIQueue() const;
     bool IsJSAPIQueueIterator() const;
     bool IsJSAPIPlainArray() const;

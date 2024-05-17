@@ -45,6 +45,8 @@
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
@@ -1530,6 +1532,11 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSAPIVector::Cast(*obj)->SetLength(0);
             break;
         }
+        case JSType::JS_API_BITVECTOR: {
+            JSAPIBitVector::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
+            JSAPIBitVector::Cast(*obj)->SetModRecord(0);
+            break;
+        }
         case JSType::JS_API_LIST: {
             JSAPIList::Cast(*obj)->SetSingleList(thread_, JSTaggedValue::Undefined());
             JSAPIList::Cast(*obj)->SetBitField(0UL);
@@ -1637,6 +1644,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
         case JSType::JS_API_STACK_ITERATOR:
         case JSType::JS_API_VECTOR_ITERATOR:
+        case JSType::JS_API_BITVECTOR_ITERATOR:
         case JSType::JS_API_HASHMAP_ITERATOR:
         case JSType::JS_API_HASHSET_ITERATOR:
         case JSType::JS_ARRAY_ITERATOR:
@@ -4465,6 +4473,34 @@ JSHandle<JSAPIVectorIterator> ObjectFactory::NewJSAPIVectorIterator(const JSHand
     JSHandle<JSAPIVectorIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedVector(thread_, vector);
+    iter->SetNextIndex(0);
+    return iter;
+}
+
+JSHandle<JSAPIBitVector> ObjectFactory::NewJSAPIBitVector(uint32_t capacity)
+{
+    NewObjectHook();
+    JSHandle<JSFunction> builtinObj(thread_, thread_->GlobalConstants()->GetBitVectorFunction());
+    JSHandle<JSAPIBitVector> obj = JSHandle<JSAPIBitVector>(NewJSObjectByConstructor(builtinObj));
+    uint32_t taggedArrayCapacity = (capacity >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
+    auto *newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
+    newBitSetVector->resize(taggedArrayCapacity, 0);
+    JSHandle<JSNativePointer> pointer = NewJSNativePointer(newBitSetVector);
+    obj->SetNativePointer(thread_, pointer);
+
+    return obj;
+}
+
+JSHandle<JSAPIBitVectorIterator> ObjectFactory::NewJSAPIBitVectorIterator(const JSHandle<JSAPIBitVector> &bitVector)
+{
+    NewObjectHook();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetBitVectorIteratorPrototype());
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIBitVectorIteratorClass());
+    hclassHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPIBitVectorIterator> iter(NewJSObject(hclassHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedBitVector(thread_, bitVector);
     iter->SetNextIndex(0);
     return iter;
 }

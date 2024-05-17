@@ -123,6 +123,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPIQueueIteratorClass, JS_API_QUEUE_ITERATOR_CLASS_INDEX, ecma_roots_class)                    \
     V(JSTaggedValue, JSAPIStackIteratorClass, JS_API_STACK_ITERATOR_CLASS_INDEX, ecma_roots_class)                    \
     V(JSTaggedValue, JSAPIVectorIteratorClass, JS_API_VECTOR_ITERATOR_CLASS_INDEX, ecma_roots_class)                  \
+    V(JSTaggedValue, JSAPIBitVectorIteratorClass, JS_API_BITVECTOR_ITERATOR_CLASS_INDEX, ecma_roots_class)            \
     V(JSTaggedValue, JSAPIHashMapIteratorClass, JS_API_HASH_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, JSAPIHashSetIteratorClass, JS_API_HASH_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, JSAPITreeMapIteratorClass, JS_API_TREE_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
@@ -580,6 +581,8 @@ class ObjectFactory;
     V(JSTaggedValue, TreeSetIteratorPrototype, TREESET_ITERATOR_PROTOTYPE_INDEX, TreeSetIterator)           \
     V(JSTaggedValue, VectorFunction, VECTOR_FUNCTION_INDEX, VectorFunction)                                 \
     V(JSTaggedValue, VectorIteratorPrototype, VECTOR_ITERATOR_PROTOTYPE_INDEX, VectorIterator)              \
+    V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX, BitVectorFunction)                        \
+    V(JSTaggedValue, BitVectorIteratorPrototype, BITVECTOR_ITERATOR_PROTOTYPE_INDEX, BitVectorIterator)     \
     V(JSTaggedValue, QueueIteratorPrototype, QUEUE_ITERATOR_PROTOTYPE_INDEX, QueueIterator)                 \
     V(JSTaggedValue, PlainArrayIteratorPrototype, PLAIN_ARRAY_ITERATOR_PROTOTYPE_INDEX, PlainArrayIterator) \
     V(JSTaggedValue, PlainArrayFunction, PLAIN_ARRAY_FUNCTION_INDEX, PlainArrayFunction)                    \

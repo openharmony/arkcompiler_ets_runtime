@@ -177,6 +177,7 @@
       panda::ecmascript::JSAPIQueue::Set*;
       panda::ecmascript::JSAPIStack::Set*;
       panda::ecmascript::JSAPIVector::Set*;
+      panda::ecmascript::JSAPIBitVector::Set*;
       panda::ecmascript::JSArray::ArrayCreate*;
       panda::ecmascript::JSArray::CheckAndCopyArray*;
       panda::ecmascript::JSFunction::GetOrCreateInitialJSHClass*;

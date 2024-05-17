@@ -813,6 +813,11 @@ inline bool JSTaggedValue::IsJSAPIVector() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIVector();
 }
 
+inline bool JSTaggedValue::IsJSAPIBitVector() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIBitVector();
+}
+
 inline bool JSTaggedValue::IsJSAPIList() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIList();
@@ -1350,6 +1355,11 @@ inline bool JSTaggedValue::IsJSAPIStackIterator() const
 inline bool JSTaggedValue::IsJSAPIVectorIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIVectorIterator();
+}
+
+inline bool JSTaggedValue::IsJSAPIBitVectorIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIBitVectorIterator();
 }
 
 inline bool JSTaggedValue::IsIterator() const

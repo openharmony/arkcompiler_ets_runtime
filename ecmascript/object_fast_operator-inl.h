@@ -34,6 +34,7 @@
 #include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass-inl.h"
@@ -1060,6 +1061,10 @@ JSTaggedValue ObjectFastOperator::GetContainerProperty(JSThread *thread, JSTagge
             res = JSAPIList::Cast(receiver.GetTaggedObject())->Get(index);
             break;
         }
+        case JSType::JS_API_BITVECTOR: {
+            res = JSAPIBitVector::Cast(receiver.GetTaggedObject())->Get(thread, index);
+            break;
+        }
         case JSType::JS_API_LINKED_LIST: {
             res = JSAPILinkedList::Cast(receiver.GetTaggedObject())->Get(index);
             break;
@@ -1094,6 +1099,9 @@ JSTaggedValue ObjectFastOperator::SetContainerProperty(JSThread *thread, JSTagge
             break;
         case JSType::JS_API_VECTOR:
             res = JSAPIVector::Cast(receiver.GetTaggedObject())->Set(thread, index, value);
+            break;
+        case JSType::JS_API_BITVECTOR:
+            res = JSAPIBitVector::Cast(receiver.GetTaggedObject())->Set(thread, index, value);
             break;
         case JSType::JS_API_LIST: {
             JSHandle<JSAPIList> singleList(thread, receiver);
