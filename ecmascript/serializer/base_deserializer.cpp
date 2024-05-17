@@ -464,6 +464,8 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetSetPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_SHARED_SET:
             return env->GetSharedSetPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SENDABLE_ARRAY_BUFFER:
+            return env->GetSendableArrayBufferPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_REG_EXP:
             return env->GetRegExpPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_INT8_ARRAY:
