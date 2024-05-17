@@ -86,12 +86,11 @@ struct ArkUnwindParam {
     uintptr_t *pc;
     uintptr_t *methodId;
     bool *isJsFrame;
-    uintptr_t *jitCache;
-    size_t *jitSize;
+    std::vector<uintptr_t> &jitCache;
     ArkUnwindParam(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, uintptr_t *methodId,
-                   bool *isJsFrame, uintptr_t *jitCache, size_t *jitSize)
+                   bool *isJsFrame, std::vector<uintptr_t> &jitCache)
         : ctx(ctx), readMem(readMem), fp(fp), sp(sp), pc(pc), methodId(methodId),
-          isJsFrame(isJsFrame), jitCache(jitCache), jitSize(jitSize) {}
+          isJsFrame(isJsFrame), jitCache(jitCache) {}
 };
 
 struct JsFrame {
