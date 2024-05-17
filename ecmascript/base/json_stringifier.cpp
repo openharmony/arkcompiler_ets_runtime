@@ -746,7 +746,7 @@ bool JsonStringifier::NoChangedToDictionaryMode(JSTaggedValue key, LayoutInfo *l
                 : propertiesArr->Get(static_cast<uint32_t>(index) - jsHclass->GetInlinedProperties());
         if (attr.IsInlinedProps() && value.IsHole()) {
             *isContinue = true;
-            return false;
+            return hasContent;
         }
         
         if (UNLIKELY(value.IsAccessor())) {
