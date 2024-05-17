@@ -187,6 +187,7 @@ enum CommandValues {
     OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
+    OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -1727,6 +1728,16 @@ public:
         return enableAOTPGO_;
     }
 
+    void SetEnableJitFastCompile(bool value)
+    {
+        enableJitFastCompile_ = value;
+    }
+
+    bool IsEnableJitFastCompile() const
+    {
+        return enableJitFastCompile_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1882,6 +1893,7 @@ private:
     bool traceInductionVariableAnalysis_ {false};
     bool enableMemoryAnalysis_ {true};
     bool checkPgoVersion_ {false};
+    bool enableJitFastCompile_ {false};
 };
 }  // namespace panda::ecmascript
 

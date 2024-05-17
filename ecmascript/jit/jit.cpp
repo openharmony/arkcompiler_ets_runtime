@@ -252,7 +252,10 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     jit->GetJitDfx()->SetBundleName(vm->GetBundleName());
     jit->GetJitDfx()->SetPidNumber(vm->GetJSThread()->GetThreadId());
     CString methodInfo = methodName + ", bytecode size:" + ToCString(codeSize);
-    constexpr uint32_t maxSize = 9000;
+    uint32_t maxSize = 9000;
+    if (vm->GetJSOptions().IsEnableJitFastCompile()) {
+        maxSize = 15; // 15 is method codesize threshold during fast compiling
+    }
     if (codeSize > maxSize) {
         if (tier == CompilerTier::BASELINE) {
             LOG_BASELINEJIT(DEBUG) << "skip jit task, as too large:" << methodInfo;
