@@ -109,25 +109,25 @@ Math.abs = true_abs
 // Check edge cases
 const INT_MAX: number = 2147483647;
 const INT_MIN: number = -INT_MAX - 1;
-//aot: [trace] aot inline builtin: Math.abs, caller function name:doAbs@builtinMathAbs
+//aot: [trace] aot inline builtin: Math.abs, caller function name:#*#doAbs@builtinMathAbs
 printAbs(INT_MAX); //: 2147483647
-//aot: [trace] aot inline builtin: Math.abs, caller function name:doAbs@builtinMathAbs
+//aot: [trace] aot inline builtin: Math.abs, caller function name:#*#doAbs@builtinMathAbs
 printAbs(2147483648); //: 2147483648
-//aot: [trace] aot inline builtin: Math.abs, caller function name:doAbs@builtinMathAbs
+//aot: [trace] aot inline builtin: Math.abs, caller function name:#*#doAbs@builtinMathAbs
 printAbs(-INT_MAX); //: 2147483647
-//aot: [trace] aot inline builtin: Math.abs, caller function name:printAbs2@builtinMathAbs
+//aot: [trace] aot inline builtin: Math.abs, caller function name:#*#printAbs2@builtinMathAbs
 //aot: [trace] Check Type: NotInt3
 printAbs2(); //: 2147483648
-//aot: [trace] aot inline builtin: Math.abs, caller function name:doAbs@builtinMathAbs
+//aot: [trace] aot inline builtin: Math.abs, caller function name:#*#doAbs@builtinMathAbs
 printAbs(INT_MIN - 1); //: 2147483649
 
-//aot: [trace] aot inline builtin: Math.abs, caller function name:doAbs@builtinMathAbs
+//aot: [trace] aot inline builtin: Math.abs, caller function name:#*#doAbs@builtinMathAbs
 printAbs(-12); //: 12
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: Math.abs, caller function name:doAbs@builtinMathAbs
+//aot: [trace] aot inline builtin: Math.abs, caller function name:#*#doAbs@builtinMathAbs
 //aot: [trace] Check Type: NotNumber2
 printAbs("abc"); //: NaN
-//aot: [trace] aot inline builtin: Math.abs, caller function name:doAbs@builtinMathAbs
+//aot: [trace] aot inline builtin: Math.abs, caller function name:#*#doAbs@builtinMathAbs
 //aot: [trace] Check Type: NotNumber2
 printAbs("-12"); //: 12
 
@@ -147,9 +147,9 @@ Math.abs = true_abs
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.abs, caller function name:doAbs@builtinMathAbs
+    //aot: [trace] aot inline builtin: Math.abs, caller function name:#*#doAbs@builtinMathAbs
     printAbs(-12); //: 12
-    //aot: [trace] aot inline builtin: Math.abs, caller function name:doAbs@builtinMathAbs
+    //aot: [trace] aot inline builtin: Math.abs, caller function name:#*#doAbs@builtinMathAbs
     //aot: [trace] Check Type: NotNumber2
     printAbs("abc"); //: NaN
 } catch (e) {

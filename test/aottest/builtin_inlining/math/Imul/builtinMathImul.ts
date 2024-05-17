@@ -143,13 +143,13 @@ Math.imul = true_imul
 
 len = Math.imul(3, 3)
 print(len) //: 9
-//aot: [trace] aot inline builtin: Math.imul, caller function name:doImul@builtinMathImul
+//aot: [trace] aot inline builtin: Math.imul, caller function name:#*#doImul@builtinMathImul
 printImul(-12, 2); //: -24
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: Math.imul, caller function name:doImul@builtinMathImul
+//aot: [trace] aot inline builtin: Math.imul, caller function name:#*#doImul@builtinMathImul
 //aot: [trace] Check Type: NotNumber1
 printImul("abc", 2); //: 0
-//aot: [trace] aot inline builtin: Math.imul, caller function name:doImul@builtinMathImul
+//aot: [trace] aot inline builtin: Math.imul, caller function name:#*#doImul@builtinMathImul
 //aot: [trace] Check Type: NotNumber1
 printImul("-12", 2); //: -24
 
@@ -168,9 +168,9 @@ Math.imul = true_imul
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.imul, caller function name:doImul@builtinMathImul
+    //aot: [trace] aot inline builtin: Math.imul, caller function name:#*#doImul@builtinMathImul
     printImul(-12, 2); //: -24
-    //aot: [trace] aot inline builtin: Math.imul, caller function name:doImul@builtinMathImul
+    //aot: [trace] aot inline builtin: Math.imul, caller function name:#*#doImul@builtinMathImul
     //aot: [trace] Check Type: NotNumber1
     printImul("abc", 2); //: 0
 } catch (e) {
@@ -178,7 +178,7 @@ try {
 
 let obj = {};
 obj.valueOf = (() => { return -23; })
-//aot: [trace] aot inline builtin: Math.imul, caller function name:doImul@builtinMathImul
+//aot: [trace] aot inline builtin: Math.imul, caller function name:#*#doImul@builtinMathImul
 //aot: [trace] Check Type: NotNumber1
 printImul(obj, -2); //: 46
 

@@ -78,22 +78,22 @@ isNaN = replace
 print(isNaN(NaN)); //: NaN
 isNaN = true_is_nan
 
-//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] aot inline builtin: isNan, caller function name:#*#doIsNaN@builtinGlobalIsNan
 printIsNaN(-3);    //: false
-//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] aot inline builtin: isNan, caller function name:#*#doIsNaN@builtinGlobalIsNan
 //aot: [trace] Check Type: NotNumber1
 printIsNaN("abc"); //: true
-//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] aot inline builtin: isNan, caller function name:#*#doIsNaN@builtinGlobalIsNan
 //aot: [trace] Check Type: NotNumber1
 printIsNaN("abc"); //: true
-//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] aot inline builtin: isNan, caller function name:#*#doIsNaN@builtinGlobalIsNan
 printIsNaN(-12); //: false
 
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] aot inline builtin: isNan, caller function name:#*#doIsNaN@builtinGlobalIsNan
 //aot: [trace] Check Type: NotNumber1
 printIsNaN("abc"); //: true
-//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] aot inline builtin: isNan, caller function name:#*#doIsNaN@builtinGlobalIsNan
 //aot: [trace] Check Type: NotNumber1
 printIsNaN("-12"); //: false
 
@@ -111,11 +111,11 @@ isNaN = true_is_nan
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+    //aot: [trace] aot inline builtin: isNan, caller function name:#*#doIsNaN@builtinGlobalIsNan
     printIsNaN(-12); //: false
-    //aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+    //aot: [trace] aot inline builtin: isNan, caller function name:#*#doIsNaN@builtinGlobalIsNan
     printIsNaN(NaN); //: true
-    //aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+    //aot: [trace] aot inline builtin: isNan, caller function name:#*#doIsNaN@builtinGlobalIsNan
     //aot: [trace] Check Type: NotNumber1
     printIsNaN("abc"); //: true
 } catch (e) {

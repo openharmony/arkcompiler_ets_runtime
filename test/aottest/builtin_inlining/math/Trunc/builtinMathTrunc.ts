@@ -89,10 +89,10 @@ print(Math.trunc(111.09)); //: 111.09
 Math.trunc = true_trunc
 
 // Call standart builtin with non-number param
-//aot: [trace] aot inline builtin: Math.trunc, caller function name:doTrunc@builtinMathTrunc
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:#*#doTrunc@builtinMathTrunc
 //aot: [trace] Check Type: NotNumber2
 printTrunc("abc"); //: NaN
-//aot: [trace] aot inline builtin: Math.trunc, caller function name:doTrunc@builtinMathTrunc
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:#*#doTrunc@builtinMathTrunc
 //aot: [trace] Check Type: NotNumber2
 printTrunc("2.45"); //: 2
 
@@ -112,9 +112,9 @@ Math.trunc = true_trunc
 
 // Checl IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.trunc, caller function name:doTrunc@builtinMathTrunc
+    //aot: [trace] aot inline builtin: Math.trunc, caller function name:#*#doTrunc@builtinMathTrunc
     printTrunc(-48.12); //: -48
-    //aot: [trace] aot inline builtin: Math.trunc, caller function name:doTrunc@builtinMathTrunc
+    //aot: [trace] aot inline builtin: Math.trunc, caller function name:#*#doTrunc@builtinMathTrunc
     //aot: [trace] Check Type: NotNumber2
     printTrunc("abc"); //: NaN
 } catch (e) {

@@ -129,28 +129,28 @@ print(Math.max(Infinity, NaN)); //: NaN
 
 // Check 0 and -0
 //aot: [trace] aot inline builtin: Math.max, caller function name:func_main_0@builtinMathMax
-//aot: [trace] aot inline function name: printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
-//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMax
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMax
 printZero(Math.max(0, -0));  //: 0
 //aot: [trace] aot inline builtin: Math.max, caller function name:func_main_0@builtinMathMax
-//aot: [trace] aot inline function name: printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
-//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMax
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMax
 printZero(Math.max(-0, 0));  //: 0
 //aot: [trace] aot inline builtin: Math.max, caller function name:func_main_0@builtinMathMax
-//aot: [trace] aot inline function name: printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
-//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMax
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMax
 printZero(Math.max(0, 0));   //: 0
 //aot: [trace] aot inline builtin: Math.max, caller function name:func_main_0@builtinMathMax
-//aot: [trace] aot inline function name: printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
-//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMax
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMax
 printZero(Math.max(-0, -0)); //: -0
 //aot: [trace] aot inline builtin: Math.max, caller function name:func_main_0@builtinMathMax
-//aot: [trace] aot inline function name: printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
-//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMax
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMax
 printZero(Math.max(-5, -0)); //: -0
 //aot: [trace] aot inline builtin: Math.max, caller function name:func_main_0@builtinMathMax
-//aot: [trace] aot inline function name: printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
-//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathMax
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMax caller function name: func_main_0@builtinMathMax
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMax
 printZero(Math.max(-5, 0)); //: 0
 
 // Check with int and float param
@@ -194,13 +194,13 @@ Math.max = replace
 print(Math.max(-1.001, -90)); //: -1.001
 Math.max = trueMax
 
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
 printMax(-12, -100); //: -12
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
 //aot: [trace] Check Type: NotNumber2
 printMax("abc", -100); //: NaN
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
 //aot: [trace] Check Type: NotNumber2
 printMax("-12", -100); //: -12
 
@@ -218,41 +218,41 @@ Math.max = trueMax
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+    //aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
     printMax(19, 20); //: 20
-    //aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+    //aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
     printMax(19, 12); //: 19
-    //aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+    //aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
     //aot: [trace] Check Type: NotNumber2
     printMax("abc", 5); //: NaN
 } catch (e) {
 }
 
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax1@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax1@builtinMathMax
 //aot: [trace] Check Type: BuiltinInliningTypeGuard
 //: obj.valueOf
 printMax1(obj); //: -23
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax1@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax1@builtinMathMax
 //aot: [trace] Check Type: BuiltinInliningTypeGuard
 printMax1(doubleObj); //: 2.7
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
 //aot: [trace] Check Type: NotNumber2
 printMax(doubleObj, doubleObj); //: 2.7
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
 //aot: [trace] Check Type: NotNumber2
 //: obj.valueOf
 printMax(nanObj, obj); //: NaN
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
 //aot: [trace] Check Type: NotNumber2
 //: obj.valueOf
 printMax(2, obj); //: 2
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
 //aot: [trace] Check Type: NotNumber2
 //: obj.valueOf
 printMax(-100, obj); //: -23
 
 // call obj.valueOf twice
-//aot: [trace] aot inline builtin: Math.max, caller function name:printMax3@builtinMathMax
+//aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax3@builtinMathMax
 //aot: [trace] Check Type: NotNumber2
 //: obj.valueOf
 //: obj.valueOf

@@ -99,14 +99,14 @@ function checkObjWithSetProto() {
 //: TypeError: obj is not JSSet
 checkObjWithSetProto();
 
-//aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
+//aot: [trace] aot inline builtin: Set.has, caller function name:#*#doHas@builtinSetHas
 printHas(-5); //: true
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
+//aot: [trace] aot inline builtin: Set.has, caller function name:#*#doHas@builtinSetHas
 printHas("abc"); //: false
-//aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
+//aot: [trace] aot inline builtin: Set.has, caller function name:#*#doHas@builtinSetHas
 printHas("-5"); //: false
-//aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
+//aot: [trace] aot inline builtin: Set.has, caller function name:#*#doHas@builtinSetHas
 printHas("xyz"); //: true
 
 if (ArkTools.isAOTCompiled(printHas)) {
@@ -125,9 +125,9 @@ mySet.has = true_has
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
+    //aot: [trace] aot inline builtin: Set.has, caller function name:#*#doHas@builtinSetHas
     printHas(NaN); //: true
-    //aot: [trace] aot inline builtin: Set.has, caller function name:doHas@builtinSetHas
+    //aot: [trace] aot inline builtin: Set.has, caller function name:#*#doHas@builtinSetHas
     printHas("abc"); //: false
 } catch (e) {
 }

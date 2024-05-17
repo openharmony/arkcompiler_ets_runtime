@@ -71,17 +71,17 @@ function printSign(a: any)
 }
 
 // Check:
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(1) //: 1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(Math.PI) //: 1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(-Math.PI) //: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(NaN) //: NaN
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(-1.5) //: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(Infinity) //: 1
 
 if (ArkTools.isAOTCompiled(printSign)) {
@@ -101,19 +101,19 @@ printSign(-Math.PI)  //pgo: -1
 Math.sign = trueSign
 let obj = {};
 obj.valueOf = (() => { return -23; })
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 //aot: [trace] Check Type: NotNumber2
 printSign(obj);      //: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(-1.5)      //: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(Infinity)  //: 1
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+    //aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
     printSign(-12) //: -1
-    //aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+    //aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
     //aot: [trace] Check Type: NotNumber2
     printSign("-12") //: -1
 } catch (e) {

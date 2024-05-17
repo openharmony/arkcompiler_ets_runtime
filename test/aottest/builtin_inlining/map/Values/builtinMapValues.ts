@@ -94,9 +94,9 @@ myMap.values = true_values
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Map.values, caller function name:doValues@builtinMapValues
+    //aot: [trace] aot inline builtin: Map.values, caller function name:#*#doValues@builtinMapValues
     printValues(2.5); //: [object Map Iterator]
-    //aot: [trace] aot inline builtin: Map.values, caller function name:doValues@builtinMapValues
+    //aot: [trace] aot inline builtin: Map.values, caller function name:#*#doValues@builtinMapValues
     printValues("abc"); //: [object Map Iterator]
 } catch (e) {
 }

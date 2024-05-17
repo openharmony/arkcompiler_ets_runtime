@@ -130,10 +130,10 @@ print(mySet.has("xyz"));
 // Check IR correctness inside try-block
 try {
     printAdd(2.5);
-    //aot: [trace] aot inline builtin: Set.add, caller function name:doAdd@builtinSetAdd
+    //aot: [trace] aot inline builtin: Set.add, caller function name:#*#doAdd@builtinSetAdd
     //: [object Set]
     printAdd("oops");
-    //aot: [trace] aot inline builtin: Set.add, caller function name:doAdd@builtinSetAdd
+    //aot: [trace] aot inline builtin: Set.add, caller function name:#*#doAdd@builtinSetAdd
     //: [object Set]
     print(mySet.has(2.5));
     //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
@@ -214,28 +214,28 @@ let m3 = new Set([1]);
 let m4 = new Set([1]);
 
 tryAdd(m, 13);
-//aot: [trace] aot inline builtin: Set.add, caller function name:tryAdd@builtinSetAdd
+//aot: [trace] aot inline builtin: Set.add, caller function name:#*#tryAdd@builtinSetAdd
 //: [object Set]
 print(m.has(13));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
 //: true
 
 tryAdd(m2, 13);
-//aot: [trace] aot inline builtin: Set.add, caller function name:tryAdd@builtinSetAdd
+//aot: [trace] aot inline builtin: Set.add, caller function name:#*#tryAdd@builtinSetAdd
 //: [object Set]
 print(m2.has(13));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
 //: true
 
 tryAdd(m3, 13);
-//aot: [trace] aot inline builtin: Set.add, caller function name:tryAdd@builtinSetAdd
+//aot: [trace] aot inline builtin: Set.add, caller function name:#*#tryAdd@builtinSetAdd
 //: [object Set]
 print(m3.has(13));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
 //: true
 
 tryAdd(m4, 13);
-//aot: [trace] aot inline builtin: Set.add, caller function name:tryAdd@builtinSetAdd
+//aot: [trace] aot inline builtin: Set.add, caller function name:#*#tryAdd@builtinSetAdd
 //: [object Set]
 print(m4.has(13));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
@@ -250,21 +250,21 @@ if (ArkTools.isAOTCompiled(tryAdd)) {
 
 // Nothing changed
 tryAdd(m, 25);
-//aot: [trace] aot inline builtin: Set.add, caller function name:tryAdd@builtinSetAdd
+//aot: [trace] aot inline builtin: Set.add, caller function name:#*#tryAdd@builtinSetAdd
 //: [object Set]
 print(m.has(25));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
 //: true
 
 tryAdd(m2, 25);
-//aot: [trace] aot inline builtin: Set.add, caller function name:tryAdd@builtinSetAdd
+//aot: [trace] aot inline builtin: Set.add, caller function name:#*#tryAdd@builtinSetAdd
 //: [object Set]
 print(m2.has(25));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
 //: true
 
 tryAdd(m3, 25);
-//aot: [trace] aot inline builtin: Set.add, caller function name:tryAdd@builtinSetAdd
+//aot: [trace] aot inline builtin: Set.add, caller function name:#*#tryAdd@builtinSetAdd
 //: [object Set]
 print(m3.has(25));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
