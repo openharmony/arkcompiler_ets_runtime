@@ -1932,7 +1932,6 @@
         "mjsunit/array-literal-transitions.js",
         "mjsunit/get-current-frame-optimization-status-01.js",
         "mjsunit/mul-exhaustive-part4.js",
-        "mjsunit/substr.js",
         "mjsunit/array-splice.js",
         "mjsunit/object-toprimitive.js",
         "mjsunit/field-type-tracking.js",

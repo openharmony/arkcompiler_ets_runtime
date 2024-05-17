@@ -376,3 +376,14 @@ print('abc'.padEnd(-Infinity, 'def') );
 print('abc'.padEnd(0, 'def') );
 print('abc'.padEnd(-1, 'def') );
 print('abc'.padEnd(5, ''))
+
+const abc_str = "abc";
+const negativeHeapNumber = -1 * 2**32;
+const positiveHeapNumber = 2**32;
+print(abc_str.substr(positiveHeapNumber));
+print(abc_str.substr(negativeHeapNumber, positiveHeapNumber));
+print(abc_str.substr(-abc_str.length, positiveHeapNumber));
+print(abc_str.substr(0, positiveHeapNumber));
+print(abc_str.substr(-2, positiveHeapNumber));
+print(abc_str.substr(-1, positiveHeapNumber));
+

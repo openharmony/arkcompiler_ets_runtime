@@ -2144,7 +2144,7 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
     JSTaggedNumber numStart = JSTaggedValue::ToInteger(thread, intStart);
     // 5. ReturnIfAbrupt(intStart).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t start = numStart.ToInt32();
+    int32_t start = base::NumberHelper::DoubleInRangeInt32(numStart.GetNumber());
     JSHandle<JSTaggedValue> lengthTag = GetCallArg(argv, 1);
     // 6. If length is undefined, let end be +; otherwise let end be ToInteger(length).
     int32_t end = 0;
@@ -2154,7 +2154,7 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
         JSTaggedNumber lengthNumber = JSTaggedValue::ToInteger(thread, lengthTag);
         // 7. ReturnIfAbrupt(end).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        end = lengthNumber.ToInt32();
+        end = base::NumberHelper::DoubleInRangeInt32(lengthNumber.GetNumber());
     }
     // 8. Let size be the number of code units in S.
     int32_t size = static_cast<int32_t>(EcmaStringAccessor(thisString).GetLength());
