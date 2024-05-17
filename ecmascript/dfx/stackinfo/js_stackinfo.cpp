@@ -895,8 +895,7 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
                 funcAddr -= OptimizedJSFunctionFrame::GetTypeOffset();
                 funcAddr += OptimizedJSFunctionFrame::GetFunctionOffset();
                 arkUnwindParam->readMem(arkUnwindParam->ctx, funcAddr, function);
-                *(arkUnwindParam->jitCache + *arkUnwindParam->jitSize) = *function;
-                *arkUnwindParam->jitSize += 1;
+                arkUnwindParam->jitCache.push_back(*function);
             }
         }
     }
