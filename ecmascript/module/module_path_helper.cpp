@@ -296,7 +296,8 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
         CVector<CString> vec;
         StringHelper::SplitString(moduleRequestName, vec, 0, SEGMENTS_LIMIT_TWO);
         if (vec.size() < SEGMENTS_LIMIT_TWO) {
-            LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName;
+            LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName << ", abc path: " <<
+                baseFileName << ", current file name: " << recordName;
         }
         CString bundleName = vec[0];
         CString moduleName = vec[1];
@@ -316,7 +317,8 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
         CVector<CString> currentVec;
         StringHelper::SplitString(moduleRequestName, currentVec, 0, SEGMENTS_LIMIT_TWO);
         if (currentVec.size() < SEGMENTS_LIMIT_TWO) {
-            LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName;
+            LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName << ", abc path: " <<
+                baseFileName << ", current file name: " << recordName;
         }
         CString currentModuleName = currentVec[1];
         PathHelper::DeleteNamespace(currentModuleName);
