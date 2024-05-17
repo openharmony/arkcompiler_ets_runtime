@@ -733,9 +733,8 @@ bool JsonStringifier::NoChangedToDictionaryMode(JSTaggedValue key, LayoutInfo *l
     const JSHandle<JSObject> &obj, bool *isContinue,
     bool *hasChangedToDictionaryMode,
     const JSHandle<JSTaggedValue> &replacer,
-    JSHandle<JSHClass> jsHclass)
+    JSHandle<JSHClass> jsHclass, bool hasContent)
 {
-    bool hasContent = false;
     if (key.IsString() && IsEnumerable) { //layoutInfo->GetAttr(i).IsEnumerable()
         handleKey_.Update(key);
         JSTaggedValue value;
@@ -780,7 +779,7 @@ bool JsonStringifier::PropsProc(bool hasChangedToDictionaryMode, JSHandle<JSHCla
             bool IsEnumerable = layoutInfo->GetAttr(i).IsEnumerable();
             bool hasContentNew = false;
             hasContentNew = JsonStringifier::NoChangedToDictionaryMode(key, layoutInfo, propertiesArr, IsEnumerable,
-            obj, &isContinue, &hasChangedToDictionaryMode, replacer, jsHclass);
+            obj, &isContinue, &hasChangedToDictionaryMode, replacer, jsHclass, hasContent);
 
             if (isContinue) {
                 continue;
