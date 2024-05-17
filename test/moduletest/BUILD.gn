@@ -137,6 +137,7 @@ group("ark_js_moduletest") {
     "setobjectwithproto",
     "spreadoperator",
     "stackoverflow",
+    "storeglobalvarIC",
     "storeicbyname",
     "storeicbyvalue",
     "string",
