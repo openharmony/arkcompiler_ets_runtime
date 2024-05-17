@@ -729,11 +729,11 @@ bool JsonStringifier::OnlyOwnKeysProc(JSTaggedValue enumCache, JSHandle<JSHClass
 }
 
 bool JsonStringifier::NoChangedToDictionaryMode(JSTaggedValue key, LayoutInfo *layoutInfo,
-    JSHandle<TaggedArray> propertiesArr, bool IsEnumerable,
+    JSHandle<TaggedArray> &propertiesArr, bool IsEnumerable,
     const JSHandle<JSObject> &obj, bool *isContinue,
     bool *hasChangedToDictionaryMode,
     const JSHandle<JSTaggedValue> &replacer,
-    JSHandle<JSHClass> jsHclass, bool hasContent)
+    JSHandle<JSHClass> &jsHclass, bool hasContent)
 {
     if (key.IsString() && IsEnumerable) { //layoutInfo->GetAttr(i).IsEnumerable()
         handleKey_.Update(key);
@@ -774,12 +774,13 @@ bool JsonStringifier::PropsProc(bool hasChangedToDictionaryMode, JSHandle<JSHCla
     for (int i = 0; i < end; i++) {
         LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
         JSTaggedValue key = layoutInfo->GetKey(i);
-        if (!hasChangedToDictionaryMode) {
+        bool hasChangedToDictionaryModeNew = hasChangedToDictionaryMode;
+        if (!hasChangedToDictionaryModeNew) {
             bool isContinue = false;
             bool IsEnumerable = layoutInfo->GetAttr(i).IsEnumerable();
             bool hasContentNew = false;
             hasContentNew = JsonStringifier::NoChangedToDictionaryMode(key, layoutInfo, propertiesArr, IsEnumerable,
-            obj, &isContinue, &hasChangedToDictionaryMode, replacer, jsHclass, hasContent);
+            obj, &isContinue, &hasChangedToDictionaryModeNew, replacer, jsHclass, hasContent);
 
             if (isContinue) {
                 continue;

@@ -80,9 +80,9 @@ private:
     bool NotJSGlobalObjectProc(bool hasContent, const JSHandle<JSObject> &obj, JSHandle<TaggedArray> propertiesArr,
                                const JSHandle<JSTaggedValue> &replacer);
 
-    bool NoChangedToDictionaryMode(JSTaggedValue key, LayoutInfo *layoutInfo, JSHandle<TaggedArray> propertiesArr,
+    bool NoChangedToDictionaryMode(JSTaggedValue key, LayoutInfo *layoutInfo, JSHandle<TaggedArray> &propertiesArr,
     bool IsEnumerable, const JSHandle<JSObject> &obj, bool *isContinue, bool *hasChangedToDictionaryMode,
-    const JSHandle<JSTaggedValue> &replacer, JSHandle<JSHClass> jsHclass, bool hasContent);
+    const JSHandle<JSTaggedValue> &replacer, JSHandle<JSHClass> &jsHclass, bool hasContent);
     
     CString gap_;
     CString result_;
