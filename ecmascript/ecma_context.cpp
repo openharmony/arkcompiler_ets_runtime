@@ -770,10 +770,12 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
 
 bool EcmaContext::HasPendingJob()
 {
+    // This interface only determines whether PromiseJobQueue is empty, rather than ScriptJobQueue.
     if (UNLIKELY(thread_->HasTerminated())) {
         return false;
     }
-    return job::MicroJobQueue::HasPendingJob(thread_, GetMicroJobQueue());
+    TaggedQueue* promiseQueue = TaggedQueue::Cast(GetMicroJobQueue()->GetPromiseJobQueue().GetTaggedObject());
+    return !promiseQueue->Empty();
 }
 
 bool EcmaContext::ExecutePromisePendingJob()

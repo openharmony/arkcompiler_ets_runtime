@@ -600,6 +600,7 @@ class ObjectFactory;
 #define SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                     \
     V(JSTaggedValue, Undefined, UNDEFINED_INDEX, ecma_roots_special)                              \
     V(JSTaggedValue, Null, NULL_INDEX, ecma_roots_special)                                        \
+    V(JSTaggedValue, Hole, HOLE_INDEX, ecma_roots_special)                                        \
     V(JSTaggedValue, True, TRUE_INDEX, ecma_roots_special)                                        \
     V(JSTaggedValue, False, FALSE_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, EmptyString, EMPTY_STRING_OBJECT_INDEX, ecma_roots_special)                  \

@@ -268,6 +268,7 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     // Specials
     SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
     SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
+    SetConstant(ConstantIndex::HOLE_INDEX, JSTaggedValue::Hole());
     SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
     SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
     // Emptys

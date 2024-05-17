@@ -381,6 +381,7 @@ class ECMA_PUBLIC_API JSValueRef {
 public:
     static Local<PrimitiveRef> Undefined(const EcmaVM *vm);
     static Local<PrimitiveRef> Null(const EcmaVM *vm);
+    static Local<PrimitiveRef> Hole(const EcmaVM *vm);
     static Local<PrimitiveRef> True(const EcmaVM *vm);
     static Local<PrimitiveRef> False(const EcmaVM *vm);
 
