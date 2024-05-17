@@ -201,6 +201,16 @@ public:
     {
         shouldThrowOOMError_ = shouldThrow;
     }
+    
+    void SetCanThrowOOMError(bool canThrow)
+    {
+        canThrowOOMError_ = canThrow;
+    }
+    
+    bool CanThrowOOMError()
+    {
+        return canThrowOOMError_;
+    }
 
     bool IsInBackground() const
     {
@@ -314,6 +324,7 @@ protected:
     bool clearTaskFinished_ {true};
     bool inBackground_ {false};
     bool shouldThrowOOMError_ {false};
+    bool canThrowOOMError_ {true};
     bool oldGCRequested_ {false};
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
