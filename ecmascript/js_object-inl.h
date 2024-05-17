@@ -213,6 +213,11 @@ inline bool JSObject::IsJSAPIVectorIterator() const
     return GetJSHClass()->IsJSAPIVectorIterator();
 }
 
+inline bool JSObject::IsJSAPIBitVectorIterator() const
+{
+    return GetJSHClass()->IsJSAPIBitVectorIterator();
+}
+
 inline bool JSObject::IsJSAPILinkedListIterator() const
 {
     return GetJSHClass()->IsJSAPILinkedListIterator();

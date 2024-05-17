@@ -516,6 +516,10 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Vector");
         case JSType::JS_API_VECTOR_ITERATOR:
             return GetString("VectorIterator");
+        case JSType::JS_API_BITVECTOR:
+            return GetString("BitVector");
+        case JSType::JS_API_BITVECTOR_ITERATOR:
+            return GetString("BitVectorIterator");
         case JSType::JS_API_QUEUE:
             return GetString("Queue");
         case JSType::JS_API_QUEUE_ITERATOR:

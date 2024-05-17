@@ -30,6 +30,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
 #include "ecmascript/js_api/js_api_lightweightset_iterator.h"
@@ -338,6 +339,8 @@ void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory
     SetConstant(ConstantIndex::JS_API_LIGHTWEIGHTSET_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPILightWeightSetIterator::SIZE,
                 JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_BITVECTOR_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIBitVectorIterator::SIZE, JSType::JS_API_BITVECTOR_ITERATOR));
 }
 
 void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)

@@ -130,6 +130,8 @@ class JSAPITreeSetIterator;
 class JSAPITreeMapIterator;
 class JSAPIVector;
 class JSAPIVectorIterator;
+class JSAPIBitVector;
+class JSAPIBitVectorIterator;
 class JSAPILinkedList;
 class JSAPIList;
 class JSAPILinkedListIterator;
@@ -626,6 +628,8 @@ public:
     JSHandle<JSAPIStackIterator> NewJSAPIStackIterator(const JSHandle<JSAPIStack> &stack);
     JSHandle<JSAPIVector> NewJSAPIVector(uint32_t capacity);
     JSHandle<JSAPIVectorIterator> NewJSAPIVectorIterator(const JSHandle<JSAPIVector> &vector);
+    JSHandle<JSAPIBitVector> NewJSAPIBitVector(uint32_t capacity);
+    JSHandle<JSAPIBitVectorIterator> NewJSAPIBitVectorIterator(const JSHandle<JSAPIBitVector> &bitVector);
     JSHandle<JSAPIHashMapIterator> NewJSAPIHashMapIterator(const JSHandle<JSAPIHashMap> &hashMap, IterationKind kind);
     JSHandle<JSAPIHashSetIterator> NewJSAPIHashSetIterator(const JSHandle<JSAPIHashSet> &hashSet, IterationKind kind);
     JSHandle<TaggedHashArray> NewTaggedHashArray(uint32_t length);
