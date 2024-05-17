@@ -4906,13 +4906,13 @@ Local<JSValueRef>  JSNApi::NapiHasProperty(const EcmaVM *vm, uintptr_t nativeObj
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     EscapeLocalScope scope(vm);
     JSHandle<JSTaggedValue> obj(nativeObj);
-    LOG_IF_SPECIAL(object, ERROR);
     if (!(obj->IsECMAObject() || obj->IsCallable())) {
         // When input validation is failed, we return JSTaggedValue::Hole to napi native engine.
         // Using JSTaggedValue::Hole as the "hand-shaking-protocol" to tell native engine to change error state.
         JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(holeHandle));
     }
+    LOG_IF_SPECIAL(obj, ERROR);
     JSMutableHandle<JSTaggedValue> keyValue(key);
     JSTaggedValue res = ObjectFastOperator::TryFastHasProperty(thread, obj.GetTaggedValue(),
                                                                keyValue);
@@ -4930,13 +4930,13 @@ Local<JSValueRef> JSNApi::NapiHasOwnProperty(const EcmaVM *vm, uintptr_t nativeO
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     EscapeLocalScope scope(vm);
     JSHandle<JSTaggedValue> obj(nativeObj);
-    LOG_IF_SPECIAL(object, ERROR);
     if (!(obj->IsECMAObject() || obj->IsCallable())) {
         // When input validation is failed, we return JSTaggedValue::Hole to napi native engine.
         // Using JSTaggedValue::Hole as the "hand-shaking-protocol" to tell native engine to change error state.
         JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(holeHandle));
     }
+    LOG_IF_SPECIAL(obj, ERROR);
     JSMutableHandle<JSTaggedValue> keyValue(key);
     JSTaggedValue res = ObjectFastOperator::TryFastHasProperty(thread, obj.GetTaggedValue(),
                                                                keyValue);
@@ -4987,13 +4987,13 @@ Local<JSValueRef> JSNApi::NapiDeleteProperty(const EcmaVM *vm, uintptr_t nativeO
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     EscapeLocalScope scope(vm);
     JSHandle<JSTaggedValue> obj(nativeObj);
-    LOG_IF_SPECIAL(object, ERROR);
     if (!(obj->IsECMAObject() || obj->IsCallable())) {
         // When input validation is failed, we return JSTaggedValue::Hole to napi native engine.
         // Using JSTaggedValue::Hole as the "hand-shaking-protocol" to tell native engine to change error state.
         JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(holeHandle));
     }
+    LOG_IF_SPECIAL(obj, ERROR);
     JSMutableHandle<JSTaggedValue> keyValue(key);
     if (keyValue->IsString() && !EcmaStringAccessor(keyValue.GetTaggedValue()).IsInternString()) {
         [[maybe_unused]] ecmascript::EcmaHandleScope handleScope(thread);
