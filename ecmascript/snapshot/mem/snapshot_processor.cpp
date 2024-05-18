@@ -1701,7 +1701,7 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
         }
         if (valueRegion->InSharedSweepableSpace()) {
             if (!rootRegion->InSharedHeap()) {
-                rootRegion->AtomicInsertLocalToShareRSet((uintptr_t)value);
+                rootRegion->InsertLocalToShareRSet((uintptr_t)value);
             }
             // In deserializing can not use barriers, only mark the shared value to prevent markingbit being lost
             if (vm_->GetJSThread()->IsSharedConcurrentMarkingOrFinished()) {

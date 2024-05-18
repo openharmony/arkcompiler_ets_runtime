@@ -558,11 +558,13 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
 void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd)
 {
     if (!current->InYoungSpace()) {
-        current->AtomicClearSweepingRSetInRange(freeStart, freeEnd);
+        // This clear may exist data race with concurrent sweeping, so use CAS
+        current->AtomicClearSweepingOldToNewRSetInRange(freeStart, freeEnd);
         current->ClearOldToNewRSetInRange(freeStart, freeEnd);
         current->AtomicClearCrossRegionRSetInRange(freeStart, freeEnd);
     }
-    current->AtomicClearLocalToShareRSetInRange(freeStart, freeEnd);
+    current->ClearLocalToShareRSetInRange(freeStart, freeEnd);
+    current->AtomicClearSweepingLocalToShareRSetInRange(freeStart, freeEnd);
 }
 
 size_t Heap::GetCommittedSize() const
