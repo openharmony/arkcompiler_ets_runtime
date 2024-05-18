@@ -290,6 +290,7 @@ group("ark_aot_ts_test") {
     "sendableenv",
     "sendablecontext",
     "createarraywithbuffer2",
+    "builtins_number2",
   ]
 
   if (!is_debug) {

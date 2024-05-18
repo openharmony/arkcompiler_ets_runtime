@@ -204,13 +204,11 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             LowerNumberIsFinite(gate);
             break;
         case OpCode::NUMBER_IS_INTEGER:
-            LowerNumberIsInteger(gate);
+        case OpCode::NUMBER_IS_SAFEINTEGER:
+            LowerNumberIsInteger(gate, op);
             break;
         case OpCode::NUMBER_IS_NAN:
             LowerNumberIsNaN(gate);
-            break;
-        case OpCode::NUMBER_IS_SAFEINTEGER:
-            LowerNumberIsSafeInteger(gate);
             break;
         case OpCode::NUMBER_PARSE_FLOAT:
             LowerNumberParseFloat(gate);
@@ -1071,12 +1069,7 @@ void TypedNativeInlineLowering::LowerTrunc(GateRef gate)
         builder_.Bind(&isDouble);
         {
             GateRef input = builder_.GetDoubleOfTDouble(param);
-            if (builder_.GetCompilationConfig()->IsAArch64()) {
-                result = builder_.DoubleTrunc(input);
-            } else {
-                GateRef glue = acc_.GetGlueFromArgList();
-                result = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatTrunc), Gate::InvalidGateRef, {input}, gate);
-            }
+            result = builder_.DoubleTrunc(gate, input);
             builder_.Jump(&exit);
         }
     }
@@ -1814,21 +1807,64 @@ void TypedNativeInlineLowering::LowerMathSignTagged(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *taggedRes);
 }
 
+GateRef TypedNativeInlineLowering::BuildDoubleIsFinite(GateRef value)
+{
+    GateRef diff = builder_.DoubleSub(value, value);
+    return builder_.DoubleEqual(diff, diff);
+}
+
 void TypedNativeInlineLowering::LowerNumberIsFinite(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     Environment env(gate, circuit_, &builder_);
-    GateRef diff = builder_.DoubleSub(value, value);
-    GateRef result = builder_.DoubleEqual(diff, diff);
+    GateRef result = BuildDoubleIsFinite(value);
 
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
 }
 
-void TypedNativeInlineLowering::LowerNumberIsInteger(GateRef gate)
+GateRef TypedNativeInlineLowering::BuildTaggedIsInteger(GateRef gate, GateRef value, bool safe)
 {
+    Label exit(&builder_);
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.False());
+    Label isInt(&builder_);
+    Label notIsInt(&builder_);
+    BRANCH_CIR(builder_.TaggedIsInt(value), &isInt, &notIsInt);
+    builder_.Bind(&isInt);
+    {
+        result = builder_.True();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notIsInt);
+
+    Label isFinite(&builder_);
+    GateRef doubleVal = builder_.GetDoubleOfTDouble(value);
+    BRANCH_CIR(BuildDoubleIsFinite(doubleVal), &isFinite, &exit);
+    builder_.Bind(&isFinite);
+    {
+        GateRef doubleTrunc = builder_.DoubleTrunc(gate, doubleVal);
+        result = builder_.Equal(doubleVal, doubleTrunc);
+        if (safe) {
+            GateRef doubleAbs = builder_.FAbs(doubleTrunc);
+            GateRef lessOrEqual = builder_.DoubleLessThanOrEqual(doubleAbs, builder_.Double(base::MAX_SAFE_INTEGER));
+            result = builder_.BoolAnd(*result, lessOrEqual);
+        }
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    GateRef res = *result;
+    builder_.SubCfgExit();
+    return res;
+}
+
+void TypedNativeInlineLowering::LowerNumberIsInteger(GateRef gate, OpCode op)
+{
+    ASSERT(op == OpCode::NUMBER_IS_INTEGER || op == OpCode::NUMBER_IS_SAFEINTEGER);
     GateRef value = acc_.GetValueIn(gate, 0);
     Environment env(gate, circuit_, &builder_);
-    GateRef result = builder_.TaggedIsInt(value);
+    GateRef result = BuildTaggedIsInteger(gate, value, op == OpCode::NUMBER_IS_SAFEINTEGER);
 
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
 }
@@ -1838,17 +1874,6 @@ void TypedNativeInlineLowering::LowerNumberIsNaN(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     Environment env(gate, circuit_, &builder_);
     GateRef result = builder_.DoubleIsNAN(value);
-
-    acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
-}
-
-void TypedNativeInlineLowering::LowerNumberIsSafeInteger(GateRef gate)
-{
-    GateRef value = acc_.GetValueIn(gate, 0);
-    Environment env(gate, circuit_, &builder_);
-    auto temp = builder_.Int64LSL(builder_.CastDoubleToInt64(value), builder_.Int64(1));
-    auto res = builder_.Int64LSR(temp, builder_.Int64(1));
-    auto result = builder_.Int64LessThanOrEqual(res, builder_.Int64(base::MAX_SAFE_INTEGER));
 
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
 }

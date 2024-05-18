@@ -1637,15 +1637,16 @@ GateRef NumberSpeculativeRetype::VisitNumberIsInteger(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
     auto type = GetNumberInputTypeInfo(input);
-    if (type == TypeInfo::FLOAT64) {
-        GateRef result = builder_.TaggedFalse();
-        ResizeAndSetTypeInfo(result, TypeInfo::TAGGED);
+    if (type == TypeInfo::INT32) {
+        GateRef result = builder_.True();
+        ResizeAndSetTypeInfo(result, TypeInfo::INT1);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         return Circuit::NullGate();
     }
-    input = CheckAndConvertToInt32(input, GateType::NumberType());
+    ASSERT(type == TypeInfo::FLOAT64);
+    input = ConvertToTagged(input);
     acc_.ReplaceValueIn(gate, input, 0);
-    ResizeAndSetTypeInfo(input, TypeInfo::INT32);
+    ResizeAndSetTypeInfo(input, TypeInfo::TAGGED);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();
