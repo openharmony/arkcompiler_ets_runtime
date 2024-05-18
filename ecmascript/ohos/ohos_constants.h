@@ -10,13 +10,20 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License.P
+ * limitations under the License.
  */
 
-#include "ecmascript/ohos/enable_aot_list_helper.h"
+#ifndef ECMASCRIPT_COMPILER_OHOS_CONSTANTS_H
+#define ECMASCRIPT_COMPILER_OHOS_CONSTANTS_H
 
 namespace panda::ecmascript::ohos {
-const std::string EnableAotListHelper::ENABLE_LIST_NAME = "/etc/ark/app_aot_enable_list.conf";
-const std::string EnableAotListHelper::DISABLE_LIST_NAME = "/etc/ark/app_aot_disable_list.conf";
-const std::string EnableAotListHelper::JIT_ENABLE_LIST_NAME = "/etc/ark/app_jit_enable_list.conf";
+namespace OhosConstants {
+constexpr const char* SANDBOX_ARK_PROFILE_PATH = "/data/storage/ark-profile";
+constexpr const char* ARM64 = "arm64";
+constexpr const char* RUNTIME_SO_PATH = "/system/lib64/platformsdk/libark_jsruntime.so";
+constexpr const char* PATH_SEPARATOR = "/";
+constexpr const char* AOT_RUNTIME_INFO_NAME = "aot_runtime_info.log";
+constexpr const char* SPLIT_STR = "|";
+}  // namespace OhosConstants
 }  // namespace panda::ecmascript::ohos
+#endif  // ECMASCRIPT_COMPILER_OHOS_CONSTANTS_H
