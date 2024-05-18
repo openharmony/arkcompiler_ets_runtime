@@ -479,6 +479,9 @@ void PGOProfiler::HandlePGOPreDump()
             return;
         }
         auto func = JSFunction::Cast(funcValue);
+        if (func->IsSendableFunction()) {
+            return;
+        }
         JSTaggedValue methodValue = func->GetMethod();
         if (!methodValue.IsMethod()) {
             return;
@@ -521,6 +524,10 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
             continue;
         }
         auto func = JSFunction::Cast(value);
+        if (func->IsSendableFunction()) {
+            current = PopFromProfileQueue();
+            continue;
+        }
         JSTaggedValue methodValue = func->GetMethod();
         if (!methodValue.IsMethod()) {
             current = PopFromProfileQueue();
