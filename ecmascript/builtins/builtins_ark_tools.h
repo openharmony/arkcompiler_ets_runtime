@@ -128,7 +128,7 @@
     V("jitCompileAsync",                           JitCompileAsync,                           1, INVALID)     \
     V("waitJitCompileFinish",                      WaitJitCompileFinish,                      1, INVALID)
 
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_SCOPE_LOCK_STATS(V)                                   \
     V("startScopeLockStats",            StartScopeLockStats,            0, INVALID)       \
     V("stopScopeLockStats",             StopScopeLockStats,             0, INVALID)
@@ -228,7 +228,7 @@ public:
 
     static JSTaggedValue TimeInUs(EcmaRuntimeCallInfo *info);
 
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     static JSTaggedValue StartScopeLockStats(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue StopScopeLockStats(EcmaRuntimeCallInfo *info);

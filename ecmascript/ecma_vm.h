@@ -719,7 +719,7 @@ public:
     {
         return sharedNativePointerCallbacks_;
     }
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     void ResetScopeLockStats()
     {
         enterThreadManagedScopeCount_ = 0;
@@ -917,7 +917,7 @@ private:
     bool isJitCompileVM_ {false};
     bool overLimit_ {false};
 
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks
     bool isCollectingScopeLockStats_ = false;
     int enterThreadManagedScopeCount_ = 0;

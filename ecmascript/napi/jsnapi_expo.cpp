@@ -3338,7 +3338,7 @@ JSExecutionScope::~JSExecutionScope()
 JsiNativeScope::JsiNativeScope(const EcmaVM *vm)
 {
     thread_ = vm->GetAssociatedJSThread();
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         const_cast<EcmaVM*>(vm)->IncreaseEnterJsiNativeScopeCount();
         const_cast<EcmaVM*>(vm)->IncreaseUpdateThreadStateTransCount();
@@ -3358,7 +3358,7 @@ JsiNativeScope::~JsiNativeScope()
 JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
 {
     thread_ = vm->GetAssociatedJSThread();
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         const_cast<EcmaVM*>(vm)->IncreaseEnterFastNativeScopeCount();
         const_cast<EcmaVM*>(vm)->IncreaseUpdateThreadStateTransCount();

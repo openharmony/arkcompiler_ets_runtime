@@ -39,7 +39,7 @@ public:
                     }
                 }
             } else {
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
                 auto vm = self_->GetEcmaVM();
                 bool isCollectingStats = vm->IsCollectingScopeLockStats();
                 if (isCollectingStats) {
@@ -47,7 +47,7 @@ public:
                 }
 #endif
                 if (oldState_ != newState) {
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
                     if (isCollectingStats) {
                         vm->IncreaseUpdateThreadStateTransCount();
                     }
