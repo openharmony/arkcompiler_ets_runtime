@@ -418,6 +418,7 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
         if (freeStart != freeEnd) {
             size_t freeSize = freeEnd - freeStart;
             FreeObject::FillFreeObject(heap_, freeStart, freeSize);
+            region->ClearLocalToShareRSetInRange(freeStart, freeEnd);
             SemiSpace *toSpace = heap_->GetNewSpace();
             toSpace->DecreaseSurvivalObjectSize(freeSize);
         }
@@ -427,6 +428,7 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
     CHECK_REGION_END(freeStart, freeEnd);
     if (freeStart < freeEnd) {
         FreeObject::FillFreeObject(heap_, freeStart, freeEnd - freeStart);
+        region->ClearLocalToShareRSetInRange(freeStart, freeEnd);
     }
 }
 

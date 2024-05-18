@@ -220,6 +220,7 @@ public:
     bool HasLocalToShareRememberedSet() const;
     void InsertLocalToShareRSet(uintptr_t addr);
     void AtomicInsertLocalToShareRSet(uintptr_t addr);
+    void ClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     template <typename Visitor>
     void AtomicIterateAllLocalToShareBits(Visitor visitor);
