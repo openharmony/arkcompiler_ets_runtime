@@ -217,7 +217,7 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
     Taskpool::GetCurrentTaskpool()->Initialize();
-    LOG_ECMA(DEBUG) << "multi-thread check enabled: " << options_.EnableThreadCheck();
+    LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
 #ifdef JIT_ESCAPE_ENABLE
     SignalAllReg();
 #endif
