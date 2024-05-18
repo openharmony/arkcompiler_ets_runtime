@@ -393,6 +393,7 @@ public:
     GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool isFastCall);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef ctor);
+    GateRef IsDerived(GateRef ctor);
     GateRef ToLength(GateRef receiver);
     GateRef StoreModuleVar(GateRef jsFunc, GateRef index, GateRef value);
     GateRef LdLocalModuleVar(GateRef jsFunc, GateRef index);

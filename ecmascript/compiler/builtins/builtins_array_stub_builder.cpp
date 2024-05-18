@@ -4793,4 +4793,33 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
         Jump(exit);
     }
 }
+
+void BuiltinsArrayStubBuilder::IsArray([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef thisValue,
+    GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    GateRef obj = GetCallArg0(numArgs);
+    Label isHeapObj(env);
+    Label notHeapObj(env);
+    BRANCH(TaggedIsHeapObject(obj), &isHeapObj, &notHeapObj);
+    Bind(&isHeapObj);
+    {
+        Label isJSArray(env);
+        Label notJSArray(env);
+        GateRef objectType = GetObjectType(LoadHClass(obj));
+        BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))), &isJSArray, &notJSArray);
+        Bind(&isJSArray);
+        {
+            result->WriteVariable(TaggedTrue());
+            Jump(exit);
+        }
+        Bind(&notJSArray);
+        BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY))), slowPath, &notHeapObj);
+    }
+    Bind(&notHeapObj);
+    {
+        result->WriteVariable(TaggedFalse());
+        Jump(exit);
+    }
+}
 }  // namespace panda::ecmascript::kungfu

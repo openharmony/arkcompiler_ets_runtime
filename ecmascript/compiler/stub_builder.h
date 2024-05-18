@@ -373,6 +373,7 @@ public:
     GateRef IsJSFunctionBase(GateRef obj);
     GateRef IsConstructor(GateRef object);
     GateRef IsBase(GateRef func);
+    GateRef IsDerived(GateRef func);
     GateRef IsJsArray(GateRef obj);
     GateRef IsJsSArray(GateRef obj);
     GateRef IsByteArray(GateRef obj);

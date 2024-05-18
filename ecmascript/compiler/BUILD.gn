@@ -105,6 +105,7 @@ libark_jsoptimizer_sources = [
   "builtins/builtins_function_stub_builder.cpp",
   "builtins/builtins_number_stub_builder.cpp",
   "builtins/builtins_object_stub_builder.cpp",
+  "builtins/builtins_reflect_stub_builder.cpp",
   "builtins/builtins_string_stub_builder.cpp",
   "builtins/builtins_stubs.cpp",
   "builtins/builtins_typedarray_stub_builder.cpp",

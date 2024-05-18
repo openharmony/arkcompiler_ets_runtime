@@ -501,7 +501,7 @@ void TimSort::MergeHi(int base1, int len1, int base2, int len2)
         } while ((count1 | count2) < minGallop);
 
         do {
-            ASSERT(len1 > 1 && len2 > 0);
+            ASSERT(len1 > 0 && len2 > 1);
             JSHandle<JSTaggedValue> cursorVal(thread_, tmpArray->Get(cursor2));
             count1 = len1 - GallopRight(workArray, cursorVal, base1, len1, len1 - 1);
             if (count1 != 0) {

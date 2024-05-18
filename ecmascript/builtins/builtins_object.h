@@ -68,7 +68,7 @@
     /* Object.seal ( O ) */                                                                         \
     V("seal",                     Seal,                     1, INVALID)                             \
     /* Object.setPrototypeOf ( O, proto ) */                                                        \
-    V("setPrototypeOf",           SetPrototypeOf,           2, INVALID)                             \
+    V("setPrototypeOf",           SetPrototypeOf,           2, ObjectSetPrototypeOf)                \
     /* Object.values ( O ) */                                                                       \
     V("values",                   Values,                   1, INVALID)
 

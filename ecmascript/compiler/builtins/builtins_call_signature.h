@@ -43,7 +43,8 @@ namespace panda::ecmascript::kungfu {
     BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)          \
     BUILTINS_WITH_NUMBER_STUB_BUILDER(T)            \
     BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)        \
-    BUILTINS_WITH_DATAVIEW_STUB_BUILDER(K)
+    BUILTINS_WITH_DATAVIEW_STUB_BUILDER(K)          \
+    BUILTINS_WITH_REFLECT_STUB_BUILDER(T)
 
 #define BUILTINS_WITH_STRING_STUB_BUILDER(V)                                            \
     V(CharAt,             String,   Hole())                                             \
@@ -80,7 +81,8 @@ namespace panda::ecmascript::kungfu {
     V(Entries,                     Object,   Undefined())                         \
     V(IsFrozen,                    Object,   Undefined())                         \
     V(IsSealed,                    Object,   Undefined())                         \
-    V(GetOwnPropertyDescriptors,   Object,   Undefined())
+    V(GetOwnPropertyDescriptors,   Object,   Undefined())                         \
+    V(SetPrototypeOf,              Object,   Undefined())
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V)         \
     V(With,          Array,   Undefined())          \
@@ -112,7 +114,8 @@ namespace panda::ecmascript::kungfu {
     V(ReduceRight,   Array,   Undefined())          \
     V(Map,           Array,   Undefined())          \
     V(FlatMap,       Array,   Undefined())          \
-    V(ToSorted,      Array,   Undefined())
+    V(ToSorted,      Array,   Undefined())          \
+    V(IsArray,       Array,   Undefined())
 
 #define BUILTINS_WITH_SET_STUB_BUILDER(V)           \
     V(Clear,    Set,   Undefined())                 \
@@ -140,6 +143,9 @@ namespace panda::ecmascript::kungfu {
 #define BUILTINS_WITH_NUMBER_STUB_BUILDER(V)        \
     V(ParseFloat,      Number,    Undefined())      \
     V(ToString,        Number,    Undefined())
+
+#define BUILTINS_WITH_REFLECT_STUB_BUILDER(V)       \
+    V(Get,             Reflect,   Undefined())
 
 #define BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)    \
     V(Reverse,         TypedArray,  Undefined())    \
@@ -283,7 +289,6 @@ namespace panda::ecmascript::kungfu {
     V(ObjectGetProto)                               \
     V(ObjectIsPrototypeOf)                          \
     V(ReflectGetPrototypeOf)                        \
-    V(ReflectGet)                                   \
     V(ReflectHas)                                   \
     V(ReflectConstruct)                             \
     V(ReflectApply)                                 \

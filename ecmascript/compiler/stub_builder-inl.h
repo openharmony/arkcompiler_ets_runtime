@@ -1260,6 +1260,11 @@ inline GateRef StubBuilder::IsBase(GateRef func)
     return env_->GetBuilder()->IsBase(func);
 }
 
+inline GateRef StubBuilder::IsDerived(GateRef func)
+{
+    return env_->GetBuilder()->IsDerived(func);
+}
+
 inline GateRef StubBuilder::IsSymbol(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));

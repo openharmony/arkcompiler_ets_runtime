@@ -53,6 +53,7 @@ private:
     GateRef GetEnumElementEntries(GateRef glue, GateRef obj, Label *slowPath);
     GateRef GetEnumPropertyEntries(GateRef glue, GateRef obj, Label *slowPath);
     GateRef TestIntegrityLevel(GateRef glue, GateRef obj, GateRef level, Label *slowPath);
+    GateRef ObjectSetPrototype(GateRef glue, GateRef obj, GateRef proto);
     void LayoutInfoGetAllEnumKeys(GateRef end, GateRef offset, GateRef array, GateRef object, GateRef layoutInfo);
     void AssignEnumElementProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
     void LayoutInfoAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);

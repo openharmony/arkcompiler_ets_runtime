@@ -1960,6 +1960,8 @@ public:
     static JSHandle<JSTaggedValue> SetPrototypeWithNotification(const JSThread *thread,
                                                                 const JSHandle<JSTaggedValue> &hclass,
                                                                 const JSHandle<JSTaggedValue> &proto);
+    static void SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject> &object,
+                                       const JSHandle<JSTaggedValue> &proto);
     void SetPrototype(const JSThread *thread, JSTaggedValue proto);
     void PUBLIC_API SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
     static void OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);

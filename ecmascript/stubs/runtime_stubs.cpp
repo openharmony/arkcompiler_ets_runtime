@@ -3835,6 +3835,15 @@ DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SetPrototypeTransition)
+{
+    RUNTIME_STUBS_HEADER(SetPrototypeTransition);
+    JSHandle<JSObject> obj = GetHArg<JSObject>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> proto = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the third parameter
+    JSHClass::SetPrototypeTransition(thread, obj, proto);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(HasProperty)
 {
     RUNTIME_STUBS_HEADER(HasProperty);

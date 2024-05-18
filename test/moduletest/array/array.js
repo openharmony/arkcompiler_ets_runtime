@@ -1966,3 +1966,30 @@ testCases.forEach(({ array, target }) => {
     print(removedElements4);
     print(arrayWithUndefined);
 }
+
+/*
+ * @tc.name:IsArray
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ */
+{
+    // print true
+    print(Array.isArray([]));
+    print(Array.isArray([1]));
+    print(Array.isArray(new Array()));
+    print(Array.isArray(new Array("a", "b", "c", "d")));
+    print(Array.isArray(new Array(3)));
+    print(Array.isArray(Array.prototype));
+
+    // print false
+    print(Array.isArray());
+    print(Array.isArray({}));
+    print(Array.isArray(null));
+    print(Array.isArray(undefined));
+    print(Array.isArray(17));
+    print(Array.isArray("Array"));
+    print(Array.isArray(true));
+    print(Array.isArray(false));
+    print(Array.isArray(new Uint8Array(32)));
+    print(Array.isArray({ __proto__: Array.prototype }));
+}
