@@ -203,6 +203,22 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
     return globalConstants->GetHandledNull();
 }
 
+JSHandle<JSTaggedValue> SourceTextModule::ResolveNativeStarExport(JSThread *thread,
+                                                                  const JSHandle<SourceTextModule> &nativeModule,
+                                                                  const JSHandle<JSTaggedValue> &exportName)
+{
+    if (nativeModule->GetStatus() != ModuleStatus::EVALUATED) {
+        auto moduleType = nativeModule->GetTypes();
+        if (!LoadNativeModule(thread, nativeModule, moduleType)) {
+            return thread->GlobalConstants()->GetHandledNull();
+        }
+        nativeModule->SetStatus(ModuleStatus::EVALUATED);
+    }
+
+    JSHandle<JSTaggedValue> nativeExports(thread, nativeModule->GetModuleValue(thread, 0, false));
+    return SourceTextModule::ResolveExportObject(thread, nativeModule, nativeExports, exportName);
+}
+
 JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
     const JSHandle<JSTaggedValue> &exportName,
     CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector)
@@ -367,7 +383,7 @@ void SourceTextModule::MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSVa
     arguments.emplace_back(StringRef::NewFromUtf8(vm, moduleDir.c_str()));
 }
 
-bool SourceTextModule::LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
+bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
                                         ModuleTypes moduleType)
 {
     EcmaVM *vm = thread->GetEcmaVM();
@@ -1585,8 +1601,13 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
         importedModule.Update(JSHandle<SourceTextModule>::Cast(importedVal));
     }
     // b. Let resolution be ? importedModule.ResolveExport(exportName, resolveVector).
-    JSHandle<JSTaggedValue> resolution =
-        SourceTextModule::ResolveExport(thread, importedModule, exportName, resolveVector);
+    JSHandle<JSTaggedValue> resolution;
+    if (UNLIKELY(IsNativeModule(importedModule->GetTypes()))) {
+        resolution = SourceTextModule::ResolveNativeStarExport(thread, importedModule, exportName);
+    } else {
+        resolution = SourceTextModule::ResolveExport(thread, importedModule, exportName, resolveVector);
+    }
+
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // if step into GetStarResolution in aot phase, the module must be a normal SourceTextModule not an empty
     // aot module. Sometimes for normal module, if indirectExportEntries, localExportEntries, starExportEntries
