@@ -79,17 +79,21 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
             return nullptr;
         }
+        std::string hspPath = ModulePathHelper::ParseHapPath(filename);
+        if (hspPath.empty()) {
+            LOG_FULL(FATAL) << "Invalid input hsp path: " << filename;
+            return nullptr;
+        }
         uint8_t *data = nullptr;
         size_t dataSize = 0;
-        LOG_FULL(DEBUG) << "HSP path: " << filename;
-        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(filename), &data, &dataSize);
+        bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize);
         if (!getBuffer) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
             if (vm->EnableReportModuleResolvingFailure()) {
                 LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
             }
 #endif
-            LOG_FULL(FATAL) << "resolveBufferCallback get buffer failed";
+            LOG_FULL(FATAL) << "resolveBufferCallback get hsp buffer failed, hsp path:" << filename;
             return nullptr;
         }
 #if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
