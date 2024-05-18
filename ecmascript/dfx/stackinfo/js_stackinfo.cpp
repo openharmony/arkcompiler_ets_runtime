@@ -890,12 +890,12 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
         if (IsFunctionFrame(frameTypeTmp)) {
             if (static_cast<FrameType>(frameTypeTmp) == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME ||
                 static_cast<FrameType>(frameTypeTmp) == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
-                uintptr_t *function = 0;
+                uintptr_t function = 0;
                 uintptr_t funcAddr = tmpPtr;
                 funcAddr -= OptimizedJSFunctionFrame::GetTypeOffset();
                 funcAddr += OptimizedJSFunctionFrame::GetFunctionOffset();
-                arkUnwindParam->readMem(arkUnwindParam->ctx, funcAddr, function);
-                arkUnwindParam->jitCache.push_back(*function);
+                arkUnwindParam->readMem(arkUnwindParam->ctx, funcAddr, &function);
+                arkUnwindParam->jitCache.push_back(function);
             }
         }
     }
