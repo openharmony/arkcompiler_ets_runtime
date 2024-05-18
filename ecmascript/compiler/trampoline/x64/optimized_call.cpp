@@ -958,8 +958,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     JSCallCheck(assembler, rax, &slowCall, &slowCall, &isJsFunc); // jsfunc -> rsi hclassfiled -> rax
     __ Jmp(&slowCall);
     Register jsfunc = rsi;
-    Register methodCallField = rcx;
-    Register method = rdx;
+    Register compiledCodeFlag = rcx;
     __ Bind(&isJsFunc);
     {
         __ Btq(JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, rax); // is CallConstructor
@@ -967,9 +966,8 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Btq(JSHClass::ConstructorBit::START_BIT, rax);
         __ Jb(&slowCall);
         __ Bind(&isNotClass);
-        __ Mov(Operand(rsi, JSFunctionBase::METHOD_OFFSET), method); // get method
-        __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
-        __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
+        __ Movzwq(Operand(rsi, JSFunctionBase::BIT_FIELD_OFFSET), compiledCodeFlag); // compiled code flag
+        __ Btq(JSFunctionBase::IsCompiledCodeBit::START_BIT, compiledCodeFlag); // is compiled code
         __ Jnb(&slowCall);
         __ Bind(&aotCall);
         {

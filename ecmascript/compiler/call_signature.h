@@ -564,7 +564,6 @@ private:
     V(StringGetEnd)                             \
     V(ArrayTrim)                                \
     V(OptimizedFastJmp)                         \
-    V(ClearJitCompiledCodeFlags)                \
     V(CopyTypedArrayBuffer)                     \
     V(CallArg0AndDispatchFromBaseline)          \
     V(CallArg1AndDispatchFromBaseline)          \

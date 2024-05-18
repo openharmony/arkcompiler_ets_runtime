@@ -7852,7 +7852,7 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
         hclass = LoadHClass(func);
         bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     }
-    GateRef method = GetMethodFromJSFunction(func);
+    GateRef method = GetMethodFromJSFunctionOrProxy(func);
     GateRef callField = GetCallFieldFromMethod(method);
     GateRef isNativeMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);
 
@@ -8019,13 +8019,16 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
     Label slowCallBridge(env);
     // Worker/Taskpool disable aot optimization
     Label judgeAotAndFastCall(env);
+    Label checkAot(env);
     {
         GateRef newTarget = Undefined();
         GateRef thisValue = Undefined();
         GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
+        BRANCH(IsJsProxy(func), &methodNotAot, &checkAot);
+        Bind(&checkAot);
         BRANCH(IsWorker(glue), &funcCheckBaselineCode, &judgeAotAndFastCall);
         Bind(&judgeAotAndFastCall);
-        BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+        BRANCH(JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
                &methodIsFastCall, &methodNotFastCall);
         Bind(&methodIsFastCall);
         {
@@ -8190,7 +8193,7 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
         }
 
         Bind(&methodNotFastCall);
-        BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT),
+        BRANCH(JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT),
                &methodisAot, &funcCheckBaselineCode);
         Bind(&methodisAot);
         {
@@ -8607,7 +8610,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         hclass = LoadHClass(func);
         bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     }
-    GateRef method = GetMethodFromJSFunction(func);
+    GateRef method = GetMethodFromJSFunctionOrProxy(func);
     GateRef callField = GetCallFieldFromMethod(method);
     GateRef isNativeMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);
 
@@ -8771,13 +8774,16 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label slowCallBridge(env);
     // Worker/Taskpool disable aot optimization
     Label judgeAotAndFastCall(env);
+    Label checkAot(env);
     {
         GateRef newTarget = Undefined();
         GateRef thisValue = Undefined();
         GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
+        BRANCH(IsJsProxy(func), &methodNotAot, &checkAot);
+        Bind(&checkAot);
         BRANCH(IsWorker(glue), &funcCheckBaselineCode, &judgeAotAndFastCall);
         Bind(&judgeAotAndFastCall);
-        BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+        BRANCH(JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
             &methodIsFastCall, &methodNotFastCall);
         Bind(&methodIsFastCall);
         {
@@ -8962,7 +8968,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         }
 
         Bind(&methodNotFastCall);
-        BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT),
+        BRANCH(JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT),
             &methodisAot, &funcCheckBaselineCode);
         Bind(&methodisAot);
         {
@@ -10896,4 +10902,13 @@ GateRef StubBuilder::ShortcutBoolOr(const std::function<GateRef()>& first, const
     return ret;
 }
 
+void StubBuilder::SetCompiledCodeFlagToFunctionFromMethod(GateRef glue, GateRef function, GateRef method)
+{
+    // set compiled code & fast call flag
+    GateRef isFastCall = IsFastCall(method);
+    GateRef compiledCodeField = Int32LSL(Int32(1U), Int32(JSFunctionBase::IsCompiledCodeBit::START_BIT));
+    GateRef compiledCodeFlag = Int32Or(compiledCodeField, Int32LSL(ZExtInt1ToInt32(isFastCall),
+        Int32(JSFunctionBase::IsFastCallBit::START_BIT)));
+    SetCompiledCodeFlagToFunction(glue, function, compiledCodeFlag);
+}
 }  // namespace panda::ecmascript::kungfu

@@ -18,7 +18,7 @@
 
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/mem/region.h"
-#include "ecmascript/method.h"
+#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -238,19 +238,13 @@ GateRef CircuitBuilder::GetObjectType(GateRef hClass)
 
 inline GateRef CircuitBuilder::CanFastCall(GateRef jsFunc)
 {
-    GateRef method = GetMethodFromFunction(jsFunc);
-    return CanFastCallWithMethod(method);
-}
-
-inline GateRef CircuitBuilder::CanFastCallWithMethod(GateRef method)
-{
-    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
-    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
-    return Int64NotEqual(
-        Int64And(
-            Int64LSR(callfield, Int64(MethodLiteral::IsFastCallBit::START_BIT)),
-            Int64((1LU << MethodLiteral::IsFastCallBit::SIZE) - 1)),
-        Int64(0));
+    GateRef bitFieldOffset = IntPtr(JSFunctionBase::BIT_FIELD_OFFSET);
+    GateRef bitField = Load(VariableType::INT32(), jsFunc, bitFieldOffset);
+    return Int32NotEqual(
+        Int32And(
+            Int32LSR(bitField, Int32(JSFunctionBase::IsFastCallBit::START_BIT)),
+            Int32((1LU << JSFunctionBase::IsFastCallBit::SIZE) - 1)),
+        Int32(0));
 }
 
 GateRef CircuitBuilder::GetElementsKindByHClass(GateRef hClass)

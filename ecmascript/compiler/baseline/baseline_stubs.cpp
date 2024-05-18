@@ -1781,7 +1781,7 @@ void BaselineCallrangeImm8Imm8V8StubBuilder::GenerateCircuit()
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef acc = GetAccFromFrame(frame);
-    GateRef curMethod = GetMethodFromJSFunction(curFunc);
+    GateRef curMethod = GetMethodFromJSFunctionOrProxy(curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
     METHOD_ENTRY(acc);
     Label noNeedCheckException(env);

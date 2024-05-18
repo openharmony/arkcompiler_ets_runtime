@@ -244,7 +244,7 @@ private:
     void LowerSuperCallArrow(GateRef gate);
     void LowerSuperCallSpread(GateRef gate);
     GateRef IsSuperFuncValid(GateRef superFunc);
-    GateRef IsAotOrFastCall(GateRef method, CircuitBuilder::JudgeMethodType type);
+    GateRef IsAotOrFastCall(GateRef func, CircuitBuilder::JudgeMethodType type);
     void LowerFastSuperCall(const std::vector<GateRef> &args, Variable *result, Label *exit, GateRef actualArgc,
                             bool isSuperCallSpread);
     GateRef GetSuperCallArgs(const std::vector<GateRef> &args, bool isSuperCallSpread);

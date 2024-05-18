@@ -161,7 +161,7 @@ private:
         index += NUM_MANDATORY_JSFUNC_ARGS;
         return GetFrameArgv(static_cast<size_t>(index));
     }
-    bool CollectVirtualRegisters(Method* method, FrameWriter *frameWriter, size_t curDepth);
+    bool CollectVirtualRegisters(JSTaggedValue callTarget, Method *method, FrameWriter *frameWriter, size_t curDepth);
     bool HasDeoptValue(size_t curDepth, int32_t index) const
     {
         ASSERT(curDepth <= inlineDepth_);

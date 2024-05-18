@@ -393,14 +393,7 @@ public:
 
     void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
 
-    // jit code
-    bool IsJitCompiledCode() const;
-    void SetJitCompiledCode(bool flag);
-    void ClearJitCompiledCodeFlags();
-
     bool IsSharedMethod() const;
-
-    bool CanSerializeCodeEntry() const;
 
     static constexpr size_t Size()
     {

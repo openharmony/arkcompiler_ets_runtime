@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/stub_builder.h"
+#include "ecmascript/compiler/circuit_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
 class StringIdInfo {

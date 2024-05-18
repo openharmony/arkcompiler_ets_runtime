@@ -871,9 +871,11 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     SetCallableToBitfield(glue, *hclass, true);
     SetMethodToFunction(glue, *result, method, knownKind ? MemoryOrder::NoBarrier() : MemoryOrder::Default());
 
+    SetCompiledCodeFlagToFunction(glue, *result, Int32(0));
+    SetMachineCodeToFunction(glue, *result, Undefined(), MemoryOrder::NoBarrier());
+
     Label hasCompiledStatus(env);
     Label afterDealWithCompiledStatus(env);
-    Label isJitCompiledCode(env);
     Label tryInitFuncCodeEntry(env);
     // Worker/Taskpool disable aot optimization
     Label judgeAotWithCallField(env);
@@ -882,12 +884,8 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     BRANCH(IsAotWithCallField(method), &hasCompiledStatus, &tryInitFuncCodeEntry);
     Bind(&hasCompiledStatus);
     {
-        BRANCH(IsJitCompiledCode(method), &isJitCompiledCode, &tryInitFuncCodeEntry);
-        Bind(&isJitCompiledCode);
-        {
-            ClearJitCompiledCodeFlags(glue, method);
-            Jump(&afterDealWithCompiledStatus);
-        }
+        SetCompiledCodeFlagToFunctionFromMethod(glue, *result, method);
+        Jump(&tryInitFuncCodeEntry);
     }
     // Notice: we set code entries for all function to deal with these senarios
     // 1) AOT compiled method, set AOT compiled code entry

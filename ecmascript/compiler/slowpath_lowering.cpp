@@ -1861,9 +1861,9 @@ GateRef SlowPathLowering::IsSuperFuncValid(GateRef superFunc)
                             builder_.IsConstructor(superFunc));
 }
 
-GateRef SlowPathLowering::IsAotOrFastCall(GateRef method, CircuitBuilder::JudgeMethodType type)
+GateRef SlowPathLowering::IsAotOrFastCall(GateRef func, CircuitBuilder::JudgeMethodType type)
 {
-    return builder_.JudgeAotAndFastCallWithMethod(method, type);
+    return builder_.JudgeAotAndFastCall(func, type);
 }
 
 void SlowPathLowering::LowerFastSuperCall(const std::vector<GateRef> &args, Variable *result, Label *exit,
@@ -1884,7 +1884,7 @@ void SlowPathLowering::LowerFastSuperCall(const std::vector<GateRef> &args, Vari
     GateRef newTartget = args[4]; // 4: means newTarget
     GateRef thisObj = args[5]; // 5: means thisObj
 
-    BRANCH_CIR(IsAotOrFastCall(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &fastCall, &notFastCall);
+    BRANCH_CIR(IsAotOrFastCall(superFunc, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &fastCall, &notFastCall);
     builder_.Bind(&fastCall);
     {
         Label notBridge(&builder_);
@@ -1908,7 +1908,7 @@ void SlowPathLowering::LowerFastSuperCall(const std::vector<GateRef> &args, Vari
         }
     }
     builder_.Bind(&notFastCall);
-    BRANCH_CIR(IsAotOrFastCall(method, CircuitBuilder::JudgeMethodType::HAS_AOT), &aotCall, &notAotCall);
+    BRANCH_CIR(IsAotOrFastCall(superFunc, CircuitBuilder::JudgeMethodType::HAS_AOT), &aotCall, &notAotCall);
     builder_.Bind(&aotCall);
     {
         Label notBridge(&builder_);
@@ -2730,8 +2730,8 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     Label success(&builder_);
     Label failed(&builder_);
     NewObjectStubBuilder newBuilder(&env);
-    newBuilder.NewJSFunction(glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), length, lexEnv, &result, &success,
-                             &failed, kind);
+    newBuilder.NewJSFunction(glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), builder_.TruncInt64ToInt32(length),
+                             lexEnv, &result, &success, &failed, kind);
     builder_.Bind(&failed);
     {
         failControl.SetState(builder_.GetState());
@@ -3447,7 +3447,7 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
                 builder_.Bind(&isCallConstructor);
             }
             GateRef method = builder_.GetMethodFromFunction(func);
-            BRANCH_CIR(builder_.JudgeAotAndFastCallWithMethod(method,
+            BRANCH_CIR(builder_.JudgeAotAndFastCall(func,
                 CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &fastCall, &notFastCall);
             builder_.Bind(&fastCall);
             {
@@ -3476,7 +3476,7 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
                 }
             }
             builder_.Bind(&notFastCall);
-            BRANCH_CIR(builder_.JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT),
+            BRANCH_CIR(builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT),
                 &slowCall, &slowPath);
             builder_.Bind(&slowCall);
             {

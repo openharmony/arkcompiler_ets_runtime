@@ -457,7 +457,6 @@ public:
 
     // FastCall
     inline GateRef CanFastCall(GateRef jsFunc);
-    inline GateRef CanFastCallWithMethod(GateRef method);
 
     // Js world
     inline GateRef GetObjectType(GateRef hClass);
@@ -653,7 +652,6 @@ public:
     GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value, uint32_t receiverHClassIndex);
     inline GateRef JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodType type);
-    inline GateRef JudgeAotAndFastCallWithMethod(GateRef method, JudgeMethodType type);
     GateRef ComputeTaggedArraySize(GateRef length);
     GateRef HeapAlloc(GateRef glue, GateRef size, GateType type, RegionSpaceFlag flag);
     GateRef TaggedIsHeapObjectOp(GateRef value);

@@ -256,7 +256,7 @@ GateRef BaselineStubBuilder::GetStartIdxAndNumArgs(GateRef sp, GateRef restIdx)
     DEFVARIABLE(numArgs, VariableType::INT32(), Int32(0));
     GateRef state = PtrSub(sp, IntPtr(AsmInterpretedFrame::GetSize(env->IsArch32Bit())));
     GateRef function = GetFunctionFromFrame(state);
-    GateRef method = GetMethodFromJSFunction(function);
+    GateRef method = GetMethodFromJSFunctionOrProxy(function);
     GateRef callField = GetCallFieldFromMethod(method);
     // ASSERT: callField has "extra" bit.
     GateRef numVregs = TruncInt64ToInt32(Int64And(

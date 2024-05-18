@@ -231,7 +231,8 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     // This causes a Construct that is not a ClassConstructor to call jit code.
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     Method *method = callTarget->GetCallTarget();
-    bool isAotWithCallField = method->IsAotWithCallField();
+    bool isCompiledCode = JSFunctionBase::IsCompiledCodeFromCallTarget(info->GetFunctionValue());
+
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
     thread->CheckSafepoint();
@@ -241,7 +242,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 
     callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     method = callTarget->GetCallTarget();
-    if (!thread->IsWorker() && isAotWithCallField) {
+    if (!thread->IsWorker() && isCompiledCode) {
         JSHandle<JSFunction> func(thread, info->GetFunctionValue());
         if (func->IsClassConstructor()) {
             {

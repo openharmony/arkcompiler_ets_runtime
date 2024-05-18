@@ -61,11 +61,83 @@ public:
 
     void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
 
+    void SetIsCompiledFastCall(bool isFastCall)
+    {
+        uint32_t bitField = GetBitField();
+        uint32_t newValue = IsFastCallBit::Update(bitField, isFastCall);
+        SetBitField(newValue);
+    }
+
+    bool IsCompiledFastCall() const
+    {
+        uint32_t bitField = GetBitField();
+        return IsFastCallBit::Decode(bitField);
+    }
+
+    static bool IsCompiledCodeFromCallTarget(JSTaggedValue callTarget)
+    {
+        if (callTarget.IsJSFunction()) {
+            return Cast(callTarget.GetTaggedObject())->IsCompiledCode();
+        } else {
+            ECMAObject *target = reinterpret_cast<ECMAObject*>(callTarget.GetTaggedObject());
+            ASSERT(target != nullptr);
+            Method *method = target->GetCallTarget();
+            return method->IsAotWithCallField();
+        }
+    }
+
+    static bool IsFastCallFromCallTarget(JSTaggedValue callTarget)
+    {
+        if (callTarget.IsJSFunction()) {
+            return Cast(callTarget.GetTaggedObject())->IsCompiledFastCall();
+        } else {
+            ECMAObject *target = reinterpret_cast<ECMAObject*>(callTarget.GetTaggedObject());
+            ASSERT(target != nullptr);
+            Method *method = target->GetCallTarget();
+            return method->IsFastCall();
+        }
+    }
+
+    void SetCompiledCodeBit(bool isCompiled)
+    {
+        uint32_t bitField = GetBitField();
+        uint32_t newValue = IsCompiledCodeBit::Update(bitField, isCompiled);
+        SetBitField(newValue);
+    }
+
+    bool IsCompiledCode() const
+    {
+        uint32_t bitField = GetBitField();
+        return IsCompiledCodeBit::Decode(bitField);
+    }
+
+    void ClearCompiledCodeFlags();
+
+    void SetTaskConcurrentFuncFlag(bool value)
+    {
+        uint32_t bitField = GetBitField();
+        uint32_t newValue = TaskConcurrentFuncFlagBit::Update(bitField, value);
+        SetBitField(newValue);
+    }
+
+    bool GetTaskConcurrentFuncFlag() const
+    {
+        uint32_t bitField = GetBitField();
+        return TaskConcurrentFuncFlagBit::Decode(bitField);
+    }
+
+    /* compiled code flag field */
+    using IsCompiledCodeBit = BitField<bool, 0, 1>;        // offset 0
+    using IsFastCallBit = IsCompiledCodeBit::NextFlag;     // offset 1
+    static constexpr uint32_t COMPILED_CODE_FASTCALL_BITS = 0x3; // 0x3U: compiled code and fastcall bit field
+
+    using TaskConcurrentFuncFlagBit = IsFastCallBit::NextFlag;     // offset 2
+
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LENGTH_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, TASK_CONCURRENT_FUNC_FLAG_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(TaskConcurrentFuncFlag, uint32_t, TASK_CONCURRENT_FUNC_FLAG_OFFSET, LAST_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, BIT_FIELD_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, CODE_ENTRY_OFFSET)
@@ -246,6 +318,8 @@ public:
         JSTaggedValue raw = GetRawProfileTypeInfo();
         return ProfileTypeInfoCell::Cast(raw.GetTaggedObject())->GetValue();
     }
+
+    void SetJitCompiledFuncEntry(JSThread *thread, JSHandle<MachineCode> &machineCode, bool isFastCall);
 
     void InitializeForConcurrentFunction(JSThread *thread);
 

@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/hcr_circuit_builder.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/compiler/circuit_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
 

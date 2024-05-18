@@ -225,12 +225,9 @@ void Jit::ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &jsFunction)
     JSHandle<Method> method(thread, Method::Cast(jsFunction->GetMethod().GetTaggedObject()));
     LOG_JIT(DEBUG) << "reuse fuction machine code : " << method->GetJSPandaFile()->GetJSPandaFileDesc()
         << ":" << method->GetRecordNameStr() << "." << CString(method->GetMethodName());
-    JSHandle<Method> newMethodHandle = thread->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(method);
-    jsFunction->SetMethod(thread, newMethodHandle);
     uintptr_t codeAddr = machineCodeHandle->GetFuncAddr();
     FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes *>(machineCodeHandle->GetFuncEntryDes());
     jsFunction->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
-    newMethodHandle->SetDeoptThreshold(thread->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
     jsFunction->SetMachineCode(thread, machineCodeHandle);
 }
 
@@ -366,8 +363,7 @@ bool Jit::CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
         return false;
     }
 
-    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    if (tier == CompilerTier::FAST && method->IsAotWithCallField()) {
+    if (tier == CompilerTier::FAST && jsFunction->IsCompiledCode()) {
         JSTaggedValue machineCode = jsFunction->GetMachineCode();
         if (machineCode.IsMachineCodeObject() &&
             MachineCode::Cast(machineCode.GetTaggedObject())->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {

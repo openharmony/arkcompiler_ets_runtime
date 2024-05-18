@@ -875,7 +875,7 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
         Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
-    BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+    BRANCH(JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
         &methodIsFastCall, &notFastCall);
     Bind(&methodIsFastCall);
     {
@@ -968,11 +968,10 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
                 {
                     BRANCH(IsClassConstructor(target), &slowPath, &notCallConstructor);
                     Bind(&notCallConstructor);
-                    GateRef meth = GetMethodFromFunction(target);
                     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
                     GateRef actualArgv =
                         PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * JSTaggedValue::TaggedTypeSize()));
-                    BRANCH(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+                    BRANCH(JudgeAotAndFastCall(target, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
                         &fastCall, &notFastCall);
                     Bind(&fastCall);
                     {
@@ -982,7 +981,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
                     }
                     Bind(&notFastCall);
                     {
-                        BRANCH(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT),
+                        BRANCH(JudgeAotAndFastCall(target, CircuitBuilder::JudgeMethodType::HAS_AOT),
                             &slowCall, &slowPath);
                         Bind(&slowCall);
                         {
@@ -1021,9 +1020,8 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
                 {
                     BRANCH(IsClassConstructor(method), &slowPath1, &notCallConstructor1);
                     Bind(&notCallConstructor1);
-                    GateRef meth = GetMethodFromFunction(method);
                     GateRef code = GetAotCodeAddr(method);
-                    BRANCH(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+                    BRANCH(JudgeAotAndFastCall(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
                         &fastCall1, &notFastCall1);
                     Bind(&fastCall1);
                     {
@@ -1033,7 +1031,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
                     }
                     Bind(&notFastCall1);
                     {
-                        BRANCH(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT),
+                        BRANCH(JudgeAotAndFastCall(method, CircuitBuilder::JudgeMethodType::HAS_AOT),
                             &slowCall1, &slowPath1);
                         Bind(&slowCall1);
                         {

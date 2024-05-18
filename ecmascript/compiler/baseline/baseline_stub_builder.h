@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/circuit_builder_helper.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -226,7 +227,7 @@ public:
         DEFVARIABLE(numArgs, VariableType::INT32(), Int32(0));
         GateRef state = PtrSub(sp, IntPtr(AsmInterpretedFrame::GetSize(env->IsArch32Bit())));
         GateRef function = GetFunctionFromFrame(state);
-        GateRef method = GetMethodFromJSFunction(function);
+        GateRef method = GetMethodFromJSFunctionOrProxy(function);
         GateRef callField = GetCallFieldFromMethod(method);
         // ASSERT: callField has "extra" bit.
         GateRef numVregs = TruncInt64ToInt32(Int64And(

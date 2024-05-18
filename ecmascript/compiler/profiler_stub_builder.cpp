@@ -1122,7 +1122,7 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, OffsetInfo offsetInfo,
     }
     Bind(&equalOsrThreshold);
     {
-        GateRef method = GetMethodFromJSFunction(func);
+        GateRef method = GetMethodFromJSFunctionOrProxy(func);
         GateRef firstPC = Load(VariableType::NATIVE_POINTER(), method,
                                IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = offsetInfo.isPc ? TaggedPtrToTaggedIntPtr(PtrSub(offsetInfo.pc, firstPC))
