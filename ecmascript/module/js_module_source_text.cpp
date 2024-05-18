@@ -465,10 +465,10 @@ void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<So
             SourceTextModule::ResolveExportObject(thread, requestedModule, exports, importName);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(host->GetModuleRequest()));
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(host->GetModuleRequest()));
             CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(
                 currentModule->GetEcmaModuleRecordName()));
-            CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+            CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                 ConvertToString(importName.GetTaggedValue()) + "' which imported by '" + recordStr + "'";
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
@@ -746,13 +746,13 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
                 SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
             // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
             if (resolution->IsNull() || resolution->IsString()) {
-                CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
-                CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+                CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
+                CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                     ConvertToString(importName.GetTaggedValue());
                 if (!module->GetEcmaModuleRecordName().IsUndefined()) {
                     CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(
                         module->GetEcmaModuleRecordName()));
-                    msg += "' which imported by '" +recordStr + "'";
+                    msg += "' which imported by '" + recordStr + "'";
                 } else {
                     msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
                 }
@@ -830,8 +830,8 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
             if (thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
-                CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
-                CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+                CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
+                CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                             ConvertToString(importName.GetTaggedValue());
                 if (!module->GetEcmaModuleRecordName().IsUndefined()) {
                     CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(
@@ -1760,8 +1760,8 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
             SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
-            CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
+            CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                           ConvertToString(exportName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordName().IsUndefined()) {
             CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(module->GetEcmaModuleRecordName()));
@@ -1798,8 +1798,8 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
             SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
-            CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
+            CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                 ConvertToString(exportName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordName().IsUndefined()) {
                 CString record = ModulePathHelper::ReformatPath(ConvertToString(module->GetEcmaModuleRecordName()));

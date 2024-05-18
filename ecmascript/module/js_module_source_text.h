@@ -174,6 +174,13 @@ public:
                moduleType == ModuleTypes::INTERNAL_MODULE;
     }
 
+    inline static CString GetResolveErrorReason(const JSHandle<JSTaggedValue> &resolution)
+    {
+        ASSERT(resolution->IsNull() || resolution->IsString());
+        return resolution->IsNull() ? "' does not provide an export name '"
+                                    : "' provide an ambiguous export name '";
+    }
+
     inline static bool IsCjsModule(ModuleTypes moduleType)
     {
         return moduleType == ModuleTypes::CJS_MODULE;
