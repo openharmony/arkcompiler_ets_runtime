@@ -1325,6 +1325,16 @@ public:
         finalizeTaskCallback_ = callback;
     }
 
+    void SetAsyncCleanTaskCallback(const NativePointerTaskCallback &callback)
+    {
+        asyncCleanTaskCb_ = callback;
+    }
+
+    NativePointerTaskCallback GetAsyncCleanTaskCallback() const
+    {
+        return asyncCleanTaskCb_;
+    }
+
     static void RegisterThread(JSThread *jsThread);
 
     static void UnregisterThread(JSThread *jsThread);
@@ -1494,6 +1504,7 @@ private:
          WeakClearCallback nativeFinalizeCallBack)> setWeak_;
     std::function<uintptr_t(uintptr_t nodeAddr)> clearWeak_;
     std::function<bool(uintptr_t addr)> isWeak_;
+    NativePointerTaskCallback asyncCleanTaskCb_ {nullptr};
     WeakFinalizeTaskCallback finalizeTaskCallback_ {nullptr};
     uint32_t globalNumberCount_ {0};
 

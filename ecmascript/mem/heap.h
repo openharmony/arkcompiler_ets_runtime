@@ -1298,12 +1298,10 @@ private:
 
     class DeleteCallbackTask : public Task {
     public:
-        DeleteCallbackTask(JSThread *thread, int32_t id,
-                           std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &callbacks)
-            : Task(id), thread_(thread)
+        DeleteCallbackTask(int32_t id, std::vector<NativePointerCallbackData> &callbacks) : Task(id)
         {
             std::swap(callbacks, nativePointerCallbacks_);
-        };
+        }
         ~DeleteCallbackTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -1311,8 +1309,7 @@ private:
         NO_MOVE_SEMANTIC(DeleteCallbackTask);
 
     private:
-        std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
-        JSThread *thread_ {nullptr};
+        std::vector<NativePointerCallbackData> nativePointerCallbacks_ {};
     };
 
     EcmaVM *ecmaVm_ {nullptr};

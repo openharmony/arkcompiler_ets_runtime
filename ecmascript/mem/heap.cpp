@@ -1982,20 +1982,36 @@ bool Heap::FinishColdStartTask::Run([[maybe_unused]] uint32_t threadIndex)
 
 void Heap::CleanCallBack()
 {
-    auto &callbacks = this->GetEcmaVM()->GetNativePointerCallbacks();
-    if (!callbacks.empty()) {
+    auto &concurrentCallbacks = this->GetEcmaVM()->GetConcurrentNativePointerCallbacks();
+    if (!concurrentCallbacks.empty()) {
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<DeleteCallbackTask>(thread_, thread_->GetThreadId(), callbacks)
+            std::make_unique<DeleteCallbackTask>(thread_->GetThreadId(), concurrentCallbacks)
         );
     }
-    ASSERT(callbacks.empty());
+    ASSERT(concurrentCallbacks.empty());
+
+    auto &asyncCallbacks = this->GetEcmaVM()->GetAsyncNativePointerCallbacks();
+    NativePointerTaskCallback asyncTaskCb = thread_->GetAsyncCleanTaskCallback();
+    if (asyncTaskCb != nullptr) {
+        asyncTaskCb(asyncCallbacks);
+    } else {
+        for (auto iter : asyncCallbacks) {
+            if (iter.first != nullptr) {
+                iter.first(std::get<0>(iter.second),
+                    std::get<1>(iter.second), std::get<2>(iter.second)); // 2 is the param.
+            }
+        }
+        asyncCallbacks.clear();
+    }
+    ASSERT(asyncCallbacks.empty());
 }
 
 bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     for (auto iter : nativePointerCallbacks_) {
         if (iter.first != nullptr) {
-            iter.first(thread_, iter.second.first, iter.second.second);
+            iter.first(std::get<0>(iter.second),
+                std::get<1>(iter.second), std::get<2>(iter.second)); // 2 is the param.
         }
     }
     return true;
