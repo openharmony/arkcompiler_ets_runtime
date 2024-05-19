@@ -106,6 +106,7 @@
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/module/js_module_namespace.h"
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
@@ -731,6 +732,9 @@ public:
                 break;
             case JSType::CLASS_LITERAL:
                 ClassLiteral::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::NATIVE_MODULE_ERROR:
+                NativeModuleError::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);

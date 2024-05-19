@@ -39,6 +39,7 @@
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_runtime_call_info.h"
@@ -159,6 +160,7 @@ using ecmascript::LinkedHashSet;
 using ecmascript::LockHolder;
 using ecmascript::MemMapAllocator;
 using ecmascript::Method;
+using ecmascript::NativeModuleError;
 using ecmascript::Mutex;
 using ecmascript::ObjectFactory;
 using ecmascript::OperationResult;
@@ -784,6 +786,11 @@ bool JSValueRef::IsGeneratorObject()
 bool JSValueRef::IsModuleNamespaceObject()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsModuleNamespace();
+}
+
+bool JSValueRef::IsNativeModuleErrorObject()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsNativeModuleError();
 }
 
 bool JSValueRef::IsSharedArrayBuffer()
@@ -2039,6 +2046,14 @@ Local<ObjectRef> ObjectRef::NewWithNamedProperties(const EcmaVM *vm, size_t prop
     JSHandle<JSTaggedValue> obj = factory->CreateJSObjectWithNamedProperties(propertyCount, keys, values);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
+}
+
+Local<ObjectRef> ObjectRef::CreateNativeModuleError(const EcmaVM *vm, const std::string &errorMsg)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSHandle<NativeModuleError> nativeModuleError = NativeModuleError::CreateNativeModuleError(vm, errorMsg);
+    return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(nativeModuleError));
 }
 
 Local<ObjectRef> ObjectRef::CreateAccessorData(const EcmaVM *vm,
