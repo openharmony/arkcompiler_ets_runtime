@@ -108,6 +108,9 @@ public:
     static JSHandle<JSTaggedValue> ResolveNativeStarExport(JSThread *thread,
                                                            const JSHandle<SourceTextModule> &nativeModule,
                                                            const JSHandle<JSTaggedValue> &exportName);
+    static JSHandle<JSTaggedValue> ResolveCjsStarExport(JSThread *thread,
+                                                        const JSHandle<SourceTextModule> &cjsModule,
+                                                        const JSHandle<JSTaggedValue> &exportName);
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
     static int InnerModuleInstantiation(JSThread *thread,
         const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,

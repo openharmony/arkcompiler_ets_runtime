@@ -219,6 +219,21 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveNativeStarExport(JSThread *thre
     return SourceTextModule::ResolveExportObject(thread, nativeModule, nativeExports, exportName);
 }
 
+JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsStarExport(JSThread *thread,
+                                                               const JSHandle<SourceTextModule> &cjsModule,
+                                                               const JSHandle<JSTaggedValue> &exportName)
+{
+    if (cjsModule->GetStatus() != ModuleStatus::EVALUATED) {
+        SourceTextModule::ModuleExecution(thread, cjsModule);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, thread->GlobalConstants()->GetHandledNull());
+        cjsModule->SetStatus(ModuleStatus::EVALUATED);
+    }
+
+    JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(cjsModule.GetTaggedValue()));
+    JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
+    return SourceTextModule::ResolveExportObject(thread, cjsModule, cjsExports, exportName);
+}
+
 JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
     const JSHandle<JSTaggedValue> &exportName,
     CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector)
@@ -1601,9 +1616,13 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
         importedModule.Update(JSHandle<SourceTextModule>::Cast(importedVal));
     }
     // b. Let resolution be ? importedModule.ResolveExport(exportName, resolveVector).
+    auto moduleType = importedModule->GetTypes();
+    bool isNativeModule = IsNativeModule(moduleType);
     JSHandle<JSTaggedValue> resolution;
-    if (UNLIKELY(IsNativeModule(importedModule->GetTypes()))) {
-        resolution = SourceTextModule::ResolveNativeStarExport(thread, importedModule, exportName);
+    if (UNLIKELY(isNativeModule || moduleType == ModuleTypes::CJS_MODULE)) {
+        resolution = isNativeModule
+            ? SourceTextModule::ResolveNativeStarExport(thread, importedModule, exportName)
+            : SourceTextModule::ResolveCjsStarExport(thread, importedModule, exportName);
     } else {
         resolution = SourceTextModule::ResolveExport(thread, importedModule, exportName, resolveVector);
     }
