@@ -1916,12 +1916,6 @@ GateRef NumberSpeculativeRetype::VisitDataViewGet(GateRef gate)
         }
     }
     ASSERT(IsConvert());
-    Environment env(gate, circuit_, &builder_);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef input = CheckBoundAndConvertToInt32(index, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
-    acc_.ReplaceValueIn(gate, input, 1);
-    acc_.ReplaceStateIn(gate, builder_.GetState());
-    acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();
 }
 
@@ -1970,12 +1964,9 @@ GateRef NumberSpeculativeRetype::VisitDataViewSet(GateRef gate)
     }
     ASSERT(IsConvert());
     Environment env(gate, circuit_, &builder_);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef inputIndex = CheckBoundAndConvertToInt32(index, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
     GateRef value = acc_.GetValueIn(gate, 2);
     GateRef inputValue = CheckAndConvertToFloat64(value, acc_.GetGateType(value), ConvertToNumber::BOOL_ONLY);
-    acc_.ReplaceValueIn(gate, inputIndex, 1); // replace index of dataview to Int32
-    acc_.ReplaceValueIn(gate, inputValue, 2); // replace input value to Double64
+    acc_.ReplaceValueIn(gate, inputValue, 2); // 2: replace input value to Double64
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();

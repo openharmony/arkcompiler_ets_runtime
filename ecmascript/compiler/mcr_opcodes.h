@@ -129,7 +129,7 @@ namespace panda::ecmascript::kungfu {
     V(BigIntConstructorUint32, BIGINT_CONSTRUCTOR_UINT32, GateFlags::NO_WRITE, 1, 1, 1)         \
     V(ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW, GateFlags::NO_WRITE, 1, 1, 1)                    \
     V(DataViewGet, DATA_VIEW_GET, GateFlags::NO_WRITE, 1, 1, 5)                                 \
-    V(DataViewSet, DATA_VIEW_SET, GateFlags::NO_WRITE, 1, 1, 6)                                 \
+    V(DataViewSet, DATA_VIEW_SET, GateFlags::NONE_FLAG, 1, 1, 6)                                \
     V(BigIntAsIntN, BIGINT_ASINTN, GateFlags::NO_WRITE, 1, 1, 3)                                \
     V(BigIntAsUintN, BIGINT_ASUINTN, GateFlags::NO_WRITE, 1, 1, 3)                              \
     V(MapGet, MAP_GET, GateFlags::NO_WRITE, 1, 1, 2)                                            \
