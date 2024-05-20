@@ -1335,6 +1335,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
     if (jsPandaFile == nullptr) {
         return JSHandle<JSTaggedValue>();
     }
+    // ai file not include method
     JSHandle<ConstantPool> constPool =
         thread_->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile.get(), method->GetMethodId());
     method->SetConstantPool(thread_, constPool.GetTaggedValue());

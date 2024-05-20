@@ -454,8 +454,9 @@ void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTa
             int32_t constantPoolID = cpList->Get(pos).GetInt();
             JSTaggedValue cp = cpList->Get(pos + 1);
             cpMap.insert({constantPoolID, cp});
+            // the arkui framework abc file constpool was patched here
             if (frameworkHelper.IsFrameworkAbcFile(fileNameStr)) {
-                thread->GetCurrentEcmaContext()->UpdateConstpool(fileNameStr, cp, constantPoolID);
+                thread->GetCurrentEcmaContext()->UpdateAOTConstpool(fileNameStr, cp, constantPoolID);
             }
         }
     }

@@ -168,6 +168,7 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_JIT,
     OPTION_COMPILER_ENABLE_JIT_PGO,
     OPTION_COMPILER_ENABLE_AOT_PGO,
+    OPTION_COMPILER_ENABLE_FRAMEWORK_AOT,
     OPTION_COMPILER_ENABLE_PROPFILE_DUMP,
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
@@ -1737,6 +1738,16 @@ public:
     {
         return enableJitFastCompile_;
     }
+    
+    void SetEnableFrameworkAOT(bool value)
+    {
+        enableFrameworkAOT_ = value;
+    }
+
+    bool IsEnableFrameworkAOT() const
+    {
+        return enableFrameworkAOT_;
+    }
 
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
@@ -1848,6 +1859,7 @@ private:
     bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};
+    bool enableFrameworkAOT_ {true};
     bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
