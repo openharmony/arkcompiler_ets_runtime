@@ -1090,7 +1090,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
                     LOG_ECMA(FATAL) << "undefined cannot convert to int type";
                 }
             } else {
-                ASSERT(gateType.IsNumberType());
+                ASSERT(gateType.IsNumberType() || gateType.IsAnyType());
                 result = builder_.CheckTaggedNumberAndConvertToInt32(gate);
             }
             break;

@@ -67,6 +67,7 @@ private:
                                    bool skipThis);
     void TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
                                     double defaultValue, bool skipThis);
+    void TryInlineMathAbsBuiltin(GateRef gate, size_t argc, bool skipThis);
     void TryInlineMathClz32Builtin(GateRef gate, size_t argc, bool skipThis);
     void TryInlineArrayBufferIsView(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineBigIntAsIntN(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);

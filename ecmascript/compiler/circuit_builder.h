@@ -852,7 +852,8 @@ public:
     static MachineType GetMachineTypeFromVariableType(VariableType type);
 
     // Opcode with control and depend inputs from label and value inputs args
-    GateRef BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args);
+    GateRef BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args,
+                                 std::vector<GateRef> frameStates = {});
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
