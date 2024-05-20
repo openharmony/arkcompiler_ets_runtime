@@ -63,7 +63,10 @@ uint32_t Taskpool::TheMostSuitableThreadNum(uint32_t threadNum) const
         return std::min<uint32_t>(threadNum, MAX_TASKPOOL_THREAD_NUM);
     }
     uint32_t numOfThreads = std::min<uint32_t>(NumberOfCpuCore() / 2, MAX_TASKPOOL_THREAD_NUM);
-    return std::max<uint32_t>(numOfThreads, MIN_TASKPOOL_THREAD_NUM);
+    if (numOfThreads > MIN_TASKPOOL_THREAD_NUM) {
+        return numOfThreads - 1;        // 1 for daemon thread.
+    }
+    return MIN_TASKPOOL_THREAD_NUM;     // At least MIN_TASKPOOL_THREAD_NUM GC threads, and 1 extra daemon thread.
 }
 
 void Taskpool::ForEachTask(const std::function<void(Task*)> &f)
