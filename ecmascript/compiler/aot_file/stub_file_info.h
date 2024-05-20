@@ -16,6 +16,7 @@
 #define ECMASCRIPT_COMPILER_AOT_FILE_STUB_FILE_INFO_H
 
 #include "ecmascript/compiler/aot_file/aot_file_info.h"
+#include "ecmascript/compiler/aot_file/gdb_jit.h"
 
 namespace panda::ecmascript {
 class PUBLIC_API StubFileInfo : public AOTFileInfo {
@@ -86,6 +87,20 @@ public:
             asmStubELFInfo_.emplace_back(std::make_pair(name, offset));
         }
         asmStubELFInfo_.emplace_back(std::make_pair("asm_stub", static_cast<uint32_t>(stubsOffset[stubsNum])));
+    }
+
+    void RegisterToDebugger()
+    {
+        if (fileMapMem_.GetOriginAddr() != nullptr) {
+            jit_debug::RegisterStubAnToDebugger((const char *)fileMapMem_.GetOriginAddr());
+        }
+    }
+
+    void UnregisterFromDebugger()
+    {
+        if (fileMapMem_.GetOriginAddr() != nullptr) {
+            jit_debug::UnregisterStubAnFromDebugger((const char *)fileMapMem_.GetOriginAddr());
+        }
     }
 
     void Dump() const DUMP_API_ATTR;

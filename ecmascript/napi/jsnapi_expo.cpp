@@ -4103,6 +4103,10 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         }
         reinterpret_cast<WaitForDebugger>(symOfWaitForDebugger.Value())(vm);
     }
+    auto anFileDataMgr = ecmascript::AnFileDataManager::GetInstance();
+    if (anFileDataMgr != nullptr && anFileDataMgr->SafeGetStubFileInfo()) {
+        anFileDataMgr->SafeGetStubFileInfo()->RegisterToDebugger();
+    }
     return ret;
 
 #else
