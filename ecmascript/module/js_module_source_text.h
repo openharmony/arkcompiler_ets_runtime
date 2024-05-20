@@ -105,6 +105,12 @@ public:
     static JSHandle<JSTaggedValue> ResolveExportObject(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &exportObject,
                                                        const JSHandle<JSTaggedValue> &exportName);
+    static JSHandle<JSTaggedValue> ResolveNativeStarExport(JSThread *thread,
+                                                           const JSHandle<SourceTextModule> &nativeModule,
+                                                           const JSHandle<JSTaggedValue> &exportName);
+    static JSHandle<JSTaggedValue> ResolveCjsStarExport(JSThread *thread,
+                                                        const JSHandle<SourceTextModule> &cjsModule,
+                                                        const JSHandle<JSTaggedValue> &exportName);
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
     static int InnerModuleInstantiation(JSThread *thread,
         const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,
@@ -164,7 +170,7 @@ public:
         const CString &soPath, const CString &moduleName);
     static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
                                  const CString &moduleRequestName);
-    static bool LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
+    static bool LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
                                  ModuleTypes moduleType);
     inline static bool IsNativeModule(ModuleTypes moduleType)
     {
@@ -172,6 +178,13 @@ public:
                moduleType == ModuleTypes::APP_MODULE ||
                moduleType == ModuleTypes::NATIVE_MODULE ||
                moduleType == ModuleTypes::INTERNAL_MODULE;
+    }
+
+    inline static CString GetResolveErrorReason(const JSHandle<JSTaggedValue> &resolution)
+    {
+        ASSERT(resolution->IsNull() || resolution->IsString());
+        return resolution->IsNull() ? "' does not provide an export name '"
+                                    : "' provide an ambiguous export name '";
     }
 
     inline static bool IsCjsModule(ModuleTypes moduleType)
