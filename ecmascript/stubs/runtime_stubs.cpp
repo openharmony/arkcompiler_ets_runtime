@@ -3235,7 +3235,7 @@ void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
 {
     Region *region = Region::ObjectAddressToRange(object);
     uintptr_t slotAddr = object + offset;
-    region->AtomicInsertLocalToShareRSet(slotAddr);
+    region->InsertLocalToShareRSet(slotAddr);
 }
 
 void RuntimeStubs::SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
@@ -3304,7 +3304,7 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         objectRegion->InsertOldToNewRSet(slotAddr);
     }
     if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        objectRegion->AtomicInsertLocalToShareRSet(slotAddr);
+        objectRegion->InsertLocalToShareRSet(slotAddr);
     }
     if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);

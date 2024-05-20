@@ -1608,13 +1608,12 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
                     GateRef flag = Int32And(oldsetValue, mask);
                     // Load the bit using relaxed memory order.
                     // If the bit is set, do nothing (local->shared barrier is done).
-                    // Else call runtime.
-                    Label atomicSet(env);
-                    BRANCH(Int32NotEqual(flag, Int32(0)), &checkBarrierForSharedValue, &atomicSet);
-                    Bind(&atomicSet);
+                    Label needSet(env);
+                    BRANCH(Int32NotEqual(flag, Int32(0)), &checkBarrierForSharedValue, &needSet);
+                    Bind(&needSet);
                     {
-                        CallNGCRuntime(glue, RTSTUB_ID(SetBitAtomic),
-                                       { PtrAdd(bitsetData, byteIndex), mask, oldsetValue });
+                        GateRef newMapValue = Int32Or(oldsetValue, mask);
+                        Store(VariableType::INT32(), glue, bitsetData, byteIndex, newMapValue);
                         Jump(&checkBarrierForSharedValue);
                     }
                 }

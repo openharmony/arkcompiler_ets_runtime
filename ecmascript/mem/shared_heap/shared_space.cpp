@@ -190,7 +190,8 @@ void SharedSparseSpace::ReclaimRegions()
         region->DeleteCrossRegionRSet();
         region->DeleteOldToNewRSet();
         region->DeleteLocalToShareRSet();
-        region->DeleteSweepingRSet();
+        region->DeleteSweepingOldToNewRSet();
+        region->DeleteSweepingLocalToShareRSet();
         region->DestroyFreeObjectSets();
         heapRegionAllocator_->FreeRegion(region, 0);
     });
