@@ -178,6 +178,9 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
         // bind with a number
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
+    if (exports->IsNativeModuleError()) {
+        return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
+    }
     if (exports->IsJSObject()) {
         JSHandle<JSTaggedValue> resolution(thread, JSTaggedValue::Hole());
         JSObject *exportObject = JSObject::Cast(exports.GetTaggedValue().GetTaggedObject());
@@ -398,6 +401,11 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, JSHandle<SourceTextMod
     auto exportObject = funcRef->Call(vm, JSValueRef::Undefined(vm), arguments.data(), arguments.size());
     if (UNLIKELY(exportObject->IsUndefined())) {
         LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
+        return false;
+    }
+    if (UNLIKELY(exportObject->IsNativeModuleErrorObject())) {
+        requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
+        LOG_FULL(ERROR) << "loading fails, NativeModuleErrorObject is returned";
         return false;
     }
     if (UNLIKELY(thread->HasPendingException())) {

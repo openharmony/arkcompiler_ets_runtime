@@ -485,6 +485,7 @@ public:
     bool IsAsyncGeneratorObject();
 
     bool IsModuleNamespaceObject();
+    bool IsNativeModuleErrorObject();
     bool IsSharedArrayBuffer();
     bool IsSendableArrayBuffer();
 
@@ -690,6 +691,7 @@ public:
     static Local<ObjectRef> NewSWithProperties(const EcmaVM *vm, SendablePropertiesInfo &info);
     static Local<ObjectRef> NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount, const char **keys,
                                                    const Local<JSValueRef> *values);
+    static Local<ObjectRef> CreateNativeModuleError(const EcmaVM *vm, const std::string &errorMsg);
     static Local<ObjectRef> CreateAccessorData(const EcmaVM *vm, Local<FunctionRef> getter, Local<FunctionRef> setter);
     static Local<ObjectRef> CreateSendableAccessorData(const EcmaVM *vm,
                                                        Local<FunctionRef> getter,

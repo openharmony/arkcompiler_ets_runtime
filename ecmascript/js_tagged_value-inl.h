@@ -1558,6 +1558,11 @@ inline bool JSTaggedValue::IsModuleNamespace() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsModuleNamespace();
 }
 
+inline bool JSTaggedValue::IsNativeModuleError() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsNativeModuleError();
+}
+
 inline bool JSTaggedValue::IsJSSharedObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedObject();

@@ -18,6 +18,7 @@
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory-inl.h"
 
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/builtins/builtins.h"
@@ -3146,6 +3147,18 @@ JSHandle<ModuleNamespace> ObjectFactory::NewModuleNamespace()
     moduleNamespace->SetExports(thread_, JSTaggedValue::Undefined());
     moduleNamespace->SetDeregisterProcession(thread_, JSTaggedValue::Undefined());
     return moduleNamespace;
+}
+
+JSHandle<NativeModuleError> ObjectFactory::NewNativeModuleError()
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNativeModuleErrorClass());
+    JSHandle<JSObject> obj = NewJSObject(hclass);
+
+    JSHandle<NativeModuleError> nativeModuleError = JSHandle<NativeModuleError>::Cast(obj);
+    nativeModuleError->SetArkNativeModuleError(thread_, JSTaggedValue::Undefined());
+    return nativeModuleError;
 }
 
 JSHandle<CjsModule> ObjectFactory::NewCjsModule()

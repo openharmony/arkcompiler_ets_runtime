@@ -60,6 +60,7 @@
 #include "ecmascript/builtins/builtins_weak_ref.h"
 #include "ecmascript/builtins/builtins_weak_set.h"
 #include "ecmascript/containers/containers_private.h"
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_index.h"
 #include "ecmascript/js_array.h"
@@ -393,6 +394,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     thread->CheckSafepointIfSuspended();
 #endif
     InitializeModuleNamespace(env, objFuncClass);
+    InitializeNativeModuleError(env, objFuncClass);
     InitializeCjsModule(env);
     InitializeCjsExports(env);
     InitializeCjsRequire(env);
@@ -3764,6 +3766,21 @@ void Builtins::InitializeModuleNamespace(const JSHandle<GlobalEnv> &env,
 
     // moduleNamespace.prototype [ @@toStringTag ]
     SetStringTagSymbol(env, moduleNamespacePrototype, "Module");
+}
+
+void Builtins::InitializeNativeModuleError(const JSHandle<GlobalEnv> &env,
+                                           const JSHandle<JSHClass> &objFuncClass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    // NativeModuleError.prototype
+    JSHandle<JSObject> nativeModuleErrorPrototype = factory_->NewJSObjectWithInit(objFuncClass);
+    JSHandle<JSTaggedValue> nativeModuleErrorPrototypeValue(nativeModuleErrorPrototype);
+
+    //  NativeModuleError.prototype_or_hclass
+    JSHandle<JSHClass> nativeModuleErrorHClass =
+        factory_->NewEcmaHClass(NativeModuleError::SIZE, JSType::NATIVE_MODULE_ERROR, nativeModuleErrorPrototypeValue);
+    nativeModuleErrorHClass->SetPrototype(thread_, JSTaggedValue::Null());
+    env->SetNativeModuleErrorClass(thread_, nativeModuleErrorHClass.GetTaggedValue());
 }
 
 void Builtins::InitializeCjsModule(const JSHandle<GlobalEnv> &env) const

@@ -20,6 +20,7 @@
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
@@ -230,6 +231,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Shared Function";
         case JSType::JS_ERROR:
             return "Error";
+        case JSType::NATIVE_MODULE_ERROR:
+            return "NativeModule Error";
         case JSType::JS_EVAL_ERROR:
             return "Eval Error";
         case JSType::JS_RANGE_ERROR:
@@ -1328,6 +1331,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->Dump(os);
+            break;
+        case JSType::NATIVE_MODULE_ERROR:
+            NativeModuleError::Cast(obj)->Dump(os);
             break;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->Dump(os);
@@ -3843,6 +3849,13 @@ void ModuleNamespace::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void NativeModuleError::Dump(std::ostream &os) const
+{
+    os << " - ArkNativeModuleError: ";
+    GetArkNativeModuleError().Dump(os);
+    os << "\n";
+}
+
 void CjsModule::Dump(std::ostream &os) const
 {
     os << " - current module path: ";
@@ -4466,6 +4479,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             break;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->DumpForSnapshot(vec);
+            break;
+        case JSType::NATIVE_MODULE_ERROR:
+            NativeModuleError::Cast(obj)->DumpForSnapshot(vec);
             break;
         case JSType::JS_API_PLAIN_ARRAY:
             JSAPIPlainArray::Cast(obj)->DumpForSnapshot(vec);
@@ -5989,6 +6005,12 @@ void ModuleNamespace::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("Module"), GetModule());
     vec.emplace_back(CString("Exports"), GetExports());
     vec.emplace_back(CString("DeregisterProcession"), GetDeregisterProcession());
+    JSObject::DumpForSnapshot(vec);
+}
+
+void NativeModuleError::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("ArkNativeModuleError"), GetArkNativeModuleError());
     JSObject::DumpForSnapshot(vec);
 }
 
