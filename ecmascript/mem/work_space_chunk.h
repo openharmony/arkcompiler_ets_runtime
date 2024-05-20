@@ -48,14 +48,8 @@ public:
             LOG_ECMA_MEM(FATAL) << "WorkNode size is illegal, size:" << size;
             UNREACHABLE();
         }
-        uintptr_t result = 0;
-        if (!cachedAreaList_.empty()) {
-            result = cachedAreaList_.back();
-            cachedAreaList_.pop_back();
-            return reinterpret_cast<void *>(result);
-        }
         size = AlignUp(size, MEM_ALIGN);
-        result = NewArea(size);
+        uintptr_t result = NewArea(size);
 
         return reinterpret_cast<void *>(result);
     }
@@ -65,11 +59,9 @@ public:
 private:
     uintptr_t NewArea(size_t size);
     void ReleaseMemory();
-    static constexpr size_t MAX_WORK_SPACE_CHUNK_SIZE = 2_MB;
     NativeAreaAllocator *allocator_ {nullptr};
     Mutex mtx_;
     CUnorderedMap<uintptr_t, uintptr_t> areaList_ {};
-    CList<uintptr_t> cachedAreaList_ {};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_WORK_SPACE_CHUNK_H
