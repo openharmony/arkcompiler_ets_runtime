@@ -868,6 +868,51 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
     return;
 }
 
+GateRef NewObjectStubBuilder::NewJSBoundFunction(GateRef glue, GateRef target, GateRef boundThis, GateRef args)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::BOUND_FUNCTION_CLASS);
+    result = NewJSObject(glue, hclass);
+    GateRef nameAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                  ConstantIndex::FUNCTION_NAME_ACCESSOR);
+    SetPropertyInlinedProps(glue, *result, hclass, nameAccessor,
+                            Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX));
+    GateRef lengthAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                    ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+    SetPropertyInlinedProps(glue, *result, hclass, lengthAccessor,
+                            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
+    SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_TARGET_OFFSET, target);
+    SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_THIS_OFFSET, boundThis);
+    SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_ARGUMENTS_OFFSET, args);
+    GateRef method = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                            ConstantIndex::BOUND_FUNCTION_METHOD_INDEX);
+    SetMethodToFunction(glue, *result, method);
+
+    Label targetIsHeapObject(env);
+    Label targetIsConstructor(env);
+    BRANCH(TaggedIsHeapObject(target), &targetIsHeapObject, &exit);
+    Bind(&targetIsHeapObject);
+    BRANCH(IsConstructor(target), &targetIsConstructor, &exit);
+    Bind(&targetIsConstructor);
+    {
+        GateRef resultHClass = LoadHClass(*result);
+        SetHClassBit<JSHClass::ConstructorBit>(glue, resultHClass, Int32(1));
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();

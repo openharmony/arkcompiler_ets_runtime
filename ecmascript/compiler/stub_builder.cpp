@@ -1203,7 +1203,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
     BRANCH(SetHasConstructorCondition(glue, receiver, key), &setHasCtor, &notSetHasCtor);
     {
         Bind(&setHasCtor);
-        SetHasConstructorToHClass(glue, hclass, Int32(1));
+        SetHClassBit<JSHClass::HasConstructorBits>(glue, hclass, Int32(1));
         Jump(&afterCtorCon);
         Bind(&notSetHasCtor);
         Jump(&afterCtorCon);

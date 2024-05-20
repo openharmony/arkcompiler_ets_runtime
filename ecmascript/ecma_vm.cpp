@@ -891,6 +891,17 @@ void EcmaVM::GenerateInternalNativeMethods()
         method->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
         internalNativeMethods_.emplace_back(method.GetTaggedValue());
     }
+    // cache to global constants shared because context may change
+    CacheToGlobalConstants(GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION),
+                           ConstantIndex::BOUND_FUNCTION_METHOD_INDEX);
+}
+
+void EcmaVM::CacheToGlobalConstants(JSTaggedValue value, ConstantIndex idx)
+{
+    auto thread = GetJSThread();
+    auto context = thread->GetCurrentEcmaContext();
+    auto constants = const_cast<GlobalEnvConstants *>(context->GlobalConstants());
+    constants->SetConstant(idx, value);
 }
 
 JSTaggedValue EcmaVM::GetMethodByIndex(MethodIndex idx)

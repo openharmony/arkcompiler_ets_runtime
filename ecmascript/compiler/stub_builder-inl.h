@@ -2637,14 +2637,15 @@ inline GateRef StubBuilder::SetTaggedRepInPropAttr(GateRef attr)
     return newVal;
 }
 
-inline void StubBuilder::SetHasConstructorToHClass(GateRef glue, GateRef hClass, GateRef value)
+template<class T>
+void StubBuilder::SetHClassBit(GateRef glue, GateRef hClass, GateRef value)
 {
     GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     GateRef mask = Int32LSL(
-        Int32((1LU << JSHClass::HasConstructorBits::SIZE) - 1),
-        Int32(JSHClass::HasConstructorBits::START_BIT));
+        Int32((1LU << T::SIZE) - 1),
+        Int32(T::START_BIT));
     GateRef newVal = Int32Or(Int32And(bitfield, Int32Not(mask)),
-        Int32LSL(value, Int32(JSHClass::HasConstructorBits::START_BIT)));
+        Int32LSL(value, Int32(T::START_BIT)));
     Store(VariableType::INT32(), glue, hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET), newVal);
 }
 
@@ -2897,6 +2898,11 @@ inline void StubBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef pro
     }
     Bind(&endProfileTypeInfoCellType);
     env->SubCfgExit();
+}
+
+inline void StubBuilder::SetJSObjectTaggedField(GateRef glue, GateRef object, size_t offset, GateRef value)
+{
+    Store(VariableType::JS_ANY(), glue, object, IntPtr(offset), value);
 }
 
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)

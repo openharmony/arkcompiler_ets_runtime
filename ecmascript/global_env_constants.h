@@ -630,7 +630,8 @@ class ObjectFactory;
     V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)       \
     V(JSTaggedValue, Uint64MaxBigInt, UINT64_MAX_BIGINT_INDEX, ecma_roots_special)                \
     V(JSTaggedValue, Int64MaxBigInt, INT64_MAX_BIGINT_INDEX, ecma_roots_special)                  \
-    V(JSTaggedValue, EmptyProfileTypeInfoCell, EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, ecma_roots_special)
+    V(JSTaggedValue, EmptyProfileTypeInfoCell, EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, BoundFunctionMethod, BOUND_FUNCTION_METHOD_INDEX, ecma_roots_special)
 
 #define GLOBAL_ENV_CACHES(V)                \
     V(JSTaggedValue, CachedJSCollatorLocales, CACHED_JSCOLLATOR_LOCALES_INDEX, cachedCollatorLocales)
@@ -661,7 +662,7 @@ enum class ConstantIndex : size_t {
     CONSTANT_END = CONSTANT_COUNT,
 
     SHARED_BEGIN = HCLASS_CLASS_INDEX,
-    SHARED_END = EMPTY_PROFILE_TYPE_INFO_CELL_INDEX,
+    SHARED_END = BOUND_FUNCTION_METHOD_INDEX,
 
     SHARED_HCLASS_BEGIN = HCLASS_CLASS_INDEX,
     SHARED_HCLASS_END = VTABLE_CLASS_INDEX,
