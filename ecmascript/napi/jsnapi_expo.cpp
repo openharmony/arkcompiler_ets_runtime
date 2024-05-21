@@ -4372,6 +4372,27 @@ bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)
     return false;
 }
 
+void JSNApi::GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_clock::time_point &start,
+                                          std::chrono::system_clock::time_point &end, bool isSerialization)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope scope(thread);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    auto threshold = std::chrono::duration_cast<std::chrono::milliseconds>
+            (std::chrono::milliseconds(vm->GetJsDebuggerManager()->GetSerializationCheckThreshold())).count();
+    LOG_ECMA(DEBUG) << "JSNAPI::" << (isSerialization ? "SerializeValue" : "DeserializeValue") << " tid: "
+        << thread->GetThreadId() << " threshold: " << threshold << " duration: " << duration;
+    if (duration >= threshold) {
+        std::stringstream tagMsg;
+        auto startTimeMS = std::chrono::time_point_cast<std::chrono::milliseconds>(start);
+        tagMsg << (isSerialization ? "SerializationTimeout::tid=" : "DeserializationTimeout::tid=");
+        tagMsg << thread->GetThreadId();
+        tagMsg << (isSerialization ? ";task=serialization;startTime=" : ";task=deserialization;startTime=");
+        tagMsg << startTimeMS.time_since_epoch().count() << ";duration=" << duration;
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, tagMsg.str());
+    }
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     if (IsAotEscape()) {
@@ -4778,17 +4799,7 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
     }
     if (serializationTimeoutCheckEnabled) {
         endTime = std::chrono::system_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        auto threshold = std::chrono::duration_cast<std::chrono::milliseconds>
-            (std::chrono::milliseconds(vm->GetJsDebuggerManager()->GetSerializationCheckThreshold())).count();
-        LOG_ECMA(DEBUG) << "JSNAPI::SerializeValue tid: " << thread->GetThreadId()
-            << " threshold: " << threshold << " duration: " << duration;
-        if (duration >= threshold) {
-            std::stringstream tagMsg;
-            tagMsg << "SerializationTimeout::tid=" << thread->GetThreadId();
-            tagMsg << ";task=serialization;duration=" << duration;
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, tagMsg.str());
-        }
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, true);
     }
     if (data == nullptr) {
         return nullptr;
@@ -4825,17 +4836,7 @@ Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void
     JSHandle<JSTaggedValue> result = deserializer.ReadValue();
     if (serializationTimeoutCheckEnabled) {
         endTime = std::chrono::system_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        auto threshold = std::chrono::duration_cast<std::chrono::milliseconds>
-            (std::chrono::milliseconds(vm->GetJsDebuggerManager()->GetSerializationCheckThreshold())).count();
-        LOG_ECMA(DEBUG) << "JSNAPI::DeserializeValue tid: " << thread->GetThreadId()
-            << " threshold: " << threshold << " duration: " << duration;
-        if (duration >= threshold) {
-            std::stringstream tagMsg;
-            tagMsg << "DeserializationTimeout::tid=" << thread->GetThreadId();
-            tagMsg << ";task=deserialization;duration=" << duration;
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, tagMsg.str());
-        }
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, false);
     }
     return JSNApiHelper::ToLocal<ObjectRef>(result);
 #else
