@@ -9732,6 +9732,34 @@ GateRef StubBuilder::AppendSkipHole(GateRef glue, GateRef first, GateRef second,
     return ret;
 }
 
+GateRef StubBuilder::ToCharCode(GateRef number)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT32(), number);
+
+    Label lessThanTen(env);
+    Label notLessThanTen(env);
+    BRANCH(Int32LessThan(number, Int32(10)), &lessThanTen, &notLessThanTen); // 10: means number
+    Bind(&lessThanTen);
+    {
+        result = Int32Add(Int32('0'), *result);
+        Jump(&exit);
+    }
+    Bind(&notLessThanTen);
+    {
+        result = Int32Sub(*result, Int32(10)); // 10: means number
+        result = Int32Add(Int32('a'), *result);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::IntToEcmaString(GateRef glue, GateRef number)
 {
     auto env = GetEnvironment();
