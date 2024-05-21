@@ -147,20 +147,20 @@ function tryCatchTest(obj: any, v : number)
 
 // Test try-catch-deopt 1
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
-//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //pgo: 0
 //aot: 1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //: 0
 
 // Test try-catch-deopt 2
 throwingObj.value = 14
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
 //: Error: exception
-//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //pgo: 0
 //aot: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //: 0
