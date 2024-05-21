@@ -121,3 +121,7 @@ class C4 extends v4 {
 }
 new C4();
 print("test proxy constructor success!")
+
+var proxyHandler = {};
+var object = new Proxy({}, proxyHandler);
+print(Object.prototype.isPrototypeOf.call(object, object));

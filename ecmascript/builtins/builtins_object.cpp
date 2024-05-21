@@ -833,11 +833,11 @@ JSTaggedValue BuiltinsObject::IsPrototypeOf(EcmaRuntimeCallInfo *argv)
     //    c. If SameValue(O, V) is true, return true.
     JSMutableHandle<JSTaggedValue> msgValueHandle(thread, msg.GetTaggedValue());
     while (!msgValueHandle->IsNull()) {
+        msgValueHandle.Update(JSTaggedValue::GetPrototype(thread, msgValueHandle));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (JSTaggedValue::SameValue(object.GetTaggedValue(), msgValueHandle.GetTaggedValue())) {
             return GetTaggedBoolean(true);
         }
-        msgValueHandle.Update(JSTaggedValue::GetPrototype(thread, msgValueHandle));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     return GetTaggedBoolean(false);
 }
