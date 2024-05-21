@@ -81,6 +81,10 @@ void CreateLanguageIterator(std::vector<std::string>& languageTemp)
  */
 HWTEST_F_L0(JSLocaleTest, JSIntlIteratorTest)
 {
+    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
+        // skip this test for rk3568 because enviroment is different
+        return;
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::vector<std::string> languageVector;
     CreateLanguageIterator(languageVector);
@@ -567,6 +571,10 @@ HWTEST_F_L0(JSLocaleTest, GetOptionOfBool)
  */
 HWTEST_F_L0(JSLocaleTest, ResolveLocale_001)
 {
+    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
+        // skip this test for rk3568 because enviroment is different
+        return;
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> availableLocales = factory->EmptyArray();
     JSHandle<TaggedArray> requestedLocales = factory->EmptyArray();
@@ -608,6 +616,10 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_001)
 
 HWTEST_F_L0(JSLocaleTest, ResolveLocale_002)
 {
+    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
+        // skip this test for rk3568 because enviroment is different
+        return;
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> availableLocales = factory->EmptyArray();
     JSHandle<TaggedArray> requestedLocales = factory->EmptyArray();

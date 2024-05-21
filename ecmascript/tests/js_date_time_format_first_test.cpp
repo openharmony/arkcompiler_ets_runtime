@@ -149,6 +149,10 @@ HWTEST_F_L0(JSDateTimeFormatTest, Set_Get_IcuLocale)
  */
 HWTEST_F_L0(JSDateTimeFormatTest, Set_Get_IcuSimpleDateFormat)
 {
+    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
+        // skip this test for rk3568 because enviroment is different
+        return;
+    }
     auto vm = thread->GetEcmaVM();
     auto factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
