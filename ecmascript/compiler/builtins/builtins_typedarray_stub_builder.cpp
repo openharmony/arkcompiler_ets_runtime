@@ -438,6 +438,8 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
     Label typedArray(env);
     Label isFastTypedArray(env);
     Label defaultConstr(env);
+    Label notDetached(env);
+
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
     BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
@@ -447,6 +449,9 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
     Bind(&isFastTypedArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
 
     DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
     GateRef middle = Int64Div(*thisArrLen, Int64(2));
@@ -503,6 +508,7 @@ void BuiltinsTypedArrayStubBuilder::LastIndexOf(GateRef glue, GateRef thisValue,
     Label thisExists(env);
     Label isHeapObject(env);
     Label typedArray(env);
+    Label notDetached(env);
 
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
@@ -510,6 +516,9 @@ void BuiltinsTypedArrayStubBuilder::LastIndexOf(GateRef glue, GateRef thisValue,
     Bind(&isHeapObject);
     BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
     Bind(&typedArray);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
 
     GateRef len = ZExtInt32ToInt64(GetArrayLength(thisValue));
     Label isEmptyArray(env);
@@ -608,12 +617,16 @@ void BuiltinsTypedArrayStubBuilder::IndexOf(GateRef glue, GateRef thisValue, Gat
     Label ecmaObj(env);
     Label typedArray(env);
     Label defaultConstr(env);
+    Label notDetached(env);
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
     BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
     Bind(&typedArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
 
     DEFVARIABLE(fromIndex, VariableType::INT64(), Int64(0));
     DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
@@ -1202,12 +1215,18 @@ void BuiltinsTypedArrayStubBuilder::Every(GateRef glue, GateRef thisValue,  Gate
     Label isHeapObject(env);
     Label typedArray(env);
     Label defaultConstr(env);
+    Label notDetached(env);
+
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
     Bind(&typedArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
+
     Label arg0HeapObject(env);
     Label callable(env);
     GateRef callbackFnHandle = GetCallArg0(numArgs);

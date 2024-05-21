@@ -762,3 +762,19 @@ function testTypeArrayToReversed2(ctor) {
     }
     return true;
 }
+
+var arr_every = new Uint8Array(["a", "b", "c"]);
+ArkTools.arrayBufferDetach(arr_every.buffer);
+try {
+    arr_every.every(() => true)
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+var arr_forEach = new Uint8Array(["a", "b", "c"]);
+ArkTools.arrayBufferDetach(arr_forEach.buffer);
+try {
+    arr_forEach.forEach(() => true)
+} catch (e) {
+    print(e instanceof TypeError);
+}

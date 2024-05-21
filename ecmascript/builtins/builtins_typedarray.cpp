@@ -479,11 +479,10 @@ JSTaggedValue BuiltinsTypedArray::Every(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    // 1. Let O be ToObject(this value).
+    // 1. Let valid be ValidateTypedArray(O).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
-    }
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -493,7 +492,6 @@ JSTaggedValue BuiltinsTypedArray::Every(EcmaRuntimeCallInfo *argv)
     uint32_t len = JSHandle<JSTypedArray>::Cast(thisObjHandle)->GetArrayLength();
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     // 5. If IsCallable(callbackfn) is false, throw a TypeError exception.
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
@@ -667,11 +665,10 @@ JSTaggedValue BuiltinsTypedArray::ForEach(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    // 1. Let O be ToObject(this value).
+    // 1. Let valid be ValidateTypedArray(O).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
-    }
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
