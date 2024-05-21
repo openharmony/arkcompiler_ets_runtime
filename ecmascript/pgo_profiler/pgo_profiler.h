@@ -199,7 +199,7 @@ private:
         JSHClass *receiver, JSHClass *hold);
     void AddBuiltinsInfo(
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
-        JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
+        JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE, bool everOutOfBounds = false);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,
                                int32_t bcOffset, GlobalIndex globalId);
 

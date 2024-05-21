@@ -19,16 +19,14 @@ declare interface ArkTools {
   isAOTCompiled(args: any): boolean;
 }
 
-function foo(str, n) {
+function foo(str) {
   let arr = [str];
-  for (let i = 1; i < n; i++) {
-    let char = str[i];
-    arr[i - 1] = "111"
-    arr[i] = "222"
-    print(char);
-  }
+  let char = str[0];
+  arr[0] = "111"
+  isNaN(str);
+  print(char);
   return arr;
 }
 
 print(ArkTools.isAOTCompiled(foo))
-print(foo("GG", 2))
+print(foo("GG"))

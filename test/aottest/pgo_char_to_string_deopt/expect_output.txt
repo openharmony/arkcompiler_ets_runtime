@@ -12,6 +12,6 @@
 # limitations under the License.
 
 true
-[trace] Check Type: NotLegalIndex1
+[trace] Check Type: NotNumber1
 G
-111,222
+111

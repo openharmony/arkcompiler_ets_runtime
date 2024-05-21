@@ -892,8 +892,13 @@ bool ObjectOperator::AddProperty(const JSHandle<JSObject> &receiver, const JSHan
 {
     if (IsElement()) {
         ElementsKind oldKind = receiver->GetClass()->GetElementsKind();
+        uint32_t oldLen = receiver.GetTaggedValue().IsJSArray() ?
+            JSArray::Cast(*receiver)->GetArrayLength() : 0;
         bool ret = JSObject::AddElementInternal(thread_, receiver, elementIndex_, value, attr);
         ElementsKind newKind = receiver->GetClass()->GetElementsKind();
+        uint32_t newLen = receiver.GetTaggedValue().IsJSArray() ?
+            JSArray::Cast(*receiver)->GetArrayLength() : 0;
+        SetElementOutOfBounds(newLen > oldLen);
         bool isTransited = false;
         if (receiver.GetTaggedValue().IsJSArray() && (newKind != oldKind)) {
             isTransited = true;

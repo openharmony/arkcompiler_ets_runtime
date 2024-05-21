@@ -1340,7 +1340,7 @@ bool TypedBytecodeLowering::TryLowerTypedStObjByValueForBuiltin(GateRef gate)
 {
     StoreBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     // Just supported mono.
-    if (tacc.IsMono()) {
+    if (tacc.IsMono() && !tacc.IsStoreOutOfBounds()) {
         if (tacc.IsBuiltinsArray()) {
             AddProfiling(gate);
             StoreJSArrayByIndex(tacc);

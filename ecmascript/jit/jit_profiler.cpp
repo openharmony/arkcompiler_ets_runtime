@@ -544,13 +544,15 @@ void JITProfiler::ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset
     if (secondValue.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
         if (HandlerBase::IsNormalElement(handlerInfo) || HandlerBase::IsStringElement(handlerInfo)) {
-            AddBuiltinsInfo(abcId, bcOffset, hclass, hclass);
+            AddBuiltinsInfo(abcId, bcOffset, hclass, hclass,
+                            OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
             return;
         }
 
         if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
             OnHeapMode onHeap = HandlerBase::IsOnHeap(handlerInfo) ? OnHeapMode::ON_HEAP : OnHeapMode::NOT_ON_HEAP;
-            AddBuiltinsInfo(abcId,  bcOffset, hclass, hclass, onHeap);
+            AddBuiltinsInfo(abcId,  bcOffset, hclass, hclass, onHeap,
+                            HandlerBase::IsStoreOutOfBounds(handlerInfo));
             return;
         }
         AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass);
@@ -564,7 +566,8 @@ void JITProfiler::ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset
         if (transitionHClassVal.IsJSHClass()) {
             auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
             if (HandlerBase::IsElement(handlerInfo)) {
-                AddBuiltinsInfo(abcId, bcOffset, hclass, transitionHClass);
+                AddBuiltinsInfo(abcId, bcOffset, hclass, transitionHClass,
+                                OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
                 return;
             }
             AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
@@ -578,7 +581,8 @@ void JITProfiler::ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset
         if (transitionHClassVal.IsJSHClass()) {
             auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
             if (HandlerBase::IsElement(handlerInfo)) {
-                AddBuiltinsInfo(abcId, bcOffset, hclass, transitionHClass);
+                AddBuiltinsInfo(abcId, bcOffset, hclass, transitionHClass,
+                                OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
                 return;
             }
             AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
@@ -599,7 +603,8 @@ void JITProfiler::ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset
         ASSERT(handlerInfoValue.IsInt());
         auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
         if (HandlerBase::IsElement(handlerInfo)) {
-            AddBuiltinsInfo(abcId, bcOffset, hclass, hclass);
+            AddBuiltinsInfo(abcId, bcOffset, hclass, hclass,
+                            OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
             return;
         }
         auto holder = prototypeHandler->GetHolder();
@@ -832,18 +837,19 @@ bool JITProfiler::AddTranstionObjectInfo(
 }
 
 void JITProfiler::AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
-    JSHClass *transitionHClass, OnHeapMode onHeap)
+    JSHClass *transitionHClass, OnHeapMode onHeap, bool everOutOfBounds)
 {
     if (receiver->IsJSArray()) {
         auto type = receiver->GetObjectType();
         auto elementsKind = receiver->GetElementsKind();
         auto transitionElementsKind = transitionHClass->GetElementsKind();
-        auto profileType = ProfileType::CreateBuiltinsArray(abcId, type, elementsKind, transitionElementsKind);
+        auto profileType = ProfileType::CreateBuiltinsArray(abcId, type, elementsKind, transitionElementsKind,
+                                                            everOutOfBounds);
         PGOObjectInfo info(profileType);
         AddObjectInfoImplement(bcOffset, info);
     } else if (receiver->IsTypedArray()) {
         JSType jsType = receiver->GetObjectType();
-        auto profileType = ProfileType::CreateBuiltinsTypedArray(abcId, jsType, onHeap);
+        auto profileType = ProfileType::CreateBuiltinsTypedArray(abcId, jsType, onHeap, everOutOfBounds);
         PGOObjectInfo info(profileType);
         AddObjectInfoImplement(bcOffset, info);
     } else {
