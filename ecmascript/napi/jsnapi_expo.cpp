@@ -94,6 +94,7 @@
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/framework_helper.h"
+#include "ecmascript/ohos/aot_runtime_info.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -201,7 +202,6 @@ using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
 using FrameIterator = ecmascript::FrameIterator;
 using Concurrent = ecmascript::Concurrent;
 using CrashInfo = ecmascript::ohos::AotCrashInfo;
-using CrashType = ecmascript::ohos::CrashType;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
@@ -4315,51 +4315,26 @@ bool JSNApi::KeyIsNumber(const char* utf8)
     return true;
 }
 
-std::map<CrashType, int> CollectCrashSum()
-{
-    std::map<CrashType, int> escapeMap;
-    std::string realOutPath;
-    std::string arkProfilePath = CrashInfo::GetSandBoxPath();
-    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(arkProfilePath);
-    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
-        return escapeMap;
-    }
-    realOutPath = realOutPath + "/" + CrashInfo::GetCrashFileName();
-    CrashInfo aotCrashInfo;
-    std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
-    std::ifstream ifile(realOutPath.c_str());
-    if (ifile.is_open()) {
-        std::string iline;
-        while (ifile >> iline) {
-            std::string buildId = CrashInfo::GetBuildId(iline);
-            CrashType type = CrashInfo::GetCrashType(iline);
-            if (buildId == soBuildId) {
-                escapeMap[type]++;
-            }
-        }
-        ifile.close();
-    }
-    return escapeMap;
-}
-
 bool JSNApi::IsAotEscape()
 {
     if (CrashInfo::GetAotEscapeDisable()) {
         return false;
     }
-    auto escapeMap = CollectCrashSum();
-    return escapeMap[CrashType::AOT] >= CrashInfo::GetAotCrashCount() ||
-        escapeMap[CrashType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
-        escapeMap[CrashType::JS] >= CrashInfo::GetJsCrashCount();
+    ecmascript::ohos::AotRuntimeInfo aotRuntimeInfo;
+    auto escapeMap = aotRuntimeInfo.CollectCrashSum();
+    return escapeMap[ecmascript::ohos::RuntimeInfoType::AOT] >= CrashInfo::GetAotCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::JS] >= CrashInfo::GetJsCrashCount();
 }
 
 bool JSNApi::IsJitEscape()
 {
-    auto escapeMap = CollectCrashSum();
-    return escapeMap[CrashType::JIT] >= CrashInfo::GetJitCrashCount() ||
-        escapeMap[CrashType::AOT] >= CrashInfo::GetAotCrashCount() ||
-        escapeMap[CrashType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
-        escapeMap[CrashType::JS] >= CrashInfo::GetJsCrashCount();
+    ecmascript::ohos::AotRuntimeInfo aotRuntimeInfo;
+    auto escapeMap = aotRuntimeInfo.CollectCrashSum();
+    return escapeMap[ecmascript::ohos::RuntimeInfoType::JIT] >= CrashInfo::GetJitCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::AOT] >= CrashInfo::GetAotCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::JS] >= CrashInfo::GetJsCrashCount();
 }
 
 bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)

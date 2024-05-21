@@ -231,8 +231,13 @@ void EcmaVM::PostFork()
     } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
+    if (ohos::EnableAotListHelper::GetInstance()->IsAotCompileSuccessOnce()) {
+        options_.SetEnablePGOProfiler(false);
+        LOG_ECMA(INFO) << "Aot has compile success once.";
+    }
     if (JSNApi::IsAotEscape()) {
         options_.SetEnablePGOProfiler(false);
+        LOG_ECMA(INFO) << "Aot has escaped.";
     }
     ResetPGOProfiler();
 

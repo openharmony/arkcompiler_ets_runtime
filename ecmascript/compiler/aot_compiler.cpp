@@ -28,6 +28,7 @@
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
@@ -220,6 +221,7 @@ int Main(const int argc, const char **argv)
         if (runtimeOptions.IsTargetCompilerMode()) {
             compilerStats.PrintCompilerStatsLog();
         }
+        ohos::EnableAotListHelper::GetInstance()->AddEnableListCount(cPreprocessor.GetMainPkgArgs()->GetPgoDir());
     }
 
     LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");
