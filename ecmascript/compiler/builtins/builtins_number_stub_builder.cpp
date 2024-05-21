@@ -169,6 +169,8 @@ void BuiltinsNumberStubBuilder::ToString(Variable *result, Label *exit, Label *s
 GateRef BuiltinsNumberStubBuilder::NumberToString(GateRef number, GateRef radix)
 {
     auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
     DEFVARIABLE(result, VariableType::JS_POINTER(), Hole());
     DEFVARIABLE(n, VariableType::INT32(), number);
 
