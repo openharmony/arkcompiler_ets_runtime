@@ -3857,6 +3857,11 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
         LOG_ECMA(ERROR) << "[StartDebugger] vm is nullptr";
         return false;
     }
+
+    if (option.port < 0) {
+        LOG_ECMA(ERROR) << "[StartDebugger] option.port is -1" ;
+        return false;
+    }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (handler.IsValid()) {
