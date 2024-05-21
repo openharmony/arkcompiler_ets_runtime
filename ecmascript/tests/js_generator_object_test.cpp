@@ -79,6 +79,10 @@ HWTEST_F_L0(JSGeneratorObjectTest, GeneratorValidate_002)
 
 HWTEST_F_L0(JSGeneratorObjectTest, GeneratorValidate_003)
 {
+    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
+        // skip this test for rk3568 because enviroment is different
+        return;
+    }
     auto vm = thread->GetEcmaVM();
     auto factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
