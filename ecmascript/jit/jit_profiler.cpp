@@ -764,7 +764,7 @@ void JITProfiler::UpdateRootProfileType(JSHClass *oldHClass, JSHClass *newHClass
 
 void JITProfiler::AddObjectInfoWithMega(int32_t bcOffset)
 {
-    auto megaType = ProfileType::CreateMegeType();
+    auto megaType = ProfileType::CreateMegaType();
     PGOObjectInfo info(megaType, megaType, megaType, megaType, megaType, megaType, PGOSampleType());
     AddObjectInfoImplement(bcOffset, info);
 }
