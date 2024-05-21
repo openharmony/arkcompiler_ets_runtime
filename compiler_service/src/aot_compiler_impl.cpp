@@ -190,7 +190,7 @@ int32_t AotCompilerImpl::AOTLocalCodeSign(const std::string &fileName, const std
     if (Security::CodeSign::LocalCodeSignKit::SignLocalCode(appSignature, fileName, sig)
                         != CommonErrCode::CS_SUCCESS) {
         HiviewDFX::HiLog::Error(LABEL, "failed to sign the aot file");
-        return ERR_AOT_COMPILER_CALL_FAILED;
+        return ERR_AOT_COMPILER_SIGNATURE_FAILED;
     }
     HiviewDFX::HiLog::Debug(LABEL, "aot file local sign success");
     uint8_t *dataPtr = sig.GetBuffer();
