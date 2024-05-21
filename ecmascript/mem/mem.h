@@ -53,6 +53,7 @@ static constexpr size_t MAX_MEM_POOL_CAPACITY = 1536_MB;
 #endif
 
 static constexpr size_t MIN_OLD_SPACE_LIMIT = 2_MB;
+static constexpr size_t MIN_BACKGROUNG_GC_LIMIT = 30_MB;
 
 static constexpr size_t MAX_NONMOVABLE_LIVE_OBJ_SIZE = 60_MB;
 

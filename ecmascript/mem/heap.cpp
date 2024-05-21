@@ -1743,10 +1743,14 @@ void Heap::ChangeGCParams(bool inBackground)
     inBackground_ = inBackground;
     if (inBackground) {
         LOG_GC(INFO) << "app is inBackground";
-        if (GetHeapObjectSize() - heapAliveSizeAfterGC_ > BACKGROUND_GROW_LIMIT) {
+        if (GetHeapObjectSize() - heapAliveSizeAfterGC_ > BACKGROUND_GROW_LIMIT &&
+            GetCommittedSize() >= MIN_BACKGROUNG_GC_LIMIT &&
+            GetHeapObjectSize() / GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
             CollectGarbage(TriggerGCType::FULL_GC, GCReason::SWITCH_BACKGROUND);
         }
-        if (sHeap_->GetHeapObjectSize() - sHeap_->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT) {
+        if (sHeap_->GetHeapObjectSize() - sHeap_->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT &&
+            sHeap_->GetCommittedSize() >= MIN_BACKGROUNG_GC_LIMIT &&
+            sHeap_->GetHeapObjectSize() / sHeap_->GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
             sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::SWITCH_BACKGROUND>(thread_);
         }
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
