@@ -434,6 +434,47 @@ size_t DFXJSNApi::GetProcessHeapLimitSize()
     return ecmascript::MemMapAllocator::GetInstance()->GetCapacity();
 }
 
+size_t DFXJSNApi::GetGCCount(const EcmaVM *vm)
+{
+    if (vm->IsWorkerThread()) {
+        return vm->GetEcmaGCStats()->GetGCCount();
+    }
+    return vm->GetEcmaGCStats()->GetGCCount() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCCount();
+}
+
+size_t DFXJSNApi::GetGCDuration(const EcmaVM *vm)
+{
+    if (vm->IsWorkerThread()) {
+        return vm->GetEcmaGCStats()->GetGCDuration();
+    }
+    return vm->GetEcmaGCStats()->GetGCDuration() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCDuration();
+}
+
+size_t DFXJSNApi::GetAccumulatedAllocateSize(const EcmaVM *vm)
+{
+    if (vm->IsWorkerThread()) {
+        return vm->GetEcmaGCStats()->GetAccumulatedAllocateSize();
+    }
+    return vm->GetEcmaGCStats()->GetAccumulatedAllocateSize() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetAccumulatedAllocateSize();
+}
+
+size_t DFXJSNApi::GetAccumulatedFreeSize(const EcmaVM *vm)
+{
+    if (vm->IsWorkerThread()) {
+        return vm->GetEcmaGCStats()->GetAccumulatedFreeSize();
+    }
+    return vm->GetEcmaGCStats()->GetAccumulatedFreeSize() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetAccumulatedFreeSize();
+}
+
+size_t DFXJSNApi::GetFullGCLongTimeCount(const EcmaVM *vm)
+{
+    return vm->GetEcmaGCStats()->GetFullGCLongTimeCount();
+}
+
 bool DFXJSNApi::isOverLimit(const EcmaVM *vm)
 {
     return vm->isOverLimit();

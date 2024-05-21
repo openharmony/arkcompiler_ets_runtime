@@ -99,6 +99,11 @@ public:
     static size_t GetHeapObjectSize(const EcmaVM *vm);
     static size_t GetHeapLimitSize(const EcmaVM *vm);
     static size_t GetProcessHeapLimitSize();
+    static size_t GetGCCount(const EcmaVM *vm);
+    static size_t GetGCDuration(const EcmaVM *vm);
+    static size_t GetAccumulatedAllocateSize(const EcmaVM *vm);
+    static size_t GetAccumulatedFreeSize(const EcmaVM *vm);
+    static size_t GetFullGCLongTimeCount(const EcmaVM *vm);
     static bool isOverLimit(const EcmaVM *vm);
     static void SetOverLimit(EcmaVM *vm, bool state);
     static void GetHeapPrepare(const EcmaVM *vm);
