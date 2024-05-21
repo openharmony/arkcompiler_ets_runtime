@@ -296,8 +296,6 @@ public:
     }
 
     void DelMethod(const MIRFunction &func);
-    // Collect the virtual methods from parent class and interfaces
-    void CountVirtMethTopDown(const KlassHierarchy &kh);
     // Count the virtual methods for subclasses and merge with itself
     void CountVirtMethBottomUp();
     void Dump() const;
@@ -386,8 +384,6 @@ public:
 private:
     // New all klass
     void AddKlasses();
-    // Add superklass/subclass edge and class methods for each class
-    void AddKlassRelationAndMethods();
     // Connect all class<->interface edges based on Depth-First Search
     void UpdateImplementedInterfaces();
     // Get a vector of parent class and implementing interface

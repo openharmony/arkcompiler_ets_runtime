@@ -22,76 +22,6 @@
 namespace maplebe {
 using namespace maple;
 
-void EHFunc::CollectEHInformation(std::vector<std::pair<LabelIdx, CatchNode *>> &catchVec)
-{
-    MIRFunction &mirFunc = cgFunc->GetFunction();
-    MIRModule *mirModule = mirFunc.GetModule();
-    CHECK_FATAL(mirModule != nullptr, "mirModule is nullptr in CGFunc::BuildEHFunc");
-    BlockNode *blkNode = mirFunc.GetBody();
-    CHECK_FATAL(blkNode != nullptr, "current function body is nullptr in CGFunc::BuildEHFunc");
-    EHTry *lastTry = nullptr; /* record last try */
-    StmtNode *nextStmt = nullptr;
-
-    /* collect all try-catch blocks */
-    for (StmtNode *stmt = blkNode->GetFirst(); stmt != nullptr; stmt = nextStmt) {
-        nextStmt = stmt->GetNext();
-        Opcode op = stmt->GetOpCode();
-        switch (op) {
-            case OP_try: {
-                TryNode *tryNode = static_cast<TryNode *>(stmt);
-                EHTry *ehTry = cgFunc->GetMemoryPool()->New<EHTry>(*(cgFunc->GetFuncScopeAllocator()), *tryNode);
-                lastTry = ehTry;
-                AddTry(*ehTry);
-                break;
-            }
-            case OP_endtry: {
-                DEBUG_ASSERT(lastTry != nullptr, "lastTry is nullptr when current node is endtry");
-                lastTry->SetEndtryNode(*stmt);
-                lastTry = nullptr;
-                break;
-            }
-            case OP_catch: {
-                CatchNode *catchNode = static_cast<CatchNode *>(stmt);
-                DEBUG_ASSERT(stmt->GetPrev()->GetOpCode() == OP_label, "catch's previous node is not a label");
-                LabelNode *labelStmt = static_cast<LabelNode *>(stmt->GetPrev());
-                catchVec.emplace_back(std::pair<LabelIdx, CatchNode *>(labelStmt->GetLabelIdx(), catchNode));
-                /* rename the type of <*void> to <*Throwable> */
-                for (uint32 i = 0; i < catchNode->Size(); i++) {
-                    MIRType *ehType =
-                        GlobalTables::GetTypeTable().GetTypeFromTyIdx(catchNode->GetExceptionTyIdxVecElement(i));
-                    DEBUG_ASSERT(ehType->GetKind() == kTypePointer, "ehType must be kTypePointer.");
-                    MIRPtrType *ehPointedTy = static_cast<MIRPtrType *>(ehType);
-                    if (ehPointedTy->GetPointedTyIdx() == static_cast<TyIdx>(PTY_void)) {
-                        DEBUG_ASSERT(mirModule->GetThrowableTyIdx() != 0u, "throwable type id is 0");
-                        const MIRType *throwType =
-                            GlobalTables::GetTypeTable().GetTypeFromTyIdx(mirModule->GetThrowableTyIdx());
-                        MIRType *pointerType = cgFunc->GetBecommon().BeGetOrCreatePointerType(*throwType);
-                        catchNode->SetExceptionTyIdxVecElement(pointerType->GetTypeIndex(), i);
-                    }
-                }
-                break;
-            }
-            case OP_throw: {
-                if (!cgFunc->GetCG()->GetCGOptions().GenerateExceptionHandlingCode() ||
-                    (cgFunc->GetCG()->IsExclusiveEH() && cgFunc->GetCG()->IsExclusiveFunc(mirFunc))) {
-                    /* remove the statment */
-                    BlockNode *bodyNode = mirFunc.GetBody();
-                    bodyNode->RemoveStmt(stmt);
-                    break;
-                }
-                UnaryStmtNode *throwNode = static_cast<UnaryStmtNode *>(stmt);
-                EHThrow *ehReThrow = cgFunc->GetMemoryPool()->New<EHThrow>(*throwNode);
-                AddRethrow(*ehReThrow);
-                break;
-            }
-            case OP_block:
-                CHECK_FATAL(false, "should've lowered earlier");
-            default:
-                break;
-        }
-    }
-}
-
 void EHTry::DumpEHTry(const MIRModule &mirModule)
 {
     if (tryNode != nullptr) {
@@ -138,90 +68,6 @@ void EHThrow::ConvertThrowToRethrow(CGFunc &cgFunc)
     mirFunc.GetBody()->ReplaceStmt1WithStmt2(rethrow, callNode);
 }
 
-void EHThrow::Lower(CGFunc &cgFunc)
-{
-    BaseNode *opnd0 = rethrow->Opnd(0);
-    DEBUG_ASSERT(((opnd0->GetPrimType() == GetLoweredPtrType()) || (opnd0->GetPrimType() == PTY_ref)),
-                 "except a dread of a pointer to get its type");
-    MIRFunction &mirFunc = cgFunc.GetFunction();
-    MIRModule *mirModule = mirFunc.GetModule();
-    MIRSymbol *mirSymbol = nullptr;
-    BaseNode *arg = nullptr;
-    MIRType *pstType = nullptr;
-    switch (opnd0->GetOpCode()) {
-        case OP_dread: {
-            DreadNode *drNode = static_cast<DreadNode *>(opnd0);
-            mirSymbol = mirFunc.GetLocalOrGlobalSymbol(drNode->GetStIdx());
-            DEBUG_ASSERT(mirSymbol != nullptr, "get symbol failed in EHThrow::Lower");
-            pstType = mirSymbol->GetType();
-            arg = drNode->CloneTree(mirModule->GetCurFuncCodeMPAllocator());
-            break;
-        }
-        case OP_iread: {
-            IreadNode *irNode = static_cast<IreadNode *>(opnd0);
-            MIRPtrType *pointerTy =
-                static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(irNode->GetTyIdx()));
-            if (irNode->GetFieldID() != 0) {
-                MIRType *pointedTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerTy->GetPointedTyIdx());
-                MIRStructType *structTy = nullptr;
-                if (pointedTy->GetKind() != kTypeJArray) {
-                    structTy = static_cast<MIRStructType *>(pointedTy);
-                } else {
-                    structTy = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
-                }
-                DEBUG_ASSERT(structTy != nullptr, "structTy is nullptr in EHThrow::Lower ");
-                pstType = structTy->GetFieldType(irNode->GetFieldID());
-            } else {
-                pstType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerTy->GetPointedTyIdx());
-            }
-            arg = irNode->CloneTree(mirModule->GetCurFuncCodeMPAllocator());
-            break;
-        }
-        case OP_regread: {
-            RegreadNode *rrNode = static_cast<RegreadNode *>(opnd0);
-            MIRPreg *pReg = mirFunc.GetPregTab()->PregFromPregIdx(rrNode->GetRegIdx());
-            DEBUG_ASSERT(pReg->GetPrimType() == GetLoweredPtrType(), "must be a pointer type");
-            pstType = pReg->GetMIRType();
-            arg = rrNode->CloneTree(mirModule->GetCurFuncCodeMPAllocator());
-            break;
-        }
-        case OP_retype: {
-            RetypeNode *retypeNode = static_cast<RetypeNode *>(opnd0);
-            pstType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(retypeNode->GetTyIdx());
-            arg = retypeNode->CloneTree(mirModule->GetCurFuncCodeMPAllocator());
-            break;
-        }
-        case OP_cvt: {
-            TypeCvtNode *cvtNode = static_cast<TypeCvtNode *>(opnd0);
-            PrimType prmType = cvtNode->GetPrimType();
-            // prmType supposed to be Pointer.
-            if ((prmType == PTY_ptr) || (prmType == PTY_ref) || (prmType == PTY_a32) || (prmType == PTY_a64)) {
-                ConvertThrowToRethrow(cgFunc);
-            }
-            return;
-        }
-        default:
-            DEBUG_ASSERT(false, " NYI throw something");
-    }
-    CHECK_FATAL(pstType != nullptr, "pstType is null in EHThrow::Lower");
-    if (pstType->GetKind() != kTypePointer) {
-        LogInfo::MapleLogger() << "Error in function " << mirFunc.GetName() << "\n";
-        rethrow->Dump();
-        LogInfo::MapleLogger() << "pstType is supposed to be Pointer, but is not";
-        pstType->Dump(0);
-        CHECK_FATAL(false, "throw operand type kind must be kTypePointer");
-    }
-
-    MIRType *stType =
-        GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<MIRPtrType *>(pstType)->GetPointedTyIdx());
-
-    if (stType->GetKind() == kTypeClass) {
-        ConvertThrowToRuntime(cgFunc, *arg);
-    } else {
-        ConvertThrowToRethrow(cgFunc);
-    }
-}
-
 EHFunc::EHFunc(CGFunc &func)
     : cgFunc(&func),
       tryVec(func.GetFuncScopeAllocator()->Adapter()),
@@ -236,7 +82,6 @@ EHFunc *CGFunc::BuildEHFunc()
     EHFunc *newEHFunc = GetMemoryPool()->New<EHFunc>(*this);
     SetEHFunc(*newEHFunc);
     std::vector<std::pair<LabelIdx, CatchNode *>> catchVec;
-    newEHFunc->CollectEHInformation(catchVec);
     newEHFunc->MergeCatchToTry(catchVec);
     newEHFunc->BuildEHTypeTable(catchVec);
     newEHFunc->InsertEHSwitchTable();
@@ -245,8 +90,6 @@ EHFunc *CGFunc::BuildEHFunc()
     GetBecommon().BeGetOrCreatePointerType(*GlobalTables::GetTypeTable().GetVoid());
     if (newEHFunc->NeedFullLSDA()) {
         newEHFunc->CreateLSDA();
-    } else if (newEHFunc->HasThrow()) {
-        newEHFunc->LowerThrow();
     }
     if (GetCG()->GetCGOptions().GenerateExceptionHandlingCode()) {
         newEHFunc->CreateTypeInfoSt();
@@ -289,92 +132,6 @@ void EHFunc::CreateTypeInfoSt()
     DEBUG_ASSERT(classType != nullptr, "");
     if (classType->GetMethods().empty() && (classType->GetFieldsSize() == 0)) {
         return;
-    }
-}
-
-void EHFunc::LowerThrow()
-{
-    MIRFunction &mirFunc = cgFunc->GetFunction();
-    /* just lower without building LSDA */
-    for (EHThrow *rethrow : rethrowVec) {
-        BaseNode *opnd0 = rethrow->GetRethrow()->Opnd(0);
-        /* except a dread of a point to get its type */
-        switch (opnd0->GetOpCode()) {
-            case OP_retype: {
-                RetypeNode *retypeNode = static_cast<RetypeNode *>(opnd0);
-                DEBUG_ASSERT(GlobalTables::GetTypeTable().GetTypeFromTyIdx(retypeNode->GetTyIdx())->GetKind() ==
-                                 kTypePointer,
-                             "expecting a pointer type");
-                rethrow->ConvertThrowToRuntime(
-                    *cgFunc, *retypeNode->CloneTree(mirFunc.GetModule()->GetCurFuncCodeMPAllocator()));
-                break;
-            }
-            case OP_dread: {
-                DreadNode *drNode = static_cast<DreadNode *>(opnd0);
-                DEBUG_ASSERT(mirFunc.GetLocalOrGlobalSymbol(drNode->GetStIdx())->GetType()->GetKind() == kTypePointer,
-                             "expect pointer type");
-                rethrow->ConvertThrowToRuntime(*cgFunc,
-                                               *drNode->CloneTree(mirFunc.GetModule()->GetCurFuncCodeMPAllocator()));
-                break;
-            }
-            case OP_iread: {
-                IreadNode *irNode = static_cast<IreadNode *>(opnd0);
-                MIRPtrType *receiverPtrType = nullptr;
-                if (irNode->GetFieldID() != 0) {
-                    MIRPtrType *pointerTy =
-                        static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(irNode->GetTyIdx()));
-                    MIRType *pointedTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerTy->GetPointedTyIdx());
-                    MIRStructType *structTy = nullptr;
-                    if (pointedTy->GetKind() != kTypeJArray) {
-                        structTy = static_cast<MIRStructType *>(pointedTy);
-                    } else {
-                        structTy = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
-                    }
-                    DEBUG_ASSERT(structTy != nullptr, "structTy is nullptr in EHFunc::LowerThrow");
-                    receiverPtrType = static_cast<MIRPtrType *>(structTy->GetFieldType(irNode->GetFieldID()));
-                } else {
-                    receiverPtrType =
-                        static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(irNode->GetTyIdx()));
-                    receiverPtrType = static_cast<MIRPtrType *>(
-                        GlobalTables::GetTypeTable().GetTypeFromTyIdx(receiverPtrType->GetPointedTyIdx()));
-                }
-                DEBUG_ASSERT(receiverPtrType->GetKind() == kTypePointer, "expecting a pointer type");
-                rethrow->ConvertThrowToRuntime(*cgFunc,
-                                               *irNode->CloneTree(mirFunc.GetModule()->GetCurFuncCodeMPAllocator()));
-                break;
-            }
-            case OP_regread: {
-                RegreadNode *rrNode = static_cast<RegreadNode *>(opnd0);
-                DEBUG_ASSERT(mirFunc.GetPregTab()->PregFromPregIdx(rrNode->GetRegIdx())->GetPrimType() ==
-                                 GetLoweredPtrType(),
-                             "expect GetLoweredPtrType()");
-                DEBUG_ASSERT(mirFunc.GetPregTab()->PregFromPregIdx(rrNode->GetRegIdx())->GetMIRType()->GetKind() ==
-                                 kTypePointer,
-                             "expect pointer type");
-                rethrow->ConvertThrowToRuntime(*cgFunc,
-                                               *rrNode->CloneTree(mirFunc.GetModule()->GetCurFuncCodeMPAllocator()));
-                break;
-            }
-            case OP_constval: {
-                ConstvalNode *constValNode = static_cast<ConstvalNode *>(opnd0);
-                BaseNode *newNode = constValNode->CloneTree(mirFunc.GetModule()->GetCurFuncCodeMPAllocator());
-                DEBUG_ASSERT(newNode != nullptr, "nullptr check");
-                rethrow->ConvertThrowToRuntime(*cgFunc, *newNode);
-                break;
-            }
-            case OP_cvt: {
-                TypeCvtNode *cvtNode = static_cast<TypeCvtNode *>(opnd0);
-                PrimType prmType = cvtNode->GetPrimType();
-                // prmType supposed to be Pointer.
-                if ((prmType == PTY_ptr) || (prmType == PTY_ref) || (prmType == PTY_a32) || (prmType == PTY_a64)) {
-                    BaseNode *newNode = cvtNode->CloneTree(mirFunc.GetModule()->GetCurFuncCodeMPAllocator());
-                    rethrow->ConvertThrowToRuntime(*cgFunc, *newNode);
-                }
-                break;
-            }
-            default:
-                DEBUG_ASSERT(false, "unexpected or NYI");
-        }
     }
 }
 
@@ -651,7 +408,6 @@ void EHFunc::CreateLSDA()
 
     for (auto *rethrow : rethrowVec) {
         DEBUG_ASSERT(rethrow != nullptr, "null ptr check");
-        rethrow->Lower(*cgFunc);
         if (rethrow->HasLSDA()) {
             LSDACallSite *lsdaCallSite = cgFunc->GetMemoryPool()->New<LSDACallSite>();
             LabelPair csStart(cgFunc->GetStartLabel(), rethrow->GetStartLabel());

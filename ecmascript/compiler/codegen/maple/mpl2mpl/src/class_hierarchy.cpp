@@ -219,80 +219,6 @@ bool Klass::IsVirtualMethod(const MIRFunction &func) const
     return (func.GetAttr(FUNCATTR_virtual) && !func.GetAttr(FUNCATTR_private) && !func.GetAttr(FUNCATTR_abstract));
 }
 
-void Klass::CountVirtMethTopDown(const KlassHierarchy &kh)
-{
-    MapleVector<MIRFunction *> *vec, *pvec;
-    GStrIdx strIdx;
-    auto *superAndImplClasses = alloc->GetMemPool()->New<MapleVector<Klass *>>(alloc->Adapter());
-    // Add default methods of interface. Add them first because they have lowest
-    // priorities compared with methods defined in classes
-    if (IsClass() || IsClassIncomplete()) {
-        for (TyIdx tyIdx : GetMIRClassType()->GetInterfaceImplemented()) {
-            Klass *interface = kh.GetKlassFromTyIdx(tyIdx);
-            if (interface != nullptr) {
-                superAndImplClasses->push_back(interface);
-            }
-        }
-    }
-
-    // Then add methods from superclasses
-    for (Klass *superKlass : superKlasses) {
-        superAndImplClasses->push_back(superKlass);
-    }
-    // Initialize strIdx2CandidateMap based on the superclass methods
-    for (Klass *superAndImplClass : *superAndImplClasses) {
-        DEBUG_ASSERT(superAndImplClass != nullptr, "Not a valid super class of interface");
-        for (const auto &pair : superAndImplClass->strIdx2CandidateMap) {
-            strIdx = pair.first;
-            pvec = pair.second;
-            DEBUG_ASSERT(pvec->size() == 1, "Expect exactly one method definition from parent class");
-            if (strIdx2CandidateMap.find(strIdx) == strIdx2CandidateMap.end()) {
-                vec = alloc->GetMemPool()->New<MapleVector<MIRFunction *>>(alloc->Adapter());
-                vec->push_back(pvec->at(0));
-                strIdx2CandidateMap[strIdx] = vec;
-            } else {
-                // Override the method coming from previous klass (must be an interface)
-                DEBUG_ASSERT(strIdx2CandidateMap[strIdx]->size() == 1, "Expect exactly one method definition");
-                DEBUG_ASSERT(
-                    kh.GetKlassFromStrIdx(strIdx2CandidateMap[strIdx]->at(0)->GetBaseClassNameStrIdx())->IsInterface(),
-                    "Override interface default methods");
-                // Interfaces implemented methods override, need to determine the inherit relation.
-                // class method can override interface method, interface method can override its parent's methods
-                vec = strIdx2CandidateMap[strIdx];
-                DEBUG_ASSERT(vec != nullptr, "nullptr check!");
-                DEBUG_ASSERT(vec->size() == 1, "Expect exactly one method definition from parent class");
-                Klass *parentKlass = kh.GetKlassFromFunc((*vec)[0]);
-                Klass *childKlass = kh.GetKlassFromFunc((*pvec)[0]);
-                CHECK_FATAL(childKlass != nullptr, "childKlass is null in Klass::CountVirtMethTopDown");
-                if (childKlass->IsInterface() && !kh.IsSuperKlassForInterface(parentKlass, childKlass)) {
-                    continue;
-                }
-                (*vec)[0] = (*pvec)[0];
-            }
-        }
-    }
-    // Initialize mstridx2count_map based on the current class methods
-    for (MIRFunction *method : methods) {
-        DEBUG_ASSERT(method != nullptr, "null ptr check!");
-        if (!IsVirtualMethod(*method)) {
-            continue;
-        }
-        strIdx = method->GetBaseFuncNameWithTypeStrIdx();
-        if (strIdx2CandidateMap.find(strIdx) != strIdx2CandidateMap.end()) {
-            // Override the method coming from parent
-            vec = strIdx2CandidateMap[strIdx];
-            DEBUG_ASSERT(vec != nullptr, "nullptr check!");
-            DEBUG_ASSERT(vec->size() == 1, "Expect exactly one method definition from parent class");
-            (*vec)[0] = method;
-        } else {
-            // Newly declared and defined
-            vec = alloc->GetMemPool()->New<MapleVector<MIRFunction *>>(alloc->Adapter());
-            vec->push_back(method);
-            strIdx2CandidateMap[strIdx] = vec;
-        }
-    }
-}
-
 void Klass::CountVirtMethBottomUp()
 {
     MapleVector<MIRFunction *> *vec;
@@ -584,59 +510,6 @@ void KlassHierarchy::ExceptionFlagProp(Klass &klass)
     }
 }
 
-void KlassHierarchy::AddKlassRelationAndMethods()
-{
-    for (const auto &pair : strIdx2KlassMap) {
-        Klass *klass = pair.second;
-        DEBUG_ASSERT(klass, "null ptr check");
-        Klass *superKlass = nullptr;
-        if (klass->IsInterface() || klass->IsInterfaceIncomplete()) {
-            MIRInterfaceType *itype = klass->GetMIRInterfaceType();
-            DEBUG_ASSERT(itype != nullptr, "null ptr check");
-            for (TyIdx superTyIdx : itype->GetParentsTyIdx()) {
-                superKlass = GetKlassFromTyIdx(superTyIdx);
-                if (superKlass != nullptr) {
-                    klass->AddSuperKlass(superKlass);
-                    superKlass->AddSubKlass(klass);
-                }
-            }
-        } else if (klass->IsClass() || klass->IsClassIncomplete()) {
-            // Class
-            MIRClassType *classType = klass->GetMIRClassType();
-            DEBUG_ASSERT(classType != nullptr, "null ptr check");
-            // Add interface relationship
-            for (TyIdx intfTyIdx : classType->GetInterfaceImplemented()) {
-                Klass *intfKlass = GetKlassFromTyIdx(intfTyIdx);
-                if (intfKlass != nullptr) {
-                    intfKlass->AddImplKlass(klass);
-                    klass->AddImplInterface(intfKlass);
-                }
-            }
-            superKlass = GetKlassFromTyIdx(classType->GetParentTyIdx());
-            // Add superclass/subclass for each class.
-            if (superKlass != nullptr) {
-                klass->AddSuperKlass(superKlass);
-                superKlass->AddSubKlass(klass);
-                // klass implements same interfaces inherited from its parent
-                for (Klass *intfklass : superKlass->GetImplInterfaces()) {
-                    intfklass->AddImplKlass(klass);
-                    klass->AddImplInterface(intfklass);
-                }
-            }
-        }
-        // Add method info
-        for (const auto &methodPair : klass->GetMIRStructType()->GetMethods()) {
-            MIRSymbol *funcSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(methodPair.first.Idx());
-            DEBUG_ASSERT(funcSym != nullptr, "null ptr check");
-            MIRFunction *method = funcSym->GetFunction();
-            klass->AddMethod(method);
-            if (method->GetName().compare(klass->GetKlassName() + namemangler::kClinitSuffix) == 0) {
-                klass->SetClinit(method);
-            }
-        }
-    }
-}
-
 static void CollectImplInterfaces(const Klass &klass, std::set<Klass *> &implInterfaceSet)
 {
     for (Klass *superKlass : klass.GetSuperKlasses()) {
@@ -740,10 +613,6 @@ void KlassHierarchy::TopologicalSortKlasses()
 
 void KlassHierarchy::CountVirtualMethods() const
 {
-    // Top-down iterates all klass nodes
-    for (Klass *klass : topoWorkList) {
-        klass->CountVirtMethTopDown(*this);
-    }
     // Bottom-up iterates all klass nodes
     for (size_t i = topoWorkList.size(); i != 0; --i) {
         topoWorkList[i - 1]->CountVirtMethBottomUp();
@@ -813,9 +682,6 @@ void KlassHierarchy::BuildHierarchy()
 {
     // Scan class list and generate Klass without method information
     AddKlasses();
-    // Fill class method info. Connect superclass<->subclass and
-    // interface->implementation edges.
-    AddKlassRelationAndMethods();
     // In the case of "class C implements B; interface B extends A;",
     // we need to add a link between C and A.
     UpdateImplementedInterfaces();
