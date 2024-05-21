@@ -72,6 +72,7 @@
 #include "ecmascript/containers/containers_treemap.h"
 #include "ecmascript/containers/containers_treeset.h"
 #include "ecmascript/containers/containers_vector.h"
+#include "ecmascript/containers/containers_bitvector.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
@@ -88,6 +89,7 @@
 #include "ecmascript/js_api/js_api_tree_map_iterator.h"
 #include "ecmascript/js_api/js_api_tree_set_iterator.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_hclass.h"
@@ -181,6 +183,7 @@ using LightWeightSet = containers::ContainersLightWeightSet;
 using TreeMap = containers::ContainersTreeMap;
 using TreeSet = containers::ContainersTreeSet;
 using Vector = containers::ContainersVector;
+using BitVector = containers::ContainersBitVector;
 using Queue = containers::ContainersQueue;
 using List = containers::ContainersList;
 using LinkedList = containers::ContainersLinkedList;
@@ -922,6 +925,22 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(Vector::Sort),
     reinterpret_cast<uintptr_t>(Vector::GetIteratorObj),
     reinterpret_cast<uintptr_t>(JSAPIVectorIterator::Next),
+    reinterpret_cast<uintptr_t>(BitVector::BitVectorConstructor),
+    reinterpret_cast<uintptr_t>(BitVector::Push),
+    reinterpret_cast<uintptr_t>(BitVector::Pop),
+    reinterpret_cast<uintptr_t>(BitVector::Has),
+    reinterpret_cast<uintptr_t>(BitVector::SetBitsByRange),
+    reinterpret_cast<uintptr_t>(BitVector::GetBitsByRange),
+    reinterpret_cast<uintptr_t>(BitVector::Resize),
+    reinterpret_cast<uintptr_t>(BitVector::SetAllBits),
+    reinterpret_cast<uintptr_t>(BitVector::GetBitCountByRange),
+    reinterpret_cast<uintptr_t>(BitVector::GetIndexOf),
+    reinterpret_cast<uintptr_t>(BitVector::GetLastIndexOf),
+    reinterpret_cast<uintptr_t>(BitVector::FlipBitByIndex),
+    reinterpret_cast<uintptr_t>(BitVector::FlipBitsByRange),
+    reinterpret_cast<uintptr_t>(BitVector::GetSize),
+    reinterpret_cast<uintptr_t>(BitVector::GetIteratorObj),
+    reinterpret_cast<uintptr_t>(JSAPIBitVectorIterator::Next),
     reinterpret_cast<uintptr_t>(Queue::QueueConstructor),
     reinterpret_cast<uintptr_t>(Queue::Add),
     reinterpret_cast<uintptr_t>(Queue::GetFirst),
@@ -1035,6 +1054,7 @@ SnapshotProcessor::~SnapshotProcessor()
 {
     pandaMethod_.clear();
     stringVector_.clear();
+    deserializeStringVector_.clear();
     regionIndexMap_.clear();
     if (oldLocalSpace_ != nullptr) {
         oldLocalSpace_->Reset();
@@ -1343,10 +1363,11 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
 void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t stringEnd)
 {
     EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
-    ASSERT(stringVector_.empty());
+    JSThread *thread = vm_->GetJSThread();
+    ASSERT(deserializeStringVector_.empty());
     auto oldSpace = sHeap_->GetOldSpace();
     auto hugeSpace = sHeap_->GetHugeObjectSpace();
-    auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     auto lineStringClass = globalConst->GetLineStringClass();
     auto constantStringClass = globalConst->GetConstantStringClass();
     while (stringBegin < stringEnd) {
@@ -1359,7 +1380,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
             uint32_t id = constantStr->GetEntityIdU32();
             auto stringData = jsPandaFile->GetStringData(EntityId(id)).data;
             constantStr->SetConstantData(const_cast<uint8_t *>(stringData));
-            constantStr->SetRelocatedData(vm_->GetJSThread(), JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
+            constantStr->SetRelocatedData(thread, JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
         } else {
             ASSERT(index == 0);
             str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(lineStringClass.GetTaggedObject()));
@@ -1367,19 +1388,19 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         {
-            RuntimeLockHolder locker(vm_->GetJSThread(), stringTable->mutex_);
+            RuntimeLockHolder locker(thread, stringTable->mutex_);
             auto strFromTable = stringTable->GetStringThreadUnsafe(str);
             if (strFromTable) {
-                stringVector_.emplace_back(ToUintPtr(strFromTable));
+                deserializeStringVector_.emplace_back(thread, strFromTable);
             } else {
                 uintptr_t newObj = 0;
                 if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
-                    newObj = hugeSpace->Allocate(vm_->GetJSThread(), strSize);
+                    newObj = hugeSpace->Allocate(thread, strSize);
                 } else {
-                    newObj = oldSpace->Allocate(vm_->GetJSThread(), strSize, false);
+                    newObj = oldSpace->Allocate(thread, strSize, false);
                 }
                 if (newObj == 0) {
-                    LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldLocalSpace OOM";
+                    LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldSharedSpace OOM";
                     UNREACHABLE();
                 }
                 if (memcpy_s(ToVoidPtr(newObj), strSize, str, strSize) != EOK) {
@@ -1389,7 +1410,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                 str = reinterpret_cast<EcmaString *>(newObj);
                 EcmaStringAccessor(str).ClearInternString();
                 stringTable->GetOrInternStringThreadUnsafe(vm_, str);
-                stringVector_.emplace_back(newObj);
+                deserializeStringVector_.emplace_back(thread, str);
             }
         }
         stringBegin += strSize;
@@ -1678,8 +1699,15 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
             ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);
         }
-        if (!rootRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-            rootRegion->AtomicInsertLocalToShareRSet((uintptr_t)value);
+        if (valueRegion->InSharedSweepableSpace()) {
+            if (!rootRegion->InSharedHeap()) {
+                rootRegion->InsertLocalToShareRSet((uintptr_t)value);
+            }
+            // In deserializing can not use barriers, only mark the shared value to prevent markingbit being lost
+            if (vm_->GetJSThread()->IsSharedConcurrentMarkingOrFinished()) {
+                ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
+                valueRegion->AtomicMark(reinterpret_cast<void*>(taggedObjectAddr));
+            }
         }
         *value = taggedObjectAddr;
         return;
@@ -1762,7 +1790,7 @@ uintptr_t SnapshotProcessor::TaggedObjectEncodeBitToAddr(EncodeBit taggedBit)
     ASSERT(taggedBit.IsReference());
     if (!builtinsDeserialize_ && taggedBit.IsReferenceToString()) {
         size_t stringIndex = taggedBit.GetNativePointerOrObjectIndex();
-        return stringVector_[stringIndex];
+        return reinterpret_cast<uintptr_t>(*deserializeStringVector_.at(stringIndex));
     }
     size_t regionIndex = taggedBit.GetRegionIndex();
     if (UNLIKELY(regionIndexMap_.find(regionIndex) == regionIndexMap_.end())) {

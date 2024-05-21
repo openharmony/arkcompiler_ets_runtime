@@ -43,7 +43,7 @@ enum DepType : uint8 {
     kDependenceTypeMemAccess,  // for dependencies between insns of def-use memory operations (alternative true
                                // dependency)
     kDependenceTypeMembar,
-    kDependenceTypeThrow,  // using in java
+    kDependenceTypeThrow,
     kDependenceTypeSeparator,
     kDependenceTypeNone
 };

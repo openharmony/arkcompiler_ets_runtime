@@ -19,6 +19,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/object_fast_operator.h"
 
 #include "ecmascript/base/array_helper.h"
@@ -33,6 +34,7 @@
 #include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass-inl.h"
@@ -129,8 +131,8 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
     }
 
     // Elements
-    uint32_t index = 0;
-    if (JSTaggedValue::ToElementIndex(key, &index)) {
+    auto index = TryToElementsIndex(key);
+    if (index >= 0) {
         ASSERT(index < JSObject::MAX_ELEMENT_INDEX);
         JSHandle<JSObject> receiverObj(thread, receiver);
         if (!ElementAccessor::IsDictionaryMode(receiverObj)) {
@@ -176,8 +178,8 @@ JSTaggedValue ObjectFastOperator::TryFastGetPropertyByValue(JSThread *thread, JS
     if (UNLIKELY(!key.IsNumber() && !key.IsString())) {
         return JSTaggedValue::Hole();
     }
-    uint32_t index = 0;
-    if (JSTaggedValue::ToElementIndex(key, &index)) {
+    auto index = TryToElementsIndex(key);
+    if (index >= 0) {
         return TryFastGetPropertyByIndex<status>(thread, receiver, index);
     }
     if (key.IsString()) {
@@ -249,8 +251,8 @@ JSTaggedValue ObjectFastOperator::TryGetPropertyByNameThroughCacheAtLocal(JSThre
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
-                                                    JSTaggedValue key, [[maybe_unused]]bool noAllocate,
-                                                    [[maybe_unused]]bool *isCallGetter)
+                                                    JSTaggedValue key, [[maybe_unused]] bool noAllocate,
+                                                    [[maybe_unused]] bool *isCallGetter)
 {
     INTERPRETER_TRACE(thread, GetPropertyByName);
     // no gc when return hole
@@ -1059,6 +1061,10 @@ JSTaggedValue ObjectFastOperator::GetContainerProperty(JSThread *thread, JSTagge
             res = JSAPIList::Cast(receiver.GetTaggedObject())->Get(index);
             break;
         }
+        case JSType::JS_API_BITVECTOR: {
+            res = JSAPIBitVector::Cast(receiver.GetTaggedObject())->Get(thread, index);
+            break;
+        }
         case JSType::JS_API_LINKED_LIST: {
             res = JSAPILinkedList::Cast(receiver.GetTaggedObject())->Get(index);
             break;
@@ -1093,6 +1099,9 @@ JSTaggedValue ObjectFastOperator::SetContainerProperty(JSThread *thread, JSTagge
             break;
         case JSType::JS_API_VECTOR:
             res = JSAPIVector::Cast(receiver.GetTaggedObject())->Set(thread, index, value);
+            break;
+        case JSType::JS_API_BITVECTOR:
+            res = JSAPIBitVector::Cast(receiver.GetTaggedObject())->Set(thread, index, value);
             break;
         case JSType::JS_API_LIST: {
             JSHandle<JSAPIList> singleList(thread, receiver);

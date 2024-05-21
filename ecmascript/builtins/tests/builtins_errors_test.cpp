@@ -43,31 +43,7 @@ using SyntaxError = builtins::BuiltinsSyntaxError;
 using AggregateError = builtins::BuiltinsAggregateError;
 using JSType = ecmascript::JSType;
 
-class BuiltinsErrorsTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "BuiltinsErrorsTest SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "BuiltinsErrorsTest TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsErrorsTest : public BaseTestWithScope<false> {
 };
 
 /*

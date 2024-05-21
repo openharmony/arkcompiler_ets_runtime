@@ -20,12 +20,15 @@
  * @tc.require: issueI5NO8G
  */
 import cjs from "./Cjs"
+import {foo, bar} from "./moduleExportCjs.js"
 import * as ns from "./someArgsCjs"
 import {json, fun} from "./someArgsCjs"
 import "./cjsWithoutExports.js"
 import {SUCCESS} from "./CjsDictionaryMode"
 
 print(JSON.stringify(cjs));
+print(JSON.stringify(foo));
+print(typeof bar);
 print(JSON.stringify(json));
 fun();
 print(ns.tag);

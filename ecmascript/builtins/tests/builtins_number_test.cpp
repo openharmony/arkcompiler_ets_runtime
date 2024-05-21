@@ -37,31 +37,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
-class BuiltinsNumberTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsNumberTest : public BaseTestWithScope<false> {
 };
 
 // new Number(10)
@@ -316,8 +292,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToString2)
 HWTEST_F_L0(BuiltinsNumberTest, IsExponential)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto ecmaVM = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
     JSHandle<JSFunction> numberObject(env->GetNumberFunction());
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(123.456));
@@ -341,8 +316,7 @@ HWTEST_F_L0(BuiltinsNumberTest, IsExponential)
 HWTEST_F_L0(BuiltinsNumberTest, ToFixed)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto ecmaVM = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
     JSHandle<JSFunction> numberObject(env->GetNumberFunction());
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(123.456));
@@ -366,8 +340,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToFixed)
 HWTEST_F_L0(BuiltinsNumberTest, ToFixed1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto ecmaVM = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
     JSHandle<JSFunction> numberObject(env->GetNumberFunction());
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(123.456));
@@ -416,8 +389,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToFixed2) {
 HWTEST_F_L0(BuiltinsNumberTest, ToPrecision)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto ecmaVM = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
     JSHandle<JSFunction> numberObject(env->GetNumberFunction());
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(123.456));

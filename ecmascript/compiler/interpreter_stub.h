@@ -175,6 +175,9 @@ public:
     inline void SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
                               GateRef env, GateRef pc, GateRef prev, GateRef type);
 
+    inline void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
+                                                    GateRef profileTypeInfo, GateRef slotId);
+
     inline void CheckException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
 		               GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
 			       GateRef res, GateRef offset);

@@ -351,7 +351,7 @@ Klass *KlassHierarchy::GetKlassFromName(const std::string &name) const
 
 Klass *KlassHierarchy::GetKlassFromLiteral(const std::string &name) const
 {
-    return GetKlassFromStrIdx(GlobalTables::GetStrTable().GetStrIdxFromName(namemangler::GetInternalNameLiteral(name)));
+    return GetKlassFromStrIdx(GlobalTables::GetStrTable().GetStrIdxFromName(name));
 }
 
 // check if super is a superclass of base
@@ -566,9 +566,6 @@ void KlassHierarchy::AddKlasses()
         GStrIdx strIdx = type->GetNameStrIdx();
         Klass *klass = GetKlassFromStrIdx(strIdx);
         if (klass != nullptr) {
-            if (klass->GetKlassName().compare(namemangler::kThrowClassStr) == 0) {
-                klass->SetExceptionKlass();
-            }
             continue;
         }
         auto *stype = static_cast<MIRStructType *>(type);
@@ -596,7 +593,6 @@ void KlassHierarchy::AddKlassRelationAndMethods()
         if (klass->IsInterface() || klass->IsInterfaceIncomplete()) {
             MIRInterfaceType *itype = klass->GetMIRInterfaceType();
             DEBUG_ASSERT(itype != nullptr, "null ptr check");
-            // Java interface supports multiple inheritance
             for (TyIdx superTyIdx : itype->GetParentsTyIdx()) {
                 superKlass = GetKlassFromTyIdx(superTyIdx);
                 if (superKlass != nullptr) {
@@ -637,29 +633,6 @@ void KlassHierarchy::AddKlassRelationAndMethods()
             if (method->GetName().compare(klass->GetKlassName() + namemangler::kClinitSuffix) == 0) {
                 klass->SetClinit(method);
             }
-        }
-    }
-    // Propagate isExceptionKlass flag
-    if (GetKlassFromLiteral(namemangler::kThrowClassStr) != nullptr) {
-        ExceptionFlagProp(*GetKlassFromLiteral(namemangler::kThrowClassStr));
-        CHECK_FATAL(GetKlassFromLiteral(namemangler::kThrowClassStr)->IsExceptionKlass(), "must be exception class");
-    }
-    if (GetKlassFromLiteral(kJavaLangNoMethodStr) != nullptr) {
-        CHECK_FATAL(GetKlassFromLiteral(kJavaLangNoMethodStr)->IsExceptionKlass(), "must be exception class");
-    }
-}
-
-void KlassHierarchy::TagThrowableKlasses()
-{
-    Klass *throwable = GetKlassFromName(namemangler::kThrowClassStr);
-    if (throwable == nullptr) {
-        return;
-    }
-    for (const auto &pair : strIdx2KlassMap) {
-        Klass *klass = pair.second;
-        DEBUG_ASSERT(klass != nullptr, "unexpeced null klass");
-        if (!klass->IsInterface() && IsSuperKlass(throwable, klass)) {
-            klass->SetExceptionKlass();
         }
     }
 }
@@ -786,55 +759,6 @@ Klass *KlassHierarchy::AddClassFlag(const std::string &name, uint32 flag)
     return refKlass;
 }
 
-// Mark klasses those implement the finalize method, or inherit
-// from super klass (except java.lang.Object).
-// Mark klasses those or superclasses are references.
-void KlassHierarchy::MarkClassFlags()
-{
-    Klass *cleanerKlass = AddClassFlag("Lsun_2Fmisc_2FCleaner_3B", kClassCleaner);
-    AddClassFlag("Ljava_2Flang_2Fref_2FSoftReference_3B", kClassSoftreference);
-    AddClassFlag("Ljava_2Flang_2Fref_2FWeakReference_3B", kClassWeakreference);
-    AddClassFlag("Ljava_2Flang_2Fref_2FPhantomReference_3B", kClassPhantomreference);
-    AddClassFlag("Ljava_2Flang_2Fref_2FFinalizerReference_3B", kClassFinalizereference);
-    AddClassFlag("Ljava_2Flang_2Fref_2FFinalizerReference_24Sentinel_3B", kClassFinalizerreferenceSentinel);
-    Klass *klassObject = GetKlassFromLiteral(namemangler::kJavaLangObjectStr);
-    GStrIdx finalize = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName("finalize_7C_28_29V");
-    for (Klass *klass : topoWorkList) {
-        if (klass == klassObject) {
-            continue;
-        }
-        if (klass->IsInterface()) {
-            continue;
-        }
-        Klass *super = klass->GetSuperKlass();
-        // Mark Reference
-        // sun.misc.Cleaner's superclass is PhantomReference.
-        // Break this chain to process Cleaner correctly.
-        if (super != nullptr && super->IsReference() && klass != cleanerKlass) {
-            klass->SetFlag(super->GetFlag(kClassReference));
-        }
-        // Mark Finalizer
-        if (super != nullptr && super->HasFinalizer()) {
-            ASSERT_NOT_NULL(klass);
-            klass->SetHasFinalizer();
-        } else {
-            for (auto &method : klass->GetMethods()) {
-                if (method->GetBaseFuncNameWithTypeStrIdx() == finalize) {
-                    klass->SetHasFinalizer();
-                    break;
-                }
-            }
-        }
-        // Mark native function info
-        for (auto &method : klass->GetMethods()) {
-            if (method->GetAttr(FUNCATTR_native)) {
-                klass->SetHasNativeMethod(true);
-                break;
-            }
-        }
-    }
-}
-
 void KlassHierarchy::Dump() const
 {
     for (Klass *klass : topoWorkList) {
@@ -892,15 +816,10 @@ void KlassHierarchy::BuildHierarchy()
     // Fill class method info. Connect superclass<->subclass and
     // interface->implementation edges.
     AddKlassRelationAndMethods();
-    TagThrowableKlasses();
     // In the case of "class C implements B; interface B extends A;",
     // we need to add a link between C and A.
     UpdateImplementedInterfaces();
     TopologicalSortKlasses();
-    MarkClassFlags();
-    if (!strIdx2KlassMap.empty()) {
-        WKTypes::Init();
-    }
     // Use --dump-devirtual-list=... to dump a closed-wolrd analysis result into a file
     if (!Options::dumpDevirtualList.empty()) {
         DumpDevirtualList(Options::dumpDevirtualList);
@@ -919,196 +838,5 @@ KlassHierarchy::KlassHierarchy(MIRModule *mirmodule, MemPool *memPool)
       vfunc2RfuncMap(std::less<GStrIdx>(), alloc.Adapter()),
       topoWorkList(alloc.Adapter())
 {
-}
-
-MIRType *WKTypes::javaLangObject;
-MIRType *WKTypes::javaLangString;
-MIRType *WKTypes::javaLangObjectSerializable;
-MIRType *WKTypes::javaLangComparable;
-MIRType *WKTypes::javaLangCharSequence;
-MIRType *WKTypes::javaLangClass;
-MIRType *WKTypes::javaLangRefGenericDeclaration;
-MIRType *WKTypes::javaLangRefAnnotatedElement;
-MIRType *WKTypes::javaLangRefType;
-MIRType *WKTypes::javaLangRefMethod;
-MIRType *WKTypes::javaLangRefExecutable;
-MIRType *WKTypes::javaLangRefAccessibleObject;
-MIRType *WKTypes::javaLangRefMember;
-MIRType *WKTypes::javaLangRefField;
-MIRType *WKTypes::javaLangRefConstructor;
-inline static MIRType *GetMIRTypeFromName(const std::string &name)
-{
-    GStrIdx gStrIdx = GlobalTables::GetStrTable().GetStrIdxFromName(namemangler::GetInternalNameLiteral(name));
-    return GlobalTables::GetTypeTable().GetTypeFromTyIdx(GlobalTables::GetTypeNameTable().GetTyIdxFromGStrIdx(gStrIdx));
-}
-
-void WKTypes::Init()
-{
-    javaLangObject = GetMIRTypeFromName(namemangler::kJavaLangObjectStr);
-    javaLangString = GetMIRTypeFromName("Ljava_2Flang_2FString_3B");
-    javaLangObjectSerializable = GetMIRTypeFromName("Ljava_2Fio_2FSerializable_3B");
-    javaLangComparable = GetMIRTypeFromName("Ljava_2Flang_2FComparable_3B");
-    javaLangCharSequence = GetMIRTypeFromName("Ljava_2Flang_2FCharSequence_3B");
-    javaLangClass = GetMIRTypeFromName("Ljava_2Flang_2FClass_3B");
-    javaLangRefGenericDeclaration = GetMIRTypeFromName("Ljava_2Flang_2Freflect_2FGenericDeclaration_3B");
-    javaLangRefAnnotatedElement = GetMIRTypeFromName("Ljava_2Flang_2Freflect_2FAnnotatedElement_3B");
-    javaLangRefType = GetMIRTypeFromName("Ljava_2Flang_2Freflect_2FType_3B");
-    javaLangRefMethod = GetMIRTypeFromName("Ljava_2Flang_2Freflect_2FMethod_3B");
-    javaLangRefExecutable = GetMIRTypeFromName("Ljava_2Flang_2Freflect_2FExecutable_3B");
-    javaLangRefAccessibleObject = GetMIRTypeFromName("Ljava_2Flang_2Freflect_2FAccessibleObject_3B");
-    javaLangRefMember = GetMIRTypeFromName("Ljava_2Flang_2Freflect_2FMember_3B");
-    javaLangRefField = GetMIRTypeFromName("Ljava_2Flang_2Freflect_2FField_3B");
-    javaLangRefConstructor = GetMIRTypeFromName("Ljava_2Flang_2Freflect_2FConstructor_3B");
-}
-
-// Return true if node n may point to a String object.
-// String is declared as:
-//   public final class String implements java.io.Serializable, Comparable<String>, CharSequence
-// So n can point to String only if n's type is a ref to String or Object, or is an interface
-// type of java.io.Serializable, Comparable or CharSequence
-bool WKTypes::Util::MayRefString(const BaseNode &n, MIRType &type)
-{
-    if ((n.GetPrimType() == PTY_ref || n.GetPrimType() == PTY_ptr) && type.GetKind() == kTypePointer) {
-        auto *pointType = static_cast<MIRPtrType *>(&type);
-        MIRType *pointedType = pointType->GetPointedType();
-        if (pointedType == javaLangString || pointedType == javaLangObjectSerializable ||
-            pointedType == javaLangComparable || pointedType == javaLangCharSequence || pointedType == javaLangObject) {
-            return true;
-        }
-    }
-    return false;
-}
-
-// Return true if node n may point to Meta object, i.e, n is a reference
-// of java.lang.Class, java.lang.reflect.Method, java.lang.reflect.Field,
-// java.lang.reflect.Constructor
-bool WKTypes::Util::MayRefMeta(const BaseNode &n, MIRType &type)
-{
-    if ((n.GetPrimType() == PTY_ref || n.GetPrimType() == PTY_ptr) && type.GetKind() == kTypePointer) {
-        auto *pointType = static_cast<MIRPtrType *>(&type);
-        MIRType *pointedType = pointType->GetPointedType();
-        // Definition of java.lang.Class:
-        // public final class Class<T> implements java.io.Serializable,
-        // GenericDeclaration,
-        // Type,
-        // AnnotatedElement {...}
-        // public interface Serializable {}
-        // public interface GenericDeclaration extends AnnotatedElement {...}
-        // public interface AnnotatedElement {...}
-        // public interface Type {...}
-        // public interface AnnotatedElement {...}
-        if (pointedType == javaLangClass || pointedType == javaLangObjectSerializable ||
-            pointedType == javaLangRefGenericDeclaration || pointedType == javaLangRefAnnotatedElement ||
-            pointedType == javaLangRefType || pointedType == javaLangObject) {
-            return true;
-        }
-        // Definition of java.lang.reflect.Method:
-        // public final class Method extends Executable {...}
-        // public abstract class Executable extends AccessibleObject
-        // implements Member, GenericDeclaration {...}
-        // public class AccessibleObject implements AnnotatedElement {...}
-        // public interface AnnotatedElement {...}
-        // public interface Member {...}
-        // public interface GenericDeclaration extends AnnotatedElement {...}
-        // public interface AnnotatedElement {...}
-        if (pointedType == javaLangRefMethod || pointedType == javaLangRefExecutable ||
-            pointedType == javaLangRefAccessibleObject || pointedType == javaLangRefMember ||
-            pointedType == javaLangRefGenericDeclaration || pointedType == javaLangRefAnnotatedElement ||
-            pointedType == javaLangObject) {
-            return true;
-        }
-        // Definition of java.lang.reflect.Field:
-        // public final class Field extends AccessibleObject implements Member {...}
-        if (pointedType == javaLangRefField) {  // super classes/interfaces are checked by javaLangRefMethod
-            return true;
-        }
-        // Definition of java.lang.reflect.Constructor:
-        // public final class Constructor<T> extends Executable {...}
-        if (pointedType == javaLangRefConstructor) {  // super classes are checked by javaLangRefMethod
-            return true;
-        }
-    }
-    return false;
-}
-
-// Return true if node 'n', whose type is 'type', can not form a reference cycle.
-// E.g, all fields are primitive types, String, array of primitive, etc.
-bool WKTypes::Util::MayNotRefCyclicly(const BaseNode &n, MIRType &type)
-{
-    CHECK_FATAL((n.GetPrimType() == PTY_ref || n.GetPrimType() == PTY_ptr) && type.GetKind() == kTypePointer,
-                "n must be a reference");
-    std::set<MIRType *> workList;
-    workList.insert(&type);
-    return NotCyclicType(type, workList);
-}
-
-// Helper function of WKTypes::Util::MayNotRefCyclicly.
-bool WKTypes::Util::NotCyclicType(MIRType &type, std::set<MIRType *> &workList)
-{
-    // Fast path for special cases: String, Class
-    if (&type == javaLangString || &type == javaLangClass) {
-        return true;
-    }
-    if (type.GetKind() == kTypeScalar) {  // primitive type
-        return true;
-    }
-    if (type.GetKind() == kTypePointer) {
-        auto *pointedType = static_cast<MIRPtrType *>(&type)->GetPointedType();
-        DEBUG_ASSERT(pointedType != nullptr, "null ptr check!");
-        return NotCyclicType(*pointedType, workList);
-    }
-    if (type.GetKind() == kTypeJArray) {
-        MIRType *elemType =
-            GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<MIRJarrayType *>(&type)->GetElemTyIdx());
-        DEBUG_ASSERT(elemType != nullptr, "null ptr check!");
-        return NotCyclicType(*elemType, workList);
-    }
-    if (type.GetKind() == kTypeClass) {
-        auto *classType = static_cast<MIRClassType *>(&type);
-        if (!classType->IsFinal()) {  // Not sure what actual class it refers to
-            return false;
-        }
-        std::vector<FieldPair> allFields;
-        allFields.insert(allFields.end(), classType->GetFields().begin(), classType->GetFields().end());
-        // ignore static fields for now, they are not recycled anyway
-        MIRType *parentType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(classType->GetParentTyIdx());
-        while (parentType != nullptr) {
-            CHECK_FATAL(parentType->GetKind() == kTypeClass, "parent class");
-            auto *parentclass = static_cast<MIRClassType *>(parentType);
-            allFields.insert(allFields.end(), parentclass->GetFields().begin(), parentclass->GetFields().end());
-            // ignore static fields for now, they are not recycled anyway
-            parentType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(parentclass->GetParentTyIdx());
-        }
-        // Ignore interface fields, as they are all static final (constant) variables
-        for (FieldPair &fieldPair : allFields) {
-            MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldPair.second.first);
-            DEBUG_ASSERT(fieldType != nullptr, "null ptr check!");
-            if (fieldType->GetKind() == kTypePointer) {
-                // Strictly, we should check whether fieldType is 'assignable' from any type
-                // recorded in worklist, which means a cycle may be formed. However, this
-                // function returns false for any non-final calss (see above), so we only
-                // check if fieldType is 'equal' to any type recorded in the worklist.
-                // An example:
-                // class B extends A {
-                //    A field_a;
-                // }
-                // field_a may point to an instance of B and henceforce a possible cycle.
-                // Since A is not a final class, we can recognize it as a cycle candidate.
-                if (workList.find(fieldType) != workList.end()) {
-                    return false;
-                }
-                workList.insert(fieldType);
-            }
-            if (!NotCyclicType(*fieldType, workList)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    if (type.GetKind() == kTypeInterface) {
-        // Perhaps something more can do.
-        return false;
-    }
-    return false;
 }
 }  // namespace maple

@@ -55,6 +55,46 @@ private:
     JSTaggedType rawTaggedValue_;
 };
 
+class BuiltinsPropertyConfig {
+public:
+    constexpr BuiltinsPropertyConfig(std::string_view name, bool isAccessor, bool writable,
+        bool enumerable, bool configurable)
+        : name_(name), isAccessor_(isAccessor), writable_(writable),
+          enumerable_(enumerable), configurable_(configurable) {}
+
+    constexpr std::string_view GetName() const
+    {
+        return name_;
+    }
+
+    constexpr bool GetIsAccessor() const
+    {
+        return isAccessor_;
+    }
+
+    constexpr bool GetWritable() const
+    {
+        return writable_;
+    }
+
+    constexpr bool GetEnumerable() const
+    {
+        return enumerable_;
+    }
+
+    constexpr bool GetConfigurable() const
+    {
+        return configurable_;
+    }
+
+private:
+    std::string_view name_;
+    bool isAccessor_ {false};
+    bool writable_ {false};
+    bool enumerable_ {false};
+    bool configurable_ {false};
+};
+
 class BuiltinFunctionEntry {
 public:
     static constexpr int LENGTH_BITS_SIZE = 8;

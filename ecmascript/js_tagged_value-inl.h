@@ -525,6 +525,11 @@ inline bool JSTaggedValue::IsAOTLiteralInfo() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsAOTLiteralInfo();
 }
 
+inline bool JSTaggedValue::IsProfileTypeInfoCell() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsProfileTypeInfoCell();
+}
+
 inline bool JSTaggedValue::IsVTable() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsVTable();
@@ -806,6 +811,11 @@ inline bool JSTaggedValue::IsJSAPIStack() const
 inline bool JSTaggedValue::IsJSAPIVector() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIVector();
+}
+
+inline bool JSTaggedValue::IsJSAPIBitVector() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIBitVector();
 }
 
 inline bool JSTaggedValue::IsJSAPIList() const
@@ -1347,6 +1357,11 @@ inline bool JSTaggedValue::IsJSAPIVectorIterator() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIVectorIterator();
 }
 
+inline bool JSTaggedValue::IsJSAPIBitVectorIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIBitVectorIterator();
+}
+
 inline bool JSTaggedValue::IsIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsIterator();
@@ -1541,6 +1556,11 @@ inline bool JSTaggedValue::IsResolvedRecordBinding() const
 inline bool JSTaggedValue::IsModuleNamespace() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsModuleNamespace();
+}
+
+inline bool JSTaggedValue::IsNativeModuleError() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsNativeModuleError();
 }
 
 inline bool JSTaggedValue::IsJSSharedObject() const

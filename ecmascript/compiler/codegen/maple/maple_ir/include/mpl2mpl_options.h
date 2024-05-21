@@ -55,11 +55,6 @@ extern maplecl::Option<bool> dumpBefore;
 extern maplecl::Option<bool> dumpAfter;
 extern maplecl::Option<bool> dumpMuid;
 extern maplecl::Option<bool> emitVtableImpl;
-
-#if MIR_JAVA
-extern maplecl::Option<bool> skipvirtual;
-#endif
-
 extern maplecl::Option<bool> userc;
 extern maplecl::Option<bool> strictNaiveRc;
 extern maplecl::Option<bool> rcOpt1;

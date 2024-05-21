@@ -177,6 +177,13 @@ private:
                                            const JSHandle<JSTaggedValue> &flags);
     static JSTaggedValue RegExpReplaceFast(JSThread *thread, JSHandle<JSTaggedValue> regexp,
                                            JSHandle<EcmaString> inputString, uint32_t inputLength);
+    static JSTaggedValue GetLastIndex(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+                                      uint32_t &lastIndex);
+    static bool ShouldUseCache(JSThread *thread, JSHandle<EcmaString> inputString);
+    static JSTaggedValue MatchAndReplace(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+                                         JSHandle<EcmaString> inputString, uint32_t &flags,
+                                         uint32_t lastIndex, uint32_t inputLength,
+                                         std::string &resultString);
     static JSTaggedValue RegExpTestFast(JSThread *thread, JSHandle<JSTaggedValue> regexp,
                                         const JSHandle<JSTaggedValue> inputString, bool useCache);
     static JSTaggedValue RegExpExecForTestFast(JSThread *thread, JSHandle<JSTaggedValue> regexp,

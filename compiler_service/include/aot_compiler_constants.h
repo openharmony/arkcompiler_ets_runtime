@@ -136,6 +136,7 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-force-jit-compile-main",
     "compiler-enable-jit-pgo",
     "compiler-enable-aot-pgo",
+    "compiler-enable-framework-aot",
     "compiler-enable-profile-dump",
     "compiler-typed-op-profiler",
     "compiler-opt-branch-profiling",

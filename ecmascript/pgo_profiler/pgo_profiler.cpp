@@ -346,7 +346,7 @@ PGOProfiler::State PGOProfiler::GetState()
 
 void PGOProfiler::SetState(State state)
 {
-    LOG_ECMA(DEBUG) << "[PGODumpStateChange] " << StateToString(GetState()) << " -> " << StateToString(state);
+    v_.AddLogWithDebugLog("[PGODumpStateChange] " + StateToString(GetState()) + " -> " + StateToString(state));
     state_.store(state, std::memory_order_release);
 }
 
@@ -468,6 +468,7 @@ void PGOProfiler::UpdateExtraProfileTypeInfo(ApEntityId abcId,
 
 void PGOProfiler::HandlePGOPreDump()
 {
+    ConcurrentGuard guard(v_, "HandlePGOPreDump");
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
@@ -478,6 +479,9 @@ void PGOProfiler::HandlePGOPreDump()
             return;
         }
         auto func = JSFunction::Cast(funcValue);
+        if (func->IsSendableFunction()) {
+            return;
+        }
         JSTaggedValue methodValue = func->GetMethod();
         if (!methodValue.IsMethod()) {
             return;
@@ -520,6 +524,10 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
             continue;
         }
         auto func = JSFunction::Cast(value);
+        if (func->IsSendableFunction()) {
+            current = PopFromProfileQueue();
+            continue;
+        }
         JSTaggedValue methodValue = func->GetMethod();
         if (!methodValue.IsMethod()) {
             current = PopFromProfileQueue();

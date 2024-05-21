@@ -207,8 +207,8 @@ void EcmaVM::PreFork()
     heap_->CompactHeapBeforeFork();
     heap_->AdjustSpaceSizeForAppSpawn();
     heap_->GetReadOnlySpace()->SetReadOnly();
-    SharedHeap::GetInstance()->DisableParallelGC();
     heap_->DisableParallelGC();
+    SharedHeap::GetInstance()->DisableParallelGC(thread_);
 }
 
 void EcmaVM::PostFork()
@@ -222,6 +222,7 @@ void EcmaVM::PostFork()
     SignalAllReg();
 #endif
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
+    DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
@@ -230,23 +231,26 @@ void EcmaVM::PostFork()
     } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
+    if (ohos::EnableAotListHelper::GetInstance()->IsAotCompileSuccessOnce()) {
+        options_.SetEnablePGOProfiler(false);
+        LOG_ECMA(INFO) << "Aot has compile success once.";
+    }
     if (JSNApi::IsAotEscape()) {
         options_.SetEnablePGOProfiler(false);
+        LOG_ECMA(INFO) << "Aot has escaped.";
     }
     ResetPGOProfiler();
-    bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
-    bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
-    if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
-        options_.SetEnableAPPJIT(true);
-        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
-        bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
-        if ((!jitEscapeDisable) && JSNApi::IsJitEscape()) {
-            isEnableFastJit = false;
-            isEnableBaselineJit = false;
-            options_.SetEnableJIT(false);
-        }
-        if (isEnableFastJit || isEnableBaselineJit) {
-            EnableJit();
+
+    bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
+    if (jitEscapeDisable || !JSNApi::IsJitEscape()) {
+        if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName)) {
+            bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
+            bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
+            options_.SetEnableAPPJIT(true);
+            Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
+            if (isEnableFastJit || isEnableBaselineJit) {
+                EnableJit();
+            }
         }
     }
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
@@ -266,7 +270,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
       ecmaParamConfiguration_(std::move(config))
 {
     options_ = std::move(options);
-    LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
+    LOG_ECMA(DEBUG) << "multi-thread check enabled: " << options_.EnableThreadCheck();
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
@@ -391,6 +395,7 @@ bool EcmaVM::Initialize()
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     thread_->SetReadyForGCIterating(true);
+    thread_->SetSharedMarkStatus(DaemonThread::GetInstance()->GetSharedMarkStatus());
     snapshotEnv_ = new SnapshotEnv(this);
     context->Initialize();
     snapshotEnv_->AddGlobalConstToMap();
@@ -499,12 +504,10 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
-    SharedHeap *sHeap = SharedHeap::GetInstance();
-    const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
-    if (heap && IsWorkerThread() && Runtime::SharedGCRequest() && !heap->InSensitiveStatus()) {
+    if (IsWorkerThread() && Runtime::SharedGCRequest()) {
         // destory workervm to release mem.
         thread_->SetReadyForGCIterating(false);
-        sHeap->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION);
+        SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
     }
 
     if (debuggerManager_ != nullptr) {
@@ -633,7 +636,8 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy(thread_);
+                asyncNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 iter = nativePointerList_.erase(iter);
             } else {
                 ++iter;
@@ -646,9 +650,8 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
-                                                                    std::make_pair(object->GetExternalPointer(),
-                                                                                   object->GetData())));
+                concurrentNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 newIter = concurrentNativePointerList_.erase(newIter);
             } else {
                 ++newIter;
@@ -688,7 +691,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy(thread_);
+                asyncNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 iter = nativePointerList_.erase(iter);
                 continue;
             }
@@ -705,9 +709,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
-                                                                    std::make_pair(object->GetExternalPointer(),
-                                                                                   object->GetData())));
+                concurrentNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 newIter = concurrentNativePointerList_.erase(newIter);
                 continue;
             }

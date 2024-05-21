@@ -62,6 +62,11 @@ HWTEST_F_L0(JSGeneratorObjectTest, GeneratorValidate_003)
         factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_GENERATOR_OBJECT, env->GetGeneratorFunctionPrototype());
     TaggedObject *genObjectHeader = factory->NewObject(genClass);
     JSHandle<JSGeneratorObject> genObj(thread, JSGeneratorObject::Cast(genObjectHeader));
+    genObj->InitializeHash();
+    genObj->SetElements(thread, factory->EmptyArray(), SKIP_BARRIER);
+    genObj->SetProperties(thread, factory->EmptyArray(), SKIP_BARRIER);
+    genObj->SetGeneratorContext(thread, JSTaggedValue::Undefined());
+    genObj->SetResumeResult(thread, JSTaggedValue::Undefined());
     JSGeneratorState state = JSGeneratorObject::GeneratorValidate(thread, JSHandle<JSTaggedValue>::Cast(genObj));
     EXPECT_EQ(state, JSGeneratorState::SUSPENDED_YIELD);
 

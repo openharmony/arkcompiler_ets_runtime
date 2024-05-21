@@ -32,31 +32,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
-class BuiltinsObjectTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsObjectTest : public BaseTestWithScope<false> {
 };
 
 JSTaggedValue CreateBuiltinJSObject(JSThread *thread, const CString keyCStr)
@@ -536,12 +512,10 @@ HWTEST_F_L0(BuiltinsObjectTest, IsExtensible)
     JSHandle<JSObject> emptyObj =
         thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(function), function);
     emptyObj->GetJSHClass()->SetExtensible(true);
-    auto emptyObjCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    emptyObjCallInfo->SetFunction(JSTaggedValue::Undefined());
-    emptyObjCallInfo->SetThis(JSTaggedValue::Undefined());
-    emptyObjCallInfo->SetCallArg(0, emptyObj.GetTaggedValue());
+    std::vector<JSTaggedValue> args{emptyObj.GetTaggedValue()};
+    auto emptyObjCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, emptyObjCallInfo);
+    auto prev = TestHelper::SetupFrame(thread, emptyObjCallInfo);
     JSTaggedValue result = BuiltinsObject::IsExtensible(emptyObjCallInfo);
     TestHelper::TearDownFrame(thread, prev);
 
@@ -622,10 +596,9 @@ HWTEST_F_L0(BuiltinsObjectTest, IsSealed)
     JSHandle<JSObject> emptyObj =
         thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(function), function);
     emptyObj->GetJSHClass()->SetExtensible(true);
-    auto emptyObjCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    emptyObjCallInfo->SetFunction(JSTaggedValue::Undefined());
-    emptyObjCallInfo->SetThis(JSTaggedValue::Undefined());
-    emptyObjCallInfo->SetCallArg(0, emptyObj.GetTaggedValue());
+
+    std::vector<JSTaggedValue> args{emptyObj.GetTaggedValue()};
+    auto emptyObjCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6);
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, emptyObjCallInfo);
     JSTaggedValue result = BuiltinsObject::IsSealed(emptyObjCallInfo);

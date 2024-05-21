@@ -261,6 +261,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MAP_CLEAR:
         case OpCode::SET_CLEAR:
             return VisitOthers(gate, GateType::UndefinedType());
+        case OpCode::CREATE_ARRAY_WITH_BUFFER:
+            return VisitOthersWithoutConvert(gate);
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:
@@ -298,6 +300,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TYPED_ARRAY_KEYS:
         case OpCode::TYPED_ARRAY_VALUES:
         case OpCode::SET_ADD:
+        case OpCode::LOAD_BUILTIN_OBJECT:
+        case OpCode::CREATE_ARRAY:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -834,6 +838,14 @@ GateRef NumberSpeculativeRetype::VisitOthers(GateRef gate, GateType outputType)
     return Circuit::NullGate();
 }
 
+GateRef NumberSpeculativeRetype::VisitOthersWithoutConvert(GateRef gate, GateType outputType)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, outputType);
+    }
+    return Circuit::NullGate();
+}
+
 GateRef NumberSpeculativeRetype::VisitWithConstantValue(GateRef gate, size_t ignoreIndex)
 {
     if (IsRetype()) {
@@ -1078,7 +1090,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
                     LOG_ECMA(FATAL) << "undefined cannot convert to int type";
                 }
             } else {
-                ASSERT(gateType.IsNumberType());
+                ASSERT(gateType.IsNumberType() || gateType.IsAnyType());
                 result = builder_.CheckTaggedNumberAndConvertToInt32(gate);
             }
             break;

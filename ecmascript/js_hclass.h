@@ -147,6 +147,7 @@ struct Reference;
         JS_API_TREEMAP_ITERATOR, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_TREESET_ITERATOR, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_VECTOR_ITERATOR,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_API_BITVECTOR_ITERATOR,  /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LINKED_LIST_ITERATOR, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIST_ITERATOR,    /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ARRAY_ITERATOR,       /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -182,6 +183,7 @@ struct Reference;
         JS_API_LIGHT_WEIGHT_MAP,      /* //////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIGHT_WEIGHT_SET, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_VECTOR,     /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_API_BITVECTOR,     /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LINKED_LIST, /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIST,       /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_HASH_MAP,   /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -221,6 +223,7 @@ struct Reference;
         JS_CJS_MODULE, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_EXPORTS, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_REQUIRE, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        NATIVE_MODULE_ERROR, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_GLOBAL_OBJECT, /* JS_OBJECT_LAST////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROXY, /* ECMA_OBJECT_LAST ///////////////////////////////////////////////////////////////////////////// */ \
                                                                                                                        \
@@ -289,6 +292,10 @@ struct Reference;
         MACHINE_CODE_OBJECT,                                                                                           \
         CLASS_INFO_EXTRACTOR, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
+        PROFILE_TYPE_INFO_CELL_0,  /* PROFILE_TYPE_INFO_CELL_FIRST ////////////////////////////////////////-PADDING */ \
+        PROFILE_TYPE_INFO_CELL_1,  /* /////////////////////////////////////////////////////////////////////-PADDING */ \
+        PROFILE_TYPE_INFO_CELL_N,  /* PROFILE_TYPE_INFO_CELL_LAST /////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
         VTABLE,                       /* //////////////////////////////////////////////////////////////////-PADDING */ \
         AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TYPE_LAST = AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////-PADDING */ \
@@ -321,7 +328,10 @@ struct Reference;
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         STRING_FIRST = LINE_STRING, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
-        STRING_LAST = TREE_STRING  /* /////////////////////////////////////////////////////////////////////-PADDING */
+        STRING_LAST = TREE_STRING,  /* ////////////////////////////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
+        PROFILE_TYPE_INFO_CELL_FIRST = PROFILE_TYPE_INFO_CELL_0,  /* //////////////////////////////////////-PADDING */ \
+        PROFILE_TYPE_INFO_CELL_LAST = PROFILE_TYPE_INFO_CELL_N    /* //////////////////////////////////////-PADDING */
 
 enum class JSType : uint8_t {
     JSTYPE_DECL,
@@ -1231,6 +1241,14 @@ public:
     {
         return GetObjectType() == JSType::JS_API_VECTOR_ITERATOR;
     }
+    inline bool IsJSAPIBitVector() const
+    {
+        return GetObjectType() == JSType::JS_API_BITVECTOR;
+    }
+    inline bool IsJSAPIBitVectorIterator() const
+    {
+        return GetObjectType() == JSType::JS_API_BITVECTOR_ITERATOR;
+    }
 
     inline bool IsAccessorData() const
     {
@@ -1613,6 +1631,12 @@ public:
         return GetObjectType() == JSType::AOT_LITERAL_INFO;
     }
 
+    inline bool IsProfileTypeInfoCell() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType >= JSType::PROFILE_TYPE_INFO_CELL_FIRST && jsType <= JSType::PROFILE_TYPE_INFO_CELL_LAST;
+    }
+
     inline bool IsVTable() const
     {
         return GetObjectType() == JSType::VTABLE;
@@ -1687,6 +1711,11 @@ public:
     inline bool IsModuleNamespace() const
     {
         return GetObjectType() == JSType::JS_MODULE_NAMESPACE;
+    }
+
+    inline bool IsNativeModuleError() const
+    {
+        return GetObjectType() == JSType::NATIVE_MODULE_ERROR;
     }
 
     inline bool IsJSSharedObject() const

@@ -41,6 +41,7 @@ void AnFileDataManager::SafeDestroyAllData()
 {
     WriteLockHolder lock(lock_);
     if (loadedStub_ != nullptr) {
+        loadedStub_->UnregisterFromDebugger();
         ExecutedMemoryAllocator::DestroyBuf(loadedStub_->GetStubsMem());
         DestroyFileMapMem(loadedStub_->GetFileMapMem());
         loadedStub_ = nullptr;

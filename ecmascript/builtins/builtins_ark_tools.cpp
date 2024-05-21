@@ -205,7 +205,7 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     auto heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
     heap->CollectGarbage(
         TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
-    SharedHeap::GetInstance()->CollectGarbage(info->GetThread(), TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER);
+    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER>(info->GetThread());
     heap->GetHeapPrepare();
     return JSTaggedValue::True();
 }
@@ -542,7 +542,7 @@ JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *i
     return JSTaggedValue(scope.GetCurTime());
 }
 
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
 JSTaggedValue BuiltinsArkTools::StartScopeLockStats(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();

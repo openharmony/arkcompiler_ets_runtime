@@ -52,7 +52,6 @@ public:
 
     ~MeCFG() = default;
 
-    bool IfReplaceWithAssertNonNull(const BB &bb) const;
     void Verify() const;
     void VerifyLabels() const;
     void Dump() const;

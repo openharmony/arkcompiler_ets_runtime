@@ -50,7 +50,8 @@ enum ArkProperties {
     CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
     ENABLE_HEAP_VERIFY = 1 << 19,
     ENABLE_MICROJOB_TRACE = 1 << 20,
-    ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21
+    ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21,
+    SHARED_CONCURRENT_MARK = 1 << 22
 };
 
 // asm interpreter control parsed option
@@ -167,6 +168,7 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_JIT,
     OPTION_COMPILER_ENABLE_JIT_PGO,
     OPTION_COMPILER_ENABLE_AOT_PGO,
+    OPTION_COMPILER_ENABLE_FRAMEWORK_AOT,
     OPTION_COMPILER_ENABLE_PROPFILE_DUMP,
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
@@ -186,6 +188,7 @@ enum CommandValues {
     OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
+    OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -450,6 +453,15 @@ public:
     bool EnableConcurrentMark() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
+    }
+
+    bool EnableSharedConcurrentMark() const
+    {
+#ifndef NDEBUG
+        return true;
+#else
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::SHARED_CONCURRENT_MARK) != 0;
+#endif
     }
 
     bool EnableExceptionBacktrace() const
@@ -1717,6 +1729,26 @@ public:
         return enableAOTPGO_;
     }
 
+    void SetEnableJitFastCompile(bool value)
+    {
+        enableJitFastCompile_ = value;
+    }
+
+    bool IsEnableJitFastCompile() const
+    {
+        return enableJitFastCompile_;
+    }
+    
+    void SetEnableFrameworkAOT(bool value)
+    {
+        enableFrameworkAOT_ = value;
+    }
+
+    bool IsEnableFrameworkAOT() const
+    {
+        return enableFrameworkAOT_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1827,6 +1859,7 @@ private:
     bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};
+    bool enableFrameworkAOT_ {true};
     bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
@@ -1872,6 +1905,7 @@ private:
     bool traceInductionVariableAnalysis_ {false};
     bool enableMemoryAnalysis_ {true};
     bool checkPgoVersion_ {false};
+    bool enableJitFastCompile_ {false};
 };
 }  // namespace panda::ecmascript
 

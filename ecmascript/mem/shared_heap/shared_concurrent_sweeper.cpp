@@ -29,7 +29,7 @@ SharedConcurrentSweeper::SharedConcurrentSweeper(SharedHeap *heap, EnableConcurr
 
 void SharedConcurrentSweeper::PostTask()
 {
-    auto tid = JSThread::GetCurrentThreadId();
+    auto tid = DaemonThread::GetInstance()->GetThreadId();
     if (ConcurrentSweepEnabled()) {
         Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<SweeperTask>(tid, this, SHARED_OLD_SPACE));

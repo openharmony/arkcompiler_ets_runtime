@@ -14,6 +14,8 @@
  */
 #include "ecmascript/module/module_manager_helper.h"
 
+#include "ecmascript/dfx/native_module_error.h"
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/js_module_source_text.h"
@@ -28,6 +30,10 @@ JSTaggedValue ModuleManagerHelper::GetModuleValue(JSThread *thread, JSHandle<Sou
     if (SourceTextModule::IsNativeModule(moduleType)) {
         JSHandle<JSTaggedValue> nativeExports = JSHandle<JSTaggedValue>(thread,
             module->GetModuleValue(thread, 0, false));
+        if (nativeExports->IsNativeModuleError()) {
+            JSTaggedValue errorInfo = JSHandle<NativeModuleError>::Cast(nativeExports)->GetArkNativeModuleError();
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, ConvertToString(errorInfo).c_str(), JSTaggedValue::Undefined());
+        }
         if (!nativeExports->IsJSObject()) {
             JSHandle<JSTaggedValue> recordName(thread, module->GetEcmaModuleRecordName());
             LOG_FULL(WARN) << "Load native module failed, so is " <<
@@ -66,6 +72,10 @@ JSTaggedValue ModuleManagerHelper::GetNativeModuleValue(JSThread *thread,
 {
     JSHandle<JSTaggedValue> nativeExports = JSHandle<JSTaggedValue>(thread,
         SourceTextModule::Cast(resolvedModule.GetTaggedObject())->GetModuleValue(thread, 0, false));
+    if (nativeExports->IsNativeModuleError()) {
+        JSTaggedValue errorInfo = JSHandle<NativeModuleError>::Cast(nativeExports)->GetArkNativeModuleError();
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, ConvertToString(errorInfo).c_str(), JSTaggedValue::Undefined());
+    }
     if (!nativeExports->IsJSObject()) {
         JSHandle<JSTaggedValue> nativeModuleName(thread, SourceTextModule::GetModuleName(resolvedModule));
         LOG_FULL(WARN) << "Load native module failed, so is " <<
@@ -89,6 +99,10 @@ JSTaggedValue ModuleManagerHelper::GetNativeModuleValue(JSThread *thread, JSTagg
     SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
     JSHandle<JSTaggedValue> nativeExports = JSHandle<JSTaggedValue>(thread,
         module->GetModuleValue(thread, 0, false));
+    if (nativeExports->IsNativeModuleError()) {
+        JSTaggedValue errorInfo = JSHandle<NativeModuleError>::Cast(nativeExports)->GetArkNativeModuleError();
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, ConvertToString(errorInfo).c_str(), JSTaggedValue::Undefined());
+    }
     if (!nativeExports->IsJSObject()) {
         JSHandle<JSTaggedValue> recordName(thread, module->GetEcmaModuleRecordName());
         LOG_FULL(WARN) << "Load native module failed, so is " <<

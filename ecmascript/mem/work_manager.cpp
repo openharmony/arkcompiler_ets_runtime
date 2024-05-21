@@ -222,7 +222,7 @@ void SharedGCWorkManager::Initialize()
         holder.weakQueue_ = new ProcessQueue();
         holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
     }
-    if (initialized_.load(std::memory_order_relaxed)) {
+    if (initialized_.load(std::memory_order_acquire)) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
@@ -253,6 +253,21 @@ bool SharedGCWorkManager::Push(uint32_t threadId, TaggedObject *object)
     return true;
 }
 
+bool SharedGCWorkManager::PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object)
+{
+    if (UNLIKELY(markingBuffer == nullptr)) {
+        markingBuffer = AllocateWorkNode();
+    }
+    ASSERT(markingBuffer != nullptr);
+    if (UNLIKELY(!markingBuffer->PushObject(ToUintPtr(object)))) {
+        PushLocalBufferToGlobal(markingBuffer);
+        ASSERT(markingBuffer == nullptr);
+        markingBuffer = AllocateWorkNode();
+        return markingBuffer->PushObject(ToUintPtr(object));
+    }
+    return true;
+}
+
 void SharedGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
 {
     WorkNode *&inNode = works_.at(threadId).inNode_;
@@ -263,6 +278,17 @@ void SharedGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
             sHeap_->PostGCMarkingTask();
         }
     }
+}
+
+void SharedGCWorkManager::PushLocalBufferToGlobal(WorkNode *&node, bool postTask)
+{
+    ASSERT(node != nullptr);
+    ASSERT(!node->IsEmpty());
+    workStack_.Push(node);
+    if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
+        sHeap_->PostGCMarkingTask();
+    }
+    node = nullptr;
 }
 
 bool SharedGCWorkManager::Pop(uint32_t threadId, TaggedObject **object)

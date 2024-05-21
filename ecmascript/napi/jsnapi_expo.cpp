@@ -39,6 +39,7 @@
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_runtime_call_info.h"
@@ -93,6 +94,7 @@
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/framework_helper.h"
+#include "ecmascript/ohos/aot_runtime_info.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -159,6 +161,7 @@ using ecmascript::LinkedHashSet;
 using ecmascript::LockHolder;
 using ecmascript::MemMapAllocator;
 using ecmascript::Method;
+using ecmascript::NativeModuleError;
 using ecmascript::Mutex;
 using ecmascript::ObjectFactory;
 using ecmascript::OperationResult;
@@ -199,7 +202,6 @@ using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
 using FrameIterator = ecmascript::FrameIterator;
 using Concurrent = ecmascript::Concurrent;
 using CrashInfo = ecmascript::ohos::AotCrashInfo;
-using CrashType = ecmascript::ohos::CrashType;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
@@ -784,6 +786,11 @@ bool JSValueRef::IsGeneratorObject()
 bool JSValueRef::IsModuleNamespaceObject()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsModuleNamespace();
+}
+
+bool JSValueRef::IsNativeModuleErrorObject()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsNativeModuleError();
 }
 
 bool JSValueRef::IsSharedArrayBuffer()
@@ -2041,6 +2048,14 @@ Local<ObjectRef> ObjectRef::NewWithNamedProperties(const EcmaVM *vm, size_t prop
     return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
 }
 
+Local<ObjectRef> ObjectRef::CreateNativeModuleError(const EcmaVM *vm, const std::string &errorMsg)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSHandle<NativeModuleError> nativeModuleError = NativeModuleError::CreateNativeModuleError(vm, errorMsg);
+    return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(nativeModuleError));
+}
+
 Local<ObjectRef> ObjectRef::CreateAccessorData(const EcmaVM *vm,
                                                Local<FunctionRef> getter, Local<FunctionRef> setter)
 {
@@ -2857,6 +2872,24 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     return scope.Escape(result);
 }
 
+Local<FunctionRef> FunctionRef::NewConcurrentClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc,
+    NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    EscapeLocalScope scope(vm);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
+    JSHandle<JSFunction> current =
+        factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc),
+        hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
+    InitClassFunction(vm, current, callNapi);
+    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
+    Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
+    return scope.Escape(result);
+}
+
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc,
     NativePointerCallback deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
@@ -3320,7 +3353,7 @@ JSExecutionScope::~JSExecutionScope()
 JsiNativeScope::JsiNativeScope(const EcmaVM *vm)
 {
     thread_ = vm->GetAssociatedJSThread();
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         const_cast<EcmaVM*>(vm)->IncreaseEnterJsiNativeScopeCount();
         const_cast<EcmaVM*>(vm)->IncreaseUpdateThreadStateTransCount();
@@ -3340,7 +3373,7 @@ JsiNativeScope::~JsiNativeScope()
 JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
 {
     thread_ = vm->GetAssociatedJSThread();
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         const_cast<EcmaVM*>(vm)->IncreaseEnterFastNativeScopeCount();
         const_cast<EcmaVM*>(vm)->IncreaseUpdateThreadStateTransCount();
@@ -3475,6 +3508,11 @@ void JSNApi::SetLoop(EcmaVM *vm, void *loop)
 void JSNApi::SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback)
 {
     vm->GetAssociatedJSThread()->SetWeakFinalizeTaskCallback(callback);
+}
+
+void JSNApi::SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallback &callback)
+{
+    vm->GetAssociatedJSThread()->SetAsyncCleanTaskCallback(callback);
 }
 
 std::string JSNApi::GetAssetPath(EcmaVM *vm)
@@ -3778,7 +3816,7 @@ void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
     auto thread = vm->GetJSThread();
     ecmascript::ThreadManagedScope managedScope(thread);
     if (thread->HasPendingException()) {
-        LOG_ECMA(ERROR) << "An exception has already occurred before, keep old exception here.";
+        LOG_ECMA(DEBUG) << "An exception has already occurred before, keep old exception here.";
         return;
     }
     thread->SetException(JSNApiHelper::ToJSTaggedValue(*error));
@@ -3802,7 +3840,7 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     }
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, exceptionHandle);
     ecmascript::CString string = ConvertToString(*result);
-    LOG_ECMA(ERROR) << string;
+    LOG_ECMA(DEBUG) << string;
     ThrowException(vm, exception);
 }
 
@@ -3817,6 +3855,11 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
         << ", port = " << option.port << ", instanceId = " << instanceId;
     if (vm == nullptr) {
         LOG_ECMA(ERROR) << "[StartDebugger] vm is nullptr";
+        return false;
+    }
+
+    if (option.port < 0) {
+        LOG_ECMA(ERROR) << "[StartDebugger] option.port is -1" ;
         return false;
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -4065,6 +4108,10 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         }
         reinterpret_cast<WaitForDebugger>(symOfWaitForDebugger.Value())(vm);
     }
+    auto anFileDataMgr = ecmascript::AnFileDataManager::GetInstance();
+    if (anFileDataMgr != nullptr && anFileDataMgr->SafeGetStubFileInfo()) {
+        anFileDataMgr->SafeGetStubFileInfo()->RegisterToDebugger();
+    }
     return ret;
 
 #else
@@ -4141,7 +4188,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
 #if !defined(PANDA_TARGET_IOS)
-    LOG_ECMA(INFO) << "JSNApi::StopDebugger";
+    LOG_ECMA(DEBUG) << "JSNApi::StopDebugger";
     if (vm == nullptr) {
         LOG_ECMA(ERROR) << "[StopDebugger] vm is nullptr";
         return false;
@@ -4184,7 +4231,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 bool JSNApi::StopDebugger([[maybe_unused]] int tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    LOG_ECMA(INFO) << "JSNApi::StopDebugger, tid = " << tid;
+    LOG_ECMA(DEBUG) << "JSNApi::StopDebugger, tid = " << tid;
     JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
     if (jsDebuggerManager == nullptr) {
         LOG_ECMA(ERROR) << "[StopDebugger] jsDebuggerManager is nullptr";
@@ -4268,51 +4315,26 @@ bool JSNApi::KeyIsNumber(const char* utf8)
     return true;
 }
 
-std::map<CrashType, int> CollectCrashSum()
-{
-    std::map<CrashType, int> escapeMap;
-    std::string realOutPath;
-    std::string arkProfilePath = CrashInfo::GetSandBoxPath();
-    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(arkProfilePath);
-    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
-        return escapeMap;
-    }
-    realOutPath = realOutPath + "/" + CrashInfo::GetCrashFileName();
-    CrashInfo aotCrashInfo;
-    std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
-    std::ifstream ifile(realOutPath.c_str());
-    if (ifile.is_open()) {
-        std::string iline;
-        while (ifile >> iline) {
-            std::string buildId = CrashInfo::GetBuildId(iline);
-            CrashType type = CrashInfo::GetCrashType(iline);
-            if (buildId == soBuildId) {
-                escapeMap[type]++;
-            }
-        }
-        ifile.close();
-    }
-    return escapeMap;
-}
-
 bool JSNApi::IsAotEscape()
 {
     if (CrashInfo::GetAotEscapeDisable()) {
         return false;
     }
-    auto escapeMap = CollectCrashSum();
-    return escapeMap[CrashType::AOT] >= CrashInfo::GetAotCrashCount() ||
-        escapeMap[CrashType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
-        escapeMap[CrashType::JS] >= CrashInfo::GetJsCrashCount();
+    ecmascript::ohos::AotRuntimeInfo aotRuntimeInfo;
+    auto escapeMap = aotRuntimeInfo.CollectCrashSum();
+    return escapeMap[ecmascript::ohos::RuntimeInfoType::AOT] >= CrashInfo::GetAotCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::JS] >= CrashInfo::GetJsCrashCount();
 }
 
 bool JSNApi::IsJitEscape()
 {
-    auto escapeMap = CollectCrashSum();
-    return escapeMap[CrashType::JIT] >= CrashInfo::GetJitCrashCount() ||
-        escapeMap[CrashType::AOT] >= CrashInfo::GetAotCrashCount() ||
-        escapeMap[CrashType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
-        escapeMap[CrashType::JS] >= CrashInfo::GetJsCrashCount();
+    ecmascript::ohos::AotRuntimeInfo aotRuntimeInfo;
+    auto escapeMap = aotRuntimeInfo.CollectCrashSum();
+    return escapeMap[ecmascript::ohos::RuntimeInfoType::JIT] >= CrashInfo::GetJitCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::AOT] >= CrashInfo::GetAotCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::JS] >= CrashInfo::GetJsCrashCount();
 }
 
 bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)
@@ -4906,13 +4928,13 @@ Local<JSValueRef>  JSNApi::NapiHasProperty(const EcmaVM *vm, uintptr_t nativeObj
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     EscapeLocalScope scope(vm);
     JSHandle<JSTaggedValue> obj(nativeObj);
-    LOG_IF_SPECIAL(object, ERROR);
     if (!(obj->IsECMAObject() || obj->IsCallable())) {
         // When input validation is failed, we return JSTaggedValue::Hole to napi native engine.
         // Using JSTaggedValue::Hole as the "hand-shaking-protocol" to tell native engine to change error state.
         JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(holeHandle));
     }
+    LOG_IF_SPECIAL(obj, ERROR);
     JSMutableHandle<JSTaggedValue> keyValue(key);
     JSTaggedValue res = ObjectFastOperator::TryFastHasProperty(thread, obj.GetTaggedValue(),
                                                                keyValue);
@@ -4930,13 +4952,13 @@ Local<JSValueRef> JSNApi::NapiHasOwnProperty(const EcmaVM *vm, uintptr_t nativeO
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     EscapeLocalScope scope(vm);
     JSHandle<JSTaggedValue> obj(nativeObj);
-    LOG_IF_SPECIAL(object, ERROR);
     if (!(obj->IsECMAObject() || obj->IsCallable())) {
         // When input validation is failed, we return JSTaggedValue::Hole to napi native engine.
         // Using JSTaggedValue::Hole as the "hand-shaking-protocol" to tell native engine to change error state.
         JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(holeHandle));
     }
+    LOG_IF_SPECIAL(obj, ERROR);
     JSMutableHandle<JSTaggedValue> keyValue(key);
     JSTaggedValue res = ObjectFastOperator::TryFastHasProperty(thread, obj.GetTaggedValue(),
                                                                keyValue);
@@ -4987,13 +5009,13 @@ Local<JSValueRef> JSNApi::NapiDeleteProperty(const EcmaVM *vm, uintptr_t nativeO
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     EscapeLocalScope scope(vm);
     JSHandle<JSTaggedValue> obj(nativeObj);
-    LOG_IF_SPECIAL(object, ERROR);
     if (!(obj->IsECMAObject() || obj->IsCallable())) {
         // When input validation is failed, we return JSTaggedValue::Hole to napi native engine.
         // Using JSTaggedValue::Hole as the "hand-shaking-protocol" to tell native engine to change error state.
         JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(holeHandle));
     }
+    LOG_IF_SPECIAL(obj, ERROR);
     JSMutableHandle<JSTaggedValue> keyValue(key);
     if (keyValue->IsString() && !EcmaStringAccessor(keyValue.GetTaggedValue()).IsInternString()) {
         [[maybe_unused]] ecmascript::EcmaHandleScope handleScope(thread);

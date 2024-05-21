@@ -539,7 +539,6 @@ void CGCFG::RemoveBB(BB &curBB, bool isGotoIf) const
     cgFunc->ClearBBInVec(curBB.GetId());
     /* remove callsite */
     EHFunc *ehFunc = cgFunc->GetEHFunc();
-    /* only java try has ehFunc->GetLSDACallSiteTable */
     if (ehFunc != nullptr && ehFunc->GetLSDACallSiteTable() != nullptr) {
         ehFunc->GetLSDACallSiteTable()->RemoveCallSite(curBB);
     }
@@ -617,7 +616,7 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
     return nullptr;
 }
 
-bool CGCFG::InLSDA(LabelIdx label [[maybe_unused]], const EHFunc *ehFunc [[maybe_unused]])
+bool CGCFG::InLSDA([[maybe_unused]] LabelIdx label, [[maybe_unused]] const EHFunc *ehFunc)
 {
     /* the function have no exception handle module */
     if (ehFunc == nullptr) {

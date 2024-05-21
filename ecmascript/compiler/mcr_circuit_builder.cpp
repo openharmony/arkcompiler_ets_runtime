@@ -1684,14 +1684,15 @@ GateRef CircuitBuilder::ToNumber(GateRef gate, GateRef value, GateRef glue)
     return ret;
 }
 
-GateRef CircuitBuilder::BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args)
+GateRef CircuitBuilder::BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args,
+                                             std::vector<GateRef> frameStates)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret =
         GetCircuit()->NewGate(op, MachineType::I64,
-            ConcatParams({std::vector{ currentControl, currentDepend}, args}), GateType::AnyType());
+            ConcatParams({std::vector{ currentControl, currentDepend}, args, frameStates}), GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

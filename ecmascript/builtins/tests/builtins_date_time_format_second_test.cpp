@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "builtin_test_util.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
 
 #include <ctime>
@@ -28,103 +29,8 @@ using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
 using BuiltinsArray = ecmascript::builtins::BuiltinsArray;
-class BuiltinsDateTimeFormatTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsDateTimeFormatTest : public BaseTestWithScope<true> {
 };
-
-static JSTaggedValue BuiltinsDateTimeOptionsSet(JSThread *thread)
-{
-    auto globalConst = thread->GlobalConstants();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-
-    JSHandle<JSTaggedValue> weekDay = globalConst->GetHandledWeekdayString();
-    JSHandle<JSTaggedValue> dayPeriod = globalConst->GetHandledDayPeriodString();
-    JSHandle<JSTaggedValue> hourCycle = globalConst->GetHandledHourCycleString();
-    JSHandle<JSTaggedValue> timeZone = globalConst->GetHandledTimeZoneString();
-    JSHandle<JSTaggedValue> numicValue(factory->NewFromASCII("numeric")); // test numeric
-    JSHandle<JSTaggedValue> weekDayValue(factory->NewFromASCII("short")); // test short
-    JSHandle<JSTaggedValue> dayPeriodValue(factory->NewFromASCII("long")); // test long
-    JSHandle<JSTaggedValue> hourCycleValue(factory->NewFromASCII("h24")); // test h24
-    JSHandle<JSTaggedValue> timeZoneValue(factory->NewFromASCII("UTC")); // test UTC
-
-    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(6); // 6 : 6 length
-    keyArray->Set(thread, 0, globalConst->GetHandledYearString()); // 0 : 0 first position
-    keyArray->Set(thread, 1, globalConst->GetHandledMonthString()); // 1 : 1 second position
-    keyArray->Set(thread, 2, globalConst->GetHandledDayString()); // 2 : 2 third position
-    keyArray->Set(thread, 3, globalConst->GetHandledHourString()); // 3 : 3 fourth position
-    keyArray->Set(thread, 4, globalConst->GetHandledMinuteString()); // 4 : 4 fifth position
-    keyArray->Set(thread, 5, globalConst->GetHandledSecondString()); // 5 : 5 sixth position
-
-    uint32_t arrayLen = keyArray->GetLength();
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < arrayLen; i++) {
-        key.Update(keyArray->Get(thread, i));
-        JSObject::SetProperty(thread, optionsObj, key, numicValue);
-    }
-    JSObject::SetProperty(thread, optionsObj, weekDay, weekDayValue);
-    JSObject::SetProperty(thread, optionsObj, dayPeriod, dayPeriodValue);
-    JSObject::SetProperty(thread, optionsObj, hourCycle, hourCycleValue);
-    JSObject::SetProperty(thread, optionsObj, timeZone, timeZoneValue);
-    return optionsObj.GetTaggedValue();
-}
-
-static JSTaggedValue JSDateTimeFormatCreateWithLocaleTest(JSThread *thread, JSHandle<JSTaggedValue> &locale)
-{
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> newTarget(env->GetDateTimeFormatFunction());
-    JSHandle<JSObject> optionsObj(thread, BuiltinsDateTimeOptionsSet(thread));
-
-    JSHandle<JSTaggedValue> localesString = locale;
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
-    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsDateTimeFormat::DateTimeFormatConstructor(ecmaRuntimeCallInfo);
-    EXPECT_TRUE(result.IsJSDateTimeFormat());
-    TestHelper::TearDownFrame(thread, prev);
-    return result;
-}
 
 HWTEST_F_L0(BuiltinsDateTimeFormatTest, ResolvedOptions)
 {
@@ -132,7 +38,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, ResolvedOptions)
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("de-ID"));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+       JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
@@ -281,13 +187,7 @@ static JSTaggedValue JSDateTimeFormatForObj_001(JSThread *thread)
     JSHandle<JSTaggedValue> digitValue(factory->NewFromASCII("2-digit"));
     JSHandle<JSTaggedValue> timeZoneNameValue(factory->NewFromASCII("short"));
 
-    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(6); // 6 : 6 length
-    keyArray->Set(thread, 0, globalConst->GetHandledYearString()); // 0 : 0 first position
-    keyArray->Set(thread, 1, globalConst->GetHandledMonthString()); // 1 : 1 second position
-    keyArray->Set(thread, 2, globalConst->GetHandledDayString()); // 2 : 2 third position
-    keyArray->Set(thread, 3, globalConst->GetHandledHourString()); // 3 : 3 fourth position
-    keyArray->Set(thread, 4, globalConst->GetHandledMinuteString()); // 4 : 4 fifth position
-    keyArray->Set(thread, 5, globalConst->GetHandledSecondString()); // 5 : 5 sixth position
+    JSHandle<TaggedArray> keyArray = BuiltTestUtil::DateTimeGlobalSet(thread);
     uint32_t arrayLen = keyArray->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < arrayLen; i++) {

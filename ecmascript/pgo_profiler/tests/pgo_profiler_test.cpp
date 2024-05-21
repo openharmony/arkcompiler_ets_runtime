@@ -22,7 +22,6 @@
 #include <utility>
 
 #include "ecmascript/base/file_header.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/object_factory.h"

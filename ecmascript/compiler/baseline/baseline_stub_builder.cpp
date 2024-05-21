@@ -57,7 +57,8 @@ GateRef BaselineStubBuilder::GetLastLeaveFrame(GateRef glue)
 
 GateRef BaselineStubBuilder::GetProfileTypeInfoFromFunction(GateRef function)
 {
-    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
+    GateRef raw = Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
 }
 
 GateRef BaselineStubBuilder::GetModuleFromFunction(GateRef function)

@@ -177,6 +177,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
             // defer initialize concurrent function
             concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
         }
+        func->SetRawProfileTypeInfo(thread_, thread_->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     }
     UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
     if (!isRoot) {
@@ -464,6 +465,8 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetSetPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_SHARED_SET:
             return env->GetSharedSetPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SENDABLE_ARRAY_BUFFER:
+            return env->GetSendableArrayBufferPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_REG_EXP:
             return env->GetRegExpPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_INT8_ARRAY:

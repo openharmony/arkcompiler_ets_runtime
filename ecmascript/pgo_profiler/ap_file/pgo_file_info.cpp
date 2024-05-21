@@ -62,7 +62,7 @@ bool PGOProfilerHeader::BuildFromElastic(void *buffer, size_t bufferSize, PGOPro
 bool PGOProfilerHeader::ParseFromBinary(void *buffer, size_t bufferSize, PGOProfilerHeader **header)
 {
     auto *inHeaderBase = reinterpret_cast<FileHeaderBase *>(buffer);
-    if (inHeaderBase->VerifyVersion("apPath file", LAST_VERSION, IsStrictMatch())) {
+    if (inHeaderBase->VerifyVersion("ap file", LAST_VERSION, IsStrictMatch())) {
         if (!inHeaderBase->CompatibleVerify(ELASTIC_HEADER_MINI_VERSION)) {
             return BuildFromLegacy(buffer, header);
         }
@@ -147,6 +147,7 @@ bool PGOProfilerHeader::ProcessToText(std::ofstream &stream) const
         return false;
     }
     stream << DumpUtils::VERSION_HEADER << InternalGetVersion() << DumpUtils::NEW_LINE;
+    stream << "Compatible an file version: " << ConvToStr(GetCompatibleAnVersion()) << DumpUtils::NEW_LINE;
     if (SupportFileConsistency()) {
         stream << "FileSize: " << GetFileSize() << " ,HeaderSize: " << GetHeaderSize() << " ,Checksum: " << std::hex
                << GetChecksum() << DumpUtils::NEW_LINE;

@@ -273,7 +273,8 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
                 JSHandle<JSTaggedValue> moduleRecord =
                     thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[methodId]);
                 function->SetModule(thread, moduleRecord.GetTaggedValue());
-                function->SetProfileTypeInfo(thread, JSTaggedValue::Undefined());
+                function->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
+                                                SKIP_BARRIER);
             }
         }
     });

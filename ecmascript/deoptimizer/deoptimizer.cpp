@@ -526,7 +526,7 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
     for (size_t i = 0; i <= inlineDepth_; i++) {
         JSTaggedValue callTarget = GetDeoptValue(i, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
         auto func = JSFunction::Cast(callTarget.GetTaggedObject());
-        if (func->GetMachineCode() != JSTaggedValue::Undefined()) {
+        if (func->GetMachineCode().IsMachineCodeObject()) {
             MachineCode *machineCode = MachineCode::Cast(func->GetMachineCode().GetTaggedObject());
             if (type != kungfu::DeoptType::OSRLOOPEXIT &&
                 machineCode->GetOSROffset() != MachineCode::INVALID_OSR_OFFSET) {

@@ -23,42 +23,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
-class BuiltinsPluralRulesTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsPluralRulesTest : public BaseTestWithScope<true> {
 };
 
 // new DateTimeFormat(newTarget is defined)
@@ -96,11 +61,8 @@ static JSTaggedValue JSPluralRulesCreateWithLocaleTest(JSThread *thread, JSHandl
     JSObject::SetProperty(thread, optionsObj, typeKey, typeValue);
 
     JSHandle<JSTaggedValue> localesString = locale;
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
-    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
+    std::vector<JSTaggedValue> args{ localesString.GetTaggedValue(), optionsObj.GetTaggedValue()};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, newTarget, args, 8);
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsPluralRules::PluralRulesConstructor(ecmaRuntimeCallInfo);
@@ -110,17 +72,17 @@ static JSTaggedValue JSPluralRulesCreateWithLocaleTest(JSThread *thread, JSHandl
     return result;
 }
 
-// select(0, type(cardinal))
-HWTEST_F_L0(BuiltinsPluralRulesTest, Select_001)
+static void SelectTest(JSThread *thread, std::string_view data, std::string_view expectStr, int v)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
-    JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("cardinal"));
+    JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII(data));
     JSHandle<JSPluralRules> jsPluralRules =
         JSHandle<JSPluralRules>(thread, JSPluralRulesCreateWithLocaleTest(thread, locale, typeValue));
 
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(0));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(v));
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);  // 6 : argv length
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
     ecmaRuntimeCallInfo->SetCallArg(0, value.GetTaggedValue());
@@ -131,151 +93,49 @@ HWTEST_F_L0(BuiltinsPluralRulesTest, Select_001)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("other", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ(expectStr.data(), EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+}
+
+// select(0, type(cardinal))
+HWTEST_F_L0(BuiltinsPluralRulesTest, Select_001)
+{
+    SelectTest(thread, "cardinal", "other", 0);
 }
 
 // select(1, type(cardinal))
 HWTEST_F_L0(BuiltinsPluralRulesTest, Select_002)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
-    JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("cardinal"));
-    JSHandle<JSPluralRules> jsPluralRules =
-        JSHandle<JSPluralRules>(thread, JSPluralRulesCreateWithLocaleTest(thread, locale, typeValue));
-
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, value.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsPluralRules::Select(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
-    EXPECT_TRUE(result.IsString());
-    JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("one", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    SelectTest(thread, "cardinal", "one", 1);
 }
 
 // select(2, type(cardinal))
 HWTEST_F_L0(BuiltinsPluralRulesTest, Select_003)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
-    JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("cardinal"));
-    JSHandle<JSPluralRules> jsPluralRules =
-        JSHandle<JSPluralRules>(thread, JSPluralRulesCreateWithLocaleTest(thread, locale, typeValue));
-
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(2));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, value.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsPluralRules::Select(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
-    EXPECT_TRUE(result.IsString());
-    JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("other", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    SelectTest(thread, "cardinal", "other", 2);
 }
 
 // select(3, type(ordinal))
 HWTEST_F_L0(BuiltinsPluralRulesTest, Select_004)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
-    JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("ordinal"));
-    JSHandle<JSPluralRules> jsPluralRules =
-        JSHandle<JSPluralRules>(thread, JSPluralRulesCreateWithLocaleTest(thread, locale, typeValue));
-
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(3));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, value.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsPluralRules::Select(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
-    EXPECT_TRUE(result.IsString());
-    JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("few", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    SelectTest(thread, "ordinal", "few", 3);
 }
 
 // select(2, type(ordinal))
 HWTEST_F_L0(BuiltinsPluralRulesTest, Select_005)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
-    JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("ordinal"));
-    JSHandle<JSPluralRules> jsPluralRules =
-        JSHandle<JSPluralRules>(thread, JSPluralRulesCreateWithLocaleTest(thread, locale, typeValue));
-
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(2));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, value.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsPluralRules::Select(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
-    EXPECT_TRUE(result.IsString());
-    JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("two", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    SelectTest(thread, "ordinal", "two", 2);
 }
 
 // select(0, type(ordinal))
 HWTEST_F_L0(BuiltinsPluralRulesTest, Select_006)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
-    JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("ordinal"));
-    JSHandle<JSPluralRules> jsPluralRules =
-        JSHandle<JSPluralRules>(thread, JSPluralRulesCreateWithLocaleTest(thread, locale, typeValue));
-
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(0));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, value.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsPluralRules::Select(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
-    EXPECT_TRUE(result.IsString());
-    JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("other", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    SelectTest(thread, "ordinal", "other", 0);
 }
 
 // select(1, type(ordinal))
 HWTEST_F_L0(BuiltinsPluralRulesTest, Select_007)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
-    JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("ordinal"));
-    JSHandle<JSPluralRules> jsPluralRules =
-        JSHandle<JSPluralRules>(thread, JSPluralRulesCreateWithLocaleTest(thread, locale, typeValue));
-
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsPluralRules.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, value.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsPluralRules::Select(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
-    EXPECT_TRUE(result.IsString());
-    JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("one", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    SelectTest(thread, "ordinal", "one", 1);
 }
 
 HWTEST_F_L0(BuiltinsPluralRulesTest, SupportedLocalesOf)

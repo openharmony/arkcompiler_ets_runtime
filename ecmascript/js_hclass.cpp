@@ -759,7 +759,10 @@ JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread
     }
     JSHandle<ProtoChangeMarker> markerHandle = thread->GetEcmaVM()->GetFactory()->NewProtoChangeMarker();
     markerHandle->SetHasChanged(false);
-    protoClass->SetProtoChangeMarker(thread, markerHandle.GetTaggedValue());
+    // ShareToLocal is prohibited
+    if (!protoClass->IsJSShared()) {
+        protoClass->SetProtoChangeMarker(thread, markerHandle.GetTaggedValue());
+    }
     return JSHandle<JSTaggedValue>(markerHandle);
 }
 
@@ -824,6 +827,10 @@ void JSHClass::NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> 
 
 void JSHClass::RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
+    // ShareToLocal is prohibited
+    if (jshclass->IsJSShared()) {
+        return;
+    }
     JSHandle<JSHClass> user = jshclass;
     JSHandle<ProtoChangeDetails> userDetails = GetProtoChangeDetails(thread, user);
 
@@ -838,6 +845,10 @@ void JSHClass::RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHCl
             return;
         }
         if (proto.IsJSProxy()) {
+            return;
+        }
+        // ShareToLocal is prohibited
+        if (proto.IsJSShared()) {
             return;
         }
         ASSERT(proto.IsECMAObject());

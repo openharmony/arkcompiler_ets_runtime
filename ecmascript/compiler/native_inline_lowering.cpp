@@ -168,7 +168,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathTrunc(), skipThis);
                 break;
             case BuiltinsStubCSigns::ID::MathAbs:
-                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAbs(), skipThis);
+                TryInlineMathAbsBuiltin(gate, argc, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::MathLog:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathLog(), skipThis);
@@ -654,6 +654,28 @@ void NativeInlineLowering::TryInlineWhitoutParamBuiltin(GateRef gate, size_t arg
     }
 
     GateRef ret = builder_.BuildControlDependOp(op, {});
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineMathAbsBuiltin(GateRef gate, size_t argc, bool skipThis)
+{
+    Environment env(gate, circuit_, &builder_);
+    bool firstParam = skipThis ? 1 : 0;
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::MathAbs)));
+    }
+
+    if (EnableTrace()) {
+        AddTraceLogs(gate, BuiltinsStubCSigns::ID::MathAbs);
+    }
+
+    if (argc == 0) {
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
+        return;
+    }
+    GateRef ret = builder_.BuildControlDependOp(circuit_->MathAbs(), {acc_.GetValueIn(gate, firstParam)},
+                                                {acc_.GetFrameState(gate)});
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 

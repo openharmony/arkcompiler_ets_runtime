@@ -121,12 +121,9 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
         if (!func.IsHeapObject()) {
             return {};
         }
-        MarkWord markWord(func.GetTaggedObject());
-        TaggedObject *f = markWord.IsForwardingAddress() ? markWord.ToForwardingAddress() : func.GetTaggedObject();
-        if (!f->GetClass()->IsJSFunction()) {
-            return {};
-        }
-        JSFunction *jsfunc = JSFunction::Cast(f);
+        // cast to jsfunction directly. JSFunction::Cast may fail,
+        // as jsfunction class may set forwardingAddress in Evacuate, but forwarding obj not init.
+        JSFunction *jsfunc = reinterpret_cast<JSFunction*>(func.GetTaggedObject());
         // machineCode non move
         JSTaggedValue machineCode = jsfunc->GetMachineCode();
         if (machineCode.IsMachineCodeObject() &&
@@ -550,10 +547,10 @@ ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
     }
 }
 
-ARK_INLINE void BaselineBuiltinFrame::GCIterate([[maybe_unused]]const FrameIterator &it,
-    [[maybe_unused]]const RootVisitor &visitor,
+ARK_INLINE void BaselineBuiltinFrame::GCIterate([[maybe_unused]] const FrameIterator &it,
+    [[maybe_unused]] const RootVisitor &visitor,
     [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
-    [[maybe_unused]]const RootBaseAndDerivedVisitor &derivedVisitor) const
+    [[maybe_unused]] const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {

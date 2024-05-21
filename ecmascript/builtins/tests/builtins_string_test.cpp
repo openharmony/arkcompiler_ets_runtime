@@ -32,42 +32,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
-class BuiltinsStringTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsStringTest : public BaseTestWithScope<true> {
 };
 
 JSTaggedValue CreateBuiltinsStringRegExpObjByPatternAndFlags(JSThread *thread, const JSHandle<EcmaString> &pattern,
@@ -86,6 +51,91 @@ JSTaggedValue CreateBuiltinsStringRegExpObjByPatternAndFlags(JSThread *thread, c
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsRegExp::RegExpConstructor(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
+
+enum class AlgorithmType {
+    FROM_CHAR_CODE,
+    FROM_CODE_POINT,
+    CHAR_AT,
+    CHAR_CODE_AT,
+    CODE_POINT_AT,
+    CONCAT,
+    INDEX_OF,
+    LAST_INDEX_OF,
+    INCLUDES,
+    START_WITH,
+    ENDS_WITH,
+    TO_STRING,
+    VALUE_OF,
+    REPLACE,
+    SPLIT,
+};
+
+JSTaggedValue StringAlgorithmOther(EcmaRuntimeCallInfo*ecmaRuntimeCallInfos, AlgorithmType type)
+{
+    switch (type) {
+        case AlgorithmType::START_WITH:
+            return BuiltinsString::StartsWith(ecmaRuntimeCallInfos);
+        case AlgorithmType::ENDS_WITH:
+            return BuiltinsString::EndsWith(ecmaRuntimeCallInfos);
+        case AlgorithmType::TO_STRING:
+            return BuiltinsString::ToString(ecmaRuntimeCallInfos);
+        case AlgorithmType::VALUE_OF:
+            return BuiltinsString::ValueOf(ecmaRuntimeCallInfos);
+        case AlgorithmType::REPLACE:
+            return BuiltinsString::Replace(ecmaRuntimeCallInfos);
+        case AlgorithmType::SPLIT:
+            return BuiltinsString::Split(ecmaRuntimeCallInfos);
+        default:
+            return JSTaggedValue::Undefined();
+    }
+}
+
+JSTaggedValue StringAlgorithm(JSThread *thread, JSTaggedValue thisArg, std::vector<JSTaggedValue>& args,
+    uint32_t argLen = 8, AlgorithmType type = AlgorithmType::FROM_CHAR_CODE)
+{
+    auto ecmaRuntimeCallInfos = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), argLen);
+    ecmaRuntimeCallInfos->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfos->SetThis(thisArg);
+    for (size_t i = 0; i < args.size(); i++) {
+        ecmaRuntimeCallInfos->SetCallArg(i, args[i]);
+    }
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfos);
+    JSTaggedValue result;
+    switch (type) {
+        case AlgorithmType::FROM_CHAR_CODE:
+            result = BuiltinsString::FromCharCode(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::FROM_CODE_POINT:
+            result = BuiltinsString::FromCodePoint(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::CHAR_AT:
+            result = BuiltinsString::CharAt(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::CHAR_CODE_AT:
+            result = BuiltinsString::CharCodeAt(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::CODE_POINT_AT:
+            result = BuiltinsString::CodePointAt(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::CONCAT:
+            result = BuiltinsString::Concat(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::INDEX_OF:
+            result = BuiltinsString::IndexOf(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::LAST_INDEX_OF:
+            result = BuiltinsString::LastIndexOf(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::INCLUDES:
+            result = BuiltinsString::Includes(ecmaRuntimeCallInfos);
+            break;
+        default:
+            result = StringAlgorithmOther(ecmaRuntimeCallInfos, type);
+            break;
+    }
     TestHelper::TearDownFrame(thread, prev);
     return result;
 }
@@ -122,15 +172,9 @@ HWTEST_F_L0(BuiltinsStringTest, fromCharCode1)
     const double arg2 = 66;
     const double arg3 = 67;
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(arg1));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(arg2));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(arg3));
+    std::vector<JSTaggedValue> args{JSTaggedValue(arg1), JSTaggedValue(arg2), JSTaggedValue(arg3)};
+    auto result = StringAlgorithm(thread, JSTaggedValue::Undefined(), args, 10, AlgorithmType::FROM_CHAR_CODE);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::FromCharCode(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSTaggedValue value(static_cast<JSTaggedType>(result.GetRawData()));
     JSHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue(value.GetTaggedObject()));
@@ -146,15 +190,9 @@ HWTEST_F_L0(BuiltinsStringTest, fromCodePoint1)
     const double arg2 = 66;
     const double arg3 = 67;
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(arg1));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(arg2));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(arg3));
+    std::vector<JSTaggedValue> args{JSTaggedValue(arg1), JSTaggedValue(arg2), JSTaggedValue(arg3)};
+    auto result = StringAlgorithm(thread, JSTaggedValue::Undefined(), args, 10, AlgorithmType::FROM_CODE_POINT);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::FromCodePoint(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> test = factory->NewFromASCII("ABC");
@@ -167,13 +205,9 @@ HWTEST_F_L0(BuiltinsStringTest, charAt1)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> thisVal = factory->NewFromASCII("abcabcabc");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(5)));
+    std::vector<JSTaggedValue> args{JSTaggedValue(static_cast<double>(5))};
+    auto result = StringAlgorithm(thread, thisVal.GetTaggedValue(), args, 6, AlgorithmType::CHAR_AT);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::CharAt(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> test = factory->NewFromASCII("c");
@@ -186,13 +220,9 @@ HWTEST_F_L0(BuiltinsStringTest, charAt2)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> thisVal = factory->NewFromUtf8("一二三四");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(2)));
+    std::vector<JSTaggedValue> args{JSTaggedValue(static_cast<double>(2))};
+    auto result = StringAlgorithm(thread, thisVal.GetTaggedValue(), args, 6, AlgorithmType::CHAR_AT);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::CharAt(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> test = factory->NewFromUtf8("三");
@@ -205,13 +235,9 @@ HWTEST_F_L0(BuiltinsStringTest, charAt3)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> thisVal = factory->NewFromASCII("abcabcabc");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-1)));
+    std::vector<JSTaggedValue> args{JSTaggedValue(static_cast<double>(-1))};
+    auto result = StringAlgorithm(thread, thisVal.GetTaggedValue(), args, 6, AlgorithmType::CHAR_AT);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::CharAt(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> test = factory->GetEmptyString();
@@ -224,13 +250,8 @@ HWTEST_F_L0(BuiltinsStringTest, charCodeAt1)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> thisVal = factory->NewFromASCII("ABC");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(0)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::CharCodeAt(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{JSTaggedValue(static_cast<double>(0))};
+    auto result = StringAlgorithm(thread, thisVal.GetTaggedValue(), args, 6, AlgorithmType::CHAR_CODE_AT);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(65).GetRawData());
 }
@@ -241,13 +262,8 @@ HWTEST_F_L0(BuiltinsStringTest, charCodeAt2)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> thisVal = factory->NewFromASCII("ABC");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-1)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::CharCodeAt(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{JSTaggedValue(static_cast<double>(-1))};
+    auto result = StringAlgorithm(thread, thisVal.GetTaggedValue(), args, 6, AlgorithmType::CHAR_CODE_AT);
 
     JSTaggedValue test = BuiltinsString::GetTaggedDouble(base::NAN_VALUE);
     ASSERT_EQ(result.GetRawData(), test.GetRawData());
@@ -259,13 +275,8 @@ HWTEST_F_L0(BuiltinsStringTest, codePointAt1)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> thisVal = factory->NewFromASCII("ABC");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(1)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::CodePointAt(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{JSTaggedValue(static_cast<double>(1))};
+    auto result = StringAlgorithm(thread, thisVal.GetTaggedValue(), args, 6, AlgorithmType::CODE_POINT_AT);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(66).GetRawData());
 }
@@ -279,15 +290,9 @@ HWTEST_F_L0(BuiltinsStringTest, concat1)
     JSHandle<EcmaString> val2 = factory->NewFromASCII("c");
     JSHandle<EcmaString> val3 = factory->NewFromASCII("d");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val1.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, val2.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(2, val3.GetTaggedValue());
+    std::vector<JSTaggedValue> args{val1.GetTaggedValue(), val2.GetTaggedValue(), val3.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 10, AlgorithmType::CONCAT);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Concat(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> test = factory->NewFromASCII("abcd");
@@ -301,13 +306,8 @@ HWTEST_F_L0(BuiltinsStringTest, indexof1)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("abcabcabc");
     JSHandle<EcmaString> val = factory->NewFromASCII("b");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::IndexOf(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::INDEX_OF);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(1).GetRawData());
 }
@@ -319,14 +319,8 @@ HWTEST_F_L0(BuiltinsStringTest, indexof2)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("abcabcabc");
     JSHandle<EcmaString> val = factory->NewFromASCII("b");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(2)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::IndexOf(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue(), JSTaggedValue(static_cast<double>(2))};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::INDEX_OF);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(4).GetRawData());
 }
@@ -338,13 +332,8 @@ HWTEST_F_L0(BuiltinsStringTest, indexof3)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("abcabcabc");
     JSHandle<EcmaString> val = factory->NewFromASCII("d");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::IndexOf(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::INDEX_OF);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(-1).GetRawData());
 }
@@ -356,13 +345,8 @@ HWTEST_F_L0(BuiltinsStringTest, lastIndexOf1)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("abcabcabc");
     JSHandle<EcmaString> val = factory->NewFromASCII("b");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::LastIndexOf(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::LAST_INDEX_OF);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(7).GetRawData());
 }
@@ -373,14 +357,8 @@ HWTEST_F_L0(BuiltinsStringTest, lastIndexOf2)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("abcabcabc");
     JSHandle<EcmaString> val = factory->NewFromASCII("b");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(2)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::LastIndexOf(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue(), JSTaggedValue(static_cast<double>(2))};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::LAST_INDEX_OF);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(1).GetRawData());
 }
@@ -392,13 +370,8 @@ HWTEST_F_L0(BuiltinsStringTest, lastIndexOf3)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("abcabcabc");
     JSHandle<EcmaString> val = factory->NewFromASCII("d");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::LastIndexOf(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::LAST_INDEX_OF);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(-1).GetRawData());
 }
@@ -410,13 +383,8 @@ HWTEST_F_L0(BuiltinsStringTest, Includes2)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("abcabcabc");
     JSHandle<EcmaString> val = factory->NewFromASCII("b");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Includes(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::INCLUDES);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::True().GetRawData());
 }
@@ -428,14 +396,8 @@ HWTEST_F_L0(BuiltinsStringTest, Includes3)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("abccccccc");
     JSHandle<EcmaString> val = factory->NewFromASCII("b");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(2)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Includes(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue(), JSTaggedValue(static_cast<double>(2))};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::INCLUDES);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::False().GetRawData());
 }
@@ -447,13 +409,8 @@ HWTEST_F_L0(BuiltinsStringTest, Includes4)
     JSHandle<EcmaString> thisStr = factory->NewFromUtf8("一二三四");
     JSHandle<EcmaString> val = factory->NewFromUtf8("二");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Includes(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::INCLUDES);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::True().GetRawData());
 }
@@ -465,13 +422,8 @@ HWTEST_F_L0(BuiltinsStringTest, startsWith1)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("To be, or not to be, that is the question.");
     JSHandle<EcmaString> val = factory->NewFromASCII("To be");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::StartsWith(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::START_WITH);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::True().GetRawData());
 }
@@ -483,13 +435,8 @@ HWTEST_F_L0(BuiltinsStringTest, startsWith2)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("To be, or not to be, that is the question.");
     JSHandle<EcmaString> val = factory->NewFromASCII("not to be");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::StartsWith(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::START_WITH);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::False().GetRawData());
 }
@@ -501,14 +448,8 @@ HWTEST_F_L0(BuiltinsStringTest, startsWith3)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("To be, or not to be, that is the question.");
     JSHandle<EcmaString> val = factory->NewFromASCII("not to be");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(10)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::StartsWith(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue(), JSTaggedValue(static_cast<double>(10))};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::START_WITH);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::True().GetRawData());
 }
@@ -520,13 +461,8 @@ HWTEST_F_L0(BuiltinsStringTest, endsWith1)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("To be, or not to be, that is the question.");
     JSHandle<EcmaString> val = factory->NewFromASCII("question.");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::EndsWith(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::ENDS_WITH);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::True().GetRawData());
 }
@@ -538,13 +474,8 @@ HWTEST_F_L0(BuiltinsStringTest, endsWith2)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("To be, or not to be, that is the question.");
     JSHandle<EcmaString> val = factory->NewFromASCII("to be");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::EndsWith(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 6, AlgorithmType::ENDS_WITH);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::False().GetRawData());
 }
@@ -556,14 +487,8 @@ HWTEST_F_L0(BuiltinsStringTest, endsWith3)
     JSHandle<EcmaString> thisStr = factory->NewFromASCII("To be, or not to be, that is the question.");
     JSHandle<EcmaString> val = factory->NewFromASCII("to be");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(19)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::EndsWith(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{val.GetTaggedValue(), JSTaggedValue(static_cast<double>(19))};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::ENDS_WITH);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::True().GetRawData());
 }
@@ -927,12 +852,9 @@ HWTEST_F_L0(BuiltinsStringTest, ToString)
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(thisStr.GetTaggedValue().GetTaggedObject()));
     JSHandle<JSPrimitiveRef> str = factory->NewJSPrimitiveRef(stringObject, value);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(str.GetTaggedValue());
+    std::vector<JSTaggedValue> args{};
+    auto result = StringAlgorithm(thread, str.GetTaggedValue(), args, 4, AlgorithmType::TO_STRING);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::ToString(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSTaggedValue test = JSTaggedValue(*thisStr);
@@ -950,12 +872,9 @@ HWTEST_F_L0(BuiltinsStringTest, ValueOf)
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(thisStr.GetTaggedValue().GetTaggedObject()));
     JSHandle<JSPrimitiveRef> str = factory->NewJSPrimitiveRef(stringObject, value);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(str.GetTaggedValue());
+    std::vector<JSTaggedValue> args{};
+    auto result = StringAlgorithm(thread, str.GetTaggedValue(), args, 4, AlgorithmType::VALUE_OF);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::ValueOf(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSTaggedValue test = JSTaggedValue(*thisStr);
@@ -1017,15 +936,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
     JSHandle<EcmaString> replaceStr = factory->NewFromASCII("Christmas");
     JSHandle<EcmaString> expected = factory->NewFromASCII("Twas the night before Christmas...");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, replaceStr.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Replace(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> args{searchStr.GetTaggedValue(), replaceStr.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     ASSERT_TRUE(result.IsString());
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
@@ -1033,15 +945,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
     JSHandle<EcmaString> replaceStr1 = factory->NewFromASCII("abc$$");
     JSHandle<EcmaString> expected1 = factory->NewFromASCII("Twas the night before abc$...");
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo1->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo1->SetCallArg(1, replaceStr1.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsString::Replace(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    args[1] = replaceStr1.GetTaggedValue();
+    auto result1 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     JSHandle<EcmaString> resultString1(thread, result1);
     ASSERT_TRUE(result1.IsString());
@@ -1050,15 +955,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
     JSHandle<EcmaString> replaceStr2 = factory->NewFromASCII("abc$$dd");
     JSHandle<EcmaString> expected2 = factory->NewFromASCII("Twas the night before abc$dd...");
 
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(1, replaceStr2.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsString::Replace(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
+    args[1] = replaceStr2.GetTaggedValue();
+    auto result2 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     JSHandle<EcmaString> resultString2(thread, result2);
     ASSERT_TRUE(result2.IsString());
@@ -1067,15 +965,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
     JSHandle<EcmaString> replaceStr3 = factory->NewFromASCII("abc$&dd");
     JSHandle<EcmaString> expected3 = factory->NewFromASCII("Twas the night before abcXmasdd...");
 
-    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo3->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo3->SetCallArg(1, replaceStr3.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
-    JSTaggedValue result3 = BuiltinsString::Replace(ecmaRuntimeCallInfo3);
-    TestHelper::TearDownFrame(thread, prev);
+    args[1] = replaceStr3.GetTaggedValue();
+    auto result3 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     JSHandle<EcmaString> resultString3(thread, result3);
     ASSERT_TRUE(result3.IsString());
@@ -1085,15 +976,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
     JSHandle<EcmaString> expected4 =
         factory->NewFromASCII("Twas the night before abcTwas the night before dd...");
 
-    auto ecmaRuntimeCallInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo4->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo4->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo4->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo4->SetCallArg(1, replaceStr4.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo4);
-    JSTaggedValue result4 = BuiltinsString::Replace(ecmaRuntimeCallInfo4);
-    TestHelper::TearDownFrame(thread, prev);
+    args[1] = replaceStr4.GetTaggedValue();
+    auto result4 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     JSHandle<EcmaString> resultString4(thread, result4);
     ASSERT_TRUE(result4.IsString());
@@ -1108,15 +992,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
     JSHandle<EcmaString> replaceStr = factory->NewFromASCII("abc$\'dd");
     JSHandle<EcmaString> expected = factory->NewFromASCII("Twas the night before abc...dd...");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, replaceStr.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Replace(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> args{searchStr.GetTaggedValue(), replaceStr.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     ASSERT_TRUE(result.IsString());
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
@@ -1125,15 +1002,9 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
     JSHandle<EcmaString> expected2 =
         factory->NewFromASCII("Twas the night before abcTwas the night before dd...$ff...");
 
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(1, replaceStr2.GetTaggedValue());
+    args[1] = replaceStr2.GetTaggedValue();
+    auto result2 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsString::Replace(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> resultString2(thread, result2);
     ASSERT_TRUE(result2.IsString());
@@ -1143,15 +1014,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
     JSHandle<EcmaString> expected3 =
         factory->NewFromASCII("Twas the night before abcTwas the night before dd...$...");
 
-    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo3->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo3->SetCallArg(1, replaceStr3.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
-    JSTaggedValue result3 = BuiltinsString::Replace(ecmaRuntimeCallInfo3);
-    TestHelper::TearDownFrame(thread, prev);
+    args[1] = replaceStr3.GetTaggedValue();
+    auto result3 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     JSHandle<EcmaString> resultString3(thread, result3);
     ASSERT_TRUE(result3.IsString());
@@ -1161,15 +1025,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
     JSHandle<EcmaString> expected4 =
         factory->NewFromASCII("Twas the night before abcTwas the night before dd$...");
 
-    auto ecmaRuntimeCallInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo4->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo4->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo4->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo4->SetCallArg(1, replaceStr4.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo4);
-    JSTaggedValue result4 = BuiltinsString::Replace(ecmaRuntimeCallInfo4);
-    TestHelper::TearDownFrame(thread, prev);
+    args[1] = replaceStr4.GetTaggedValue();
+    auto result4 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     ASSERT_TRUE(result4.IsString());
     JSHandle<EcmaString> resultString4(thread, result4);
@@ -1185,14 +1042,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace3)
     JSHandle<EcmaString> expected = factory->NewFromASCII(
         "Twas the night before Xmasa Twas the night before  ... $2 $01 $1 $21 $32 a...");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, replaceStr.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Replace(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{searchStr.GetTaggedValue(), replaceStr.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     ASSERT_TRUE(result.IsString());
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
@@ -1215,17 +1066,23 @@ HWTEST_F_L0(BuiltinsStringTest, Replace4)
     JSHandle<EcmaString> replaceStr =
         thread->GetEcmaVM()->GetFactory()->NewFromASCII("$&a $` $\' $2 $01 $$1 $21 $32 a");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, searchStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, replaceStr.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Replace(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{searchStr.GetTaggedValue(), replaceStr.GetTaggedValue()};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     ASSERT_TRUE(result.IsString());
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
+}
+
+void SplitCommon(JSThread *thread, std::vector<JSHandle<EcmaString>> expecteds, JSHandle<JSArray> &resultArray)
+{
+    JSHandle<JSTaggedValue> resultObj(resultArray);
+    for (size_t i = 0; i < expecteds.size(); i++) {
+        JSHandle<EcmaString> str(
+            JSObject::GetProperty(thread, resultObj,
+                                  JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i))))
+                .GetValue());
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*str, *expecteds[i]));
+    }
 }
 
 HWTEST_F_L0(BuiltinsStringTest, Split)
@@ -1239,28 +1096,14 @@ HWTEST_F_L0(BuiltinsStringTest, Split)
     JSHandle<EcmaString> expected2 = factory->NewFromASCII("World.");
     JSHandle<EcmaString> expected3 = factory->NewFromASCII("How");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, separatorStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(3)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Split(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{separatorStr.GetTaggedValue(), JSTaggedValue(static_cast<int32_t>(3))};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::SPLIT);
 
     ASSERT_TRUE(result.IsECMAObject());
     JSHandle<JSArray> resultArray(thread, reinterpret_cast<JSArray *>(result.GetRawData()));
     ASSERT_TRUE(resultArray->IsJSArray());
-    JSHandle<JSTaggedValue> resultObj(resultArray);
-    JSHandle<EcmaString> string1(
-        JSObject::GetProperty(thread, resultObj, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0))).GetValue());
-    JSHandle<EcmaString> string2(
-        JSObject::GetProperty(thread, resultObj, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1))).GetValue());
-    JSHandle<EcmaString> string3(
-        JSObject::GetProperty(thread, resultObj, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2))).GetValue());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*string1, *expected1));
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*string2, *expected2));
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*string3, *expected3));
+    std::vector<JSHandle<EcmaString>> expecteds{expected1, expected2, expected3};
+    SplitCommon(thread, expecteds, resultArray);
 }
 
 HWTEST_F_L0(BuiltinsStringTest, Split2)
@@ -1278,28 +1121,14 @@ HWTEST_F_L0(BuiltinsStringTest, Split2)
     JSHandle<EcmaString> expected2 = factory->NewFromASCII("b");
     JSHandle<EcmaString> expected3 = factory->NewFromASCII("c");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, separatorObj.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(3)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsString::Split(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{separatorObj.GetTaggedValue(), JSTaggedValue(static_cast<int32_t>(3))};
+    auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::SPLIT);
 
     ASSERT_TRUE(result.IsECMAObject());
     JSHandle<JSArray> resultArray(thread, result);
     ASSERT_TRUE(resultArray->IsJSArray());
-    JSHandle<JSTaggedValue> resultObj(resultArray);
-    JSHandle<EcmaString> string1(
-        JSObject::GetProperty(thread, resultObj, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0))).GetValue());
-    JSHandle<EcmaString> string2(
-        JSObject::GetProperty(thread, resultObj, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1))).GetValue());
-    JSHandle<EcmaString> string3(
-        JSObject::GetProperty(thread, resultObj, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2))).GetValue());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*string1, *expected1));
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*string2, *expected2));
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*string3, *expected3));
+    std::vector<JSHandle<EcmaString>> expecteds{expected1, expected2, expected3};
+    SplitCommon(thread, expecteds, resultArray);
 }
 
 // "一二三四".at(3)

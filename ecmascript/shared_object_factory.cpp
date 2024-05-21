@@ -41,12 +41,17 @@ void ObjectFactory::NewSObjectHook() const
 #ifndef NDEBUG
     static std::atomic<uint32_t> count = 0;
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
+    static constexpr uint32_t CONCURRENT_MARK_FREQUENCY_FACTOR = 2;
     if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !vm_->IsInitialized() ||
         !thread_->IsAllContextsInitialized()) {
         return;
     }
     if (count++ % frequency == 0) {
-        sHeap_->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::OTHER);
+        if (count % (CONCURRENT_MARK_FREQUENCY_FACTOR * frequency) == 0) {
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+        } else {
+            sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+        }
     }
 #endif
 }
@@ -428,6 +433,16 @@ JSHandle<TaggedArray> ObjectFactory::NewSDictionaryArray(uint32_t length)
     JSHandle<TaggedArray> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
     return array;
+}
+
+JSHandle<ProfileTypeInfoCell> ObjectFactory::NewSEmptyProfileTypeInfoCell()
+{
+    NewSObjectHook();
+    auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
+    JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
+    profileTypeInfoCell->SetValue(thread_, JSTaggedValue::Undefined());
+    return profileTypeInfoCell;
 }
 
 JSHandle<TaggedArray> ObjectFactory::NewSEmptyArray()

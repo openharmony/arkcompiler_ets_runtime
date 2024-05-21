@@ -125,7 +125,8 @@ void SparseSpace::PrepareSweeping()
         if (!current->InCollectSet()) {
             IncreaseLiveObjectSize(current->AliveObject());
             current->ResetWasted();
-            current->SwapRSetForConcurrentSweeping();
+            current->SwapOldToNewRSetForCS();
+            current->SwapLocalToShareRSetForCS();
             AddSweepingRegion(current);
         }
     });
@@ -144,7 +145,8 @@ void SparseSpace::AsyncSweep(bool isMain)
             AddSweptRegionSafe(current);
             current->SetSwept();
         } else {
-            current->MergeRSetForConcurrentSweeping();
+            current->MergeOldToNewRSetForCS();
+            current->MergeLocalToShareRSetForCS();
         }
         current = GetSweepingRegionSafe();
     }
@@ -172,7 +174,8 @@ bool SparseSpace::TryFillSweptRegion()
     while ((region = GetSweptRegionSafe()) != nullptr) {
         allocator_->CollectFreeObjectSet(region);
         region->ResetSwept();
-        region->MergeRSetForConcurrentSweeping();
+        region->MergeOldToNewRSetForCS();
+        region->MergeLocalToShareRSetForCS();
     }
     return true;
 }
@@ -228,7 +231,8 @@ Region *SparseSpace::GetSweptRegionSafe()
 void SparseSpace::FreeRegionFromSpace(Region *region)
 {
     region->ResetSwept();
-    region->MergeRSetForConcurrentSweeping();
+    region->MergeOldToNewRSetForCS();
+    region->MergeLocalToShareRSetForCS();
     RemoveRegion(region);
     DecreaseLiveObjectSize(region->AliveObject());
 }
@@ -420,7 +424,9 @@ void OldSpace::Merge(LocalSpace *localSpace)
     size_t hugeSpaceCommitSize = localHeap_->GetHugeObjectSpace()->GetCommittedSize();
     if (committedSize_ + hugeSpaceCommitSize > GetOverShootMaximumCapacity()) {
         LOG_ECMA_MEM(ERROR) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
-        localHeap_->ShouldThrowOOMError(true);
+        if (localHeap_->CanThrowOOMError()) {
+            localHeap_->ShouldThrowOOMError(true);
+        }
         IncreaseMergeSize(committedSize_ - oldCommittedSize);
         // if throw OOM, temporarily increase space size to avoid vm crash
         IncreaseOutOfMemoryOvershootSize(committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity());
@@ -530,7 +536,8 @@ void OldSpace::ReclaimCSet()
         region->DeleteCrossRegionRSet();
         region->DeleteOldToNewRSet();
         region->DeleteLocalToShareRSet();
-        region->DeleteSweepingRSet();
+        region->DeleteSweepingOldToNewRSet();
+        region->DeleteSweepingLocalToShareRSet();
         region->DestroyFreeObjectSets();
         heapRegionAllocator_->FreeRegion(region, cachedSize);
     });

@@ -147,11 +147,13 @@ void ConcurrentSweeper::TryFillSweptRegion()
 void ConcurrentSweeper::ClearRSetInRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd)
 {
     if (ConcurrentSweepEnabled()) {
-        current->AtomicClearSweepingRSetInRange(freeStart, freeEnd);
+        // This clear may exist data race with array and jsobject trim, so use CAS
+        current->AtomicClearSweepingOldToNewRSetInRange(freeStart, freeEnd);
+        current->AtomicClearSweepingLocalToShareRSetInRange(freeStart, freeEnd);
     } else {
         current->ClearOldToNewRSetInRange(freeStart, freeEnd);
+        current->ClearLocalToShareRSetInRange(freeStart, freeEnd);
     }
-    current->AtomicClearLocalToShareRSetInRange(freeStart, freeEnd);
     current->ClearCrossRegionRSetInRange(freeStart, freeEnd);
 }
 

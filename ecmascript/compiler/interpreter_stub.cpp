@@ -4583,6 +4583,10 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+#if ECMASCRIPT_ENABLE_IC
+        GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+        UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
+#endif
         callback.ProfileDefineClass(result);
         varAcc = result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
@@ -4608,6 +4612,10 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
+#if ECMASCRIPT_ENABLE_IC
+        GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+        UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
+#endif
         varAcc = result;
         callback.ProfileDefineClass(result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
@@ -5167,6 +5175,10 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8ColdReload)
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
         CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+#if ECMASCRIPT_ENABLE_IC
+        GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+        UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
+#endif
         callback.ProfileDefineClass(result);
         varAcc = result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
@@ -5193,6 +5205,10 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8ColdReload)
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
         CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
+#if ECMASCRIPT_ENABLE_IC
+        GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+        UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
+#endif
         varAcc = result;
         callback.ProfileDefineClass(result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);

@@ -232,9 +232,7 @@ public:
           instrumentationFunction(nullptr),
           fileGP(nullptr)
     {
-        const std::string &internalNameLiteral = namemangler::GetInternalNameLiteral(namemangler::kJavaLangObjectStr);
-        GStrIdx strIdxFromName = GlobalTables::GetStrTable().GetStrIdxFromName(internalNameLiteral);
-        isLibcore = (GlobalTables::GetGsymTable().GetSymbolFromStrIdx(strIdxFromName) != nullptr);
+        isLibcore = false;
         DefineDebugTraceFunctions();
         isLmbc = (mirModule->GetFlavor() == MIRFlavor::kFlavorLmbc);
     }

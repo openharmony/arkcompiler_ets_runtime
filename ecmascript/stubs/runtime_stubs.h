@@ -154,6 +154,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(InsertLocalToShareRSet)                  \
     V(SetBitAtomic)                            \
     V(MarkingBarrier)                          \
+    V(SharedGCMarkingBarrier)                  \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
     V(DoubleToLength)                          \
@@ -531,6 +532,7 @@ public:
     static void FatalPrintCustom(uintptr_t fmt, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
+    static void SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, TaggedObject *value);
     static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);

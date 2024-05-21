@@ -1554,14 +1554,12 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Label exit(env);
     Label isVailedIndex(env);
     Label notValidIndex(env);
-    Label shareBarrier(env);
-    Label shareBarrierExit(env);
+    Label valueIsShared(env);
+    Label valueIsNotShared(env);
     // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
     GateRef objectRegion = ObjectAddressToRange(obj);
     GateRef valueRegion = ObjectAddressToRange(value);
-    GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
-    GateRef objectNotInShare = BoolNot(InSharedHeap(objectRegion));
-    GateRef valueRegionInShare = InSharedSweepableSpace(valueRegion);
+    GateRef valueRegionInShare = InSharedHeap(valueRegion);
 #ifndef NDEBUG
     Label fatal(env);
     Label noFatal(env);
@@ -1573,97 +1571,130 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     }
     Bind(&noFatal);
 #endif
-    BRANCH(BoolAnd(objectNotInShare, valueRegionInShare), &shareBarrier, &shareBarrierExit);
-    Bind(&shareBarrier);
+    BRANCH(valueRegionInShare, &valueIsShared, &valueIsNotShared);
+    Bind(&valueIsShared);
     {
-        Label callSharedBarrier(env);
-        Label storeToSharedRSet(env);
-        GateRef loadOffset = IntPtr(Region::PackedData::GetLocalToShareSetOffset(env_->Is32Bit()));
-        auto localToShareSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
-        BRANCH(IntPtrEqual(localToShareSet, IntPtr(0)), &callSharedBarrier, &storeToSharedRSet);
-        Bind(&storeToSharedRSet);
+        Label needBarrier(env);
+        GateRef valueRegionInSweepableShare = InSharedSweepableSpace(valueRegion);
+        BRANCH(valueRegionInSweepableShare, &needBarrier, &exit);
+        Bind(&needBarrier);
         {
-            // (slotAddr - this) >> TAGGED_TYPE_SIZE_LOG
-            GateRef bitOffsetPtr = IntPtrLSR(PtrSub(slotAddr, objectRegion), IntPtr(TAGGED_TYPE_SIZE_LOG));
-            GateRef bitOffset = TruncPtrToInt32(bitOffsetPtr);
-            GateRef bitPerWordLog2 = Int32(GCBitset::BIT_PER_WORD_LOG2);
-            GateRef bytePerWord = Int32(GCBitset::BYTE_PER_WORD);
-            // bitOffset >> BIT_PER_WORD_LOG2
-            GateRef index = Int32LSR(bitOffset, bitPerWordLog2);
-            GateRef byteIndex = Int32Mul(index, bytePerWord);
-            // bitset_[index] |= mask;
-            GateRef bitsetData = PtrAdd(localToShareSet, IntPtr(RememberedSet::GCBITSET_DATA_OFFSET));
-            GateRef oldsetValue = Load(VariableType::INT32(), bitsetData, byteIndex);
-            GateRef mask = GetBitMask(bitOffset);
-            GateRef flag = Int32And(oldsetValue, mask);
-            // Load the bit using relaxed memory order.
-            // If the bit is set, do nothing (local->shared barrier is done).
-            // Else call runtime.
-            Label atomicSet(env);
-            BRANCH(Int32NotEqual(flag, Int32(0)), &notValidIndex, &atomicSet);
-            Bind(&atomicSet);
-            CallNGCRuntime(glue, RTSTUB_ID(SetBitAtomic), { PtrAdd(bitsetData, byteIndex), mask, oldsetValue });
-            Jump(&notValidIndex);
-        }
-        Bind(&callSharedBarrier);
-        {
-            CallNGCRuntime(glue, RTSTUB_ID(InsertLocalToShareRSet), { glue, obj, offset });
-            Jump(&notValidIndex);
-        }
-    }
-    Bind(&shareBarrierExit);
-    GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
-    GateRef valueRegionInYoung = InYoungGeneration(valueRegion);
-    BRANCH(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);
-    Bind(&isVailedIndex);
-    {
-        GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_->Is32Bit()));
-        auto oldToNewSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
-        Label isNullPtr(env);
-        Label notNullPtr(env);
-        BRANCH(IntPtrEuqal(oldToNewSet, IntPtr(0)), &isNullPtr, &notNullPtr);
-        Bind(&notNullPtr);
-        {
-            // (slotAddr - this) >> TAGGED_TYPE_SIZE_LOG
-            GateRef bitOffsetPtr = IntPtrLSR(PtrSub(slotAddr, objectRegion), IntPtr(TAGGED_TYPE_SIZE_LOG));
-            GateRef bitOffset = TruncPtrToInt32(bitOffsetPtr);
-            GateRef bitPerWordLog2 = Int32(GCBitset::BIT_PER_WORD_LOG2);
-            GateRef bytePerWord = Int32(GCBitset::BYTE_PER_WORD);
-            // bitOffset >> BIT_PER_WORD_LOG2
-            GateRef index = Int32LSR(bitOffset, bitPerWordLog2);
-            GateRef byteIndex = Int32Mul(index, bytePerWord);
-            // bitset_[index] |= mask;
-            GateRef bitsetData = PtrAdd(oldToNewSet, IntPtr(RememberedSet::GCBITSET_DATA_OFFSET));
-            GateRef oldsetValue = Load(VariableType::INT32(), bitsetData, byteIndex);
-            GateRef newmapValue = Int32Or(oldsetValue, GetBitMask(bitOffset));
-
-            Store(VariableType::INT32(), glue, bitsetData, byteIndex, newmapValue);
-            Jump(&notValidIndex);
-        }
-        Bind(&isNullPtr);
-        {
-            CallNGCRuntime(glue, RTSTUB_ID(InsertOldToNewRSet), { glue, obj, offset });
-            Jump(&notValidIndex);
-        }
-    }
-    Bind(&notValidIndex);
-    {
-        Label marking(env);
-        bool isArch32 = GetEnvironment()->Is32Bit();
-        GateRef stateBitFieldAddr = Int64Add(glue,
+            Label updateLocalToShareRSet(env);
+            Label checkBarrierForSharedValue(env);
+            GateRef objectNotInShare = BoolNot(InSharedHeap(objectRegion));
+            BRANCH(objectNotInShare, &updateLocalToShareRSet, &checkBarrierForSharedValue);
+            Bind(&updateLocalToShareRSet);
+            {
+                Label callSharedBarrier(env);
+                Label storeToSharedRSet(env);
+                GateRef loadOffset = IntPtr(Region::PackedData::GetLocalToShareSetOffset(env_->Is32Bit()));
+                auto localToShareSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
+                BRANCH(IntPtrEqual(localToShareSet, IntPtr(0)), &callSharedBarrier, &storeToSharedRSet);
+                Bind(&storeToSharedRSet);
+                {
+                    GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
+                    // (slotAddr - this) >> TAGGED_TYPE_SIZE_LOG
+                    GateRef bitOffsetPtr = IntPtrLSR(PtrSub(slotAddr, objectRegion), IntPtr(TAGGED_TYPE_SIZE_LOG));
+                    GateRef bitOffset = TruncPtrToInt32(bitOffsetPtr);
+                    GateRef bitPerWordLog2 = Int32(GCBitset::BIT_PER_WORD_LOG2);
+                    GateRef bytePerWord = Int32(GCBitset::BYTE_PER_WORD);
+                    // bitOffset >> BIT_PER_WORD_LOG2
+                    GateRef index = Int32LSR(bitOffset, bitPerWordLog2);
+                    GateRef byteIndex = Int32Mul(index, bytePerWord);
+                    // bitset_[index] |= mask;
+                    GateRef bitsetData = PtrAdd(localToShareSet, IntPtr(RememberedSet::GCBITSET_DATA_OFFSET));
+                    GateRef oldsetValue = Load(VariableType::INT32(), bitsetData, byteIndex);
+                    GateRef mask = GetBitMask(bitOffset);
+                    GateRef flag = Int32And(oldsetValue, mask);
+                    // Load the bit using relaxed memory order.
+                    // If the bit is set, do nothing (local->shared barrier is done).
+                    Label needSet(env);
+                    BRANCH(Int32NotEqual(flag, Int32(0)), &checkBarrierForSharedValue, &needSet);
+                    Bind(&needSet);
+                    {
+                        GateRef newMapValue = Int32Or(oldsetValue, mask);
+                        Store(VariableType::INT32(), glue, bitsetData, byteIndex, newMapValue);
+                        Jump(&checkBarrierForSharedValue);
+                    }
+                }
+                Bind(&callSharedBarrier);
+                {
+                    CallNGCRuntime(glue, RTSTUB_ID(InsertLocalToShareRSet), { glue, obj, offset });
+                    Jump(&checkBarrierForSharedValue);
+                }
+            }
+            Bind(&checkBarrierForSharedValue);
+            {
+                Label sharedMarking(env);
+                bool isArch32 = GetEnvironment()->Is32Bit();
+                GateRef stateBitField = Load(VariableType::INT64(), glue,
                                              Int64(JSThread::GlueData::GetStateBitFieldOffset(isArch32)));
-        GateRef stateBitField = Load(VariableType::INT64(), stateBitFieldAddr, Int64(0));
-        // mask: 1 << JSThread::CONCURRENT_MARKING_BITFIELD_NUM - 1
-        GateRef markingBitMask = Int64Sub(
-            Int64LSL(Int64(1), Int64(JSThread::CONCURRENT_MARKING_BITFIELD_NUM)), Int64(1));
-        GateRef state = Int64And(stateBitField, markingBitMask);
-        BRANCH(Int64Equal(state, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK))), &exit, &marking);
+                GateRef state = Int64LSR(Int64And(stateBitField,
+                                                  Int64(JSThread::SHARED_CONCURRENT_MARKING_BITFIELD_MASK)),
+                                         Int64(JSThread::SHARED_CONCURRENT_MARKING_BITFIELD_START));
+                BRANCH(Int64Equal(state, Int64(static_cast<int64_t>(SharedMarkStatus::READY_TO_CONCURRENT_MARK))),
+                    &exit, &sharedMarking);
 
-        Bind(&marking);
-        CallNGCRuntime(
-            glue,
-            RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
-        Jump(&exit);
+                Bind(&sharedMarking);
+                CallNGCRuntime(
+                    glue,
+                    RTSTUB_ID(SharedGCMarkingBarrier), { glue, value });
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&valueIsNotShared);
+    {
+        GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
+        GateRef valueRegionInYoung = InYoungGeneration(valueRegion);
+        BRANCH(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);
+        Bind(&isVailedIndex);
+        {
+            GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_->Is32Bit()));
+            auto oldToNewSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
+            Label isNullPtr(env);
+            Label notNullPtr(env);
+            BRANCH(IntPtrEuqal(oldToNewSet, IntPtr(0)), &isNullPtr, &notNullPtr);
+            Bind(&notNullPtr);
+            {
+                GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
+                // (slotAddr - this) >> TAGGED_TYPE_SIZE_LOG
+                GateRef bitOffsetPtr = IntPtrLSR(PtrSub(slotAddr, objectRegion), IntPtr(TAGGED_TYPE_SIZE_LOG));
+                GateRef bitOffset = TruncPtrToInt32(bitOffsetPtr);
+                GateRef bitPerWordLog2 = Int32(GCBitset::BIT_PER_WORD_LOG2);
+                GateRef bytePerWord = Int32(GCBitset::BYTE_PER_WORD);
+                // bitOffset >> BIT_PER_WORD_LOG2
+                GateRef index = Int32LSR(bitOffset, bitPerWordLog2);
+                GateRef byteIndex = Int32Mul(index, bytePerWord);
+                // bitset_[index] |= mask;
+                GateRef bitsetData = PtrAdd(oldToNewSet, IntPtr(RememberedSet::GCBITSET_DATA_OFFSET));
+                GateRef oldsetValue = Load(VariableType::INT32(), bitsetData, byteIndex);
+                GateRef newmapValue = Int32Or(oldsetValue, GetBitMask(bitOffset));
+
+                Store(VariableType::INT32(), glue, bitsetData, byteIndex, newmapValue);
+                Jump(&notValidIndex);
+            }
+            Bind(&isNullPtr);
+            {
+                CallNGCRuntime(glue, RTSTUB_ID(InsertOldToNewRSet), { glue, obj, offset });
+                Jump(&notValidIndex);
+            }
+        }
+        Bind(&notValidIndex);
+        {
+            Label marking(env);
+            bool isArch32 = GetEnvironment()->Is32Bit();
+            GateRef stateBitField = Load(VariableType::INT64(), glue,
+                                         Int64(JSThread::GlueData::GetStateBitFieldOffset(isArch32)));
+            GateRef state = Int64And(stateBitField, Int64(JSThread::CONCURRENT_MARKING_BITFIELD_MASK));
+            BRANCH(Int64Equal(state, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK))), &exit, &marking);
+
+            Bind(&marking);
+            CallNGCRuntime(
+                glue,
+                RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     env->SubCfgExit();
@@ -6775,7 +6806,7 @@ GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
     GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, index);
     GateRef protoOrHclass = Load(VariableType::JS_ANY(), func, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     NewObjectStubBuilder newBuilder(env_);
-    GateRef newObj  = newBuilder.NewJSObject(glue, protoOrHclass);
+    GateRef newObj = newBuilder.NewJSObject(glue, protoOrHclass);
     GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
     Store(VariableType::JS_ANY(), glue, newObj, valueOffset, obj);
     return newObj;
@@ -9697,6 +9728,34 @@ GateRef StubBuilder::AppendSkipHole(GateRef glue, GateRef first, GateRef second,
     Bind(&exit);
     res = array;
     auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ToCharCode(GateRef number)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT32(), number);
+
+    Label lessThanTen(env);
+    Label notLessThanTen(env);
+    BRANCH(Int32LessThan(number, Int32(10)), &lessThanTen, &notLessThanTen); // 10: means number
+    Bind(&lessThanTen);
+    {
+        result = Int32Add(Int32('0'), *result);
+        Jump(&exit);
+    }
+    Bind(&notLessThanTen);
+    {
+        result = Int32Sub(*result, Int32(10)); // 10: means number
+        result = Int32Add(Int32('a'), *result);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
     env->SubCfgExit();
     return ret;
 }

@@ -697,6 +697,9 @@ public:
                              MemoryOrder order = MemoryOrder::Default());
     void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value);
+    void UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
@@ -867,6 +870,7 @@ public:
     GateRef CalArrayRelativePos(GateRef index, GateRef arrayLen);
     GateRef AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength);
     GateRef IntToEcmaString(GateRef glue, GateRef number);
+    GateRef ToCharCode(GateRef number);
     GateRef NumberToString(GateRef glue, GateRef number);
     inline GateRef GetViewedArrayBuffer(GateRef dataView);
     inline GateRef GetByteOffset(GateRef dataView);

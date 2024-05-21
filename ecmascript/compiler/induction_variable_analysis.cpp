@@ -79,10 +79,10 @@ std::pair<int32_t, int32_t> InductionVariableAnalysis::GetStartAndStride(GateRef
 
     GateRef valueGate = acc_.GetValueIn(gate, 1);
     ASSERT(acc_.GetOpCode(valueGate) == OpCode::TYPED_BINARY_OP);
-    [[maybe_unused]]TypedBinOp binOp = acc_.GetTypedBinaryOp(valueGate);
+    [[maybe_unused]] TypedBinOp binOp = acc_.GetTypedBinaryOp(valueGate);
     ASSERT(binOp == TypedBinOp::TYPED_ADD || binOp == TypedBinOp::TYPED_SUB);
     TypedBinaryAccessor accessor(acc_.TryGetValue(valueGate));
-    [[maybe_unused]]const ParamType paramType = accessor.GetParamType();
+    [[maybe_unused]] const ParamType paramType = accessor.GetParamType();
     ASSERT(paramType.IsIntType());
 
     GateRef strideGate = acc_.GetValueIn(valueGate, 1);

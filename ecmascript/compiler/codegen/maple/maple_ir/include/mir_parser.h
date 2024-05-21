@@ -216,7 +216,6 @@ public:
     bool ParseCallAssertInfo(std::string &funcName, int *paramIndex, std::string &stmtFuncName);
     bool ParseAssertInfo(std::string &funcName);
     bool ParseTypedef();
-    bool ParseJavaClassInterface(MIRSymbol &symbol, bool isClass);
     bool ParseIntrinsicId(IntrinsicopNode &intrnOpNode);
     void Error(const std::string &str);
     void Warning(const std::string &str);
@@ -254,8 +253,6 @@ private:
     // func for ParseMIR
     bool ParseMIRForFunc();
     bool ParseMIRForVar();
-    bool ParseMIRForClass();
-    bool ParseMIRForInterface();
     bool ParseMIRForFlavor();
     bool ParseMIRForSrcLang();
     bool ParseMIRForGlobalMemSize();

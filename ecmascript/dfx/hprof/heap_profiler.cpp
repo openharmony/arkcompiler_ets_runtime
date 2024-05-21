@@ -135,7 +135,7 @@ void HeapProfiler::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, si
 
 void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
 {
-    ForceSharedGC();
+    SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
     snapshot->UpdateNodes();
 }
 
@@ -263,6 +263,7 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
                                      bool traceAllocation, bool newThread)
 {
     vm_->CollectGarbage(TriggerGCType::OLD_GC);
+    ForceSharedGC();
     SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
     HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::REAL_TIME, isVmMode, false, false, traceAllocation);
     if (snapshot == nullptr) {
@@ -291,6 +292,7 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
 
     {
         vm_->CollectGarbage(TriggerGCType::OLD_GC);
+        ForceSharedGC();
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
         snapshot->RecordSampleTime();
         UpdateHeapObjects(snapshot);
@@ -324,7 +326,9 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
         progress->ReportProgress(0, heapCount);
     }
     {
+        ForceSharedGC();
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+        SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
         snapshot->FinishSnapshot();
     }
 
@@ -394,7 +398,7 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
 void HeapProfiler::ForceSharedGC()
 {
     SharedHeap *sHeap = SharedHeap::GetInstance();
-    sHeap->CollectGarbageImpl(TriggerGCType::SHARED_GC, GCReason::OTHER);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(vm_->GetAssociatedJSThread());
     sHeap->GetSweeper()->WaitAllTaskFinished();
 }
 

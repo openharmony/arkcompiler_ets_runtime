@@ -31,7 +31,7 @@ JitTaskpool *JitTaskpool::GetCurrentTaskpool()
     return taskpool;
 }
 
-uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]]uint32_t threadNum) const
+uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]] uint32_t threadNum) const
 {
     return 1;
 }
@@ -277,7 +277,7 @@ void JitTask::WaitFinish()
 
 bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    if (IsTerminate()) {
+    if (IsTerminate() || !jitTask_->GetHostThread()->GetEcmaVM()->IsInitialized()) {
         return false;
     }
     DISALLOW_HEAP_ACCESS;

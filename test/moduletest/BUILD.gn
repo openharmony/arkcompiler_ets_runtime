@@ -137,6 +137,7 @@ group("ark_js_moduletest") {
     "setobjectwithproto",
     "spreadoperator",
     "stackoverflow",
+    "storeglobalvarIC",
     "storeicbyname",
     "storeicbyvalue",
     "string",
@@ -383,6 +384,7 @@ group("ark_asm_test") {
   if (!is_debug) {
     release_test_list = [
       "asmstackoverflow",
+      "supercallRelease",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
@@ -548,6 +550,7 @@ group("ark_asm_single_step_test") {
   if (!is_debug) {
     release_test_list = [
       "asmstackoverflow",
+      "supercallRelease",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
       "multiconstpoolfunc",

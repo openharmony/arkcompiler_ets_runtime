@@ -35,21 +35,16 @@ uintptr_t WorkSpaceChunk::NewArea(size_t size)
 void WorkSpaceChunk::Free([[maybe_unused]] void *mem)
 {
     LockHolder lock(mtx_);
-    if (cachedAreaList_.size() < MAX_WORK_SPACE_CHUNK_SIZE / WORKNODE_SPACE_SIZE) {
-        cachedAreaList_.emplace_back(reinterpret_cast<uintptr_t>(mem));
-    } else {
-        auto iter = areaList_.find(reinterpret_cast<uintptr_t>(mem));
-        if (iter != areaList_.end()) {
-            areaList_.erase(iter);
-        }
-        allocator_->FreeBuffer(mem);
+    auto iter = areaList_.find(reinterpret_cast<uintptr_t>(mem));
+    if (iter != areaList_.end()) {
+        areaList_.erase(iter);
     }
+    allocator_->FreeBuffer(mem);
 }
 
 void WorkSpaceChunk::ReleaseMemory()
 {
     LockHolder lock(mtx_);
-    cachedAreaList_.clear();
     for (auto iter = areaList_.begin(); iter != areaList_.end(); ++iter) {
         allocator_->FreeBuffer(reinterpret_cast<void *>(iter->second));
     }

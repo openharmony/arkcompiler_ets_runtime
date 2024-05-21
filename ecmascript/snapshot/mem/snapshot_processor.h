@@ -144,6 +144,11 @@ private:
     bool builtinsDeserialize_ {false};
     CVector<uintptr_t> pandaMethod_;
     CVector<uintptr_t> stringVector_;
+    /**
+     * In deserialize, RuntimeLock for string table may cause a SharedGC, making strings just created invalid,
+     * so use handle to protect.
+    */
+    CVector<JSHandle<EcmaString>> deserializeStringVector_;
     std::unordered_map<size_t, Region *> regionIndexMap_;
     size_t regionIndex_ {0};
     bool isRootObjRelocate_ {false};

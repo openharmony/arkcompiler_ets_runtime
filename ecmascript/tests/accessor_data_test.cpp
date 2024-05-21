@@ -48,6 +48,8 @@ HWTEST_F_L0(AccessorDataTest, AccessorData_Cast)
     JSHandle<JSHClass> internalAccClassHandle =
         factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
     TaggedObject *internalAccObject = factory->NewObject(internalAccClassHandle);
+    AccessorData::Cast(internalAccObject)->SetGetter(thread, JSTaggedValue::Undefined());
+    AccessorData::Cast(internalAccObject)->SetSetter(thread, JSTaggedValue::Undefined());
     EXPECT_TRUE(JSTaggedValue(internalAccObject).IsInternalAccessor());
     AccessorData *internalAcc = AccessorData::Cast(internalAccObject);
     EXPECT_TRUE(JSTaggedValue(internalAcc).IsInternalAccessor());
@@ -81,6 +83,8 @@ HWTEST_F_L0(AccessorDataTest, IsInternal)
     JSHandle<JSHClass> internalAccClass =
         factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
     TaggedObject *internalAccObject = factory->NewObject(internalAccClass);
+    AccessorData::Cast(internalAccObject)->SetGetter(thread, JSTaggedValue::Undefined());
+    AccessorData::Cast(internalAccObject)->SetSetter(thread, JSTaggedValue::Undefined());
     AccessorData *internalAcc = AccessorData::Cast(internalAccObject);
     EXPECT_EQ(internalAcc->IsInternal(), true);
 }
@@ -132,6 +136,7 @@ HWTEST_F_L0(AccessorDataTest, HasSetter)
         factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
     TaggedObject *internalAccObject = factory->NewObject(internalAccClass);
     AccessorData *internalAcc = AccessorData::Cast(internalAccObject);
+    internalAcc->SetGetter(thread, JSTaggedValue::Undefined());
     EXPECT_EQ(internalAcc->HasSetter(), true);
     internalAcc->SetSetter(thread, JSTaggedValue::Undefined());
     EXPECT_EQ(internalAcc->HasSetter(), false);
@@ -197,6 +202,7 @@ HWTEST_F_L0(AccessorDataTest, CompletionRecord_Cast)
     JSHandle<JSHClass> comRecordClassHandle =
         factory->NewEcmaHClass(JSObject::SIZE, JSType::COMPLETION_RECORD, nullHandle);
     TaggedObject *comRecordObject = factory->NewObject(comRecordClassHandle);
+    CompletionRecord::Cast(comRecordObject)->SetValue(thread, JSTaggedValue::Undefined());
     EXPECT_TRUE(JSTaggedValue(comRecordObject).IsCompletionRecord());
     CompletionRecord *comRecord = CompletionRecord::Cast(comRecordObject);
     EXPECT_TRUE(JSTaggedValue(comRecord).IsCompletionRecord());

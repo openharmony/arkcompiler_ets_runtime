@@ -547,12 +547,6 @@ public:
         return FormalDef();
     }
 
-    // tell whether this function is a Java method
-    bool IsJava() const
-    {
-        return classTyIdx != 0u;
-    }
-
     const MIRType *GetNodeType(const BaseNode &node) const;
 
 #ifdef DEBUGME

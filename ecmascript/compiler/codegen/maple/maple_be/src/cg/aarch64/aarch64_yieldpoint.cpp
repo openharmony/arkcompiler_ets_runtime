@@ -27,15 +27,6 @@ void AArch64YieldPointInsertion::Run()
 void AArch64YieldPointInsertion::InsertYieldPoint()
 {
     AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
-    std::string refQueueName =
-        "Ljava_2Flang_2Fref_2FReference_3B_7C_3Cinit_3E_7C_"
-        "28Ljava_2Flang_2FObject_3BLjava_2Flang_2Fref_2FReferenceQueue_3B_29V";
-    if (!CGOptions::IsGCOnly() && (aarchCGFunc->GetName() == refQueueName)) {
-        /* skip insert yieldpoint in reference constructor, avoid rc verify issue */
-        DEBUG_ASSERT(aarchCGFunc->GetYieldPointInsn() != nullptr, "the entry yield point has been inserted");
-        aarchCGFunc->GetYieldPointInsn()->GetBB()->RemoveInsn(*aarchCGFunc->GetYieldPointInsn());
-        return;
-    }
 
     /*
      * do not insert yieldpoint in function that not saved X30 into stack,

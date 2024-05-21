@@ -77,7 +77,15 @@ private:
 
     void InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject);
 
-    void InitializeFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &emptyFuncClass) const;
+    void InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
+
+    void InitializeFunctionPrototype(const JSHandle<GlobalEnv> &env, JSHandle<JSFunction> &funcFuncPrototype,
+        JSHandle<JSFunction> &funcFunc) const;
+
+    JSHandle<JSHClass> CreateFunctionHClass(const JSHandle<JSFunction> &funcPrototype) const;
+
+    JSHandle<JSHClass> CreateFunctionPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                     const JSHandle<JSTaggedValue> &ObjPrototypeVal) const;
 
     void InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &objFuncPrototype,
                           const JSHandle<JSObject> &objFunc);
@@ -273,6 +281,8 @@ private:
 
     void InitializeSModuleNamespace(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass) const;
 
+    void InitializeNativeModuleError(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+
     void InitializeCjsModule(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeCjsExports(const JSHandle<GlobalEnv> &env) const;
@@ -335,8 +345,26 @@ private:
     void SetNoneAttributeProperty(const JSHandle<JSObject> &obj, std::string_view key,
                                   const JSHandle<JSTaggedValue> &value) const;
 
-    void StrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env,
+    void StrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env, uint32_t &index,
                                                   const JSHandle<JSObject> &prototype) const;
+    void SetInlineAccessor(const JSHandle<JSObject> &obj, uint32_t index,
+                           const JSHandle<JSTaggedValue> &getter, const JSHandle<JSTaggedValue> &setter) const;
+
+    void SetInlineFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
+                           const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, uint32_t index, int length,
+                           kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID) const;
+
+    void SetInlineFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
+                           EcmaEntrypoint func, uint32_t index, int length,
+                           kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID) const;
+    
+    void SetFunctionPrototype(const JSHandle<JSFunction> &ctor, const JSTaggedValue &prototype) const;
+
+    void SetFunctionLength(const JSHandle<JSFunction> &ctor, int length) const;
+
+    void SetFunctionName(const JSHandle<JSFunction> &ctor, std::string_view name) const;
+
+    void SetFunctionName(const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &name) const;
 
     JSHandle<JSTaggedValue> CreateSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
                                          std::string_view name, int length) const;

@@ -30,7 +30,6 @@ group("ark_js_packages") {
     deps += [
       "ecmascript/compiler:ark_aot_compiler",
       "ecmascript/compiler:libark_jsoptimizer",
-      "ecmascript/pgo_profiler/prof_dump:profdump",
     ]
   }
 }
@@ -618,6 +617,7 @@ ecma_source = [
   "ecmascript/compiler/aot_file/an_file_info.cpp",
   "ecmascript/compiler/aot_file/aot_file_info.cpp",
   "ecmascript/compiler/aot_file/stub_file_info.cpp",
+  "ecmascript/compiler/aot_file/gdb_jit.cpp",
   "ecmascript/compiler/aot_file/binary_buffer_parser.cpp",
   "ecmascript/compiler/aot_file/module_section_des.cpp",
   "ecmascript/compiler/aot_file/aot_file_manager.cpp",
@@ -630,6 +630,7 @@ ecma_source = [
   "ecmascript/compiler/pgo_type/pgo_type_parser.cpp",
   "ecmascript/compiler/pgo_type/pgo_type_recorder.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
+  "ecmascript/containers/containers_bitvector.cpp",
   "ecmascript/containers/containers_deque.cpp",
   "ecmascript/containers/containers_errors.cpp",
   "ecmascript/containers/containers_hashmap.cpp",
@@ -649,6 +650,8 @@ ecma_source = [
   "ecmascript/debugger/js_debugger_manager.cpp",
   "ecmascript/deoptimizer/calleeReg.cpp",
   "ecmascript/deoptimizer/deoptimizer.cpp",
+  "ecmascript/dfx/dump_code/jit_dump_elf.cpp",
+  "ecmascript/dfx/native_module_error.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
   "ecmascript/dfx/vmstat/function_call_timer.cpp",
@@ -701,6 +704,8 @@ ecma_source = [
   "ecmascript/jspandafile/program_object.cpp",
   "ecmascript/js_api/js_api_arraylist.cpp",
   "ecmascript/js_api/js_api_arraylist_iterator.cpp",
+  "ecmascript/js_api/js_api_bitvector.cpp",
+  "ecmascript/js_api/js_api_bitvector_iterator.cpp",
   "ecmascript/js_api/js_api_deque.cpp",
   "ecmascript/js_api/js_api_deque_iterator.cpp",
   "ecmascript/js_api/js_api_hashmap.cpp",
@@ -791,6 +796,7 @@ ecma_source = [
   "ecmascript/mem/parallel_marker.cpp",
   "ecmascript/mem/partial_gc.cpp",
   "ecmascript/mem/regexp_cached_chunk.cpp",
+  "ecmascript/mem/shared_heap/shared_concurrent_marker.cpp",
   "ecmascript/mem/shared_heap/shared_concurrent_sweeper.cpp",
   "ecmascript/mem/shared_heap/shared_gc.cpp",
   "ecmascript/mem/shared_heap/shared_gc_marker.cpp",
@@ -857,6 +863,7 @@ ecma_source = [
   "ecmascript/regexp/regexp_opcode.cpp",
   "ecmascript/regexp/regexp_parser.cpp",
   "ecmascript/regexp/regexp_parser_cache.cpp",
+  "ecmascript/daemon/daemon_thread.cpp",
   "ecmascript/runtime.cpp",
   "ecmascript/runtime_lock.cpp",
   "ecmascript/global_index_map.cpp",

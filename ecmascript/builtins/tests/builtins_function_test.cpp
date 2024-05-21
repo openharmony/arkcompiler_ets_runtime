@@ -34,31 +34,7 @@ using BuiltinsBase = panda::ecmascript::base::BuiltinsBase;
 using JSArray = panda::ecmascript::JSArray;
 
 namespace panda::test {
-class BuiltinsFunctionTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsFunctionTest : public BaseTestWithScope<false> {
 };
 
 // native function for test apply and call
@@ -82,6 +58,41 @@ JSTaggedValue TestFunctionApplyAndCall(EcmaRuntimeCallInfo *argv)
     return BuiltinsBase::GetTaggedInt(result);
 }
 
+enum class AlgorithmType {
+    PROTOTYPE_APPLY,
+    PROTOTYPE_BIND,
+    PROTOTYPE_CALL,
+};
+
+static JSTaggedValue FunctionAlgorithm(JSThread *thread, JSHandle<JSFunction> &thisArg,
+                                       std::vector<JSTaggedValue> &args, uint32_t argLen,
+                                       AlgorithmType type = AlgorithmType::PROTOTYPE_APPLY)
+{
+    auto ecmaRuntimeCallInfos = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), argLen);
+    ecmaRuntimeCallInfos->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfos->SetThis(thisArg.GetTaggedValue());
+    for (size_t i = 0; i < args.size(); i++) {
+        ecmaRuntimeCallInfos->SetCallArg(i, args[i]);
+    }
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfos);
+    JSTaggedValue result;
+    switch (type) {
+        case AlgorithmType::PROTOTYPE_BIND:
+            result = BuiltinsFunction::FunctionPrototypeBind(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::PROTOTYPE_APPLY:
+            result = BuiltinsFunction::FunctionPrototypeApply(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::PROTOTYPE_CALL:
+            result = BuiltinsFunction::FunctionPrototypeCall(ecmaRuntimeCallInfos);
+            break;
+        default:
+            break;
+    }
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
+
 // func.apply(thisArg)
 HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeApply)
 {
@@ -100,13 +111,8 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeApply)
                           JSHandle<JSTaggedValue>(factory->NewFromASCII("test_builtins_function_b")),
                           JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(func.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, (thisArg.GetTaggedValue()));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsFunction::FunctionPrototypeApply(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{thisArg.GetTaggedValue()};
+    auto result = FunctionAlgorithm(thread, func, args, 6, AlgorithmType::PROTOTYPE_APPLY);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(3).GetRawData());
 
@@ -143,14 +149,8 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeApply1)
     PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(40)));
     JSArray::DefineOwnProperty(thread, array, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), desc1);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(func.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, (thisArg.GetTaggedValue()));
-    ecmaRuntimeCallInfo->SetCallArg(1, array.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsFunction::FunctionPrototypeApply(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{thisArg.GetTaggedValue(), array.GetTaggedValue()};
+    auto result = FunctionAlgorithm(thread, func, args, 8, AlgorithmType::PROTOTYPE_APPLY);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(100).GetRawData());
 
@@ -175,13 +175,8 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind)
 
     JSHandle<JSObject> thisArg(thread, env->GetGlobalObject());
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(target.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, (thisArg.GetTaggedValue()));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsFunction::FunctionPrototypeBind(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{thisArg.GetTaggedValue()};
+    auto result = FunctionAlgorithm(thread, target, args, 6, AlgorithmType::PROTOTYPE_BIND);
 
     ASSERT_TRUE(result.IsECMAObject());
 
@@ -222,15 +217,9 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind1)
     JSHandle<JSObject> thisArg(thread, env->GetGlobalObject());
     JSHandle<EcmaString> str = factory->NewFromASCII("helloworld");
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(target.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, thisArg.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(123)));
-    ecmaRuntimeCallInfo->SetCallArg(2, str.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsFunction::FunctionPrototypeBind(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{thisArg.GetTaggedValue(), JSTaggedValue(static_cast<int32_t>(123)),
+        str.GetTaggedValue()};
+    auto result = FunctionAlgorithm(thread, target, args, 10, AlgorithmType::PROTOTYPE_BIND);
 
     ASSERT_TRUE(result.IsECMAObject());
 
@@ -277,24 +266,18 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind2)
 
     JSHandle<JSObject> thisArg(thread, env->GetGlobalObject());
     JSHandle<EcmaString> str = factory->NewFromASCII("helloworld");
-
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(target.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, (thisArg.GetTaggedValue()));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(123)));
-    ecmaRuntimeCallInfo->SetCallArg(2, str.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsFunction::FunctionPrototypeBind(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{thisArg.GetTaggedValue(), JSTaggedValue(static_cast<int32_t>(123)),
+        str.GetTaggedValue()};
+    auto result = FunctionAlgorithm(thread, target, args, 10, AlgorithmType::PROTOTYPE_BIND);
 
     ASSERT_TRUE(result.IsECMAObject());
 
     JSHandle<JSBoundFunction> resultFunc(thread, reinterpret_cast<TaggedObject *>(result.GetRawData()));
-    // test BoundTarget
-    ASSERT_EQ(resultFunc->GetBoundTarget(), target.GetTaggedValue());
     // test BoundThis
     ASSERT_EQ(resultFunc->GetBoundThis(), thisArg.GetTaggedValue());
+
+    // test BoundTarget
+    ASSERT_EQ(resultFunc->GetBoundTarget(), target.GetTaggedValue());
     // test BoundArguments
     JSHandle<TaggedArray> array(thread, resultFunc->GetBoundArguments());
     ASSERT_EQ(array->GetLength(), 2U);
@@ -302,8 +285,9 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind2)
     JSTaggedValue elem1 = array->Get(1);
     ASSERT_EQ(elem.GetRawData(), JSTaggedValue(123).GetRawData());
 
-    ASSERT_EQ(elem1.GetRawData(), str.GetTaggedType());
     ASSERT_TRUE(elem1.IsString());
+    ASSERT_EQ(elem1.GetRawData(), str.GetTaggedType());
+
     // test name property
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
@@ -336,14 +320,8 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeCall)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(thisArg),
                           JSHandle<JSTaggedValue>(factory->NewFromASCII("test_builtins_function_b")),
                           JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
-
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(func.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, (thisArg.GetTaggedValue()));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsFunction::FunctionPrototypeCall(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{thisArg.GetTaggedValue()};
+    auto result = FunctionAlgorithm(thread, func, args, 6, AlgorithmType::PROTOTYPE_CALL);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(3).GetRawData());
 
@@ -373,16 +351,9 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeCall1)
                           JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
 
     // func thisArg ...args
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 12);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(func.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, (thisArg.GetTaggedValue()));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(123)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<int32_t>(456)));
-    ecmaRuntimeCallInfo->SetCallArg(3, JSTaggedValue(static_cast<int32_t>(789)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsFunction::FunctionPrototypeCall(ecmaRuntimeCallInfo);
+    std::vector<JSTaggedValue> args{thisArg.GetTaggedValue(), JSTaggedValue(static_cast<int32_t>(123)),
+                                JSTaggedValue(static_cast<int32_t>(456)), JSTaggedValue(static_cast<int32_t>(789))};
+    auto result = FunctionAlgorithm(thread, func, args, 12, AlgorithmType::PROTOTYPE_CALL);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(1371).GetRawData());
 

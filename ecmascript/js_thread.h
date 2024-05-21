@@ -23,6 +23,7 @@
 
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/builtin_entries.h"
+#include "ecmascript/daemon/daemon_task.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
@@ -77,6 +78,12 @@ enum class BCStubStatus: uint8_t {
 
 enum class StableArrayChangeKind { PROTO, NOT_PROTO };
 
+enum ThreadType : uint8_t {
+    JS_THREAD,
+    JIT_THREAD,
+    DAEMON_THREAD,
+};
+
 enum ThreadFlag : uint16_t {
     NO_FLAGS = 0 << 0,
     SUSPEND_REQUEST = 1 << 0,
@@ -112,12 +119,17 @@ static constexpr uint32_t MAIN_THREAD_INDEX = 0;
 class JSThread {
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
+    static constexpr int CONCURRENT_MARKING_BITFIELD_MASK = 0x3;
+    static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_START = CONCURRENT_MARKING_BITFIELD_NUM;
+    static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_NUM = 1;
+    static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_MASK = 0x4;
     static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
     static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
     static constexpr int BCSTUBSTATUS_BITFIELD_NUM = 2;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
+    using SharedMarkStatusBits = MarkStatusBits::NextField<SharedMarkStatus, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>;
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
@@ -134,7 +146,9 @@ public:
 
     explicit JSThread(EcmaVM *vm);
     // only used in jit thread
-    explicit JSThread(EcmaVM *vm, bool isJit);
+    explicit JSThread(EcmaVM *vm, ThreadType threadType);
+    // only used in daemon thread
+    explicit JSThread(ThreadType threadType);
 
     PUBLIC_API ~JSThread();
 
@@ -413,7 +427,7 @@ public:
 
     ThreadId GetThreadId() const
     {
-        return id_.load(std::memory_order_relaxed);
+        return id_.load(std::memory_order_acquire);
     }
 
     void PostFork();
@@ -441,20 +455,42 @@ public:
         return MarkStatusBits::Decode(glueData_.gcStateBitField_);
     }
 
+    SharedMarkStatus GetSharedMarkStatus() const
+    {
+        return SharedMarkStatusBits::Decode(glueData_.gcStateBitField_);
+    }
+
     void SetMarkStatus(MarkStatus status)
     {
         MarkStatusBits::Set(status, &glueData_.gcStateBitField_);
     }
 
-    bool IsConcurrentMarkingOrFinished() const
+    void SetSharedMarkStatus(SharedMarkStatus status)
     {
-        return !IsReadyToMark();
+        SharedMarkStatusBits::Set(status, &glueData_.gcStateBitField_);
     }
 
-    bool IsReadyToMark() const
+    bool IsConcurrentMarkingOrFinished() const
+    {
+        return !IsReadyToConcurrentMark();
+    }
+
+    bool IsSharedConcurrentMarkingOrFinished() const
+    {
+        auto status = SharedMarkStatusBits::Decode(glueData_.gcStateBitField_);
+        return status == SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED;
+    }
+
+    bool IsReadyToConcurrentMark() const
     {
         auto status = MarkStatusBits::Decode(glueData_.gcStateBitField_);
         return status == MarkStatus::READY_TO_MARK;
+    }
+
+    bool IsReadyToSharedConcurrentMark() const
+    {
+        auto status = SharedMarkStatusBits::Decode(glueData_.gcStateBitField_);
+        return status == SharedMarkStatus::READY_TO_CONCURRENT_MARK;
     }
 
     bool IsMarking() const
@@ -1289,14 +1325,38 @@ public:
         finalizeTaskCallback_ = callback;
     }
 
+    void SetAsyncCleanTaskCallback(const NativePointerTaskCallback &callback)
+    {
+        asyncCleanTaskCb_ = callback;
+    }
+
+    NativePointerTaskCallback GetAsyncCleanTaskCallback() const
+    {
+        return asyncCleanTaskCb_;
+    }
+
     static void RegisterThread(JSThread *jsThread);
 
     static void UnregisterThread(JSThread *jsThread);
 
+    bool IsJSThread() const
+    {
+        return threadType_ == ThreadType::JS_THREAD;
+    }
+
     bool IsJitThread() const
     {
-        return isJitThread_;
+        return threadType_ == ThreadType::JIT_THREAD;
     }
+
+    bool IsDaemonThread() const
+    {
+        return threadType_ == ThreadType::DAEMON_THREAD;
+    }
+
+    // Daemon_Thread and JS_Thread have some difference in transition, for example, when transition to running,
+    // JS_Thread may take some local_gc actions, but Daemon_Thread do not need.
+    void TransferDaemonThreadToRunning();
 
     RecursiveMutex *GetJitLock()
     {
@@ -1341,6 +1401,35 @@ public:
         return isInConcurrentScope_;
     }
 
+#ifndef NDEBUG
+    inline void LaunchSuspendAll()
+    {
+        launchedSuspendAll_ = true;
+    }
+
+    inline bool HasLaunchedSuspendAll() const
+    {
+        return launchedSuspendAll_;
+    }
+
+    inline void CompleteSuspendAll()
+    {
+        launchedSuspendAll_ = false;
+    }
+#endif
+
+protected:
+    void SetThreadId()
+    {
+        id_.store(JSThread::GetCurrentThreadId(), std::memory_order_release);
+    }
+
+    // When call EcmaVM::PreFork(), the std::thread for Daemon_Thread is finished, but the Daemon_Thread instance
+    // is still alive, and need to reset ThreadId to 0.
+    void ResetThreadId()
+    {
+        id_.store(0, std::memory_order_release);
+    }
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -1356,11 +1445,6 @@ private:
     void SetArrayHClassIndexMap(const CMap<ElementsKind, ConstantIndex> &map)
     {
         arrayHClassIndexMap_ = map;
-    }
-
-    void SetThreadId()
-    {
-        id_.store(JSThread::GetCurrentThreadId(), std::memory_order_relaxed);
     }
 
     void TransferFromRunningToSuspended(ThreadState newState);
@@ -1397,7 +1481,7 @@ private:
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
 
     GlueData glueData_;
-    std::atomic<ThreadId> id_;
+    std::atomic<ThreadId> id_ {0};
     EcmaVM *vm_ {nullptr};
     void *env_ {nullptr};
     Area *regExpCache_ {nullptr};
@@ -1420,6 +1504,7 @@ private:
          WeakClearCallback nativeFinalizeCallBack)> setWeak_;
     std::function<uintptr_t(uintptr_t nodeAddr)> clearWeak_;
     std::function<bool(uintptr_t addr)> isWeak_;
+    NativePointerTaskCallback asyncCleanTaskCb_ {nullptr};
     WeakFinalizeTaskCallback finalizeTaskCallback_ {nullptr};
     uint32_t globalNumberCount_ {0};
 
@@ -1452,7 +1537,7 @@ private:
     ConditionVariable suspendCondVar_;
     SuspendBarrier *suspendBarrier_ {nullptr};
 
-    bool isJitThread_ {false};
+    ThreadType threadType_ {ThreadType::JS_THREAD};
     RecursiveMutex jitMutex_;
     bool machineCodeLowMemory_ {false};
 
@@ -1460,6 +1545,7 @@ private:
 
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
+    std::atomic<bool> launchedSuspendAll_ {false};
 #endif
 
     std::atomic<bool> needTermination_ {false};

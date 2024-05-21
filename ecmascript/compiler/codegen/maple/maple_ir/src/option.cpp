@@ -65,9 +65,6 @@ bool Options::usePreg = false;
 bool Options::mapleLinker = false;
 bool Options::dumpMuidFile = false;
 bool Options::emitVtableImpl = false;
-#if MIR_JAVA
-bool Options::skipVirtualMethod = false;
-#endif
 bool Options::profileGen = false;
 bool Options::profileUse = false;
 bool Options::genLMBC = false;
@@ -205,10 +202,6 @@ bool Options::SolveOptions(bool isDebug) const
 
     maplecl::CopyIfEnabled(dumpMuidFile, opts::mpl2mpl::dumpMuid);
     maplecl::CopyIfEnabled(emitVtableImpl, opts::mpl2mpl::emitVtableImpl);
-
-#if MIR_JAVA
-    maplecl::CopyIfEnabled(skipVirtualMethod, opts::mpl2mpl::skipvirtual);
-#endif
 
     maplecl::CopyIfEnabled(noRC, !opts::mpl2mpl::userc, opts::mpl2mpl::userc);
     maplecl::CopyIfEnabled(strictNaiveRC, opts::mpl2mpl::strictNaiveRc);

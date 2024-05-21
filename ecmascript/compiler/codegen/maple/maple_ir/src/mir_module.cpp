@@ -278,24 +278,9 @@ void MIRModule::DumpGlobals(bool emitStructureType) const
                 }
             }
         }
-        // dump javaclass and javainterface first
-        for (auto sit = symbolDefOrder.begin(); sit != symbolDefOrder.end(); ++sit) {
-            MIRSymbol *s = GlobalTables::GetGsymTable().GetSymbolFromStidx((*sit).Idx());
-            DEBUG_ASSERT(s != nullptr, "null ptr check");
-            if (!s->IsJavaClassInterface()) {
-                continue;
-            }
-            // Verify: all wpofake variables should have been deleted from globaltable
-            if (!s->IsDeleted()) {
-                s->Dump(false, 0);
-            }
-        }
         for (auto sit = symbolDefOrder.begin(); sit != symbolDefOrder.end(); ++sit) {
             MIRSymbol *s = GlobalTables::GetGsymTable().GetSymbolFromStidx((*sit).Idx());
             CHECK_FATAL(s != nullptr, "nullptr check");
-            if (s->IsJavaClassInterface()) {
-                continue;
-            }
             if (!s->IsDeleted() && !s->GetIsImported() && !s->GetIsImportedDecl()) {
                 s->Dump(false, 0);
             }
@@ -535,14 +520,6 @@ void MIRModule::DumpToHeaderFile(bool binaryMplt, const std::string &outputName)
     }
 }
 
-/*
-    We use MIRStructType (kTypeStruct) to represent C/C++ structs
-    as well as C++ classes.
-
-    We use MIRClassType (kTypeClass) to represent Java classes, specifically.
-    MIRClassType has parents which encode Java class's parent (exploiting
-    the fact Java classes have at most one parent class.
- */
 void MIRModule::DumpTypeTreeToCxxHeaderFile(MIRType &ty, std::unordered_set<MIRType *> &dumpedClasses) const
 {
     if (dumpedClasses.find(&ty) != dumpedClasses.end()) {
@@ -560,40 +537,13 @@ void MIRModule::DumpTypeTreeToCxxHeaderFile(MIRType &ty, std::unordered_set<MIRT
         return;
     }
     // dump all of its parents
-    if (IsJavaModule()) {
-        DEBUG_ASSERT(ty.GetKind() != kTypeStruct, "type is not supposed to be struct");
-        DEBUG_ASSERT(ty.GetKind() != kTypeUnion, "type is not supposed to be union");
-        DEBUG_ASSERT(ty.GetKind() != kTypeInterface, "type is not supposed to be interface");
-    } else if (srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus) {
+    if (srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus) {
         DEBUG_ASSERT((ty.GetKind() == kTypeStruct || ty.GetKind() == kTypeUnion),
                      "type should be either struct or union");
     } else {
         DEBUG_ASSERT(false, "source languages other than C/C++ are not supported yet");
     }
-    const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(ty.GetNameStrIdx());
-    if (IsJavaModule()) {
-        // Java class has at most one parent
-        auto &classType = static_cast<MIRClassType &>(ty);
-        MIRClassType *parentType = nullptr;
-        // find parent and generate its type as well as those of its ancestors
-        if (classType.GetParentTyIdx() != 0u /* invalid type idx */) {
-            parentType =
-                static_cast<MIRClassType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(classType.GetParentTyIdx()));
-            CHECK_FATAL(parentType != nullptr, "nullptr check");
-            DumpTypeTreeToCxxHeaderFile(*parentType, dumpedClasses);
-        }
-        LogInfo::MapleLogger() << "struct " << name << " ";
-        if (parentType != nullptr) {
-            LogInfo::MapleLogger() << ": " << parentType->GetName() << " ";
-        }
-        if (!classType.IsIncomplete()) {
-            /* dump class type; it will dump as '{ ... }' */
-            classType.DumpAsCxx(1);
-            LogInfo::MapleLogger() << ";\n";
-        } else {
-            LogInfo::MapleLogger() << "  /* incomplete type */\n";
-        }
-    } else if (srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus) {
+    if (srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus) {
         // how to access parent fields????
         DEBUG_ASSERT(false, "not yet implemented");
     }
@@ -620,9 +570,7 @@ void MIRModule::DumpToCxxHeaderFile(std::set<std::string> &leafClasses, const st
     // define a hash table
     std::unordered_set<MIRType *> dumpedClasses;
     const char *prefix = "__SRCLANG_UNKNOWN_";
-    if (IsJavaModule()) {
-        prefix = "__SRCLANG_JAVA_";
-    } else if (srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus) {
+    if (srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus) {
         prefix = "__SRCLANG_CXX_";
     }
     LogInfo::MapleLogger() << "#ifndef " << prefix << headerGuard << "__\n";

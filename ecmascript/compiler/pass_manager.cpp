@@ -143,7 +143,9 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<NumberSpeculativePass>();
         pipeline.RunPass<LaterEliminationPass>();
-        pipeline.RunPass<ValueNumberingPass>();
+        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
+            pipeline.RunPass<ValueNumberingPass>();
+        }
         pipeline.RunPass<StateSplitLinearizerPass>();
         pipeline.RunPass<EscapeAnalysisPass>();
         pipeline.RunPass<StringOptimizationPass>();
@@ -153,12 +155,18 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LCRLoweringPass>();
         pipeline.RunPass<ConstantFoldingPass>();
-        pipeline.RunPass<ValueNumberingPass>();
+        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
+            pipeline.RunPass<ValueNumberingPass>();
+        }
         pipeline.RunPass<SlowPathLoweringPass>();
-        pipeline.RunPass<ValueNumberingPass>();
+        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
+            pipeline.RunPass<ValueNumberingPass>();
+        }
         pipeline.RunPass<InstructionCombinePass>();
         pipeline.RunPass<EarlyEliminationPass>();
-        pipeline.RunPass<VerifierPass>();
+        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
+            pipeline.RunPass<VerifierPass>();
+        }
         pipeline.RunPass<GraphLinearizerPass>();
     });
     return true;

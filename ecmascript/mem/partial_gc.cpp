@@ -41,7 +41,7 @@ void PartialGC::RunPhases()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsConcurrentFullMark())
         + ";Reason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
-        + ";Startup" + std::to_string(heap_->onStartUpEvent())
+        + ";Startup" + std::to_string(heap_->OnStartupEvent())
         + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
         + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
         + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
@@ -57,8 +57,8 @@ void PartialGC::RunPhases()
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
         // verify mark
         LOG_ECMA(DEBUG) << "start verify mark";
-        Verification(heap_, heap_->IsConcurrentFullMark() ?
-            VerifyKind::VERIFY_CONCURRENT_MARK_FULL : VerifyKind::VERIFY_CONCURRENT_MARK_YOUNG).VerifyAll();
+        Verification(heap_, heap_->IsFullMark() ?
+            VerifyKind::VERIFY_MARK_FULL : VerifyKind::VERIFY_MARK_YOUNG).VerifyAll();
     }
     Sweep();
     Evacuate();

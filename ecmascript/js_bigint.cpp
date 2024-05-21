@@ -1508,7 +1508,7 @@ JSTaggedValue BigInt::AsUintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<B
 {
     JSTaggedNumber number = JSTaggedValue::ToNumber(thread, bits);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int64_t bit  = base::NumberHelper::DoubleToInt64(number.GetNumber());
+    int64_t bit = base::NumberHelper::DoubleToInt64(number.GetNumber());
     if (bit == 0) {
         return Int32ToBigInt(thread, 0).GetTaggedValue();
     }
@@ -1529,7 +1529,7 @@ JSTaggedValue BigInt::AsintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<Bi
 {
     JSTaggedNumber number = JSTaggedValue::ToNumber(thread, bits);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int64_t bit  = base::NumberHelper::DoubleToInt64(number.GetNumber());
+    int64_t bit = base::NumberHelper::DoubleToInt64(number.GetNumber());
     if (bit == 0) {
         return Int32ToBigInt(thread, 0).GetTaggedValue();
     }

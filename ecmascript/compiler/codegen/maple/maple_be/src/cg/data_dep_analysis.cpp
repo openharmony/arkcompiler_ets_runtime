@@ -43,7 +43,6 @@ void DataDepAnalysis::Run(CDGRegion &region)
             }
             cdgNode->AccNodeSum();
             DepNode *ddgNode = ddb.GenerateDepNode(*insn, cdgNode->GetAllDataNodes(), cdgNode->GetNodeSum(), comments);
-            ddb.BuildMayThrowInsnDependency(*ddgNode, *insn, *locInsn);
             ddb.BuildOpndDependency(*insn);
             BuildSpecialInsnDependency(*insn, *cdgNode, region, *regionAlloc);
             ddb.BuildAmbiInsnDependency(*insn);

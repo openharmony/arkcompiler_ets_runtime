@@ -60,6 +60,7 @@
 #include "ecmascript/builtins/builtins_weak_ref.h"
 #include "ecmascript/builtins/builtins_weak_set.h"
 #include "ecmascript/containers/containers_private.h"
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_index.h"
 #include "ecmascript/js_array.h"
@@ -233,9 +234,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_GLOBAL_OBJECT, 0);
     globalObjFuncClass->SetPrototype(thread_, objFuncPrototypeVal.GetTaggedValue());
     globalObjFuncClass->SetIsDictionaryMode(true);
-    // Function.prototype_or_hclass
-    JSHandle<JSHClass> emptyFuncClass(
-        factory_->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, objFuncPrototypeVal));
 
     // PrimitiveRef.prototype_or_hclass
     JSHandle<JSHClass> primRefObjHClass =
@@ -249,8 +247,15 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     JSHandle<TaggedArray> globalPatch = factory_->EmptyArray();
     env->SetGlobalPatch(thread, globalPatch);
 
-    // initialize Function, forbidden change order
-    InitializeFunction(env, emptyFuncClass);
+    auto runtimeGlobalEnv = Runtime::GetInstance()->GetGlobalEnv();
+    if (runtimeGlobalEnv.IsHole()) {
+        InitializeSSymbolAttributes(env);
+        InitializeSObjectAndSFunction(env);
+    } else {
+        CopySObjectAndSFunction(env, runtimeGlobalEnv);
+        RegisterSendableContainers(env);
+    }
+    InitializeFunction(env, objFuncPrototypeVal);
 
     thread->CheckSafepointIfSuspended();
     JSHandle<JSHClass> asyncAwaitStatusFuncClass =
@@ -296,14 +301,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     thread->CheckSafepointIfSuspended();
     functionClass = factory_->CreateBoundFunctionClass();
     env->SetBoundFunctionClass(thread_, functionClass);
-    auto runtimeGlobalEnv = Runtime::GetInstance()->GetGlobalEnv();
-    if (runtimeGlobalEnv.IsHole()) {
-        InitializeSSymbolAttributes(env);
-        InitializeSObjectAndSFunction(env);
-    } else {
-        CopySObjectAndSFunction(env, runtimeGlobalEnv);
-        RegisterSendableContainers(env);
-    }
     if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
         InitializeSymbol(env, primRefObjHClass);
@@ -397,6 +394,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     thread->CheckSafepointIfSuspended();
 #endif
     InitializeModuleNamespace(env, objFuncClass);
+    InitializeNativeModuleError(env, objFuncClass);
     InitializeCjsModule(env);
     InitializeCjsExports(env);
     InitializeCjsRequire(env);
@@ -511,33 +509,175 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
     SetConstant(globalObject, "undefined", JSTaggedValue::Undefined());
 }
 
-void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &emptyFuncClass) const
+JSHandle<JSHClass> Builtins::CreateFunctionPrototypeHClass(const JSHandle<GlobalEnv> &env,
+    const JSHandle<JSTaggedValue> &ObjPrototypeVal) const
+{
+    uint32_t index = 0;
+    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    auto properties = Function::GetFunctionPrototypeProperties();
+    uint32_t length = properties.size();
+    JSHandle<LayoutInfo> layout = factory_->CreateLayoutInfo(length);
+    JSHandle<JSTaggedValue> keyString;
+    for (const base::BuiltinsPropertyConfig &each : properties) {
+        attributes.SetOffset(index);
+        attributes.SetIsAccessor(each.GetIsAccessor());
+        attributes.SetWritable(each.GetWritable());
+        attributes.SetEnumerable(each.GetEnumerable());
+        attributes.SetConfigurable(each.GetConfigurable());
+        if (each.GetName() == "[Symbol.hasInstance]") {
+            keyString = env->GetHasInstanceSymbol();
+        } else {
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(each.GetName()));
+        }
+        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
+    }
+    JSHandle<JSHClass> objPrototypeHClass =
+        factory_->NewEcmaHClass(JSFunction::SIZE, length, JSType::JS_FUNCTION, ObjPrototypeVal,
+                                JSHandle<JSTaggedValue>(layout));
+    objPrototypeHClass->SetCallable(true);
+    return objPrototypeHClass;
+}
+
+JSHandle<JSHClass> Builtins::CreateFunctionHClass(const JSHandle<JSFunction> &funcPrototype) const
+{
+    uint32_t index = 0;
+    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    auto properties = Function::GetFunctionProperties();
+    uint32_t length = properties.size();
+    JSHandle<LayoutInfo> layout = factory_->CreateLayoutInfo(length);
+    for (const base::BuiltinsPropertyConfig &each : properties) {
+        attributes.SetOffset(index);
+        attributes.SetIsAccessor(each.GetIsAccessor());
+        attributes.SetWritable(each.GetWritable());
+        attributes.SetEnumerable(each.GetEnumerable());
+        attributes.SetConfigurable(each.GetConfigurable());
+        JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(each.GetName()));
+        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
+    }
+    JSHandle<JSHClass> objPrototypeHClass =
+        factory_->NewEcmaHClass(JSFunction::SIZE, length, JSType::JS_FUNCTION,
+                                JSHandle<JSTaggedValue>(funcPrototype), JSHandle<JSTaggedValue>(layout));
+    objPrototypeHClass->SetConstructor(true);
+    objPrototypeHClass->SetCallable(true);
+    return objPrototypeHClass;
+}
+
+void Builtins::SetFunctionName(const JSHandle<JSFunction> &ctor, std::string_view name) const
+{
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
+    SetSFunctionName(ctor, nameString);
+}
+
+void Builtins::SetFunctionName(const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &name) const
+{
+    auto nameIndex = JSFunction::NAME_INLINE_PROPERTY_INDEX;
+    ctor->SetPropertyInlinedProps(thread_, nameIndex, name.GetTaggedValue());
+}
+
+void Builtins::SetFunctionLength(const JSHandle<JSFunction> &ctor, int length) const
+{
+    JSTaggedValue taggedLength(length);
+    auto lengthIndex = JSFunction::LENGTH_INLINE_PROPERTY_INDEX;
+    ctor->SetPropertyInlinedProps(thread_, lengthIndex, taggedLength);
+}
+
+void Builtins::SetFunctionPrototype(const JSHandle<JSFunction> &ctor, const JSTaggedValue &prototype) const
+{
+    auto prototypeIndex = JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX;
+    ctor->SetPropertyInlinedProps(thread_, prototypeIndex, prototype);
+}
+
+void Builtins::SetInlineFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
+                                 EcmaEntrypoint func, uint32_t index, int length,
+                                 kungfu::BuiltinsStubCSigns::ID builtinId) const
+{
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
+    SetInlineFunction(env, obj, keyString, func, index, length, builtinId);
+}
+
+void Builtins::SetInlineFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
+                                 const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, uint32_t index, int length,
+                                 kungfu::BuiltinsStubCSigns::ID builtinId) const
+{
+    JSHandle<JSFunction> function(NewFunction(env, key, func, length, builtinId));
+    obj->SetPropertyInlinedProps(thread_, index, function.GetTaggedValue());
+}
+
+void Builtins::SetInlineAccessor(const JSHandle<JSObject> &obj, uint32_t index,
+                                 const JSHandle<JSTaggedValue> &getter, const JSHandle<JSTaggedValue> &setter) const
+{
+    JSHandle<AccessorData> accessor = factory_->NewAccessorData();
+    accessor->SetGetter(thread_, getter);
+    accessor->SetSetter(thread_, setter);
+    obj->SetPropertyInlinedProps(thread_, index, accessor.GetTaggedValue());
+}
+
+void Builtins::StrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env, uint32_t &index,
+                                                        const JSHandle<JSObject> &prototype) const
+{
+    auto function = JSHandle<JSTaggedValue>::Cast(
+        factory_->NewJSFunction(env, reinterpret_cast<void *>(JSFunction::AccessCallerArgumentsThrowTypeError)));
+    // "caller"
+    SetInlineAccessor(prototype, index++, function, function);
+    // "arguments"
+    SetInlineAccessor(prototype, index++, function, function);
+}
+
+void Builtins::InitializeFunctionPrototype(const JSHandle<GlobalEnv> &env, JSHandle<JSFunction> &funcFuncPrototype,
+                                           JSHandle<JSFunction> &funcFunc) const
+{
+    auto funcFuncPrototypeObj = JSHandle<JSObject>(funcFuncPrototype);
+    SetFunctionLength(funcFuncPrototype, FunctionLength::ZERO);
+    SetFunctionName(funcFuncPrototype, thread_->GlobalConstants()->GetHandledEmptyString());
+    uint32_t fieldIndex = 2; // 2: length and name
+    funcFuncPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, funcFunc.GetTaggedValue()); // constructor
+    StrictModeForbiddenAccessCallerArguments(env, fieldIndex, funcFuncPrototypeObj);
+    // Function.prototype method
+    for (const base::BuiltinFunctionEntry &entry: Function::GetFunctionPrototypeFunctions()) {
+        SetInlineFunction(env, funcFuncPrototypeObj, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    // 19.2.3.5 Function.prototype.toString ( )
+    SetInlineFunction(env, funcFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
+                      Function::FunctionPrototypeToString, fieldIndex++, FunctionLength::ZERO);
+    SetInlineFunction(env, funcFuncPrototypeObj, "[Symbol.hasInstance]",
+                      Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE);
+}
+
+void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Initialize Function.prototype
-    JSHandle<JSFunction> funcFuncPrototype = factory_->NewJSFunctionByHClass(
-        reinterpret_cast<void *>(Function::FunctionPrototypeInvokeSelf),
-        emptyFuncClass);
-    // ecma 19.2.3 The value of the name property of the Function prototype object is the empty String.
-    JSHandle<JSTaggedValue> emptyString(thread_->GlobalConstants()->GetHandledEmptyString());
-    JSHandle<JSTaggedValue> undefinedString(thread_, JSTaggedValue::Undefined());
-    JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(funcFuncPrototype), emptyString, undefinedString);
-    // ecma 19.2.3 The value of the length property of the Function prototype object is 0.
-    JSFunction::SetFunctionLength(thread_, funcFuncPrototype, JSTaggedValue(FunctionLength::ZERO));
+    // Function.prototype.hclass
+    JSHandle<JSHClass> funcPrototypeHClass = CreateFunctionPrototypeHClass(env, objFuncPrototypeVal);
+    // Function.prototype
+    JSHandle<JSFunction> funcFuncPrototype = factory_->NewJSFunctionByHClassWithoutAccessor(
+        reinterpret_cast<void *>(Function::FunctionPrototypeInvokeSelf), funcPrototypeHClass);
 
     JSHandle<JSTaggedValue> funcFuncPrototypeValue(funcFuncPrototype);
     // Function.prototype_or_hclass
     JSHandle<JSHClass> funcFuncIntanceHClass =
         factory_->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncPrototypeValue);
     funcFuncIntanceHClass->SetConstructor(true);
-
+    // Function.hclass
+    JSHandle<JSHClass> funcHClass = CreateFunctionHClass(funcFuncPrototype);
     // Function = new Function() (forbidden use NewBuiltinConstructor)
     JSHandle<JSFunction> funcFunc =
-        factory_->NewJSFunctionByHClass(reinterpret_cast<void *>(Function::FunctionConstructor),
-        funcFuncIntanceHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
+        factory_->NewJSFunctionByHClassWithoutAccessor(reinterpret_cast<void *>(Function::FunctionConstructor),
+        funcHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
 
-    auto funcFuncPrototypeObj = JSHandle<JSObject>(funcFuncPrototype);
-    InitializeCtor(env, funcFuncPrototypeObj, funcFunc, "Function", FunctionLength::ONE);
+    // set properties for Function
+    SetFunctionLength(funcFunc, FunctionLength::ONE);
+    SetFunctionName(funcFunc, "Function");
+    SetFunctionPrototype(funcFunc, funcFuncPrototypeValue.GetTaggedValue());
+
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("Function"));
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    PropertyDescriptor descriptor2(thread_, JSHandle<JSTaggedValue>::Cast(funcFunc), true, false, true);
+    JSObject::DefineOwnProperty(thread_, globalObject, nameString, descriptor2);
 
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_, funcFunc, funcFuncIntanceHClass.GetTaggedValue());
     env->SetFunctionFunction(thread_, funcFunc);
@@ -556,17 +696,7 @@ void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, const JSHandle
         factory_->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, env->GetFunctionPrototype());
     constructorFunctionClass->SetConstructor(true);
     env->SetConstructorFunctionClass(thread_, constructorFunctionClass);
-
-    StrictModeForbiddenAccessCallerArguments(env, funcFuncPrototypeObj);
-
-    // Function.prototype method
-    for (const base::BuiltinFunctionEntry &entry: Function::GetFunctionPrototypeFunctions()) {
-        SetFunction(env, funcFuncPrototypeObj, entry.GetName(), entry.GetEntrypoint(),
-                    entry.GetLength(), entry.GetBuiltinStubId());
-    }
-    // 19.2.3.5 Function.prototype.toString ( )
-    SetFunction(env, funcFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
-                Function::FunctionPrototypeToString, FunctionLength::ZERO);
+    InitializeFunctionPrototype(env, funcFuncPrototype, funcFunc);
 }
 
 void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &objFuncPrototype,
@@ -653,12 +783,6 @@ BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
     env->SetHoleySymbol(thread_, holeySymbol.GetTaggedValue());
     JSHandle<JSTaggedValue> elementIcSymbol(factory_->NewPrivateNameSymbolWithChar("element-ic"));
     env->SetElementICSymbol(thread_, elementIcSymbol.GetTaggedValue());
-
-    // ecma 19.2.3.6 Function.prototype[@@hasInstance] ( V )
-    JSHandle<JSObject> funcFuncPrototypeObj = JSHandle<JSObject>(env->GetFunctionPrototype());
-    SetFunctionAtSymbol<JSSymbol::SYMBOL_HAS_INSTANCE_TYPE>(
-        env, funcFuncPrototypeObj, env->GetHasInstanceSymbol(), "[Symbol.hasInstance]",
-        Function::FunctionPrototypeHasInstance, FunctionLength::ONE);
 }
 
 void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
@@ -721,12 +845,6 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     realm->SetHoleySymbol(thread_, holeySymbol.GetTaggedValue());
     JSHandle<JSTaggedValue> elementIcSymbol(factory_->NewPrivateNameSymbolWithChar("element-ic"));
     realm->SetElementICSymbol(thread_, elementIcSymbol.GetTaggedValue());
-
-    // ecma 19.2.3.6 Function.prototype[@@hasInstance] ( V )
-    JSHandle<JSObject> funcFuncPrototypeObj = JSHandle<JSObject>(realm->GetFunctionPrototype());
-    SetFunctionAtSymbol<JSSymbol::SYMBOL_HAS_INSTANCE_TYPE>(
-        realm, funcFuncPrototypeObj, realm->GetHasInstanceSymbol(), "[Symbol.hasInstance]",
-        Function::FunctionPrototypeHasInstance, FunctionLength::ONE);
 }
 #undef BUILTIN_SYMBOL_CREATE_WITH_REALM
 
@@ -2863,19 +2981,6 @@ void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHan
     JSObject::DefineOwnProperty(thread_, globalObject, keyString, descriptor);
 }
 
-void Builtins::StrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env,
-                                                        const JSHandle<JSObject> &prototype) const
-{
-    JSHandle<JSFunction> function =
-        factory_->NewJSFunction(env, reinterpret_cast<void *>(JSFunction::AccessCallerArgumentsThrowTypeError));
-
-    JSHandle<JSTaggedValue> caller(factory_->NewFromASCIIReadOnly("caller"));
-    SetAccessor(prototype, caller, JSHandle<JSTaggedValue>::Cast(function), JSHandle<JSTaggedValue>::Cast(function));
-
-    JSHandle<JSTaggedValue> arguments(factory_->NewFromASCIIReadOnly("arguments"));
-    SetAccessor(prototype, arguments, JSHandle<JSTaggedValue>::Cast(function), JSHandle<JSTaggedValue>::Cast(function));
-}
-
 void Builtins::InitializeGeneratorFunction(const JSHandle<GlobalEnv> &env,
                                            const JSHandle<JSHClass> &objFuncClass) const
 {
@@ -3630,6 +3735,7 @@ JSHandle<JSObject> Builtins::InitializeArkPrivate(const JSHandle<GlobalEnv> &env
     SetConstant(arkPrivate, "Deque", JSTaggedValue(static_cast<int>(containers::ContainerTag::Deque)));
     SetConstant(arkPrivate, "Stack", JSTaggedValue(static_cast<int>(containers::ContainerTag::Stack)));
     SetConstant(arkPrivate, "Vector", JSTaggedValue(static_cast<int>(containers::ContainerTag::Vector)));
+    SetConstant(arkPrivate, "BitVector", JSTaggedValue(static_cast<int>(containers::ContainerTag::BitVector)));
     SetConstant(arkPrivate, "List", JSTaggedValue(static_cast<int>(containers::ContainerTag::List)));
     SetConstant(arkPrivate, "LinkedList", JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
     SetConstant(arkPrivate, "TreeMap", JSTaggedValue(static_cast<int>(containers::ContainerTag::TreeMap)));
@@ -3660,6 +3766,21 @@ void Builtins::InitializeModuleNamespace(const JSHandle<GlobalEnv> &env,
 
     // moduleNamespace.prototype [ @@toStringTag ]
     SetStringTagSymbol(env, moduleNamespacePrototype, "Module");
+}
+
+void Builtins::InitializeNativeModuleError(const JSHandle<GlobalEnv> &env,
+                                           const JSHandle<JSHClass> &objFuncClass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    // NativeModuleError.prototype
+    JSHandle<JSObject> nativeModuleErrorPrototype = factory_->NewJSObjectWithInit(objFuncClass);
+    JSHandle<JSTaggedValue> nativeModuleErrorPrototypeValue(nativeModuleErrorPrototype);
+
+    //  NativeModuleError.prototype_or_hclass
+    JSHandle<JSHClass> nativeModuleErrorHClass =
+        factory_->NewEcmaHClass(NativeModuleError::SIZE, JSType::NATIVE_MODULE_ERROR, nativeModuleErrorPrototypeValue);
+    nativeModuleErrorHClass->SetPrototype(thread_, JSTaggedValue::Null());
+    env->SetNativeModuleErrorClass(thread_, nativeModuleErrorHClass.GetTaggedValue());
 }
 
 void Builtins::InitializeCjsModule(const JSHandle<GlobalEnv> &env) const

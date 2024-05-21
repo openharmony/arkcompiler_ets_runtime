@@ -358,7 +358,8 @@ void ParallelEvacuator::UpdateRSet(Region *region)
     if (heap_->GetSweeper()->IsSweeping()) {
         if (region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             // Region is safe while update remember set
-            region->MergeRSetForConcurrentSweeping();
+            region->MergeOldToNewRSetForCS();
+            region->MergeLocalToShareRSetForCS();
         } else {
             region->AtomicIterateAllSweepingRSetBits(cb);
         }

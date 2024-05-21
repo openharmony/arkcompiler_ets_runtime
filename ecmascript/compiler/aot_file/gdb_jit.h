@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,16 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef ECMASCRIPT_COMPILER_GDB_JIT_H
+#define ECMASCRIPT_COMPILER_GDB_JIT_H
+#include <cstdint>
+namespace panda::ecmascript {
+namespace jit_debug {
 
-"ALjava_2Flang_2FObject_3B",
-"ALjava_2Flang_2FClass_3B",
-"ALjava_2Flang_2FString_3B",
-"ALjava_2Futil_2FFormatter_24Flags_3B",
-"ALjava_2Futil_2FHashMap_24Node_3B",
-"ALjava_2Futil_2FFormatter_24FormatString_3B",
-"ALjava_2Flang_2FCharSequence_3B",
-"ALjava_2Flang_2FThreadLocal_24ThreadLocalMap_24Entry_3B",
-"ALjava_2Futil_2FHashtable_24HashtableEntry_3B",
-"ALlibcore_2Freflect_2FAnnotationMember_3B",
-"ALsun_2Fsecurity_2Futil_2FDerValue_3B",
-"ALsun_2Fsecurity_2Fx509_2FAVA_3B"
+void RegisterStubAnToDebugger(const char *fileAddr);
+void UnregisterStubAnFromDebugger(const char *fileAddr);
+}
+}
+#endif

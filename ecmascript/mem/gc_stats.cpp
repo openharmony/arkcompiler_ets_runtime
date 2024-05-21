@@ -51,11 +51,10 @@ void GCStats::PrintGCStatistic()
                         << scopeDuration_[Scope::ScopeId::TotalGC] << "(+"
                         << GetConcurrrentMarkDuration()
                         << ")ms, " << GCReasonToString();
-        LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground();
-        LOG_GC(INFO) << "InSensitiveStatus: " << heap_->InSensitiveStatus();
-        LOG_GC(INFO) << "onStartUpEvent: " << heap_->onStartUpEvent();
-        LOG_GC(INFO) << "BundleName: " << heap_->GetEcmaVM()->GetBundleName();
-        
+        LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground() << "; "
+            << "SensitiveStatus: " << heap_->GetSensitiveStatus() << "; "
+            << "OnStartupEvent: " << heap_->OnStartupEvent() << "; "
+            << "BundleName: " << heap_->GetEcmaVM()->GetBundleName() << ";";
         // print verbose gc statsistics
         PrintVerboseGCStatistic();
     }
@@ -371,6 +370,11 @@ void GCStats::PrintGCSummaryStatistic(GCType type)
     }
 }
 
+size_t GCStats::GetAccumulatedAllocateSize()
+{
+    return accumulatedFreeSize_ + heap_->GetHeapObjectSize();
+}
+
 void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
 {
     SetRecordData(RecordData::START_OBJ_SIZE, heap_->GetHeapObjectSize());
@@ -495,6 +499,13 @@ void GCStats::RecordStatisticAfterGC()
             break;
     }
     RecordGCSpeed();
+
+    if (gcType_ == GCType::COMPRESS_GC && scopeDuration_[Scope::ScopeId::TotalGC] > longPauseTime_) {
+        IncreaseFullGCLongTimeCount();
+    }
+    IncreaseTotalDuration(scopeDuration_[Scope::ScopeId::TotalGC]);
+    IncreaseAccumulatedFreeSize(GetRecordData(RecordData::START_OBJ_SIZE) -
+                                GetRecordData(RecordData::END_OBJ_SIZE));
 }
 
 void GCStats::RecordGCSpeed()
@@ -539,7 +550,7 @@ void GCStats::RecordGCSpeed()
 
 GCType GCStats::GetGCType(TriggerGCType gcType)
 {
-    if (heap_ && !heap_->IsReadyToMark()) {
+    if (heap_ && !heap_->IsReadyToConcurrentMark()) {
         return heap_->IsConcurrentFullMark() ? GCType::PARTIAL_OLD_GC : GCType::PARTIAL_YOUNG_GC;
     }
     switch (gcType) {
@@ -663,6 +674,11 @@ void SharedGCStats::PrintSharedGCDuration()
         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ResumeAll]) << "ms";
 }
 
+size_t SharedGCStats::GetAccumulatedAllocateSize()
+{
+    return accumulatedFreeSize_ + sHeap_->GetHeapObjectSize();
+}
+
 void SharedGCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
 {
     size_t commitSize = sHeap_->GetCommittedSize();
@@ -694,5 +710,9 @@ void SharedGCStats::RecordStatisticAfterGC()
     size_t heapAliveSize = sHeap_->GetHeapObjectSize();
     SetRecordData(RecordData::SHARED_ALIVE_SIZE, heapAliveSize);
     IncreaseRecordData(RecordData::SHARED_TOTAL_ALIVE, heapAliveSize);
+
+    IncreaseTotalDuration(scopeDuration_[Scope::ScopeId::TotalGC]);
+    IncreaseAccumulatedFreeSize(GetRecordDataIndex(RecordData::START_OBJ_SIZE) -
+                                GetRecordDataIndex(RecordData::END_OBJ_SIZE));
 }
 }  // namespace panda::ecmascript

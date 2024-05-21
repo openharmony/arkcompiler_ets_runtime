@@ -481,6 +481,7 @@ public:
     bool IsByteArray() const;
     bool IsConstantPool() const;
     bool IsAOTLiteralInfo() const;
+    bool IsProfileTypeInfoCell() const;
     bool IsVTable() const;
     bool IsLinkedNode() const;
     bool IsRBTreeNode() const;
@@ -631,6 +632,8 @@ public:
     bool IsJSAPITreeSetIterator() const;
     bool IsJSAPIVector() const;
     bool IsJSAPIVectorIterator() const;
+    bool IsJSAPIBitVector() const;
+    bool IsJSAPIBitVectorIterator() const;
     bool IsJSAPIQueue() const;
     bool IsJSAPIQueueIterator() const;
     bool IsJSAPIPlainArray() const;
@@ -675,6 +678,7 @@ public:
     bool IsResolvedRecordIndexBinding() const;
     bool IsResolvedRecordBinding() const;
     bool IsModuleNamespace() const;
+    bool IsNativeModuleError() const;
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;

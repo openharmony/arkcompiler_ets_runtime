@@ -194,6 +194,11 @@ public:
         return abcFilePool_->GetEntryIdByNormalizedName(name, entryId);
     }
 
+    bool IsCompatibleWithAOTFile()
+    {
+        return header_->IsCompatibleWithAOTFile();
+    }
+
 private:
     bool Load(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool);
     bool Verify(uint32_t checksum);

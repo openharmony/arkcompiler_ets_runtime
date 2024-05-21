@@ -20,23 +20,23 @@
 #include "ecmascript/mem/mem_common.h"
 
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
-#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
-    if (object != 0) {                                                        \
-        IncreaseLiveObjectSize(size);                                         \
-        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToMark()) {       \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
-        }                                                                     \
-        InvokeAllocationInspector(object, size, size);                        \
-        return object;                                                        \
+#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                             \
+    if (object != 0) {                                                                  \
+        IncreaseLiveObjectSize(size);                                                   \
+        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {       \
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
+        }                                                                               \
+        InvokeAllocationInspector(object, size, size);                                  \
+        return object;                                                                  \
     }
 #else
-#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
-    if (object != 0) {                                                        \
-        IncreaseLiveObjectSize(size);                                         \
-        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToMark()) {       \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
-        }                                                                     \
-        return object;                                                        \
+#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                             \
+    if (object != 0) {                                                                  \
+        IncreaseLiveObjectSize(size);                                                   \
+        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {       \
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
+        }                                                                               \
+        return object;                                                                  \
     }
 #endif
 
@@ -215,7 +215,7 @@ public:
     NO_COPY_SEMANTIC(NonMovableSpace);
     NO_MOVE_SEMANTIC(NonMovableSpace);
 
-    uintptr_t  CheckAndAllocate(size_t size);
+    uintptr_t CheckAndAllocate(size_t size);
 };
 
 class AppSpawnSpace : public SparseSpace {

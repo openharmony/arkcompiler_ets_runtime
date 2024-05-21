@@ -250,8 +250,11 @@ public:
     JSHandle<ConstantPool> AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
                                                 JSHandle<ConstantPool> constpool,
                                                 int32_t index = 0);
+    void AddContextConstpoolCache(const JSPandaFile *jsPandaFile,
+                                  JSHandle<ConstantPool> constpool,
+                                  int32_t index);
 
-    void UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index = 0);
+    void UpdateAOTConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index = 0);
 
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
 
@@ -263,8 +266,7 @@ public:
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
     JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
-    JSHandle<ConstantPool> CreateConstpoolPair(JSPandaFile *jsPandaFile, EntityId methodId);
-    JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
+    JSTaggedValue FindCachedConstpoolAndLoadAiIfNeeded(const JSPandaFile *jsPandaFile, int32_t index);
     void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
@@ -599,6 +601,7 @@ private:
         std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob);
     bool LoadAOTFiles(const std::string &aotFileName);
     void RelocateConstantString(const JSPandaFile *jsPandaFile);
+    JSTaggedValue FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index);
 
     void CheckUnsharedConstpoolArrayLimit(int32_t index)
     {

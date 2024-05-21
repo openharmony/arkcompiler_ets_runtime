@@ -18,6 +18,7 @@
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory-inl.h"
 
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/builtins/builtins.h"
@@ -45,6 +46,8 @@
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
@@ -211,6 +214,25 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(JSHClass *hclass, uint32_t size,
     newClass->Initialize(thread_, size, type, inlinedProps);
 
     return JSHandle<JSHClass>(thread_, newClass);
+}
+
+// This function don't UpdateProtoClass
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+    const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout)
+{
+    NewSObjectHook();
+    uint32_t classSize = JSHClass::SIZE;
+    auto *newClass = static_cast<JSHClass *>(heap_->AllocateNonMovableOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
+    newClass->Initialize(thread_, size, type, inlinedProps, layout);
+    JSHandle<JSHClass> hclass(thread_, newClass);
+    if (prototype->IsJSObject()) {
+        prototype->GetTaggedObject()->GetClass()->SetIsPrototype(true);
+    }
+    hclass->SetProto(thread_, prototype.GetTaggedValue());
+    hclass->SetNumberOfProps(inlinedProps);
+    hclass->SetExtensible(false);
+    return hclass;
 }
 
 JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
@@ -1511,6 +1533,11 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSAPIVector::Cast(*obj)->SetLength(0);
             break;
         }
+        case JSType::JS_API_BITVECTOR: {
+            JSAPIBitVector::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
+            JSAPIBitVector::Cast(*obj)->SetModRecord(0);
+            break;
+        }
         case JSType::JS_API_LIST: {
             JSAPIList::Cast(*obj)->SetSingleList(thread_, JSTaggedValue::Undefined());
             JSAPIList::Cast(*obj)->SetBitField(0UL);
@@ -1618,6 +1645,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
         case JSType::JS_API_STACK_ITERATOR:
         case JSType::JS_API_VECTOR_ITERATOR:
+        case JSType::JS_API_BITVECTOR_ITERATOR:
         case JSType::JS_API_HASHMAP_ITERATOR:
         case JSType::JS_API_HASHSET_ITERATOR:
         case JSType::JS_ARRAY_ITERATOR:
@@ -1956,6 +1984,19 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, cons
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, kind);
+    function->SetMethod(thread_, method);
+    return function;
+}
+
+// new function with name/length accessor
+JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClassWithoutAccessor(const void *func,
+    const JSHandle<JSHClass> &clazz, FunctionKind kind)
+{
+    JSHandle<Method> method = NewMethodForNativeFunction(func, kind);
+    JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
+    clazz->SetCallable(true);
+    clazz->SetExtensible(true);
+    JSFunction::InitializeWithDefaultValue(thread_, function);
     function->SetMethod(thread_, method);
     return function;
 }
@@ -3108,6 +3149,18 @@ JSHandle<ModuleNamespace> ObjectFactory::NewModuleNamespace()
     return moduleNamespace;
 }
 
+JSHandle<NativeModuleError> ObjectFactory::NewNativeModuleError()
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNativeModuleErrorClass());
+    JSHandle<JSObject> obj = NewJSObject(hclass);
+
+    JSHandle<NativeModuleError> nativeModuleError = JSHandle<NativeModuleError>::Cast(obj);
+    nativeModuleError->SetArkNativeModuleError(thread_, JSTaggedValue::Undefined());
+    return nativeModuleError;
+}
+
 JSHandle<CjsModule> ObjectFactory::NewCjsModule()
 {
     NewObjectHook();
@@ -3687,7 +3740,7 @@ JSHandle<JSAsyncFromSyncIterUnwarpFunction> ObjectFactory::NewJSAsyncFromSyncIte
     JSHandle<JSAsyncFromSyncIterUnwarpFunction> function =
         JSHandle<JSAsyncFromSyncIterUnwarpFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    JSTaggedValue debugVaule =  vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_FROM_SYNC_ITERATOR_FUNCTION);
+    JSTaggedValue debugVaule = vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_FROM_SYNC_ITERATOR_FUNCTION);
     function->SetMethod(thread_, debugVaule);
     function->SetDone(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
@@ -4437,6 +4490,34 @@ JSHandle<JSAPIVectorIterator> ObjectFactory::NewJSAPIVectorIterator(const JSHand
     return iter;
 }
 
+JSHandle<JSAPIBitVector> ObjectFactory::NewJSAPIBitVector(uint32_t capacity)
+{
+    NewObjectHook();
+    JSHandle<JSFunction> builtinObj(thread_, thread_->GlobalConstants()->GetBitVectorFunction());
+    JSHandle<JSAPIBitVector> obj = JSHandle<JSAPIBitVector>(NewJSObjectByConstructor(builtinObj));
+    uint32_t taggedArrayCapacity = (capacity >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
+    auto *newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
+    newBitSetVector->resize(taggedArrayCapacity, 0);
+    JSHandle<JSNativePointer> pointer = NewJSNativePointer(newBitSetVector);
+    obj->SetNativePointer(thread_, pointer);
+
+    return obj;
+}
+
+JSHandle<JSAPIBitVectorIterator> ObjectFactory::NewJSAPIBitVectorIterator(const JSHandle<JSAPIBitVector> &bitVector)
+{
+    NewObjectHook();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetBitVectorIteratorPrototype());
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIBitVectorIteratorClass());
+    hclassHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPIBitVectorIterator> iter(NewJSObject(hclassHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedBitVector(thread_, bitVector);
+    iter->SetNextIndex(0);
+    return iter;
+}
+
 JSHandle<JSAPILinkedListIterator> ObjectFactory::NewJSAPILinkedListIterator(const JSHandle<JSAPILinkedList> &linkedList)
 {
     NewObjectHook();
@@ -4778,6 +4859,16 @@ JSHandle<AOTLiteralInfo> ObjectFactory::NewAOTLiteralInfo(uint32_t length, JSTag
     JSHandle<AOTLiteralInfo> aotLiteralInfo(thread_, header);
     aotLiteralInfo->InitializeWithSpecialValue(initVal, length);
     return aotLiteralInfo;
+}
+
+JSHandle<ProfileTypeInfoCell> ObjectFactory::NewProfileTypeInfoCell(const JSHandle<JSTaggedValue> &value)
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
+    JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
+    profileTypeInfoCell->SetValue(thread_, value.GetTaggedValue());
+    return profileTypeInfoCell;
 }
 
 JSHandle<VTable> ObjectFactory::NewVTable(uint32_t length, JSTaggedValue initVal)

@@ -101,7 +101,6 @@ private:
     void ImportFieldsOfStructType(FieldVector &fields, uint32 methodSize);
     MIRType &InsertInTypeTables(MIRType &ptype);
     void InsertInHashTable(MIRType &ptype);
-    void SetupEHRootType();
     void UpdateMethodSymbols();
     void ImportConstBase(MIRConstKind &kind, MIRTypePtr &type);
     MIRConst *ImportConst(MIRFunction *func);
@@ -111,8 +110,8 @@ private:
     MIRGenericInstantType *CreateMirGenericInstantType(GStrIdx strIdx) const;
     MIRBitFieldType *CreateBitFieldType(uint8 fieldsize, PrimType pt, GStrIdx strIdx) const;
     void CompleteAggInfo(TyIdx tyIdx);
-    TyIdx ImportType(bool forPointedType = false);
-    TyIdx ImportTypeNonJava();
+    TyIdx ImportJType(bool forPointedType = false);
+    TyIdx ImportType();
     void ImportTypeBase(PrimType &primType, GStrIdx &strIdx, bool &nameIsLocal);
     void InSymTypeTable();
     void ImportTypePairs(std::vector<TypePair> &insVecType);

@@ -67,7 +67,8 @@ void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
     region->DeleteCrossRegionRSet();
     region->DeleteOldToNewRSet();
     region->DeleteLocalToShareRSet();
-    region->DeleteSweepingRSet();
+    region->DeleteSweepingOldToNewRSet();
+    region->DeleteSweepingLocalToShareRSet();
     DecreaseCommitted(region->GetCapacity());
     DecreaseObjectSize(region->GetSize());
     if (spaceType_ == MemSpaceType::OLD_SPACE || spaceType_ == MemSpaceType::NON_MOVABLE ||

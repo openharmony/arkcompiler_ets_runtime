@@ -102,7 +102,6 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
-using NativePointerCallback = void (*)(void *, void *, void *);
 
 class EcmaVM {
 public:
@@ -209,6 +208,11 @@ public:
         if (options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck()) {
             CheckThread();
         }
+        return thread_;
+    }
+
+    JSThread *GetJSThreadNoCheck() const
+    {
         return thread_;
     }
 
@@ -669,9 +673,14 @@ public:
         return thread_->GetThreadId();
     }
 
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetNativePointerCallbacks()
+    std::vector<NativePointerCallbackData> &GetConcurrentNativePointerCallbacks()
     {
-        return nativePointerCallbacks_;
+        return concurrentNativeCallbacks_;
+    }
+
+    std::vector<NativePointerCallbackData> &GetAsyncNativePointerCallbacks()
+    {
+        return asyncNativeCallbacks_;
     }
 
     void SetIsJitCompileVM(bool isJitCompileVM)
@@ -700,7 +709,7 @@ public:
     {
         return sharedNativePointerCallbacks_;
     }
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     void ResetScopeLockStats()
     {
         enterThreadManagedScopeCount_ = 0;
@@ -807,7 +816,8 @@ private:
     ObjectFactory *factory_ {nullptr};
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    std::vector<NativePointerCallbackData> concurrentNativeCallbacks_ {};
+    std::vector<NativePointerCallbackData> asyncNativeCallbacks_ {};
     CList<JSNativePointer *> sharedNativePointerList_;
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
@@ -896,7 +906,7 @@ private:
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
 
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks
     bool isCollectingScopeLockStats_ = false;
     int enterThreadManagedScopeCount_ = 0;

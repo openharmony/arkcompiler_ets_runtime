@@ -2855,6 +2855,53 @@ inline void StubBuilder::SetLengthToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::INT32(), glue, function, offset, value, MemoryOrder::NoBarrier());
 }
 
+inline void StubBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET);
+    Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+inline void StubBuilder::SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value)
+{
+    GateRef offset = IntPtr(ProfileTypeInfoCell::VALUE_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, profileTypeInfoCell, offset, value);
+}
+
+inline void StubBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    // ProfileTypeInfoCell0 -> Cell1 -> CellN
+    Label isProfileTypeInfoCell0(env);
+    Label notProfileTypeInfoCell0(env);
+    Label isProfileTypeInfoCell1(env);
+    Label endProfileTypeInfoCellType(env);
+    GateRef objectType = GetObjectType(LoadHClass(profileTypeInfoCell));
+    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_0))),
+           &isProfileTypeInfoCell0, &notProfileTypeInfoCell0);
+    Bind(&isProfileTypeInfoCell0);
+    {
+        auto profileTypeInfoCell1Class = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                ConstantIndex::PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX);
+        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCell1Class);
+        Jump(&endProfileTypeInfoCellType);
+    }
+    Bind(&notProfileTypeInfoCell0);
+    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_1))),
+           &isProfileTypeInfoCell1, &endProfileTypeInfoCellType);
+    Bind(&isProfileTypeInfoCell1);
+    {
+        auto profileTypeInfoCellNClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                ConstantIndex::PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX);
+        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCellNClass);
+        Jump(&endProfileTypeInfoCellType);
+    }
+    Bind(&endProfileTypeInfoCellType);
+    env->SubCfgExit();
+}
+
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(env_->Is32Bit()));
@@ -3224,7 +3271,8 @@ inline GateRef StubBuilder::IsTypedArray(GateRef obj)
 
 inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
 {
-    return Load(VariableType::JS_POINTER(), jsFunc, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
+    GateRef raw = Load(VariableType::JS_POINTER(), jsFunc, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
 }
 
 inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)

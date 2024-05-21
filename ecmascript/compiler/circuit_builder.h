@@ -391,8 +391,6 @@ public:
     GateRef CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
     GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool isFastCall);
-    GateRef CallConstructCheck(GateRef callGate, GateRef depend, GateRef glue_, GateRef ctor,
-                               GateRef value, GateRef thisObj);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef ctor);
     GateRef ToLength(GateRef receiver);
@@ -854,7 +852,8 @@ public:
     static MachineType GetMachineTypeFromVariableType(VariableType type);
 
     // Opcode with control and depend inputs from label and value inputs args
-    GateRef BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args);
+    GateRef BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args,
+                                 std::vector<GateRef> frameStates = {});
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>

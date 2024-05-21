@@ -31,19 +31,19 @@ Mutex::Mutex(bool is_init) : mutex_()
 
 Mutex::~Mutex()
 {
-    [[maybe_unused]]int rc = pthread_mutex_destroy(&mutex_);
+    [[maybe_unused]] int rc = pthread_mutex_destroy(&mutex_);
     FATAL_IF_ERROR("pthread_mutex_destroy", rc);
 }
 
 void Mutex::Init(pthread_mutexattr_t *attrs)
 {
-    [[maybe_unused]]int rc = pthread_mutex_init(&mutex_, attrs);
+    [[maybe_unused]] int rc = pthread_mutex_init(&mutex_, attrs);
     FATAL_IF_ERROR("pthread_mutex_init", rc);
 }
 
 void Mutex::Lock()
 {
-    [[maybe_unused]]int rc = pthread_mutex_lock(&mutex_);
+    [[maybe_unused]] int rc = pthread_mutex_lock(&mutex_);
     FATAL_IF_ERROR("pthread_mutex_lock", rc);
 }
 
@@ -61,7 +61,7 @@ bool Mutex::TryLock()
 
 void Mutex::Unlock()
 {
-    [[maybe_unused]]int rc = pthread_mutex_unlock(&mutex_);
+    [[maybe_unused]] int rc = pthread_mutex_unlock(&mutex_);
     FATAL_IF_ERROR("pthread_mutex_unlock", rc);
 }
 
@@ -75,25 +75,25 @@ RecursiveMutex::RecursiveMutex() : Mutex(false)
 
 RWLock::RWLock() : rwlock_()
 {
-    [[maybe_unused]]int rc = pthread_rwlock_init(&rwlock_, nullptr);
+    [[maybe_unused]] int rc = pthread_rwlock_init(&rwlock_, nullptr);
     FATAL_IF_ERROR("pthread_rwlock_init", rc);
 }
 
 RWLock::~RWLock()
 {
-    [[maybe_unused]]int rc = pthread_rwlock_destroy(&rwlock_);
+    [[maybe_unused]] int rc = pthread_rwlock_destroy(&rwlock_);
     FATAL_IF_ERROR("pthread_rwlock_destroy", rc);
 }
 
 void RWLock::ReadLock()
 {
-    [[maybe_unused]]int rc = pthread_rwlock_rdlock(&rwlock_);
+    [[maybe_unused]] int rc = pthread_rwlock_rdlock(&rwlock_);
     FATAL_IF_ERROR("pthread_rwlock_rdlock", rc);
 }
 
 void RWLock::WriteLock()
 {
-    [[maybe_unused]]int rc = pthread_rwlock_wrlock(&rwlock_);
+    [[maybe_unused]] int rc = pthread_rwlock_wrlock(&rwlock_);
     FATAL_IF_ERROR("pthread_rwlock_wrlock", rc);
 }
 
@@ -123,37 +123,37 @@ bool RWLock::TryWriteLock()
 
 void RWLock::Unlock()
 {
-    [[maybe_unused]]int rc = pthread_rwlock_unlock(&rwlock_);
+    [[maybe_unused]] int rc = pthread_rwlock_unlock(&rwlock_);
     FATAL_IF_ERROR("pthread_rwlock_unlock", rc);
 }
 
 ConditionVariable::ConditionVariable() : cond_()
 {
-    [[maybe_unused]]int rc = pthread_cond_init(&cond_, nullptr);
+    [[maybe_unused]] int rc = pthread_cond_init(&cond_, nullptr);
     FATAL_IF_ERROR("pthread_cond_init", rc);
 }
 
 ConditionVariable::~ConditionVariable()
 {
-    [[maybe_unused]]int rc = pthread_cond_destroy(&cond_);
+    [[maybe_unused]] int rc = pthread_cond_destroy(&cond_);
     FATAL_IF_ERROR("pthread_cond_destroy", rc);
 }
 
 void ConditionVariable::Signal()
 {
-    [[maybe_unused]]int rc = pthread_cond_signal(&cond_);
+    [[maybe_unused]] int rc = pthread_cond_signal(&cond_);
     FATAL_IF_ERROR("pthread_cond_signal", rc);
 }
 
 void ConditionVariable::SignalAll()
 {
-    [[maybe_unused]]int rc = pthread_cond_broadcast(&cond_);
+    [[maybe_unused]] int rc = pthread_cond_broadcast(&cond_);
     FATAL_IF_ERROR("pthread_cond_broadcast", rc);
 }
 
 void ConditionVariable::Wait(Mutex *mutex)
 {
-    [[maybe_unused]]int rc = pthread_cond_wait(&cond_, &mutex->mutex_);
+    [[maybe_unused]] int rc = pthread_cond_wait(&cond_, &mutex->mutex_);
     FATAL_IF_ERROR("pthread_cond_wait", rc);
 }
 

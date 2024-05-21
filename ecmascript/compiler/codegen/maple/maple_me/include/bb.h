@@ -50,7 +50,6 @@ enum BBAttr : uint32 {
     kBBAttrIsJSCatch = utils::bit_field_v<6>,
     kBBAttrIsJSFinally = utils::bit_field_v<7>,
     kBBAttrIsCatch = utils::bit_field_v<8>,
-    kBBAttrIsJavaFinally = utils::bit_field_v<9>,
     kBBAttrArtificial = utils::bit_field_v<10>,
     kBBAttrIsInLoop = utils::bit_field_v<11>,
     kBBAttrIsInLoopForEA = utils::bit_field_v<12>,

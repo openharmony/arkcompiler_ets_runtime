@@ -92,7 +92,10 @@ public:
                       expected);
             JSNApi::DestroyJSVM(ecmaVm2);
         });
-        t1.join();
+        {
+            ThreadSuspensionScope suspensionScope(thread);
+            t1.join();
+        }
         std::remove(fileName.c_str());
     }
 
@@ -254,7 +257,10 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
         EcmaVM *ecmaVm1 = JSNApi::CreateEcmaVM(options1);
         JSNApi::DestroyJSVM(ecmaVm1);
     });
-    t1.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        t1.join();
+    }
 
     // create EcmaVM use builtins deserialzie
     std::thread t2([&]() {
@@ -281,7 +287,10 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
         });
         JSNApi::DestroyJSVM(ecmaVm2);
     });
-    t2.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        t2.join();
+    }
     std::remove(fileName.c_str());
 }
 

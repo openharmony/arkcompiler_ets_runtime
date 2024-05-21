@@ -2285,6 +2285,21 @@ DEF_CALL_SIGNATURE(MarkingBarrier)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(SharedGCMarkingBarrier)
+{
+    // 2 : 2 input parameters
+    CallSignature index("SharedGCMarkingBarrier", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = index;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(StoreBarrier)
 {
     // 4 : 4 input parameters

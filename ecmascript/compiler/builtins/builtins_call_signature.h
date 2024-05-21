@@ -138,7 +138,8 @@ namespace panda::ecmascript::kungfu {
     V(PrototypeApply,  Function,  Undefined())
 
 #define BUILTINS_WITH_NUMBER_STUB_BUILDER(V)        \
-    V(ParseFloat,      Number,    Undefined())
+    V(ParseFloat,      Number,    Undefined())      \
+    V(ToString,        Number,    Undefined())
 
 #define BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)    \
     V(Reverse,         TypedArray,  Undefined())    \

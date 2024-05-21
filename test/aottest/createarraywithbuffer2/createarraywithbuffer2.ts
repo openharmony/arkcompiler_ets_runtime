@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,6 +13,27 @@
  * limitations under the License.
  */
 
-"ALjava_2Flang_2FObject_3B",
-"ALjava_2Flang_2FClass_3B",
-"ALjava_2Flang_2FString_3B"
+function basePullAll(array) {
+    return array;
+}
+
+function pullAll(array, values) {
+    return (array && array.length && values && values.length)
+      ? basePullAll(array, values)
+      : array;
+}
+
+function pullAll_Test() {
+    const source = ['a', 'b', 'c', 'a', 'b', 'c']
+    let result = null;
+    for (let i = 0; i < 10; i++) {
+        result = pullAll(source, ['a', 'c']);
+    }
+    print(`done`)
+}
+
+function lodash_Array_Test() {
+    pullAll_Test()
+}
+
+lodash_Array_Test()

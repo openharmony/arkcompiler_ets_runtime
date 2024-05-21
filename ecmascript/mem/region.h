@@ -222,9 +222,11 @@ public:
     void AtomicInsertLocalToShareRSet(uintptr_t addr);
     void ClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
+    void AtomicClearSweepingLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     template <typename Visitor>
     void AtomicIterateAllLocalToShareBits(Visitor visitor);
     void DeleteLocalToShareRSet();
+    void DeleteSweepingLocalToShareRSet();
     // Cross region remembered set
     void InsertCrossRegionRSet(uintptr_t addr);
     void AtomicInsertCrossRegionRSet(uintptr_t addr);
@@ -243,9 +245,9 @@ public:
     void ClearOldToNewRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteOldToNewRSet();
 
-    void AtomicClearSweepingRSetInRange(uintptr_t start, uintptr_t end);
-    void ClearSweepingRSetInRange(uintptr_t start, uintptr_t end);
-    void DeleteSweepingRSet();
+    void AtomicClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end);
+    void ClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end);
+    void DeleteSweepingOldToNewRSet();
     template <typename Visitor>
     void AtomicIterateAllSweepingRSetBits(Visitor visitor);
     template <typename Visitor>
@@ -591,18 +593,25 @@ public:
         snapshotData_ = value;
     }
 
-    void SwapRSetForConcurrentSweeping()
+    void SwapOldToNewRSetForCS()
     {
-        sweepingRSet_ = packedData_.oldToNewSet_;
+        sweepingOldToNewRSet_ = packedData_.oldToNewSet_;
         packedData_.oldToNewSet_ = nullptr;
     }
 
+    void SwapLocalToShareRSetForCS()
+    {
+        sweepingLocalToShareRSet_ = packedData_.localToShareSet_;
+        packedData_.localToShareSet_ = nullptr;
+    }
+
     // should call in js-thread
-    void MergeRSetForConcurrentSweeping();
+    void MergeOldToNewRSetForCS();
+    void MergeLocalToShareRSetForCS();
 
     struct alignas(JSTaggedValue::TaggedTypeSize()) PackedPtr : public base::AlignedPointer {
         uint8_t spaceFlag_;
-        uint16_t  gcFlags_;
+        uint16_t gcFlags_;
     };
 
     struct PackedData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
@@ -698,7 +707,8 @@ private:
     Region *prev_ {nullptr};
 
     RememberedSet *crossRegionSet_ {nullptr};
-    RememberedSet *sweepingRSet_ {nullptr};
+    RememberedSet *sweepingOldToNewRSet_ {nullptr};
+    RememberedSet *sweepingLocalToShareRSet_ {nullptr};
     Span<FreeObjectSet *> freeObjectSets_;
     Mutex *lock_ {nullptr};
     uint64_t wasted_;
