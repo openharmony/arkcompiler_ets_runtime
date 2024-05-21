@@ -37,6 +37,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/module/module_path_helper.h"
@@ -192,7 +193,10 @@ EcmaContext::~EcmaContext()
     }
     handleStorageNodes_.clear();
     currentHandleStorageIndex_ = -1;
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     handleScopeCount_ = 0;
+    primitiveScopeCount_ = 0;
+#endif
     handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
 
     for (auto n : primitiveStorageNodes_) {
@@ -200,7 +204,6 @@ EcmaContext::~EcmaContext()
     }
     primitiveStorageNodes_.clear();
     currentPrimitiveStorageIndex_ = -1;
-    primitiveScopeCount_ = 0;
     primitiveScopeStorageNext_ = primitiveScopeStorageEnd_ = nullptr;
 
     if (vm_->IsEnableBaselineJit() || vm_->IsEnableFastJit()) {
@@ -1199,5 +1202,27 @@ void EcmaContext::RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle)
     if (sustainingJSHandleList_) {
         sustainingJSHandleList_->RemoveSustainingJSHandle(sustainingHandle);
     }
+}
+
+void EcmaContext::ClearKeptObjects()
+{
+    if (LIKELY(GetGlobalEnv()->GetTaggedWeakRefKeepObjects().IsUndefined())) {
+        return;
+    }
+    GetGlobalEnv()->SetWeakRefKeepObjects(thread_, JSTaggedValue::Undefined());
+}
+
+void EcmaContext::AddToKeptObjects(JSHandle<JSTaggedValue> value)
+{
+    JSHandle<GlobalEnv> globalEnv = GetGlobalEnv();
+    JSHandle<LinkedHashSet> linkedSet;
+    if (globalEnv->GetWeakRefKeepObjects()->IsUndefined()) {
+        linkedSet = LinkedHashSet::Create(thread_);
+    } else {
+        linkedSet = JSHandle<LinkedHashSet>(thread_,
+            LinkedHashSet::Cast(globalEnv->GetWeakRefKeepObjects()->GetTaggedObject()));
+    }
+    linkedSet = LinkedHashSet::Add(thread_, linkedSet, value);
+    globalEnv->SetWeakRefKeepObjects(thread_, linkedSet);
 }
 }  // namespace panda::ecmascript

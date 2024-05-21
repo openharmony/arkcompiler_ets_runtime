@@ -917,10 +917,6 @@ protected:
     inline LocalScope(const EcmaVM *vm, JSTaggedType value);
 
 private:
-    void OpenLocalScope(EcmaContext *context);
-    void OpenPrimitiveScope(EcmaContext *context);
-    void CloseLocalScope(EcmaContext *context);
-    void ClosePrimitiveScope(EcmaContext *context);
     void *prevNext_ = nullptr;
     void *prevEnd_ = nullptr;
     int prevHandleStorageIndex_ {-1};

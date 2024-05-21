@@ -1513,7 +1513,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, uintptr_t value)
 
     thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    vm->GetHeap()->ClearKeptObjects();
+    thread->GetCurrentEcmaContext()->ClearKeptObjects();
     return true;
 }
 
@@ -1537,7 +1537,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
 
     thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    vm->GetHeap()->ClearKeptObjects();
+    thread->GetCurrentEcmaContext()->ClearKeptObjects();
     return true;
 }
 
@@ -1562,7 +1562,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, uintptr_t reason)
 
     thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    vm->GetHeap()->ClearKeptObjects();
+    thread->GetCurrentEcmaContext()->ClearKeptObjects();
     return true;
 }
 
@@ -1587,7 +1587,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
 
     thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    vm->GetHeap()->ClearKeptObjects();
+    thread->GetCurrentEcmaContext()->ClearKeptObjects();
     return true;
 }
 
@@ -1871,41 +1871,45 @@ LocalScope::LocalScope(const EcmaVM *vm) : thread_(vm->GetJSThread())
 {
     // Only get handle ptr here. Do not need to swtich state.
     auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
-    OpenLocalScope(context);
-    OpenPrimitiveScope(context);
-}
-
-void LocalScope::OpenLocalScope(EcmaContext *context)
-{
     prevNext_ = context->GetHandleScopeStorageNext();
     prevEnd_ = context->GetHandleScopeStorageEnd();
     prevHandleStorageIndex_ = context->GetCurrentHandleStorageIndex();
-    context->HandleScopeCountAdd();
-}
 
-void LocalScope::OpenPrimitiveScope(EcmaContext *context)
-{
     prevPrimitiveNext_ = context->GetPrimitiveScopeStorageNext();
     prevPrimitiveEnd_ = context->GetPrimitiveScopeStorageEnd();
     prevPrimitiveStorageIndex_ = context->GetCurrentPrimitiveStorageIndex();
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+    context->HandleScopeCountAdd();
     context->PrimitiveScopeCountAdd();
+#endif
 }
 
 LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJSThread())
 {
     ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
-    auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
     // Simply reserve a slot on the handlescope. The escaped handle will still be retained in this slot.
     ecmascript::EcmaHandleScope::NewHandle(reinterpret_cast<JSThread *>(thread_), value);
-    OpenLocalScope(context);
-    OpenPrimitiveScope(context);
+    auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
+    prevNext_ = context->GetHandleScopeStorageNext();
+    prevEnd_ = context->GetHandleScopeStorageEnd();
+    prevHandleStorageIndex_ = context->GetCurrentHandleStorageIndex();
+
+    prevPrimitiveNext_ = context->GetPrimitiveScopeStorageNext();
+    prevPrimitiveEnd_ = context->GetPrimitiveScopeStorageEnd();
+    prevPrimitiveStorageIndex_ = context->GetCurrentPrimitiveStorageIndex();
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+    context->HandleScopeCountAdd();
+    context->PrimitiveScopeCountAdd();
+#endif
 }
 
 LocalScope::~LocalScope()
 {
     auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     context->HandleScopeCountDec();
     context->PrimitiveScopeCountDec();
+#endif
     context->SetHandleScopeStorageNext(static_cast<JSTaggedType *>(prevNext_));
     context->SetPrimitiveScopeStorageNext(static_cast<JSTaggedType *>(prevPrimitiveNext_));
     bool handleScopeNeedShrink = (context->GetHandleScopeStorageEnd() != prevEnd_);
@@ -1923,26 +1927,6 @@ LocalScope::~LocalScope()
             context->SetPrimitiveScopeStorageEnd(static_cast<JSTaggedType *>(prevPrimitiveEnd_));
             context->ShrinkPrimitiveStorage(prevPrimitiveStorageIndex_);
         }
-    }
-}
-
-void LocalScope::CloseLocalScope(EcmaContext *context)
-{
-    context->HandleScopeCountDec();
-    context->SetHandleScopeStorageNext(static_cast<JSTaggedType *>(prevNext_));
-    if (context->GetHandleScopeStorageEnd() != prevEnd_) {
-        context->SetHandleScopeStorageEnd(static_cast<JSTaggedType *>(prevEnd_));
-        context->ShrinkHandleStorage(prevHandleStorageIndex_);
-    }
-}
-
-void LocalScope::ClosePrimitiveScope(EcmaContext *context)
-{
-    context->PrimitiveScopeCountDec();
-    context->SetPrimitiveScopeStorageNext(static_cast<JSTaggedType *>(prevPrimitiveNext_));
-    if (context->GetPrimitiveScopeStorageEnd() != prevPrimitiveEnd_) {
-        context->SetPrimitiveScopeStorageEnd(static_cast<JSTaggedType *>(prevPrimitiveEnd_));
-        context->ShrinkPrimitiveStorage(prevPrimitiveStorageIndex_);
     }
 }
 
@@ -2976,7 +2960,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
-    vm->GetHeap()->ClearKeptObjects();
+    thread->GetCurrentEcmaContext()->ClearKeptObjects();
     vm->GetJsDebuggerManager()->NotifyReturnNative();
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
@@ -3025,7 +3009,7 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
             result = JSFunction::Call(info);
         }
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Hole(vm));
-        vm->GetHeap()->ClearKeptObjects();
+        thread->GetCurrentEcmaContext()->ClearKeptObjects();
         if (dm->IsMixedDebugEnabled()) {
             dm->NotifyReturnNative();
         }

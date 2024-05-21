@@ -1114,8 +1114,6 @@ public:
     }
 #endif
     void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
-    void AddToKeptObjects(JSHandle<JSTaggedValue> value) const;
-    void ClearKeptObjects() const;
 
     // add allocationInspector to each space
     void AddAllocationInspectorToAllSpaces(AllocationInspector *inspector);
