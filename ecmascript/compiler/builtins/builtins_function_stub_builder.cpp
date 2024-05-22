@@ -88,7 +88,7 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                         GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
                         GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
                         GateRef length = TaggedGetInt(result);
-                        GateRef argsLength = MakeArgListWithHole(glue, elements, length);
+                        GateRef argsLength = MakeArgListWithHole(elements, length);
                         GateRef elementArgv = PtrAdd(elements, IntPtr(TaggedArray::DATA_OFFSET));
                         res->WriteVariable(JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
                             JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg }));
@@ -97,7 +97,7 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                     Bind(&taggedNotStableJsArg);
                     {
                         GateRef length = GetArrayLength(arrayObj);
-                        GateRef argsLength = MakeArgListWithHole(glue, elements, length);
+                        GateRef argsLength = MakeArgListWithHole(elements, length);
                         GateRef elementArgv = PtrAdd(elements, IntPtr(TaggedArray::DATA_OFFSET));
                         res->WriteVariable(JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
                             JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg }));
@@ -185,7 +185,10 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
             BRANCH(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
             Bind(&targetIsStableJSArray);
             {
-                res = GetElementsArray(arrayObj);
+                arrayObj = GetElementsArray(arrayObj);
+                DEFVARIABLE(length, VariableType::INT32(), GetLengthOfTaggedArray(arrayObj));
+                res = CallRuntime(glue, RTSTUB_ID(CopyArray),
+                    { arrayObj, IntToTaggedInt(*length), IntToTaggedInt(*length) });
                 Label isMutantTaggedArray(env);
                 BRANCH(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
                 Bind(&isMutantTaggedArray);
@@ -232,7 +235,7 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
     return ret;
 }
 
-GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef glue, GateRef argv, GateRef length)
+GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef argv, GateRef length)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -260,26 +263,7 @@ GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef glue, GateRef a
     }
     Bind(&lengthLessThanArgsLength);
     {
-        Label loopHead(env);
-        Label loopEnd(env);
-        Label targetIsHole(env);
-        Label targetNotHole(env);
-        BRANCH(Int32UnsignedLessThan(*i, *res), &loopHead, &exit);
-        LoopBegin(&loopHead);
-        {
-            GateRef value = GetValueFromTaggedArray(argv, *i);
-            BRANCH(TaggedIsHole(value), &targetIsHole, &targetNotHole);
-            Bind(&targetIsHole);
-            {
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, argv, *i, Undefined());
-                Jump(&targetNotHole);
-            }
-            Bind(&targetNotHole);
-            i = Int32Add(*i, Int32(1));
-            BRANCH(Int32UnsignedLessThan(*i, *res), &loopEnd, &exit);
-        }
-        Bind(&loopEnd);
-        LoopEnd(&loopHead);
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *res;

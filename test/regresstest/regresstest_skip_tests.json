@@ -1769,7 +1769,6 @@
         "mjsunit/object-literal-gc.js",
         "mjsunit/array-bounds-check-removal.js",
         "mjsunit/whitespaces8.js",
-        "mjsunit/unbox-double-arrays.js",
         "mjsunit/whitespaces2.js",
         "mjsunit/function-var.js",
         "mjsunit/icu-date-to-string.js",
