@@ -221,6 +221,7 @@ group("ark_aot_ts_test") {
     "pgo_objectliteral_operation",
     "pgo_call_deopt_js",
     "pgo_call_recursive_js",
+    "pgo_char_to_string_deopt",
     "pgo_on_heap",
     "pgo_store_deopt",
     "pgo_track_type",

@@ -563,6 +563,7 @@ public:
     uint32_t GetStringIdFromLdaStrGate(GateRef gate);
     bool IsIfOrSwitchRelated(GateRef gate) const;
     uint32_t GetConstpoolId(GateRef gate) const;
+    GateRef GetFrameValue(GateRef gate);
 
     GateRef GetCircuitRoot() const
     {

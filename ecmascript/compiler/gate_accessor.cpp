@@ -1949,6 +1949,12 @@ uint32_t GateAccessor::GetConstpoolId(GateRef gate) const
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
+GateRef GateAccessor::GetFrameValue(GateRef gate)
+{
+    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
+    return GetValueIn(gate, 1);
+}
+
 TypedBinOp GateAccessor::GetRevCompareOpForTypedBinOp(TypedBinOp op)
 {
     switch (op) {
