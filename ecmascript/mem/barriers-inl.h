@@ -56,15 +56,12 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     }
 }
 
-/* static */
-// CODECHECK-NOLINTNEXTLINE(C_RULE_ID_COMMENT_LOCATION)
-// default value for need_write_barrier is true
-template<bool need_write_barrier>
+template<bool needWriteBarrier>
 inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
     // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
-    if (need_write_barrier) {
+    if (needWriteBarrier) {
         WriteBarrier(thread, obj, offset, value);
     }
 }
@@ -78,8 +75,8 @@ inline void Barriers::SynchronizedSetClass(const JSThread *thread, void *obj, JS
 inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
                                             bool isPrimitive)
 {
-    reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)
-    ->store(value, std::memory_order_release);
+    reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)->store(value,
+        std::memory_order_release);
     if (!isPrimitive) {
         WriteBarrier(thread, obj, offset, value);
     }

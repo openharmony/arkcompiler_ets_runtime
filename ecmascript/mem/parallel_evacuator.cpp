@@ -108,7 +108,7 @@ void ParallelEvacuator::EvacuateSpace()
     }
     {
         GCStats::Scope sp2(GCStats::Scope::ScopeId::EvacuateRegion, heap_->GetEcmaVM()->GetEcmaGCStats());
-        EvacuateSpace(allocator_, 0, true);
+        EvacuateSpace(allocator_, MAIN_THREAD_INDEX, true);
     }
 
     {
@@ -362,11 +362,11 @@ void ParallelEvacuator::UpdateWeakReference()
     UpdateRecordWeakReference();
     bool isFullMark = heap_->IsConcurrentFullMark();
     bool isEdenMark = heap_->IsEdenMark();
-    WeakRootVisitor gcUpdateWeak = [isFullMark, isEdenMark](TaggedObject *header) {
+    WeakRootVisitor gcUpdateWeak = [isFullMark, isEdenMark](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
-        if (!objectRegion) {
+        if (UNLIKELY(objectRegion == nullptr)) {
             LOG_GC(ERROR) << "PartialGC updateWeakReference: region is nullptr, header is " << header;
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
         // The weak object in shared heap is always alive during partialGC.
         if (objectRegion->InSharedHeap()) {
@@ -380,7 +380,7 @@ void ParallelEvacuator::UpdateWeakReference()
             if (markWord.IsForwardingAddress()) {
                 return markWord.ToForwardingAddress();
             }
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
         if (objectRegion->InGeneralNewSpaceOrCSet()) {
             if (objectRegion->InNewToNewSet()) {
@@ -393,11 +393,11 @@ void ParallelEvacuator::UpdateWeakReference()
                     return markWord.ToForwardingAddress();
                 }
             }
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
         if (isFullMark) {
             if (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(header)) {
-                return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+                return nullptr;
             }
         }
         return header;

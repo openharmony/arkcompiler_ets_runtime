@@ -436,5 +436,10 @@ inline void Region::DeleteSweepingOldToNewRSet()
         sweepingOldToNewRSet_ = nullptr;
     }
 }
+
+inline uint8_t Region::GetRegionSpaceFlag()
+{
+    return packedData_.flags_.spaceFlag_;
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_REGION_INL_H

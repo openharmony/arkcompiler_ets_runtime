@@ -169,7 +169,7 @@ void PartialGC::ProcessNativeDelete()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessNativeDelete");
     TRACE_GC(GCStats::Scope::ScopeId::ClearNativeObject, heap_->GetEcmaVM()->GetEcmaGCStats());
-    WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
+    WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         ASSERT(!objectRegion->InSharedHeap());
         if (heap_->IsEdenMark() && !objectRegion->InEdenSpace()) {
@@ -179,7 +179,7 @@ void PartialGC::ProcessNativeDelete()
             return header;
         }
         if (!objectRegion->Test(header)) {
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
         return header;
     };
