@@ -241,7 +241,7 @@ void EcmaVM::PostFork()
     }
     ResetPGOProfiler();
 
-    bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
+    bool jitEscapeDisable = ohos::JitTools::GetJitEscapeEanble();
     if (jitEscapeDisable || !JSNApi::IsJitEscape()) {
         if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName)) {
             bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
@@ -358,10 +358,10 @@ void EcmaVM::EnableJit()
     options_.SetEnableProfileDump(profileNeedDump);
 
     GetJSThread()->SwitchJitProfileStubs();
-    bool jitEnableLitecg = panda::ecmascript::ohos::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
+    bool jitEnableLitecg = ohos::JitTools::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
     LOG_JIT(INFO) << "jit enable litecg: " << jitEnableLitecg;
     options_.SetCompilerEnableLiteCG(jitEnableLitecg);
-    uint8_t jitCallThreshold = panda::ecmascript::ohos::GetJitCallThreshold(options_.GetJitCallThreshold());
+    uint8_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options_.GetJitCallThreshold());
     LOG_JIT(INFO) << "jit call threshold: " << std::to_string(jitCallThreshold);
     options_.SetJitCallThreshold(jitCallThreshold);
 }
