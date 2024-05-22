@@ -69,6 +69,9 @@ static size_t g_threshold = OHOS::system::GetUintParameter<size_t>("persist.dfx.
 static uint64_t g_lastHeapDumpTime = 0;
 static bool g_debugLeak = OHOS::system::GetBoolParameter("debug.dfx.tags.enableleak", false);
 static constexpr uint64_t HEAP_DUMP_REPORT_INTERVAL = 24 * 3600 * 1000;
+static bool g_betaVersion = OHOS::system::GetParameter("const.logsystem.versiontype", "unknown") == "beta";
+static bool g_developMode = (OHOS::system::GetParameter("persist.hiview.leak_detector", "unknown") == "enable") ||
+                            (OHOS::system::GetParameter("persist.hiview.leak_detector", "unknown") == "true");
 #endif
 
 namespace panda::ecmascript {
@@ -1009,7 +1012,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     ProcessGCListeners();
 
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-    if (!hasOOMDump_) {
+    if (!hasOOMDump_ && (g_betaVersion || g_developMode)) {
         ThresholdReachedDump();
     }
 #endif
@@ -2217,6 +2220,15 @@ uint64_t Heap::GetCurrentTickMillseconds()
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
     std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+void Heap::SetJsDumpThresholds(size_t thresholds) const
+{
+    if (thresholds < MIN_JSDUMP_THRESHOLDS || thresholds > MAX_JSDUMP_THRESHOLDS) {
+        LOG_GC(INFO) << "SetJsDumpThresholds thresholds is invaild" << thresholds;
+        return;
+    }
+    g_threshold = thresholds;
 }
 
 void Heap::ThresholdReachedDump()
