@@ -427,11 +427,23 @@ ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTagge
         }
         return res;
     }
-    JSTaggedNumber xNumber = ToNumber(thread, x);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-    JSTaggedNumber yNumber = ToNumber(thread, y);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-    return StrictNumberCompare(xNumber.GetNumber(), yNumber.GetNumber());
+    double resultX = 0;
+    double resultY = 0;
+    if (primX->IsNumber()) {
+        resultX = primX->GetNumber();
+    } else {
+        JSTaggedNumber xNumber = ToNumber(thread, x);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+        resultX = xNumber.GetNumber();
+    }
+    if (primY->IsNumber()) {
+        resultY = primY->GetNumber();
+    } else {
+        JSTaggedNumber yNumber = ToNumber(thread, y);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+        resultY = yNumber.GetNumber();
+    }
+    return StrictNumberCompare(resultX, resultY);
 }
 
 bool JSTaggedValue::IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y)
