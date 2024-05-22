@@ -107,10 +107,6 @@ int Main(const int argc, const char **argv)
         LOG_COMPILER(ERROR) << "Cannot Create vm";
         return ERR_FAIL;
     }
-    if (JSNApi::IsAotEscape()) {
-        LOG_COMPILER(ERROR) << " Stop compile AOT because there are more crashes";
-        return ERR_FAIL;
-    }
 
     {
         AOTCompilationEnv aotCompilationEnv(vm);
@@ -128,6 +124,10 @@ int Main(const int argc, const char **argv)
         AotCompilerPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgsMap, profilerDecoder, pandaFileNames);
         if (!cPreprocessor.HandleTargetCompilerMode(cOptions) || !cPreprocessor.HandlePandaFileNames(argc, argv)) {
             return ERR_HELP;
+        }
+        if (JSNApi::IsAotEscape(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
+            LOG_COMPILER(ERROR) << " Stop compile AOT because there are more crashes";
+            return ERR_FAIL;
         }
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
             // no need to compile in partial mode without any ap files.

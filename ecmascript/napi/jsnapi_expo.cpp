@@ -4315,13 +4315,13 @@ bool JSNApi::KeyIsNumber(const char* utf8)
     return true;
 }
 
-bool JSNApi::IsAotEscape()
+bool JSNApi::IsAotEscape(const std::string &pgoRealPath)
 {
     if (CrashInfo::GetAotEscapeDisable()) {
         return false;
     }
     ecmascript::ohos::AotRuntimeInfo aotRuntimeInfo;
-    auto escapeMap = aotRuntimeInfo.CollectCrashSum();
+    auto escapeMap = aotRuntimeInfo.CollectCrashSum(pgoRealPath);
     return escapeMap[ecmascript::ohos::RuntimeInfoType::AOT] >= CrashInfo::GetAotCrashCount() ||
         escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
         escapeMap[ecmascript::ohos::RuntimeInfoType::JS] >= CrashInfo::GetJsCrashCount();
