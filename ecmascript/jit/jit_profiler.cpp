@@ -375,96 +375,145 @@ void JITProfiler::ConvertICByName(int32_t bcOffset, uint32_t slotId, BCType type
 }
 
 void JITProfiler::ConvertICByNameWithHandler(ApEntityId abcId, int32_t bcOffset,
-    JSHClass *hclass, JSTaggedValue secondValue, BCType type)
+                                             JSHClass *hclass,
+                                             JSTaggedValue secondValue, BCType type)
 {
     if (type == BCType::LOAD) {
-        if (secondValue.IsInt()) {
-            auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
-            if (HandlerBase::IsNonExist(handlerInfo)) {
-                return;
-            }
-            if (HandlerBase::IsField(handlerInfo) || HandlerBase::IsAccessor(handlerInfo)) {
-                AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass);
-            }
-            AddBuiltinsInfoByNameInInstance(abcId, bcOffset, hclass);
-        } else if (secondValue.IsPrototypeHandler()) {
-            auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
-            auto cellValue = prototypeHandler->GetProtoCell();
-            if (cellValue.IsUndefined()) {
-                return;
-            }
-            ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
-            if (cell->GetHasChanged()) {
-                return;
-            }
-            auto holder = prototypeHandler->GetHolder();
-            auto holderHClass = holder.GetTaggedObject()->GetClass();
-            JSTaggedValue handlerInfoVal = prototypeHandler->GetHandlerInfo();
-            if (!handlerInfoVal.IsInt()) {
-                return;
-            }
-            auto handlerInfo = static_cast<uint32_t>(handlerInfoVal.GetInt());
-            if (HandlerBase::IsNonExist(handlerInfo)) {
-                return;
-            }
-            auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
-            if (!AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId)) {
-                return AddBuiltinsInfoByNameInProt(abcId, bcOffset, hclass, holderHClass);
-            }
-        }
+        HandleLoadType(abcId, bcOffset, hclass, secondValue);
         // LoadGlobal
         return;
     }
+    HandleOtherTypes(abcId, bcOffset, hclass, secondValue);
+}
+
+void JITProfiler::HandleLoadType(ApEntityId &abcId, int32_t &bcOffset,
+                                 JSHClass *hclass, JSTaggedValue &secondValue)
+{
+    if (secondValue.IsInt()) {
+        HandleLoadTypeInt(abcId, bcOffset, hclass, secondValue);
+    } else if (secondValue.IsPrototypeHandler()) {
+        HandleLoadTypePrototypeHandler(abcId, bcOffset, hclass, secondValue);
+    }
+}
+
+void JITProfiler::HandleLoadTypeInt(ApEntityId &abcId, int32_t &bcOffset,
+                                    JSHClass *hclass, JSTaggedValue &secondValue)
+{
+    auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
+    if (HandlerBase::IsNonExist(handlerInfo)) {
+        return;
+    }
+    if (HandlerBase::IsField(handlerInfo) || HandlerBase::IsAccessor(handlerInfo)) {
+        AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass);
+    }
+    AddBuiltinsInfoByNameInInstance(abcId, bcOffset, hclass);
+}
+
+void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                                 JSHClass *hclass, JSTaggedValue &secondValue)
+{
+    auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
+    auto cellValue = prototypeHandler->GetProtoCell();
+    if (cellValue.IsUndefined()) {
+        return;
+    }
+    ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
+    if (cell->GetHasChanged()) {
+        return;
+    }
+    auto holder = prototypeHandler->GetHolder();
+    auto holderHClass = holder.GetTaggedObject()->GetClass();
+    JSTaggedValue handlerInfoVal = prototypeHandler->GetHandlerInfo();
+    if (!handlerInfoVal.IsInt()) {
+        return;
+    }
+    auto handlerInfo = static_cast<uint32_t>(handlerInfoVal.GetInt());
+    if (HandlerBase::IsNonExist(handlerInfo)) {
+        return;
+    }
+    auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
+    if (!AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId)) {
+        return AddBuiltinsInfoByNameInProt(abcId, bcOffset, hclass, holderHClass);
+    }
+}
+
+void JITProfiler::HandleOtherTypes(ApEntityId &abcId, int32_t &bcOffset,
+                                   JSHClass *hclass, JSTaggedValue &secondValue)
+{
     if (secondValue.IsInt()) {
         AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass);
     } else if (secondValue.IsTransitionHandler()) {
-        auto transitionHandler = TransitionHandler::Cast(secondValue.GetTaggedObject());
-        auto transitionHClassVal = transitionHandler->GetTransitionHClass();
-        if (transitionHClassVal.IsJSHClass()) {
-            auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
-            AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
-        }
+        HandleTransitionHandler(abcId, bcOffset, hclass, secondValue);
     } else if (secondValue.IsTransWithProtoHandler()) {
-        auto transWithProtoHandler = TransWithProtoHandler::Cast(secondValue.GetTaggedObject());
-        auto cellValue = transWithProtoHandler->GetProtoCell();
-        ASSERT(cellValue.IsProtoChangeMarker());
-        ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
-        if (cell->GetHasChanged()) {
-            return;
-        }
-        auto transitionHClassVal = transWithProtoHandler->GetTransitionHClass();
-        if (transitionHClassVal.IsJSHClass()) {
-            auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
-            AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
-        }
+        HandleTransWithProtoHandler(abcId, bcOffset, hclass, secondValue);
     } else if (secondValue.IsPrototypeHandler()) {
-        auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
-        auto cellValue = prototypeHandler->GetProtoCell();
-        if (cellValue.IsUndefined()) {
-            return;
-        }
-        ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
-        if (cell->GetHasChanged()) {
-            return;
-        }
-        auto holder = prototypeHandler->GetHolder();
-        auto holderHClass = holder.GetTaggedObject()->GetClass();
-        auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
-        AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId);
+        HandleOtherTypesPrototypeHandler(abcId, bcOffset, hclass, secondValue);
     } else if (secondValue.IsPropertyBox()) {
         // StoreGlobal
     } else if (secondValue.IsStoreTSHandler()) {
-        StoreTSHandler *storeTSHandler = StoreTSHandler::Cast(secondValue.GetTaggedObject());
-        auto cellValue = storeTSHandler->GetProtoCell();
-        ASSERT(cellValue.IsProtoChangeMarker());
-        ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
-        if (cell->GetHasChanged()) {
-            return;
-        }
-        auto holder = storeTSHandler->GetHolder();
-        auto holderHClass = holder.GetTaggedObject()->GetClass();
-        AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass);
+        HandleStoreTSHandler(abcId, bcOffset, hclass, secondValue);
     }
+}
+
+void JITProfiler::HandleTransitionHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                          JSHClass *hclass, JSTaggedValue &secondValue)
+{
+    auto transitionHandler = TransitionHandler::Cast(secondValue.GetTaggedObject());
+    auto transitionHClassVal = transitionHandler->GetTransitionHClass();
+    if (transitionHClassVal.IsJSHClass()) {
+        auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
+        AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
+    }
+}
+
+void JITProfiler::HandleTransWithProtoHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                              JSHClass *hclass, JSTaggedValue &secondValue)
+{
+    auto transWithProtoHandler = TransWithProtoHandler::Cast(secondValue.GetTaggedObject());
+    auto cellValue = transWithProtoHandler->GetProtoCell();
+    ASSERT(cellValue.IsProtoChangeMarker());
+    ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
+    if (cell->GetHasChanged()) {
+        return;
+    }
+    auto transitionHClassVal = transWithProtoHandler->GetTransitionHClass();
+    if (transitionHClassVal.IsJSHClass()) {
+        auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
+        AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
+    }
+}
+
+void JITProfiler::HandleOtherTypesPrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                                   JSHClass *hclass, JSTaggedValue &secondValue)
+{
+    auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
+    auto cellValue = prototypeHandler->GetProtoCell();
+    if (cellValue.IsUndefined()) {
+        return;
+    }
+    ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
+    if (cell->GetHasChanged()) {
+        return;
+    }
+    auto holder = prototypeHandler->GetHolder();
+    auto holderHClass = holder.GetTaggedObject()->GetClass();
+    auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
+    AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId);
+}
+
+void JITProfiler::HandleStoreTSHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                       JSHClass *hclass, JSTaggedValue &secondValue)
+{
+    StoreTSHandler *storeTSHandler = StoreTSHandler::Cast(secondValue.GetTaggedObject());
+    auto cellValue = storeTSHandler->GetProtoCell();
+    ASSERT(cellValue.IsProtoChangeMarker());
+    ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
+    if (cell->GetHasChanged()) {
+        return;
+    }
+    auto holder = storeTSHandler->GetHolder();
+    auto holderHClass = holder.GetTaggedObject()->GetClass();
+    AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass);
 }
 
 void JITProfiler::ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type)

@@ -658,6 +658,88 @@ void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
     }
 }
 
+Node *HeapSnapshot::HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish)
+{
+    Node* node = nullptr;
+    if (isPrivate_) {
+        node = GeneratePrivateStringNode(size);
+    } else {
+        node = GenerateStringNode(entry, size, isInFinish);
+    }
+    if (node == nullptr) {
+        LOG_ECMA(ERROR) << "string node nullptr";
+    }
+    return node;
+}
+
+Node *HeapSnapshot::HandleFunctionNode(JSTaggedValue &entry, size_t &size, bool &isInFinish)
+{
+    Node* node = GenerateFunctionNode(entry, size, isInFinish);
+    if (node == nullptr) {
+        LOG_ECMA(ERROR) << "function node nullptr";
+    }
+    return node;
+}
+
+Node *HeapSnapshot::HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &isInFinish)
+{
+    Node* node = GenerateObjectNode(entry, size, isInFinish);
+    if (node == nullptr) {
+        LOG_ECMA(ERROR) << "object node nullptr";
+    }
+    return node;
+}
+
+Node *HeapSnapshot::HandleBaseClassNode(size_t size, bool idExist, unsigned int &sequenceId,
+                                        TaggedObject* obj, JSTaggedType &addr)
+{
+    size_t selfSize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
+    size_t nativeSize = 0;
+    if (obj->GetClass()->IsJSNativePointer()) {
+        nativeSize = JSNativePointer::Cast(obj)->GetBindingSize();
+    }
+    Node* node = Node::NewNode(chunk_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
+        selfSize, nativeSize, addr);
+    entryMap_.InsertEntry(node);
+    if (!idExist) {
+        entryIdMap_->InsertId(addr, sequenceId);
+    }
+    InsertNodeUnique(node);
+    ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
+    return node;
+}
+
+CString HeapSnapshot::GeneratePrimitiveNameString(JSTaggedValue &entry)
+{
+    CString primitiveName;
+    if (entry.IsInt()) {
+        primitiveName.append("Int:");
+        if (!isPrivate_) {
+            primitiveName.append(ToCString(entry.GetInt()));
+        }
+    } else if (entry.IsDouble()) {
+        primitiveName.append("Double:");
+        if (!isPrivate_) {
+            primitiveName.append(FloatToCString(entry.GetDouble()));
+        }
+    } else if (entry.IsHole()) {
+        primitiveName.append("Hole");
+    } else if (entry.IsNull()) {
+        primitiveName.append("Null");
+    } else if (entry.IsTrue()) {
+        primitiveName.append("Boolean:true");
+    } else if (entry.IsFalse()) {
+        primitiveName.append("Boolean:false");
+    } else if (entry.IsException()) {
+        primitiveName.append("Exception");
+    } else if (entry.IsUndefined()) {
+        primitiveName.append("Undefined");
+    } else {
+        primitiveName.append("Illegal_Primitive");
+    }
+    return primitiveName;
+}
+
 Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish, bool isSimplify)
 {
     Node *node = nullptr;
@@ -666,29 +748,13 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
             entry.RemoveWeakTag();
         }
         if (entry.IsString()) {
-            if (isPrivate_) {
-                node = GeneratePrivateStringNode(size);
-            } else {
-                node = GenerateStringNode(entry, size, isInFinish);
-            }
-            if (node == nullptr) {
-                LOG_ECMA(ERROR) << "string node nullptr";
-            }
-            return node;
+            return HandleStringNode(entry, size, isInFinish);
         }
         if (entry.IsJSFunction()) {
-            node = GenerateFunctionNode(entry, size, isInFinish);
-            if (node == nullptr) {
-                LOG_ECMA(ERROR) << "function node nullptr";
-            }
-            return node;
+            return HandleFunctionNode(entry, size, isInFinish);
         }
         if (entry.IsOnlyJSObject()) {
-            node = GenerateObjectNode(entry, size, isInFinish);
-            if (node == nullptr) {
-                LOG_ECMA(ERROR) << "function node nullptr";
-            }
-            return node;
+            return HandleObjectNode(entry, size, isInFinish);
         }
         TaggedObject *obj = entry.GetTaggedObject();
         auto *baseClass = obj->GetClass();
@@ -697,59 +763,17 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
             Node *existNode = entryMap_.FindEntry(addr);  // Fast Index
             auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
             if (existNode == nullptr) {
-                size_t selfSize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
-                size_t nativeSize = 0;
-                if (obj->GetClass()->IsJSNativePointer()) {
-                    nativeSize = JSNativePointer::Cast(obj)->GetBindingSize();
-                }
-                node = Node::NewNode(chunk_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
-                    selfSize, nativeSize, addr);
-                entryMap_.InsertEntry(node);
-                if (!idExist) {
-                    entryIdMap_->InsertId(addr, sequenceId);
-                }
-                InsertNodeUnique(node);
-                ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
-                return node;
+                return HandleBaseClassNode(size, idExist, sequenceId, obj, addr);
             } else {
                 existNode->SetLive(true);
                 return existNode;
             }
         }
     } else if (!isSimplify) {
-        CString primitiveName;
-        if (entry.IsInt()) {
-            if (!captureNumericValue_) {
+        if ((entry.IsInt() || entry.IsDouble()) && !captureNumericValue_) {
                 return nullptr;
-            }
-            primitiveName.append("Int:");
-            if (!isPrivate_) {
-                primitiveName.append(ToCString(entry.GetInt()));
-            }
-        } else if (entry.IsDouble()) {
-            if (!captureNumericValue_) {
-                return nullptr;
-            }
-            primitiveName.append("Double:");
-            if (!isPrivate_) {
-                primitiveName.append(FloatToCString(entry.GetDouble()));
-            }
-        } else if (entry.IsHole()) {
-            primitiveName.append("Hole");
-        } else if (entry.IsNull()) {
-            primitiveName.append("Null");
-        } else if (entry.IsTrue()) {
-            primitiveName.append("Boolean:true");
-        } else if (entry.IsFalse()) {
-            primitiveName.append("Boolean:false");
-        } else if (entry.IsException()) {
-            primitiveName.append("Exception");
-        } else if (entry.IsUndefined()) {
-            primitiveName.append("Undefined");
-        } else {
-            primitiveName.append("Illegal_Primitive");
         }
-
+        CString primitiveName = GeneratePrimitiveNameString(entry);
         // A primitive value with tag will be regarded as a pointer
         JSTaggedType addr = entry.GetRawData();
         Node *existNode = entryMap_.FindEntry(addr);
