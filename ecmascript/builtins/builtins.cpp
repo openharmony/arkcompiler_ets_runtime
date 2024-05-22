@@ -3776,7 +3776,7 @@ void Builtins::InitializeNativeModuleError(const JSHandle<GlobalEnv> &env,
     JSHandle<JSObject> nativeModuleErrorPrototype = factory_->NewJSObjectWithInit(objFuncClass);
     JSHandle<JSTaggedValue> nativeModuleErrorPrototypeValue(nativeModuleErrorPrototype);
 
-    //  NativeModuleError.prototype_or_hclass
+    // NativeModuleError.prototype_or_hclass
     JSHandle<JSHClass> nativeModuleErrorHClass =
         factory_->NewEcmaHClass(NativeModuleError::SIZE, JSType::NATIVE_MODULE_ERROR, nativeModuleErrorPrototypeValue);
     nativeModuleErrorHClass->SetPrototype(thread_, JSTaggedValue::Null());
