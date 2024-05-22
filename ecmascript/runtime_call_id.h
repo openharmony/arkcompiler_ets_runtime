@@ -478,6 +478,7 @@ namespace panda::ecmascript {
     V(Global, StartRuntimeStat)               \
     V(Global, StopRuntimeStat)                \
     V(Global, PrintOptStat)                   \
+    V(Global, PrintMegaICStat)                \
     V(Global, PrintFunctionCallStat)          \
     V(Global, CallJsBoundFunction)            \
     V(Global, CallJsProxy)                    \
@@ -1258,6 +1259,7 @@ enum EcmaRuntimeCallerId {
     MEM_ALLOCATE_AND_GC_LIST(MEM_ALLOCATE_AND_GC_ID)
 #define DEF_RUNTIME_ID(name) RUNTIME_ID_##name,
     RUNTIME_STUB_WITH_GC_LIST(DEF_RUNTIME_ID)
+    RUNTIME_STUB_WITH_DFX(DEF_RUNTIME_ID)
 #undef DEF_RUNTIME_ID
     RUNTIME_CALLER_NUMBER,
 };

@@ -826,6 +826,18 @@ JSTaggedValue BuiltinsGlobal::PrintOptStat(EcmaRuntimeCallInfo *msg)
 }
 #endif
 
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+JSTaggedValue BuiltinsGlobal::PrintMegaICStat(EcmaRuntimeCallInfo *msg)
+{
+    JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, PrintMegaICStat);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // start vm runtime stat statistic
+    thread->GetCurrentEcmaContext()->PrintMegaICStat();
+    return JSTaggedValue::Undefined();
+}
+#endif
+
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
 JSTaggedValue BuiltinsGlobal::PrintFunctionCallStat(EcmaRuntimeCallInfo *msg)
 {

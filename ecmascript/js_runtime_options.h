@@ -210,6 +210,7 @@ enum CommandValues {
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
     OPTION_SPLIT_TWO,
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
+    OPTION_COMPILER_ENABLE_MEGA_IC,
     OPTION_COMPILER_BASELINE_PGO,
     OPTION_ASYNC_LOAD_ABC,
     OPTION_ASYNC_LOAD_ABC_TEST,
@@ -459,6 +460,13 @@ public:
         }
     }
 
+    void SetTraceLoadBundleName(std::string bundleName)
+    {
+        if (bundleName != "") {
+            traceLoadBundleName_ = bundleName;
+        }
+    }
+
     void SetMemConfigProperty(std::string configProperty)
     {
         if (configProperty != "") {
@@ -499,6 +507,11 @@ public:
     std::string GetArkBundleName() const
     {
         return arkBundleName_;
+    }
+
+    std::string GetTraceLoadBundleName() const
+    {
+        return traceLoadBundleName_;
     }
 
     bool EnableOptionalLog() const
@@ -1938,6 +1951,22 @@ public:
     {
         return enableJitFastCompile_;
     }
+    
+    void SetEnableMegaIC(bool value)
+    {
+        enableMegaIC_ = value;
+        isMegaICInitialized = true;
+    }
+
+    bool IsEnableMegaIC() const
+    {
+        return enableMegaIC_ && IsEnableJIT();
+    }
+
+    bool IsMegaICInitialized() const
+    {
+        return isMegaICInitialized;
+    }
 
     void SetEnableFrameworkAOT(bool value)
     {
@@ -2100,6 +2129,7 @@ private:
     int32_t deviceThermalLevel_ {0};
     int arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
+    std::string traceLoadBundleName_ = {""};
     size_t heapSize_ = {0};
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
@@ -2228,6 +2258,8 @@ private:
     bool checkPgoVersion_ {false};
     bool enableJitFastCompile_ {false};
     bool enableJitFrame_ {false};
+    bool enableMegaIC_ {false};
+    bool isMegaICInitialized {false};
     bool disableCodeSign_ {true};
     bool enableJitFort_ {true};
     bool enableAsyncCopyToFort_ {true};

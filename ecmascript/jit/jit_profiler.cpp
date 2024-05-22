@@ -438,7 +438,8 @@ void JITProfiler::ConvertICByName(int32_t bcOffset, uint32_t slotId, BCType type
     ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
     JSTaggedValue firstValue = profileTypeInfo_->Get(slotId);
     if (!firstValue.IsHeapObject()) {
-        if (firstValue.IsHole()) {
+        JSTaggedValue secondValue = profileTypeInfo_->Get(slotId + 1);
+        if (firstValue.IsHole() && secondValue.IsString()) {
             // Mega state
             AddObjectInfoWithMega(bcOffset);
         }

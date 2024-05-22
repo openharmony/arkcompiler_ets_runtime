@@ -48,6 +48,8 @@ namespace panda::ecmascript::kungfu {
     V(ToBooleanTrue)                  \
     V(ToBooleanFalse)                 \
     V(GetPropertyByName)              \
+    V(SetPropertyByNameWithMega)      \
+    V(GetPropertyByNameWithMega)      \
     V(DeprecatedGetPropertyByName)    \
     V(SetPropertyByName)              \
     V(DeprecatedSetPropertyByName)    \

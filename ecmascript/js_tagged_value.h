@@ -714,6 +714,7 @@ public:
 
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     inline uint32_t GetKeyHashCode() const;
+    uint32_t GetStringKeyHashCode() const;
     static JSTaggedValue GetSuperBase(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static JSTaggedValue TryCastDoubleToInt32(double d);
 

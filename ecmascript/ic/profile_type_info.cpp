@@ -15,6 +15,12 @@
 
 #include "ecmascript/ic/profile_type_info.h"
 
+#include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/js_function.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/tagged_array-inl.h"
+#include "macros.h"
+
 namespace panda::ecmascript {
 void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
@@ -37,16 +43,43 @@ void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHa
 }
 
 void ProfileTypeAccessor::AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler,
-                                            uint32_t index, JSTaggedValue profileData) const
+                                            uint32_t index, JSTaggedValue profileData,
+                                            JSHandle<JSTaggedValue> keyForMegaIC, MegaICCache::MegaICKind kind) const
 {
     ASSERT(profileTypeInfo_->GetIcSlot(index + 1).IsHole());
     JSHandle<TaggedArray> arr(thread_, profileData);
     const uint32_t step = 2;
     uint32_t newLen = arr->GetLength() + step;
     if (newLen > CACHE_MAX_LEN) {
-        profileTypeInfo_->SetMultiIcSlotLocked(thread_, index, JSTaggedValue::Hole(), index + 1, JSTaggedValue::Hole());
+        if (!enableICMega_ || keyForMegaIC.IsEmpty() || !keyForMegaIC->IsString()) {
+            profileTypeInfo_->SetMultiIcSlotLocked(thread_, index, JSTaggedValue::Hole(), index + 1,
+                                                   JSTaggedValue::Hole());
+            return;
+        }
+        // The keyForMegaIC must be a String to ensure fast subsequent reads; assembly code will access using
+        // String.
+        ASSERT(keyForMegaIC->IsString());
+        ASSERT(kind != MegaICCache::None);
+        MegaICCache *cache = nullptr;
+        if (kind == MegaICCache::Load) {
+            cache = thread_->GetLoadMegaICCache();
+        } else {
+            cache = thread_->GetStoreMegaICCache();
+        }
+
+        uint32_t i = 0;
+        for (; i < arr->GetLength(); i += step) {
+            if (arr->Get(i) == JSTaggedValue::Undefined()) {
+                continue;
+            }
+            cache->Set(JSHClass::Cast(arr->Get(i).GetWeakReferentUnChecked()), keyForMegaIC.GetTaggedValue(),
+                       arr->Get(i + 1), thread_);
+        }
+        profileTypeInfo_->SetMultiIcSlotLocked(thread_, index, JSTaggedValue::Hole(), index + 1,
+                                               keyForMegaIC.GetTaggedValue());
         return;
     }
+
     auto factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> newArr = factory->NewTaggedArray(newLen);
     uint32_t i = 0;
@@ -59,7 +92,9 @@ void ProfileTypeAccessor::AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHa
     profileTypeInfo_->SetMultiIcSlotLocked(thread_, index, newArr.GetTaggedValue(), index + 1, JSTaggedValue::Hole());
 }
 
-void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
+void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler,
+                                               JSHandle<JSTaggedValue> keyForMegaIC,
+                                               MegaICCache::MegaICKind kind) const
 {
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     auto index = slotId_;
@@ -75,7 +110,7 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, J
         return;
     }
     if (!profileData.IsWeak() && profileData.IsTaggedArray()) {  // POLY
-        AddWithoutKeyPoly(hclass, handler, index, profileData);
+        AddWithoutKeyPoly(hclass, handler, index, profileData, keyForMegaIC, kind);
         return;
     }
     // MONO to POLY
@@ -187,7 +222,20 @@ void ProfileTypeAccessor::AddGlobalRecordHandler(JSHandle<JSTaggedValue> handler
     uint32_t index = slotId_;
     profileTypeInfo_->SetIcSlot(thread_, index, handler.GetTaggedValue());
 }
-
+void ProfileTypeAccessor::SetAsMegaForTraceSlowMode([[maybe_unused]] ObjectOperator& op) const
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+        if (op.IsFoundDict()) {
+            SetAsMegaForTrace(JSTaggedValue(ProfileTypeAccessor::MegaState::DICT_MEGA));
+        } else if (!op.IsFound()) {
+            SetAsMegaForTrace(JSTaggedValue(ProfileTypeAccessor::MegaState::NOTFOUND_MEGA));
+        } else {
+            SetAsMega();
+        }
+#else
+        SetAsMega();
+#endif
+}
 void ProfileTypeAccessor::SetAsMega() const
 {
     if (IsGlobalIC(kind_)) {
@@ -195,6 +243,16 @@ void ProfileTypeAccessor::SetAsMega() const
     } else {
         profileTypeInfo_->SetMultiIcSlotLocked(thread_, slotId_,
             JSTaggedValue::Hole(), slotId_ + 1, JSTaggedValue::Hole());
+    }
+}
+
+void ProfileTypeAccessor::SetAsMegaForTrace(JSTaggedValue value) const
+{
+    if (IsGlobalIC(kind_)) {
+        profileTypeInfo_->SetIcSlot(thread_, slotId_, JSTaggedValue::Hole());
+    } else {
+        profileTypeInfo_->SetMultiIcSlotLocked(thread_, slotId_,
+            JSTaggedValue::Hole(), slotId_ + 1, value);
     }
 }
 
@@ -239,10 +297,21 @@ std::string ProfileTypeAccessor::ICStateToString(ProfileTypeAccessor::ICState st
             return "poly";
         case ICState::MEGA:
             return "mega";
+        case ICState::IC_MEGA:
+            return "ic_mega";
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
+    }
+}
+ProfileTypeAccessor::ICState ProfileTypeAccessor::GetMegaState() const
+{
+    auto profileDataSecond = profileTypeInfo_->Get(slotId_ + 1);
+    if (profileDataSecond.IsString()) {
+        return ICState::IC_MEGA;
+    } else {
+        return ICState::MEGA;
     }
 }
 
@@ -254,7 +323,7 @@ ProfileTypeAccessor::ICState ProfileTypeAccessor::GetICState() const
     }
 
     if (profileData.IsHole()) {
-        return ICState::MEGA;
+        return GetMegaState();
     }
 
     switch (kind_) {

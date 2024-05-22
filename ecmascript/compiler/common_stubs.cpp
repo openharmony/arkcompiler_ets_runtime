@@ -28,6 +28,7 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/js_array.h"
@@ -558,6 +559,34 @@ void SetPropertyByNameStubBuilder::GenerateCircuit()
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreObjByName(glue, receiver, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
+}
+
+void GetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef megaStubCache = PtrArgument(3);
+    GateRef prop = TaggedArgument(4);
+    GateRef jsFunc = TaggedArgument(5); // 5 : 6th para
+    GateRef slotId = Int32Argument(6); // 6 : 7th para
+    AccessObjectStubBuilder builder(this, jsFunc);
+    Return(builder.LoadObjByNameWithMega(glue, receiver, megaStubCache, prop, jsFunc, slotId,
+                                         ProfileOperation()));
+}
+
+
+void SetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef value = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef megaStubCache = PtrArgument(4); // 4 : 5th para
+    GateRef prop = TaggedArgument(5); // 5 : 6th para
+    GateRef jsFunc = TaggedArgument(6); // 6 : 7th para
+    GateRef slotId = Int32Argument(7); // 7 : 8th para
+    AccessObjectStubBuilder builder(this, jsFunc);
+    Return(builder.StoreObjByNameWithMega(glue, receiver, value, megaStubCache, prop, jsFunc, slotId,
+                                          ProfileOperation()));
 }
 
 void DeprecatedSetPropertyByNameStubBuilder::GenerateCircuit()

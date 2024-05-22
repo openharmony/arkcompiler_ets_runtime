@@ -405,6 +405,8 @@ private:
     V(LdObjByIndex)                             \
     V(SetPropertyByValueWithOwn)                \
     V(GetPropertyByName)                        \
+    V(SetPropertyByNameWithMega)                \
+    V(GetPropertyByNameWithMega)                \
     V(DeprecatedGetPropertyByName)              \
     V(GetPropertyByIndex)                       \
     V(SetPropertyByIndex)                       \

@@ -2056,6 +2056,16 @@ bool GateAccessor::IsNoBarrier(GateRef gate) const
     return gatePtr->GetBoolMetaData()->GetBool();
 }
 
+bool GateAccessor::TryGetMegaProp(GateRef gate) const
+{
+    const PGORWOpType *k = TryGetPGOType(gate).GetPGORWOpType();
+    if (k->GetCount() > 0) {
+        return k->GetObjectInfo(0).IsMegaStateType();
+    } else {
+        return false;
+    }
+}
+
 uint32_t GateAccessor::GetConstpoolId(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::GET_SHARED_CONSTPOOL);

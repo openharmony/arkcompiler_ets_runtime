@@ -16,8 +16,44 @@
 
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/ic/mega_ic_cache.h"
 
 namespace panda::ecmascript::kungfu {
+template<ICStubType type>
+void ICStubBuilder::NamedICAccessorWithMega(Variable *cachedHandler, Label *tryICHandler)
+{
+    auto env = GetEnvironment();
+    Label receiverIsHeapObject(env);
+    BRANCH_LIKELY(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, slowPath_);
+    Bind(&receiverIsHeapObject);
+    {
+        // This function is only invoked by the JIT, so it is assumed that profiletypeinfo must exist and the first slot
+        // must be a hole, thus no checks are performed
+        Label exit(env);
+        Label find(env);
+        GateRef hclass = LoadHClass(receiver_);
+        GateRef hash = HashFromHclassAndStringKey(glue_, hclass, propKey_);
+        GateRef prop = PtrAdd(megaStubCache_,
+                              PtrMul(ZExtInt32ToPtr(hash), IntPtr(MegaICCache::PropertyKey::GetPropertyKeySize())));
+        GateRef propHclass =
+            Load(VariableType::JS_POINTER(), prop, IntPtr(MegaICCache::PropertyKey::GetHclassOffset()));
+        GateRef propKey = Load(VariableType::JS_ANY(), prop, IntPtr(MegaICCache::PropertyKey::GetKeyOffset()));
+        GateRef hclassIsEqual = IntPtrEqual(hclass, propHclass);
+        GateRef keyIsEqual = IntPtrEqual(propKey_, propKey);
+        // profiling code
+        IncMegaProbeCount(glue_);
+        BRANCH_LIKELY(BitAnd(hclassIsEqual, keyIsEqual), &find, slowPath_);
+        Bind(&find);
+        {
+            cachedHandler->WriteVariable(
+                Load(VariableType::JS_ANY(), prop, IntPtr(MegaICCache::PropertyKey::GetResultsOffset())));
+            // profiling code
+            IncMegaHitCount(glue_);
+            Jump(tryICHandler);
+        }
+    }
+}
+
 template<ICStubType type>
 void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler)
 {
@@ -172,6 +208,23 @@ void ICStubBuilder::LoadICByName(
     }
 }
 
+void ICStubBuilder::LoadICByNameWithMega(Variable *result, Label *tryFastPath, Label *slowPath, Label *success,
+                                         ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label loadWithHandler(env);
+
+    SetLabels(tryFastPath, slowPath, success);
+    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), Undefined());
+    NamedICAccessorWithMega<ICStubType::LOAD>(&cachedHandler, &loadWithHandler);
+    Bind(&loadWithHandler);
+    {
+        GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
+        result->WriteVariable(ret);
+        BRANCH(TaggedIsNotHole(ret), success_, slowPath_);
+    }
+}
+
 void ICStubBuilder::StoreICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success)
 {
     auto env = GetEnvironment();
@@ -189,6 +242,23 @@ void ICStubBuilder::StoreICByName(Variable* result, Label* tryFastPath, Label *s
         BRANCH(TaggedIsHole(ret), slowPath_, success_);
     }
 }
+
+void ICStubBuilder::StoreICByNameWithMega(Variable *result, Label *tryFastPath, Label *slowPath, Label *success)
+{
+    auto env = GetEnvironment();
+    Label storeWithHandler(env);
+
+    SetLabels(tryFastPath, slowPath, success);
+    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), Undefined());
+    NamedICAccessorWithMega<ICStubType::STORE>(&cachedHandler, &storeWithHandler);
+    Bind(&storeWithHandler);
+    {
+        GateRef ret = StoreICWithHandler(glue_, receiver_, receiver_, value_, *cachedHandler, callback_);
+        result->WriteVariable(ret);
+        BRANCH(TaggedIsHole(ret), slowPath_, success_);
+    }
+}
+
 
 void ICStubBuilder::LoadICByValue(
     Variable *result, Label *tryFastPath, Label *slowPath, Label *success, ProfileOperation callback)

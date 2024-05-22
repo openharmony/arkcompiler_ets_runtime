@@ -256,6 +256,48 @@ DEF_CALL_SIGNATURE(DeprecatedSetPropertyByName)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(GetPropertyByNameWithMega)
+{
+    // 7 : 7 input parameters
+    CallSignature getPropertyByName("GetPropertyByNameWithMega", 0, 7, ArgumentsOrder::DEFAULT_ORDER,
+                                    VariableType::JS_ANY());
+    *callSign = getPropertyByName;
+    // 7 : 7 input parameters
+    std::array<VariableType, 7> params = {
+        VariableType::NATIVE_POINTER(), // glue
+        VariableType::JS_ANY(),         // receiver
+        VariableType::INT64(),          // key
+        VariableType::NATIVE_POINTER(), // MegaStubCache
+        VariableType::JS_ANY(),         // prop
+        VariableType::JS_ANY(),         // jsFunc
+        VariableType::INT32(),          // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(SetPropertyByNameWithMega)
+{
+    // 8 : 8 input parameters
+    CallSignature setPropertyByName("SetPropertyByNameWithMega", 0, 8, ArgumentsOrder::DEFAULT_ORDER,
+                                    VariableType::JS_ANY());
+    *callSign = setPropertyByName;
+    // 8 : 8 input parameters
+    std::array<VariableType, 8> params = {
+        VariableType::NATIVE_POINTER(), // glue
+        VariableType::JS_ANY(),         // receiver
+        VariableType::INT64(),          // key
+        VariableType::JS_ANY(),         // value
+        VariableType::NATIVE_POINTER(), // MegaStubCache
+        VariableType::JS_ANY(),         // prop
+        VariableType::JS_ANY(),         // jsFunc
+        VariableType::INT32(),          // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+
 DEF_CALL_SIGNATURE(SetPropertyByNameWithOwn)
 {
     // 4 : 4 input parameters

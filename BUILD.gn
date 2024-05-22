@@ -734,6 +734,7 @@ ecma_source = [
   "ecmascript/ic/ic_handler.cpp",
   "ecmascript/ic/ic_runtime.cpp",
   "ecmascript/ic/profile_type_info.cpp",
+  "ecmascript/ic/mega_ic_cache.cpp",
   "ecmascript/ic/property_box.cpp",
   "ecmascript/ic/proto_change_details.cpp",
   "ecmascript/interpreter/frame_handler.cpp",

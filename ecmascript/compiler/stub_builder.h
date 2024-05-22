@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
+#include "ecmascript/ic/mega_ic_cache.h"
 
 namespace panda::ecmascript::kungfu {
 struct StringInfoGateRef;
@@ -1033,12 +1034,18 @@ public:
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
     inline GateRef GetPropertiesCache(GateRef glue);
+    inline GateRef GetMegaICCache(GateRef glue, MegaICCache::MegaICKind kind);
+    inline void IncMegaProbeCount(GateRef glue);
+    inline void IncMegaHitCount(GateRef glue);
     GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key,
                                         GateRef hir = Circuit::NullGate());
+    GateRef GetHandlerFromMegaICCache(GateRef glue, GateRef cache, GateRef cls, GateRef key);
     inline void SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result,
                                      GateRef hir = Circuit::NullGate());
     GateRef HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key, GateRef hir = Circuit::NullGate());
+    GateRef HashFromHclassAndStringKey(GateRef glue, GateRef cls, GateRef key);
     GateRef GetKeyHashCode(GateRef glue, GateRef key, GateRef hir = Circuit::NullGate());
+    GateRef GetStringKeyHashCode(GateRef glue, GateRef key, GateRef hir = Circuit::NullGate());
     inline GateRef GetSortedKey(GateRef layoutInfo, GateRef index);
     inline GateRef GetSortedIndex(GateRef layoutInfo, GateRef index);
     inline GateRef GetSortedIndex(GateRef attr);
@@ -1054,6 +1061,10 @@ public:
     GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);
     void TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
     void TryToBaselineJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
+    void StartTraceLoadDetail(GateRef glue, GateRef receiver, GateRef profileTypeInfo, GateRef slotId);
+    void StartTraceLoadGetter(GateRef glue);
+    void StartTraceLoadSlowPath(GateRef glue);
+    void EndTraceLoad(GateRef glue);
     GateRef GetIsFastCall(GateRef machineCode);
     // compute new elementKind from sub elements
     GateRef ComputeTaggedArrayElementKind(GateRef array, GateRef offset, GateRef end);
@@ -1065,6 +1076,7 @@ public:
         SameArray,
         DifferentArray,
     };
+
     // dstAddr/srcAddr is the address will be copied to/from.
     // It can be a derived pointer point to the middle of an object.
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.

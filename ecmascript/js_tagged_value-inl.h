@@ -1382,6 +1382,7 @@ inline uint32_t JSTaggedValue::GetKeyHashCode() const
     return JSSymbol::Cast(GetTaggedObject())->GetHashField();
 }
 
+
 inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
 {
     auto strObj = static_cast<EcmaString *>(tagged.GetTaggedObject());

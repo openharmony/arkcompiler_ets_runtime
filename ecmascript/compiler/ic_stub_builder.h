@@ -14,6 +14,7 @@
  */
 #ifndef ECMASCRIPT_COMPILER_IC_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_IC_STUB_BUILDER_H
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
@@ -27,8 +28,8 @@ public:
     NO_COPY_SEMANTIC(ICStubBuilder);
     void GenerateCircuit() override {}
 
-    void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo,
-        GateRef value, GateRef slotId, ProfileOperation callback = ProfileOperation())
+    void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo, GateRef value, GateRef slotId,
+                       ProfileOperation callback = ProfileOperation())
     {
         glue_ = glue;
         receiver_ = receiver;
@@ -38,16 +39,27 @@ public:
         callback_ = callback;
     }
 
-    void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo,
-        GateRef value, GateRef slotId, GateRef propKey, ProfileOperation callback = ProfileOperation())
+    void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo, GateRef value, GateRef slotId,
+                       GateRef propKey, ProfileOperation callback = ProfileOperation())
     {
         SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
         propKey_ = propKey;
     }
 
+    void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo, GateRef value, GateRef slotId,
+                       GateRef megaStubCache, GateRef propKey, ProfileOperation callback = ProfileOperation())
+    {
+        SetParameters(glue, receiver, profileTypeInfo, value, slotId, propKey_, callback);
+        propKey_ = propKey;
+        megaStubCache_ = megaStubCache;
+    }
+
     void LoadICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success,
         ProfileOperation callback);
-    void StoreICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
+    void LoadICByNameWithMega(Variable *result, Label *tryFastPath, Label *slowPath, Label *success,
+                              ProfileOperation callback);
+    void StoreICByName(Variable *result, Label *tryFastPath, Label *slowPath, Label *success);
+    void StoreICByNameWithMega(Variable *result, Label *tryFastPath, Label *slowPath, Label *success);
     void LoadICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success,
         ProfileOperation callback);
     void StoreICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
@@ -56,6 +68,8 @@ public:
 private:
     template<ICStubType type>
     void NamedICAccessor(Variable* cachedHandler, Label *tryICHandler);
+    template<ICStubType type>
+    void NamedICAccessorWithMega(Variable* cachedHandler, Label *tryICHandler);
     void ValuedICAccessor(Variable* cachedHandler, Label *tryICHandler, Label* tryElementIC);
     void SetLabels(Label* tryFastPath, Label *slowPath, Label *success)
     {
@@ -70,6 +84,7 @@ private:
     GateRef value_ {0};
     GateRef slotId_ {0};
     GateRef propKey_ {0};
+    GateRef megaStubCache_ {0};
     ProfileOperation callback_;
 
     Label *tryFastPath_ {nullptr};
