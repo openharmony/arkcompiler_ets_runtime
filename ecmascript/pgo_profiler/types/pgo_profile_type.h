@@ -169,7 +169,7 @@ public:
         }
     }
 
-    static ProfileType CreateMegeType()
+    static ProfileType CreateMegaType()
     {
         ProfileType type;
         type.UpdateKind(Kind::MegaStateKinds);

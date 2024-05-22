@@ -138,12 +138,13 @@ private:
 
     State GetState();
     void SetState(State state);
-    void NotifyGC();
+    void NotifyGC(std::string tag = "");
+    void NotifyAll(std::string tag = "");
     void WaitingPGODump();
     void StopPGODump();
     void StartPGODump();
-    bool IfGCWaitingThenNotifyGCWithLock();
-    bool IfGCWaitingThenNotifyGC();
+    bool IsGCWaitingWithLock();
+    bool IsGCWaiting();
     void DispatchPGODumpTask();
 
     void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
@@ -179,9 +180,14 @@ private:
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
 
     void UpdateLayout(JSHClass *hclass);
-    void UpdateTranstionLayout(JSHClass *parent, JSHClass *child);
-    bool AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
-        JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod);
+    void UpdateTransitionLayout(JSHClass* parent, JSHClass* child);
+    bool AddTransitionObjectInfo(ProfileType recordType,
+                                 EntityId methodId,
+                                 int32_t bcOffset,
+                                 JSHClass* receiver,
+                                 JSHClass* hold,
+                                 JSHClass* holdTra,
+                                 PGOSampleType accessorMethod);
     void UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info);
 
     bool AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,

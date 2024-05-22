@@ -182,7 +182,7 @@ public:
 
     void RegisterSavingSignal();
 
-    void AsynSave()
+    void AsyncSave()
     {
         if (encoder_) {
             encoder_->PostSaveTask();
@@ -205,7 +205,7 @@ public:
         for (const auto &profiler : profilers_) {
             profiler->DumpByForce();
         }
-        GetInstance()->AsynSave();
+        GetInstance()->AsyncSave();
     }
 
     bool PUBLIC_API TextToBinary(const std::string &inPath, const std::string &outPath, uint32_t hotnessThreshold,
