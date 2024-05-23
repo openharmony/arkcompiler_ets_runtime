@@ -81,6 +81,16 @@ GateRef CircuitBuilder::IntPtrLSL(GateRef x, GateRef y)
     return BinaryArithmetic(circuit_->Lsl(), ptrSize, x, y);
 }
 
+GateRef CircuitBuilder::DoubleTrunc(GateRef gate, GateRef value, const char* comment)
+{
+    if (GetCompilationConfig()->IsAArch64()) {
+        return DoubleTrunc(value, comment);
+    }
+
+    GateRef glue = acc_.GetGlueFromArgList();
+    return CallNGCRuntime(glue, RTSTUB_ID(FloatTrunc), Gate::InvalidGateRef, {value}, gate, comment);
+}
+
 GateRef CircuitBuilder::Int16ToBigEndianInt16(GateRef x)
 {
     GateRef int16toint32 = ZExtInt16ToInt32(x);

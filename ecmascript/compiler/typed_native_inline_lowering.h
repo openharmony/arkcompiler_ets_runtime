@@ -67,10 +67,11 @@ private:
     void LowerDoubleRounding(GateRef gate);
     void LowerArrayBufferIsView(GateRef gate);
     void LowerDataViewProtoFunc(GateRef gate, DataViewProtoFunc proto);
+    GateRef BuildDoubleIsFinite(GateRef value);
     void LowerNumberIsFinite(GateRef gate);
-    void LowerNumberIsInteger(GateRef gate);
+    GateRef BuildTaggedIsInteger(GateRef gate, GateRef value, bool safe);
+    void LowerNumberIsInteger(GateRef gate, OpCode op);
     void LowerNumberIsNaN(GateRef gate);
-    void LowerNumberIsSafeInteger(GateRef gate);
     void LowerNumberParseFloat(GateRef gate);
     void LowerDateGetTime(GateRef gate);
     void LowerBigIntConstructor(GateRef gate);
