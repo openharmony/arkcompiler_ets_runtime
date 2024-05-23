@@ -566,8 +566,10 @@ void LocalSpace::FreeBumpPoint()
 
 void LocalSpace::Stop()
 {
+    Region *currentRegion = GetCurrentRegion();
     if (GetCurrentRegion() != nullptr) {
-        GetCurrentRegion()->SetHighWaterMark(allocator_->GetTop());
+        // Do not use allocator_->GetTop(), because it may point to freeObj from other regions.
+        currentRegion->SetHighWaterMark(currentRegion->GetBegin() + currentRegion->AliveObject());
     }
 }
 
