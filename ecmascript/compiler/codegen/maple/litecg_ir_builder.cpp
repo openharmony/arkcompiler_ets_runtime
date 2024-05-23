@@ -165,6 +165,7 @@ void LiteCGIRBuilder::AddFunc()
         funcBuilder.Param(lmirBuilder_->i64PtrType, "interpSp");
     } else if (!methodLiteral_->IsFastCall()) {
         funcBuilder.Param(lmirBuilder_->i64Type, "actualArgc")
+            .Param(lmirBuilder_->i64PtrType, "actualArgv")
             .Param(lmirBuilder_->i64RefType, "func")
             .Param(lmirBuilder_->i64RefType, "new_target")
             .Param(lmirBuilder_->i64RefType, "this_object");

@@ -40,7 +40,7 @@ class GeneratorContext;
 struct EcmaRuntimeCallInfo;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
-                                              uintptr_t prevFp, bool needPushUndefined);
+                                              uintptr_t prevFp, bool needPushArgv);
 using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
                                               uintptr_t prevFp);
 
@@ -123,18 +123,18 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(JSFunctionEntry)                       \
     V(JSCall)                                \
     V(JSCallWithArgV)                        \
-    V(JSCallWithArgVAndPushUndefined)        \
+    V(JSCallWithArgVAndPushArgv)             \
     V(JSProxyCallInternalWithArgV)           \
-    V(OptimizedCallAndPushUndefined)         \
+    V(OptimizedCallAndPushArgv)              \
     V(DeoptHandlerAsm)                       \
     V(JSCallNew)                             \
     V(CallOptimized)
 
 #define FAST_CALL_TRAMPOLINE_LIST(V)         \
     V(OptimizedFastCallEntry)                \
-    V(OptimizedFastCallAndPushUndefined)     \
+    V(OptimizedFastCallAndPushArgv)          \
     V(JSFastCallWithArgV)                    \
-    V(JSFastCallWithArgVAndPushUndefined)
+    V(JSFastCallWithArgVAndPushArgv)
 
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \

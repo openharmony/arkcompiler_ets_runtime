@@ -387,6 +387,7 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     argAcc_.NewCommonArg(CommonArgIdx::GLUE, MachineType::I64, GateType::NJSValue());
     if (!method_->IsFastCall()) {
         argAcc_.NewCommonArg(CommonArgIdx::ACTUAL_ARGC, MachineType::I64, GateType::NJSValue());
+        argAcc_.NewCommonArg(CommonArgIdx::ACTUAL_ARGV, MachineType::ARCH, GateType::NJSValue());
         auto funcIdx = static_cast<size_t>(CommonArgIdx::FUNC);
         const size_t actualNumArgs = argAcc_.GetActualNumArgs();
         // new actual argument gates
@@ -415,6 +416,7 @@ void BytecodeCircuitBuilder::BuildFrameArgs()
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
+    args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGV);
     args[idx++] = GetCurrentConstpool(argAcc_.GetCommonArgGate(CommonArgIdx::FUNC));
     args[idx++] = GetPreFrameArgs();
     GateRef frameArgs = circuit_->NewGate(metaData, args);
@@ -431,19 +433,24 @@ void BytecodeCircuitBuilder::BuildOSRArgs()
                        ? circuit_->GetConstantGate(MachineType::I64, 0, GateType::NJSValue())
                        : circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_ARGS), MachineType::I64,
                                            {circuit_->GetArgRoot()}, GateType::TaggedValue());
-    // offset -3 : func
+    // offset -3 : argv
+    GateRef argv = method_->IsFastCall()
+                       ? circuit_->GetConstantGate(MachineType::ARCH, 0, GateType::NJSValue())
+                       : circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_ARGV), MachineType::I64,
+                                           {circuit_->GetArgRoot()}, GateType::TaggedValue());
+    // offset -4 : func
     (void)circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_FUNCTION), MachineType::I64,
                             {circuit_->GetArgRoot()}, GateType::TaggedValue());
-    // offset -4 : new_target
+    // offset -5 : new_target
     GateRef newTarget =
         method_->IsFastCall()
             ? circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, GateType::UndefinedType())
             : circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_NEW_TARGET), MachineType::I64,
                                 {circuit_->GetArgRoot()}, GateType::TaggedValue());
-    // offset -5 : this_object
+    // offset -6 : this_object
     (void)circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_THIS_OBJECT), MachineType::I64,
                             {circuit_->GetArgRoot()}, GateType::TaggedValue());
-    // offset -6 : numargs
+    // offset -7 : numargs
     (void)circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_NUM_ARGS), MachineType::I64,
                             {circuit_->GetArgRoot()}, GateType::TaggedValue());
     for (size_t argIdx = 1; argIdx <= method_->GetNumArgsWithCallField(); argIdx++) {
@@ -458,6 +465,7 @@ void BytecodeCircuitBuilder::BuildOSRArgs()
         std::reverse(args.begin(), args.end());
         if (method_->IsFastCall() && args.size() >= static_cast<uint8_t>(FastCallArgIdx::NUM_OF_ARGS)) {
             args.insert(args.begin() + static_cast<uint8_t>(CommonArgIdx::ACTUAL_ARGC), argc);
+            args.insert(args.begin() + static_cast<uint8_t>(CommonArgIdx::ACTUAL_ARGV), argv);
             // 3: newtarget index
             args.insert(args.begin() + static_cast<uint8_t>(CommonArgIdx::NEW_TARGET), newTarget);
         }

@@ -272,7 +272,7 @@ JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc
 }
 
 JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
-                                      const JSTaggedType *prevFp, bool needPushUndefined)
+                                      const JSTaggedType *prevFp, bool needPushArgv)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
@@ -283,7 +283,7 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
                                                             actualNumArgs,
                                                             args,
                                                             reinterpret_cast<uintptr_t>(prevFp),
-                                                            needPushUndefined);
+                                                            needPushArgv);
     return res;
 }
 

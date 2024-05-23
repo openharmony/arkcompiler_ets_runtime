@@ -78,7 +78,7 @@ namespace panda::ecmascript::kungfu {
     V(SetValueWithBarrier)            \
     V(NewLexicalEnv)                  \
     V(CopyRestArgs)                   \
-    V(GetUnmapedArgs)                 \
+    V(GetUnmappedArgs)                \
     V(NewThisObjectChecked)           \
     V(ConstructorCheck)               \
     V(CreateEmptyArray)               \

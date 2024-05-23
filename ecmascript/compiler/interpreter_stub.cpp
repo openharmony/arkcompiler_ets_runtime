@@ -2964,7 +2964,6 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
 DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm8Id16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);

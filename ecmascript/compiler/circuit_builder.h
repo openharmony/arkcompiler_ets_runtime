@@ -390,7 +390,9 @@ public:
                                   GateRef constPoolIndex, GateRef elementIndex);
     GateRef CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
-    GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool isFastCall);
+    GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool needPushArgv);
+    GateRef CallConstructCheck(GateRef callGate, GateRef depend, GateRef glue_, GateRef ctor,
+                               GateRef value, GateRef thisObj);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef ctor);
     GateRef ToLength(GateRef receiver);

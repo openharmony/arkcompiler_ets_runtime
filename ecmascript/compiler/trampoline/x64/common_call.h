@@ -54,7 +54,7 @@ public:
 
     static void JSFunctionEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedCallAndPushUndefined(ExtendedAssembler *assembler);
+    static void OptimizedCallAndPushArgv(ExtendedAssembler *assembler);
 
     static void JSProxyCallInternalWithArgV(ExtendedAssembler *assembler);
 
@@ -66,7 +66,7 @@ public:
 
     static void JSCallWithArgV(ExtendedAssembler *assembler);
 
-    static void JSCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
+    static void JSCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
@@ -74,7 +74,7 @@ public:
 
     static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
 
-    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAddExpectedArgs);
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needPushArgv);
 private:
     static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
@@ -93,9 +93,10 @@ private:
     static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
     static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
-    static void CallBuiltinTrampoline(ExtendedAssembler *assembler);
+    static void CallBuiltinTrampoline(ExtendedAssembler *assembler, Register temp);
     static void CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
                                            Register glue, Register temp);
+    static void RemoveArgv(ExtendedAssembler *assembler, Register temp);
 
     friend class OptimizedFastCall;
 };
@@ -104,11 +105,11 @@ class OptimizedFastCall : public CommonCall {
 public:
     static void OptimizedFastCallEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedFastCallAndPushUndefined(ExtendedAssembler *assembler);
+    static void OptimizedFastCallAndPushArgv(ExtendedAssembler *assembler);
 
     static void JSFastCallWithArgV(ExtendedAssembler *assembler);
 
-    static void JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
+    static void JSFastCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 };
 
 class AsmInterpreterCall : public CommonCall {

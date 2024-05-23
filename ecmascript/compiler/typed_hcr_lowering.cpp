@@ -1678,7 +1678,8 @@ GateRef TypedHCRLowering::CallAccessor(GateRef glue, GateRef gate, GateRef funct
     GateRef target = builder_.IntPtr(RTSTUB_ID(JSCall));
     GateRef newTarget = builder_.Undefined();
     GateRef argc = builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS + (mode == AccessorMode::SETTER ? 1 : 0));  // 1: value
-    std::vector<GateRef> args { glue, argc, function, newTarget, receiver };
+    GateRef argv = builder_.IntPtr(0);
+    std::vector<GateRef> args { glue, argc, argv, function, newTarget, receiver };
     if (mode == AccessorMode::SETTER) {
         args.emplace_back(value);
     }

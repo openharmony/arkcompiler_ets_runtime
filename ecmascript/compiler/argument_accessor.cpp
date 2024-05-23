@@ -112,13 +112,15 @@ void ArgumentAccessor::CollectArgs()
         }
         if (method_->IsFastCall() && args_.size() > 2) { // 2: mean have func and glue
             GateRef actualArgcGate = circuit_->GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
+            GateRef actualArgvGate = circuit_->GetConstantGate(MachineType::ARCH, 0, GateType::NJSValue());
             GateRef newTargetGate = circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED,
                 GateType::UndefinedType());
             if (method_->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
                 newTargetGate = args_[1]; // 1: mean func index
             }
-            args_.insert(args_.begin() + 1, actualArgcGate);
-            args_.insert(args_.begin() + 3, newTargetGate); // 3: newtarget index
+            args_.insert(args_.begin() + static_cast<size_t>(CommonArgIdx::ACTUAL_ARGC), actualArgcGate);
+            args_.insert(args_.begin() + static_cast<size_t>(CommonArgIdx::ACTUAL_ARGV), actualArgvGate);
+            args_.insert(args_.begin() + static_cast<size_t>(CommonArgIdx::NEW_TARGET), newTargetGate);
         }
     }
 }

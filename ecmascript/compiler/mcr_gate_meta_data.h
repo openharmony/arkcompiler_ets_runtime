@@ -207,12 +207,12 @@ private:
 
 class NewConstructMetaData : public OneParameterMetaData {
 public:
-    static constexpr int NEED_PUSH_UNDEFINED_BIT_SIZE = 1;
+    static constexpr int NEED_PUSH_ARGV_BIT_SIZE = 1;
     NewConstructMetaData(OpCode opcode, GateFlags flags, uint32_t statesIn,
-        uint16_t dependsIn, uint32_t valuesIn, uint64_t value, bool needPushUndefined)
+        uint16_t dependsIn, uint32_t valuesIn, uint64_t value, bool needPushArgv)
         : OneParameterMetaData(opcode, flags, statesIn, dependsIn, valuesIn, value)
     {
-        bitField_ = NeedPushUndefinedBit::Encode(needPushUndefined);
+        bitField_ = NeedPushArgvBit::Encode(needPushArgv);
     }
     
     static const NewConstructMetaData* Cast(const GateMetaData* meta)
@@ -221,9 +221,9 @@ public:
         return static_cast<const NewConstructMetaData*>(meta);
     }
 
-    bool NeedPushUndefined() const
+    bool NeedPushArgv() const
     {
-        return NeedPushUndefinedBit::Get(bitField_);
+        return NeedPushArgvBit::Get(bitField_);
     }
 
     uint64_t GetValue() const
@@ -232,7 +232,7 @@ public:
     }
 
 private:
-    using NeedPushUndefinedBit = panda::BitField<bool, 0, NEED_PUSH_UNDEFINED_BIT_SIZE>;
+    using NeedPushArgvBit = panda::BitField<bool, 0, NEED_PUSH_ARGV_BIT_SIZE>;
 
     uint64_t bitField_;
 };

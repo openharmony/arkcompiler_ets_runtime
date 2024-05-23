@@ -450,7 +450,7 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
 }
 
 GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
-                                     bool needPushUndefined)
+                                bool needPushArgv)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     auto currentLabel = env_->GetCurrentLabel();
@@ -462,7 +462,7 @@ GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
     AppendFrameArgs(args, hirGate);
-    auto callGate = GetCircuit()->NewGate(circuit_->CallNew(bitfield, pcOffset, needPushUndefined),
+    auto callGate = GetCircuit()->NewGate(circuit_->CallNew(bitfield, pcOffset, needPushArgv),
                                           MachineType::I64, args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);

@@ -1454,12 +1454,13 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     size_t actualArgc = static_cast<size_t>(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
     GateRef argc = builder_.Int64(actualArgc);
-    std::vector<GateRef> args { glue_, argc, ctor, ctor, thisObj }; // func thisobj numofargs
+    GateRef argv = builder_.IntPtr(0);
+    std::vector<GateRef> args { glue_, argc, argv, ctor, ctor, thisObj }; // func thisobj numofargs
     for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
-    bool needPushUndefined = (expectedArgc > actualArgc);
-    GateRef result = builder_.CallNew(gate, args, needPushUndefined);
+    bool needPushArgv = (expectedArgc != actualArgc);
+    GateRef result = builder_.CallNew(gate, args, needPushArgv);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -1521,7 +1522,8 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
     // call constructor
     size_t range = acc_.GetNumValueIn(gate);
     GateRef actualArgc = builder_.Int64(range + 3);  // 3: ctor, newTaget, this
-    std::vector<GateRef> args { glue_, actualArgc, superCtor, newTarget, thisObj };
+    GateRef actualArgv = builder_.IntPtr(0);
+    std::vector<GateRef> args { glue_, actualArgc, actualArgv, superCtor, newTarget, thisObj };
     for (size_t i = 0; i < range; ++i) {
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
@@ -1676,6 +1678,7 @@ void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
     uint32_t argc = tacc.GetArgc();
     GateRef gate = tacc.GetGate();
     GateRef actualArgc = Circuit::NullGate();
+    GateRef actualArgv = builder_.IntPtr(0);
     switch (Op) {
         case EcmaOpcode::CALLARG0_IMM8: {
             actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
@@ -1713,7 +1716,7 @@ void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     std::vector<GateRef> argsFastCall { glue_, func, thisObj};
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
+    std::vector<GateRef> args { glue_, actualArgc, actualArgv, func, newTarget, thisObj };
     for (uint32_t i = 0; i < argc; i++) {
         GateRef value = acc_.GetValueIn(gate, i);
         argsFastCall.emplace_back(value);
@@ -1722,6 +1725,9 @@ void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
     for (uint32_t i = argc; i < len; i++) {
         argsFastCall.emplace_back(builder_.Undefined());
         args.emplace_back(builder_.Undefined());
+    }
+    if (argc != len) {
+        return ;
     }
     AddProfiling(gate);
     CheckCallTargetAndLowerCall(tacc, args, argsFastCall);
@@ -1811,6 +1817,7 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
     uint32_t argc = tacc.GetArgc();
     GateRef gate = tacc.GetGate();
     GateRef actualArgc = Circuit::NullGate();
+    GateRef actualArgv = builder_.IntPtr(0);
     switch (Op) {
         case EcmaOpcode::CALLTHIS0_IMM8_V8: {
             actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
@@ -1846,7 +1853,7 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = tacc.GetThisObj();
     std::vector<GateRef> argsFastCall { glue_, func, thisObj};
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
+    std::vector<GateRef> args { glue_, actualArgc, actualArgv, func, newTarget, thisObj };
     for (uint32_t i = 0; i < argc; i++) {
         GateRef value = acc_.GetValueIn(gate, i + 1);
         argsFastCall.emplace_back(value);
