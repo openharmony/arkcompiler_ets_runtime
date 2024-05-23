@@ -2496,7 +2496,6 @@
         "mjsunit/compiler/fast-api-calls-pointer.js",
         "mjsunit/compiler/number-constructor-deopt.js",
         "mjsunit/compiler/fast-api-clamp-annotations.js",
-        "mjsunit/compiler/string-endswith.js",
         "mjsunit/compiler/osr-forin.js",
         "mjsunit/compiler/bigint-multiply-truncate.js",
         "mjsunit/compiler/construct-receiver.js",
