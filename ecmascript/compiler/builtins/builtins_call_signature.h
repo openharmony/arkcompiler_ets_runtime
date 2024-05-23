@@ -30,8 +30,8 @@ namespace panda::ecmascript::kungfu {
 #define BUILTINS_STUB_LIST(V, D, C)                 \
     BUILTINS_METHOD_STUB_LIST(D, D, D, D)           \
     BUILTINS_WITH_CONTAINERS_STUB_BUILDER(D)        \
-    BUILTINS_CONSTRUCTOR_STUB_LIST(C)               \
     AOT_AND_BUILTINS_STUB_LIST(V)                   \
+    BUILTINS_CONSTRUCTOR_STUB_LIST(C)               \
     BUILTINS_ARKTOOLS_STUB_BUILDER(D)
 
 #define BUILTINS_METHOD_STUB_LIST(V, T, D, K)       \
@@ -430,6 +430,7 @@ public:
     {
         switch (builtinId) {
             case BuiltinsStubCSigns::ID::JsonStringify:
+            case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return true;
             default:
                 return false;

@@ -2289,7 +2289,7 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
         {
             Label defvalue(env);
             GateRef resValue = CallNGCRuntime(glue, RTSTUB_ID(LocaleCompareNoGc), {glue, locales, thisValue, arg0});
-            BRANCH(TaggedIsUndefined(resValue), slowPath, &defvalue);
+            BRANCH(TaggedIsUndefined(resValue), &uncacheable, &defvalue);
             Bind(&defvalue);
             *res = resValue;
             Jump(exit);

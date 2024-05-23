@@ -556,6 +556,11 @@ public:
         return a0_;
     }
 
+    std::vector<GateRef> GetArgs()
+    {
+        return { thisObj_, a0_ };
+    }
+
     bool Arg0IsNumberType() const
     {
         return acc_.GetGateType(a0_).IsNumberType();
