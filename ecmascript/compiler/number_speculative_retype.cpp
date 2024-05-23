@@ -834,6 +834,32 @@ GateRef NumberSpeculativeRetype::VisitFrameState(GateRef gate)
     if (IsRetype()) {
         return SetOutputType(gate, GateType::AnyType());
     }
+    GateRef frameValue = acc_.GetFrameValue(gate);
+    size_t numValueIn = acc_.GetNumValueIn(frameValue);
+    for (size_t i = 0; i < numValueIn; i++) {
+        GateRef val = acc_.GetValueIn(frameValue, i);
+        TypeInfo output = GetOutputTypeInfo(val);
+        // The convert of char type needs to be converted into ecmastring, and other types of variables are converted
+        // in the ir builder stage. Because the typeinfo::char information will be lost after passing this pass.
+        switch (output) {
+            case TypeInfo::CHAR:
+                acc_.ReplaceValueIn(frameValue, ConvertToTagged(val), i);
+                break;
+            case TypeInfo::NONE:
+            case TypeInfo::INT1:
+            case TypeInfo::INT32:
+            case TypeInfo::UINT32:
+            case TypeInfo::FLOAT64:
+            case TypeInfo::TAGGED:
+                break;
+            default:
+                // Other new types are intercepted here. Please confirm that the new types will not allocate heap
+                // objects after ConvertToTagged occurs. This check is skipped after confirmation.
+                LOG_ECMA(FATAL) << "Please check new kind of TypeInfo";
+                UNREACHABLE();
+                break;
+        }
+    }
     return Circuit::NullGate();
 }
 
