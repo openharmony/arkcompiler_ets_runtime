@@ -452,6 +452,7 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
     size_t newTlabSize = sNonMovableTlab_->ComputeSize();
     object = SharedHeap::GetInstance()->AllocateSNonMovableTlab(thread, newTlabSize);
     if (object == nullptr) {
+        sNonMovableTlab_->DisableNewTlab();
         return nullptr;
     }
     uintptr_t begin = reinterpret_cast<uintptr_t>(object);
