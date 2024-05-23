@@ -240,6 +240,7 @@ public:
     GateRef SpecialHoleConstant();
     GateRef NullPtrConstant();
     GateRef NullConstant();
+    GateRef TaggedValueConstant(JSTaggedValue taggedValue);
     GateRef ExceptionConstant();
     void ClearConstantCache(GateRef gate);
     GateRef NanValue();

@@ -495,7 +495,8 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        MCRLowering lowering(data->GetCircuit(), &visitor, data->GetCompilerConfig(), &chunk);
+        MCRLowering lowering(data->GetPassContext()->GetCompilationEnv(), data->GetCircuit(), &visitor,
+                             data->GetCompilerConfig(), &chunk);
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("MCRLowering");
@@ -775,8 +776,9 @@ public:
                             data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        StateSplitLinearizer(data->GetCircuit(), nullptr, data->GetCompilerConfig(),
-            enableLog, data->GetMethodName(), &chunk).Run();
+        StateSplitLinearizer(data->GetPassContext()->GetCompilationEnv(), data->GetCircuit(), nullptr,
+                             data->GetCompilerConfig(), enableLog, data->GetMethodName(), &chunk)
+            .Run();
         return true;
     }
 };

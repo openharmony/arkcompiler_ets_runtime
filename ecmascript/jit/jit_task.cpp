@@ -170,9 +170,6 @@ void JitTask::InstallCode()
     [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
 
     JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
-    if (GetHostVM()->GetJSOptions().IsEnableJITPGO()) {
-        SetHClassInfoForPGO(methodHandle);
-    }
 
     size_t size = ComputePayLoadSize(codeDesc_);
 
