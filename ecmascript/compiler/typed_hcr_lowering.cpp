@@ -175,6 +175,12 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::OBJECT_CONSTRUCTOR:
             LowerObjectConstructor(gate, glue);
             break;
+        case OpCode::BOOLEAN_CONSTRUCTOR_CHECK:
+            LowerBooleanConstructorCheck(gate, glue);
+            break;
+        case OpCode::BOOLEAN_CONSTRUCTOR:
+            LowerBooleanConstructor(gate, glue);
+            break;
         case OpCode::ORDINARY_HAS_INSTANCE:
             LowerOrdinaryHasInstance(gate, glue);
             break;
@@ -2290,7 +2296,7 @@ void TypedHCRLowering::LowerArrayConstructorCheck(GateRef gate, GateRef glue)
         }
     }
     builder_.Bind(&exit);
-    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTORFAIL1);
+    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTORARRAY);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -2435,7 +2441,7 @@ void TypedHCRLowering::LowerObjectConstructorCheck(GateRef gate, GateRef glue)
         }
     }
     builder_.Bind(&exit);
-    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTORFAIL2);
+    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTOROBJECT);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -2506,6 +2512,77 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
                 builder_.Jump(&exit);
             }
         }
+    }
+    builder_.Bind(&slowPath);
+    {
+        size_t range = acc_.GetNumValueIn(gate);
+        std::vector<GateRef> args(range);
+        for (size_t i = 0; i < range; ++i) {
+            args[i] = acc_.GetValueIn(gate, i);
+        }
+        res = LowerCallRuntime(glue, gate, RTSTUB_ID(OptNewObjRange), args, true);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
+}
+
+void TypedHCRLowering::LowerBooleanConstructorCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef newTarget = acc_.GetValueIn(gate, 0);
+    Label isHeapObject(&builder_);
+    Label exit(&builder_);
+    DEFVALUE(check, (&builder_), VariableType::BOOL(), builder_.True());
+    check = builder_.TaggedIsHeapObject(newTarget);
+    BRANCH_CIR(*check, &isHeapObject, &exit);
+    builder_.Bind(&isHeapObject);
+    {
+        Label isJSFunction(&builder_);
+        check = builder_.IsJSFunction(newTarget);
+        BRANCH_CIR(*check, &isJSFunction, &exit);
+        builder_.Bind(&isJSFunction);
+        {
+            Label getHclass(&builder_);
+            GateRef glueGlobalEnvOffset = builder_.IntPtr(
+                JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
+            GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef booleanFunc =
+                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
+            check = builder_.Equal(booleanFunc, newTarget);
+            BRANCH_CIR(*check, &getHclass, &exit);
+            builder_.Bind(&getHclass);
+            {
+                GateRef intialHClass = builder_.Load(VariableType::JS_ANY(), newTarget,
+                                                     builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+                check = builder_.IsJSHClass(intialHClass);
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTORBOOLEAN);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypedHCRLowering::LowerBooleanConstructor(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef value = builder_.Undefined();
+    ASSERT(acc_.GetNumValueIn(gate) <= 2); // 2: new target and arg0
+    if (acc_.GetNumValueIn(gate) > 1) {
+        value = acc_.GetValueIn(gate, 1);
+    }
+    DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label isBoolean(&builder_);
+    Label slowPath(&builder_);
+    Label exit(&builder_);
+    BRANCH_CIR(builder_.TaggedIsBoolean(value), &isBoolean, &slowPath);
+    builder_.Bind(&isBoolean);
+    {
+        res = NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BOOLEAN, glue, value);
+        builder_.Jump(&exit);
     }
     builder_.Bind(&slowPath);
     {
@@ -2659,7 +2736,22 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                                                         { target, prototypeString }, gate);
             builder_.Jump(&gotCtorPrototype);
         }
+        // 6. If Type(P) is not Object, throw a TypeError exception.
+        Label prototypeIsEcmaObj(&builder_);
+        Label prototypeNotEcmaObj(&builder_);
         builder_.Bind(&gotCtorPrototype);
+        {
+            BRANCH_CIR(builder_.IsEcmaObject(*constructorPrototype), &prototypeIsEcmaObj, &prototypeNotEcmaObj);
+            builder_.Bind(&prototypeNotEcmaObj);
+            {
+                GateRef taggedId = builder_.Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
+                builder_.CallRuntime(glue, RTSTUB_ID(ThrowTypeError), Gate::InvalidGateRef,
+                                     { builder_.Int32ToTaggedInt(taggedId) }, gate);
+                result = builder_.ExceptionConstant();
+                builder_.Jump(&exit);
+            }
+        }
+        builder_.Bind(&prototypeIsEcmaObj);
         // 7. Repeat
         //    a.Let O be O.[[GetPrototypeOf]]().
         //    b.ReturnIfAbrupt(O).

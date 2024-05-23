@@ -61,9 +61,11 @@ print(Math.expm1()); //: NaN
 // Check with single param
 //aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 //aot: [trace] aot inline function name: printZero@builtinMathExpm1 caller function name: func_main_0@builtinMathExpm1
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathExpm1
 printZero(Math.expm1(0)); //: 0
 //aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 //aot: [trace] aot inline function name: printZero@builtinMathExpm1 caller function name: func_main_0@builtinMathExpm1
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathExpm1
 printZero("1/x: " + 1 / Math.expm1(-0)); //: 1/x: -Infinity
 //aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
 print(Math.expm1(1)); //: 1.718281828459045

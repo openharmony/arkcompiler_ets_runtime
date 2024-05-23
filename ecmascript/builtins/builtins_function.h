@@ -23,9 +23,9 @@
     /* Function.prototype.apply ( thisArg, argArray ) */                            \
     V("apply",           FunctionPrototypeApply,      2, FunctionPrototypeApply)    \
     /* Function.prototype.bind ( thisArg , ...args) */                              \
-    V("bind",            FunctionPrototypeBind,       1, INVALID)                   \
+    V("bind",            FunctionPrototypeBind,       1, FunctionPrototypeBind)     \
     /* Function.prototype.call (thisArg , ...args) */                               \
-    V("call",            FunctionPrototypeCall,       1, INVALID)
+    V("call",            FunctionPrototypeCall,       1, FunctionPrototypeCall)
 
 namespace panda::ecmascript::builtins {
 using BuiltinsPropertyConfig = base::BuiltinsPropertyConfig;
@@ -39,9 +39,15 @@ public:
 
     // ecma 19.2.3.1 Function.prototype.apply (thisArg, argArray)
     static JSTaggedValue FunctionPrototypeApply(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue FunctionPrototypeApplyInternal(JSThread *thread, JSHandle<JSTaggedValue> func,
+                                                        JSHandle<JSTaggedValue> thisArg,
+                                                        JSHandle<JSTaggedValue> arrayObj);
 
     // ecma 19.2.3.2 Function.prototype.bind (thisArg , ...args)
     static JSTaggedValue FunctionPrototypeBind(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue FunctionPrototypeBindInternal(JSThread *thread, JSHandle<JSTaggedValue> target,
+                                                       JSHandle<JSTaggedValue> thisArg,
+                                                       JSHandle<TaggedArray> argsArray);
 
     // ecma 19.2.3.3 Function.prototype.call (thisArg , ...args)
     static JSTaggedValue FunctionPrototypeCall(EcmaRuntimeCallInfo *argv);

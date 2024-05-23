@@ -433,13 +433,12 @@ GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef ho
 
 GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
 {
-    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE || acc_.GetOpCode(hirGate) == OpCode::REFLECT_CONSTRUCT);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     uint64_t bitfield = args.size();
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
-    ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
     AppendFrameArgs(args, hirGate);
@@ -610,6 +609,19 @@ GateRef CircuitBuilder::BuiltinConstructor(BuiltinTypeId id, GateRef gate)
             } else {
                 ASSERT(acc_.GetNumValueIn(gate) >= 2); // 2: num value in
                 newGate = GetCircuit()->NewGate(circuit_->ObjectConstructor(2), MachineType::I64,
+                    { currentControl, currentDepend, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)},
+                    GateType::TaggedValue());
+            }
+            break;
+        }
+        case BuiltinTypeId::BOOLEAN: {
+            if (acc_.GetNumValueIn(gate) == 1) {
+                newGate = GetCircuit()->NewGate(circuit_->BooleanConstructor(1), MachineType::I64,
+                                                { currentControl, currentDepend, acc_.GetValueIn(gate, 0)},
+                                                GateType::TaggedValue());
+            } else {
+                ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: num value in
+                newGate = GetCircuit()->NewGate(circuit_->BooleanConstructor(2), MachineType::I64,
                     { currentControl, currentDepend, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)},
                     GateType::TaggedValue());
             }

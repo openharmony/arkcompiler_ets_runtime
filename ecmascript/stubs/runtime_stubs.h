@@ -475,7 +475,14 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DumpObject)                         \
     V(TryGetInternString)                 \
     V(TryToElementsIndexOrFindInStringTable) \
-    V(BigIntConstructor)
+    V(BigIntConstructor)                  \
+    V(ObjectPrototypeHasOwnProperty)      \
+    V(ReflectHas)                         \
+    V(ReflectConstruct)                   \
+    V(ReflectApply)                       \
+    V(FunctionPrototypeApply)             \
+    V(FunctionPrototypeBind)              \
+    V(FunctionPrototypeCall)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

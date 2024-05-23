@@ -189,7 +189,7 @@ public:
     {
         return optBCRange_;
     }
-    
+
     const CallMethodFlagMap *GetCallMethodFlagMap() const
     {
         return callMethodFlagMap_;
@@ -516,8 +516,8 @@ public:
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
                                   data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset());
         inlining.RunTSInlineLowering();
+        Chunk chunk(data->GetNativeAreaAllocator());
         if (passOptions->EnableLexenvSpecialization()) {
-            Chunk chunk(data->GetNativeAreaAllocator());
             {
                 CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
                 GetEnvSpecializationPass getEnvSpecializationPass(data->GetCircuit(), &visitor, &chunk);
@@ -538,7 +538,7 @@ public:
 
         if (passOptions->EnableInlineNative()) {
             NativeInlineLowering nativeInline(data->GetCircuit(), data->GetCompilerConfig(), data->GetPassContext(),
-                                              enableLog, data->GetMethodName());
+                                              enableLog, data->GetMethodName(), &chunk);
             nativeInline.RunNativeInlineLowering();
         }
         return true;

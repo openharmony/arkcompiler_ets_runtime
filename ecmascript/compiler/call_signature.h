@@ -580,7 +580,8 @@ private:
     V(CallRangeAndCheckToBaselineFromBaseline)       \
     V(CallNewAndCheckToBaselineFromBaseline)         \
     V(SuperCallAndCheckToBaselineFromBaseline)       \
-    V(CallThisRangeAndCheckToBaselineFromBaseline)
+    V(CallThisRangeAndCheckToBaselineFromBaseline)   \
+    V(SameValue)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

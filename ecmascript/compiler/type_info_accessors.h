@@ -50,6 +50,16 @@ public:
     static bool IsTrustedStringType(
         const CompilationEnv *env, Circuit *circuit, Chunk *chunk, GateAccessor acc, GateRef gate);
 
+    static inline bool IsTrustedBooleanOrNumberOrStringType(const CompilationEnv *env, Circuit *circuit,
+                                                            Chunk *chunk, GateAccessor acc, GateRef gate)
+    {
+        return IsTrustedBooleanType(acc, gate) || IsTrustedNumberType(acc, gate) ||
+               IsTrustedStringType(env, circuit, chunk, acc, gate);
+    }
+
+    static bool IsTrustedNotSameType(const CompilationEnv *env, Circuit *circuit, Chunk *chunk,
+                                     GateAccessor acc, GateRef left, GateRef right);
+
 protected:
     ParamType PGOSampleTypeToParamType() const;
     static ParamType PGOBuiltinTypeToParamType(ProfileType pgoType);

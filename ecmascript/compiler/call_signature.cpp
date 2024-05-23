@@ -2776,6 +2776,22 @@ DEF_CALL_SIGNATURE(CreateJSTypedArrayEntries)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(SameValue)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("SameValue", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // left
+        VariableType::JS_ANY(),          // right
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(CreateJSTypedArrayKeys)
 {
     // 2 : 2 input parameters

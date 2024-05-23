@@ -1485,6 +1485,14 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
             builder_.ObjectConstructorCheck(ctor);
         }
         constructGate = builder_.BuiltinConstructor(BuiltinTypeId::OBJECT, gate);
+    } else if (tacc.IsBuiltinConstructor(BuiltinTypeId::BOOLEAN)) {
+        if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
+            AddProfiling(gate);
+            if (!Uncheck()) {
+                builder_.BooleanConstructorCheck(ctor);
+            }
+            constructGate = builder_.BuiltinConstructor(BuiltinTypeId::BOOLEAN, gate);
+        }
     }
     if (constructGate == Circuit::NullGate()) {
         return false;

@@ -279,8 +279,19 @@ namespace panda::ecmascript::kungfu {
     V(NumberIsInteger)                              \
     V(NumberIsNaN)                                  \
     V(NumberIsSafeInteger)                          \
+    V(ObjectIs)                                     \
+    V(ObjectGetProto)                               \
+    V(ObjectIsPrototypeOf)                          \
+    V(ReflectGetPrototypeOf)                        \
+    V(ReflectGet)                                   \
+    V(ReflectHas)                                   \
+    V(ReflectConstruct)                             \
+    V(ReflectApply)                                 \
+    V(FunctionPrototypeBind)                        \
+    V(FunctionPrototypeCall)                        \
+    V(FunctionPrototypeHasInstance)                 \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
-    V(TYPED_BUILTINS_INLINE_LAST = NumberIsSafeInteger)
+    V(TYPED_BUILTINS_INLINE_LAST = FunctionPrototypeHasInstance)
 
 class BuiltinsStubCSigns {
 public:
@@ -373,6 +384,21 @@ public:
             case BuiltinsStubCSigns::ID::SetClear:
             case BuiltinsStubCSigns::ID::SetAdd:
             case BuiltinsStubCSigns::ID::NumberParseFloat:
+            case BuiltinsStubCSigns::ID::ObjectIs:
+            case BuiltinsStubCSigns::ID::ObjectGetPrototypeOf:
+            case BuiltinsStubCSigns::ID::ObjectGetProto:
+            case BuiltinsStubCSigns::ID::ObjectCreate:
+            case BuiltinsStubCSigns::ID::ObjectIsPrototypeOf:
+            case BuiltinsStubCSigns::ID::ObjectHasOwnProperty:
+            case BuiltinsStubCSigns::ID::ReflectGetPrototypeOf:
+            case BuiltinsStubCSigns::ID::ReflectGet:
+            case BuiltinsStubCSigns::ID::ReflectHas:
+            case BuiltinsStubCSigns::ID::ReflectConstruct:
+            case BuiltinsStubCSigns::ID::ReflectApply:
+            case BuiltinsStubCSigns::ID::FunctionPrototypeApply:
+            case BuiltinsStubCSigns::ID::FunctionPrototypeBind:
+            case BuiltinsStubCSigns::ID::FunctionPrototypeCall:
+            case BuiltinsStubCSigns::ID::FunctionPrototypeHasInstance:
                 return true;
             default:
                 return false;
@@ -601,6 +627,36 @@ public:
                 return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
             case BuiltinsStubCSigns::ID::NumberParseFloat:
                 return ConstantIndex::NUMBER_PARSE_FLOAT_INDEX;
+            case BuiltinsStubCSigns::ID::ObjectIs:
+                return ConstantIndex::OBJECT_IS_INDEX;
+            case BuiltinsStubCSigns::ID::ObjectGetPrototypeOf:
+                return ConstantIndex::OBJECT_GET_PROTOTYPE_OF_INDEX;
+            case BuiltinsStubCSigns::ID::ObjectGetProto:
+                return ConstantIndex::OBJECT_GET_PROTO_INDEX;
+            case BuiltinsStubCSigns::ID::ObjectCreate:
+                return ConstantIndex::OBJECT_CREATE_INDEX;
+            case BuiltinsStubCSigns::ID::ObjectIsPrototypeOf:
+                return ConstantIndex::OBJECT_IS_PROTOTYPE_OF_INDEX;
+            case BuiltinsStubCSigns::ID::ObjectHasOwnProperty:
+                return ConstantIndex::OBJECT_HAS_OWN_PROPERTY_INDEX;
+            case BuiltinsStubCSigns::ID::ReflectGetPrototypeOf:
+                return ConstantIndex::REFLECT_GET_PROTOTYPE_OF_INDEX;
+            case BuiltinsStubCSigns::ID::ReflectGet:
+                return ConstantIndex::REFLECT_GET_INDEX;
+            case BuiltinsStubCSigns::ID::ReflectHas:
+                return ConstantIndex::REFLECT_HAS_INDEX;
+            case BuiltinsStubCSigns::ID::ReflectConstruct:
+                return ConstantIndex::REFLECT_CONSTRUCT_INDEX;
+            case BuiltinsStubCSigns::ID::ReflectApply:
+                return ConstantIndex::REFLECT_APPLY_INDEX;
+            case BuiltinsStubCSigns::ID::FunctionPrototypeApply:
+                return ConstantIndex::FUNCTION_PROTOTYPE_APPLY_INDEX;
+            case BuiltinsStubCSigns::ID::FunctionPrototypeBind:
+                return ConstantIndex::FUNCTION_PROTOTYPE_BIND_INDEX;
+            case BuiltinsStubCSigns::ID::FunctionPrototypeCall:
+                return ConstantIndex::FUNCTION_PROTOTYPE_CALL_INDEX;
+            case BuiltinsStubCSigns::ID::FunctionPrototypeHasInstance:
+                return ConstantIndex::FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX;
             default:
                 LOG_COMPILER(INFO) << "GetConstantIndex Invalid Id:" << builtinId;
                 return ConstantIndex::INVALID;
@@ -678,6 +734,21 @@ public:
             {StringSubstring, "String.prototype.substring"},
             {StringSubStr, "String.prototype.substr"},
             {StringSlice, "String.prototype.slice"},
+            {ObjectIs, "Object.is"},
+            {ObjectGetPrototypeOf, "Object.getPrototypeOf"},
+            {ObjectGetProto, "Object.prototype.getProto"},
+            {ObjectCreate, "Object.create"},
+            {ObjectIsPrototypeOf, "Object.prototype.isPrototypeOf"},
+            {ObjectHasOwnProperty, "Object.prototype.hasOwnProperty"},
+            {ReflectGetPrototypeOf, "Reflect.getPrototypeOf"},
+            {ReflectGet, "Reflect.get"},
+            {ReflectHas, "Reflect.has"},
+            {ReflectConstruct, "Reflect.construct"},
+            {ReflectApply, "Reflect.apply"},
+            {FunctionPrototypeApply, "Function.prototype.apply"},
+            {FunctionPrototypeBind, "Function.prototype.bind"},
+            {FunctionPrototypeCall, "Function.prototype.call"},
+            {FunctionPrototypeHasInstance, "Function.prototype.hasInstance"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
@@ -737,6 +808,20 @@ public:
             {"substring", StringSubstring},
             {"substr", StringSubStr},
             {"slice", StringSlice},
+            {"is", ObjectIs},
+            {"getPrototypeOf", ObjectGetPrototypeOf},
+            {"create", ObjectCreate},
+            {"isPrototypeOf", ObjectIsPrototypeOf},
+            {"hasOwnProperty", ObjectHasOwnProperty},
+            {"reflectGetPrototypeOf", ReflectGetPrototypeOf},
+            {"get", ReflectGet},
+            {"has", ReflectHas},
+            {"construct", ReflectConstruct},
+            {"ReflectApply", ReflectApply},
+            {"apply", FunctionPrototypeApply},
+            {"bind", FunctionPrototypeBind},
+            {"call", FunctionPrototypeCall},
+            {"hasInstance", FunctionPrototypeHasInstance},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);

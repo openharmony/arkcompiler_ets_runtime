@@ -75,6 +75,7 @@ print(Math.exp(10e-10)); //: 1.000000001
 // Check with special float params
 //aot: [trace] aot inline builtin: Math.exp, caller function name:func_main_0@builtinMathExp
 //aot: [trace] aot inline function name: printZero@builtinMathExp caller function name: func_main_0@builtinMathExp
+//aot: [trace] aot inline builtin: Object.is, caller function name:printZero@builtinMathExp
 printZero(Math.exp(-Infinity)); //: 0
 //aot: [trace] aot inline builtin: Math.exp, caller function name:func_main_0@builtinMathExp
 print(Math.exp(Infinity)); //: Infinity

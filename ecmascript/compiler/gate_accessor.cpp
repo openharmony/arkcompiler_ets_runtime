@@ -803,6 +803,16 @@ size_t GateAccessor::GetNumValueIn(GateRef gate) const
     return gatePtr->GetInValueCount();
 }
 
+std::vector<GateRef> GateAccessor::GetValueIns(GateRef gate) const
+{
+    size_t num = GetNumValueIn(gate);
+    std::vector<GateRef> valueIns(num);
+    for (size_t i = 0; i < num; ++i) {
+        valueIns[i] = GetValueIn(gate, i);
+    }
+    return valueIns;
+}
+
 bool GateAccessor::IsGCRelated(GateRef gate) const
 {
     return GetGateType(gate).IsGCRelated();

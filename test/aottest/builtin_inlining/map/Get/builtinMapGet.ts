@@ -247,6 +247,7 @@ if (ArkTools.isAOTCompiled(printGet2)) {
     }
 }
 
+//aot: [trace] aot inline builtin: Object.getPrototypeOf, caller function name:func_main_0@builtinMapGet
 print(Object.getPrototypeOf(m3) === Map.prototype) //: true
 
 //aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet

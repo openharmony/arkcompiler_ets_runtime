@@ -224,6 +224,30 @@ bool TypeInfoAccessor::IsTrustedStringType(
     return false;
 }
 
+bool TypeInfoAccessor::IsTrustedNotSameType(const CompilationEnv *env, Circuit *circuit, Chunk *chunk,
+                                            GateAccessor acc, GateRef left, GateRef right)
+{
+    bool leftIsBoolean = IsTrustedBooleanType(acc, left);
+    bool rightIsBoolean = IsTrustedBooleanType(acc, right);
+    bool leftIsNumber = IsTrustedNumberType(acc, left);
+    bool rightIsNumber = IsTrustedNumberType(acc, right);
+    bool leftIsString = IsTrustedStringType(env, circuit, chunk, acc, left);
+    bool rightIsString = IsTrustedStringType(env, circuit, chunk, acc, right);
+    if (leftIsBoolean) {
+        return rightIsNumber || rightIsString;
+    }
+
+    if (leftIsNumber) {
+        return rightIsBoolean || rightIsString;
+    }
+
+    if (leftIsString) {
+        return rightIsBoolean || rightIsNumber;
+    }
+
+    return false;
+}
+
 bool NewObjRangeTypeInfoAccessor::FindHClass()
 {
     auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();

@@ -59,6 +59,7 @@ namespace panda::ecmascript::kungfu {
     V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)         \
     V(ArrayConstructorCheck, ARRAY_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)            \
     V(ObjectConstructorCheck, OBJECT_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)          \
+    V(BooleanConstructorCheck, BOOLEAN_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)        \
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                   \
     V(MonoLoadPropertyOnProto, MONO_LOAD_PROPERTY_ON_PROTO, GateFlags::CHECKABLE, 1, 1, 4)      \
     V(StringFromSingleCharCode, STRING_FROM_SINGLE_CHAR_CODE, GateFlags::NO_WRITE, 1, 1, 1)     \
@@ -146,6 +147,18 @@ namespace panda::ecmascript::kungfu {
     V(SetEntries, SET_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                                    \
     V(MapClear, MAP_CLEAR, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
     V(SetClear, SET_CLEAR, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
+    V(ObjectIs, OBJECT_IS, GateFlags::NO_WRITE, 1, 1, 2)                                        \
+    V(ObjectGetPrototypeOf, OBJECT_GET_PROTOTYPE_OF, GateFlags::NO_WRITE, 1, 1, 1)              \
+    V(ObjectCreate, OBJECT_CREATE, GateFlags::NO_WRITE, 1, 1, 1)                                \
+    V(ObjectIsPrototypeOf, OBJECT_IS_PROTOTYPE_OF, GateFlags::NO_WRITE, 1, 1, 2)                \
+    V(ObjectHasOwnProperty, OBJECT_HAS_OWN_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)              \
+    V(ReflectGetPrototypeOf, REFLECT_GET_PROTOTYPE_OF, GateFlags::NO_WRITE, 1, 1, 1)            \
+    V(ReflectGet, REFLECT_GET, GateFlags::NO_WRITE, 1, 1, 2)                                    \
+    V(ReflectHas, REFLECT_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                    \
+    V(ReflectConstruct, REFLECT_CONSTRUCT, GateFlags::NO_WRITE, 1, 1, 1)                        \
+    V(ReflectApply, REFLECT_APPLY, GateFlags::NO_WRITE, 1, 1, 3)                                \
+    V(FunctionPrototypeApply, FUNCTION_PROTOTYPE_APPLY, GateFlags::NO_WRITE, 1, 1, 3)           \
+    V(FunctionPrototypeBind, FUNCTION_PROTOTYPE_BIND, GateFlags::NO_WRITE, 1, 1, 2)             \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \
@@ -208,7 +221,8 @@ namespace panda::ecmascript::kungfu {
 
 #define MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                 \
     V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, value) \
-    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)
+    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)                       \
+    V(FunctionPrototypeCall, FUNCTION_PROTOTYPE_CALL, GateFlags::NO_WRITE, 1, 1, value)
 
 #define MCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)

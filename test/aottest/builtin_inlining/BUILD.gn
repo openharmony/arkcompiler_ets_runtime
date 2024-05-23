@@ -18,10 +18,13 @@ group("ark_aot_builtin_inlining_test") {
     "DataView:ark_aot_builtin_inlining_DataView_test",
     "bigint:ark_aot_builtin_inlining_bigint_test",
     "date:ark_aot_builtin_inlining_date_test",
+    "function:ark_aot_builtin_inlining_function_test",
     "global:ark_aot_builtin_inlining_global_test",
     "map:ark_aot_builtin_inlining_map_test",
     "math:ark_aot_builtin_inlining_math_test",
     "number:ark_aot_builtin_inlining_number_test",
+    "object:ark_aot_builtin_inlining_object_test",
+    "reflect:ark_aot_builtin_inlining_reflect_test",
     "set:ark_aot_builtin_inlining_set_test",
     "typedarray:ark_aot_builtin_inlining_typedarray_test",
   ]

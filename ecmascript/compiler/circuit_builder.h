@@ -558,6 +558,7 @@ public:
     GateRef InsertTypedArrayCheck(GateType type, GateRef array);
     GateRef ArrayConstructorCheck(GateRef gate);
     GateRef ObjectConstructorCheck(GateRef gate);
+    GateRef BooleanConstructorCheck(GateRef gate);
     GateRef InsertTypedBinaryop(GateRef left, GateRef right, TypedBinOp op);
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
     GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, ParamType paramType,
@@ -662,6 +663,13 @@ public:
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);
     GateRef BuildBigIntAsIntN(const GateMetaData* op, std::vector<GateRef> &&args);
+    GateRef NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj);
+    GateRef ToObject(GateRef glue, GateRef obj);
+    GateRef GetPrototype(GateRef glue, GateRef object);
+
+    GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);
+    GateRef TransProtoWithoutLayout(GateRef glue, GateRef hClass, GateRef proto);
+    GateRef OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto);
 
     // bit operation
     inline GateRef TaggedIsInt(GateRef x);
@@ -739,7 +747,7 @@ public:
     GateRef GetLengthFromString(GateRef value);
     GateRef Rotl(GateRef word, uint32_t shift);
     GateRef CalcHashcodeForInt(GateRef value);
-    GateRef GetHashcodeFromString(GateRef glue, GateRef value);
+    GateRef GetHashcodeFromString(GateRef glue, GateRef value, GateRef hir = Circuit::NullGate());
     GateRef TryGetHashcodeFromString(GateRef string);
     GateRef IsIntegerString(GateRef string);
     GateRef IsLiteralString(GateRef string);
@@ -798,6 +806,7 @@ public:
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     inline GateRef IntPtrAnd(GateRef x, GateRef y);
     inline GateRef IntPtrNot(GateRef x);
+    inline GateRef IntPtrEqual(GateRef x, GateRef y);
     GateRef AddWithOverflow(GateRef left, GateRef right);
     GateRef SubWithOverflow(GateRef left, GateRef right);
     GateRef MulWithOverflow(GateRef left, GateRef right);

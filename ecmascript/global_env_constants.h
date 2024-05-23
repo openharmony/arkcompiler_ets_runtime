@@ -244,7 +244,22 @@ class ObjectFactory;
     V(JSTaggedValue, NumberIsFinite, NUMBER_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, NumberIsInteger, NUMBER_IS_INTEGER_INDEX, ecma_roots_builtins)                     \
     V(JSTaggedValue, NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER_INDEX, ecma_roots_builtins)             \
-    V(JSTaggedValue, NumberParseFloat, NUMBER_PARSE_FLOAT_INDEX, ecma_roots_builtins)
+    V(JSTaggedValue, NumberParseFloat, NUMBER_PARSE_FLOAT_INDEX, ecma_roots_builtins)                   \
+    V(JSTaggedValue, ObjectIs, OBJECT_IS_INDEX, ecma_roots_special)                                     \
+    V(JSTaggedValue, ObjectGetPrototypeOf, OBJECT_GET_PROTOTYPE_OF_INDEX, ecma_roots_special)           \
+    V(JSTaggedValue, ObjectGetPrototo, OBJECT_GET_PROTO_INDEX, ecma_roots_special)                      \
+    V(JSTaggedValue, ObjectCreate, OBJECT_CREATE_INDEX, ecma_roots_special)                             \
+    V(JSTaggedValue, ObjectIsPrototypeOf, OBJECT_IS_PROTOTYPE_OF_INDEX, ecma_roots_special)             \
+    V(JSTaggedValue, ObjectHasOwnProperty, OBJECT_HAS_OWN_PROPERTY_INDEX, ecma_roots_special)           \
+    V(JSTaggedValue, ReflectGetPrototypeOf, REFLECT_GET_PROTOTYPE_OF_INDEX, ecma_roots_special)         \
+    V(JSTaggedValue, ReflectGet, REFLECT_GET_INDEX, ecma_roots_special)                                 \
+    V(JSTaggedValue, ReflectHas, REFLECT_HAS_INDEX, ecma_roots_special)                                 \
+    V(JSTaggedValue, ReflectConstruct, REFLECT_CONSTRUCT_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, ReflectApply, REFLECT_APPLY_INDEX, ecma_roots_special)                             \
+    V(JSTaggedValue, FunctionApply, FUNCTION_PROTOTYPE_APPLY_INDEX, ecma_roots_special)                 \
+    V(JSTaggedValue, FunctionBind, FUNCTION_PROTOTYPE_BIND_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, FunctionCall, FUNCTION_PROTOTYPE_CALL_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, FunctionHasInstance, FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX, ecma_roots_special)
 
 // All of type JSTaggedValue
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \
