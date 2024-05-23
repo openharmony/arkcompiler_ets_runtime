@@ -83,6 +83,160 @@ void BuiltinsNumberStubBuilder::ParseInt(Variable *result, Label *exit, Label *s
     }
 }
 
+void BuiltinsNumberStubBuilder::IsFinite(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    GateRef number = GetCallArg0(numArgs_);
+
+    // In this method, we actually don't need slow path.
+    // The following code is for passing the verification phase.
+    Label noSlowPath(env);
+    BRANCH(False(), slowPath, &noSlowPath);
+    Bind(&noSlowPath);
+
+    Label retTrue(env);
+    Label retFalse(env);
+
+    Label isNotInt(env);
+    BRANCH(TaggedIsInt(number), &retTrue, &isNotInt);
+    Bind(&isNotInt);
+    {
+        Label isDouble(env);
+        BRANCH(TaggedIsDouble(number), &isDouble, &retFalse);
+        Bind(&isDouble);
+        {
+            GateRef f = GetDoubleOfTDouble(number);
+            BRANCH(BoolOr(DoubleIsNAN(f), DoubleIsINF(f)), &retFalse, &retTrue);
+        }
+    }
+
+    Bind(&retTrue);
+    {
+        *result = TaggedTrue();
+        Jump(exit);
+    }
+    Bind(&retFalse);
+    {
+        *result = TaggedFalse();
+        Jump(exit);
+    }
+}
+
+void BuiltinsNumberStubBuilder::IsNaN(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    GateRef number = GetCallArg0(numArgs_);
+
+    // In this method, we actually don't need slow path.
+    // The following code is for passing the verification phase.
+    Label noSlowPath(env);
+    BRANCH(False(), slowPath, &noSlowPath);
+    Bind(&noSlowPath);
+
+    Label retTrue(env);
+    Label retFalse(env);
+
+    Label isDouble(env);
+    BRANCH(TaggedIsDouble(number), &isDouble, &retFalse);
+    Bind(&isDouble);
+    BRANCH(DoubleIsNAN(GetDoubleOfTDouble(number)), &retTrue, &retFalse);
+
+    Bind(&retTrue);
+    {
+        *result = TaggedTrue();
+        Jump(exit);
+    }
+    Bind(&retFalse);
+    {
+        *result = TaggedFalse();
+        Jump(exit);
+    }
+}
+
+void BuiltinsNumberStubBuilder::IsInteger(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    GateRef number = GetCallArg0(numArgs_);
+
+    // In this method, we actually don't need slow path.
+    // The following code is for passing the verification phase.
+    Label noSlowPath(env);
+    BRANCH(False(), slowPath, &noSlowPath);
+    Bind(&noSlowPath);
+
+    Label retTrue(env);
+    Label retFalse(env);
+
+    Label isNotInt(env);
+    BRANCH(TaggedIsInt(number), &retTrue, &isNotInt);
+    Bind(&isNotInt);
+    {
+        Label isDouble(env);
+        BRANCH(TaggedIsDouble(number), &isDouble, &retFalse);
+        Bind(&isDouble);
+        BRANCH(DoubleIsInteger(GetDoubleOfTDouble(number)), &retTrue, &retFalse);
+    }
+
+    Bind(&retTrue);
+    {
+        *result = TaggedTrue();
+        Jump(exit);
+    }
+    Bind(&retFalse);
+    {
+        *result = TaggedFalse();
+        Jump(exit);
+    }
+}
+
+void BuiltinsNumberStubBuilder::IsSafeInteger(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    GateRef number = GetCallArg0(numArgs_);
+
+    // In this method, we actually don't need slow path.
+    // The following code is for passing the verification phase.
+    Label noSlowPath(env);
+    BRANCH(False(), slowPath, &noSlowPath);
+    Bind(&noSlowPath);
+
+    Label retTrue(env);
+    Label retFalse(env);
+
+    Label isNotInt(env);
+    BRANCH(TaggedIsInt(number), &retTrue, &isNotInt);
+    Bind(&isNotInt);
+    {
+        Label isDouble(env);
+        BRANCH(TaggedIsDouble(number), &isDouble, &retFalse);
+        Bind(&isDouble);
+        {
+            Label isNotNanOrInf(env);
+            GateRef f = GetDoubleOfTDouble(number);
+            BRANCH(BoolOr(DoubleIsNAN(f), DoubleIsINF(f)), &retFalse, &isNotNanOrInf);
+            Bind(&isNotNanOrInf);
+            {
+                Label checkSafe(env);
+                GateRef truncated = ChangeInt32ToFloat64(TruncFloatToInt64(f));
+                BRANCH(DoubleEqual(f, truncated), &checkSafe, &retFalse);
+                Bind(&checkSafe);
+                BRANCH(DoubleLessThanOrEqual(DoubleAbs(f), Double(base::MAX_SAFE_INTEGER)), &retTrue, &retFalse);
+            }
+        }
+    }
+
+    Bind(&retTrue);
+    {
+        *result = TaggedTrue();
+        Jump(exit);
+    }
+    Bind(&retFalse);
+    {
+        *result = TaggedFalse();
+        Jump(exit);
+    }
+}
+
 void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef func, GateRef newTarget)
 {
     auto env = GetEnvironment();
