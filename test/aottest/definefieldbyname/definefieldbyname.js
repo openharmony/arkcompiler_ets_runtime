@@ -28,6 +28,7 @@ const b = new B();
 print(b.x);
 
 
-for (let i = 0; i < 400; i ++){
+for (let i = 0; i < 400; i++){
+	// warm up profile type info
 }
 print(new B().x);

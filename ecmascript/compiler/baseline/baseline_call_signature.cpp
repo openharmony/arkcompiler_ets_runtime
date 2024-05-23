@@ -4165,6 +4165,38 @@ DEF_CALL_SIGNATURE(BaselineCallRuntimeLdSendableClassPrefImm16)
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
 }
 
+DEF_CALL_SIGNATURE(BaselineCallRuntimeIstruePrefImm8)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("BaselineCallRuntimeIstruePrefImm8", 0, 4,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::INT8(),
+    };
+    BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
+}
+
+DEF_CALL_SIGNATURE(BaselineCallRuntimeIsfalsePrefImm8)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("BaselineCallRuntimeIsfalsePrefImm8", 0, 4,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::INT8(),
+    };
+    BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
+}
+
 // GLUE, ACC, SP
 DEF_CALL_SIGNATURE(BaselineReturnundefined)
 {

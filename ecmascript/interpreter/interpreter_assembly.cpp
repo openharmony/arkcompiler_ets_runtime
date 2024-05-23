@@ -2960,17 +2960,43 @@ void InterpreterAssembly::HandleIstrue(
     DISPATCH(ISTRUE);
 }
 
+void InterpreterAssembly::HandleCallRuntimeIstruePrefImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    LOG_INST() << "intrinsics::callruntimeistrueprefimm8";
+    if (GET_ACC().ToBoolean()) {
+        SET_ACC(JSTaggedValue::True());
+    } else {
+        SET_ACC(JSTaggedValue::False());
+    }
+    DISPATCH(CALLRUNTIME_ISTRUE_PREF_IMM8);
+}
+
 void InterpreterAssembly::HandleIsfalse(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::isfalse";
-    if (!GET_ACC().ToBoolean()) {
-        SET_ACC(JSTaggedValue::True());
-    } else {
+    if (GET_ACC().ToBoolean()) {
         SET_ACC(JSTaggedValue::False());
+    } else {
+        SET_ACC(JSTaggedValue::True());
     }
     DISPATCH(ISFALSE);
+}
+
+void InterpreterAssembly::HandleCallRuntimeIsfalsePrefImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    LOG_INST() << "intrinsics::callruntimeisfalseprefimm8";
+    if (GET_ACC().ToBoolean()) {
+        SET_ACC(JSTaggedValue::False());
+    } else {
+        SET_ACC(JSTaggedValue::True());
+    }
+    DISPATCH(CALLRUNTIME_ISFALSE_PREF_IMM8);
 }
 
 void InterpreterAssembly::HandleTypeofImm16(

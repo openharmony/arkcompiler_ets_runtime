@@ -510,9 +510,11 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerSuperCallSpread(gate);
             break;
         case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
             LowerIsTrueOrFalse(gate, true);
             break;
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
             LowerIsTrueOrFalse(gate, false);
             break;
         case EcmaOpcode::GETNEXTPROPNAME_V8:

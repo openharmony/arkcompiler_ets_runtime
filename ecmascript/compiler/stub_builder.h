@@ -736,6 +736,7 @@ public:
     GateRef FastSub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastToBoolean(GateRef value, bool flag = true);
     GateRef FastToBooleanBaseline(GateRef value, bool flag = true);
+    GateRef FastToBooleanWithProfile(GateRef value, ProfileOperation callback, bool flag = true);
 
     // Add SpecialContainer
     GateRef GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType);

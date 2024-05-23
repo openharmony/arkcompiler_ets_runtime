@@ -282,6 +282,8 @@ namespace panda::ecmascript::kungfu {
     V(BaselineCallRuntimeCallInitPrefImm8V8)                               \
     V(BaselineCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8)      \
     V(BaselineCallRuntimeLdSendableClassPrefImm16)                         \
+    V(BaselineCallRuntimeIstruePrefImm8)                                   \
+    V(BaselineCallRuntimeIsfalsePrefImm8)                                  \
     V(BaselineReturnundefined)                                             \
     V(BaselineExceptionHandler)                                            \
     V(BaselineUpdateHotness)                                               \

@@ -3130,11 +3130,25 @@ DECLARE_ASM_HANDLER(HandleIstrue)
     DISPATCH_WITH_ACC(ISTRUE);
 }
 
+DECLARE_ASM_HANDLER(HandleCallRuntimeIstruePrefImm8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    varAcc = FastToBooleanWithProfile(*varAcc, callback, true);
+    DISPATCH_WITH_ACC(CALLRUNTIME_ISTRUE_PREF_IMM8);
+}
+
 DECLARE_ASM_HANDLER(HandleIsfalse)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     varAcc = FastToBoolean(*varAcc, false);
     DISPATCH_WITH_ACC(ISFALSE);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeIsfalsePrefImm8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    varAcc = FastToBooleanWithProfile(*varAcc, callback, false);
+    DISPATCH_WITH_ACC(CALLRUNTIME_ISFALSE_PREF_IMM8);
 }
 
 DECLARE_ASM_HANDLER(HandleTonumberImm8)

@@ -698,6 +698,13 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 DumpOpType(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
+            case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+            case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8: {
+                uint8_t slotId = READ_INST_8_1();
+                CHECK_SLOTID_BREAK(slotId);
+                DumpOpType(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
             // Call
             case EcmaOpcode::CALLARG0_IMM8:
             case EcmaOpcode::CALLARG1_IMM8_V8:

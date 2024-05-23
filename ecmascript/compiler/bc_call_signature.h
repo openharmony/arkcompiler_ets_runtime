@@ -390,7 +390,9 @@ namespace panda::ecmascript::kungfu {
     T(HandleCallRuntimeStSendableVarImm16Imm16)                           \
     T(HandleCallRuntimeLdSendableVarImm4Imm4)                             \
     T(HandleCallRuntimeLdSendableVarImm8Imm8)                             \
-    T(HandleCallRuntimeLdSendableVarImm16Imm16)
+    T(HandleCallRuntimeLdSendableVarImm16Imm16)                           \
+    T(HandleCallRuntimeIstruePrefImm8)                                    \
+    T(HandleCallRuntimeIsfalsePrefImm8)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \
@@ -465,7 +467,9 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleGreatereqImm8V8, V)           \
     APPEND_SUFFIX(HandleStrictnoteqImm8V8, V)         \
     APPEND_SUFFIX(HandleStricteqImm8V8, V)            \
-    APPEND_SUFFIX(HandleTonumericImm8, V)
+    APPEND_SUFFIX(HandleTonumericImm8, V)             \
+    APPEND_SUFFIX_IMM8_SECONDBC(HandleCallRuntimeIstruePrefImm8, V)       \
+    APPEND_SUFFIX_IMM8_SECONDBC(HandleCallRuntimeIsfalsePrefImm8, V)      \
 
 #define ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(V) \
     APPEND_SUFFIX(HandleJmpImm8, V)                       \

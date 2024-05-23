@@ -3166,6 +3166,21 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ISTRUE)
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_ISTRUE_PREF_IMM8)
+{
+    (void)bytecodeArray;
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallRuntimeIstruePrefImm8);
+    LOG_INST() << "    BaselineCallRuntimeIstruePrefImm8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(ISFALSE)
 {
     (void)bytecodeArray;
@@ -3180,6 +3195,22 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ISFALSE)
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_ISFALSE_PREF_IMM8)
+{
+    (void)bytecodeArray;
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallRuntimeIsfalsePrefImm8);
+    LOG_INST() << "    BaselineCallRuntimeIsfalsePrefImm8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
 // ------- End parse bytecodes about comparison  -------
 
 // ------- parse bytecodes about control flow  -------
