@@ -21,28 +21,39 @@
 
 namespace panda::ecmascript::ohos {
 
-bool GetJitEscapeEanble()
-{
-#ifdef JIT_ESCAPE_ENABLE
-    return OHOS::system::GetBoolParameter("ark.jit.escape.disable", false);
-#endif
-    return true;
-}
+class JitTools {
+public:
+    static bool GetJitEscapeEanble()
+    {
+    #ifdef JIT_ESCAPE_ENABLE
+        return OHOS::system::GetBoolParameter("ark.jit.escape.disable", false);
+    #endif
+        return true;
+    }
 
-bool IsJitEnableLitecg(bool value)
-{
-#ifdef GET_PARAMETER_FOR_JIT
-    return OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);
-#endif
-    return value;
-}
+    static bool IsJitEnableLitecg(bool value)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);
+    #endif
+        return value;
+    }
 
-uint8_t GetJitCallThreshold(uint8_t threshold)
-{
-#ifdef GET_PARAMETER_FOR_JIT
-    return OHOS::system::GetUintParameter("ark.jit.call.threshold", static_cast<uint8_t>(0));
-#endif
-    return threshold;
-}
+    static uint8_t GetJitCallThreshold(uint8_t threshold)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetUintParameter("ark.jit.call.threshold", static_cast<uint8_t>(0));
+    #endif
+        return threshold;
+    }
+
+    static bool GetJitDumpObjEanble()
+    {
+    #ifdef JIT_ESCAPE_ENABLE
+        return OHOS::system::GetBoolParameter("ark.jit.enable.dumpobj", false);
+    #endif
+        return false;
+    }
+};
 }
 #endif  // ECMASCRIPT_JIT_TOOLS_H
