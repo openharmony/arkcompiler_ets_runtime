@@ -123,14 +123,15 @@ Throwing.prototype.valueOf = function() {
 let throwingObj = new Throwing();
 
 try {
-    //aot: [trace] Check Type: InconsistentHClass6
+    //aot: [trace] aot inline builtin: Date.prototype.getTime, caller function name:func_main_0@builtinDateGetTime
     print(time.getTime(throwingObj)); //: 50000000000
     throwingObj.value = 10;
-    // Value isn't use
+    //aot: [trace] aot inline builtin: Date.prototype.getTime, caller function name:func_main_0@builtinDateGetTime
     print(time.getTime(throwingObj)); //: 50000000000
 } catch(e) {
     print(e);
 } finally {
+    //aot: [trace] aot inline builtin: Date.prototype.getTime, caller function name:func_main_0@builtinDateGetTime
     print(time.getTime(obj)); //: 50000000000
 }
 

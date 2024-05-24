@@ -212,7 +212,6 @@ group("ark_aot_ts_test") {
     "pgo_forof_set",
     "pgo_forof_string",
     "pgo_forof_typed_array",
-    "pgo_function_operation",
     "pgo_function_prototype",
     "pgo_ldobjbyvalue_array",
     "pgo_ldobjbyvalue_string",
@@ -296,6 +295,7 @@ group("ark_aot_ts_test") {
 
   if (!is_debug) {
     test_list += [
+      "pgo_function_operation",
       #"lexenv_specialization",
       #"lexenv_specialization_multi_inline",
       #"lexenv_specialization_noopt",

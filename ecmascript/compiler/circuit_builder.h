@@ -56,6 +56,7 @@ class NativeInlineLowering;
 class TypedHCRLowering;
 class StringBuilderOptimizer;
 class PostSchedule;
+class TSHCROptPass;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -933,6 +934,7 @@ private:
     friend NativeInlineLowering;
     friend TypedHCRLowering;
     friend PostSchedule;
+    friend TSHCROptPass;
 };
 
 }  // namespace panda::ecmascript::kungfu

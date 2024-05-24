@@ -1898,6 +1898,27 @@ bool GateAccessor::IsSingleCharGate(GateRef gate)
     return false;
 }
 
+bool GateAccessor::UseForTypeOpProfilerGate(GateRef gate) const
+{
+    OpCode op = GetOpCode(gate);
+    switch (op) {
+#define DECLARE_GATE_OPCODE(NAME, OP, R, S, D, V) \
+        case OpCode::OP:                          \
+            return true;
+
+    MCR_IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_VALUE(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(DECLARE_GATE_OPCODE)
+#undef DECLARE_GATE_OPCODE
+        default:
+            return false;
+    }
+}
+
 uint32_t GateAccessor::GetStringIdFromLdaStrGate(GateRef gate)
 {
     ASSERT(GetByteCodeOpcode(gate) == EcmaOpcode::LDA_STR_ID16);
