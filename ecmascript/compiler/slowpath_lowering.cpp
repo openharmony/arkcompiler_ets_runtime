@@ -510,9 +510,11 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerSuperCallSpread(gate);
             break;
         case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
             LowerIsTrueOrFalse(gate, true);
             break;
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
             LowerIsTrueOrFalse(gate, false);
             break;
         case EcmaOpcode::GETNEXTPROPNAME_V8:
@@ -724,6 +726,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
             LowerNotifyConcurrentResult(gate);
             break;
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             LowerDefineFieldByName(gate);
             break;
