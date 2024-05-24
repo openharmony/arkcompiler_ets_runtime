@@ -1812,6 +1812,49 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
     DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(thisArrLen, Int64(1)));
 
+    GateRef hclass = LoadHClass(thisValue);
+    GateRef kind = GetElementsKindFromHClass(hclass);
+    Label isInt(env);
+    Label isNotInt(env);
+    Label notFastKind(env);
+    GateRef elementsKindIntLB = Int32GreaterThanOrEqual(kind,
+                                                        Int32(static_cast<int32_t>(ElementsKind::INT)));
+    GateRef elementsKindIntUB = Int32LessThanOrEqual(kind,
+                                                     Int32(static_cast<int32_t>(ElementsKind::HOLE_INT)));
+    GateRef checkIntKind = BoolAnd(elementsKindIntLB, elementsKindIntUB);
+    BRANCH(checkIntKind, &isInt, &isNotInt);
+    Bind(&isInt);
+    {
+        FastReverse(glue, thisValue, thisArrLen, ElementsKind::INT, result, exit);
+    }
+    Bind(&isNotInt);
+    {
+        Label isNumber(env);
+        Label isNotNumber(env);
+        GateRef elementsKindNumberLB = Int32GreaterThanOrEqual(kind,
+                                                               Int32(static_cast<int32_t>(ElementsKind::NUMBER)));
+        GateRef elementsKindNumberUB = Int32LessThanOrEqual(kind,
+                                                            Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER)));
+        GateRef checkNumberKind = BoolAnd(elementsKindNumberLB, elementsKindNumberUB);
+        BRANCH(checkNumberKind, &isNumber, &isNotNumber);
+        Bind(&isNumber);
+        {
+            FastReverse(glue, thisValue, thisArrLen, ElementsKind::NUMBER, result, exit);
+        }
+        Bind(&isNotNumber);
+        {
+            FastReverse(glue, thisValue, thisArrLen, ElementsKind::TAGGED, result, exit);
+        }
+    }
+}
+
+void BuiltinsArrayStubBuilder::FastReverse(GateRef glue, GateRef thisValue, GateRef len,
+    ElementsKind kind, Variable *result, Label *exit)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(len, Int64(1)));
+    GateRef elements = GetElementsArray(thisValue);
     Label loopHead(env);
     Label loopEnd(env);
     Label next(env);
@@ -1824,12 +1867,10 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
         BRANCH(Int64LessThan(*i, *j), &next, &loopExit);
         Bind(&next);
         {
-            GateRef lower = GetTaggedValueWithElementsKind(thisValue, *i);
-            GateRef upper = GetTaggedValueWithElementsKind(thisValue, *j);
-            SetValueWithElementsKind(glue, thisValue, upper, *i, Boolean(false),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-            SetValueWithElementsKind(glue, thisValue, lower, *j, Boolean(false),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            GateRef lower = FastGetValueWithElementsKind(elements, *i, kind);
+            GateRef upper = FastGetValueWithElementsKind(elements, *j, kind);
+            FastSetValueWithElementsKind(glue, elements, upper, *i, kind);
+            FastSetValueWithElementsKind(glue, elements, lower, *j, kind);
             Jump(&loopEnd);
         }
     }

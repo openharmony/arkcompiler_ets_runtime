@@ -51,6 +51,9 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     GateRef DoSort(GateRef glue, GateRef receiver, GateRef receiverState,
         Variable *result, Label *exit, Label *slowPath);
+
+    void FastReverse(GateRef glue, GateRef thisValue, GateRef len,
+                     ElementsKind kind, Variable *result, Label *exit);
 private:
     static constexpr uint32_t MAX_LENGTH_ZERO = 0;
     static constexpr uint32_t MAX_LENGTH_ONE = 1;

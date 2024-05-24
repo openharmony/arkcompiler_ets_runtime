@@ -516,6 +516,9 @@ public:
     GateRef GetFieldTypeFromHandler(GateRef attr);
     GateRef ClearSharedStoreKind(GateRef handlerInfo);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
+    GateRef FastGetValueWithElementsKind(GateRef elements, GateRef index, ElementsKind kind);
+    void FastSetValueWithElementsKind(GateRef glue, GateRef elements, GateRef rawValue,
+                                      GateRef index, ElementsKind kind);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
                                      GateRef needTransition, GateRef extraKind);
     GateRef CopyJSArrayToTaggedArrayArgs(GateRef glue, GateRef srcObj);
