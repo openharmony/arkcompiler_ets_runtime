@@ -61,6 +61,7 @@ using ecmascript::FileStream;
 using ecmascript::FileDescriptorStream;
 using ecmascript::CMap;
 using ecmascript::Tracing;
+std::map<uint32_t, uint32_t> g_tidAndFdMap;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] const std::string &path, [[maybe_unused]] bool isVmMode,
@@ -133,8 +134,15 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
         }
     }
 
-    // Write in faultlog for heap leak.
-    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+    // Write in hidumper for heap leak.
+    uint32_t curTid = vm->GetTid();
+    int32_t fd = -1;
+    auto it = g_tidAndFdMap.find(curTid);
+    if (it != g_tidAndFdMap.end()) {
+        fd = static_cast<int32_t>(it->second);
+    } else {
+        LOG_ECMA(ERROR) << "not find tid int g_tidAndFdMap, curTid:" << curTid;
+    }
     if (fd < 0) {
         LOG_ECMA(ERROR) << "Write FD failed, fd" << fd;
         return;
@@ -156,7 +164,8 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
                                  [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC,
-                                 [[maybe_unused]] uint32_t tid)
+                                 [[maybe_unused]] uint32_t tid, [[maybe_unused]] std::vector<uint32_t> fdVec,
+                                 [[maybe_unused]] std::vector<uint32_t> tidVec)
 {
     const int THREAD_COUNT = 1;
     if (vm->IsWorkerThread()) {
@@ -166,13 +175,15 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     sem_init(&g_heapdumpCnt, 0, THREAD_COUNT);
     uint32_t curTid = vm->GetTid();
     LOG_ECMA(INFO) << "DumpHeapSnapshot tid " << tid << " curTid " << curTid;
-    DumpHeapSnapshotWithVm(vm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC, tid);
+    UpdateTidAndFdMap(curTid, fdVec, tidVec);
+    DumpHeapSnapshotWithVm(vm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC, tid, fdVec, tidVec);
 }
 
 void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                        [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
                                        [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC,
-                                       [[maybe_unused]] uint32_t tid)
+                                       [[maybe_unused]] uint32_t tid, [[maybe_unused]] std::vector<uint32_t> fdVec,
+                                       [[maybe_unused]] std::vector<uint32_t> tidVec)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -215,8 +226,10 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
     // dump worker vm
     const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
         uint32_t curTid = workerVm->GetTid();
-        LOG_ECMA(INFO) << "DumpHeapSnapshot workthread curTid " << curTid;
-        DumpHeapSnapshotWithVm(workerVm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC, tid);
+        LOG_ECMA(INFO) << "DumpHeapSnapshot workthread, tid " << tid << "curTid " << curTid;
+        UpdateTidAndFdMap(curTid, fdVec, tidVec);
+        DumpHeapSnapshotWithVm(workerVm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC, tid,
+            fdVec, tidVec);
         return;
     });
 
@@ -227,6 +240,15 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
     }
 #endif
 #endif
+}
+
+void DFXJSNApi::UpdateTidAndFdMap(uint32_t curTid, std::vector<uint32_t> fdVec, std::vector<uint32_t> tidVec)
+{
+    for (size_t i = 0; i < tidVec.size(); i++) {
+        if (curTid == tidVec[i] && fdVec.size() > i) {
+            g_tidAndFdMap[curTid] = fdVec[i];
+        }
+    }
 }
 
 // tid = 0: TriggerGC all vm; tid != 0: TriggerGC tid vm
