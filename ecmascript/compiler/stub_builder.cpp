@@ -5022,27 +5022,25 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
                     BRANCH(TaggedIsNull(*object), &afterLoop, &loopHead);
                     LoopBegin(&loopHead);
                     {
-                        GateRef isEqual = SameValue(glue, *object, *constructorPrototype);
-
-                        BRANCH(isEqual, &strictEqual1, &notStrictEqual1);
-                        Bind(&strictEqual1);
+                        object = GetPrototype(glue, *object);
+                        Branch(HasPendingException(glue), &shouldReturn, &shouldContinue);
+                        Bind(&shouldReturn);
                         {
-                            result = TaggedTrue();
+                            result = Exception();
                             Jump(&exit);
                         }
-                        Bind(&notStrictEqual1);
+                        Bind(&shouldContinue);
                         {
-                            object = GetPrototype(glue, *object);
-
-                            BRANCH(HasPendingException(glue), &shouldReturn, &shouldContinue);
-                            Bind(&shouldReturn);
+                            GateRef isEqual = SameValue(glue, *object, *constructorPrototype);
+                            Branch(isEqual, &strictEqual1, &notStrictEqual1);
+                            Bind(&strictEqual1);
                             {
-                                result = Exception();
+                                result = TaggedTrue();
                                 Jump(&exit);
                             }
+                            Bind(&notStrictEqual1);
+                            Branch(TaggedIsNull(*object), &afterLoop, &loopEnd);
                         }
-                        Bind(&shouldContinue);
-                        BRANCH(TaggedIsNull(*object), &afterLoop, &loopEnd);
                     }
                     Bind(&loopEnd);
                     LoopEnd(&loopHead, env, glue);
