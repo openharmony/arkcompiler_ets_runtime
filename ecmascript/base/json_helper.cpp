@@ -48,12 +48,12 @@ CString DefaultValueToQuotedString(const char ch, CString product)
     // c. Else if C has a code unit value less than 0x0020 (SPACE), then
     if (ch > 0 && ch < CODE_SPACE) {
         /*
-            * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-            * ii. Let product be the concatenation of product and "u".
-            * iii. Let hex be the string result of converting the numeric code unit value of C to a String of
-            * four hexadecimal digits. Alphabetic hexadecimal digits are presented as lowercase Latin letters.
-            * iv. Let product be the concatenation of product and hex.
-            */
+        * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
+        * ii. Let product be the concatenation of product and "u".
+        * iii. Let hex be the string result of converting the numeric code unit value of C to a String of
+        * four hexadecimal digits. Alphabetic hexadecimal digits are presented as lowercase Latin letters.
+        * iv. Let product be the concatenation of product and hex.
+        */
         std::ostringstream oss;
         oss << "\\u" << std::hex << std::setfill('0') << std::setw(FOUR_HEX) << static_cast<int>(ch);
         product += oss.str();
@@ -70,7 +70,7 @@ bool IsSkip(const char second, const char third)
     bool flag = false;
     if (second && second >= ALONE_SURROGATE_3B_SECOND_START &&
         second <= ALONE_SURROGATE_3B_SECOND_END &&
-        third >= ALONE_SURROGATE_3B_THIRD_START && // 2 : The third character after c
+        third >= ALONE_SURROGATE_3B_THIRD_START &&
         third <= ALONE_SURROGATE_3B_THIRD_END) {
         flag = true;
     }
@@ -86,10 +86,10 @@ CString procEachCodeInValue(const char *value, CString product)
     for (const char *c = value; *c != 0; ++c) {
         switch (*c) {
             /*
-                * a. If C is 0x0022 (QUOTATION MARK) or 0x005C (REVERSE SOLIDUS), then
-                * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-                * ii. Let product be the concatenation of product and C.
-                */
+            * a. If C is 0x0022 (QUOTATION MARK) or 0x005C (REVERSE SOLIDUS), then
+            * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
+            * ii. Let product be the concatenation of product and C.
+            */
             case '\"':
                 product += "\\\"";
                 break;
@@ -97,17 +97,17 @@ CString procEachCodeInValue(const char *value, CString product)
                 product += "\\\\";
                 break;
             /*
-                * b. Else if C is 0x0008 (BACKSPACE), 0x000C (FORM FEED), 0x000A (LINE FEED), 0x000D (CARRIAGE RETURN),
-                * or 0x000B (LINE TABULATION), then
-                * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-                * ii. Let abbrev be the String value corresponding to the value of C as follows:
-                * BACKSPACE "b"
-                * FORM FEED (FF) "f"
-                * LINE FEED (LF) "n"
-                * CARRIAGE RETURN (CR) "r"
-                * LINE TABULATION "t"
-                * iii. Let product be the concatenation of product and abbrev.
-                */
+            * b. Else if C is 0x0008 (BACKSPACE), 0x000C (FORM FEED), 0x000A (LINE FEED), 0x000D (CARRIAGE RETURN),
+            * or 0x000B (LINE TABULATION), then
+            * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
+            * ii. Let abbrev be the String value corresponding to the value of C as follows:
+            * BACKSPACE "b"
+            * FORM FEED (FF) "f"
+            * LINE FEED (LF) "n"
+            * CARRIAGE RETURN (CR) "r"
+            * LINE TABULATION "t"
+            * iii. Let product be the concatenation of product and abbrev.
+            */
             case '\b':
                 product += "\\b";
                 break;
