@@ -21,7 +21,8 @@ namespace panda::ecmascript {
 CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
     CString &baseFileName, CString recordName, CString requestName)
 {
-    if (thread->GetEcmaVM()->IsNormalizedOhmUrlPack()) {
+    if (thread->GetEcmaVM()->IsNormalizedOhmUrlPack() && !StringHelper::StringStartWith(requestName, PREFIX_BUNDLE) &&
+        !StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
         return ConcatMergeFileNameToNormalized(thread, jsPandaFile, baseFileName, recordName, requestName);
     }
 
@@ -60,9 +61,7 @@ CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, cons
     CString &baseFileName, CString recordName, CString requestName)
 {
     if (!StringHelper::StringStartWith(requestName, PREFIX_NORMALIZED)) {
-        if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE) ||
-            StringHelper::StringStartWith(requestName, PREFIX_PACKAGE) ||
-            StringHelper::StringStartWith(requestName, PREFIX_ETS)) {
+        if (StringHelper::StringStartWith(requestName, PREFIX_ETS)) {
             CString msg = "can not use different packing ways in same app, current requestName is " + requestName;
             THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), "");
         }
