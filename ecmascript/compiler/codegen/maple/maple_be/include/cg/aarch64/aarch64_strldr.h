@@ -34,7 +34,6 @@ public:
     void Run() final;
     void DoStoreLoadOpt();
     void DoLoadZeroToMoveTransfer(const Insn &strInsn, short strSrcIdx, const InsnSet &memUseInsnSet) const;
-    void DoLoadToMoveTransfer(Insn &strInsn, short strSrcIdx, short memSeq, const InsnSet &memUseInsnSet);
     bool CheckStoreOpCode(MOperator opCode) const;
     static bool CheckNewAmount(const Insn &insn, uint32 newAmount);
 
@@ -44,7 +43,6 @@ private:
     bool CheckDefInsn(Insn &defInsn, Insn &currInsn);
     bool CheckNewMemOffset(const Insn &insn, MemOperand *newMemOpnd, uint32 opndIdx);
     MemOperand *HandleArithImmDef(RegOperand &replace, Operand *oldOffset, int64 defVal);
-    MemOperand *SelectReplaceMem(Insn &defInsn, Insn &curInsn, RegOperand &base, Operand *offset);
     MemOperand *SelectReplaceExt(const Insn &defInsn, RegOperand &base, bool isSigned);
     bool CanDoMemProp(const Insn *insn);
     bool CanDoIndexOpt(const MemOperand &MemOpnd);
@@ -52,7 +50,6 @@ private:
     void SelectPropMode(const MemOperand &currMemOpnd);
     int64 GetOffsetForNewIndex(Insn &defInsn, Insn &insn, regno_t baseRegNO, uint32 memOpndSize);
     MemOperand *SelectIndexOptMode(Insn &insn, const MemOperand &curMemOpnd);
-    bool ReplaceMemOpnd(Insn &insn, regno_t regNo, RegOperand &base, Operand *offset);
     void MemProp(Insn &insn);
     void ProcessStrPair(Insn &insn);
     void ProcessStr(Insn &insn);

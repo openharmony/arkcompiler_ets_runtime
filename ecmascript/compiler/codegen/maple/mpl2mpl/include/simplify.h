@@ -39,7 +39,6 @@ enum MemOpKind { MEM_OP_unknown, MEM_OP_memset, MEM_OP_memcpy, MEM_OP_memset_s, 
 struct MemEntry {
     enum MemEntryKind { kMemEntryUnknown, kMemEntryPrimitive, kMemEntryStruct, kMemEntryArray };
 
-    static bool ComputeMemEntry(BaseNode &expr, MIRFunction &func, MemEntry &memEntry, bool isLowLevel);
     MemEntry() = default;
     MemEntry(BaseNode *addrExpr, MIRType *memType) : addrExpr(addrExpr), memType(memType) {}
 
@@ -60,14 +59,8 @@ struct MemEntry {
     }
 
     BaseNode *BuildAsRhsExpr(MIRFunction &func) const;
-    bool ExpandMemset(int64 byte, uint64 size, MIRFunction &func, StmtNode &stmt, BlockNode &block, bool isLowLevel,
-                      bool debug, ErrorNumber errorNumber) const;
     void ExpandMemsetLowLevel(int64 byte, uint64 size, MIRFunction &func, StmtNode &stmt, BlockNode &block,
                               MemOpKind memOpKind, bool debug, ErrorNumber errorNumber) const;
-    bool ExpandMemcpy(const MemEntry &srcMem, uint64 copySize, MIRFunction &func, StmtNode &stmt, BlockNode &block,
-                      bool isLowLevel, bool debug, ErrorNumber errorNumber) const;
-    void ExpandMemcpyLowLevel(const MemEntry &srcMem, uint64 copySize, MIRFunction &func, StmtNode &stmt,
-                              BlockNode &block, MemOpKind memOpKind, bool debug, ErrorNumber errorNumber) const;
     static StmtNode *GenMemopRetAssign(StmtNode &stmt, MIRFunction &func, bool isLowLevel, MemOpKind memOpKind,
                                        ErrorNumber errorNumber = ERRNO_OK);
 
@@ -92,12 +85,8 @@ public:
     }
 
     bool AutoSimplify(StmtNode &stmt, BlockNode &block, bool isLowLevel);
-    bool SimplifyMemset(StmtNode &stmt, BlockNode &block, bool isLowLevel);
-    bool SimplifyMemcpy(StmtNode &stmt, BlockNode &block, bool isLowLevel);
 
 private:
-    StmtNode *PartiallyExpandMemsetS(StmtNode &stmt, BlockNode &block);
-
     static const uint32 thresholdMemsetExpand;
     static const uint32 thresholdMemsetSExpand;
     static const uint32 thresholdMemcpyExpand;
@@ -131,7 +120,6 @@ private:
     bool IsConstRepalceable(const MIRConst &mirConst) const;
     bool SimplifyMathMethod(const StmtNode &stmt, BlockNode &block);
     void SimplifyCallAssigned(StmtNode &stmt, BlockNode &block);
-    StmtNode *SimplifyToSelect(MIRFunction *func, IfStmtNode *ifNode, BlockNode *block);
     BaseNode *SimplifyExpr(BaseNode &expr);
     BaseNode *ReplaceExprWithConst(DreadNode &dread);
     MIRConst *GetElementConstFromFieldId(FieldID fieldId, MIRConst *mirConst);

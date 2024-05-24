@@ -129,10 +129,6 @@ public:
 
 class CastOpt {
 public:
-    static int IsEliminableCastPair(CastKind firstCastKind, CastKind secondCastKind, PrimType dstType,
-                                    PrimType midType2, PrimType midType1, PrimType &srcType);
-    template <typename T>
-    static void DoComputeCastInfo(CastInfo<T> &castInfo, bool isMeExpr);
     static bool IsExplicitCastOp(Opcode op);
     static bool IsImplicitCastOp(Opcode op);
     static bool IsCompareOp(Opcode op);
@@ -140,12 +136,8 @@ public:
 
 class MapleCastOpt : public CastOpt {
 public:
-    static void ComputeCastInfo(BaseNodeCastInfo &castInfo);
     static BaseNode *CreateMapleExprByCastKind(MIRBuilder &mirBuilder, CastKind castKind, PrimType srcType,
                                                PrimType dstType, BaseNode *opnd, TyIdx dstTyIdx = TyIdx(0));
-    static BaseNode *SimplifyCast(MIRBuilder &mirBuilder, BaseNode *expr);
-    static BaseNode *SimplifyCastPair(MIRBuilder &mirBuidler, const BaseNodeCastInfo &firstCastInfo,
-                                      const BaseNodeCastInfo &secondCastInfo);
     static BaseNode *SimplifyCastSingle(MIRBuilder &mirBuilder, const BaseNodeCastInfo &castInfo);
     static BaseNode *TransformCvtU1ToNe(MIRBuilder &mirBuilder, const TypeCvtNode *cvtExpr);
 };
