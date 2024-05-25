@@ -42,5 +42,5 @@ ohos_fuzztest("JSNApiIsConstructorFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":JSNApiIsConstructor_FuzzTest" ]
+  deps += [ ":JSNApiIsConstructorFuzzTest" ]
 }
