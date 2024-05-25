@@ -3097,7 +3097,6 @@
         "mjsunit/es6/block-conflicts.js",
         "mjsunit/es6/promise-race-resolve-not-callable.js",
         "mjsunit/es6/block-scope-class.js",
-        "mjsunit/es6/regexp-flags.js",
         "mjsunit/es6/proxies-revocable.js",
         "mjsunit/es6/typedarray-indexing.js",
         "mjsunit/es6/typedarray-filter.js",
