@@ -105,7 +105,8 @@ bool LinearSpace::Expand(bool isPromoted)
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
-
+    linearEnd_.store(region->GetEnd(), std::memory_order_relaxed);
+    linearTop_.store(region->GetBegin(), std::memory_order_release);
     AddRegion(region);
     return true;
 }
@@ -181,6 +182,8 @@ void SemiSpace::Initialize()
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
     AddRegion(region);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
+    linearEnd_.store(region->GetEnd(), std::memory_order_relaxed);
+    linearTop_.store(region->GetBegin(), std::memory_order_release);
 }
 
 void SemiSpace::Restart(size_t overShootSize)

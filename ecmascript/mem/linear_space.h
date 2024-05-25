@@ -47,6 +47,12 @@ public:
     }
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
+    bool IsNewAllocatedObject(uintptr_t current)
+    {
+        uintptr_t currentTop = linearTop_.load(std::memory_order_acquire);
+        uintptr_t currentEnd = linearEnd_.load(std::memory_order_relaxed);
+        return currentTop <= current && current < currentEnd;
+    }
 protected:
     Heap *localHeap_;
     BumpPointerAllocator allocator_;
@@ -54,6 +60,8 @@ protected:
     size_t allocateAfterLastGC_ {0};
     size_t survivalObjectSize_ {0};
     uintptr_t waterLine_ {0};
+    std::atomic<uintptr_t> linearTop_ {0};
+    std::atomic<uintptr_t> linearEnd_ {0};
 };
 
 class SemiSpace : public LinearSpace {
