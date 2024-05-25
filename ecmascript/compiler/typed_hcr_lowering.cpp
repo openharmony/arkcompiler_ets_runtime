@@ -655,14 +655,32 @@ void TypedHCRLowering::BuiltinPrototypeHClassCheck(Environment *env, GateRef gat
     }
 }
 
+void TypedHCRLowering::BuiltinInstanceStringTypeCheck(GateRef gate)
+{
+    BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
+    [[maybe_unused]] BuiltinTypeId type = accessor.GetBuiltinTypeId();
+    ASSERT(type == BuiltinTypeId::STRING);
+    GateRef frameState = GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedObjectIsString(receiver);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::BUILTININSTANCEHCLASSMISMATCH2);
+}
+
 void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
-    BuiltinInstanceHClassCheck(&env, gate); // check IHC
-    BuiltinPrototypeHClassCheck(&env, gate); // check PHC
+    BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
+    BuiltinTypeId type = accessor.GetBuiltinTypeId();
+    // BuiltinTypeId::STRING represents primitive string, only need to check the type of hclass here.
+    if (type == BuiltinTypeId::STRING) {
+        BuiltinInstanceStringTypeCheck(gate);
+    } else {
+        BuiltinInstanceHClassCheck(&env, gate); // check IHC
+        BuiltinPrototypeHClassCheck(&env, gate); // check PHC
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

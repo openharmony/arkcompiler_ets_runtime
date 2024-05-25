@@ -155,6 +155,7 @@ private:
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
     void LowerRangeCheckPredicate(GateRef gate);
     void LowerBuiltinPrototypeHClassCheck(GateRef gate);
+    void BuiltinInstanceStringTypeCheck(GateRef gate);
     void LowerLoadBuiltinObject(GateRef gate);
     void LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue);
     void LowerNumberToString(GateRef gate, GateRef glue);
