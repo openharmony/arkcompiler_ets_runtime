@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ####################################fuzztest##################################
-ohos_fuzztest("RegisterQuickFixQueryFuncFuzzerTest") {
+ohos_fuzztest("RegisterQuickFixQueryFuncFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/registerquickfixqueryfunc_fuzzer"

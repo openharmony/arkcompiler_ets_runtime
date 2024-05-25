@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ##################################fuzztest#####################################
-ohos_fuzztest("JSNApiIsTrue_FuzzTest") {
+ohos_fuzztest("JSNApiIsTrueFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/jsnapiistrue_fuzzer"
