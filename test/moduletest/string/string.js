@@ -387,3 +387,8 @@ print(abc_str.substr(0, positiveHeapNumber));
 print(abc_str.substr(-2, positiveHeapNumber));
 print(abc_str.substr(-1, positiveHeapNumber));
 
+{
+    function f(n) { return "cba".endsWith("a", n); }
+    print(f());
+    print(f(4294967296));
+}

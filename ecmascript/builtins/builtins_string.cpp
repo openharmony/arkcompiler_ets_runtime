@@ -404,7 +404,7 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
         if (posVal.GetNumber() == BuiltinsNumber::POSITIVE_INFINITY) {
             pos = static_cast<int32_t>(thisLen);
         } else {
-            pos = posVal.ToInt32();
+            pos = base::NumberHelper::DoubleInRangeInt32(posVal.GetNumber());
         }
     }
     pos = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
