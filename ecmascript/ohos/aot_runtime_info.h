@@ -25,6 +25,8 @@
 #include "libpandafile/file.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "ohos_constants.h"
+#include "utils/json_parser.h"
+#include "utils/json_builder.h"
 
 namespace panda::ecmascript::ohos {
 #define RUNTIME_INFO_TYPE(V)                                         \
@@ -43,13 +45,39 @@ enum class RuntimeInfoType {
     JS,
     AOT_BUILD,
 };
+struct RuntimeInfoPart {
+    std::string buildId;
+    std::string timestamp;
+    std::string type;
+    
+    RuntimeInfoPart() = default;
+    RuntimeInfoPart(const std::string &buildId, const std::string &timestamp, const std::string &type)
+        : buildId(buildId), timestamp(timestamp), type(type)
+    {
+    }
+};
+/*
+ * The JSON format is as follows
+ * type: "AOT_BUILD" Used at compile time,
+ *       "AOT", "JIT", "OTHERS", "JS" Used at crash time.
+ * {"key":
+ *      [
+ *          {"buildId":"xxxxxx", "timestamp":"123456789", "type":"AOT"},
+ *          {"buildId":"xxxxxx", "timestamp":"123456789", "type":"AOT"}
+ *      ]
+ * }
+ */
 class AotRuntimeInfo {
 public:
     constexpr static const int USEC_PER_SEC = 1000 * 1000;
     constexpr static const int NSEC_PER_USEC = 1000;
     constexpr static const int NT_GNU_BUILD_ID = 3;
     constexpr static const int CRASH_INFO_SIZE = 3;
-
+    
+    constexpr static const char *const RUNTIME_INFO_ARRAY_KEY = "runtime_info_array";
+    constexpr static const char *const RUNTIME_KEY_BUILDID = "buildId";
+    constexpr static const char *const RUNTIME_KEY_TIMESTAMP = "timestamp";
+    constexpr static const char *const RUNTIME_KEY_TYPE = "type";
     uint64_t GetMicrosecondsTimeStamp() const
     {
         struct timespec time;
@@ -57,17 +85,30 @@ public:
         return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
     }
 
-    std::string BuildSingleInfo(const std::string &buildId, const std::string &timestamp, const std::string &type) const
-    {
-        return buildId + OhosConstants::SPLIT_STR + timestamp + OhosConstants::SPLIT_STR + type;
-    }
-
-    std::vector<std::string> GetCrashRuntimeInfoList(const std::string &soBuildId) const
+    std::vector<RuntimeInfoPart> GetCrashRuntimeInfoList(const std::string &soBuildId) const
     {
         std::string realOutPath = GetCrashSandBoxRealPath();
-        std::vector<std::string> list;
+        std::vector<RuntimeInfoPart> list;
         if (realOutPath == "") {
             LOG_ECMA(INFO) << "Get crash sanbox path fail.";
+            return list;
+        }
+        list = GetRuntimeInfoByPath(realOutPath, soBuildId);
+        return list;
+    }
+
+    std::vector<RuntimeInfoPart> GetRealPathRuntimeInfoList(const std::string &pgoRealPath,
+        const std::string &soBuildId) const
+    {
+        std::vector<RuntimeInfoPart> list;
+        std::string realOutPath;
+        std::string runtimePgoRealPath = pgoRealPath + OhosConstants::PATH_SEPARATOR +
+            OhosConstants::AOT_RUNTIME_INFO_NAME;
+        if (!ecmascript::RealPath(runtimePgoRealPath, realOutPath, false)) {
+            return list;
+        }
+        if (realOutPath == "") {
+            LOG_ECMA(INFO) << "Get pgo real path fail.";
             return list;
         }
         list = GetRuntimeInfoByPath(realOutPath, soBuildId);
@@ -87,9 +128,9 @@ public:
             LOG_ECMA(INFO) << "Build compile pgo path fail.";
             return;
         }
-        std::vector<std::string> lines = GetRuntimeInfoByPath(realOutPath, soBuildId);
+        std::vector<RuntimeInfoPart> lines = GetRuntimeInfoByPath(realOutPath, soBuildId);
         uint64_t timestamp = GetMicrosecondsTimeStamp();
-        std::string buildLine = BuildSingleInfo(soBuildId, std::to_string(timestamp), type);
+        RuntimeInfoPart buildLine = RuntimeInfoPart(soBuildId, std::to_string(timestamp), type);
         lines.emplace_back(buildLine);
         SetRuntimeInfo(realOutPath, lines);
     }
@@ -101,9 +142,9 @@ public:
             LOG_ECMA(INFO) << "can't get so buildId.";
             return;
         }
-        std::vector<std::string> lines = GetCrashRuntimeInfoList(soBuildId);
+        std::vector<RuntimeInfoPart> lines = GetCrashRuntimeInfoList(soBuildId);
         uint64_t timestamp = GetMicrosecondsTimeStamp();
-        std::string buildLine = BuildSingleInfo(soBuildId, std::to_string(timestamp), type);
+        RuntimeInfoPart buildLine = RuntimeInfoPart(soBuildId, std::to_string(timestamp), type);
         lines.emplace_back(buildLine);
         std::string realOutPath = GetCrashSandBoxRealPath();
         if (realOutPath == "") {
@@ -122,7 +163,7 @@ public:
         return escapeMap[type];
     }
 
-    std::map<RuntimeInfoType, int> CollectCrashSum()
+    std::map<RuntimeInfoType, int> CollectCrashSum(const std::string &pgoRealPath = "")
     {
         std::map<RuntimeInfoType, int> escapeMap;
         std::string soBuildId = GetRuntimeBuildId();
@@ -130,10 +171,14 @@ public:
             LOG_ECMA(INFO) << "can't get so buildId.";
             return escapeMap;
         }
-        std::vector<std::string> lines = GetCrashRuntimeInfoList(soBuildId);
-        for (const std::string &line: lines) {
-            std::string type = GetType(line);
-            RuntimeInfoType runtimeInfoType = GetRuntimeInfoTypeByStr(type);
+        std::vector<RuntimeInfoPart> runtimeInfoParts;
+        if (pgoRealPath == "") {
+            runtimeInfoParts = GetCrashRuntimeInfoList(soBuildId);
+        } else {
+            runtimeInfoParts = GetRealPathRuntimeInfoList(pgoRealPath, soBuildId);
+        }
+        for (const auto &runtimeInfoPart: runtimeInfoParts) {
+            RuntimeInfoType runtimeInfoType = GetRuntimeInfoTypeByStr(runtimeInfoPart.type);
             escapeMap[runtimeInfoType]++;
         }
         return escapeMap;
@@ -187,49 +232,63 @@ public:
     }
 private:
 
-    void SetRuntimeInfo(const std::string &realOutPath, std::vector<std::string> lines) const
+    void SetRuntimeInfo(const std::string &realOutPath, std::vector<RuntimeInfoPart> &runtimeInfoParts) const
     {
         std::ofstream file(realOutPath.c_str(), std::ofstream::out);
-        for (const std::string &line: lines) {
-            file << line << "\n";
+        JsonObjectBuilder objBuilder;
+        auto arrayObject = [runtimeInfoParts](JsonArrayBuilder &arrayBuilder) {
+            for (const auto &runtimeInfoPart : runtimeInfoParts) {
+                auto addObj = [runtimeInfoPart](JsonObjectBuilder &obj) {
+                    obj.AddProperty(RUNTIME_KEY_BUILDID, runtimeInfoPart.buildId);
+                    obj.AddProperty(RUNTIME_KEY_TIMESTAMP, runtimeInfoPart.timestamp);
+                    obj.AddProperty(RUNTIME_KEY_TYPE, runtimeInfoPart.type);
+                };
+                arrayBuilder.Add(addObj);
+            }
+        };
+        objBuilder.AddProperty(RUNTIME_INFO_ARRAY_KEY, arrayObject);
+        if (file.is_open()) {
+            file << std::move(objBuilder).Build();
+            file.close();
+        } else {
+            LOG_ECMA(INFO) << "open file to set runtime info fail :" << realOutPath.c_str();
         }
-        file.close();
     }
 
-    std::vector<std::string> GetRuntimeInfoByPath(const std::string &realOutPath, const std::string &soBuildId) const
+    std::vector<RuntimeInfoPart> GetRuntimeInfoByPath(const std::string &realOutPath,
+        const std::string &soBuildId) const
     {
         std::ifstream ifile(realOutPath.c_str());
-        std::vector<std::string> lines;
+        std::vector<RuntimeInfoPart> infoParts;
         if (ifile.is_open()) {
-            std::string iline;
-            while (ifile >> iline) {
-                std::string buildId = GetBuildId(iline);
-                if (buildId != soBuildId) {
+            std::string jsonStr((std::istreambuf_iterator<char>(ifile)), std::istreambuf_iterator<char>());
+            JsonObject obj(jsonStr);
+            if (obj.GetValue<JsonObject::ArrayT>(RUNTIME_INFO_ARRAY_KEY) == nullptr) {
+                ifile.close();
+                return infoParts;
+            }
+            auto &mainArray = *obj.GetValue<JsonObject::ArrayT>(RUNTIME_INFO_ARRAY_KEY);
+            for (size_t i = 0; i < mainArray.size(); i++) {
+                if (mainArray[i].Get<JsonObject::JsonObjPointer>() == nullptr) {
                     continue;
                 }
-                lines.emplace_back(iline);
+                auto &innerObj = *(mainArray[i]).Get<JsonObject::JsonObjPointer>()->get();
+                auto buildId = innerObj.GetValue<JsonObject::StringT>(RUNTIME_KEY_BUILDID);
+                auto timestamp = innerObj.GetValue<JsonObject::StringT>(RUNTIME_KEY_TIMESTAMP);
+                auto type = innerObj.GetValue<JsonObject::StringT>(RUNTIME_KEY_TYPE);
+                if (buildId == nullptr || timestamp == nullptr || type == nullptr) {
+                    LOG_ECMA(INFO) << "runtime info get wrong json object info.";
+                    continue;
+                }
+                std::string buildIdStr = *buildId;
+                if (buildIdStr != soBuildId) {
+                    continue;
+                }
+                infoParts.emplace_back(RuntimeInfoPart(*buildId, *timestamp, *type));
             }
             ifile.close();
         }
-        return lines;
-    }
-    
-    std::string GetBuildId(std::string crashInfo) const
-    {
-        std::vector<std::string> splitCrashInfo = base::StringHelper::SplitString(crashInfo, OhosConstants::SPLIT_STR);
-        if (splitCrashInfo.size() == CRASH_INFO_SIZE) {
-            return splitCrashInfo[0];
-        }
-        return "";
-    }
-
-    std::string GetType(std::string crashInfo) const
-    {
-        std::vector<std::string> splitCrashInfo = base::StringHelper::SplitString(crashInfo, OhosConstants::SPLIT_STR);
-        if (splitCrashInfo.size() == CRASH_INFO_SIZE) {
-            return splitCrashInfo[2];
-        }
-        return "";
+        return infoParts;
     }
 
     std::string GetCrashSandBoxRealPath() const

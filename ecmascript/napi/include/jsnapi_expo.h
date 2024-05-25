@@ -1545,7 +1545,7 @@ public:
     static bool KeyIsNumber(const char* utf8);
 
     static bool IsJitEscape();
-    static bool IsAotEscape();
+    static bool IsAotEscape(const std::string &pgoRealPath = "");
 private:
     static int vmCount_;
     static bool initialize_;
