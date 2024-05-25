@@ -1040,7 +1040,7 @@ bool ArkGetMethodIdandJSPandaFileAddr(int pid, uintptr_t method, uintptr_t &meth
     uintptr_t methodLiteralAddr = method + Method::LITERAL_INFO_OFFSET;
     uintptr_t methodLiteral = 0;
     if (!ReadUintptrFromAddr(pid, methodLiteralAddr, methodLiteral, g_needCheck)) {
-            return false;
+        return false;
     }
     methodId = MethodLiteral::MethodIdBits::Decode(methodLiteral);
     uintptr_t constantpoolAddr = method + Method::CONSTANT_POOL_OFFSET;
@@ -1739,7 +1739,8 @@ bool JSStackTrace::AddMethodInfos(uintptr_t mapBase)
     return true;
 }
 
-bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, JsFunction *jsFunction)
+bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
+                                  uintptr_t loadOffset, JsFunction *jsFunction)
 {
     bool ret = true;
     auto iter = methodInfos_.find(mapBase);
@@ -1753,11 +1754,13 @@ bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintp
         LOG_ECMA(ERROR) << std::hex << "Failed to get methodId, pc: " << byteCodePc;
         return false;
     }
-    auto methodId = EntityId(codeInfo->methodId);
+    if (!methodId) {
+        methodId = codeInfo->methodId;
+    }
     auto offset = codeInfo->offset;
     auto debugInfoExtractor =
         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFiles_[mapBase].get());
-    ParseJsFrameInfo(jsPandaFiles_[mapBase].get(), debugInfoExtractor, methodId, offset, *jsFunction);
+    ParseJsFrameInfo(jsPandaFiles_[mapBase].get(), debugInfoExtractor, EntityId(methodId), offset, *jsFunction);
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
     return ret;
@@ -1772,10 +1775,11 @@ void JSStackTrace::Destory(JSStackTrace* trace)
     trace = nullptr;
 }
 
-bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, JsFunction *jsFunction)
+bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
+                              uintptr_t loadOffset, JsFunction *jsFunction)
 {
     bool ret =
-        JSStackTrace::GetInstance()->GetJsFrameInfo(byteCodePc, mapBase, loadOffset, jsFunction);
+        JSStackTrace::GetInstance()->GetJsFrameInfo(byteCodePc, methodId, mapBase, loadOffset, jsFunction);
     return ret;
 }
 
@@ -1894,10 +1898,10 @@ __attribute__((visibility("default"))) int get_ark_native_frame_info(
 }
 
 __attribute__((visibility("default"))) int ark_parse_js_frame_info_local(
-    uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset,
+    uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, uintptr_t loadOffset,
     panda::ecmascript::JsFunction *jsFunction)
 {
-    if (panda::ecmascript::ArkParseJsFrameInfoLocal(byteCodePc, mapBase, loadOffset, jsFunction)) {
+    if (panda::ecmascript::ArkParseJsFrameInfoLocal(byteCodePc, methodId, mapBase, loadOffset, jsFunction)) {
         return 1;
     }
     return -1;

@@ -108,7 +108,8 @@ public:
     static std::optional<MethodInfo> ReadMethodInfo(panda_file::MethodDataAccessor &mda);
     static CVector<MethodInfo> ReadAllMethodInfos(std::shared_ptr<JSPandaFile> jsPandaFile);
     static std::optional<CodeInfo> TranslateByteCodePc(uintptr_t realPc, const CVector<MethodInfo> &vec);
-    bool GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, JsFunction *jsFunction);
+    bool GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
+                        uintptr_t loadOffset, JsFunction *jsFunction);
     static void Destory(JSStackTrace* trace);
 private:
     bool AddMethodInfos(uintptr_t mapBase);
@@ -189,7 +190,7 @@ extern "C" int ark_parse_js_file_info(
     panda::ecmascript::JsFunction *jsFunction);
 extern "C" int get_ark_native_frame_info(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrame, size_t &size);
-extern "C" int ark_parse_js_frame_info_local(uintptr_t byteCodePc, uintptr_t mapBase,
+extern "C" int ark_parse_js_frame_info_local(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
     uintptr_t loadOffset, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int ark_destory_local();
 // define in dfx_signal_handler.h
