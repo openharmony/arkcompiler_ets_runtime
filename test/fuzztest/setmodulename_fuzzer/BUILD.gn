@@ -40,5 +40,5 @@ ohos_fuzztest("SetModuleNameFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":SetModuleNameFuzzerTest" ]
+  deps += [ ":SetModuleNameFuzzTest" ]
 }

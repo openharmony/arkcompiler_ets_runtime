@@ -43,5 +43,5 @@ ohos_fuzztest("JSValueRefIsSharedArrayBufferFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":JSValueRefIsSharedArrayBufferFuzzerTest" ]
+  deps += [ ":JSValueRefIsSharedArrayBufferFuzzTest" ]
 }

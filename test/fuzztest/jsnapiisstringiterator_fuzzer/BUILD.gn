@@ -42,5 +42,5 @@ ohos_fuzztest("JSNApiIsStringIteratorFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":JSNApiIsStringIterator_FuzzTest" ]
+  deps += [ ":JSNApiIsStringIteratorFuzzTest" ]
 }

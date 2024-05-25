@@ -42,5 +42,5 @@ ohos_fuzztest("MapRefGetSetKeyvalueSizeFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":MapRefGetSetKeyvalueSize_FuzzerTest" ]
+  deps += [ ":MapRefGetSetKeyvalueSizeFuzzTest" ]
 }

@@ -40,5 +40,5 @@ ohos_fuzztest("JSNApiIsProfilingFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":JSNApiProfilingFuzzTest" ]
+  deps += [ ":JSNApiIsProfilingFuzzTest" ]
 }

@@ -40,5 +40,5 @@ ohos_fuzztest("TypedArrayrefFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":TypedArrayrefFuzzerTest" ]
+  deps += [ ":TypedArrayrefFuzzTest" ]
 }

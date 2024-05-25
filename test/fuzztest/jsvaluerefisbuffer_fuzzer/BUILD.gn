@@ -42,5 +42,5 @@ ohos_fuzztest("JSValueRefIsBufferFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":JSValueRefIsBufferFuzzerTest" ]
+  deps += [ ":JSValueRefIsBufferFuzzTest" ]
 }

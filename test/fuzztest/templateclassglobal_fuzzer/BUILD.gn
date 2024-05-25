@@ -40,5 +40,5 @@ ohos_fuzztest("TemplateClassGlobalFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":TemplateClassGlobalFuzzerTest" ]
+  deps += [ ":TemplateClassGlobalFuzzTest" ]
 }

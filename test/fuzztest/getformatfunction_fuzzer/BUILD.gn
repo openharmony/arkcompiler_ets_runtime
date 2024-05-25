@@ -40,5 +40,5 @@ ohos_fuzztest("GetFormatFunctionFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":GetFormatFunctionFuzzerTest" ]
+  deps += [ ":GetFormatFunctionFuzzTest" ]
 }

@@ -40,5 +40,5 @@ ohos_fuzztest("JSNApiUnloadPatchFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":JSNApiUnloadPatchTest" ]
+  deps += [ ":JSNApiUnloadPatchFuzzTest" ]
 }

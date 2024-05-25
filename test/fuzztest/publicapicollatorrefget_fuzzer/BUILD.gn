@@ -42,5 +42,5 @@ ohos_fuzztest("PublicApiCollatorRefgetFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":GetCompareFunctionFuzzTest" ]
+  deps += [ ":PublicApiCollatorRefgetFuzzTest" ]
 }

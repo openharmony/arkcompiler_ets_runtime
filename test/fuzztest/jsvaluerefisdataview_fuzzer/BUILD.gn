@@ -42,5 +42,5 @@ ohos_fuzztest("JSValueRefIsDataViewFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":JSValueRefIsDataViewFuzzerTest" ]
+  deps += [ ":JSValueRefIsDataViewFuzzTest" ]
 }

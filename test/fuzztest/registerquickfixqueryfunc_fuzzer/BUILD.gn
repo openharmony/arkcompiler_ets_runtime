@@ -40,5 +40,5 @@ ohos_fuzztest("RegisterQuickFixQueryFuncFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":RegisterQuickFixQueryFuncFuzzerTest" ]
+  deps += [ ":RegisterQuickFixQueryFuncFuzzTest" ]
 }

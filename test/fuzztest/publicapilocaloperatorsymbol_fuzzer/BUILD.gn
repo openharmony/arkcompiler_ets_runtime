@@ -41,5 +41,5 @@ ohos_fuzztest("PublicApiLocalOperatorSymbolFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":PublicApiLocalOperatorFuzzTest" ]
+  deps += [ ":PublicApiLocalOperatorSymbolFuzzTest" ]
 }
