@@ -361,8 +361,9 @@ bool Jit::CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
 
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     if (tier == CompilerTier::FAST && method->IsAotWithCallField()) {
-        MachineCode *machineCode = MachineCode::Cast(jsFunction->GetMachineCode().GetTaggedObject());
-        if (machineCode->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {
+        JSTaggedValue machineCode = jsFunction->GetMachineCode();
+        if (machineCode.IsMachineCodeObject() &&
+            MachineCode::Cast(machineCode.GetTaggedObject())->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {
             LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
             return false;
         }

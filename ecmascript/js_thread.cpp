@@ -673,10 +673,11 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
 }
 
-void JSThread::SwitchJitProfileStubs()
+void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
 {
-    // if jit enable pgo, use pgo stub
-    if (GetEcmaVM()->GetJSOptions().IsEnableJITPGO()) {
+    if (isEnablePgo) {
+        SetPGOProfilerEnable(true);
+        CheckOrSwitchPGOStubs();
         return;
     }
     bool isSwitch = false;
