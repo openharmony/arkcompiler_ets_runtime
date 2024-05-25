@@ -123,7 +123,7 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
                                                      JSMutableHandle<JSTaggedValue> keyHandle)
 {
     JSTaggedValue key = keyHandle.GetTaggedValue();
-    if (UNLIKELY(!receiver.IsHeapObject() || !(receiver.IsRegularObject()))) {
+    if (UNLIKELY(!receiver.IsHeapObject() || !receiver.IsRegularObject())) {
         return JSTaggedValue::Hole();
     }
     if (UNLIKELY(!key.IsNumber() && !key.IsString())) {
@@ -138,9 +138,8 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
         if (!ElementAccessor::IsDictionaryMode(receiverObj)) {
             if (index < ElementAccessor::GetElementsLength(receiverObj)) {
                 JSTaggedValue value = ElementAccessor::Get(receiverObj, index);
-                return value.IsHole() ? JSTaggedValue::False() : JSTaggedValue::True();
+                return value.IsHole() ? JSTaggedValue::Hole() : JSTaggedValue::True();
             }
-            return JSTaggedValue::False();
         }
         return JSTaggedValue::Hole();
     }
@@ -162,7 +161,6 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
         if (entry != -1) {
             return JSTaggedValue::True();
         }
-        return JSTaggedValue::False();
     }
     return JSTaggedValue::Hole();
 }
@@ -172,7 +170,7 @@ JSTaggedValue ObjectFastOperator::TryFastGetPropertyByValue(JSThread *thread, JS
                                                             JSMutableHandle<JSTaggedValue> keyHandle)
 {
     JSTaggedValue key = keyHandle.GetTaggedValue();
-    if (UNLIKELY(!receiver.IsHeapObject() || !(receiver.IsRegularObject()))) {
+    if (UNLIKELY(!receiver.IsHeapObject() || !receiver.IsRegularObject())) {
         return JSTaggedValue::Hole();
     }
     if (UNLIKELY(!key.IsNumber() && !key.IsString())) {

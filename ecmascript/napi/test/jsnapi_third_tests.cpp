@@ -1176,9 +1176,8 @@ HWTEST_F_L0(JSNApiTests, EcmaObjectToInt)
     }
 }
 
-HWTEST_F_L0(JSNApiTests, NapiFastPathGetHasDeleteTest)
+HWTEST_F_L0(JSNApiTests, NapiTryFastTest)
 {
-    LocalScope scope(vm_);
     Local<ObjectRef> object = ObjectRef::New(vm_);
     JSTaggedValue a(0);
     JSHandle<JSTaggedValue> handle(thread_, a);
@@ -1188,12 +1187,12 @@ HWTEST_F_L0(JSNApiTests, NapiFastPathGetHasDeleteTest)
     Local<JSValueRef> value = ObjectRef::New(vm_);
     object->Set(vm_, key, value);
     object->Set(vm_, key2, value);
-    Local<JSValueRef> value1 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+    Local<JSValueRef> res1 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
                                                        reinterpret_cast<uintptr_t>(*key));
-    ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
-    Local<JSValueRef> value2 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+    ASSERT_TRUE(value->IsStrictEquals(vm_, res1));
+    Local<JSValueRef> res2 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
                                                        reinterpret_cast<uintptr_t>(*key2));
-    ASSERT_TRUE(value->IsStrictEquals(vm_, value2));
+    ASSERT_TRUE(value->IsStrictEquals(vm_, res2));
     
     Local<JSValueRef> flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object),
                                                      reinterpret_cast<uintptr_t>(*key));
@@ -1211,4 +1210,16 @@ HWTEST_F_L0(JSNApiTests, NapiFastPathGetHasDeleteTest)
     flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
     ASSERT_FALSE(flag->BooleaValue());
 }
+
+HWTEST_F_L0(JSNApiTests, NapiTryFastHasMethodTest)
+{
+    LocalScope scope(vm_);
+    auto array = JSArray::ArrayCreate(thread_, JSTaggedNumber(0));
+    auto arr = JSNApiHelper::ToLocal<ObjectRef>(array);
+    const char* utf8Key = "concat";
+    Local<JSValueRef> key3 = StringRef::NewFromUtf8(vm_, utf8Key);
+    auto flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*arr), reinterpret_cast<uintptr_t>(*key3));
+    ASSERT_TRUE(flag->BooleaValue());
+}
+
 } // namespace panda::test
