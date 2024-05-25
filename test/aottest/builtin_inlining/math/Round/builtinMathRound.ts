@@ -143,7 +143,6 @@ print(Math.round(4.1, 0, 0, 0)); //: 4
 print(Math.round(-4.1, 0, 0, 0, 0)); //: -4
 
 // Replace standard builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_round = Math.round
 Math.round = replace
 
@@ -190,4 +189,6 @@ try {
 let obj = {
     valueOf: () => { return -22.5; }
 };
+//aot: [trace] aot inline builtin: Math.round, caller function name:func_main_0@builtinMathRound
+//aot: [trace] Check Type: NotNumber2
 print(Math.round(obj)); //: -22

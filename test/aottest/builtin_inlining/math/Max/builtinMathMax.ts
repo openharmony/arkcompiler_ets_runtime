@@ -189,7 +189,6 @@ print(Math.max(-4, 0, 2, -Infinity)); //: 2
 print(Math.max(1, 2, 1.5, 2, 8)); //: 8
 
 // Replace standard builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let trueMax = Math.max
 Math.max = replace
 print(Math.max(-1.001, -90)); //: -1.001

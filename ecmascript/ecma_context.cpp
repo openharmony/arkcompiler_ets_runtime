@@ -935,9 +935,6 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (ptManager_) {
         ptManager_->Iterate(v);
     }
-    if (aotFileManager_) {
-        aotFileManager_->Iterate(v);
-    }
     if (propertiesCache_ != nullptr) {
         propertiesCache_->Clear();
     }

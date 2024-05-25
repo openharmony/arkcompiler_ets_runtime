@@ -68,6 +68,10 @@ public:
 
     static void JSCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 
+    static void AOTCallToAsmInterBridge(ExtendedAssembler *assembler);
+
+    static void FastCallToAsmInterBridge(ExtendedAssembler *assembler);
+
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
     static void JSCallNew(ExtendedAssembler *assembler);
@@ -94,6 +98,7 @@ private:
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
     static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
     static void CallBuiltinTrampoline(ExtendedAssembler *assembler, Register temp);
+    static void PopAsmBridgeFrame(ExtendedAssembler *assembler);
     static void CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
                                            Register glue, Register temp);
     static void RemoveArgv(ExtendedAssembler *assembler, Register temp);

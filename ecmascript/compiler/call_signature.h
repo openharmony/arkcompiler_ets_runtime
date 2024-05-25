@@ -419,6 +419,8 @@ private:
     V(CallRuntimeWithArgv)                      \
     V(OptimizedCallAndPushArgv)                 \
     V(OptimizedFastCallAndPushArgv)             \
+    V(AOTCallToAsmInterBridge)                  \
+    V(FastCallToAsmInterBridge)                 \
     V(PushCallArg0AndDispatch)                  \
     V(PushCallArgsAndDispatchNative)            \
     V(PushCallArg1AndDispatch)                  \

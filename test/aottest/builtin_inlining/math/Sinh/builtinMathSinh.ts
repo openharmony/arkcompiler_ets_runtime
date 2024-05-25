@@ -51,7 +51,6 @@ len = Math.sinh(10);
 print(len); //: 11013.232874703393
 
 // Replace standart builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_sinh = Math.sinh
 Math.sinh = replace
 len = Math.sinh(111);
@@ -59,5 +58,7 @@ print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.sinh = true_sinh
+//aot: [trace] aot inline builtin: Math.sinh, caller function name:func_main_0@builtinMathSinh
+//aot: [trace] Check Type: NotNumber1
 len = Math.sinh("NaN"); // deopt
 print(len); //: NaN

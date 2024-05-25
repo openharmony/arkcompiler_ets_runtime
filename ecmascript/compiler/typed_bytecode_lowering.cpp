@@ -131,23 +131,9 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::CREATEEMPTYOBJECT:
             LowerCreateEmptyObject(gate);
             break;
-        case EcmaOpcode::CALLTHIS0_IMM8_V8:
-            LowerTypedCallthis0(gate);
-            break;
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-            LowerTypedCallthis1(gate);
-            break;
-        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-            LowerTypedCallthis2(gate);
-            break;
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
             LowerCreateObjectWithBuffer(gate);
-            break;
-        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
-        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
-            LowerTypedNewObjRange(gate);
             break;
         case EcmaOpcode::ADD2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_ADD>(gate);
@@ -236,18 +222,11 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
             LowerTypedIsTrueOrFalse(gate, false);
             break;
-        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-            LowerTypedCallthis3(gate);
-            break;
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-            LowerTypedCallthisrange(gate);
-            break;
-        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
-            LowerTypedSuperCall(gate);
-            break;
         case EcmaOpcode::CALLARG0_IMM8:
             LowerTypedCallArg0(gate);
+            break;
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+            LowerTypedCallArg1(gate);
             break;
         case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
             LowerTypedCallArg2(gate);
@@ -257,6 +236,33 @@ void TypedBytecodeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
             LowerTypedCallrange(gate);
+            break;
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+            LowerTypedCallthis0(gate);
+            break;
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            LowerTypedCallthis1(gate);
+            break;
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            LowerTypedCallthis2(gate);
+            break;
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            LowerTypedCallthis3(gate);
+            break;
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            LowerTypedCallthisrange(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+            LowerTypedCallInit(gate);
+            break;
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+            LowerTypedSuperCall(gate);
+            break;
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            LowerTypedNewObjRange(gate);
             break;
         case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
             LowerTypedStPrivateProperty(gate);
@@ -284,11 +290,6 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::LDTHISBYVALUE_IMM16:
             LowerTypedLdObjByValue(gate);
             break;
-        case EcmaOpcode::JEQZ_IMM8:
-        case EcmaOpcode::JEQZ_IMM16:
-        case EcmaOpcode::JEQZ_IMM32:
-            LowerConditionJump(gate, false);
-            break;
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
             LowerTypedStObjByValue(gate);
@@ -315,16 +316,15 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
             LowerTypedStOwnByName(gate);
             break;
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+            LowerConditionJump(gate, false);
+            break;
         case EcmaOpcode::JNEZ_IMM8:
         case EcmaOpcode::JNEZ_IMM16:
         case EcmaOpcode::JNEZ_IMM32:
             LowerConditionJump(gate, true);
-            break;
-        case EcmaOpcode::CALLARG1_IMM8_V8:
-            LowerTypedCallArg1(gate);
-            break;
-        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
-            LowerTypedCallInit(gate);
             break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
@@ -1638,9 +1638,7 @@ void TypedBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(const Type
 {
     GateRef func = tacc.GetFunc();
     GateRef gate = tacc.GetGate();
-    if (!Uncheck()) {
-        builder_.JSCallTargetFromDefineFuncCheck(func, gate);
-    }
+    // NO CHECK
     if (tacc.CanFastCall()) {
         LowerFastCall(gate, func, argsFastCall, isNoGC);
     } else {
@@ -1688,6 +1686,9 @@ void TypedBytecodeLowering::CheckCallTargetAndLowerCall(const TypeAccessor &tacc
 template<EcmaOpcode Op, class TypeAccessor>
 void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
 {
+    if (!tacc.IsHotnessFunc()) {
+        return;
+    }
     uint32_t argc = tacc.GetArgc();
     GateRef gate = tacc.GetGate();
     GateRef actualArgc = Circuit::NullGate();
@@ -1720,9 +1721,6 @@ void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
         }
         default:
             UNREACHABLE();
-    }
-    if (!tacc.IsHotnessFunc()) {
-        return;
     }
     uint32_t len = tacc.GetFunctionTypeLength();
     GateRef func = tacc.GetFunc();
@@ -1827,6 +1825,9 @@ bool TypedBytecodeLowering::IsLoadVtable(GateRef func)
 template<EcmaOpcode Op, class TypeAccessor>
 void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
 {
+    if (!tacc.IsHotnessFunc()) {
+        return;
+    }
     uint32_t argc = tacc.GetArgc();
     GateRef gate = tacc.GetGate();
     GateRef actualArgc = Circuit::NullGate();

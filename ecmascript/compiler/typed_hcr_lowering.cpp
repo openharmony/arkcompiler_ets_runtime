@@ -221,10 +221,6 @@ void TypedHCRLowering::LowerJSCallTargetCheck(GateRef gate)
 {
     TypedCallTargetCheckOp Op = acc_.GetTypedCallTargetCheckOp(gate);
     switch (Op) {
-        case TypedCallTargetCheckOp::JSCALL_IMMEDIATE_AFTER_FUNC_DEF: {
-            LowerJSCallTargetFromDefineFuncCheck(gate);
-            break;
-        }
         case TypedCallTargetCheckOp::JSCALL: {
             LowerJSCallTargetTypeCheck(gate);
             break;
@@ -1443,16 +1439,6 @@ void TypedHCRLowering::LowerTypedCallBuitin(GateRef gate)
     lowering.LowerTypedCallBuitin(gate);
 }
 
-void TypedHCRLowering::LowerJSCallTargetFromDefineFuncCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = GetFrameState(gate);
-    auto func = acc_.GetValueIn(gate, 0);
-    GateRef check = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT);
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT1);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
 void TypedHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1463,11 +1449,8 @@ void TypedHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
     auto methodIndex = acc_.GetValueIn(gate, 1);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
     GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
-    GateRef isOptimized = builder_.JudgeAotAndFastCallWithMethod(funcMethodTarget,
-        CircuitBuilder::JudgeMethodType::HAS_AOT);
-    GateRef checkFunc = builder_.BoolAnd(isObj, isOptimized);
     GateRef methodTarget = builder_.GetValueFromTaggedArray(constpool, methodIndex);
-    GateRef check = builder_.BoolAnd(checkFunc, builder_.Equal(funcMethodTarget, methodTarget));
+    GateRef check = builder_.BoolAnd(isObj, builder_.Equal(funcMethodTarget, methodTarget));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT2);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1481,11 +1464,9 @@ void TypedHCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate)
     auto func = acc_.GetValueIn(gate, 0);
     auto methodIndex = acc_.GetValueIn(gate, 1);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef canFastCall = builder_.CanFastCall(func);
     GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
-    GateRef checkFunc = builder_.BoolAnd(isObj, canFastCall);
     GateRef methodTarget = builder_.GetValueFromTaggedArray(constpool, methodIndex);
-    GateRef check = builder_.BoolAnd(checkFunc, builder_.Equal(funcMethodTarget, methodTarget));
+    GateRef check = builder_.BoolAnd(isObj, builder_.Equal(funcMethodTarget, methodTarget));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1496,9 +1477,7 @@ void TypedHCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef isOptimized = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_NOTFASTCALL);
-    GateRef check = builder_.BoolAnd(isObj, isOptimized);
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT3);
+    builder_.DeoptCheck(isObj, frameState, DeoptType::NOTJSCALLTGT3);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -1508,10 +1487,8 @@ void TypedHCRLowering::LowerJSNoGCCallThisTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef isOptimized = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_NOTFASTCALL);
     GateRef methodId = builder_.GetMethodId(func);
-    GateRef checkOptimized = builder_.BoolAnd(isObj, isOptimized);
-    GateRef check = builder_.BoolAnd(checkOptimized, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
+    GateRef check = builder_.BoolAnd(isObj, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT4);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1522,9 +1499,7 @@ void TypedHCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef canFastCall = builder_.CanFastCall(func);
-    GateRef check = builder_.BoolAnd(isObj, canFastCall);
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT2);
+    builder_.DeoptCheck(isObj, frameState, DeoptType::NOTJSFASTCALLTGT2);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -1534,10 +1509,8 @@ void TypedHCRLowering::LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef canFastCall = builder_.CanFastCall(func);
     GateRef methodId = builder_.GetMethodId(func);
-    GateRef checkOptimized = builder_.BoolAnd(isObj, canFastCall);
-    GateRef check = builder_.BoolAnd(checkOptimized, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
+    GateRef check = builder_.BoolAnd(isObj, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT3);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }

@@ -75,7 +75,6 @@ len = Math.atan2(1, Number.POSITIVE_INFINITY)
 print(len) //: 0
 
 // Replace standart builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_atan2 = Math.atan2
 Math.atan2 = replace
 len = Math.atan2(111);
@@ -84,4 +83,6 @@ print(len); //: 111
 // Call standart builtin with non-number param
 Math.atan2 = true_atan2
 len = Math.atan2(0, "NaN"); // deopt
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
+//aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

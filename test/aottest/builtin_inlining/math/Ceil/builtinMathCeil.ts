@@ -133,6 +133,5 @@ printCeil(true);         //aot: [trace] Check Type: NotNumber1
 //aot: [trace] aot inline builtin: Math.ceil, caller function name:doCeil@builtinMathCeil
 printCeil(new Object);   //aot: [trace] Check Type: NotNumber1
                          //: NaN
-//aot: [trace] Check Type: NotJSFastCallTarget1
 printCeil("1.3333");
                          //: 2

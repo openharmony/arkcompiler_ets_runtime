@@ -99,7 +99,6 @@ print(Math.abs(4, 0, 0, 0)); //: 4
 print(Math.abs(-4, 0, 0, 0, 0)); //: 4
 
 // Replace standard builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_abs = Math.abs
 Math.abs = replace
 
@@ -159,6 +158,8 @@ try {
 let obj = {
     valueOf: () => { return -23; }
 };
+//aot: [trace] aot inline builtin: Math.abs, caller function name:func_main_0@builtinMathAbs
+//aot: [trace] Check Type: NotNumber2
 print(Math.abs(obj)); //: 23
 
 function Throwing() {
