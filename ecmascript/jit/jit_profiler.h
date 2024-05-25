@@ -103,7 +103,8 @@ private:
     bool AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
 		       JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
     void AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
-                         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
+                         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,
+                         bool everOutOfBounds = false);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalsId);
     void AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver);
     void AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold);

@@ -251,7 +251,8 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
     ValuedICAccessor(&cachedHandler, &storeWithHandler, &storeElement);
     Bind(&storeElement);
     {
-        GateRef ret = ICStoreElement(glue_, receiver_, propKey_, value_, *cachedHandler);
+        GateRef ret = ICStoreElement(glue_, receiver_, propKey_, value_, *cachedHandler,
+                                     true, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
         result->WriteVariable(ret);
         BRANCH(TaggedIsHole(ret), slowPath_, success_);
     }

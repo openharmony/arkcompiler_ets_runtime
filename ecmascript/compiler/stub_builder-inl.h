@@ -2250,6 +2250,11 @@ inline GateRef StubBuilder::ClearSharedStoreKind(GateRef handlerInfo)
     return Int64And(handlerInfo, Int64Not(Int64(HandlerBase::SSharedBit::Mask())));
 }
 
+inline GateRef StubBuilder::UpdateSOutOfBoundsForHandler(GateRef handlerInfo)
+{
+    return Int64Or(handlerInfo, Int64(HandlerBase::SOutOfBoundsBit::Mask()));
+}
+
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 {
     // arraylist and vector has fast pass now

@@ -1118,6 +1118,12 @@ public:
         return types_[0].IsBuiltinsTypeArray();
     }
 
+    bool IsStoreOutOfBounds() const
+    {
+        ASSERT(types_.size() > 0);
+        return types_[0].IsEverOutOfBounds();
+    }
+
     JSType GetBuiltinsJSType() const
     {
         if (types_[0].IsBuiltinsType()) {

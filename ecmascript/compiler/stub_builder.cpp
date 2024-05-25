@@ -2299,7 +2299,8 @@ GateRef StubBuilder::LoadStringElement(GateRef glue, GateRef receiver, GateRef k
     return ret;
 }
 
-GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handler)
+GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handler,
+                                    bool updateHandler, GateRef profileTypeInfo, GateRef slotId)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2380,6 +2381,14 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                     Store(VariableType::INT32(), glue, receiver,
                         IntPtr(panda::ecmascript::JSArray::LENGTH_OFFSET),
                         Int32Add(index, Int32(1)));
+                    if (updateHandler) {
+                        Label update(env);
+                        GateRef oldHandler = GetValueFromTaggedArray(profileTypeInfo, slotId);
+                        BRANCH(Equal(oldHandler, Hole()), &handerInfoNotJSArray, &update);
+                        Bind(&update);
+                        handler = Int64ToTaggedInt(UpdateSOutOfBoundsForHandler(handlerInfo));
+                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, handler);
+                    }
                 }
                 Jump(&handerInfoNotJSArray);
             }

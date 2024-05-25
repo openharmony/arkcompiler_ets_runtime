@@ -69,7 +69,8 @@ public:
     using SWholeKindBit = KindBit;
     static_assert(SKindBit::START_BIT == SWholeKindBit::START_BIT);
     static_assert(SSharedBit::Mask() || SKindBit::Mask() == KindBit::Mask());
-    using SFieldTypeBit = AttrIndexBit::NextField<SharedFieldType, PropertyAttributes::FIELD_TYPE_NUM>;
+    using SOutOfBoundsBit = AttrIndexBit::NextFlag;
+    using SFieldTypeBit = SOutOfBoundsBit::NextField<SharedFieldType, PropertyAttributes::FIELD_TYPE_NUM>;
     static_assert(static_cast<size_t>(StoreHandlerKind::S_TOTAL_KINDS) <= (1 << STORE_KIND_BIT_LENGTH));
     using Type = uint64_t;
     static_assert(sizeof(Type) <= JSTaggedValue::TaggedTypeSize());
@@ -110,6 +111,16 @@ public:
     static inline void ClearSharedStoreKind(Type &handler)
     {
         SSharedBit::Set<Type>(false, &handler);
+    }
+
+    static inline bool IsStoreOutOfBounds(Type handler)
+    {
+        return SOutOfBoundsBit::Get(handler);
+    }
+
+    static inline void ClearStoreOutOfBounds(Type &handler)
+    {
+        SOutOfBoundsBit::Set<Type>(false, &handler);
     }
 
     static inline bool IsString(Type handler)
@@ -296,6 +307,7 @@ public:
             SFieldTypeBit::Set<uint64_t>(op.GetAttr().GetDictSharedFieldType(), &handler);
         }
         if (op.IsElement()) {
+            SOutOfBoundsBit::Set<uint64_t>(op.GetElementOutOfBounds(), &handler);
             return StoreElement(thread, op.GetReceiver(), handler);
         }
         JSTaggedValue val = op.GetValue();

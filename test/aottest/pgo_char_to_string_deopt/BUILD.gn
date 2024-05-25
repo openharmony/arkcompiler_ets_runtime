@@ -19,5 +19,6 @@ host_aot_test_action("pgo_char_to_string_deopt") {
   is_enable_pgo = true
   is_enable_enableArkTools = true
   is_enable_trace_deopt = true
+  is_enable_opt_inlining = true
   log_option = " --log-info=trace"
 }

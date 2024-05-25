@@ -515,6 +515,7 @@ public:
                                Label *exit);
     GateRef GetFieldTypeFromHandler(GateRef attr);
     GateRef ClearSharedStoreKind(GateRef handlerInfo);
+    GateRef UpdateSOutOfBoundsForHandler(GateRef handlerInfo);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     GateRef FastGetValueWithElementsKind(GateRef elements, GateRef index, ElementsKind kind);
     void FastSetValueWithElementsKind(GateRef glue, GateRef elements, GateRef rawValue,
@@ -582,7 +583,9 @@ public:
         GateRef glue, GateRef receiver, GateRef holder, GateRef handler, ProfileOperation callback);
     GateRef StoreICWithHandler(GateRef glue, GateRef receiver, GateRef holder,
                                GateRef value, GateRef handler, ProfileOperation callback = ProfileOperation());
-    GateRef ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handlerInfo);
+    GateRef ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handlerInfo,
+                           bool updateHandler = false, GateRef profileTypeInfo = Gate::InvalidGateRef,
+                           GateRef slotId = Gate::InvalidGateRef);
     GateRef GetArrayLength(GateRef object);
     GateRef DoubleToInt(GateRef glue, GateRef x, size_t bits = base::INT32_BITS);
     void SetArrayLength(GateRef glue, GateRef object, GateRef len);
