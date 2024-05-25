@@ -298,4 +298,11 @@ JSTaggedValue PGOTypeManager::QueryHClass(ProfileType rootType, ProfileType chil
     }
     return result;
 }
+
+JSTaggedValue PGOTypeManager::QueryHClassByIndexForJIT(uint32_t hclassIndex)
+{
+    ASSERT(hclassIndex < profileTyperToHClassIndex_.size());
+    return hclassInfoLocal_[hclassIndex];
+}
+
 }  // namespace panda::ecmascript

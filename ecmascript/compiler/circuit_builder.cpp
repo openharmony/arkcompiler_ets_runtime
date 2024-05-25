@@ -423,6 +423,12 @@ GateRef CircuitBuilder::NullConstant()
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_NULL, type);
 }
 
+GateRef CircuitBuilder::TaggedValueConstant(JSTaggedValue taggedValue)
+{
+    auto type = GateType::TaggedValue();
+    return GetCircuit()->GetConstantGate(MachineType::I64, taggedValue.GetRawData(), type);
+}
+
 GateRef CircuitBuilder::ExceptionConstant()
 {
     auto type = GateType::TaggedValue();

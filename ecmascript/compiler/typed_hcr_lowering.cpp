@@ -543,12 +543,12 @@ GateRef TypedHCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
     if (!isHeapObject) {
         builder_.HeapObjectCheck(receiver, frameState);
     }
-
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
     auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
     ArgumentAccessor argAcc(circuit_);
     GateRef constpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::CONST_POOL);
-    GateRef aotHCGate = LoadFromConstPool(constpool, hclassIndex, ConstantPool::AOT_HCLASS_INFO_INDEX);
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
+    auto aotHCGate = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, hclassIndex);
     GateRef receiverHClass = builder_.LoadConstOffset(
         VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     return builder_.Equal(aotHCGate, receiverHClass, "checkHClass");
