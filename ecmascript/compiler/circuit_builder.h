@@ -852,6 +852,7 @@ public:
     inline GateRef ToTaggedInt(GateRef x);
     inline GateRef ToTaggedIntPtr(GateRef x);
     inline GateRef DoubleToTaggedDoublePtr(GateRef x);
+    inline GateRef DoubleIsImpureNaN(GateRef x);
     inline GateRef BooleanToTaggedBooleanPtr(GateRef x);
     inline GateRef BooleanToInt32(GateRef x);
     inline GateRef BooleanToFloat64(GateRef x);

@@ -370,6 +370,13 @@ GateRef CircuitBuilder::DoubleToTaggedDoublePtr(GateRef x)
     return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
+GateRef CircuitBuilder::DoubleIsImpureNaN(GateRef x)
+{
+    GateRef impureNaN = Int64(JSTaggedValue::TAG_INT - JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+    GateRef val = CastDoubleToInt64(x);
+    return Int64UnsignedGreaterThanOrEqual(val, impureNaN);
+}
+
 GateRef CircuitBuilder::BooleanToTaggedBooleanPtr(GateRef x)
 {
     auto val = ZExtInt1ToInt64(x);
