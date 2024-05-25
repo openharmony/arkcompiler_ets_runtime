@@ -1697,7 +1697,6 @@
         "mjsunit/lazy-inner-functions.js",
         "mjsunit/globals.js",
         "mjsunit/ic-megadom-2.js",
-        "mjsunit/to_number_order.js",
         "mjsunit/string-replace-with-empty.js",
         "mjsunit/deep-recursion.js",
         "mjsunit/arguments-load-across-eval.js",
