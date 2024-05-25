@@ -235,15 +235,15 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, Optimi
 // * BaselineBuiltinFrame layout as the following:
 //               +--------------------------+ ---------
 //               |       . . . . .          |         ^
-//               |--------------------------|         |
+// callerSP ---> |--------------------------|         |
 //               |       returnAddr         |         |
 //               |--------------------------|   BuiltinBuiltinFrame
 //               |       callsiteFp         |         |
-//               |--------------------------|         |
+//       fp ---> |--------------------------|         |
 //               |       frameType          |         v
 //               +--------------------------+ ---------
 //               |        . . . .           |
-//               +--------------------------+
+// calleeSP ---> +--------------------------+
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct BaselineBuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
@@ -359,15 +359,15 @@ private:
 STATIC_ASSERT_EQ_ARCH(sizeof(AsmBridgeFrame), AsmBridgeFrame::SizeArch32, AsmBridgeFrame::SizeArch64);
 
 // * OptimizedUnfoldArgVFrame layout description as the following:
-//      sp ----> |--------------------------| ---------------
+// callerSP ---> |--------------------------| ---------------
 //               |       returnAddr         |               ^
-//  currentFp--> |--------------------------|               |
+//               |--------------------------|               |
 //               |       prevFp             |               |
-//               |--------------------------|   OptimizedUnfoldArgVFrame
+//       fp ---> |--------------------------|   OptimizedUnfoldArgVFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
 //               |       currentFp          |               v
-//               +--------------------------+ ---------------
+// calleESP ---> +--------------------------+ ---------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionUnfoldArgVFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
@@ -439,7 +439,7 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionUnfoldArgVFrame),
 //  sp ---> +--------------------------+ -----------------
 //          |                          |                 ^
 //          |        prevFP            |                 |
-//          |--------------------------|    OptimizedJSFunctionArgsConfigFrame
+//  fp ---> |--------------------------|    OptimizedJSFunctionArgsConfigFrame
 //          |       frameType          |                 |
 //          |                          |                 V
 //          +--------------------------+ -----------------
@@ -509,15 +509,15 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
 //               |       argv               |
 //               |--------------------------|
 //               |       argc               |
-//      sp ----> |--------------------------| ---------------
+// callerSP ---> |--------------------------| ---------------
 //               |       returnAddr         |               ^
 //               |--------------------------|               |
 //               |       callsiteFp         |               |
-//               |--------------------------|   OptimizedJSFunctionFrame
+//       fp ---> |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
 //               |       call-target        |               v
-//               +--------------------------+ ---------------
+// calleeSP ---> +--------------------------+ ---------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
@@ -638,15 +638,15 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionFrame),
 static_assert((OptimizedJSFunctionFrame::GetFunctionDeltaReturnAddr() % 2) == 1);
 
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
-//          +--------------------------+
-//          |      . . . . . .         |
-//  sp ---> +--------------------------+ -----------------
-//          |        prevFP            |                 ^
-//          |--------------------------|                 |
-//          |       frameType          |      JSFunctionEntryFrame
-//          |--------------------------|                 |
-//          |    preLeaveFrameFp       |                 v
-//          +--------------------------+ -----------------
+//              +--------------------------+
+//              |      . . . . . .         |
+// callerSP --> +--------------------------+ -----------------
+//              |        prevFP            |                 ^
+//       fp --> |--------------------------|                 |
+//              |       frameType          |      JSFunctionEntryFrame
+//              |--------------------------|                 |
+//              |    preLeaveFrameFp       |                 v
+// calleeSP --> +--------------------------+ -----------------
 
 struct OptimizedEntryFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                         base::AlignedPointer,
@@ -1276,23 +1276,23 @@ struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPoint
 };
 
 // * Optimized-leaved-frame layout as the following:
-//         +--------------------------+
-//         |       argv[N-1]          |
-//         |--------------------------|
-//         |       . . . . .          |
-//         |--------------------------|
-//         |       argv[0]            |
-//         +--------------------------+-------------
-//         |       argc               |            ^
-//         |--------------------------|            |
-//         |       RuntimeId          |            |
-//  sp --> |--------------------------|   OptimizedLeaveFrame
-//         |       ret-addr           |            |
-//         |--------------------------|            |
-//         |       prevFp             |            |
-//         |--------------------------|            |
-//         |       frameType          |            v
-//         +--------------------------+-------------
+//               +--------------------------+
+//               |       argv[N-1]          |
+//               |--------------------------|
+//               |       . . . . .          |
+//               |--------------------------|
+//               |       argv[0]            |
+//               +--------------------------+-------------
+//               |       argc               |            ^
+//               |--------------------------|            |
+//               |       RuntimeId          |            |
+//  callerSP --> |--------------------------|   OptimizedLeaveFrame
+//               |       ret-addr           |            |
+//               |--------------------------|            |
+//               |       prevFp             |            |
+//        fp --> |--------------------------|            |
+//               |       frameType          |            v
+//  calleeSP --> +--------------------------+-------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedLeaveFrame {
@@ -1338,19 +1338,19 @@ struct OptimizedLeaveFrame {
 };
 
 // * Optimized-leaved-frame-with-argv layout as the following:
-//         +--------------------------+
-//         |       argv[]             |
-//         +--------------------------+-------------
-//         |       argc               |            ^
-//         |--------------------------|            |
-//         |       RuntimeId          |   OptimizedWithArgvLeaveFrame
-//  sp --> |--------------------------|            |
-//         |       returnAddr         |            |
-//         |--------------------------|            |
-//         |       callsiteFp         |            |
-//         |--------------------------|            |
-//         |       frameType          |            v
-//         +--------------------------+-------------
+//               +--------------------------+
+//               |       argv[]             |
+//               +--------------------------+-------------
+//               |       argc               |            ^
+//               |--------------------------|            |
+//               |       RuntimeId          |   OptimizedWithArgvLeaveFrame
+//  callerSP --> |--------------------------|            |
+//               |       returnAddr         |            |
+//               |--------------------------|            |
+//               |       callsiteFp         |            |
+//        fp --> |--------------------------|            |
+//               |       frameType          |            v
+//  calleeSP --> +--------------------------+-------------
 
 struct OptimizedWithArgvLeaveFrame {
     FrameType type;
@@ -1394,25 +1394,25 @@ struct OptimizedWithArgvLeaveFrame {
 };
 
 // * OptimizedBuiltinLeaveFrame layout as the following:
-//         +--------------------------+
-//         |       argv[N-1]          |
-//         |--------------------------|
-//         |       . . . . .          |
-//         |--------------------------|
-//         |       argv[0]            |
-//         +--------------------------+-------------
-//         |       argc               |            ^
-//         |--------------------------|            |
-//         |       thread             |            |
-//         +--------------------------+            |
-//         |       ret-addr           |            |
-//  sp --> |--------------------------|   OptimizedBuiltinLeaveFrame
-//         |       prevFp             |            |
-//         |--------------------------|            |
-//         |       frameType          |            |
-//         |--------------------------|            |
-//         |       align byte         |            v
-//         +--------------------------+-------------
+//               +--------------------------+
+//               |       argv[N-1]          |
+//               |--------------------------|
+//               |       . . . . .          |
+//               |--------------------------|
+//               |       argv[0]            |
+//               +--------------------------+-------------
+//               |       argc               |            ^
+//               |--------------------------|            |
+//               |       thread             |            |
+//  callerSP --> +--------------------------+            |
+//               |       ret-addr           |            |
+//               |--------------------------|   OptimizedBuiltinLeaveFrame
+//               |       prevFp             |            |
+//        fp --> |--------------------------|            |
+//               |       frameType          |            |
+//               |--------------------------|            |
+//               |       align byte         |            v
+//  calleeSP --> +--------------------------+-------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedBuiltinLeaveFrame {
@@ -1489,13 +1489,13 @@ private:
 //               |       argc               |         ^
 //               |--------------------------|         |
 //               |       thread             |         |
-//               |--------------------------|         |
+//  callerSP --> |--------------------------|         |
 //               |       returnAddr         |     BuiltinFrame
 //               |--------------------------|         |
 //               |       callsiteFp         |         |
-//               |--------------------------|         |
+//        fp --> |--------------------------|         |
 //               |       frameType          |         v
-//               +--------------------------+ ---------
+//  calleeSP --> +--------------------------+ ---------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
@@ -1598,11 +1598,11 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
 // * BuiltinWithArgvFrame layout as the following:
 //               +--------------------------+ ---------
 //               |       . . . . .          |         ^
-//               |--------------------------|         |
+//  callerSP --> |--------------------------|         |
 //               |       returnAddr         |         |
 //               |--------------------------|         |
 //               |       callsiteFp         |   BuiltinWithArgvFrame
-//               |--------------------------|         |
+//        fp --> |--------------------------|         |
 //               |       frameType          |         |
 //               +--------------------------+         |
 //               |        argc              |         v
@@ -1612,7 +1612,7 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
 //               |        argV[1]           |
 //               +--------------------------+
 //               |        . . . .           |
-//               +--------------------------+
+//  calleeSP --> +--------------------------+
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::Size(),

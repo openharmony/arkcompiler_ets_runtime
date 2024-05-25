@@ -559,7 +559,7 @@ inline bool JSTaggedValue::CheckIsJSNativePointer() const
 {
     if (IsHeapObject() && !IsInvalidValue()) {
         auto hclass = GetTaggedObject()->GetClass();
-        if (hclass != nullptr) {
+        if (hclass != nullptr  && !JSTaggedValue(hclass).IsInvalidValue()) {
             return hclass->IsJSNativePointer();
         }
     }
@@ -580,7 +580,7 @@ inline bool JSTaggedValue::CheckIsJSProxy() const
 {
     if (IsHeapObject() && !IsInvalidValue()) {
         auto hclass = GetTaggedObject()->GetClass();
-        if (hclass != nullptr) {
+        if (hclass != nullptr  && !JSTaggedValue(hclass).IsInvalidValue()) {
             return hclass->IsJSProxy();
         }
     }
@@ -1151,7 +1151,7 @@ inline bool JSTaggedValue::CheckIsJSFunctionBase() const
 {
     if (IsHeapObject() && !IsInvalidValue()) {
         auto hclass = GetTaggedObject()->GetClass();
-        if (hclass != nullptr) {
+        if (hclass != nullptr && !JSTaggedValue(hclass).IsInvalidValue()) {
             return hclass->IsJSFunctionBase();
         }
     }
