@@ -870,13 +870,13 @@ GateRef NumberSpeculativeLowering::MonocularDouble(GateRef value)
     GateRef res = Circuit::NullGate();
     switch (Op) {
         case TypedUnOp::TYPED_INC:
-            res = builder_.DoubleAdd(value, builder_.Double(1));
+            res = CalculateDoubles<TypedBinOp::TYPED_ADD>(value, GetConstDouble(1));
             break;
         case TypedUnOp::TYPED_DEC:
-            res = builder_.DoubleSub(value, builder_.Double(1));
+            res = CalculateDoubles<TypedBinOp::TYPED_SUB>(value, GetConstDouble(1));
             break;
         case TypedUnOp::TYPED_NEG:
-            res = builder_.DoubleMul(builder_.Double(-1), value);
+            res = CalculateDoubles<TypedBinOp::TYPED_MUL>(value, GetConstDouble(-1));
             break;
         default:
             break;
@@ -906,6 +906,13 @@ RangeInfo NumberSpeculativeLowering::GetRange(GateRef gate) const
 GateRef NumberSpeculativeLowering::GetConstInt32(int32_t v)
 {
     auto val = builder_.Int32(v);
+    UpdateRange(val, RangeInfo(v, v));
+    return val;
+}
+
+GateRef NumberSpeculativeLowering::GetConstDouble(double v)
+{
+    auto val = builder_.Double(v);
     UpdateRange(val, RangeInfo(v, v));
     return val;
 }

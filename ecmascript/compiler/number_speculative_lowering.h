@@ -92,9 +92,9 @@ private:
     template<TypedBinOp Op>
     GateRef LogicalInts(GateRef left, GateRef right);
     template<TypedUnOp Op>
-    GateRef MonocularInt(GateRef gate);
+    GateRef MonocularInt(GateRef value);
     template<TypedUnOp Op>
-    GateRef MonocularDouble(GateRef gate);
+    GateRef MonocularDouble(GateRef value);
 
     TypeInfo GetOutputType(GateRef gate) const
     {
@@ -106,6 +106,7 @@ private:
     void UpdateRange(GateRef gate, const RangeInfo& range);
     RangeInfo GetRange(GateRef gate) const;
     GateRef GetConstInt32(int32_t v);
+    GateRef GetConstDouble(double v);
 
     Circuit* circuit_;
     GateAccessor acc_;
