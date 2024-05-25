@@ -366,6 +366,10 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
                                                                 std::string_view entryPoint, bool executeFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    auto &options = const_cast<EcmaVM *>(thread_->GetEcmaVM())->GetJSOptions();
+    if (options.EnableModuleLog()) {
+        LOG_FULL(INFO) << "current executing file's name " << entryPoint.data();
+    }
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
     if (program.IsEmpty()) {
         LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
