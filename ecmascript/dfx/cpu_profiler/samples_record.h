@@ -125,6 +125,7 @@ public:
     std::string GetSampleData() const;
     std::string GetModuleName(char *recordName);
     void SetThreadStartTime(uint64_t threadStartTime);
+    uint64_t GetThreadStartTime();
     void SetThreadStopTime();
     void SetStartsampleData(std::string sampleData);
     void SetFileName(std::string &fileName);
@@ -145,10 +146,6 @@ public:
     void InsertStackInfo(struct MethodKey &methodKey, struct FrameInfo &codeEntry);
     bool PushFrameStack(struct MethodKey &methodKey);
     bool PushStackInfo(const FrameInfoTemp &frameInfoTemp);
-    bool GetBeforeGetCallNapiStackFlag();
-    void SetBeforeGetCallNapiStackFlag(bool flag);
-    bool GetAfterGetCallNapiStackFlag();
-    void SetAfterGetCallNapiStackFlag(bool flag);
     bool GetCallNapiFlag();
     void SetCallNapiFlag(bool flag);
     bool PushNapiFrameStack(struct MethodKey &methodKey);
@@ -204,8 +201,6 @@ private:
     std::atomic_bool gcState_ = false;
     std::atomic_bool runtimeState_ = false;
     std::atomic_bool isStart_ = false;
-    std::atomic_bool beforeCallNapi_ = false;
-    std::atomic_bool afterCallNapi_ = false;
     std::atomic_bool callNapi_ = false;
     std::unique_ptr<struct ProfileInfo> profileInfo_;
     CMap<struct NodeKey, int> nodeMap_;

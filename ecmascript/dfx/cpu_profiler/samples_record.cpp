@@ -494,6 +494,11 @@ void SamplesRecord::SetThreadStartTime(uint64_t threadStartTime)
     profileInfo_->startTime = threadStartTime;
 }
 
+uint64_t SamplesRecord::GetThreadStartTime()
+{
+    return profileInfo_->startTime;
+}
+
 void SamplesRecord::SetThreadStopTime()
 {
     profileInfo_->stopTime = previousTimeStamp_;
@@ -522,26 +527,6 @@ void SamplesRecord::ClearSampleData()
 std::unique_ptr<struct ProfileInfo> SamplesRecord::GetProfileInfo()
 {
     return std::move(profileInfo_);
-}
-
-void SamplesRecord::SetBeforeGetCallNapiStackFlag(bool flag)
-{
-    beforeCallNapi_.store(flag);
-}
-
-bool SamplesRecord::GetBeforeGetCallNapiStackFlag()
-{
-    return beforeCallNapi_.load();
-}
-
-void SamplesRecord::SetAfterGetCallNapiStackFlag(bool flag)
-{
-    afterCallNapi_.store(flag);
-}
-
-bool SamplesRecord::GetAfterGetCallNapiStackFlag()
-{
-    return afterCallNapi_.load();
 }
 
 void SamplesRecord::SetCallNapiFlag(bool flag)
