@@ -807,6 +807,9 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (pgoProfiler_ != nullptr) {
         pgoProfiler_->Iterate(v);
     }
+    if (aotFileManager_) {
+        aotFileManager_->Iterate(v);
+    }
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)

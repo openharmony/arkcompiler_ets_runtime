@@ -83,7 +83,6 @@ print(Math.trunc(3.123, 10, 1e-39)); //: 3
 print(Math.trunc(4.89, 10.5, 0, 11)); //: 4
 
 // Replace standart builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_trunc = Math.trunc
 Math.trunc = replace
 print(Math.trunc(111.09)); //: 111.09
@@ -124,6 +123,8 @@ try {
 let obj = {
     valueOf: () => { return -35.121; }
 };
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
+//aot: [trace] Check Type: NotNumber2
 print(Math.trunc(obj)); //: -35
 
 function Throwing() {

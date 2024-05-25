@@ -65,6 +65,8 @@ public:
         Register fp, Label *next, Label *stackOverflow);
     static void PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, Register argc, Register argv,
         Register op, Register fp, Label *next, Label *stackOverflow);
+    static void PushArgsWithArgvInPair(ExtendedAssembler *assembler, Register argc, Register argv, Register padding,
+        Register op1, Register op2, Label *next);
     static void PushAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register currentSlot, Register numArgs,
@@ -92,6 +94,10 @@ public:
     static void JSCallWithArgV(ExtendedAssembler *assembler);
 
     static void JSCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
+
+    static void AOTCallToAsmInterBridge(ExtendedAssembler *assembler);
+
+    static void FastCallToAsmInterBridge(ExtendedAssembler *assembler);
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 

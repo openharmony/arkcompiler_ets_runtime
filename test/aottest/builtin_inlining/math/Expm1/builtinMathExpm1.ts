@@ -106,7 +106,6 @@ try {
 } catch(e) {}
 
 // Replace standart builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let trueExpm1 = Math.expm1
 Math.expm1 = replace
 print(Math.expm1(111)); //: 111

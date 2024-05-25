@@ -99,7 +99,6 @@ namespace panda::ecmascript::kungfu {
     V(FLOAT64ARRAY_STORE_ELEMENT)
 
 #define TYPED_CALL_TARGET_CHECK_OP_LIST(V)  \
-    V(JSCALL_IMMEDIATE_AFTER_FUNC_DEF)      \
     V(JSCALL)                               \
     V(JSCALL_FAST)                          \
     V(JSCALLTHIS)                           \

@@ -3415,8 +3415,11 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     JSFunction* func = JSFunction::Cast(function.GetTaggedObject());
     Method *method = func->GetCallTarget();
     if (method->IsAotWithCallField()) {
+        bool isFastCall = method->IsFastCall();  // get this flag before clear it
+        uintptr_t entry = isFastCall ? thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
+                                     : thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
+        func->SetCodeEntry(entry);
         method->ClearAOTStatusWhenDeopt();
-        func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
     }
     context->SetMethod(thread, function);
     context->SetThis(thread, frameHandler.GetThis());

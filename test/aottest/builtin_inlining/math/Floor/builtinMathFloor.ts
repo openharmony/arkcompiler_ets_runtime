@@ -133,6 +133,5 @@ printFloor(true);       //aot: [trace] Check Type: NotNumber1
 //aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
 printFloor(new Object); //aot: [trace] Check Type: NotNumber1
                         //: NaN
-//aot: [trace] Check Type: NotJSFastCallTarget1
 printFloor("1.3333");
                         //: 1

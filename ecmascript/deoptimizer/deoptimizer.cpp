@@ -522,7 +522,6 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
 
 void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *method)
 {
-    method->ClearAOTStatusWhenDeopt();
     if (func->GetMachineCode().IsMachineCodeObject()) {
         Jit::GetInstance()->GetJitDfx()->SetJitDeoptCount();
         // reset jit hotness cnt
@@ -532,7 +531,14 @@ void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *me
             profileTypeInfo->SetJitHotnessCnt(0);
         }
     }
-    func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
+    if (method->IsAotWithCallField()) {
+        bool isFastCall = method->IsFastCall();  // get this flag before clear it
+        uintptr_t entry =
+            isFastCall ? thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
+                       : thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
+        func->SetCodeEntry(entry);
+    }  // Do not change the func code entry if the method is not aot or deopt has happened already
+    method->ClearAOTStatusWhenDeopt();
 }
 
 void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)

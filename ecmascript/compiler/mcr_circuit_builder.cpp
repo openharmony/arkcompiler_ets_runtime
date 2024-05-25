@@ -598,19 +598,6 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     return ret;
 }
 
-GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateRef func, GateRef gate)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.GetFrameState(gate);
-    uint64_t value = TypedCallTargetCheckAccessor::ToValue(TypedCallTargetCheckOp::JSCALL_IMMEDIATE_AFTER_FUNC_DEF);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(value), MachineType::I1,
-        {currentControl, currentDepend, func, IntPtr(INVALID_INDEX), frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
 GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef> &inList,
                                           bool isSideEffect)
 {

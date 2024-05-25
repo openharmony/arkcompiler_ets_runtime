@@ -128,7 +128,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(OptimizedCallAndPushArgv)              \
     V(DeoptHandlerAsm)                       \
     V(JSCallNew)                             \
-    V(CallOptimized)
+    V(CallOptimized)                         \
+    V(AOTCallToAsmInterBridge)               \
+    V(FastCallToAsmInterBridge)
 
 #define FAST_CALL_TRAMPOLINE_LIST(V)         \
     V(OptimizedFastCallEntry)                \

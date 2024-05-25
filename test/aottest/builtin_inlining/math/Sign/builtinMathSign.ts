@@ -51,7 +51,6 @@ print(Math.sign(-Infinity)) //: -1
 print(Math.sign(Infinity)) //: 1
 
 // Replace, no deopt
-//aot: [trace] Check Type: NotJSCallTarget4
 let trueSign = Math.sign
 Math.sign = replace
 print(Math.sign(-12)) //: -12
@@ -148,17 +147,20 @@ function tryCatchTest(obj: any, v : number)
 
 // Test try-catch-deopt 1
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
-//aot: [trace] Check Type: ProtoTypeChanged2
+//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
 //: -1
+//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
 //pgo: 0
 //aot: 1
+//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
 //: 0
 
 // Test try-catch-deopt 2
 throwingObj.value = 14
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
-//aot: [trace] Check Type: ProtoTypeChanged2
 //: Error: exception
+//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
 //pgo: 0
 //aot: -1
+//aot: [trace] aot inline builtin: Math.sign, caller function name:tryCatchTest@builtinMathSign
 //: 0

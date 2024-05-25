@@ -76,7 +76,6 @@ print("1/x: " + 1.0/res); //: 1/x: -Infinity
 print(Math.cbrt(NaN)); //: NaN
 
 // Replace standard builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_cbrt = Math.cbrt;
 Math.cbrt = replace;
 
@@ -123,6 +122,8 @@ try {
 
 let obj = {};
 obj.valueOf = (() => { return -64; })
+//aot: [trace] aot inline builtin: Math.cbrt, caller function name:func_main_0@builtinMathCbrt
+//aot: [trace] Check Type: NotNumber1
 print(Math.cbrt(obj)); //: -4
 
 function Throwing() {

@@ -638,6 +638,229 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     }
 }
 
+// After the callee function of common aot call deopt, use this bridge to deal with this aot call.
+// calling convention: webkit_jsc
+// Input structure:
+// %X0 - glue
+// stack:
+// +--------------------------+
+// |       arg[N-1]           |
+// +--------------------------+
+// |       ...                |
+// +--------------------------+
+// |       arg[1]             |
+// +--------------------------+
+// |       arg[0]             |
+// +--------------------------+
+// |       this               |
+// +--------------------------+
+// |       new-target         |
+// +--------------------------+
+// |       call-target        |
+// |--------------------------|
+// |       argv               |
+// |--------------------------|
+// |       argc               |
+// +--------------------------+ <---- sp
+void OptimizedCall::AOTCallToAsmInterBridge(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(AOTCallToAsmInterBridge));
+    Register sp(SP);
+    // params of c++ calling convention
+    Register glue(X0);
+    Register jsfunc(X1);
+    Register method(X2);
+    Register callField(X3);
+    Register actualArgC(X4);
+    Register argV(X5);
+
+    __ Ldr(jsfunc, MemoryOperand(sp, DOUBLE_SLOT_SIZE));
+    __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
+    __ Ldr(callField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
+    __ Ldr(actualArgC, MemoryOperand(sp, 0));
+    // skip argc
+    __ Add(argV, sp, Immediate(kungfu::ArgumentAccessor::GetExtraArgsNum() * FRAME_SLOT_SIZE));
+    // asm interpreter argV = argv + 24
+    __ Add(argV, argV, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE));
+    __ Sub(actualArgC, actualArgC, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum()));
+    OptimizedCallAsmInterpreter(assembler);
+}
+
+// After the callee function of fast aot call deopt, use this bridge to deal with this fast aot call.
+// Notice: no argc and new-target params compared with not-fast aot call because these params are not needed
+// by bytecode-analysis
+// Intruduction: use expected argc as actual argc below for these reasons:
+// 1) when expected argc == actual argc, pass.
+// 2) when expected argc > actual argc, undefineds have been pushed in OptimizedFastCallAndPushArgv.
+// 3) when expected argc < actual argc, redundant params are useless according to bytecode-analysis, just abandon them.
+// calling convention: c++ calling convention
+// Input structure:
+// %X0 - glue
+// %X1 - call-target
+// %X2 - this
+// %X3 - arg0
+// %X4 - arg1
+// %X5 - arg2
+// %X6 - arg3
+// %X7 - arg4
+// stack:
+// +--------------------------+
+// |        arg[N-1]          |
+// +--------------------------+
+// |       ...                |
+// +--------------------------+
+// |       arg[5]             |
+// +--------------------------+ <---- sp
+void OptimizedCall::FastCallToAsmInterBridge(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(FastCallToAsmInterBridge));
+
+    // Add a bridge frame to protect the stack map, because args will be put on the stack to construct argv on stack
+    // and the AsmInterpBridgeFrame pushed below cannot protect the stack map anymore.
+    PushAsmBridgeFrame(assembler);
+
+    Register sp(SP);
+    // Input
+    Register glue(X0);
+    Register jsfunc(X1);
+    Register thisReg(X2);
+
+    Register tempArgc = __ AvailableRegister1();
+    {
+        TempRegister2Scope scope2(assembler);
+        Register tempMethod = __ TempRegister2();
+
+        __ Ldr(tempMethod, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
+        __ Ldr(tempArgc, MemoryOperand(tempMethod, Method::CALL_FIELD_OFFSET));
+        __ Lsr(tempArgc, tempArgc, MethodLiteral::NumArgsBits::START_BIT);
+        __ And(tempArgc, tempArgc,
+            LogicalImmediate::Create(
+                MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegXSize));
+    }
+    {
+        TempRegister1Scope scope1(assembler);
+        Register startSp = __ TempRegister1();
+        __ Mov(startSp, sp);
+
+        Label lCall0;
+        Label lCall1;
+        Label lCall2;
+        Label lCall3;
+        Label lCall4;
+        Label lCall5;
+        Label lPushCommonRegs;
+
+        __ Cmp(tempArgc, Immediate(0));
+        __ B(Condition::EQ, &lCall0);
+        __ Cmp(tempArgc, Immediate(1));
+        __ B(Condition::EQ, &lCall1);
+        __ Cmp(tempArgc, Immediate(2));  // 2: 2 args
+        __ B(Condition::EQ, &lCall2);
+        __ Cmp(tempArgc, Immediate(3));  // 3: 3 args
+        __ B(Condition::EQ, &lCall3);
+        __ Cmp(tempArgc, Immediate(4));  // 4: 4 args
+        __ B(Condition::EQ, &lCall4);
+        __ Cmp(tempArgc, Immediate(5));  // 5: 5 args
+        __ B(Condition::EQ, &lCall5);
+        // default: more than 5 args
+        {
+            TempRegister2Scope scope2(assembler);
+            Register onStackArgs = __ TempRegister2();
+            Register op1 = __ AvailableRegister2();
+            Register op2 = __ AvailableRegister3();
+
+            // skip bridge frame, return addr and a callee save
+            __ Add(onStackArgs, sp, Immediate(QUADRUPLE_SLOT_SIZE));
+            __ Sub(tempArgc, tempArgc, Immediate(5));  // 5: the first 5 args are not on stack
+            Register arg4(X7);
+            PushArgsWithArgvInPair(assembler, tempArgc, onStackArgs, arg4, op1, op2, &lCall4);
+        }
+
+        __ Bind(&lCall0);
+        {
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall1);
+        {
+            __ Stp(Register(X3), Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall2);
+        {
+            __ Stp(Register(X3), Register(X4), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall3);
+        {
+            __ Stp(Register(X5), Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(Register(X3), Register(X4), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall4);
+        {
+            __ Stp(Register(X5), Register(X6), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(Register(X3), Register(X4), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall5);
+        {
+            __ Stp(Register(X7), Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(Register(X5), Register(X6), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(Register(X3), Register(X4), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lPushCommonRegs);
+        {
+            Register newTarget(X7);
+            __ Mov(newTarget, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+            __ Stp(newTarget, thisReg, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(startSp, jsfunc, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            // fall through
+        }
+    }
+
+    // params of c++ calling convention
+    // glue: X0
+    // jsfunc: X1
+    Register method(X2);
+    Register methodCallField(X3);
+    Register argc(X4);
+    Register argV(X5);
+    // reload and prepare args for JSCallCommonEntry
+    __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
+    __ Ldr(methodCallField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
+    __ Mov(argc, methodCallField);
+    __ Lsr(argc, argc, MethodLiteral::NumArgsBits::START_BIT);
+    __ And(argc, argc,
+        LogicalImmediate::Create(
+            MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegXSize));
+    __ Add(argV, sp, Immediate((kungfu::ArgumentAccessor::GetFixArgsNum() + 1) * FRAME_SLOT_SIZE));  // 1: skip startSp
+
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    {
+        PopAsmInterpBridgeFrame(assembler);
+        TempRegister1Scope scope1(assembler);
+        Register startSp = __ TempRegister1();
+        __ Ldp(startSp, Register(Zero), MemoryOperand(sp, ExtendedAssembler::PAIR_SLOT_SIZE, POSTINDEX));
+        __ Mov(sp, startSp);
+        PopAsmBridgeFrame(assembler);
+        __ Ret();
+    }
+    __ Bind(&target);
+    {
+        AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT,
+                                              FrameTransitionType::OTHER_TO_OTHER);
+    }
+}
+
 void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
                                 Label *nonCallable, Label *notJSFunction)
 {
