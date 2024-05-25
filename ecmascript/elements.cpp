@@ -153,47 +153,73 @@ ElementsKind Elements::ToElementsKind(JSTaggedValue value, ElementsKind kind)
     return MergeElementsKind(valueKind, kind);
 }
 
+void Elements::HandleIntKindMigration(const JSThread *thread, const JSHandle<JSObject> &object,
+                                      const ElementsKind newKind, bool needCOW)
+{
+    if (IsStringOrNoneOrHole(newKind)) {
+        JSTaggedValue newElements = MigrateFromRawValueToHeapValue(thread, object, needCOW, true);
+        object->SetElements(thread, newElements);
+    } else if (newKind == ElementsKind::NUMBER || newKind == ElementsKind::HOLE_NUMBER) {
+        MigrateFromHoleIntToHoleNumber(thread, object);
+    }
+}
+
+bool Elements::IsNumberKind(const ElementsKind kind)
+{
+    return static_cast<uint32_t>(kind) >= static_cast<uint32_t>(ElementsKind::NUMBER) &&
+           static_cast<uint32_t>(kind) <= static_cast<uint32_t>(ElementsKind::HOLE_NUMBER);
+}
+
+bool Elements::IsStringOrNoneOrHole(const ElementsKind kind)
+{
+    return static_cast<uint32_t>(kind) >= static_cast<uint32_t>(ElementsKind::STRING) ||
+           kind == ElementsKind::NONE || kind == ElementsKind::HOLE;
+}
+
+void Elements::HandleNumberKindMigration(const JSThread *thread, const JSHandle<JSObject> &object,
+                                         const ElementsKind newKind, bool needCOW)
+{
+    if (IsStringOrNoneOrHole(newKind)) {
+        JSTaggedValue newElements = MigrateFromRawValueToHeapValue(thread, object, needCOW, false);
+        object->SetElements(thread, newElements);
+    } else if (newKind == ElementsKind::INT || newKind == ElementsKind::HOLE_INT) {
+        MigrateFromHoleNumberToHoleInt(thread, object);
+    }
+}
+
+void Elements::HandleOtherKindMigration(const JSThread *thread, const JSHandle<JSObject> &object,
+                                        const ElementsKind newKind, bool needCOW)
+{
+    if (newKind == ElementsKind::INT || newKind == ElementsKind::HOLE_INT) {
+        JSTaggedValue newElements = MigrateFromHeapValueToRawValue(thread, object, needCOW, true);
+        object->SetElements(thread, newElements);
+    } else if (IsNumberKind(newKind)) {
+        JSTaggedValue newElements = MigrateFromHeapValueToRawValue(thread, object, needCOW, false);
+        object->SetElements(thread, newElements);
+    }
+}
+
 void Elements::MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObject> &object,
                                     const ElementsKind oldKind, const ElementsKind newKind)
 {
     if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
         return;
     }
-    if (oldKind == newKind) {
-        return;
-    }
-    // When create ArrayLiteral from constantPool, we need to preserve the COW property if necessary.
-    // When transition happens to Array, e.g. arr.x = 1, we need to preserve the COW property if necessary.
-    bool needCOW = object->GetElements().IsCOWArray();
-    if ((oldKind == ElementsKind::INT && newKind == ElementsKind::HOLE_INT) ||
+
+    if (oldKind == newKind ||
+        (oldKind == ElementsKind::INT && newKind == ElementsKind::HOLE_INT) ||
         (oldKind == ElementsKind::NUMBER && newKind == ElementsKind::HOLE_NUMBER)) {
         return;
-    } else if (oldKind == ElementsKind::INT || oldKind == ElementsKind::HOLE_INT) {
-        if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::STRING) ||
-            newKind == ElementsKind::NONE || newKind == ElementsKind::HOLE) {
-            JSTaggedValue newElements = MigrateFromRawValueToHeapValue(thread, object, needCOW, true);
-            object->SetElements(thread, newElements);
-        } else if (newKind == ElementsKind::NUMBER || newKind == ElementsKind::HOLE_NUMBER) {
-            MigrateFromHoleIntToHoleNumber(thread, object);
-        }
-    } else if (static_cast<uint32_t>(oldKind) >= static_cast<uint32_t>(ElementsKind::NUMBER) &&
-               static_cast<uint32_t>(oldKind) <= static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)) {
-        if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::STRING) ||
-            newKind == ElementsKind::NONE || newKind == ElementsKind::HOLE) {
-            JSTaggedValue newElements = MigrateFromRawValueToHeapValue(thread, object, needCOW, false);
-            object->SetElements(thread, newElements);
-        } else if (newKind == ElementsKind::INT || newKind == ElementsKind::HOLE_INT) {
-            MigrateFromHoleNumberToHoleInt(thread, object);
-        }
+    }
+
+    bool needCOW = object->GetElements().IsCOWArray();
+
+    if (oldKind == ElementsKind::INT || oldKind == ElementsKind::HOLE_INT) {
+        HandleIntKindMigration(thread, object, newKind, needCOW);
+    } else if ((IsNumberKind(oldKind))) {
+        HandleNumberKindMigration(thread, object, newKind, needCOW);
     } else {
-        if (newKind == ElementsKind::INT || newKind == ElementsKind::HOLE_INT) {
-            JSTaggedValue newElements = MigrateFromHeapValueToRawValue(thread, object, needCOW, true);
-            object->SetElements(thread, newElements);
-        } else if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::NUMBER) &&
-                   static_cast<uint32_t>(newKind) <= static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)) {
-            JSTaggedValue newElements = MigrateFromHeapValueToRawValue(thread, object, needCOW, false);
-            object->SetElements(thread, newElements);
-        }
+        HandleOtherKindMigration(thread, object, newKind, needCOW);
     }
 }
 
