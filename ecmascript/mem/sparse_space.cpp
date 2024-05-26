@@ -123,6 +123,10 @@ void SparseSpace::PrepareSweeping()
     liveObjectSize_ = 0;
     EnumerateRegions([this](Region *current) {
         if (!current->InCollectSet()) {
+            if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
+                current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) {
+                LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << current;
+            }
             IncreaseLiveObjectSize(current->AliveObject());
             current->ResetWasted();
             current->SwapOldToNewRSetForCS();
@@ -143,7 +147,6 @@ void SparseSpace::AsyncSweep(bool isMain)
         // Main thread sweeping region is added;
         if (!isMain) {
             AddSweptRegionSafe(current);
-            current->SetSwept();
         } else {
             current->MergeOldToNewRSetForCS();
             current->MergeLocalToShareRSetForCS();
@@ -215,6 +218,7 @@ void SparseSpace::AddSweptRegionSafe(Region *region)
 {
     LockHolder holder(lock_);
     sweptList_.emplace_back(region);
+    region->SetSwept();
 }
 
 Region *SparseSpace::GetSweptRegionSafe()
@@ -379,7 +383,6 @@ Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
             return availableRegion;
         } else {
             AddSweptRegionSafe(availableRegion);
-            availableRegion->SetSwept();
         }
     }
     return nullptr;
