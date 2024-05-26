@@ -39,9 +39,8 @@ void *SamplingProcessor::Run(void *arg)
     pthread_t pid = params.pidParam;
     pthread_t tid = pthread_self();
     pthread_setname_np(tid, "SamplingThread");
-    uint64_t startTime = GetMicrosecondsTimeStamp();
+    uint64_t startTime = generator->GetThreadStartTime();
     uint64_t endTime = startTime;
-    generator->SetThreadStartTime(startTime);
     generator->AddStartTraceEvent();
     while (generator->GetIsStart()) {
         if (pthread_kill(pid, SIGPROF) != 0) {
