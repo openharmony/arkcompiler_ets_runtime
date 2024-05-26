@@ -92,9 +92,9 @@ myMap.entries = true_entries
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Map.entries, caller function name:doEntries@builtinMapEntries
+    //aot: [trace] aot inline builtin: Map.entries, caller function name:#*#doEntries@builtinMapEntries
     printEntries(2.5); //: [object Map Iterator]
-    //aot: [trace] aot inline builtin: Map.entries, caller function name:doEntries@builtinMapEntries
+    //aot: [trace] aot inline builtin: Map.entries, caller function name:#*#doEntries@builtinMapEntries
     printEntries("abc"); //: [object Map Iterator]
 } catch (e) {
 }

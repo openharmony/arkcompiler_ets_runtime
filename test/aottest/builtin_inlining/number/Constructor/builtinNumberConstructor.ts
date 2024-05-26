@@ -47,27 +47,27 @@ function test(a : any)
 
 test(newNumber(12));
 //: exit newNumber
-//aot: [trace] aot inline function name: test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
+//aot: [trace] aot inline function name: #*#test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
 //: object,true,Number,12,-12
 
 test(newNumber("12"));
 //: exit newNumber
-//aot: [trace] aot inline function name: test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
+//aot: [trace] aot inline function name: #*#test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
 //: object,true,Number,12,-12
 
 //aot: [trace] Check Type: NotInt1
 test(newNumber("1.2"));  // Only compressed strings are supported
 //: exit newNumber
-//aot: [trace] aot inline function name: test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
+//aot: [trace] aot inline function name: #*#test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
 //: object,true,Number,1.2,-1.2
 
 test(newNumber(1.2));
 //: exit newNumber
-//aot: [trace] aot inline function name: test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
+//aot: [trace] aot inline function name: #*#test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
 //: object,true,Number,1.2,-1.2
 
-//aot: [trace] aot inline function name: newNumberZero@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
-//aot: [trace] aot inline function name: test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
+//aot: [trace] aot inline function name: #*#newNumberZero@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
+//aot: [trace] aot inline function name: #*#test@builtinNumberConstructor caller function name: func_main_0@builtinNumberConstructor
 test(newNumberZero());
 //: object,true,Number,0,0
 

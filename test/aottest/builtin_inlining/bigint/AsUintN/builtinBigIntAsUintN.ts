@@ -89,10 +89,10 @@ print(BigInt.asUintN(16, 100n, -20000, "abc")); //: 100
 print(BigInt.asUintN(0, 10000n)); //: 0
 //aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:func_main_0@builtinBigIntAsUintN
 print(BigInt.asUintN(32, 0n)); //: 0
-//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:doAsUintN@builtinBigIntAsUintN
+//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:#*#doAsUintN@builtinBigIntAsUintN
 //aot: [trace] Check Type: RangeError
 tryDoAsUintN(-2, 10000n); //: RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
-//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:doAsUintN@builtinBigIntAsUintN
+//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:#*#doAsUintN@builtinBigIntAsUintN
 //aot: [trace] Check Type: RangeError
 tryDoAsUintN(2 ** 53, 100000n); //: RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
 
@@ -132,16 +132,16 @@ let true_asUintN = BigInt.asUintN
 BigInt.asUintN = replace
 print(BigInt.asUintN(-1.001, 26n)); //: -1.001
 BigInt.asUintN = true_asUintN
-//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:doAsUintN@builtinBigIntAsUintN
+//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:#*#doAsUintN@builtinBigIntAsUintN
 printAsUintN(3, 25n); //: 1
 //aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:func_main_0@builtinBigIntAsUintN
 print(true_asUintN(3, 25n)); //: 1
 
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:doAsUintN@builtinBigIntAsUintN
+//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:#*#doAsUintN@builtinBigIntAsUintN
 //aot: [trace] Check Type: NotNumber1
 tryDoAsUintN("abc", "abc"); //: SyntaxError: Cannot convert string to a BigInt,because not allow Infinity, decimal points, or exponents
-//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:doAsUintN@builtinBigIntAsUintN
+//aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:#*#doAsUintN@builtinBigIntAsUintN
 //aot: [trace] Check Type: NotNumber1
 printAsUintN("3", 25n); //: 1
 
@@ -162,9 +162,9 @@ BigInt.asUintN = true_asUintN
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:doAsUintN@builtinBigIntAsUintN
+    //aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:#*#doAsUintN@builtinBigIntAsUintN
     printAsUintN(3, 25n); //: 1
-    //aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:doAsUintN@builtinBigIntAsUintN
+    //aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:#*#doAsUintN@builtinBigIntAsUintN
     //aot: [trace] Check Type: NotNumber1
     printAsUintN("abc", "abc");
 } catch (e) {

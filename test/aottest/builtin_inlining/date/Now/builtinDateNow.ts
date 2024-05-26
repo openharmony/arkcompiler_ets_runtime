@@ -73,9 +73,9 @@ print(Date.now({a:10, b:20})); //: __INT__
 //aot: [trace] aot inline builtin: Date.now, caller function name:func_main_0@builtinDateNow
 print(Date.now("abc")); //: __INT__
 
-//aot: [trace] aot inline builtin: Date.now, caller function name:doDateWithoutParam@builtinDateNow
+//aot: [trace] aot inline builtin: Date.now, caller function name:#*#doDateWithoutParam@builtinDateNow
 printDateNowWithoutParam(); //: __INT__
-//aot: [trace] aot inline builtin: Date.now, caller function name:doDateNowOneParam@builtinDateNow
+//aot: [trace] aot inline builtin: Date.now, caller function name:#*#doDateNowOneParam@builtinDateNow
 printDateNowOneParam(2); //: __INT__
 
 let true_now = Date.now;
