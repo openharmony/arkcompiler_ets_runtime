@@ -37,7 +37,8 @@
 #include "ecmascript/mutator_lock.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
-#include "ffrt_inner.h"
+#include "ffrt.h"
+#include "c/executor_task.h"
 #endif
 
 namespace panda::ecmascript {
