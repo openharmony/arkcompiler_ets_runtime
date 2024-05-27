@@ -3278,5 +3278,68 @@ JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, const JS
     }
     return JSTaggedValue::Cast(static_cast<void *>(str));
 }
+
+OperationResult RuntimeStubs::RuntimeCheckProxyGetResult(JSThread *thread, const JSHandle<JSTaggedValue> &resultHandle,
+    const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &key)
+{
+    JSHandle<JSTaggedValue> exceptionHandle(thread, JSTaggedValue::Exception());
+    PropertyDescriptor targetDesc(thread);
+    bool found = JSTaggedValue::GetOwnProperty(thread, target, key, targetDesc);
+    // 12. ReturnIfAbrupt(targetDesc).
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+
+    // 13. If targetDesc is not undefined, then
+    if (found) {
+        // a. If IsDataDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is
+        // false, then
+        if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && !targetDesc.IsWritable()) {
+            // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
+            if (!JSTaggedValue::SameValue(resultHandle.GetTaggedValue(), targetDesc.GetValue().GetTaggedValue())) {
+                THROW_TYPE_ERROR_AND_RETURN(
+                    thread, "JSProxy::GetProperty: TypeError of trapResult",
+                    OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+            }
+        }
+        // b. If IsAccessorDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Get]] is
+        // undefined, then
+        if (targetDesc.IsAccessorDescriptor() && !targetDesc.IsConfigurable() &&
+            targetDesc.GetGetter()->IsUndefined()) {
+            // i. If trapResult is not undefined, throw a TypeError exception.
+            if (!resultHandle.GetTaggedValue().IsUndefined()) {
+                THROW_TYPE_ERROR_AND_RETURN(
+                    thread, "JSProxy::GetProperty: trapResult is not undefined",
+                    OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+            }
+        }
+    }
+    // 14. Return trapResult.
+    return OperationResult(thread, resultHandle.GetTaggedValue(), PropertyMetaData(true));
+}
+
+bool RuntimeStubs::RuntimeCheckProxySetResult(JSThread *thread, const JSHandle<JSTaggedValue> &value,
+    const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &key)
+{
+    PropertyDescriptor targetDesc(thread);
+    bool found = JSTaggedValue::GetOwnProperty(thread, target, key, targetDesc);
+    // 14. If targetDesc is not undefined, then
+    if (found) {
+        // a. If IsDataDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is
+        // false, then
+        if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && !targetDesc.IsWritable()) {
+            // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
+            if (!JSTaggedValue::SameValue(value, targetDesc.GetValue())) {
+                THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of trapResult", false);
+            }
+        }
+        // b. If IsAccessorDescriptor(targetDesc) and targetDesc.[[Configurable]] is false, then
+        // i. If targetDesc.[[Set]] is undefined, throw a TypeError exception.
+        if (targetDesc.IsAccessorDescriptor() && !targetDesc.IsConfigurable() &&
+            targetDesc.GetSetter()->IsUndefined()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of AccessorDescriptor", false);
+        }
+    }
+    return true;
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

@@ -323,6 +323,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LdSendableClass)                    \
     V(SetClassConstructorLength)          \
     V(LoadICByName)                       \
+    V(GetOwnPropertyByname)               \
     V(StoreICByName)                      \
     V(UpdateHotnessCounter)               \
     V(CheckSafePoint)                     \
@@ -451,6 +452,10 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DefineField)                        \
     V(CreatePrivateProperty)              \
     V(DefinePrivateProperty)              \
+    V(GetJSPrxoyProperty)                 \
+    V(CheckProxyGetResult)                \
+    V(SetJSProxyProperty)                 \
+    V(CheckProxySetResult)                 \
     V(LdPrivateProperty)                  \
     V(StPrivateProperty)                  \
     V(TestIn)                             \
@@ -597,7 +602,11 @@ public:
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);
     static void EndCallTimer(uintptr_t argGlue, JSTaggedType func);
     static JSTaggedValue RuntimeArraySort(JSThread *thread, JSHandle<JSTaggedValue> thisHandle);
-
+    static inline OperationResult RuntimeCheckProxyGetResult(JSThread *thread,
+        const JSHandle<JSTaggedValue> &resultHandle, const JSHandle<JSTaggedValue> &target,
+        const JSHandle<JSTaggedValue> &key);
+    static inline bool RuntimeCheckProxySetResult(JSThread *thread, const JSHandle<JSTaggedValue> &value,
+        const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &key);
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
 
     static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
