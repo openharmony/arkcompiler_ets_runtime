@@ -2789,7 +2789,6 @@
         "mjsunit/harmony/promise-any-resolve-not-callable.js",
         "mjsunit/harmony/symbol-as-weakmap-key.js",
         "mjsunit/harmony/generators.js",
-        "mjsunit/harmony/relative-indexing-methods.js",
         "mjsunit/harmony/set-symmetric-difference.js",
         "mjsunit/harmony/private-brand-checks.js",
         "mjsunit/harmony/promise-any.js",
