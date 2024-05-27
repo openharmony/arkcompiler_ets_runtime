@@ -193,6 +193,7 @@ private:
     static void GetBaseForRoundingMode(double valueNumber, int digitNumber, int *decimalPoint, std::string& buf,
                 std::string& buf1, int buf1Size, int roundingMode, int *sign);
     static void CustomEcvtIsFixed(double &valueNumber, int &digits, int *decimalPoint, std::string& buf, int *sign);
+    static bool IsValidHexadecimalString(const int size, const int radix, const bool strip);
 };
 
 // This class is used to generate 0~1 uniform distribution pseudo-random numbers.

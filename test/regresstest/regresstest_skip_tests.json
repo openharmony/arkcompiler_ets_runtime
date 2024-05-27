@@ -1684,7 +1684,6 @@
         "mjsunit/eval-origin.js",
         "mjsunit/mul-exhaustive-part10.js",
         "mjsunit/keyed-call-ic.js",
-        "mjsunit/parse-int-float.js",
         "mjsunit/typedarray-resizablearraybuffer-array-methods.js",
         "mjsunit/arguments-deopt.js",
         "mjsunit/regexp-experimental.js",
