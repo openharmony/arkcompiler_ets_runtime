@@ -230,7 +230,7 @@ GateRef CircuitBuilder::StringEqual(GateRef x, GateRef y)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->StringEqual(), MachineType::I1,
-                                     { currentControl, currentDepend, x, y }, GateType::BooleanType());
+                                     { currentControl, currentDepend, x, y }, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

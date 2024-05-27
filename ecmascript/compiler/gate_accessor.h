@@ -505,6 +505,7 @@ public:
     bool IsConstant(GateRef gate) const;
     bool IsDependSelector(GateRef gate) const;
     bool IsConstantValue(GateRef gate, uint64_t value) const;
+    bool IsConstantTaggedValue(GateRef gate, uint64_t value) const;
     bool IsConstantUndefined(GateRef gate) const;
     bool IsUndefinedOrNullOrHole(GateRef gate) const;
     bool IsConstantNumber(GateRef gate) const;
