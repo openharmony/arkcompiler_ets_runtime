@@ -205,6 +205,7 @@ group("ark_aot_ts_test") {
     "pgo_call_js",
     "pgo_class_operation",
     "pgo_class_prototype",
+    "pgo_constant_value_deopt",
     "pgo_constructor_number",
     "pgo_elimination_loadconstoffset",
     "pgo_forof_array",

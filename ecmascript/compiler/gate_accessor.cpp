@@ -1042,16 +1042,28 @@ bool GateAccessor::IsConstantValue(GateRef gate, uint64_t value) const
     return false;
 }
 
+bool GateAccessor::IsConstantTaggedValue(GateRef gate, uint64_t value) const
+{
+    if (GetMachineType(gate) != MachineType::I64 || GetGateType(gate).IsNJSValueType()) {
+        return false;
+    }
+    if (GetOpCode(gate) == OpCode::CONSTANT) {
+        uint64_t bitField = GetConstantValue(gate);
+        return bitField == value;
+    }
+    return false;
+}
+
 bool GateAccessor::IsConstantUndefined(GateRef gate) const
 {
-    return IsConstantValue(gate, JSTaggedValue::VALUE_UNDEFINED);
+    return IsConstantTaggedValue(gate, JSTaggedValue::VALUE_UNDEFINED);
 }
 
 bool GateAccessor::IsUndefinedOrNullOrHole(GateRef gate) const
 {
-    return IsConstantValue(gate, JSTaggedValue::VALUE_UNDEFINED) ||
-           IsConstantValue(gate, JSTaggedValue::VALUE_NULL) ||
-           IsConstantValue(gate, JSTaggedValue::VALUE_HOLE);
+    return IsConstantTaggedValue(gate, JSTaggedValue::VALUE_UNDEFINED) ||
+           IsConstantTaggedValue(gate, JSTaggedValue::VALUE_NULL) ||
+           IsConstantTaggedValue(gate, JSTaggedValue::VALUE_HOLE);
 }
 
 bool GateAccessor::IsTypedOperator(GateRef gate) const
