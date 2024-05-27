@@ -71,6 +71,7 @@ public:
 private:
     void VisitAllObjects(TaggedObject *obj);
     void VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *obj) const;
+    void VerifyHeapObjectSlotLegal(ObjectSlot slot, JSTaggedValue value, TaggedObject *obj) const;
     void VerifyMarkYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
