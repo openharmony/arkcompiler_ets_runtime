@@ -203,6 +203,21 @@ public:
         return thread_;
     }
 
+    bool CheckSingleThread() const
+    {
+        if (thread_ == nullptr) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+            return false;
+        }
+        if (thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                            << " thread:" << thread_->GetThreadId()
+                            << " currentThread:" << JSThread::GetCurrentThreadId();
+            return false;
+        }
+        return true;
+    }
+
     ARK_INLINE JSThread *GetJSThread() const
     {
         if (options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck()) {

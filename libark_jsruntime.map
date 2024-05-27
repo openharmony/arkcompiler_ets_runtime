@@ -51,6 +51,7 @@
       panda::PromiseRejectInfo::*;
       panda::RegExpRef::*;
       panda::SetIteratorRef::*;
+      panda::ExternalStringCache::*;
       panda::SetRef::*;
       panda::SendableTypedArrayRef::*;
       panda::SharedInt8ArrayRef::*;

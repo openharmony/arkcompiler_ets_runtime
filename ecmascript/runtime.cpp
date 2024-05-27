@@ -57,6 +57,8 @@ Runtime::~Runtime()
         iter++;
     }
     globalSharedConstpools_.clear();
+    delete externalRegisteredStringTable_;
+    externalRegisteredStringTable_ = nullptr;
 }
 
 void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
