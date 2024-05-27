@@ -2937,6 +2937,7 @@ void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRe
     Label fillLessThanPad(env);
     Label fillNotLessThanPad(env);
     Label resultString(env);
+    Label newLengthInRange(env);
 
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -2951,7 +2952,8 @@ void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRe
             Bind(&lengthIsInt);
             {
                 newStringLength = GetInt32OfTInt(newLength);
-                Jump(&next);
+                BRANCH(Int32GreaterThanOrEqual(*newStringLength, Int32(EcmaString::MAX_STRING_LENGTH)),
+                    slowPath, &next);
             }
             Bind(&lengthNotInt);
             {
@@ -2961,6 +2963,9 @@ void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRe
                 Bind(&newLengthIsNotNaN);
                 BRANCH(DoubleIsINF(GetDoubleOfTDouble(newLength)), slowPath, &newLengthIsNotINF);
                 Bind(&newLengthIsNotINF);
+                BRANCH(DoubleGreaterThanOrEqual(GetDoubleOfTDouble(newLength), Double(EcmaString::MAX_STRING_LENGTH)),
+                    slowPath, &newLengthInRange);
+                Bind(&newLengthInRange);
                 newStringLength = DoubleToInt(glue, GetDoubleOfTDouble(newLength));
                 Jump(&next);
             }
@@ -3057,6 +3062,7 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
     Label isNotSelf(env);
     Label padLengthIsNotNaN(env);
     Label padLengthIsNotINF(env);
+    Label newLengthInRange(env);
 
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -3071,7 +3077,8 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
             Bind(&lengthIsInt);
             {
                 newStringLength = GetInt32OfTInt(newLength);
-                Jump(&next);
+                BRANCH(Int32GreaterThanOrEqual(*newStringLength, Int32(EcmaString::MAX_STRING_LENGTH)),
+                    slowPath, &next);
             }
             Bind(&lengthNotInt);
             {
@@ -3081,6 +3088,9 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
                 Bind(&padLengthIsNotNaN);
                 BRANCH(DoubleIsINF(GetDoubleOfTDouble(newLength)), slowPath, &padLengthIsNotINF);
                 Bind(&padLengthIsNotINF);
+                BRANCH(DoubleGreaterThanOrEqual(GetDoubleOfTDouble(newLength), Double(EcmaString::MAX_STRING_LENGTH)),
+                    slowPath, &newLengthInRange);
+                Bind(&newLengthInRange);
                 newStringLength = DoubleToInt(glue, GetDoubleOfTDouble(newLength));
                 Jump(&next);
             }
