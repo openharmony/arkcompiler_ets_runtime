@@ -397,6 +397,7 @@ public:
                                GateRef value, GateRef thisObj);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef ctor);
+    GateRef IsDerived(GateRef ctor);
     GateRef ToLength(GateRef receiver);
     GateRef StoreModuleVar(GateRef jsFunc, GateRef index, GateRef value);
     GateRef LdLocalModuleVar(GateRef jsFunc, GateRef index);

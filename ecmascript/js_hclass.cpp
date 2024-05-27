@@ -447,6 +447,18 @@ JSHandle<JSTaggedValue> JSHClass::SetPrototypeWithNotification(const JSThread *t
     return JSHandle<JSTaggedValue>(newClass);
 }
 
+void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject> &object,
+                                      const JSHandle<JSTaggedValue> &proto)
+{
+    JSHandle<JSHClass> hclass(thread, object->GetJSHClass());
+    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
+    JSHClass::NotifyHclassChanged(thread, hclass, newClass);
+    object->SynchronizedSetClass(thread, *newClass);
+    JSHClass::TryRestoreElementsKind(thread, newClass, object);
+    thread->NotifyStableArrayElementsGuardians(object, StableArrayChangeKind::PROTO);
+    ObjectOperator::UpdateDetectorOnSetPrototype(thread, object.GetTaggedValue());
+}
+
 void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto)
 {
     // Because the heap-space of hclass is non-movable, this function can be non-static.

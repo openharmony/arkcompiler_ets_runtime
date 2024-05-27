@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_number_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_reflect_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
