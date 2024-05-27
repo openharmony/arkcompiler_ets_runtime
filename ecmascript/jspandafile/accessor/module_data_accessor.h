@@ -59,6 +59,17 @@ public:
     }
 
 private:
+    void ReadRegularImportEntry(Span<const uint8_t> *sp, ObjectFactory *factory,
+                                const JSHandle<TaggedArray> &requestModuleArray,
+                                JSMutableHandle<JSTaggedValue> &importName,
+                                JSMutableHandle<JSTaggedValue> &localName,
+                                JSMutableHandle<JSTaggedValue> &moduleRequest);
+
+    void ReadNamespaceImportEntry(Span<const uint8_t> *sp, ObjectFactory *factory,
+                                  const JSHandle<TaggedArray> &requestModuleArray,
+                                  JSMutableHandle<JSTaggedValue> &localName,
+                                  JSMutableHandle<JSTaggedValue> &moduleRequest);
+
     const JSPandaFile *pandaFile_;
     panda_file::File::EntityId moduleDataId_;
     uint32_t numModuleRequests_;
