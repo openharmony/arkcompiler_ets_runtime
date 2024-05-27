@@ -392,3 +392,20 @@ print(abc_str.substr(-1, positiveHeapNumber));
     print(f());
     print(f(4294967296));
 }
+
+[
+  ['a', 'b', 'c'],
+  'abc',
+  new Uint8Array([8, 9, 10])
+].forEach((v) => {
+    // Test the limit value.
+    print(v.at(-Infinity) == undefined);
+});
+
+const arr_at = new Uint8Array([8, 9, 10]);
+ArkTools.arrayBufferDetach(arr_at.buffer);
+try {
+    arr_at.at(0);
+} catch (e) {
+    print(e instanceof TypeError)
+}
