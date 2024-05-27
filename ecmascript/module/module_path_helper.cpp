@@ -1013,4 +1013,25 @@ CVector<CString> ModulePathHelper::SplitNormalizedRecordName(const CString &reco
     }
     return res;
 }
+
+/*
+ * Before: 1. bundleName/moduleName/xxx/xxx
+           2. bunldeName&moduleName/xxx/xxx&
+ * After:  bundleName
+ */
+CString ModulePathHelper::GetBundleNameWithRecordName(EcmaVM *vm, const CString &recordName)
+{
+    CString bundleName;
+    if (vm->IsNormalizedOhmUrlPack()) {
+        CVector<CString> res = ModulePathHelper::SplitNormalizedRecordName(recordName);
+        bundleName = res[ModulePathHelper::NORMALIZED_BUNDLE_NAME_INDEX];
+        if (bundleName.size() == 0) {
+            bundleName = vm->GetBundleName();
+        }
+    } else {
+        size_t pos = recordName.find(PathHelper::SLASH_TAG);
+        bundleName = recordName.substr(0, pos);
+    }
+    return bundleName;
+}
 }  // namespace panda::ecmascript

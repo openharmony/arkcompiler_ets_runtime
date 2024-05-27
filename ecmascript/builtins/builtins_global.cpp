@@ -23,9 +23,11 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_deregister.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -907,5 +909,42 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
     auto *returnData = reinterpret_cast<uint16_t *>(r.data());
     uint32_t retSize = r.size();
     return factory->NewFromUtf16Literal(returnData, retSize).GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsGlobal::GetCurrentModuleName(EcmaRuntimeCallInfo *msg)
+{
+    ASSERT(msg);
+    JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, GetCurrentModuleName);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    EcmaVM *vm = thread->GetEcmaVM();
+    CString recordName = ConvertToString(moduleInfo.first);
+    CString moduleName;
+    if (vm->IsNormalizedOhmUrlPack()) {
+        moduleName = ModulePathHelper::GetModuleNameWithNormalizedName(recordName);
+    } else {
+        moduleName = ModulePathHelper::GetModuleName(recordName);
+    }
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> result = factory->NewFromUtf8(moduleName.c_str());
+    return result.GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsGlobal::GetCurrentBundleName(EcmaRuntimeCallInfo *msg)
+{
+    ASSERT(msg);
+    JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, GetCurrentBundleName);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    EcmaVM *vm = thread->GetEcmaVM();
+    CString recordName = ConvertToString(moduleInfo.first);
+    CString bundleName = ModulePathHelper::GetBundleNameWithRecordName(vm, recordName);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> result = factory->NewFromUtf8(bundleName.c_str());
+    return result.GetTaggedValue();
 }
 }  // namespace panda::ecmascript::builtins
