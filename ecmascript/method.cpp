@@ -89,6 +89,14 @@ uint32_t Method::FindCatchBlock(uint32_t pc) const
     return pcOffset;
 }
 
+bool Method::HasCatchBlock() const
+{
+    auto *pandaFile = GetJSPandaFile()->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
+    panda_file::CodeDataAccessor cda(*pandaFile, mda.GetCodeId().value());
+    return cda.GetTriesSize() != 0;
+}
+
 JSHandle<Method> Method::Create(JSThread *thread, const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral)
 {
     EcmaVM *vm = thread->GetEcmaVM();

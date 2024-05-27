@@ -4554,9 +4554,15 @@ template("host_jit_test_action") {
     _osr_run_options_ =
         " --asm-interpreter=true" + " --compiler-enable-jit=true" +
         " --compiler-enable-jit-pgo=true" +
-        " --compiler-jit-hotness-threshold=1" + " --enable-pgo-profiler=true" +
-        " --compiler-enable-litecg=true" + " --entry-point=${_target_name_}"
+        " --compiler-jit-hotness-threshold=5" + " --enable-pgo-profiler=true" +
+        " --compiler-enable-litecg=true" + " --entry-point=${_target_name_} "
     _osr_run_options_ += common_options
+
+    if (defined(invoker.enable_osr) && invoker.enable_osr) {
+      _osr_run_options_ += " --compiler-enable-osr=true "
+      _osr_run_options_ += " --compiler-osr-hotness-threshold=1 "
+    }
+
     deps = [
       ":gen_${_target_name_}_abc",
       _host_jsoptimizer_lib_,

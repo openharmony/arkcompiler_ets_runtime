@@ -274,6 +274,10 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 
         return;
     }
+    if (vm->IsEnableOsr() && offset != MachineCode::INVALID_OSR_OFFSET && method->HasCatchBlock()) {
+        LOG_JIT(DEBUG) << "skip jit task, as osr does not support catch blocks: " << methodInfo;
+        return;
+    }
 
     CString msg = "compile method:" + methodInfo + ", in work thread";
     TimeScope scope(msg, tier, true, true);
