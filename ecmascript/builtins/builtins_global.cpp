@@ -494,6 +494,22 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
     }
 }
 
+void BuiltinsGlobal::HandleSingleByteCharacter(JSThread *thread, uint8_t &bb,
+                                               const JSHandle<EcmaString> &str,
+                                               uint32_t &start, int32_t &k,
+                                               std::u16string &sStr, judgURIFunc IsInURISet)
+{
+    if (!IsInURISet(bb)) {
+        sStr = StringHelper::Utf8ToU16String(&bb, 1);
+    } else {
+        auto substr = EcmaStringAccessor::FastSubString(
+            thread->GetEcmaVM(), str, start, k - start + 1U);
+        sStr = StringHelper::StringToU16string(
+            EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
+    }
+}
+
+
 JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
                                                     judgURIFunc IsInURISet, int32_t strLen, std::u16string &sStr)
 {
@@ -515,14 +531,7 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
     uint8_t bb = GetValueFromTwoHex(frontChar, behindChar);
     k += 2;  // 2: means plus 2
     if ((bb & BIT_MASK_ONE) == 0) {
-        if (!IsInURISet(bb)) {
-            sStr = StringHelper::Utf8ToU16String(&bb, 1);
-        } else {
-            auto substr = EcmaStringAccessor::FastSubString(
-                thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
-            sStr = StringHelper::StringToU16string(
-                EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
-        }
+        HandleSingleByteCharacter(thread, bb, str, start, k, sStr, IsInURISet);
     } else {
         // vii. Else the most significant bit in B is 1,
         //   1. Let n be the smallest nonnegative integer such that (B << n) & 0x80 is equal to 0.
@@ -566,35 +575,44 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
             errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
-        int32_t j = 1;
-        while (j < n) {
-            k++;
-            uint16_t codeUnit = EcmaStringAccessor(str).Get(k);
-            // b. If the code unit at index k within string is not "%", throw a URIError exception.
-            // c. If the code units at index (k +1) and (k + 2) within string do not represent hexadecimal
-            //    digits, throw a URIError exception.
-            if (!(codeUnit == '%')) {
-                errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
-                THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-            }
-            if (!(IsHexDigits(EcmaStringAccessor(str).Get(k + 1)) &&
-                  IsHexDigits(EcmaStringAccessor(str).Get(k + 2)))) {  // 2: means plus 2
-                errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
-                THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-            }
-            uint16_t frontChart = EcmaStringAccessor(str).Get(k + 1);
-            uint16_t behindChart = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
-            bb = GetValueFromTwoHex(frontChart, behindChart);
-            // e. If the two most significant bits in B are not 10, throw a URIError exception.
-            if (!((bb & BIT_MASK_TWO) == BIT_MASK_ONE)) {
-                errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
-                THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-            }
-            k += 2;  // 2: means plus 2
-            oct.push_back(bb);
-            j++;
-        }
+        DecodePercentEncoding(thread, n, k, str, bb, oct);
         UTF16EncodeCodePoint(thread, IsInURISet, oct, str, start, k, sStr);
+    }
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, int32_t &n,
+                                                    int32_t &k, const JSHandle<EcmaString> &str,
+                                                    uint8_t &bb, std::vector<uint8_t> &oct)
+{
+    CString errorMsg;
+    int32_t j = 1;
+    while (j < n) {
+        k++;
+        uint16_t codeUnit = EcmaStringAccessor(str).Get(k);
+        // b. If the code unit at index k within string is not "%", throw a URIError exception.
+        // c. If the code units at index (k +1) and (k + 2) within string do not represent hexadecimal
+        //    digits, throw a URIError exception.
+        if (!(codeUnit == '%')) {
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
+        }
+        if (!(IsHexDigits(EcmaStringAccessor(str).Get(k + 1)) &&
+                IsHexDigits(EcmaStringAccessor(str).Get(k + 2)))) {  // 2: means plus 2
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
+        }
+        uint16_t frontChart = EcmaStringAccessor(str).Get(k + 1);
+        uint16_t behindChart = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
+        bb = GetValueFromTwoHex(frontChart, behindChart);
+        // e. If the two most significant bits in B are not 10, throw a URIError exception.
+        if (!((bb & BIT_MASK_TWO) == BIT_MASK_ONE)) {
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
+        }
+        k += 2;  // 2: means plus 2
+        oct.push_back(bb);
+        j++;
     }
     return JSTaggedValue::True();
 }

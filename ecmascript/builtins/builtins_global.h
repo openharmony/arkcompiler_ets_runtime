@@ -171,6 +171,13 @@ private:
     static JSTaggedValue UTF16EncodeCodePoint(JSThread *thread, judgURIFunc IsInURISet,
                                               const std::vector<uint8_t> &oct, const JSHandle<EcmaString> &str,
                                               uint32_t &start, int32_t &k, std::u16string &sStr);
+    static void HandleSingleByteCharacter(JSThread *thread, uint8_t &bb,
+                                          const JSHandle<EcmaString> &str,
+                                          uint32_t &start, int32_t &k,
+                                          std::u16string &sStr, judgURIFunc IsInURISet);
+    static JSTaggedValue DecodePercentEncoding(JSThread *thread, int32_t &n,
+                                               int32_t &k, const JSHandle<EcmaString> &str,
+                                               uint8_t &bb, std::vector<uint8_t> &oct);
     static JSTaggedValue DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
                                                judgURIFunc IsInURISet, int32_t strLen, std::u16string &sStr);
     static bool IsUnescapedURI(uint16_t ch);
