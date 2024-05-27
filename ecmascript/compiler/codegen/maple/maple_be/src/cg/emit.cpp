@@ -129,6 +129,7 @@ void Emitter::EmitLabelRef(LabelIdx labIdx)
 {
     PUIdx pIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
     char *idx = strdup(std::to_string(pIdx).c_str());
+    CHECK_FATAL(idx != nullptr, "strdup failed");
     fileStream << ".L." << idx << "__" << labIdx;
     free(idx);
     idx = nullptr;
@@ -152,6 +153,7 @@ void Emitter::EmitLabelPair(const LabelPair &pairLabel)
 void Emitter::EmitLabelForFunc(const MIRFunction *func, LabelIdx labIdx)
 {
     char *idx = strdup(std::to_string(func->GetPuidx()).c_str());
+    CHECK_FATAL(idx != nullptr, "strdup failed");
     fileStream << ".L." << idx << "__" << labIdx;
     free(idx);
     idx = nullptr;

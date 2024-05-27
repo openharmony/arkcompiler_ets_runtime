@@ -260,6 +260,7 @@ void DebugInfo::SetupCU()
     compUnit->SetWithChildren(true);
     /* Add the Producer (Compiler) Information */
     const char *producer = strdup((std::string("Maple Version ") + Version::GetVersionStr()).c_str());
+    CHECK_FATAL(producer != nullptr, "strdup failed");
     GStrIdx strIdx = module->GetMIRBuilder()->GetOrCreateStringIndex(producer);
     delete producer;
     producer = nullptr;

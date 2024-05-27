@@ -1036,7 +1036,7 @@ RegOperand *AArch64CGFunc::ExtractNewMemBase(const MemOperand &memOpnd)
         GetCurBB()->AppendInsn(addInsn);
     } else if (mode == MemOperand::kAddrModeBOi) {
         OfstOperand *offsetOpnd = memOpnd.GetOffsetImmediate();
-        if (offsetOpnd->GetOffsetValue() != 0) {
+        if ((offsetOpnd != nullptr) && (offsetOpnd->GetOffsetValue() != 0)) {
             MOperator mOp = is64Bits ? MOP_xaddrri12 : MOP_waddrri12;
             GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, resultOpnd, *baseOpnd, *offsetOpnd));
         } else {
