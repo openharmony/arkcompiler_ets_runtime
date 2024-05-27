@@ -14,7 +14,10 @@
         "name": "ets_runtime",
         "subsystem": "arkcompiler",
         "syscap": [],
-        "features": [],
+        "features": [
+          "ets_runtime_feature_enable_pgo",
+          "ets_runtime_feature_pgo_path"
+        ],
         "adapted_system_type": [
             "standard"
         ],
