@@ -87,12 +87,12 @@ print(Math.clz32(Infinity)); //: 32
 //aot: [trace] aot inline builtin: Math.clz32, caller function name:func_main_0@builtinMathClz32
 print(Math.clz32(-Infinity)); //: 32
 
-//aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:#*#doclz32@builtinMathClz32
 printclz32(4); //: 29
-//aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:#*#doclz32@builtinMathClz32
 //aot: [trace] Check Type: NotNumber1
 printclz32("abc"); //: 32
-//aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
+//aot: [trace] aot inline builtin: Math.clz32, caller function name:#*#doclz32@builtinMathClz32
 //aot: [trace] Check Type: NotNumber1
 printclz32("abcd"); //: 32
 
@@ -113,9 +113,9 @@ Math.clz32 = true_clz32
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
+    //aot: [trace] aot inline builtin: Math.clz32, caller function name:#*#doclz32@builtinMathClz32
     printclz32(16); //: 27
-    //aot: [trace] aot inline builtin: Math.clz32, caller function name:doclz32@builtinMathClz32
+    //aot: [trace] aot inline builtin: Math.clz32, caller function name:#*#doclz32@builtinMathClz32
     //aot: [trace] Check Type: NotNumber1
     printclz32("abc"); //: 32
 } catch (e) {

@@ -112,7 +112,9 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(ProtoTypeChanged2,               PROTOTYPECHANGED2)             \
     V(BuiltinIsHole1,                  BUILTINISHOLE1)                \
     V(NewBuiltinCtorFail1,             NEWBUILTINCTORFAIL1)           \
-    V(NewBuiltinCtorFail2,             NEWBUILTINCTORFAIL2)           \
+    V(NewBuiltinCtorObject,            NEWBUILTINCTOROBJECT)          \
+    V(NewBuiltinCtorArray,             NEWBUILTINCTORARRAY)           \
+    V(NewBuiltinCtorBoolean,           NEWBUILTINCTORBOOLEAN)         \
     V(IsUndefinedOrHole,               ISUNDEFINEDORHOLE)             \
     V(IsNotUndefinedOrHole,            ISNOTUNDEFINEDORHOLE)          \
     V(BuiltinInliningTypeGuard,        BUILTIN_INLINING_TYPE_GUARD)   \
@@ -123,11 +125,12 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(IsNotEcmaObject,                 ISNOTECMAOBJECT)               \
     V(IsNotDataView,                   ISNOTDATAVIEW)                 \
     V(IsNotTaggedBoolean,              ISNOTTAGGEDBOOLEAN)            \
-    V(IndexLessZeroOrInfinity,         INDEXLESSZEROORINFINITY)       \
+    V(IndexLessZero,                   INDEXLESSZERO)                 \
     V(ArrayBufferIsDetached,           ARRAYBUFFERISDETACHED)         \
     V(TotalSizeOverflow,               TOTALSIZEOVERFLOW)             \
     V(NotJSFunction,                   NOTJSFUNCTION)                 \
-    V(NotSymbol,                       NOTSYMBOL)
+    V(NotSymbol,                       NOTSYMBOL)                     \
+    V(IndexNotInt,                     INDEXNOTINT)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,

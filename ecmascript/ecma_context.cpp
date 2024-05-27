@@ -272,7 +272,7 @@ JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc
 }
 
 JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
-                                      const JSTaggedType *prevFp, bool needPushUndefined)
+                                      const JSTaggedType *prevFp, bool needPushArgv)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
@@ -283,7 +283,7 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
                                                             actualNumArgs,
                                                             args,
                                                             reinterpret_cast<uintptr_t>(prevFp),
-                                                            needPushUndefined);
+                                                            needPushArgv);
     return res;
 }
 
@@ -366,6 +366,10 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
                                                                 std::string_view entryPoint, bool executeFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    auto &options = const_cast<EcmaVM *>(thread_->GetEcmaVM())->GetJSOptions();
+    if (options.EnableModuleLog()) {
+        LOG_FULL(INFO) << "current executing file's name " << entryPoint.data();
+    }
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
     if (program.IsEmpty()) {
         LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
@@ -766,7 +770,7 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     CString nameBuffer = ConvertToString(*name);
     CString msgBuffer = ConvertToString(*msg);
     CString stackBuffer = ConvertToString(*stack);
-    LOG_NO_TAG(DEBUG) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n"
+    LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n"
                       << (panda::ecmascript::previewerTag.empty()
                               ? stackBuffer
                               : std::regex_replace(stackBuffer, std::regex(".+(\n|$)"),
@@ -934,9 +938,6 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     }
     if (ptManager_) {
         ptManager_->Iterate(v);
-    }
-    if (aotFileManager_) {
-        aotFileManager_->Iterate(v);
     }
     if (propertiesCache_ != nullptr) {
         propertiesCache_->Clear();

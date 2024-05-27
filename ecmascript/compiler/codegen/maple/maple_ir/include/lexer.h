@@ -40,7 +40,6 @@ public:
     void PrepareForFile(const std::string &filename);
     void PrepareForString(const std::string &src);
     TokenKind NextToken();
-    TokenKind LexToken();
     TokenKind GetTokenKind() const
     {
         return kind;
@@ -77,8 +76,6 @@ public:
         return theDoubleVal;
     }
 
-    std::string GetTokenString() const;  // for error reporting purpose
-
 private:
     MIRModule &module;
     // for storing the different types of constant values
@@ -114,11 +111,9 @@ private:
     int ReadALine();            // read a line from MIR (text) file.
     int ReadALineByMirQueue();  // read a line from MIR Queue.
     void GenName();
-    TokenKind GetConstVal();
     TokenKind GetSpecialFloatConst();
     TokenKind GetHexConst(uint32 valStart, bool negative);
     TokenKind GetIntConst(uint32 valStart, bool negative);
-    TokenKind GetFloatConst(uint32 valStart, uint32 startIdx, bool negative);
     TokenKind GetSpecialTokenUsingOneCharacter(char c);
     TokenKind GetTokenWithPrefixDollar();
     TokenKind GetTokenWithPrefixPercent();
@@ -126,7 +121,6 @@ private:
     TokenKind GetTokenWithPrefixAtOrCircumflex(char prefix);
     TokenKind GetTokenWithPrefixExclamation();
     TokenKind GetTokenWithPrefixQuotation();
-    TokenKind GetTokenWithPrefixDoubleQuotation();
     TokenKind GetTokenSpecial();
 
     char GetCharAt(uint32 idx) const

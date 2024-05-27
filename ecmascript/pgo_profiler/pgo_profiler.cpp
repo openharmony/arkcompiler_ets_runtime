@@ -128,8 +128,10 @@ void PGOProfiler::ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcV
     }
 }
 
-void PGOProfiler::ProfileDefineGetterSetter(
-    JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset)
+void PGOProfiler::ProfileDefineGetterSetter(JSHClass* receiverHClass,
+                                            JSHClass* holderHClass,
+                                            const JSHandle<JSTaggedValue>& func,
+                                            int32_t pcOffset)
 {
     if (!isEnable_) {
         return;
@@ -147,7 +149,7 @@ void PGOProfiler::ProfileDefineGetterSetter(
     WorkNode* workNode = reinterpret_cast<WorkNode*>(function->GetWorkNodePointer());
     if (workNode != nullptr) {
         workNode->SetValue(JSTaggedType(function));
-        workNode->SetExtraProfileTypeInfo(pcOffset, receverHClass, holderHClass);
+        workNode->SetExtraProfileTypeInfo(pcOffset, receiverHClass, holderHClass);
     }
 }
 
@@ -318,11 +320,12 @@ void PGOProfiler::ResumeByGC()
 void PGOProfiler::StopPGODump()
 {
     LockHolder lock(mutex_);
-    if (IfGCWaitingThenNotifyGC()) {
+    if (IsGCWaiting()) {
+        NotifyGC("[StopPGODump::PAUSE]");
         return;
     }
     SetState(State::STOP);
-    NotifyGC();
+    NotifyAll("[StopPGODump::STOP]");
 }
 
 void PGOProfiler::StartPGODump()
@@ -350,8 +353,15 @@ void PGOProfiler::SetState(State state)
     state_.store(state, std::memory_order_release);
 }
 
-void PGOProfiler::NotifyGC()
+void PGOProfiler::NotifyGC(std::string tag)
 {
+    v_.AddLogWithDebugLog(tag + " notify GC");
+    condition_.SignalAll();
+}
+
+void PGOProfiler::NotifyAll(std::string tag)
+{
+    v_.AddLogWithDebugLog(tag + " notify all");
     condition_.SignalAll();
 }
 
@@ -388,22 +398,20 @@ void PGOProfiler::DumpByForce()
     }
 }
 
-bool PGOProfiler::IfGCWaitingThenNotifyGCWithLock()
+bool PGOProfiler::IsGCWaitingWithLock()
 {
     if (GetState() == State::PAUSE) {
         LockHolder lock(mutex_);
         if (GetState() == State::PAUSE) {
-            NotifyGC();
             return true;
         }
     }
     return false;
 }
 
-bool PGOProfiler::IfGCWaitingThenNotifyGC()
+bool PGOProfiler::IsGCWaiting()
 {
     if (GetState() == State::PAUSE) {
-        NotifyGC();
         return true;
     }
     return false;
@@ -555,7 +563,7 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
         current = PopFromProfileQueue();
     }
     ASSERT(GetState() != State::STOP);
-    if (IfGCWaitingThenNotifyGCWithLock()) {
+    if (IsGCWaitingWithLock()) {
         return;
     }
     MergeProfilerAndDispatchAsyncSaveTask(force);
@@ -571,7 +579,7 @@ void PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask(bool force)
         LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
         PGOProfilerManager::GetInstance()->Merge(this);
         if (!force) {
-            PGOProfilerManager::GetInstance()->AsynSave();
+            PGOProfilerManager::GetInstance()->AsyncSave();
         }
         SetSaveTimestamp(std::chrono::system_clock::now());
         methodCount_ = 0;
@@ -583,7 +591,7 @@ PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
     LockHolder lock(mutex_);
     WorkNode* node = nullptr;
     while (node == nullptr) {
-        if (IfGCWaitingThenNotifyGC()) {
+        if (IsGCWaiting()) {
             break;
         }
         if (dumpWorkList_.IsEmpty()) {
@@ -612,7 +620,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
     auto bcInsLast = bcIns.JumpTo(codeSize);
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
-        if (IfGCWaitingThenNotifyGCWithLock()) {
+        if (IsGCWaitingWithLock()) {
             break;
         }
         auto opcode = bcIns.GetOpcode();
@@ -702,6 +710,13 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::STRICTEQ_IMM8_V8:
             case EcmaOpcode::TONUMERIC_IMM8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
+                DumpOpType(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
+            case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+            case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8: {
+                uint8_t slotId = READ_INST_8_1();
                 CHECK_SLOTID_BREAK(slotId);
                 DumpOpType(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
@@ -1037,13 +1052,15 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
     if (secondValue.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
         if (HandlerBase::IsNormalElement(handlerInfo) || HandlerBase::IsStringElement(handlerInfo)) {
-            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass);
+            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass,
+                            OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
             return;
         }
 
         if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
             OnHeapMode onHeap = HandlerBase::IsOnHeap(handlerInfo) ? OnHeapMode::ON_HEAP : OnHeapMode::NOT_ON_HEAP;
-            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, onHeap);
+            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, onHeap,
+                            HandlerBase::IsStoreOutOfBounds(handlerInfo));
             return;
         }
 
@@ -1058,7 +1075,8 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         if (transitionHClassVal.IsJSHClass()) {
             auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
             if (HandlerBase::IsElement(handlerInfo)) {
-                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, transitionHClass);
+                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, transitionHClass,
+                                OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
                 return;
             }
             AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, transitionHClass);
@@ -1073,7 +1091,8 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         if (transitionHClassVal.IsJSHClass()) {
             auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
             if (HandlerBase::IsElement(handlerInfo)) {
-                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, transitionHClass);
+                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, transitionHClass,
+                                OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
                 return;
             }
             AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, transitionHClass);
@@ -1094,7 +1113,8 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         ASSERT(handlerInfoValue.IsInt());
         auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
         if (HandlerBase::IsElement(handlerInfo)) {
-            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass);
+            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass,
+                            OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
             return;
         }
         auto holder = prototypeHandler->GetHolder();
@@ -1329,7 +1349,7 @@ void PGOProfiler::UpdateLayout(JSHClass *hclass)
 {
     auto parentHClass = hclass->GetParent();
     if (parentHClass.IsJSHClass()) {
-        UpdateTranstionLayout(JSHClass::Cast(parentHClass.GetTaggedObject()), hclass);
+        UpdateTransitionLayout(JSHClass::Cast(parentHClass.GetTaggedObject()), hclass);
     } else {
         auto rootHClass = JSHClass::FindRootHClass(hclass);
         auto rootHClassVal = JSTaggedType(rootHClass);
@@ -1353,7 +1373,7 @@ void PGOProfiler::UpdateLayout(JSHClass *hclass)
     }
 }
 
-void PGOProfiler::UpdateTranstionLayout(JSHClass *parent, JSHClass *child)
+void PGOProfiler::UpdateTransitionLayout(JSHClass* parent, JSHClass* child)
 {
     auto rootHClass = JSHClass::FindRootHClass(parent);
     auto rootHClassVal = JSTaggedType(rootHClass);
@@ -1402,8 +1422,13 @@ void PGOProfiler::UpdateTranstionLayout(JSHClass *parent, JSHClass *child)
     }
 }
 
-bool PGOProfiler::AddTranstionObjectInfo(ProfileType recordType, EntityId methodId,
-    int32_t bcOffset, JSHClass *receiver, JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod)
+bool PGOProfiler::AddTransitionObjectInfo(ProfileType recordType,
+                                          EntityId methodId,
+                                          int32_t bcOffset,
+                                          JSHClass* receiver,
+                                          JSHClass* hold,
+                                          JSHClass* holdTra,
+                                          PGOSampleType accessorMethod)
 {
     auto receiverRootHClass = JSTaggedType(JSHClass::FindRootHClass(receiver));
     auto receiverRootType = GetProfileTypeSafe(receiverRootHClass, receiverRootHClass);
@@ -1433,7 +1458,7 @@ bool PGOProfiler::AddTranstionObjectInfo(ProfileType recordType, EntityId method
     if (holdType == holdTraType) {
         UpdateLayout(hold);
     } else {
-        UpdateTranstionLayout(hold, holdTra);
+        UpdateTransitionLayout(hold, holdTra);
     }
 
     PGOObjectInfo info(receiverRootType, receiverType, holdRootType, holdType, holdTraRootType, holdTraType,
@@ -1448,7 +1473,7 @@ bool PGOProfiler::AddObjectInfo(ApEntityId abcId, const CString &recordName, Ent
 {
     PGOSampleType accessor = PGOSampleType::CreateProfileType(abcId, accessorMethodId, ProfileType::Kind::MethodId);
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
-    return AddTranstionObjectInfo(recordType, methodId, bcOffset, receiver, hold, holdTra, accessor);
+    return AddTransitionObjectInfo(recordType, methodId, bcOffset, receiver, hold, holdTra, accessor);
 }
 
 void PGOProfiler::UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info)
@@ -1481,7 +1506,7 @@ void PGOProfiler::UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder,
 void PGOProfiler::AddObjectInfoWithMega(
     ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset)
 {
-    auto megaType = ProfileType::CreateMegeType();
+    auto megaType = ProfileType::CreateMegaType();
     PGOObjectInfo info(megaType, megaType, megaType, megaType, megaType, megaType, PGOSampleType());
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
@@ -1591,19 +1616,20 @@ void PGOProfiler::AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordN
 
 void PGOProfiler::AddBuiltinsInfo(
     ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
-    JSHClass *transitionHClass, OnHeapMode onHeap)
+    JSHClass *transitionHClass, OnHeapMode onHeap, bool everOutOfBounds)
 {
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     if (receiver->IsJSArray()) {
         auto type = receiver->GetObjectType();
         auto elementsKind = receiver->GetElementsKind();
         auto transitionElementsKind = transitionHClass->GetElementsKind();
-        auto profileType = ProfileType::CreateBuiltinsArray(abcId, type, elementsKind, transitionElementsKind);
+        auto profileType = ProfileType::CreateBuiltinsArray(abcId, type, elementsKind, transitionElementsKind,
+                                                            everOutOfBounds);
         PGOObjectInfo info(profileType);
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
     } else if (receiver->IsTypedArray()) {
         JSType jsType = receiver->GetObjectType();
-        auto profileType = ProfileType::CreateBuiltinsTypedArray(abcId, jsType, onHeap);
+        auto profileType = ProfileType::CreateBuiltinsTypedArray(abcId, jsType, onHeap, everOutOfBounds);
         PGOObjectInfo info(profileType);
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
     } else {

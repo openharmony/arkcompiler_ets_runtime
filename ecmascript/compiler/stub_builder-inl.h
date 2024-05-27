@@ -384,10 +384,7 @@ inline GateRef StubBuilder::IntPtrAnd(GateRef x, GateRef y)
 
 inline GateRef StubBuilder::IntPtrEqual(GateRef x, GateRef y)
 {
-    if (env_->Is32Bit()) {
-        return Int32Equal(x, y);
-    }
-    return Int64Equal(x, y);
+    return env_->GetBuilder()->IntPtrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int16Sub(GateRef x, GateRef y)
@@ -2253,6 +2250,11 @@ inline GateRef StubBuilder::ClearSharedStoreKind(GateRef handlerInfo)
     return Int64And(handlerInfo, Int64Not(Int64(HandlerBase::SSharedBit::Mask())));
 }
 
+inline GateRef StubBuilder::UpdateSOutOfBoundsForHandler(GateRef handlerInfo)
+{
+    return Int64Or(handlerInfo, Int64(HandlerBase::SOutOfBoundsBit::Mask()));
+}
+
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 {
     // arraylist and vector has fast pass now
@@ -3099,10 +3101,7 @@ inline GateRef StubBuilder::ComputeTaggedArraySize(GateRef length)
 
 inline GateRef StubBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
 {
-    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
-        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
-    auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
-    return Load(type, gConstAddr, constantIndex);
+    return env_->GetBuilder()->GetGlobalConstantValue(type, glue, index);
 }
 
 inline GateRef StubBuilder::GetSingleCharTable(GateRef glue)
@@ -3444,9 +3443,10 @@ inline GateRef StubBuilder::GetSortedIndex(GateRef layoutInfo, GateRef index)
     return GetSortedIndex(GetAttr(layoutInfo, index));
 }
 
-inline void StubBuilder::SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result)
+inline void StubBuilder::SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result,
+                                              GateRef hir)
 {
-    GateRef hash = HashFromHclassAndKey(glue, cls, key);
+    GateRef hash = HashFromHclassAndKey(glue, cls, key, hir);
     GateRef prop =
         PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(PropertiesCache::PropertyKey::GetPropertyKeySize())));
     StoreWithoutBarrier(VariableType::JS_POINTER(), prop, IntPtr(PropertiesCache::PropertyKey::GetHclassOffset()), cls);
@@ -3460,11 +3460,31 @@ inline void StubBuilder::StoreWithoutBarrier(VariableType type, GateRef base, Ga
     env_->GetBuilder()->StoreWithoutBarrier(type, addr, value);
 }
 
-inline GateRef StubBuilder::HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key)
+inline GateRef StubBuilder::HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key, GateRef hir)
 {
     GateRef clsHash = Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(3));  // skip 8bytes
-    GateRef keyHash = GetKeyHashCode(glue, key);
+    GateRef keyHash = GetKeyHashCode(glue, key, hir);
     return Int32And(Int32Xor(clsHash, keyHash), Int32(PropertiesCache::CACHE_LENGTH_MASK));
+}
+
+inline GateRef StubBuilder::OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto)
+{
+    return env_->GetBuilder()->OrdinaryNewJSObjectCreate(glue, proto);
+}
+
+inline GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
+{
+    return env_->GetBuilder()->NewJSPrimitiveRef(glue, index, obj);
+}
+
+inline GateRef StubBuilder::ToObject(GateRef glue, GateRef obj)
+{
+    return env_->GetBuilder()->ToObject(glue, obj);
+}
+
+inline GateRef StubBuilder::GetPrototype(GateRef glue, GateRef object)
+{
+    return env_->GetBuilder()->GetPrototype(glue, object);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

@@ -255,8 +255,15 @@ bool QuickFixManager::IsQuickFixCausedException(JSThread *thread,
     for (const auto &item : patchMethodLiterals) {
         MethodLiteral *patch = item.second;
         auto methodId = patch->GetMethodId();
-        const char *patchMethodName = MethodLiteral::GetMethodName(patchFile.get(), methodId);
-        if (std::strcmp(patchMethodName, JSPandaFile::ENTRY_FUNCTION_NAME) != 0 &&
+        CString patchMethodName(MethodLiteral::GetMethodName(patchFile.get(), methodId));
+        size_t index = patchMethodName.find_last_of('#');          // #...#functionName
+        patchMethodName = patchMethodName.substr(index + 1);
+        if (patchMethodName.find('^') != std::string::npos) {
+            index = patchMethodName.find_last_of('^');
+            patchMethodName = patchMethodName.substr(0, index);    // #...#functionName^1
+        }
+
+        if (std::strcmp(patchMethodName.data(), JSPandaFile::ENTRY_FUNCTION_NAME) != 0 &&
             methodNames.find(CString(patchMethodName)) != methodNames.end()) {
             return true;
         }

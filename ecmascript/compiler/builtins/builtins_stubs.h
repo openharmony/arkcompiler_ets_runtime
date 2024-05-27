@@ -29,6 +29,7 @@ public:
         :StubBuilder(parent) {}
     BuiltinsStubBuilder(CallSignature *callSignature, Environment *env)
         : StubBuilder(callSignature, env) {}
+    BuiltinsStubBuilder(Environment* env): StubBuilder(env) {}
     ~BuiltinsStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsStubBuilder);

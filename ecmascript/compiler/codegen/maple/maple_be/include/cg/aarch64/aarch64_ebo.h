@@ -43,10 +43,6 @@ protected:
     bool IsGlobalNeeded(Insn &insn) const override;
     bool IsDecoupleStaticOp(Insn &insn) const override;
     bool OperandEqSpecial(const Operand &op1, const Operand &op2) const override;
-    bool DoConstProp(Insn &insn, uint32 i, Operand &opnd) override;
-    bool Csel2Cset(Insn &insn, const MapleVector<Operand *> &opnds) override;
-    bool SimplifyConstOperand(Insn &insn, const MapleVector<Operand *> &opnds,
-                              const MapleVector<OpndInfo *> &opndInfo) override;
     void BuildCallerSaveRegisters() override;
     void DefineAsmRegisters(InsnInfo &insnInfo) override;
     void DefineCallerSaveRegisters(InsnInfo &insnInfo) override;
@@ -54,10 +50,8 @@ protected:
     void DefineCallUseSpecialRegister(Insn &insn) override;
     void DefineClinitSpecialRegisters(InsnInfo &insnInfo) override;
     bool CombineExtensionAndLoad(Insn *insn, const MapleVector<OpndInfo *> &origInfos, ExtOpTable idx, bool is64Bits);
-    bool SpecialSequence(Insn &insn, const MapleVector<OpndInfo *> &origInfos) override;
     bool IsMovToSIMDVmov(Insn &insn, const Insn &replaceInsn) const override;
     bool IsPseudoRet(Insn &insn) const override;
-    bool ChangeLdrMop(Insn &insn, const Operand &opnd) const override;
     bool IsAdd(const Insn &insn) const override;
     bool IsFmov(const Insn &insn) const override;
     bool IsClinitCheck(const Insn &insn) const override;

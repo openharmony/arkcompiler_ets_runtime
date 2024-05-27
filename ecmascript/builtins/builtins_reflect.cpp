@@ -26,14 +26,22 @@ JSTaggedValue BuiltinsReflect::ReflectApply(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Reflect, Apply);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    // 1. If IsCallable(target) is false, throw a TypeError exception.
     JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> thisArgument = GetCallArg(argv, 1);
+    JSHandle<JSTaggedValue> argumentsList = GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
+    return ReflectApplyInternal(thread, target, thisArgument, argumentsList);
+}
+
+JSTaggedValue BuiltinsReflect::ReflectApplyInternal(JSThread *thread, JSHandle<JSTaggedValue> target,
+                                                    JSHandle<JSTaggedValue> thisArgument,
+                                                    JSHandle<JSTaggedValue> argumentsList)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // 1. If IsCallable(target) is false, throw a TypeError exception.
     if (!target->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Reflect.apply target is not callable", JSTaggedValue::Exception());
     }
     // 2. Let args be ? CreateListFromArrayLike(argumentsList).
-    JSHandle<JSTaggedValue> thisArgument = GetCallArg(argv, 1);
-    JSHandle<JSTaggedValue> argumentsList = GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     JSHandle<JSTaggedValue> argOrAbrupt = JSObject::CreateListFromArrayLike(thread, argumentsList);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<TaggedArray> args = JSHandle<TaggedArray>::Cast(argOrAbrupt);
@@ -74,6 +82,13 @@ JSTaggedValue BuiltinsReflect::ReflectConstruct(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> argOrAbrupt = JSObject::CreateListFromArrayLike(thread, argumentsList);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<TaggedArray> args = JSHandle<TaggedArray>::Cast(argOrAbrupt);
+    return ReflectConstructInternal(thread, target, args, newTarget);
+}
+
+JSTaggedValue BuiltinsReflect::ReflectConstructInternal(JSThread *thread, JSHandle<JSTaggedValue> target,
+                                                        JSHandle<TaggedArray> args, JSHandle<JSTaggedValue> newTarget)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 5. Return ? Construct(target, args, newTarget).
     const uint32_t argsLength = args->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
@@ -201,16 +216,24 @@ JSTaggedValue BuiltinsReflect::ReflectHas(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Reflect, Has);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    // 1. If Type(target) is not Object, throw a TypeError exception.
     JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
+    return ReflectHasInternal(thread, target, key);
+}
+
+JSTaggedValue BuiltinsReflect::ReflectHasInternal(JSThread *thread, JSHandle<JSTaggedValue> target,
+                                                  JSHandle<JSTaggedValue> key)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!target->IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Reflect.has target is not object", JSTaggedValue::Exception());
     }
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    JSHandle<JSTaggedValue> key = JSTaggedValue::ToPropertyKey(thread, GetCallArg(argv, 1));
+    JSHandle<JSTaggedValue> propertyKey = JSTaggedValue::ToPropertyKey(thread, key);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. Return ? target.[[HasProperty]](key).
-    return GetTaggedBoolean(JSTaggedValue::HasProperty(thread, target, key));
+    return GetTaggedBoolean(JSTaggedValue::HasProperty(thread, target, propertyKey));
 }
 
 // ecma 26.1.9  Reflect.isExtensible (target)

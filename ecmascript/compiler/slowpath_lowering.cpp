@@ -510,9 +510,11 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerSuperCallSpread(gate);
             break;
         case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
             LowerIsTrueOrFalse(gate, true);
             break;
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
             LowerIsTrueOrFalse(gate, false);
             break;
         case EcmaOpcode::GETNEXTPROPNAME_V8:
@@ -724,6 +726,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
             LowerNotifyConcurrentResult(gate);
             break;
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             LowerDefineFieldByName(gate);
             break;
@@ -993,10 +996,11 @@ void SlowPathLowering::LowerCallArg0(GateRef gate)
 
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARG0_IMM8));
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
-    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj}, {glue_, func, thisObj});
+    LowerToJSCall(gate, {glue_, actualArgc, actualArgv, func, newTarget, thisObj}, {glue_, func, thisObj});
 }
 
 void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
@@ -1007,11 +1011,12 @@ void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
     size_t numIns = acc_.GetNumValueIn(gate);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     const size_t callTargetIndex = 1;  // 1: acc
     GateRef callTarget = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
-    std::vector<GateRef> vec { glue_, actualArgc, callTarget, newTarget, thisObj };
+    std::vector<GateRef> vec { glue_, actualArgc, actualArgv, callTarget, newTarget, thisObj };
     // add common args
     for (size_t i = fixedInputsNum; i < numIns - callTargetIndex; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
@@ -1032,11 +1037,12 @@ void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate)
     size_t numIns = acc_.GetNumValueIn(gate);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     const size_t callTargetIndex = 1;
     GateRef callTarget = acc_.GetValueIn(gate, numIns - callTargetIndex);
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
-    std::vector<GateRef> vec {glue_, actualArgc, callTarget, newTarget, thisObj};
+    std::vector<GateRef> vec {glue_, actualArgc, actualArgv, callTarget, newTarget, thisObj};
     // add common args
     for (size_t i = fixedInputsNum; i < numIns - callTargetIndex; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
@@ -1066,12 +1072,13 @@ void SlowPathLowering::LowerCallrangeImm8Imm8V8(GateRef gate)
     size_t numArgs = acc_.GetNumValueIn(gate);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLRANGE_IMM8_IMM8_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     const size_t callTargetIndex = 1; // acc
     ASSERT(numArgs > 0);
     GateRef callTarget = acc_.GetValueIn(gate, numArgs - callTargetIndex);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    std::vector<GateRef> vec {glue_, actualArgc, callTarget, newTarget, thisObj};
+    std::vector<GateRef> vec {glue_, actualArgc, actualArgv, callTarget, newTarget, thisObj};
     for (size_t i = 0; i < numArgs - callTargetIndex; i++) { // 2: skip acc
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
@@ -1781,8 +1788,9 @@ void SlowPathLowering::LowerNewObjRange(GateRef gate)
     {
         GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
+        GateRef actualArgv = builder_.IntPtr(0);
         size_t range = acc_.GetNumValueIn(gate);
-        std::vector<GateRef> args{glue_, actualArgc, ctor, ctor, thisObj};
+        std::vector<GateRef> args{glue_, actualArgc, actualArgv, ctor, ctor, thisObj};
         std::vector<GateRef> argsFastCall{glue_, ctor, thisObj};
         for (size_t i = 1; i < range; ++i) {
             args.emplace_back(acc_.GetValueIn(gate, i));
@@ -2812,8 +2820,8 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate)
 void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate)
 {
     GateRef actualArgc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::ACTUAL_ARGC);
-    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::GetUnmapedArgs,
-        { glue_, builder_.TruncInt64ToInt32(actualArgc) });
+    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::GetUnmappedArgs,
+        { glue_, builder_.IntPtr(0), builder_.TruncInt64ToInt32(actualArgc) });
     ReplaceHirWithValue(gate, newGate);
 }
 
@@ -2890,10 +2898,11 @@ void SlowPathLowering::LowerCallthis0Imm8V8(GateRef gate)
 
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS0_IMM8_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef func = acc_.GetValueIn(gate, 1);
-    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj}, {glue_, func, thisObj});
+    LowerToJSCall(gate, {glue_, actualArgc, actualArgv, func, newTarget, thisObj}, {glue_, func, thisObj});
 }
 
 void SlowPathLowering::LowerCallArg1Imm8V8(GateRef gate)
@@ -2902,12 +2911,13 @@ void SlowPathLowering::LowerCallArg1Imm8V8(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARG1_IMM8_V8));
-
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef newTarget = builder_.Undefined();
     GateRef a0Value = acc_.GetValueIn(gate, 0);
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 1); // acc
-    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0Value}, {glue_, func, thisObj, a0Value});
+    LowerToJSCall(gate, {glue_, actualArgc, actualArgv, func, newTarget, thisObj, a0Value},
+        {glue_, func, thisObj, a0Value});
 }
 
 void SlowPathLowering::LowerWideCallrangePrefImm16V8(GateRef gate)
@@ -2919,12 +2929,14 @@ void SlowPathLowering::LowerWideCallrangePrefImm16V8(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) >= fixedInputsNum);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef callTarget = acc_.GetValueIn(gate, numIns - fixedInputsNum); // acc
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
 
     vec.emplace_back(glue_);
     vec.emplace_back(actualArgc);
+    vec.emplace_back(actualArgv);
     vec.emplace_back(callTarget);
     vec.emplace_back(newTarget);
     vec.emplace_back(thisObj);
@@ -2949,11 +2961,12 @@ void SlowPathLowering::LowerCallThisArg1(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef a0 = acc_.GetValueIn(gate, 1); // 1:first parameter
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
-    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0}, {glue_, func, thisObj, a0});
+    LowerToJSCall(gate, {glue_, actualArgc, actualArgv, func, newTarget, thisObj, a0}, {glue_, func, thisObj, a0});
 }
 
 void SlowPathLowering::LowerCallargs2Imm8V8V8(GateRef gate)
@@ -2962,13 +2975,15 @@ void SlowPathLowering::LowerCallargs2Imm8V8V8(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARGS2_IMM8_V8_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef a0 = acc_.GetValueIn(gate, 0);
     GateRef a1 = acc_.GetValueIn(gate, 1); // 1:first parameter
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
 
-    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0, a1}, {glue_, func, thisObj, a0, a1});
+    LowerToJSCall(gate, {glue_, actualArgc, actualArgv, func, newTarget, thisObj, a0, a1},
+        {glue_, func, thisObj, a0, a1});
 }
 
 void SlowPathLowering::LowerCallargs3Imm8V8V8(GateRef gate)
@@ -2977,6 +2992,7 @@ void SlowPathLowering::LowerCallargs3Imm8V8V8(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef a0 = acc_.GetValueIn(gate, 0);
@@ -2984,7 +3000,8 @@ void SlowPathLowering::LowerCallargs3Imm8V8V8(GateRef gate)
     GateRef a2 = acc_.GetValueIn(gate, 2);
     GateRef func = acc_.GetValueIn(gate, 3);
 
-    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0, a1, a2}, {glue_, func, thisObj, a0, a1, a2});
+    LowerToJSCall(gate, {glue_, actualArgc, actualArgv, func, newTarget, thisObj, a0, a1, a2},
+        {glue_, func, thisObj, a0, a1, a2});
 }
 
 void SlowPathLowering::LowerCallthis2Imm8V8V8V8(GateRef gate)
@@ -2993,13 +3010,14 @@ void SlowPathLowering::LowerCallthis2Imm8V8V8V8(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef a0Value = acc_.GetValueIn(gate, 1);
     GateRef a1Value = acc_.GetValueIn(gate, 2);
     GateRef func = acc_.GetValueIn(gate, 3);  //acc
 
-    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0Value, a1Value},
+    LowerToJSCall(gate, {glue_, actualArgc, actualArgv, func, newTarget, thisObj, a0Value, a1Value},
         {glue_, func, thisObj, a0Value, a1Value});
 }
 
@@ -3009,13 +3027,14 @@ void SlowPathLowering::LowerCallthis3Imm8V8V8V8V8(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef a0Value = acc_.GetValueIn(gate, 1);
     GateRef a1Value = acc_.GetValueIn(gate, 2);
     GateRef a2Value = acc_.GetValueIn(gate, 3);
     GateRef func = acc_.GetValueIn(gate, 4);
-    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0Value, a1Value, a2Value},
+    LowerToJSCall(gate, {glue_, actualArgc, actualArgv, func, newTarget, thisObj, a0Value, a1Value, a2Value},
         {glue_, func, thisObj, a0Value, a1Value, a2Value});
 }
 
@@ -3027,6 +3046,13 @@ void SlowPathLowering::LowerLdThisByName(GateRef gate)
     LowerCallStubWithIC(gate, CommonStubCSigns::GetPropertyByName, { thisObj, prop });
 }
 
+bool SlowPathLowering::IsFastCallArgs(size_t index)
+{
+    return index != static_cast<size_t>(CommonArgIdx::ACTUAL_ARGC) &&
+           index != static_cast<size_t>(CommonArgIdx::ACTUAL_ARGV) &&
+           index != static_cast<size_t>(CommonArgIdx::NEW_TARGET);
+}
+
 void SlowPathLowering::LowerConstruct(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -3035,11 +3061,11 @@ void SlowPathLowering::LowerConstruct(GateRef gate)
     for (size_t i = 0; i < num; ++i) {
         args[i] = acc_.GetValueIn(gate, i);
     }
-    ASSERT(num >= 2); // 2:skip argc newtarget
-    std::vector<GateRef> argsFastCall(num - 2); // 2:skip argc newtarget
+    ASSERT(num >= 3); // 3: skip argc argv newtarget
+    std::vector<GateRef> argsFastCall(num - 3); // 3: skip argc argv newtarget
     size_t j = 0;
     for (size_t i = 0; i < num; ++i) {
-        if (i != 1 && i != 3) { // 3: newtarget index
+        if (IsFastCallArgs(i)) {
             argsFastCall[j++] = acc_.GetValueIn(gate, i);
         }
     }
@@ -3060,23 +3086,22 @@ void SlowPathLowering::LowerCallNew(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     size_t num = acc_.GetNumValueIn(gate);
-    bool needPushUndefined = acc_.NeedPushUndefined(gate);
+    bool needPushArgv = acc_.NeedPushArgv(gate);
     std::vector<GateRef> args(num);
     for (size_t i = 0; i < num; ++i) {
         args[i] = acc_.GetValueIn(gate, i);
     }
-    ASSERT(num >= 2); // 2:skip argc newtarget
-    std::vector<GateRef> argsFastCall(num - 2); // 2:skip argc newtarget
+    std::vector<GateRef> argsFastCall(num - 3); // 3:skip argc argv newtarget
     size_t j = 0;
     for (size_t i = 0; i < num; ++i) {
-        if (i != 1 && i != 3) { // 3: newtarget index
+        if (IsFastCallArgs(i)) {
             argsFastCall[j++] = acc_.GetValueIn(gate, i);
         }
     }
     GateRef ctor = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
     Label exit(&builder_);
     DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    LowerNewFastCall(gate, glue_, ctor, needPushUndefined, args, argsFastCall, &res, &exit);
+    LowerNewFastCall(gate, glue_, ctor, needPushArgv, args, argsFastCall, &res, &exit);
     builder_.Bind(&exit);
     GateRef thisObj = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::THIS_OBJECT));
     GateRef result = builder_.CallStub(
@@ -3086,7 +3111,7 @@ void SlowPathLowering::LowerCallNew(GateRef gate)
 }
 
 void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func,
-    bool needPushUndefined, const std::vector<GateRef> &args,
+    bool needPushArgv, const std::vector<GateRef> &args,
     const std::vector<GateRef> &argsFastCall, Variable *result, Label *exit)
 {
     Label fastCall(&builder_);
@@ -3097,7 +3122,7 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
         &fastCall, &notFastCall);
     builder_.Bind(&fastCall);
     {
-        if (!needPushUndefined) {
+        if (!needPushArgv) {
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef code = builder_.GetCodeAddr(func);
             auto depend = builder_.GetDepend();
@@ -3107,8 +3132,8 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
             builder_.Jump(exit);
         } else {
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-            const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
-            GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
+            const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedFastCallAndPushArgv));
+            GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedFastCallAndPushArgv));
             auto depend = builder_.GetDepend();
             result->WriteVariable(builder_.Call(cs, glue, target, depend, args, gate, "callFastBridge"));
             builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
@@ -3120,7 +3145,7 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
         &slowCall, &slowPath);
     builder_.Bind(&slowCall);
     {
-        if (!needPushUndefined) {
+        if (!needPushArgv) {
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef code = builder_.GetCodeAddr(func);
             auto depend = builder_.GetDepend();
@@ -3130,8 +3155,8 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
             builder_.Jump(exit);
         } else {
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-            const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedCallAndPushUndefined));
-            GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedCallAndPushUndefined));
+            const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedCallAndPushArgv));
+            GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedCallAndPushArgv));
             auto depend = builder_.GetDepend();
             result->WriteVariable(builder_.Call(cs, glue, target, depend, args, gate, "callBridge"));
             builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
@@ -3186,7 +3211,7 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
             {
                 GateRef expectedArgc = builder_.Int64Add(builder_.GetExpectedNumOfArgs(method),
                     builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS));
-                BRANCH_CIR(builder_.Int64LessThanOrEqual(expectedArgc, argc), &call, &callBridge);
+                BRANCH_CIR(builder_.Equal(expectedArgc, argc), &call, &callBridge);
                 builder_.Bind(&call);
                 {
                     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
@@ -3200,8 +3225,8 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
                 builder_.Bind(&callBridge);
                 {
                     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-                    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
-                    GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
+                    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedFastCallAndPushArgv));
+                    GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedFastCallAndPushArgv));
                     auto depend = builder_.GetDepend();
                     result->WriteVariable(builder_.Call(cs, glue, target, depend, args, gate, "callFastBridge"));
                     builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
@@ -3215,7 +3240,7 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
             {
                 GateRef expectedArgc = builder_.Int64Add(builder_.GetExpectedNumOfArgs(method),
                     builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS));
-                BRANCH_CIR(builder_.Int64LessThanOrEqual(expectedArgc, argc), &call1, &callBridge1);
+                BRANCH_CIR(builder_.Equal(expectedArgc, argc), &call1, &callBridge1);
                 builder_.Bind(&call1);
                 {
                     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
@@ -3229,8 +3254,8 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
                 builder_.Bind(&callBridge1);
                 {
                     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-                    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedCallAndPushUndefined));
-                    GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedCallAndPushUndefined));
+                    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedCallAndPushArgv));
+                    GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedCallAndPushArgv));
                     auto depend = builder_.GetDepend();
                     result->WriteVariable(builder_.Call(cs, glue, target, depend, args, gate, "callBridge"));
                     builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
@@ -3516,10 +3541,11 @@ void SlowPathLowering::LowerCallInit(GateRef gate)
 
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS0_IMM8_V8));
+    GateRef actualArgv = builder_.IntPtr(0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef func = acc_.GetValueIn(gate, 1);
-    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj}, {glue_, func, thisObj});
+    LowerToJSCall(gate, {glue_, actualArgc, actualArgv, func, newTarget, thisObj}, {glue_, func, thisObj});
 }
 
 void SlowPathLowering::LowerLdStr(GateRef gate)

@@ -280,11 +280,11 @@ ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
     return ArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
-bool GateAccessor::NeedPushUndefined(GateRef gate) const
+bool GateAccessor::NeedPushArgv(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::CALL_NEW);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetNewConstructMetaData()->NeedPushUndefined();
+    return gatePtr->GetNewConstructMetaData()->NeedPushArgv();
 }
 
 CreateArgumentsAccessor GateAccessor::GetCreateArgumentsAccessor(GateRef gate) const
@@ -801,6 +801,16 @@ size_t GateAccessor::GetNumValueIn(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetInValueCount();
+}
+
+std::vector<GateRef> GateAccessor::GetValueIns(GateRef gate) const
+{
+    size_t num = GetNumValueIn(gate);
+    std::vector<GateRef> valueIns(num);
+    for (size_t i = 0; i < num; ++i) {
+        valueIns[i] = GetValueIn(gate, i);
+    }
+    return valueIns;
 }
 
 bool GateAccessor::IsGCRelated(GateRef gate) const
@@ -1888,6 +1898,27 @@ bool GateAccessor::IsSingleCharGate(GateRef gate)
     return false;
 }
 
+bool GateAccessor::UseForTypeOpProfilerGate(GateRef gate) const
+{
+    OpCode op = GetOpCode(gate);
+    switch (op) {
+#define DECLARE_GATE_OPCODE(NAME, OP, R, S, D, V) \
+        case OpCode::OP:                          \
+            return true;
+
+    MCR_IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_VALUE(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(DECLARE_GATE_OPCODE)
+    MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(DECLARE_GATE_OPCODE)
+#undef DECLARE_GATE_OPCODE
+        default:
+            return false;
+    }
+}
+
 uint32_t GateAccessor::GetStringIdFromLdaStrGate(GateRef gate)
 {
     ASSERT(GetByteCodeOpcode(gate) == EcmaOpcode::LDA_STR_ID16);
@@ -1947,6 +1978,12 @@ uint32_t GateAccessor::GetConstpoolId(GateRef gate) const
     ASSERT(GetOpCode(gate) == OpCode::GET_CONSTPOOL);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetOneParameterMetaData()->GetValue();
+}
+
+GateRef GateAccessor::GetFrameValue(GateRef gate)
+{
+    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
+    return GetValueIn(gate, 1);
 }
 
 TypedBinOp GateAccessor::GetRevCompareOpForTypedBinOp(TypedBinOp op)

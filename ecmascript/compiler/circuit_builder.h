@@ -56,6 +56,7 @@ class NativeInlineLowering;
 class TypedHCRLowering;
 class StringBuilderOptimizer;
 class PostSchedule;
+class TSHCROptPass;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -240,6 +241,7 @@ public:
     GateRef SpecialHoleConstant();
     GateRef NullPtrConstant();
     GateRef NullConstant();
+    GateRef TaggedValueConstant(JSTaggedValue taggedValue);
     GateRef ExceptionConstant();
     void ClearConstantCache(GateRef gate);
     GateRef NanValue();
@@ -390,7 +392,9 @@ public:
                                   GateRef constPoolIndex, GateRef elementIndex);
     GateRef CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
-    GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool isFastCall);
+    GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool needPushArgv);
+    GateRef CallConstructCheck(GateRef callGate, GateRef depend, GateRef glue_, GateRef ctor,
+                               GateRef value, GateRef thisObj);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef ctor);
     GateRef ToLength(GateRef receiver);
@@ -526,7 +530,6 @@ public:
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment = nullptr);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
                             const char* comment = nullptr);
-    GateRef JSCallTargetFromDefineFuncCheck(GateRef func, GateRef gate);
     template<TypedCallTargetCheckOp Op>
     GateRef JSCallTargetTypeCheck(GateRef func, GateRef methodIndex, GateRef gate);
     template<TypedCallTargetCheckOp Op>
@@ -558,6 +561,7 @@ public:
     GateRef InsertTypedArrayCheck(GateType type, GateRef array);
     GateRef ArrayConstructorCheck(GateRef gate);
     GateRef ObjectConstructorCheck(GateRef gate);
+    GateRef BooleanConstructorCheck(GateRef gate);
     GateRef InsertTypedBinaryop(GateRef left, GateRef right, TypedBinOp op);
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
     GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, ParamType paramType,
@@ -662,6 +666,13 @@ public:
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);
     GateRef BuildBigIntAsIntN(const GateMetaData* op, std::vector<GateRef> &&args);
+    GateRef NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj);
+    GateRef ToObject(GateRef glue, GateRef obj);
+    GateRef GetPrototype(GateRef glue, GateRef object);
+
+    GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);
+    GateRef TransProtoWithoutLayout(GateRef glue, GateRef hClass, GateRef proto);
+    GateRef OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto);
 
     // bit operation
     inline GateRef TaggedIsInt(GateRef x);
@@ -739,7 +750,7 @@ public:
     GateRef GetLengthFromString(GateRef value);
     GateRef Rotl(GateRef word, uint32_t shift);
     GateRef CalcHashcodeForInt(GateRef value);
-    GateRef GetHashcodeFromString(GateRef glue, GateRef value);
+    GateRef GetHashcodeFromString(GateRef glue, GateRef value, GateRef hir = Circuit::NullGate());
     GateRef TryGetHashcodeFromString(GateRef string);
     GateRef IsIntegerString(GateRef string);
     GateRef IsLiteralString(GateRef string);
@@ -798,6 +809,8 @@ public:
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     inline GateRef IntPtrAnd(GateRef x, GateRef y);
     inline GateRef IntPtrNot(GateRef x);
+    inline GateRef IntPtrEqual(GateRef x, GateRef y);
+    inline GateRef DoubleTrunc(GateRef gate, GateRef value, const char* comment = nullptr);
     GateRef AddWithOverflow(GateRef left, GateRef right);
     GateRef SubWithOverflow(GateRef left, GateRef right);
     GateRef MulWithOverflow(GateRef left, GateRef right);
@@ -839,6 +852,7 @@ public:
     inline GateRef ToTaggedInt(GateRef x);
     inline GateRef ToTaggedIntPtr(GateRef x);
     inline GateRef DoubleToTaggedDoublePtr(GateRef x);
+    inline GateRef DoubleIsImpureNaN(GateRef x);
     inline GateRef BooleanToTaggedBooleanPtr(GateRef x);
     inline GateRef BooleanToInt32(GateRef x);
     inline GateRef BooleanToFloat64(GateRef x);
@@ -921,6 +935,7 @@ private:
     friend NativeInlineLowering;
     friend TypedHCRLowering;
     friend PostSchedule;
+    friend TSHCROptPass;
 };
 
 }  // namespace panda::ecmascript::kungfu

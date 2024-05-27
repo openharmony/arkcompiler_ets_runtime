@@ -390,7 +390,7 @@ private:
     V(SetValueWithBarrier)                      \
     V(NewLexicalEnv)                            \
     V(CopyRestArgs)                             \
-    V(GetUnmapedArgs)                           \
+    V(GetUnmappedArgs)                          \
     V(NewThisObjectChecked)                     \
     V(ConstructorCheck)                         \
     V(CreateEmptyArray)                         \
@@ -417,8 +417,10 @@ private:
     V(CallThisRangeAndCheckToBaseline)          \
     V(GeneratorReEnterAsmInterp)                \
     V(CallRuntimeWithArgv)                      \
-    V(OptimizedCallAndPushUndefined)            \
-    V(OptimizedFastCallAndPushUndefined)        \
+    V(OptimizedCallAndPushArgv)                 \
+    V(OptimizedFastCallAndPushArgv)             \
+    V(AOTCallToAsmInterBridge)                  \
+    V(FastCallToAsmInterBridge)                 \
     V(PushCallArg0AndDispatch)                  \
     V(PushCallArgsAndDispatchNative)            \
     V(PushCallArg1AndDispatch)                  \
@@ -440,8 +442,8 @@ private:
     V(CallContainersArgs3)                      \
     V(JSCallWithArgV)                           \
     V(JSFastCallWithArgV)                       \
-    V(JSFastCallWithArgVAndPushUndefined)       \
-    V(JSCallWithArgVAndPushUndefined)           \
+    V(JSFastCallWithArgVAndPushArgv)            \
+    V(JSCallWithArgVAndPushArgv)                \
     V(ResumeRspAndDispatch)                     \
     V(ResumeRspAndReturn)                       \
     V(ResumeCaughtFrameAndDispatch)             \
@@ -580,7 +582,8 @@ private:
     V(CallRangeAndCheckToBaselineFromBaseline)       \
     V(CallNewAndCheckToBaselineFromBaseline)         \
     V(SuperCallAndCheckToBaselineFromBaseline)       \
-    V(CallThisRangeAndCheckToBaselineFromBaseline)
+    V(CallThisRangeAndCheckToBaselineFromBaseline)   \
+    V(SameValue)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

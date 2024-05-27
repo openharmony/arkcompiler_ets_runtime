@@ -47,6 +47,22 @@ CpuProfiler::CpuProfiler(const EcmaVM *vm, const int interval) : vm_(vm), interv
     }
 }
 
+bool CpuProfiler::RegisterGetStackSignal()
+{
+    struct sigaction sa;
+    sa.sa_sigaction = &GetStackSignalHandler;
+    if (sigemptyset(&sa.sa_mask) != 0) {
+        LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigemptyset failed, errno = " << errno;
+        return false;
+    }
+    sa.sa_flags = SA_RESTART | SA_SIGINFO;
+    if (sigaction(SIGPROF, &sa, nullptr) != 0) {
+        LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigaction failed, errno = " << errno;
+        return false;
+    }
+    return true;
+}
+
 bool CpuProfiler::StartCpuProfilerForInfo()
 {
     LOG_ECMA(INFO) << "CpuProfiler::StartCpuProfilerForInfo, sampling interval = " << interval_;
@@ -54,15 +70,7 @@ bool CpuProfiler::StartCpuProfilerForInfo()
         LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, can not start when CpuProfiler is Profiling";
         return false;
     }
-    struct sigaction sa;
-    sa.sa_sigaction = &GetStackSignalHandler;
-    if (sigemptyset(&sa.sa_mask) != 0) {
-        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, sigemptyset failed, errno = " << errno;
-        return false;
-    }
-    sa.sa_flags = SA_RESTART | SA_SIGINFO;
-    if (sigaction(SIGPROF, &sa, nullptr) != 0) {
-        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, sigaction failed, errno = " << errno;
+    if (!RegisterGetStackSignal()) {
         return false;
     }
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
@@ -79,6 +87,8 @@ bool CpuProfiler::StartCpuProfilerForInfo()
 
     generator_->SetTimeDeltaThreshold(interval_ * THRESHOLD_GROWTH_FACTORY + THRESHOLD_FIXED_INCREMENT);
     generator_->SetIsStart(true);
+    uint64_t startTime = SamplingProcessor::GetMicrosecondsTimeStamp();
+    generator_->SetThreadStartTime(startTime);
     params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
     if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
         LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, pthread_create failed, errno = " << errno;
@@ -108,15 +118,7 @@ bool CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
         LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, fileHandle_ open failed";
         return false;
     }
-    struct sigaction sa;
-    sa.sa_sigaction = &GetStackSignalHandler;
-    if (sigemptyset(&sa.sa_mask) != 0) {
-        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, sigemptyset failed, errno = " << errno;
-        return false;
-    }
-    sa.sa_flags = SA_RESTART | SA_SIGINFO;
-    if (sigaction(SIGPROF, &sa, nullptr) != 0) {
-        LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, sigaction failed, errno = " << errno;
+    if (!RegisterGetStackSignal()) {
         return false;
     }
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
@@ -133,6 +135,8 @@ bool CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 
     generator_->SetTimeDeltaThreshold(interval_ * THRESHOLD_GROWTH_FACTORY + THRESHOLD_FIXED_INCREMENT);
     generator_->SetIsStart(true);
+    uint64_t startTime = SamplingProcessor::GetMicrosecondsTimeStamp();
+    generator_->SetThreadStartTime(startTime);
     params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
     if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
         LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, pthread_create failed, errno = " << errno;

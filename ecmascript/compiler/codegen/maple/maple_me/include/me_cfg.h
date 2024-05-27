@@ -56,13 +56,12 @@ public:
     void VerifyLabels() const;
     void Dump() const;
     bool FindExprUse(const BaseNode &expr, StIdx stIdx) const;
-    bool FindUse(const StmtNode &stmt, StIdx stIdx) const;
     bool FindDef(const StmtNode &stmt, StIdx stIdx) const;
-    bool HasNoOccBetween(StmtNode &from, const StmtNode &to, StIdx stIdx) const;
     BB *NewBasicBlock();
     BB &InsertNewBasicBlock(const BB &position, bool isInsertBefore = true);
     void DeleteBasicBlock(const BB &bb);
     BB *NextBB(const BB *bb);
+    
     BB *PrevBB(const BB *bb);
 
     const MeFunction &GetFunc() const
@@ -332,7 +331,6 @@ public:
         endTryBB2TryBB[endTryBB] = endTryBB2TryBB[otherTryBB];
     }
 
-    void CreateBasicBlocks();
     void SwapBBId(BB &bb1, BB &bb2);
     void ConstructBBFreqFromStmtFreq();
     void ConstructStmtFreq();

@@ -598,19 +598,6 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     return ret;
 }
 
-GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateRef func, GateRef gate)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.GetFrameState(gate);
-    uint64_t value = TypedCallTargetCheckAccessor::ToValue(TypedCallTargetCheckOp::JSCALL_IMMEDIATE_AFTER_FUNC_DEF);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(value), MachineType::I1,
-        {currentControl, currentDepend, func, IntPtr(INVALID_INDEX), frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
 GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef> &inList,
                                           bool isSideEffect)
 {
@@ -1279,9 +1266,8 @@ GateRef CircuitBuilder::CalcHashcodeForInt(GateRef value)
     return hash12;
 }
 
-GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
+GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value, GateRef hir)
 {
-    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     Label subentry(env_);
     SubCfgEntry(&subentry);
     Label noRawHashcode(env_);
@@ -1292,7 +1278,7 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     Bind(&noRawHashcode);
     {
         hashcode = GetInt32OfTInt(
-            CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }, Circuit::NullGate()));
+            CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }, hir));
         Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }
@@ -1571,6 +1557,19 @@ GateRef CircuitBuilder::ObjectConstructorCheck(GateRef gate)
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->ObjectConstructorCheck(),
+        MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::BooleanConstructorCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->BooleanConstructorCheck(),
         MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

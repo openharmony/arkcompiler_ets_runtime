@@ -19,7 +19,6 @@
 #include <csignal>
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/extractortool/src/source_map.h"
-#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/dfx/dump_code/jit_dump_elf.h"
@@ -165,7 +164,6 @@ public:
     static std::unordered_map<EntityId, std::string> nameMap;
 };
 void CrashCallback(char *buf, size_t len, void *ucontext);
-uint64_t GetMicrosecondsTimeStamp();
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
 extern "C" int step_ark_managed_native_frame(

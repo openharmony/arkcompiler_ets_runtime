@@ -56,7 +56,6 @@ len = Math.atanh(10);
 print(len); //: NaN
 
 // Replace standart builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_atanh = Math.atanh
 Math.atanh = replace
 len = Math.atanh(111);
@@ -65,4 +64,6 @@ print(len); //: 111
 // Call standart builtin with non-number param
 Math.atanh = true_atanh
 len = Math.atanh("abc"); // deopt
+//aot: [trace] aot inline builtin: Math.atanh, caller function name:func_main_0@builtinMathAtanh
+//aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

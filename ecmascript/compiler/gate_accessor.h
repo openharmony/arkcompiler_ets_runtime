@@ -419,7 +419,7 @@ public:
     TypedArrayMetaDateAccessor GetTypedArrayMetaDateAccessor(GateRef gate) const;
     LoadElementAccessor GetLoadElementAccessor(GateRef gate) const;
     StoreElementAccessor GetStoreElementAccessor(GateRef gate) const;
-    bool NeedPushUndefined(GateRef gate) const;
+    bool NeedPushArgv(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
@@ -452,6 +452,7 @@ public:
     GateId GetId(GateRef gate) const;
     GateRef GetValueIn(GateRef gate, size_t idx = 0) const;
     size_t GetNumValueIn(GateRef gate) const;
+    std::vector<GateRef> GetValueIns(GateRef gate) const;
     GateRef GetIn(GateRef gate, size_t idx) const;
     GateRef GetState(GateRef gate, size_t idx = 0) const;
     GateRef GetDep(GateRef gate, size_t idx = 0) const;
@@ -560,9 +561,11 @@ public:
     bool IsHeapObjectFromElementsKind(GateRef gate);
     bool IsConstString(GateRef gate);
     bool IsSingleCharGate(GateRef gate);
+    bool UseForTypeOpProfilerGate(GateRef gate) const;
     uint32_t GetStringIdFromLdaStrGate(GateRef gate);
     bool IsIfOrSwitchRelated(GateRef gate) const;
     uint32_t GetConstpoolId(GateRef gate) const;
+    GateRef GetFrameValue(GateRef gate);
 
     GateRef GetCircuitRoot() const
     {

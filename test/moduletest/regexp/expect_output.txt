@@ -149,3 +149,12 @@ success
 text/html
 text/plain
 text/html
+false
+false
+
+true
+1
+true
+2
+gi
+4

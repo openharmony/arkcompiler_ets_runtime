@@ -575,6 +575,8 @@ DEFINE_PARAMETER_INDEX(BaselineCallRuntimeNotifyConcurrentResultPrefNone,
     GLUE, SP, ACC)
 DEFINE_PARAMETER_INDEX(BaselineDefineFieldByNameImm8Id16V8,
     GLUE, SP, SLOT_ID_I8, STRING_ID, V0)
+DEFINE_PARAMETER_INDEX(BaselineDefinePropertyByNameImm8Id16V8,
+    GLUE, SP, SLOT_ID_I8, STRING_ID, V0)
 DEFINE_PARAMETER_INDEX(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8,
     GLUE, SP, ACC, V0, V1)
 DEFINE_PARAMETER_INDEX(BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8,
@@ -591,6 +593,10 @@ DEFINE_PARAMETER_INDEX(BaselineCallRuntimeDefineSendableClassPrefImm16Id16Id16Im
     GLUE, SP, METHOD_ID, LITERAL_ID, LENGTH, V0)
 DEFINE_PARAMETER_INDEX(BaselineCallRuntimeLdSendableClassPrefImm16,
     GLUE, SP, ACC, LEVEL)
+DEFINE_PARAMETER_INDEX(BaselineCallRuntimeIstruePrefImm8,
+    GLUE, SP, ACC, V0)
+DEFINE_PARAMETER_INDEX(BaselineCallRuntimeIsfalsePrefImm8,
+    GLUE, SP, ACC, V0)
 DEFINE_PARAMETER_INDEX(BaselineReturnundefined, GLUE, ACC, SP)
 DEFINE_PARAMETER_INDEX(BaselineExceptionHandler,
     GLUE, ACC, SP, PROFILE_TYPE_INFO, HOTNESS_COUNTER, FRAME)

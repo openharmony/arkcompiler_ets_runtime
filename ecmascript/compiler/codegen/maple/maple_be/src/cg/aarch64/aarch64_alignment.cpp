@@ -166,70 +166,6 @@ bool AArch64AlignAnalysis::IsInSameAlignedRegion(uint32 addr1, uint32 addr2, uin
     return (((addr1 - 1) * kInsnSize) / alignedRegionSize) == (((addr2 - 1) * kInsnSize) / alignedRegionSize);
 }
 
-bool AArch64AlignAnalysis::MarkCondBranchAlign()
-{
-    sameTargetBranches.clear();
-    uint32 addr = 0;
-    bool change = false;
-    FOR_ALL_BB(bb, aarFunc) {
-        if (bb != nullptr && bb->IsBBNeedAlign()) {
-            uint32 alignedVal = (1U << bb->GetAlignPower());
-            uint32 alignNopNum = GetAlignRange(alignedVal, addr);
-            addr += alignNopNum;
-            bb->SetAlignNopNum(alignNopNum);
-        }
-        FOR_BB_INSNS(insn, bb) {
-            if (!insn->IsMachineInstruction()) {
-                continue;
-            }
-            addr += insn->GetAtomicNum();
-            MOperator mOp = insn->GetMachineOpcode();
-            if ((mOp == MOP_wtbz || mOp == MOP_wtbnz || mOp == MOP_xtbz || mOp == MOP_xtbnz) && insn->IsNeedSplit()) {
-                ++addr;
-            }
-            if (!insn->IsCondBranch() || insn->GetOperandSize() == 0) {
-                insn->SetAddress(addr);
-                continue;
-            }
-            CHECK_FATAL(insn->GetOperandSize() > 0, "must not be zero");
-            Operand &opnd = insn->GetOperand(insn->GetOperandSize() - 1);
-            if (!opnd.IsLabelOpnd()) {
-                insn->SetAddress(addr);
-                continue;
-            }
-            LabelIdx targetIdx = static_cast<LabelOperand &>(opnd).GetLabelIndex();
-            if (sameTargetBranches.find(targetIdx) == sameTargetBranches.end()) {
-                sameTargetBranches[targetIdx] = addr;
-                insn->SetAddress(addr);
-                continue;
-            }
-            uint32 sameTargetAddr = sameTargetBranches[targetIdx];
-            uint32 alignedRegionSize = 1 << kAlignRegionPower;
-            /**
-             * if two branches jump to the same target and their addresses are within an 16byte aligned region,
-             * add a certain number of [nop] to move them out of the region.
-             */
-            if (IsInSameAlignedRegion(sameTargetAddr, addr, alignedRegionSize)) {
-                uint32 nopNum = GetAlignRange(alignedRegionSize, addr) + 1;
-                nopNum = nopNum > kAlignMaxNopNum ? 0 : nopNum;
-                if (nopNum == 0) {
-                    break;
-                }
-                change = true;
-                insn->SetNopNum(nopNum);
-                for (uint32 i = 0; i < nopNum; i++) {
-                    addr += insn->GetAtomicNum();
-                }
-            } else {
-                insn->SetNopNum(0);
-            }
-            sameTargetBranches[targetIdx] = addr;
-            insn->SetAddress(addr);
-        }
-    }
-    return change;
-}
-
 void AArch64AlignAnalysis::UpdateInsnId()
 {
     uint32 id = 0;
@@ -293,73 +229,6 @@ bool AArch64AlignAnalysis::MarkShortBranchSplit()
     return change;
 }
 
-void AArch64AlignAnalysis::AddNopAfterMark()
-{
-    FOR_ALL_BB(bb, aarFunc) {
-        FOR_BB_INSNS(insn, bb) {
-            if (!insn->IsMachineInstruction() || !insn->IsCondBranch() || insn->GetNopNum() == 0) {
-                continue;
-            }
-            /**
-             * To minimize the performance loss of nop, we decided to place nop on an island before the current addr.
-             * The island here is after [b, ret, br, blr].
-             * To ensure correct insertion of the nop, the nop is inserted in the original position in the following
-             * cases:
-             * 1. A branch with the same target exists before it.
-             * 2. A branch whose nopNum value is not 0 exists before it.
-             * 3. no BBs need to be aligned between the original location and the island.
-             */
-            std::unordered_map<LabelIdx, Insn *> targetCondBrs;
-            bool findIsland = false;
-            Insn *detect = insn->GetPrev();
-            BB *region = bb;
-            while (detect != nullptr || region != aarFunc->GetFirstBB()) {
-                while (detect == nullptr) {
-                    DEBUG_ASSERT(region->GetPrev() != nullptr, "get region prev failed");
-                    region = region->GetPrev();
-                    detect = region->GetLastInsn();
-                }
-                if (detect->GetMachineOpcode() == MOP_xuncond || detect->GetMachineOpcode() == MOP_xret ||
-                    detect->GetMachineOpcode() == MOP_xbr) {
-                    findIsland = true;
-                    break;
-                }
-                if (region->IsBBNeedAlign()) {
-                    break;
-                }
-                if (!detect->IsMachineInstruction() || !detect->IsCondBranch() || detect->GetOperandSize() == 0) {
-                    detect = detect->GetPrev();
-                    continue;
-                }
-                if (detect->GetNopNum() != 0) {
-                    break;
-                }
-                Operand &opnd = detect->GetOperand(detect->GetOperandSize() - 1);
-                if (!opnd.IsLabelOpnd()) {
-                    detect = detect->GetPrev();
-                    continue;
-                }
-                LabelIdx targetIdx = static_cast<LabelOperand &>(opnd).GetLabelIndex();
-                if (targetCondBrs.find(targetIdx) != targetCondBrs.end()) {
-                    break;
-                }
-                targetCondBrs[targetIdx] = detect;
-                detect = detect->GetPrev();
-            }
-            uint32 nopNum = insn->GetNopNum();
-            if (findIsland) {
-                for (uint32 i = 0; i < nopNum; i++) {
-                    (void)bb->InsertInsnAfter(*detect, aarFunc->GetInsnBuilder()->BuildInsn<AArch64CG>(MOP_nop));
-                }
-            } else {
-                for (uint32 i = 0; i < nopNum; i++) {
-                    (void)bb->InsertInsnBefore(*insn, aarFunc->GetInsnBuilder()->BuildInsn<AArch64CG>(MOP_nop));
-                }
-            }
-        }
-    }
-}
-
 /**
  * The insertion of nop affects the judgement of the addressing range of short branches,
  * and the splitting of short branches affects the calculation of the location and number of nop insertions.
@@ -367,18 +236,12 @@ void AArch64AlignAnalysis::AddNopAfterMark()
  */
 void AArch64AlignAnalysis::ComputeCondBranchAlign()
 {
-    bool condBrChange = false;
     bool shortBrChange = false;
     while (true) {
-        condBrChange = MarkCondBranchAlign();
-        if (!condBrChange) {
-            break;
-        }
         shortBrChange = MarkShortBranchSplit();
         if (!shortBrChange) {
             break;
         }
     }
-    AddNopAfterMark();
 }
 } /* namespace maplebe */

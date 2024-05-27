@@ -68,6 +68,7 @@ public:
     using AbcIdBits = IdBits::NextField<uint32_t, ABC_ID_BITFIELD_NUM>;
     using KindBits = AbcIdBits::NextField<Kind, KIND_BITFIELD_NUM>;
     using IsRootBits = KindBits::NextFlag;  // 50
+    using EverOutOfBoundsBits = IsRootBits::NextFlag; // 51
 
     class BuiltinsId {
     public:
@@ -157,7 +158,8 @@ public:
     ProfileType() = default;
     explicit ProfileType(uint64_t rawType) : type_(rawType) {};
     ProfileType(PGOContext &context, ProfileTypeRef typeRef);
-    ProfileType(ApEntityId abcId, uint32_t type, Kind kind = Kind::ClassId, bool root = false)
+    ProfileType(ApEntityId abcId, uint32_t type, Kind kind = Kind::ClassId, bool root = false,
+                bool everOutOfBounds = false)
     {
         if (UNLIKELY(!IdBits::IsValid(type))) {
             type_ = 0;
@@ -166,10 +168,11 @@ public:
             UpdateId(type);
             UpdateKind(kind);
             UpdateIsRootFlag(root);
+            UpdateEverOutOfBounds(everOutOfBounds);
         }
     }
 
-    static ProfileType CreateMegeType()
+    static ProfileType CreateMegaType()
     {
         ProfileType type;
         type.UpdateKind(Kind::MegaStateKinds);
@@ -177,17 +180,18 @@ public:
     }
 
     static ProfileType CreateBuiltinsArray(ApEntityId abcId, JSType type, ElementsKind kind,
-                                           ElementsKind transitionKind)
+                                           ElementsKind transitionKind, bool everOutOfBounds)
     {
         auto id = BuiltinsArrayId().UpdateElementsKind(kind).UpdateTransitionElementsKind(transitionKind)
                   .SetBuiltinsId(type).GetId();
-        return ProfileType(abcId, id, Kind::BuiltinsId);
+        return ProfileType(abcId, id, Kind::BuiltinsId, false, everOutOfBounds);
     }
 
-    static ProfileType CreateBuiltinsTypedArray(ApEntityId abcId, JSType type, OnHeapMode onHeap)
+    static ProfileType CreateBuiltinsTypedArray(ApEntityId abcId, JSType type, OnHeapMode onHeap,
+                                                bool everOutOfBounds)
     {
         auto id = BuiltinsTypedArrayId().UpdateOnHeapMode(onHeap).SetBuiltinsId(type).GetId();
-        return ProfileType(abcId, id, Kind::BuiltinsId);
+        return ProfileType(abcId, id, Kind::BuiltinsId, false, everOutOfBounds);
     }
 
     static ProfileType CreateBuiltins(ApEntityId abcId, JSType type)
@@ -217,6 +221,11 @@ public:
     bool IsRootType() const
     {
         return IsRootBits::Decode(type_);
+    }
+
+    bool IsEverOutOfBounds() const
+    {
+        return EverOutOfBoundsBits::Decode(type_);
     }
 
     bool IsGlobalsType() const
@@ -307,6 +316,7 @@ public:
     {
         std::stringstream stream;
         stream << "Type: " << "(isRoot: " << IsRootType() <<
+                ", ever out of bounds: " << IsEverOutOfBounds() <<
                 ", kind: " << std::showbase << std::dec << static_cast<uint32_t>(GetKind()) <<
                 ", abcId: " << GetAbcId() <<
                 ", id: " << GetId() << ")";
@@ -332,6 +342,11 @@ public:
     void UpdateIsRootFlag(bool root)
     {
         type_ = IsRootBits::Update(type_, root);
+    }
+
+    void UpdateEverOutOfBounds(bool val)
+    {
+        type_ = EverOutOfBoundsBits::Update(type_, val);
     }
 
     bool IsValidCallMethodId() const

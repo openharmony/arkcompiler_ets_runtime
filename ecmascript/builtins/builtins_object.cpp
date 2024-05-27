@@ -782,10 +782,15 @@ JSTaggedValue BuiltinsObject::HasOwnProperty(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, Object, HasOwnProperty);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    // 1. Let P be ToPropertyKey(V).
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
     JSHandle<JSTaggedValue> prop = GetCallArg(argv, 0);
+    return HasOwnPropertyInternal(thread, thisValue, prop);
+}
 
+JSTaggedValue BuiltinsObject::HasOwnPropertyInternal(JSThread *thread, JSHandle<JSTaggedValue> thisValue,
+                                                     JSHandle<JSTaggedValue> prop)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     std::pair<JSTaggedValue, bool> result = ObjectFastOperator::HasOwnProperty(thread, thisValue.GetTaggedValue(),
         prop.GetTaggedValue());
     if (!result.first.IsHole()) {
@@ -794,6 +799,7 @@ JSTaggedValue BuiltinsObject::HasOwnProperty(EcmaRuntimeCallInfo *argv)
         return GetTaggedBoolean(false);
     }
 
+    // 1. Let P be ToPropertyKey(V).
     JSHandle<JSTaggedValue> property = JSTaggedValue::ToPropertyKey(thread, prop);
 
     // 2. ReturnIfAbrupt(P).
@@ -835,6 +841,7 @@ JSTaggedValue BuiltinsObject::IsPrototypeOf(EcmaRuntimeCallInfo *argv)
     while (!msgValueHandle->IsNull()) {
         msgValueHandle.Update(JSTaggedValue::GetPrototype(thread, msgValueHandle));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
         if (JSTaggedValue::SameValue(object.GetTaggedValue(), msgValueHandle.GetTaggedValue())) {
             return GetTaggedBoolean(true);
         }

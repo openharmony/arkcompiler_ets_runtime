@@ -2732,7 +2732,6 @@ void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRe
     Label posTagNotExists(env);
     Label posTagIsNumber(env);
     Label posTagIsInt(env);
-    Label posTagIsDouble(env);
     Label afterCallArg(env);
     Label endPosLessThanZero(env);
     Label endPosNotLessThanZero(env);
@@ -2768,29 +2767,11 @@ void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRe
                     GateRef posTag = GetCallArg1(numArgs);
                     BRANCH(TaggedIsNumber(posTag), &posTagIsNumber, slowPath);
                     Bind(&posTagIsNumber);
-                    BRANCH(TaggedIsInt(posTag), &posTagIsInt, &posTagIsDouble);
+                    BRANCH(TaggedIsInt(posTag), &posTagIsInt, slowPath);
                     Bind(&posTagIsInt);
                     {
                         searchPos = GetInt32OfTInt(posTag);
                         Jump(&afterCallArg);
-                    }
-                    Bind(&posTagIsDouble);
-                    {
-                        Label posTagIsPositiveInfinity(env);
-                        Label posTagNotPositiveInfinity(env);
-                        GateRef doubleVal = GetDoubleOfTDouble(posTag);
-                        BRANCH(DoubleEqual(doubleVal, Double(builtins::BuiltinsNumber::POSITIVE_INFINITY)),
-                            &posTagIsPositiveInfinity, &posTagNotPositiveInfinity);
-                        Bind(&posTagIsPositiveInfinity);
-                        {
-                            searchPos = thisLen;
-                            Jump(&afterCallArg);
-                        }
-                        Bind(&posTagNotPositiveInfinity);
-                        {
-                            searchPos = DoubleToInt(glue, doubleVal);
-                            Jump(&afterCallArg);
-                        }
                     }
                 }
                 Bind(&posTagNotExists);

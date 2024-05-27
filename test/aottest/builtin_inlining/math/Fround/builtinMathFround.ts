@@ -67,24 +67,31 @@ print(Math.fround(-1073741804)) //: -1073741824
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
 print(Math.fround(1.9e80)); //: Infinity
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
-//aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline function name: #*#printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathFround
 printZero(Math.fround(2.5)); //: 2.5
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
-//aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline function name: #*#printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathFround
 printZero(Math.fround(1.5)); //: 1.5
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
-//aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline function name: #*#printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathFround
 printZero(Math.fround(0.5)); //: 0.5
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
-//aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline function name: #*#printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathFround
 printZero(Math.fround(0.2)); //: 0.20000000298023224
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
-//aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline function name: #*#printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathFround
 printZero(Math.fround(-0)); //: -0
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
-//aot: [trace] aot inline function name: printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline function name: #*#printZero@builtinMathFround caller function name: func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathFround
 printZero(Math.fround(-1.9e-80)); //: -0
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathFround
 printZero(Math.fround(-0.1)); //: -0.10000000149011612
 //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
 print(Math.fround(-0.5)); //: -0.5
@@ -128,7 +135,6 @@ print(Math.fround(4.1, 0, 0, 0)); //: 4.099999904632568
 print(Math.fround(-4.1, 0, 0, 0, 0)); //: -4.099999904632568
 
 // Replace standard builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_fround = Math.fround
 Math.fround = replace
 
@@ -136,13 +142,13 @@ Math.fround = replace
 print(Math.fround(-1.001)); //: -1.001
 Math.fround = true_fround
 
-//aot: [trace] aot inline builtin: Math.fround, caller function name:doFround@builtinMathFround
+//aot: [trace] aot inline builtin: Math.fround, caller function name:#*#doFround@builtinMathFround
 printFround(12.3); //: 12.300000190734863
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: Math.fround, caller function name:doFround@builtinMathFround
+//aot: [trace] aot inline builtin: Math.fround, caller function name:#*#doFround@builtinMathFround
 //aot: [trace] Check Type: NotNumber1
 printFround("abc"); //: NaN
-//aot: [trace] aot inline builtin: Math.fround, caller function name:doFround@builtinMathFround
+//aot: [trace] aot inline builtin: Math.fround, caller function name:#*#doFround@builtinMathFround
 //aot: [trace] Check Type: NotNumber1
 printFround("-12.9"); //: -12.899999618530273
 
@@ -162,11 +168,11 @@ Math.fround = true_fround
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.fround, caller function name:doFround@builtinMathFround
+    //aot: [trace] aot inline builtin: Math.fround, caller function name:#*#doFround@builtinMathFround
     printFround(0.3) //: 0.30000001192092896
-    //aot: [trace] aot inline builtin: Math.fround, caller function name:doFround@builtinMathFround
+    //aot: [trace] aot inline builtin: Math.fround, caller function name:#*#doFround@builtinMathFround
     printFround(-12); //: -12
-    //aot: [trace] aot inline builtin: Math.fround, caller function name:doFround@builtinMathFround
+    //aot: [trace] aot inline builtin: Math.fround, caller function name:#*#doFround@builtinMathFround
     //aot: [trace] Check Type: NotNumber1
     printFround("abc"); //: NaN
 } catch (e) {
@@ -175,4 +181,6 @@ try {
 let obj = {
     valueOf: () => { return -22.5; }
 };
+//aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
+//aot: [trace] Check Type: NotNumber1
 print(Math.fround(obj)); //: -22.5

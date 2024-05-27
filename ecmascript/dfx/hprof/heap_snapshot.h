@@ -500,6 +500,12 @@ private:
     void FillNodes(bool isInFinish = false, bool isSimplify = false);
     Node *GenerateNode(JSTaggedValue entry, size_t size = 0,
                        bool isInFinish = false, bool isSimplify = false);
+    Node *HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
+    Node *HandleFunctionNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
+    Node *HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
+    Node *HandleBaseClassNode(size_t size, bool idExist, unsigned int &sequenceId,
+                              TaggedObject* obj, JSTaggedType &addr);
+    CString GeneratePrimitiveNameString(JSTaggedValue &entry);
     Node *GeneratePrivateStringNode(size_t size);
     Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     Node *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);

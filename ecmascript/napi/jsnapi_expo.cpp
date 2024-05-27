@@ -94,6 +94,7 @@
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/framework_helper.h"
+#include "ecmascript/ohos/aot_runtime_info.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -201,7 +202,6 @@ using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
 using FrameIterator = ecmascript::FrameIterator;
 using Concurrent = ecmascript::Concurrent;
 using CrashInfo = ecmascript::ohos::AotCrashInfo;
-using CrashType = ecmascript::ohos::CrashType;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
@@ -2052,8 +2052,11 @@ Local<ObjectRef> ObjectRef::CreateNativeModuleError(const EcmaVM *vm, const std:
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    JSHandle<NativeModuleError> nativeModuleError = NativeModuleError::CreateNativeModuleError(vm, errorMsg);
-    return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(nativeModuleError));
+    if (const_cast<EcmaVM*>(vm)->GetJSOptions().EnableNativeModuleError()) {
+        JSHandle<NativeModuleError> nativeModuleError = NativeModuleError::CreateNativeModuleError(vm, errorMsg);
+        return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(nativeModuleError));
+    }
+    return JSValueRef::Undefined(vm);
 }
 
 Local<ObjectRef> ObjectRef::CreateAccessorData(const EcmaVM *vm,
@@ -3233,16 +3236,6 @@ Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length)
     return JSNApiHelper::ToLocal<ArrayRef>(array);
 }
 
-Local<ArrayRef> ArrayRef::NewSendable(const EcmaVM *vm, uint32_t length)
-{
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    JSTaggedNumber arrayLen(length);
-    JSHandle<JSTaggedValue> array = ecmascript::JSSharedArray::ArrayCreate(thread, arrayLen);
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
-    return JSNApiHelper::ToLocal<ArrayRef>(array);
-}
-
 uint32_t ArrayRef::Length([[maybe_unused]] const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
@@ -3857,6 +3850,11 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
         LOG_ECMA(ERROR) << "[StartDebugger] vm is nullptr";
         return false;
     }
+
+    if (option.port < 0) {
+        LOG_ECMA(ERROR) << "[StartDebugger] option.port is -1" ;
+        return false;
+    }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (handler.IsValid()) {
@@ -4310,51 +4308,26 @@ bool JSNApi::KeyIsNumber(const char* utf8)
     return true;
 }
 
-std::map<CrashType, int> CollectCrashSum()
-{
-    std::map<CrashType, int> escapeMap;
-    std::string realOutPath;
-    std::string arkProfilePath = CrashInfo::GetSandBoxPath();
-    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(arkProfilePath);
-    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
-        return escapeMap;
-    }
-    realOutPath = realOutPath + "/" + CrashInfo::GetCrashFileName();
-    CrashInfo aotCrashInfo;
-    std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
-    std::ifstream ifile(realOutPath.c_str());
-    if (ifile.is_open()) {
-        std::string iline;
-        while (ifile >> iline) {
-            std::string buildId = CrashInfo::GetBuildId(iline);
-            CrashType type = CrashInfo::GetCrashType(iline);
-            if (buildId == soBuildId) {
-                escapeMap[type]++;
-            }
-        }
-        ifile.close();
-    }
-    return escapeMap;
-}
-
-bool JSNApi::IsAotEscape()
+bool JSNApi::IsAotEscape(const std::string &pgoRealPath)
 {
     if (CrashInfo::GetAotEscapeDisable()) {
         return false;
     }
-    auto escapeMap = CollectCrashSum();
-    return escapeMap[CrashType::AOT] >= CrashInfo::GetAotCrashCount() ||
-        escapeMap[CrashType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
-        escapeMap[CrashType::JS] >= CrashInfo::GetJsCrashCount();
+    ecmascript::ohos::AotRuntimeInfo aotRuntimeInfo;
+    auto escapeMap = aotRuntimeInfo.CollectCrashSum(pgoRealPath);
+    return escapeMap[ecmascript::ohos::RuntimeInfoType::AOT] >= CrashInfo::GetAotCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::JS] >= CrashInfo::GetJsCrashCount();
 }
 
 bool JSNApi::IsJitEscape()
 {
-    auto escapeMap = CollectCrashSum();
-    return escapeMap[CrashType::JIT] >= CrashInfo::GetJitCrashCount() ||
-        escapeMap[CrashType::AOT] >= CrashInfo::GetAotCrashCount() ||
-        escapeMap[CrashType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
-        escapeMap[CrashType::JS] >= CrashInfo::GetJsCrashCount();
+    ecmascript::ohos::AotRuntimeInfo aotRuntimeInfo;
+    auto escapeMap = aotRuntimeInfo.CollectCrashSum();
+    return escapeMap[ecmascript::ohos::RuntimeInfoType::JIT] >= CrashInfo::GetJitCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::AOT] >= CrashInfo::GetAotCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
+        escapeMap[ecmascript::ohos::RuntimeInfoType::JS] >= CrashInfo::GetJsCrashCount();
 }
 
 bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)
@@ -4370,6 +4343,27 @@ bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)
         return jsDebuggerManager->IsDebugApp() && jsDebuggerManager->IsSerializationTimeoutCheckEnabled();
     }
     return false;
+}
+
+void JSNApi::GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_clock::time_point &start,
+                                          std::chrono::system_clock::time_point &end, bool isSerialization)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope scope(thread);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    auto threshold = std::chrono::duration_cast<std::chrono::milliseconds>
+            (std::chrono::milliseconds(vm->GetJsDebuggerManager()->GetSerializationCheckThreshold())).count();
+    LOG_ECMA(DEBUG) << "JSNAPI::" << (isSerialization ? "SerializeValue" : "DeserializeValue") << " tid: "
+        << thread->GetThreadId() << " threshold: " << threshold << " duration: " << duration;
+    if (duration >= threshold) {
+        std::stringstream tagMsg;
+        auto startTimeMS = std::chrono::time_point_cast<std::chrono::milliseconds>(start);
+        tagMsg << (isSerialization ? "SerializationTimeout::tid=" : "DeserializationTimeout::tid=");
+        tagMsg << thread->GetThreadId();
+        tagMsg << (isSerialization ? ";task=serialization;startTime=" : ";task=deserialization;startTime=");
+        tagMsg << startTimeMS.time_since_epoch().count() << ";duration=" << duration;
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, tagMsg.str());
+    }
 }
 
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
@@ -4778,17 +4772,7 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
     }
     if (serializationTimeoutCheckEnabled) {
         endTime = std::chrono::system_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        auto threshold = std::chrono::duration_cast<std::chrono::milliseconds>
-            (std::chrono::milliseconds(vm->GetJsDebuggerManager()->GetSerializationCheckThreshold())).count();
-        LOG_ECMA(DEBUG) << "JSNAPI::SerializeValue tid: " << thread->GetThreadId()
-            << " threshold: " << threshold << " duration: " << duration;
-        if (duration >= threshold) {
-            std::stringstream tagMsg;
-            tagMsg << "SerializationTimeout::tid=" << thread->GetThreadId();
-            tagMsg << ";task=serialization;duration=" << duration;
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, tagMsg.str());
-        }
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, true);
     }
     if (data == nullptr) {
         return nullptr;
@@ -4825,17 +4809,7 @@ Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void
     JSHandle<JSTaggedValue> result = deserializer.ReadValue();
     if (serializationTimeoutCheckEnabled) {
         endTime = std::chrono::system_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        auto threshold = std::chrono::duration_cast<std::chrono::milliseconds>
-            (std::chrono::milliseconds(vm->GetJsDebuggerManager()->GetSerializationCheckThreshold())).count();
-        LOG_ECMA(DEBUG) << "JSNAPI::DeserializeValue tid: " << thread->GetThreadId()
-            << " threshold: " << threshold << " duration: " << duration;
-        if (duration >= threshold) {
-            std::stringstream tagMsg;
-            tagMsg << "DeserializationTimeout::tid=" << thread->GetThreadId();
-            tagMsg << ";task=deserialization;duration=" << duration;
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, tagMsg.str());
-        }
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, false);
     }
     return JSNApiHelper::ToLocal<ObjectRef>(result);
 #else

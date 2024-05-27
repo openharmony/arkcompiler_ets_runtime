@@ -42,6 +42,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
         case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
@@ -122,6 +124,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::TYPEOF_IMM16:
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
         case EcmaOpcode::JEQZ_IMM8:
         case EcmaOpcode::JEQZ_IMM16:
         case EcmaOpcode::JEQZ_IMM32:
@@ -231,6 +235,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
         case EcmaOpcode::INC_IMM8:
         case EcmaOpcode::DEC_IMM8:
         case EcmaOpcode::NEG_IMM8:
@@ -262,6 +268,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
         case EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8:
         case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8:
         case EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
@@ -455,6 +462,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8:
         case EcmaOpcode::LDBIGINT_ID16:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8:
         case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8:
         case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
@@ -502,6 +510,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
             kind = BytecodeKind::ACCESSOR_BC;
             break;
         default:
@@ -1726,6 +1735,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8: {
             uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
@@ -1825,6 +1835,8 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
         case EcmaOpcode::NOP:
         case EcmaOpcode::GETITERATOR_IMM8:
         case EcmaOpcode::GETITERATOR_IMM16:

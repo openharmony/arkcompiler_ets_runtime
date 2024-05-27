@@ -64,15 +64,15 @@ void OptimizedFastCall::OptimizedFastCallEntry(ExtendedAssembler *assembler)
 }
 
 
-// * uint64_t OptimizedFastCallAndPushUndefined(uintptr_t glue, uint32_t expectedNumArgs, uint32_t actualNumArgs,
+// * uint64_t OptimizedFastCallAndPushArgv(uintptr_t glue, uint32_t expectedNumArgs, uint32_t actualNumArgs,
 //                                   uintptr_t codeAddr, uintptr_t argv)
 // * Arguments wil CC calling convention:
 //         %rdi - glue
 //         %rsi - actualNumArgs
-//         %rdx - func
-//         %rcx - new target
-//         %r8  - this
-//         %r9  - arg0
+//         %rdx - actualArgv
+//         %rcx - func
+//         %r8  - new target
+//         %r9  - this
 // * The OptimizedJSFunctionArgsConfig Frame's structure is illustrated as the following:
 //          +--------------------------+
 //          |         arg[N-1]         |
@@ -89,16 +89,17 @@ void OptimizedFastCall::OptimizedFastCallEntry(ExtendedAssembler *assembler)
 //          |       frameType          |                 |
 //          |                          |                 V
 //          +--------------------------+ -----------------
-void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *assembler)
+void OptimizedFastCall::OptimizedFastCallAndPushArgv(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
+    __ BindAssemblerStub(RTSTUB_ID(OptimizedFastCallAndPushArgv));
     Register actualNumArgsReg = rsi;
-    Register jsFuncReg = rdx;
-    Register thisObj = r8;
-    Register arg0 = r9;
+    Register jsFuncReg = rcx;
+    Register thisObj = r9;
     Label lCopyExtraAument1;
     Label lCopyExtraUndefineToSp;
     Label lCopyLoop1;
+    Label lCopyLoop2;
+    Label pushUndefined;
     Label call;
     Label arg4;
     Label argc;
@@ -106,10 +107,9 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
     JsFunctionArgsConfigFrameScope scope(assembler); // push frametype and callee save
     __ Movq(actualNumArgsReg, r13);
     actualNumArgsReg = r13;
-    __ Movq(rdx, rsi); // func move to argc
+    __ Movq(rcx, rsi); // func move to argc
     jsFuncReg = rsi;
-    __ Movq(thisObj, rdx); // this move to func
-    arg0 = rcx;
+    __ Movq(thisObj, rdx); // this move to argv
     Register method = r14;
     Register methodCallField = rbx;
     Register codeAddrReg = rax;
@@ -135,7 +135,8 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
 
     __ Bind(&arg4);
     {
-        __ Movq(r9, rcx); // arg0 to rcx
+        __ Movq(Operand(argvReg, 0), rcx);
+        __ Addq(FRAME_SLOT_SIZE, argvReg);
         __ Cmp(Immediate(4), actualNumArgsReg); // 4: func new this arg0
         __ Jne(&arg5);
         __ Movq(JSTaggedValue::VALUE_UNDEFINED, r8);
@@ -167,6 +168,23 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
 
     __ Bind(&argc); // actualNumArgsReg >=7
     {
+        __ Cmpq(expectedNumArgsReg, actualNumArgsReg);
+        __ Jb(&pushUndefined);
+        // 16 bytes align check
+        __ Subq(6, actualNumArgsReg); // 6: skip above 6 args
+        __ Subq(6, expectedNumArgsReg); // 6: skip above 6 args
+        __ Testb(1, actualNumArgsReg);
+        __ Je(&lCopyLoop2);
+        __ Pushq(0);
+        __ Bind(&lCopyLoop2);
+        __ Movq(Operand(argvReg, actualNumArgsReg, Scale::Times8, -FRAME_SLOT_SIZE), r14); // -8: stack index
+        __ Pushq(r14);
+        __ Subq(1, actualNumArgsReg);
+        __ Jne(&lCopyLoop2);
+        __ Jmp(&call);
+
+        __ Bind(&pushUndefined);
+        // 16 bytes align check
         __ Subq(6, actualNumArgsReg); // 6: skip above 6 args
         __ Subq(6, expectedNumArgsReg); // 6: skip above 6 args
         __ Testb(1, expectedNumArgsReg);
@@ -178,17 +196,18 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
         __ Cmpq(actualNumArgsReg, expectedNumArgsReg);
         __ Ja(&lCopyExtraAument1);
         __ Bind(&lCopyLoop1);
-        __ Movq(Operand(argvReg, expectedNumArgsReg, Scale::Times8, -FRAME_SLOT_SIZE), r13); // -8: stack index
-        __ Pushq(r13);
+        __ Movq(Operand(argvReg, expectedNumArgsReg, Scale::Times8, -FRAME_SLOT_SIZE), r14); // -8: stack index
+        __ Pushq(r14);
         __ Subq(1, expectedNumArgsReg);
         __ Jne(&lCopyLoop1);
         __ Jmp(&call);
     }
 
-    __ Bind(&checkExpectedArgs);
+    __ Bind(&checkExpectedArgs); // actualNumArgsReg < 7
     {
         __ Cmp(Immediate(3), expectedNumArgsReg); // 3: expectedNumArgsReg <= 3 jump
         __ Jbe(&call);
+        // expectedNumArgsReg > 6, expectedNumArgsReg > actual;NumArgsReg
         __ Subq(3, expectedNumArgsReg); // 3 : skpi func new this
         __ Testb(1, expectedNumArgsReg);
         __ Je(&lCopyExtraUndefineToSp);
@@ -275,15 +294,17 @@ void OptimizedFastCall::JSFastCallWithArgV(ExtendedAssembler *assembler)
 //        %r8 -  argv
 //        %r9 -  expectedNumArgs
 
-void OptimizedFastCall::JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *assembler)
+void OptimizedFastCall::JSFastCallWithArgVAndPushArgv(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(JSFastCallWithArgVAndPushUndefined));
+    __ BindAssemblerStub(RTSTUB_ID(JSFastCallWithArgVAndPushArgv));
     Register sp(rsp);
     Register callsiteSp = __ AvailableRegister2();
     Label call;
     Label lCopyExtraAument1;
     Label lCopyExtraUndefineToSp;
     Label lCopyLoop1;
+    Label lCopyLoop2;
+    Label pushUndefined;
     Label arg1;
     Label arg2;
     Label arg3;
@@ -340,6 +361,21 @@ void OptimizedFastCall::JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *as
 
     __ Bind(&argc); // actualNumArgsReg >=4
     {
+        __ Cmpq(expectedNumArgsReg, actualNumArgsReg);
+        __ Jb(&pushUndefined);
+        __ Subq(3, actualNumArgsReg); // 3: skip above 3 args
+        __ Subq(3, expectedNumArgsReg); // 3: skip above 3 args
+        __ Testb(1, actualNumArgsReg);
+        __ Je(&lCopyLoop2);
+        __ Pushq(0);
+        __ Bind(&lCopyLoop2);
+        __ Movq(Operand(argV, actualNumArgsReg, Scale::Times8, -FRAME_SLOT_SIZE), r13); // -8: stack index
+        __ Pushq(r13);
+        __ Subq(1, actualNumArgsReg);
+        __ Jne(&lCopyLoop2);
+        __ Jmp(&call);
+
+        __ Bind(&pushUndefined);
         __ Subq(3, actualNumArgsReg); // 3: skip above 3 args
         __ Subq(3, expectedNumArgsReg); // 3: skip above 3 args
         __ Testb(1, expectedNumArgsReg);

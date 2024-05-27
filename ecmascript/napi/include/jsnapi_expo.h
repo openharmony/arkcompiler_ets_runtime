@@ -1020,7 +1020,6 @@ public:
 class ECMA_PUBLIC_API ArrayRef : public ObjectRef {
 public:
     static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
-    static Local<ArrayRef> NewSendable(const EcmaVM *vm, uint32_t length = 0);
     uint32_t Length(const EcmaVM *vm);
     static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
@@ -1546,7 +1545,7 @@ public:
     static bool KeyIsNumber(const char* utf8);
 
     static bool IsJitEscape();
-    static bool IsAotEscape();
+    static bool IsAotEscape(const std::string &pgoRealPath = "");
 private:
     static int vmCount_;
     static bool initialize_;
@@ -1563,6 +1562,8 @@ private:
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
     static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
+    static void GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_clock::time_point &start,
+                                     std::chrono::system_clock::time_point &end, bool isSerialization);
     template<typename T>
     friend class Global;
     template<typename T>

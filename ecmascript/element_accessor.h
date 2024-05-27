@@ -27,11 +27,15 @@ class ElementAccessor {
 public:
     static JSTaggedValue PUBLIC_API Get(JSHandle<JSObject> receiver, uint32_t idx);
     static JSTaggedValue Get(JSObject *receiver, uint32_t idx);
+    static JSTaggedValue PUBLIC_API FastGet(JSHandle<TaggedArray> elements, uint32_t idx, ElementsKind kind);
 
     template<typename T>
     static void Set(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx, const JSHandle<T> &value,
                     bool needTransition, ElementsKind extraKind = ElementsKind::NONE);
 
+    template<typename T>
+    static void FastSet(const JSThread *thread, JSHandle<TaggedArray> elements, uint32_t idx,
+                        const JSHandle<T> &value, ElementsKind kind);
     static bool IsDictionaryMode(JSHandle<JSObject> receiver);
     static bool IsDictionaryMode(JSObject *receiver);
 

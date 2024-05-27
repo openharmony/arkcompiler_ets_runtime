@@ -31,7 +31,7 @@ class ECMAObject;
 class GeneratorContext;
 
 using EcmaOpcode = BytecodeInstruction::Opcode;
-const uint8_t EXCEPTION_OPCODE = static_cast<uint8_t>(EcmaOpcode::NOP) + 7;
+const uint8_t EXCEPTION_OPCODE = static_cast<uint8_t>(EcmaOpcode::NOP) + 8;
 
 class EcmaInterpreter {
 public:
@@ -49,7 +49,7 @@ public:
         JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
         JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack = true);
     static EcmaRuntimeCallInfo* ReBuildRuntimeCallInfo(
-        JSThread *thread, EcmaRuntimeCallInfo* info, uint32_t numArgs, bool needCheckStack = true);
+        JSThread *thread, EcmaRuntimeCallInfo* info, int numArgs, bool needCheckStack = true);
     static JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
 #ifndef EXCLUDE_C_INTERPRETER

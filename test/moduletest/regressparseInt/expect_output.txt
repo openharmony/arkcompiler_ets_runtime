@@ -12,3 +12,6 @@
 # limitations under the License.
 
 true
+true
+true
+InvalidString

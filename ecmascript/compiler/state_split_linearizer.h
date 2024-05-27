@@ -19,19 +19,19 @@
 #include <numeric>
 
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/mcr_lowering.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/mem/chunk_containers.h"
-
 namespace panda::ecmascript::kungfu {
 class StateSplitLinearizer {
 public:
-    StateSplitLinearizer(Circuit *circuit, RPOVisitor *visitor, CompilationConfig *cmpCfg,
+    StateSplitLinearizer(CompilationEnv* env, Circuit *circuit, RPOVisitor *visitor, CompilationConfig *cmpCfg,
                          bool enableLog, const std::string& name, Chunk* chunk)
         : enableLog_(enableLog), methodName_(name), circuit_(circuit),
         graphLinearizer_(circuit, enableLog, name, chunk, false, true),
-        lcrLowering_(circuit, visitor, cmpCfg, chunk) {}
+        lcrLowering_(env, circuit, visitor, cmpCfg, chunk) {}
 
     void Run();
 private:

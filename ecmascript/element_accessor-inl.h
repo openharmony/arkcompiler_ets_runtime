@@ -55,5 +55,41 @@ inline void ElementAccessor::Set(const JSThread *thread, JSHandle<JSObject> rece
         Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset, convertedValue);
     }
 }
+
+template<typename T>
+void ElementAccessor::FastSet(const JSThread *thread, JSHandle<TaggedArray> elements, uint32_t idx,
+                              const JSHandle<T> &value, ElementsKind kind)
+{
+    ASSERT(idx < elements->GetLength());
+    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+    JSTaggedValue rawValue = value.GetTaggedValue();
+    switch (kind) {
+        case ElementsKind::INT:
+            Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset,
+                                                 static_cast<JSTaggedType>(rawValue.GetInt()));
+            break;
+        case ElementsKind::NUMBER:
+            if (rawValue.IsInt()) {
+                int intValue = rawValue.GetInt();
+                Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset,
+                                                     base::bit_cast<JSTaggedType>(static_cast<double>(intValue)));
+            } else {
+                Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset,
+                                                     base::bit_cast<JSTaggedType>(rawValue.GetDouble()));
+            }
+            break;
+        case ElementsKind::TAGGED:
+            if (value.GetTaggedValue().IsHeapObject()) {
+                Barriers::SetObject<true>(thread, elements->GetData(), offset, rawValue.GetRawData());
+            } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
+                Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset, rawValue.GetRawData());
+            }
+            break;
+        default:
+            LOG_ECMA(FATAL) << "Trying to Convert TaggedValue With Unknown ElementsKind";
+            UNREACHABLE();
+            break;
+    }
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_ELEMENT_ACCESSOR_INL_H

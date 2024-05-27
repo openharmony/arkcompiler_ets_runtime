@@ -520,6 +520,27 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     return reinterpret_cast<JSTaggedType>(frameWriter.GetTop());
 }
 
+void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *method)
+{
+    if (func->GetMachineCode().IsMachineCodeObject()) {
+        Jit::GetInstance()->GetJitDfx()->SetJitDeoptCount();
+        // reset jit hotness cnt
+        JSTaggedValue profileTypeInfoVal = func->GetProfileTypeInfo();
+        if (!profileTypeInfoVal.IsUndefined()) {
+            ProfileTypeInfo *profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
+            profileTypeInfo->SetJitHotnessCnt(0);
+        }
+    }
+    if (method->IsAotWithCallField()) {
+        bool isFastCall = method->IsFastCall();  // get this flag before clear it
+        uintptr_t entry =
+            isFastCall ? thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
+                       : thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
+        func->SetCodeEntry(entry);
+    }  // Do not change the func code entry if the method is not aot or deopt has happened already
+    method->ClearAOTStatusWhenDeopt();
+}
+
 void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
 {
     // depth records the number of layers of nested calls when deopt occurs
@@ -543,11 +564,7 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptType(type);
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
-            method->ClearAOTStatusWhenDeopt();
-            if (func->GetMachineCode().IsMachineCodeObject()) {
-                Jit::GetInstance()->GetJitDfx()->SetJitDeoptCount();
-            }
-            func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
+            ClearCompiledCodeStatusWhenDeopt(func, method);
         }
     }
 }

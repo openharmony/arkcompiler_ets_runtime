@@ -52,7 +52,6 @@ print(len); //: 11013.232920103324
 
 // Replace standart builtin
 let true_cosh = Math.cosh
-//aot: [trace] Check Type: NotJSCallTarget4
 Math.cosh = replace
 len = Math.cosh(111); //: 111
 print(len);
@@ -60,5 +59,6 @@ print(len);
 // Call standart builtin with non-number 
 Math.cosh = true_cosh
 // deopt
-len = Math.cosh("NaN");
+//aot: [trace] aot inline builtin: Math.cosh, caller function name:func_main_0@builtinMathCosh
+len = Math.cosh("NaN"); //aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

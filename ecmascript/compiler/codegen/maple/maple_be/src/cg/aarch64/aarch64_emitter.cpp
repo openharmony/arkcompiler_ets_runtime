@@ -57,151 +57,6 @@ void AArch64AsmEmitter::EmitFastLSDA(FuncEmitInfo &funcEmitInfo)
     idx = nullptr;
 }
 
-/* the normal gcc_except_table */
-void AArch64AsmEmitter::EmitFullLSDA(FuncEmitInfo &funcEmitInfo)
-{
-    CGFunc &cgFunc = funcEmitInfo.GetCGFunc();
-    AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
-    CG *currCG = cgFunc.GetCG();
-    EHFunc *ehFunc = cgFunc.GetEHFunc();
-    Emitter *emitter = currCG->GetEmitter();
-    /* emit header */
-    emitter->Emit("\t.align 3\n");
-    emitter->Emit("\t.section .gcc_except_table,\"a\",@progbits\n");
-    emitter->Emit("\t.align 3\n");
-    /* emit LSDA header */
-    LSDAHeader *lsdaHeader = ehFunc->GetLSDAHeader();
-    emitter->EmitStmtLabel(lsdaHeader->GetLSDALabel()->GetLabelIdx());
-    emitter->Emit("\t.byte ").Emit(lsdaHeader->GetLPStartEncoding()).Emit("\n");
-    emitter->Emit("\t.byte ").Emit(lsdaHeader->GetTTypeEncoding()).Emit("\n");
-    emitter->Emit("\t.uleb128 ");
-    emitter->EmitLabelPair(lsdaHeader->GetTTypeOffset());
-    emitter->EmitStmtLabel(lsdaHeader->GetTTypeOffset().GetStartOffset()->GetLabelIdx());
-    /* emit call site table */
-    emitter->Emit("\t.byte ").Emit(lsdaHeader->GetCallSiteEncoding()).Emit("\n");
-    /* callsite table size */
-    emitter->Emit("\t.uleb128 ");
-    emitter->EmitLabelPair(ehFunc->GetLSDACallSiteTable()->GetCSTable());
-    /* callsite start */
-    emitter->EmitStmtLabel(ehFunc->GetLSDACallSiteTable()->GetCSTable().GetStartOffset()->GetLabelIdx());
-    ehFunc->GetLSDACallSiteTable()->SortCallSiteTable([&aarchCGFunc](const LSDACallSite *a, const LSDACallSite *b) {
-        CHECK_FATAL(a != nullptr, "nullptr check");
-        CHECK_FATAL(b != nullptr, "nullptr check");
-        LabelIDOrder id1 = aarchCGFunc.GetLabelOperand(a->csStart.GetEndOffset()->GetLabelIdx())->GetLabelOrder();
-        LabelIDOrder id2 = aarchCGFunc.GetLabelOperand(b->csStart.GetEndOffset()->GetLabelIdx())->GetLabelOrder();
-        /* id1 and id2 should not be default value -1u */
-        CHECK_FATAL(id1 != 0xFFFFFFFF, "illegal label order assigned");
-        CHECK_FATAL(id2 != 0xFFFFFFFF, "illegal label order assigned");
-        return id1 < id2;
-    });
-    const MapleVector<LSDACallSite *> &callSiteTable = ehFunc->GetLSDACallSiteTable()->GetCallSiteTable();
-    for (size_t i = 0; i < callSiteTable.size(); ++i) {
-        LSDACallSite *lsdaCallSite = callSiteTable[i];
-        emitter->Emit("\t.uleb128 ");
-        emitter->EmitLabelPair(lsdaCallSite->csStart);
-
-        emitter->Emit("\t.uleb128 ");
-        emitter->EmitLabelPair(lsdaCallSite->csLength);
-
-        if (lsdaCallSite->csLandingPad.GetStartOffset()) {
-            emitter->Emit("\t.uleb128 ");
-            emitter->EmitLabelPair(lsdaCallSite->csLandingPad);
-        } else {
-            DEBUG_ASSERT(lsdaCallSite->csAction == 0, "csAction error!");
-            emitter->Emit("\t.uleb128 ");
-            if (aarchCGFunc.NeedCleanup()) {
-                /* if landing pad is 0, we emit this call site as cleanup code */
-                LabelPair cleaupCode;
-                cleaupCode.SetStartOffset(cgFunc.GetStartLabel());
-                cleaupCode.SetEndOffset(cgFunc.GetCleanupLabel());
-                emitter->EmitLabelPair(cleaupCode);
-            } else {
-                emitter->Emit("0\n");
-            }
-        }
-        emitter->Emit("\t.uleb128 ").Emit(lsdaCallSite->csAction).Emit("\n");
-    }
-
-    /*
-     * quick hack: insert a call site entry for the whole function body.
-     * this will hand in any pending (uncaught) exception to its caller. Note that
-     * __gxx_personality_v0 in libstdc++ is coded so that if exception table exists,
-     * the call site table must have an entry for any possibly raised exception,
-     * otherwise __cxa_call_terminate will be invoked immediately, thus the caller
-     * does not get the chance to take charge.
-     */
-    if (aarchCGFunc.NeedCleanup()) {
-        /* call site for clean-up */
-        LabelPair funcStart;
-        funcStart.SetStartOffset(cgFunc.GetStartLabel());
-        funcStart.SetEndOffset(cgFunc.GetStartLabel());
-        emitter->Emit("\t.uleb128 ");
-        emitter->EmitLabelPair(funcStart);
-        LabelPair funcLength;
-        funcLength.SetStartOffset(cgFunc.GetStartLabel());
-        funcLength.SetEndOffset(cgFunc.GetCleanupLabel());
-        emitter->Emit("\t.uleb128 ");
-        emitter->EmitLabelPair(funcLength);
-        LabelPair cleaupCode;
-        cleaupCode.SetStartOffset(cgFunc.GetStartLabel());
-        cleaupCode.SetEndOffset(cgFunc.GetCleanupLabel());
-        emitter->Emit("\t.uleb128 ");
-        if (aarchCGFunc.NeedCleanup()) {
-            emitter->EmitLabelPair(cleaupCode);
-        } else {
-            DEBUG_ASSERT(!cgFunc.GetExitBBsVec().empty(), "exitbbsvec is empty in AArch64AsmEmitter::EmitFullLSDA");
-            PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
-            char *idx = strdup(std::to_string(pIdx).c_str());
-            CHECK_FATAL(idx != nullptr, "strdup failed");
-            (void)emitter->Emit(".L.").Emit(idx).Emit("__").Emit(cgFunc.GetExitBB(0)->GetLabIdx());
-            (void)emitter->Emit(" - .L.").Emit(idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
-            free(idx);
-            idx = nullptr;
-        }
-        emitter->Emit("\t.uleb128 0\n");
-        /* call site for stack unwind */
-        LabelPair unwindStart;
-        unwindStart.SetStartOffset(cgFunc.GetStartLabel());
-        unwindStart.SetEndOffset(cgFunc.GetCleanupLabel());
-        emitter->Emit("\t.uleb128 ");
-        emitter->EmitLabelPair(unwindStart);
-        LabelPair unwindLength;
-        unwindLength.SetStartOffset(cgFunc.GetCleanupLabel());
-        unwindLength.SetEndOffset(cgFunc.GetEndLabel());
-        emitter->Emit("\t.uleb128 ");
-        emitter->EmitLabelPair(unwindLength);
-        emitter->Emit("\t.uleb128 0\n");
-        emitter->Emit("\t.uleb128 0\n");
-    }
-    /* callsite end label */
-    emitter->EmitStmtLabel(ehFunc->GetLSDACallSiteTable()->GetCSTable().GetEndOffset()->GetLabelIdx());
-    /* tt */
-    const LSDAActionTable *lsdaActionTable = ehFunc->GetLSDAActionTable();
-    for (size_t i = 0; i < lsdaActionTable->Size(); ++i) {
-        LSDAAction *lsdaAction = lsdaActionTable->GetActionTable().at(i);
-        emitter->Emit("\t.byte ").Emit(lsdaAction->GetActionIndex()).Emit("\n");
-        emitter->Emit("\t.byte ").Emit(lsdaAction->GetActionFilter()).Emit("\n");
-    }
-    emitter->Emit("\t.align 3\n");
-    for (int32 i = ehFunc->GetEHTyTableSize() - 1; i >= 0; i--) {
-        MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ehFunc->GetEHTyTableMember(i));
-        MIRTypeKind typeKind = mirType->GetKind();
-        if (((typeKind == kTypeScalar) && (mirType->GetPrimType() == PTY_void)) ||
-            (typeKind == kTypeStructIncomplete) || (typeKind == kTypeInterfaceIncomplete)) {
-            continue;
-        }
-        CHECK_FATAL((typeKind == kTypeClass) || (typeKind == kTypeClassIncomplete), "NYI");
-        const std::string &tyName = GlobalTables::GetStrTable().GetStringFromStrIdx(mirType->GetNameStrIdx());
-        std::string dwRefString(".LDW.ref.");
-        dwRefString += CLASSINFO_PREFIX_STR;
-        dwRefString += tyName;
-        dwRefString += " - .";
-        emitter->Emit("\t.4byte " + dwRefString + "\n");
-    }
-    /* end of lsda */
-    emitter->EmitStmtLabel(lsdaHeader->GetTTypeOffset().GetEndOffset()->GetLabelIdx());
-}
-
 void AArch64AsmEmitter::EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std::string &name, LabelIdx labIdx)
 {
     (void)name;
@@ -447,8 +302,6 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
         (void)emitter.Emit("\t.xword\t" + funcStName + "\n");
     }
 
-    EHFunc *ehFunc = cgFunc.GetEHFunc();
-
     EmitFunctionSymbolTable(funcEmitInfo);
 
     for (auto &it : cgFunc.GetEmitStVec()) {
@@ -480,10 +333,6 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
         (void)emitter.Emit(":\n");
         (void)emitter.Emit("\t.quad ").Emit(static_cast<int64>(mpPair.second)).Emit("\n");
     }
-
-    if (ehFunc != nullptr && ehFunc->NeedFullLSDA()) {
-        EmitFullLSDA(funcEmitInfo);
-    }
 }
 
 void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) const
@@ -497,10 +346,6 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
     }
 
     switch (mOp) {
-        case MOP_clinit: {
-            EmitClinit(emitter, insn);
-            return;
-        }
         case MOP_adrp_ldr: {
             EmitAdrpLdr(emitter, insn);
             if (CGOptions::IsLazyBinding() && !GetCG()->IsLibcore()) {
@@ -682,73 +527,6 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
     }
 
     (void)emitter.Emit("\n");
-}
-
-void AArch64AsmEmitter::EmitClinit(Emitter &emitter, const Insn &insn) const
-{
-    const InsnDesc *md = &AArch64CG::kMd[MOP_clinit];
-
-    Operand *opnd0 = &insn.GetOperand(kInsnFirstOpnd);
-    Operand *opnd1 = &insn.GetOperand(kInsnSecondOpnd);
-    const OpndDesc *prop0 = md->opndMD[0];
-    A64OpndEmitVisitor visitor(emitter, prop0);
-    auto *stImmOpnd = static_cast<StImmOperand *>(opnd1);
-    CHECK_FATAL(stImmOpnd != nullptr, "stImmOpnd is null in AArch64Emitter::EmitClinit");
-    /* emit nop for breakpoint */
-    if (GetCG()->GetCGOptions().WithDwarf()) {
-        (void)emitter.Emit("\t").Emit("nop").Emit("\n");
-    }
-
-    if (stImmOpnd->GetSymbol()->IsMuidDataUndefTab()) {
-        /* emit adrp */
-        (void)emitter.Emit("\t").Emit("adrp").Emit("\t");
-        opnd0->Accept(visitor);
-        (void)emitter.Emit(",");
-        (void)emitter.Emit(stImmOpnd->GetName());
-        (void)emitter.Emit("+").Emit(stImmOpnd->GetOffset());
-        (void)emitter.Emit("\n");
-        /* emit ldr */
-        (void)emitter.Emit("\t").Emit("ldr").Emit("\t");
-        opnd0->Accept(visitor);
-        (void)emitter.Emit(",");
-        (void)emitter.Emit("[");
-        opnd0->Accept(visitor);
-        (void)emitter.Emit(",");
-        (void)emitter.Emit("#");
-        (void)emitter.Emit(":lo12:").Emit(stImmOpnd->GetName());
-        (void)emitter.Emit("+").Emit(stImmOpnd->GetOffset());
-        (void)emitter.Emit("]");
-        (void)emitter.Emit("\n");
-    } else {
-        (void)emitter.Emit("\tadrp\t");
-        opnd0->Accept(visitor);
-        (void)emitter.Emit(",");
-        (void)emitter.Emit(namemangler::kPtrPrefixStr + stImmOpnd->GetName());
-        (void)emitter.Emit("\n");
-
-        (void)emitter.Emit("\tldr\t");
-        opnd0->Accept(visitor);
-        (void)emitter.Emit(", [");
-        opnd0->Accept(visitor);
-        (void)emitter.Emit(", #:lo12:");
-        (void)emitter.Emit(namemangler::kPtrPrefixStr + stImmOpnd->GetName());
-        (void)emitter.Emit("]\n");
-    }
-    /* emit "ldr  x0,[x0,#48]" */
-    (void)emitter.Emit("\t").Emit("ldr").Emit("\t");
-    opnd0->Accept(visitor);
-    (void)emitter.Emit(",");
-    (void)emitter.Emit("[");
-    opnd0->Accept(visitor);
-    (void)emitter.Emit(",#");
-    (void)emitter.Emit(static_cast<uint32>(ClassMetadata::OffsetOfInitState()));
-    (void)emitter.Emit("]");
-    (void)emitter.Emit("\n");
-
-    /* emit "ldr  xzr, [x0]" */
-    (void)emitter.Emit("\t").Emit("ldr\txzr, [");
-    opnd0->Accept(visitor);
-    (void)emitter.Emit("]\n");
 }
 
 static void AsmStringOutputRegNum(bool isInt, uint32 regno, uint32 intBase, uint32 fpBase, std::string &strToEmit)

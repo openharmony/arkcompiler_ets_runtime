@@ -73,9 +73,9 @@ print(Date.now({a:10, b:20})); //: __INT__
 //aot: [trace] aot inline builtin: Date.now, caller function name:func_main_0@builtinDateNow
 print(Date.now("abc")); //: __INT__
 
-//aot: [trace] aot inline builtin: Date.now, caller function name:doDateWithoutParam@builtinDateNow
+//aot: [trace] aot inline builtin: Date.now, caller function name:#*#doDateWithoutParam@builtinDateNow
 printDateNowWithoutParam(); //: __INT__
-//aot: [trace] aot inline builtin: Date.now, caller function name:doDateNowOneParam@builtinDateNow
+//aot: [trace] aot inline builtin: Date.now, caller function name:#*#doDateNowOneParam@builtinDateNow
 printDateNowOneParam(2); //: __INT__
 
 let true_now = Date.now;
@@ -138,13 +138,15 @@ Throwing.prototype.valueOf = function() {
 let throwingObj = new Throwing();
 
 try {
-    //aot: [trace] Check Type: InconsistentHClass6
+    //aot: [trace] aot inline builtin: Date.now, caller function name:func_main_0@builtinDateNow
     print(Date.now(throwingObj)); //: __INT__
     throwingObj.value = 10;
     // Value isn't use
+    //aot: [trace] aot inline builtin: Date.now, caller function name:func_main_0@builtinDateNow
     print(Date.now(throwingObj)); //: __INT__
 } catch(e) {
     print(e);
 } finally {
+    //aot: [trace] aot inline builtin: Date.now, caller function name:func_main_0@builtinDateNow
     print(Date.now(obj)); //: __INT__
 }

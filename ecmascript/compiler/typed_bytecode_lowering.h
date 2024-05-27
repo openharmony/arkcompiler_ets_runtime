@@ -215,6 +215,7 @@ private:
     bool TryLowerNewBuiltinConstructor(GateRef gate);
     bool TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate);
     bool CheckIsInOptBCIgnoreRange(int32_t index, EcmaOpcode ecmaOpcode);
+    bool IsTrueOrFalseHasProfileType(GateRef gate) const;
     int32_t GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode);
     void ParseOptBytecodeRange();
 

@@ -342,7 +342,7 @@ public:
     void DumpAOTInfo() const DUMP_API_ATTR;
 
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
-                             bool needPushUndefined);
+                             bool needPushArgv);
     void LoadStubFile();
 
     JSTaggedType *GetHandleScopeStorageNext() const

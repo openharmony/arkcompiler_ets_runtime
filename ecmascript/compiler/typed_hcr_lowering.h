@@ -114,9 +114,6 @@ public:
           dependEntry_(circuit->GetDependRoot()),
           enableLoweringBuiltin_(enableLoweringBuiltin)
     {
-        if (cmpCfg != nullptr) {
-            typedOpProfiling_ = cmpCfg->IsTypedOpProfiling();
-        }
     }
 
     ~TypedHCRLowering() = default;
@@ -211,6 +208,8 @@ private:
     void LowerArrayConstructor(GateRef gate, GateRef glue);
     void LowerObjectConstructorCheck(GateRef gate, GateRef glue);
     void LowerObjectConstructor(GateRef gate, GateRef glue);
+    void LowerBooleanConstructorCheck(GateRef gate, GateRef glue);
+    void LowerBooleanConstructor(GateRef gate, GateRef glue);
     GateRef NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value);
     void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
     void LowerOrdinaryHasInstance(GateRef gate, GateRef glue);
@@ -265,20 +264,12 @@ private:
     GateRef LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr);
     void StorePropertyOnHolder(GateRef holder, GateRef value, PropertyLookupResult plr, bool needBarrier);
 
-    void AddProfiling(GateRef gate);
-
-    bool IsTypedOpProfiling() const
-    {
-        return typedOpProfiling_;
-    }
-
     Circuit *circuit_;
     CompilationEnv *compilationEnv_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_;
     bool enableLoweringBuiltin_ {false};
-    bool typedOpProfiling_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPED_HCR_LOWERING_H

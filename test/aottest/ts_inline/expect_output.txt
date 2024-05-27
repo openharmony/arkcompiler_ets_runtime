@@ -11,12 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: foo@ts_inline caller function name: func_main_0@ts_inline
+[trace] aot inline function name: #*#foo@ts_inline caller function name: func_main_0@ts_inline
 3
-[trace] aot inline function name: foo@ts_inline caller function name: func_main_0@ts_inline
+[trace] aot inline function name: #*#foo@ts_inline caller function name: func_main_0@ts_inline
 0
-[trace] aot inline function name: bar@ts_inline caller function name: func_main_0@ts_inline
+[trace] aot inline function name: #*#bar@ts_inline caller function name: func_main_0@ts_inline
 56
 56
-[trace] aot inline function name: calculate@ts_inline caller function name: func_main_0@ts_inline
+[trace] aot inline function name: #*#calculate@ts_inline caller function name: func_main_0@ts_inline
 16
