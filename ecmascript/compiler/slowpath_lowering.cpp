@@ -1743,14 +1743,176 @@ void SlowPathLowering::LowerSuperCallArrow(GateRef gate)
 
 void SlowPathLowering::LowerSuperCallSpread(GateRef gate)
 {
-    const int id = RTSTUB_ID(OptSuperCallSpread);
-    // 2: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     GateRef func = acc_.GetValueIn(gate, 1);
     GateRef array = acc_.GetValueIn(gate, 0);
+    if (compilationEnv_ == nullptr || !compilationEnv_->IsJitCompiler()) {
+        LowerSuperCallSpreadSlowPath(gate, func, array);
+    } else {
+        LowerSuperCallSpreadFastPath(gate, func, array);
+    }
+}
+
+void SlowPathLowering::LowerSuperCallSpreadSlowPath(GateRef gate, GateRef func, GateRef array)
+{
+    const int id = RTSTUB_ID(OptSuperCallSpread);
+    GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     GateRef newGate = LowerCallRuntime(gate, id, { func, newTarget, array });
     ReplaceHirWithValue(gate, newGate);
+    return;
+}
+
+GateRef SlowPathLowering::IsSuperFuncValid(GateRef superFunc)
+{
+    return builder_.BoolAnd(builder_.BoolAnd(builder_.TaggedIsHeapObject(superFunc), builder_.IsJSFunction(superFunc)),
+                            builder_.IsConstructor(superFunc));
+}
+
+void SlowPathLowering::LowerSuperCallSpreadFastPath(GateRef gate, GateRef func, GateRef array)
+{
+    Environment env(gate, circuit_, &builder_);
+    NewObjectStubBuilder objBuilder(&env);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVALUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVALUE(newTarget, (&builder_), VariableType::JS_ANY(), argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET));
+    Label normalPath(&builder_);
+    Label slowPath(&builder_);
+    Label ctorIsConstructor(&builder_);
+    Label ctorIsBase(&builder_);
+    Label ctorNotBase(&builder_);
+    Label targetUndefined(&builder_);
+    Label callExit(&builder_);
+    Label replaceGate(&builder_);
+    GateRef superFunc = objBuilder.GetPrototype(glue_, func);
+    BRANCH_CIR(IsSuperFuncValid(superFunc), &ctorIsConstructor, &slowPath);
+    builder_.Bind(&ctorIsConstructor);
+    BRANCH_CIR(builder_.TaggedIsUndefined(*newTarget), &targetUndefined, &normalPath);
+    builder_.Bind(&targetUndefined);
+    {
+        newTarget = superFunc;
+        builder_.Jump(&normalPath);
+    }
+    builder_.Bind(&normalPath);
+    BRANCH_CIR(builder_.IsBase(superFunc), &ctorIsBase, &ctorNotBase);
+    builder_.Bind(&ctorIsBase);
+    {
+        thisObj = objBuilder.FastSuperAllocateThis(glue_, superFunc, *newTarget);
+        builder_.Jump(&ctorNotBase);
+    }
+    builder_.Bind(&ctorNotBase);
+    {
+        GenerateSuperCall({gate, superFunc, func, array, *newTarget, *thisObj}, &result, &callExit);
+        builder_.Bind(&callExit);
+        result = objBuilder.ConstructorCheck(glue_, superFunc, *result, *thisObj);
+        builder_.Jump(&replaceGate);
+    }
+    builder_.Bind(&slowPath);
+    {
+        result = LowerCallRuntime(gate, RTSTUB_ID(OptSuperCallSpread), { func, *newTarget, array });
+        builder_.Jump(&replaceGate);
+    }
+    builder_.Bind(&replaceGate);
+    ReplaceHirWithValue(gate, *result);
+}
+
+GateRef SlowPathLowering::IsAotOrFastCall(GateRef method, CircuitBuilder::JudgeMethodType type)
+{
+    return builder_.JudgeAotAndFastCallWithMethod(method, type);
+}
+
+void SlowPathLowering::GenerateSuperCall(const std::vector<GateRef> &args, Variable *result, Label *exit)
+{
+    Label fastCall(&builder_);
+    Label notFastCall(&builder_);
+    Label aotCall(&builder_);
+    Label notAotCall(&builder_);
+    
+    GateRef method = builder_.GetMethodFromFunction(args[1]);
+    GateRef expectedNum = builder_.GetExpectedNumOfArgs(method);
+    GateRef actualArgc = builder_.ZExtInt32ToInt64(
+        builder_.Load(VariableType::INT32(), args[3], builder_.IntPtr(JSArray::LENGTH_OFFSET)));
+    BRANCH_CIR(IsAotOrFastCall(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &fastCall, &notFastCall);
+    builder_.Bind(&fastCall);
+    {
+        Label notBridge(&builder_);
+        Label bridge(&builder_);
+        BRANCH_CIR(builder_.Int64LessThanOrEqual(expectedNum, actualArgc), &notBridge, &bridge);
+        builder_.Bind(&notBridge);
+        {
+            SuperCallSpreadWithArgV(args, RTSTUB_ID(JSFastCallWithArgV), actualArgc, expectedNum, result);
+            builder_.Jump(exit);
+        }
+        builder_.Bind(&bridge);
+        {
+            SuperCallSpreadWithArgV(args, RTSTUB_ID(JSFastCallWithArgVAndPushArgv), actualArgc, expectedNum, result);
+            builder_.Jump(exit);
+        }
+    }
+    builder_.Bind(&notFastCall);
+    BRANCH_CIR(IsAotOrFastCall(method, CircuitBuilder::JudgeMethodType::HAS_AOT), &aotCall, &notAotCall);
+    builder_.Bind(&aotCall);
+    {
+        Label notBridge(&builder_);
+        Label bridge(&builder_);
+        BRANCH_CIR(builder_.Int64LessThanOrEqual(expectedNum, actualArgc), &notBridge, &bridge);
+        builder_.Bind(&notBridge);
+        {
+            SuperCallSpreadWithArgV(args, RTSTUB_ID(JSCallWithArgV), actualArgc, expectedNum, result);
+            builder_.Jump(exit);
+        }
+        builder_.Bind(&bridge);
+        {
+            SuperCallSpreadWithArgV(args, RTSTUB_ID(JSCallWithArgVAndPushArgv), actualArgc, expectedNum, result);
+            builder_.Jump(exit);
+        }
+    }
+    builder_.Bind(&notAotCall);
+    {
+        SuperCallSpreadWithArgV(args, RTSTUB_ID(OptSuperCallSpread), actualArgc, expectedNum, result);
+        builder_.Jump(exit);
+    }
+}
+
+void SlowPathLowering::SuperCallSpreadWithArgV(const std::vector<GateRef> &args, GateRef id, GateRef actualArgc,
+                                               GateRef expectedNum, Variable *result)
+{
+    GateRef srcElements = LowerCallRuntime(args[0], RTSTUB_ID(GetCallSpreadArgs), {args[3]}, true);
+    GateRef elementsPtr = builder_.PtrAdd(srcElements, builder_.Int64(TaggedArray::DATA_OFFSET));
+    builder_.StartCallTimer(glue_, args[0], {glue_, args[1], builder_.True()}, true);
+    switch (id) {
+        case RTSTUB_ID(JSFastCallWithArgV): {
+            GateRef callResult = LowerCallNGCRuntime(args[0], RTSTUB_ID(JSFastCallWithArgV),
+                                                     {glue_, args[1], args[5], actualArgc, elementsPtr}, true);
+            result->WriteVariable(callResult);
+            break;
+        }
+        case RTSTUB_ID(JSFastCallWithArgVAndPushArgv): {
+            GateRef callResult = LowerCallNGCRuntime(args[0], RTSTUB_ID(JSFastCallWithArgVAndPushArgv),
+                                                     {glue_, args[1], args[5], actualArgc, elementsPtr, expectedNum},
+                                                     true);
+            result->WriteVariable(callResult);
+            break;
+        }
+        case RTSTUB_ID(JSCallWithArgV): {
+            GateRef callResult = LowerCallNGCRuntime(args[0], RTSTUB_ID(JSCallWithArgV),
+                                                     {glue_, actualArgc, args[1], args[4], args[5], elementsPtr}, true);
+            result->WriteVariable(callResult);
+            break;
+        }
+        case RTSTUB_ID(JSCallWithArgVAndPushArgv): {
+            GateRef callResult = LowerCallNGCRuntime(args[0], RTSTUB_ID(JSCallWithArgVAndPushArgv),
+                                                     {glue_, actualArgc, args[1], args[4], args[5], elementsPtr}, true);
+            result->WriteVariable(callResult);
+            break;
+        }
+        case RTSTUB_ID(OptSuperCallSpread): {
+            GateRef newTargetForRTCall = argAcc_.GetFrameArgsIn(args[0], FrameArgIdx::NEW_TARGET);
+            result->WriteVariable(
+                LowerCallRuntime(args[0], RTSTUB_ID(OptSuperCallSpread), { args[2], newTargetForRTCall, args[3] })
+            );
+            break;
+        }
+    }
+    builder_.EndCallTimer(glue_, args[0], {glue_, args[1]}, true);
 }
 
 void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, bool flag)
