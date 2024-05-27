@@ -2977,7 +2977,8 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
     {
         LocalScope scope(vm);
         ecmascript::tooling::JsDebuggerManager *dm = vm->GetJsDebuggerManager();
-        if (dm->IsDebugApp()) {
+        bool isDebugApp = dm->IsDebugApp();
+        if (isDebugApp) {
             dm->ClearSingleStepper();
         }
         JSTaggedValue func = *reinterpret_cast<JSTaggedValue *>(this);
@@ -3009,8 +3010,10 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
             result = JSFunction::Call(info);
         }
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Hole(vm));
-        thread->GetCurrentEcmaContext()->ClearKeptObjects();
-        if (dm->IsMixedDebugEnabled()) {
+        if (thread->GetCurrentEcmaContext()->HasKeptObjects()) {
+            thread->GetCurrentEcmaContext()->ClearKeptObjects();
+        }
+        if (isDebugApp && dm->IsMixedDebugEnabled()) {
             dm->NotifyReturnNative();
         }
     }

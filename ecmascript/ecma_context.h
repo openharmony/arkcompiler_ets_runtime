@@ -584,6 +584,10 @@ public:
     void RemoveSustainingJSHandle(SustainingJSHandle*);
     void ClearKeptObjects();
     void AddToKeptObjects(JSHandle<JSTaggedValue> value);
+    inline bool HasKeptObjects()
+    {
+        return hasKeptObjects_;
+    }
 private:
     void IterateJitMachineCodeCache(const RootVisitor &v);
     uint32_t GetJitMachineCodeHash(panda_file::File::EntityId id) const
@@ -718,6 +722,8 @@ private:
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
     static constexpr uint32_t JIT_MACHINE_CODE_CACHE_SIZE = 263;
     std::array<std::pair<JSTaggedType, JSTaggedType>, JIT_MACHINE_CODE_CACHE_SIZE> jitMachineCodeCache_ {};
+
+    bool hasKeptObjects_ = false;
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

@@ -1210,6 +1210,7 @@ void EcmaContext::ClearKeptObjects()
         return;
     }
     GetGlobalEnv()->SetWeakRefKeepObjects(thread_, JSTaggedValue::Undefined());
+    hasKeptObjects_ = false;
 }
 
 void EcmaContext::AddToKeptObjects(JSHandle<JSTaggedValue> value)
@@ -1224,5 +1225,6 @@ void EcmaContext::AddToKeptObjects(JSHandle<JSTaggedValue> value)
     }
     linkedSet = LinkedHashSet::Add(thread_, linkedSet, value);
     globalEnv->SetWeakRefKeepObjects(thread_, linkedSet);
+    hasKeptObjects_ = true;
 }
 }  // namespace panda::ecmascript

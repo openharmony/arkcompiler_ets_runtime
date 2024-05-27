@@ -629,21 +629,23 @@ size_t JSThread::GetBuiltinPrototypeHClassOffset(BuiltinTypeId type, bool isArch
 void JSThread::CheckSwitchDebuggerBCStub()
 {
     auto isDebug = GetEcmaVM()->GetJsDebuggerManager()->IsDebugMode();
-    if (isDebug &&
-        glueData_.bcDebuggerStubEntries_.Get(0) == glueData_.bcDebuggerStubEntries_.Get(1)) {
-        for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
-            auto stubEntry = glueData_.bcStubEntries_.Get(i);
-            auto debuggerStubEbtry = glueData_.bcDebuggerStubEntries_.Get(i);
-            glueData_.bcDebuggerStubEntries_.Set(i, stubEntry);
-            glueData_.bcStubEntries_.Set(i, debuggerStubEbtry);
+    if (LIKELY(!isDebug)) {
+        if (glueData_.bcStubEntries_.Get(0) == glueData_.bcStubEntries_.Get(1)) {
+            for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
+                auto stubEntry = glueData_.bcDebuggerStubEntries_.Get(i);
+                auto debuggerStubEbtry = glueData_.bcStubEntries_.Get(i);
+                glueData_.bcStubEntries_.Set(i, stubEntry);
+                glueData_.bcDebuggerStubEntries_.Set(i, debuggerStubEbtry);
+            }
         }
-    } else if (!isDebug &&
-        glueData_.bcStubEntries_.Get(0) == glueData_.bcStubEntries_.Get(1)) {
-        for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
-            auto stubEntry = glueData_.bcDebuggerStubEntries_.Get(i);
-            auto debuggerStubEbtry = glueData_.bcStubEntries_.Get(i);
-            glueData_.bcStubEntries_.Set(i, stubEntry);
-            glueData_.bcDebuggerStubEntries_.Set(i, debuggerStubEbtry);
+    } else {
+        if (glueData_.bcDebuggerStubEntries_.Get(0) == glueData_.bcDebuggerStubEntries_.Get(1)) {
+            for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
+                auto stubEntry = glueData_.bcStubEntries_.Get(i);
+                auto debuggerStubEbtry = glueData_.bcDebuggerStubEntries_.Get(i);
+                glueData_.bcDebuggerStubEntries_.Set(i, stubEntry);
+                glueData_.bcStubEntries_.Set(i, debuggerStubEbtry);
+            }
         }
     }
 }
