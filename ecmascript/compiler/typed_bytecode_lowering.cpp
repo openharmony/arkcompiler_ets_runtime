@@ -1085,10 +1085,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
             kind = tacc.TryGetArrayElementsKind();
         }
 
-        // This check is not required by String, since string is a primitive type.
-        if (type != BuiltinTypeId::STRING) {
-            builder_.BuiltinPrototypeHClassCheck(receiver, type, kind, isPrototypeOfPrototype);
-        }
+        builder_.BuiltinPrototypeHClassCheck(receiver, type, kind, isPrototypeOfPrototype);
     }
     // Successfully goes to typed path
     GateRef plrGate = builder_.Int32(plr.GetData());
