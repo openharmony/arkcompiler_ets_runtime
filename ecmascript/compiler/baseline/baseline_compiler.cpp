@@ -170,10 +170,10 @@ void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end
             case EcmaOpcode::JEQZ_IMM16:
             case EcmaOpcode::JNEZ_IMM16:
             case EcmaOpcode::JMP_IMM16: {
-                int16_t jumpOffset = *(start + 2); // 2: get two bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 1);        // 1: get one byte in bytecodes
-                size_t jumpTo = offset + jumpOffset;
+                int16_t jumpOffset = *(start + 2);                              // 2: get two bytes in bytecodes
+                uint16_t tmpValue = static_cast<uint16_t>(jumpOffset) << 8;    // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 1));                 // 1: get one byte in bytecodes
+                size_t jumpTo = offset + static_cast<int16_t>(tmpValue);
                 jumpToOffsets.insert(jumpTo);
                 break;
             }
@@ -181,13 +181,13 @@ void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end
             case EcmaOpcode::JNEZ_IMM32:
             case EcmaOpcode::JMP_IMM32: {
                 int32_t jumpOffset = *(start + 4); // 4: get four bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 3);        // 3: get three bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 2);        // 2: get two bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 1);        // 1: get one byte in bytecodes
-                size_t jumpTo = offset + jumpOffset;
+                uint32_t tmpValue = static_cast<uint32_t>(jumpOffset) << 8;    // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 3));                 // 3: get three bytes in bytecodes
+                tmpValue <<= 8;                                                 // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 2));                 // 2: get two bytes in bytecodes
+                tmpValue <<= 8;                                                 // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 1));                 // 1: get one byte in bytecodes
+                size_t jumpTo = offset + static_cast<int32_t>(tmpValue);
                 jumpToOffsets.insert(jumpTo);
                 break;
             }
