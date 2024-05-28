@@ -226,6 +226,12 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     ASSERT(info);
     JSThread *thread = info->GetThread();
     INTERPRETER_TRACE(thread, AsmExecute);
+    // When the  function is jit-compiled, the Method object is reinstalled.
+    // In this case, the AotWithCall field may be updated.
+    // This causes a Construct that is not a ClassConstructor to call jit code.
+    ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
+    Method *method = callTarget->GetCallTarget();
+    bool isAotWithCallField = method->IsAotWithCallField();
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
     thread->CheckSafepoint();
@@ -233,9 +239,9 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     uintptr_t argv = reinterpret_cast<uintptr_t>(info->GetArgs());
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
 
-    ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
-    Method *method = callTarget->GetCallTarget();
-    if (method->IsAotWithCallField()) {
+    callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
+    method = callTarget->GetCallTarget();
+    if (isAotWithCallField) {
         JSHandle<JSFunction> func(thread, info->GetFunctionValue());
         if (func->IsClassConstructor()) {
             {
