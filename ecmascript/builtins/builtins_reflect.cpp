@@ -153,7 +153,6 @@ JSTaggedValue BuiltinsReflect::ReflectGet(EcmaRuntimeCallInfo *argv)
     if (!val->IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Reflect.get target is not object", JSTaggedValue::Exception());
     }
-    JSHandle<JSObject> target = JSHandle<JSObject>::Cast(val);
     // 2. Let key be ? ToPropertyKey(propertyKey).
     JSHandle<JSTaggedValue> key = JSTaggedValue::ToPropertyKey(thread, GetCallArg(argv, 1));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -161,10 +160,10 @@ JSTaggedValue BuiltinsReflect::ReflectGet(EcmaRuntimeCallInfo *argv)
     //     a. Set receiver to target.
     // 4. Return ? target.[[Get]](key, receiver).
     if (argv->GetArgsNumber() == 2) {  // 2: 2 means that there are 2 args in total
-        return JSObject::GetProperty(thread, target, key).GetValue().GetTaggedValue();
+        return JSTaggedValue::GetProperty(thread, val, key).GetValue().GetTaggedValue();
     }
     JSHandle<JSTaggedValue> receiver = GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
-    return JSObject::GetProperty(thread, val, key, receiver).GetValue().GetTaggedValue();
+    return JSTaggedValue::GetProperty(thread, val, key, receiver).GetValue().GetTaggedValue();
 }
 
 // ecma 26.1.6 Reflect.getOwnPropertyDescriptor ( target, propertyKey )

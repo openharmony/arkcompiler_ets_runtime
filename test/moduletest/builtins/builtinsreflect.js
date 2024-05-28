@@ -104,4 +104,7 @@ function prepare(target) {
         i++;
     }
 })();
+let obj = {name:"tom"};
+let pxobj = new Proxy(obj,{});
+print(Reflect.get(pxobj,"name"))
 print("builtins reflect end");
