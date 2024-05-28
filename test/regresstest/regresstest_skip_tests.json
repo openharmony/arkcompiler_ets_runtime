@@ -1730,7 +1730,6 @@
         "mjsunit/body-not-visible.js",
         "mjsunit/try-catch-extension-object.js",
         "mjsunit/regexp-standalones.js",
-        "mjsunit/array-methods-read-only-length.js",
         "mjsunit/newline-in-string.js",
         "mjsunit/clone-ic-regressions.js",
         "mjsunit/tzoffset-seoul-noi18n.js",

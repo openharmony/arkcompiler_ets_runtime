@@ -1993,3 +1993,11 @@ testCases.forEach(({ array, target }) => {
     print(Array.isArray(new Uint8Array(32)));
     print(Array.isArray({ __proto__: Array.prototype }));
 }
+
+var arr_push = [];
+Object.defineProperty(arr_push, "length", { writable : false});
+try {
+    arr_push.push(3);
+} catch (e) {
+    print(e instanceof TypeError);
+}

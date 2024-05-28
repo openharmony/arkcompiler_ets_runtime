@@ -2373,6 +2373,9 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    Label isLengthWritable(env);
+    BRANCH(IsArrayLengthWritable(glue, thisValue), &isLengthWritable, slowPath);
+    Bind(&isLengthWritable);
 
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
