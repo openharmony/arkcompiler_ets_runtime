@@ -543,7 +543,7 @@ void JSArray::MergeSortedElements(JSThread *thread, const JSHandle<TaggedArray> 
         leftArray->Set(thread, i, elements->Get(startIdx + i));
     }
     for (int64_t j = 0; j < rightLength; j++) {
-        rightArray->Set(thread, j, elements->Get(middleIdx + 1 + j));
+        rightArray->Set(thread, j, elements->Get(static_cast<int32_t>(middleIdx + 1 + j)));
     }
 
     int64_t i = 0;

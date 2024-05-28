@@ -1192,7 +1192,7 @@ public:
             return GetOffset<static_cast<size_t>(Index::TaskInfoIndex)>(isArch32);
         }
 
-        alignas(EAS) BCStubEntries bcStubEntries_;
+        alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
         alignas(EAS) bool stableArrayElementsGuardians_ {true};
@@ -1205,12 +1205,12 @@ public:
         alignas(EAS) const uintptr_t *sOldSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) const uintptr_t *sNonMovableSpaceAllocationTopAddress_ {nullptr};
         alignas(EAS) const uintptr_t *sNonMovableSpaceAllocationEndAddress_ {nullptr};
-        alignas(EAS) RTStubEntries rtStubEntries_;
-        alignas(EAS) COStubEntries coStubEntries_;
-        alignas(EAS) BuiltinStubEntries builtinStubEntries_;
-        alignas(EAS) BuiltinHClassEntries builtinHClassEntries_;
-        alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
-        alignas(EAS) BaselineStubEntries baselineStubEntries_;
+        alignas(EAS) RTStubEntries rtStubEntries_ {};
+        alignas(EAS) COStubEntries coStubEntries_ {};
+        alignas(EAS) BuiltinStubEntries builtinStubEntries_ {};
+        alignas(EAS) BuiltinHClassEntries builtinHClassEntries_ {};
+        alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_ {};
+        alignas(EAS) BaselineStubEntries baselineStubEntries_ {};
         alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};
@@ -1225,7 +1225,7 @@ public:
         alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
         alignas(EAS) EcmaContext *currentContext_ {nullptr};
-        alignas(EAS) BuiltinEntries builtinEntries_;
+        alignas(EAS) BuiltinEntries builtinEntries_ {};
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
         alignas(EAS) uintptr_t randomStatePtr_ {0};
