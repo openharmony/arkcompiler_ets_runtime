@@ -13,5 +13,5 @@
 
 SyntaxError: Unexpected Number in JSON Array Or Object
 exception_case12.ts:21:21
-exception_case12.ts:24:1
+exception_case12.ts:24:24
 
