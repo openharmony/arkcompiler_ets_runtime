@@ -4367,7 +4367,7 @@ bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)
     }
     auto jsDebuggerManager = vm->GetJsDebuggerManager();
     if (jsDebuggerManager != nullptr) {
-        return jsDebuggerManager->IsDebugApp() && jsDebuggerManager->IsSerializationTimeoutCheckEnabled();
+        return jsDebuggerManager->IsSerializationTimeoutCheckEnabled();
     }
     return false;
 }
@@ -4384,7 +4384,7 @@ void JSNApi::GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_
         << thread->GetThreadId() << " threshold: " << threshold << " duration: " << duration;
     if (duration >= threshold) {
         std::stringstream tagMsg;
-        auto startTimeMS = std::chrono::time_point_cast<std::chrono::milliseconds>(start);
+        auto startTimeMS = std::chrono::time_point_cast<std::chrono::nanoseconds>(start);
         tagMsg << (isSerialization ? "SerializationTimeout::tid=" : "DeserializationTimeout::tid=");
         tagMsg << thread->GetThreadId();
         tagMsg << (isSerialization ? ";task=serialization;startTime=" : ";task=deserialization;startTime=");
