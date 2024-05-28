@@ -156,7 +156,10 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString fileNameStr = ConvertToString(dirPath.GetTaggedValue());
     CString requestPath = ConvertToString(specifierString.GetTaggedValue());
     LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
-
+    if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+        CString traceInfo = "DynamicImportJob: " + requestPath;
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    }
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     CString recordNameStr;
     if (!recordName->IsUndefined()) {

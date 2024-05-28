@@ -408,6 +408,10 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     [[maybe_unused]] LocalScope scope(vm);
 
     CString moduleRequestName = ConvertToString(EcmaString::Cast(requiredModule->GetEcmaModuleRecordName()));
+    if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+        CString traceInfo = "LoadNativeModule: " + moduleRequestName;
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    }
     CString soName = PathHelper::GetStrippedModuleName(moduleRequestName);
 
     CString fileName = ConvertToString(EcmaString::Cast(requiredModule->GetEcmaModuleFilename()));
