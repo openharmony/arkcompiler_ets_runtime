@@ -85,20 +85,24 @@ public:
         return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
     }
 
-    std::vector<RuntimeInfoPart> GetCrashRuntimeInfoList(const std::string &soBuildId) const
+    std::vector<RuntimeInfoPart> GetCrashRuntimeInfoList() const
     {
         std::string realOutPath = GetCrashSandBoxRealPath();
         std::vector<RuntimeInfoPart> list;
-        if (realOutPath == "") {
+        if (!FileExist(realOutPath.c_str())) {
             LOG_ECMA(INFO) << "Get crash sanbox path fail.";
+            return list;
+        }
+        std::string soBuildId = GetRuntimeBuildId();
+        if (soBuildId == "") {
+            LOG_ECMA(INFO) << "can't get so buildId.";
             return list;
         }
         list = GetRuntimeInfoByPath(realOutPath, soBuildId);
         return list;
     }
 
-    std::vector<RuntimeInfoPart> GetRealPathRuntimeInfoList(const std::string &pgoRealPath,
-        const std::string &soBuildId) const
+    std::vector<RuntimeInfoPart> GetRealPathRuntimeInfoList(const std::string &pgoRealPath) const
     {
         std::vector<RuntimeInfoPart> list;
         std::string realOutPath;
@@ -107,15 +111,20 @@ public:
         if (!ecmascript::RealPath(runtimePgoRealPath, realOutPath, false)) {
             return list;
         }
-        if (realOutPath == "") {
+        if (!FileExist(realOutPath.c_str())) {
             LOG_ECMA(INFO) << "Get pgo real path fail.";
+            return list;
+        }
+        std::string soBuildId = GetRuntimeBuildId();
+        if (soBuildId == "") {
+            LOG_ECMA(INFO) << "can't get so buildId.";
             return list;
         }
         list = GetRuntimeInfoByPath(realOutPath, soBuildId);
         return list;
     }
 
-    void BuildCompileRuntimeInfo(const std::string &type, const std::string &pgoPath)
+    void BuildCompileRuntimeInfo(const std::string &type, const std::string &pgoPath) const
     {
         std::string soBuildId = GetRuntimeBuildId();
         if (soBuildId == "") {
@@ -135,14 +144,14 @@ public:
         SetRuntimeInfo(realOutPath, lines);
     }
 
-    void BuildCrashRuntimeInfo(const std::string &type)
+    void BuildCrashRuntimeInfo(const std::string &type) const
     {
         std::string soBuildId = GetRuntimeBuildId();
         if (soBuildId == "") {
             LOG_ECMA(INFO) << "can't get so buildId.";
             return;
         }
-        std::vector<RuntimeInfoPart> lines = GetCrashRuntimeInfoList(soBuildId);
+        std::vector<RuntimeInfoPart> lines = GetCrashRuntimeInfoList();
         uint64_t timestamp = GetMicrosecondsTimeStamp();
         RuntimeInfoPart buildLine = RuntimeInfoPart(soBuildId, std::to_string(timestamp), type);
         lines.emplace_back(buildLine);
@@ -166,16 +175,11 @@ public:
     std::map<RuntimeInfoType, int> CollectCrashSum(const std::string &pgoRealPath = "")
     {
         std::map<RuntimeInfoType, int> escapeMap;
-        std::string soBuildId = GetRuntimeBuildId();
-        if (soBuildId == "") {
-            LOG_ECMA(INFO) << "can't get so buildId.";
-            return escapeMap;
-        }
         std::vector<RuntimeInfoPart> runtimeInfoParts;
         if (pgoRealPath == "") {
-            runtimeInfoParts = GetCrashRuntimeInfoList(soBuildId);
+            runtimeInfoParts = GetCrashRuntimeInfoList();
         } else {
-            runtimeInfoParts = GetRealPathRuntimeInfoList(pgoRealPath, soBuildId);
+            runtimeInfoParts = GetRealPathRuntimeInfoList(pgoRealPath);
         }
         for (const auto &runtimeInfoPart: runtimeInfoParts) {
             RuntimeInfoType runtimeInfoType = GetRuntimeInfoTypeByStr(runtimeInfoPart.type);
@@ -184,7 +188,7 @@ public:
         return escapeMap;
     }
 
-    std::string GetRuntimeBuildId()
+    std::string GetRuntimeBuildId() const
     {
         std::string realPath;
         if (!FileExist(OhosConstants::RUNTIME_SO_PATH)) {
@@ -197,12 +201,16 @@ public:
         if (!FileExist(realPath.c_str())) {
             return "";
         }
-        fileMap = ecmascript::FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+        ecmascript::MemMap fileMap = ecmascript::FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
         if (fileMap.GetOriginAddr() == nullptr) {
+            LOG_ECMA(INFO) << "runtime info file mmap failed";
             return "";
         }
         ecmascript::PagePreRead(fileMap.GetOriginAddr(), fileMap.GetSize());
-        return ParseELFSectionsForBuildId();
+        std::string buildId = ParseELFSectionsForBuildId(fileMap);
+        ecmascript::FileUnMap(fileMap);
+        fileMap.Reset();
+        return buildId;
     }
 
     static std::string GetRuntimeInfoTypeStr(RuntimeInfoType type)
@@ -303,7 +311,7 @@ private:
         return realOutPath;
     }
 
-    std::string ParseELFSectionsForBuildId() const
+    std::string ParseELFSectionsForBuildId(ecmascript::MemMap &fileMap) const
     {
         llvm::ELF::Elf64_Ehdr *ehdr = reinterpret_cast<llvm::ELF::Elf64_Ehdr *>(fileMap.GetOriginAddr());
         char *addr = reinterpret_cast<char *>(ehdr);
@@ -382,8 +390,6 @@ private:
     {
         return (align) - 1;
     }
-
-    ecmascript::MemMap fileMap;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_OHOS_RUNTIME_BUILD_INFO_H

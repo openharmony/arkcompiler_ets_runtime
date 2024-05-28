@@ -76,6 +76,14 @@ std::pair<bool, int> CheckVersion(JSRuntimeOptions &runtimeOptions, bool result)
     return std::pair(false, 0);
 }
 
+bool IsExistsPkgInfo(AotCompilerPreprocessor &cPreprocessor)
+{
+    if (cPreprocessor.GetMainPkgArgs()) {
+        return true;
+    }
+    return false;
+}
+
 int Main(const int argc, const char **argv)
 {
     if (argc < 2) { // 2: at least have two arguments
@@ -125,7 +133,7 @@ int Main(const int argc, const char **argv)
         if (!cPreprocessor.HandleTargetCompilerMode(cOptions) || !cPreprocessor.HandlePandaFileNames(argc, argv)) {
             return ERR_HELP;
         }
-        if (JSNApi::IsAotEscape(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
+        if (IsExistsPkgInfo(cPreprocessor) && JSNApi::IsAotEscape(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
             LOG_COMPILER(ERROR) << " Stop compile AOT because there are more crashes";
             return ERR_FAIL;
         }
@@ -221,7 +229,9 @@ int Main(const int argc, const char **argv)
         if (runtimeOptions.IsTargetCompilerMode()) {
             compilerStats.PrintCompilerStatsLog();
         }
-        ohos::EnableAotListHelper::GetInstance()->AddEnableListCount(cPreprocessor.GetMainPkgArgs()->GetPgoDir());
+        if (IsExistsPkgInfo(cPreprocessor)) {
+            ohos::EnableAotListHelper::GetInstance()->AddEnableListCount(cPreprocessor.GetMainPkgArgs()->GetPgoDir());
+        }
     }
 
     LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");
