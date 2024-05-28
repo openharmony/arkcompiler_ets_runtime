@@ -578,7 +578,7 @@ bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
     }
     std::string path = realPath.substr(0, index);
     if (!panda::ecmascript::ForceCreateDirectory(path)) {
-        LOG_COMPILER(ERROR) << "Fail to make dir:" << path;
+        LOG_COMPILER(ERROR) << "Fail to make dir: " << path;
         return false;
     }
     return panda::ecmascript::SetDirModeAsDefault(path);
@@ -591,7 +591,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
         return;
     }
     if (!CreateDirIfNotExist(filename)) {
-        LOG_COMPILER(ERROR) << "Fail to access dir:" << filename;
+        LOG_COMPILER(ERROR) << "Fail to access dir: " << filename;
         return;
     }
     PrintMergedCodeComment();
@@ -679,6 +679,10 @@ void AOTFileGenerator::SaveSnapshotFile()
     ptManager->GetAOTSnapshot().ResolveSnapshotData(methodToEntryIndexMap);
 
     CString aiPath = snapshotPath + AOTFileManager::FILE_EXTENSION_AI;
+    if (!CreateDirIfNotExist(aiPath.c_str())) {
+        LOG_COMPILER(ERROR) << "Fail to access dir: " << aiPath;
+        return;
+    }
     snapshot.Serialize(aiPath);
     if (!panda::ecmascript::SetFileModeAsDefault(aiPath.c_str())) {
         LOG_COMPILER(ERROR) << "Fail to set ai file mode:" << aiPath;
