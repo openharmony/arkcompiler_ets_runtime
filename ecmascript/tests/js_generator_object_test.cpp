@@ -79,19 +79,15 @@ HWTEST_F_L0(JSGeneratorObjectTest, GeneratorValidate_002)
 
 HWTEST_F_L0(JSGeneratorObjectTest, GeneratorValidate_003)
 {
-    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
-        // skip this test for rk3568 because enviroment is different
-        return;
-    }
     auto vm = thread->GetEcmaVM();
     auto factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
-    JSHandle<JSHClass> genClass =
-        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_GENERATOR_OBJECT, env->GetGeneratorFunctionPrototype());
+    JSHandle<JSHClass> genClass = factory->NewEcmaHClass(JSGeneratorObject::SIZE, JSType::JS_GENERATOR_OBJECT,
+        env->GetGeneratorFunctionPrototype());
     TaggedObject *genObjectHeader = factory->NewObject(genClass);
     JSHandle<JSGeneratorObject> genObj(thread, JSGeneratorObject::Cast(genObjectHeader));
     JSGeneratorState state = JSGeneratorObject::GeneratorValidate(thread, JSHandle<JSTaggedValue>::Cast(genObj));
-    EXPECT_EQ(state, JSGeneratorState::SUSPENDED_YIELD);
+    EXPECT_EQ(state, JSGeneratorState::UNDEFINED);
 
     genObj->SetGeneratorState(JSGeneratorState::COMPLETED);
     state = JSGeneratorObject::GeneratorValidate(thread, JSHandle<JSTaggedValue>::Cast(genObj));
