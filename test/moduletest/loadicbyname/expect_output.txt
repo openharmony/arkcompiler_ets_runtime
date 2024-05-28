@@ -26,3 +26,6 @@ SharedUint16Array test prototype ic success
 SharedUint8Array test prototype ic success
 SharedUint8ClampedArray test prototype ic success
 ================Test proto SharedTypedArray IC success!================
+1
+1
+load global ic with accessor success!

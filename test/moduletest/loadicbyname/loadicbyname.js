@@ -142,3 +142,12 @@ function testProtoIc(ctor) {
   testProtoIc(ctor);
 })
 print("================Test proto SharedTypedArray IC success!================");
+function f(){return 1};
+Object.defineProperty(this,"g",{
+    get:f,
+    set:f,
+})
+for(let i=0;i<2;i++){
+    print(g)
+}
+print("load global ic with accessor success!");
