@@ -179,6 +179,12 @@ public:
         return (type == FrameType::LEAVE_FRAME) || (type == FrameType::LEAVE_FRAME_WITH_ARGV);
     }
 
+    bool IsInterpreterBuiltinFrame() const
+    {
+        FrameType type = GetFrameType();
+        return type == FrameType::INTERPRETER_BUILTIN_FRAME;
+    }
+
     JSTaggedType *GetSp() const
     {
         return sp_;

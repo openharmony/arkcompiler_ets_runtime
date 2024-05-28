@@ -115,6 +115,9 @@ uint32_t DebuggerApi::GetStackDepthOverBuiltin(const EcmaVM *ecmaVm)
     FrameHandler frameHandler(ecmaVm->GetJSThread());
     for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
+            if (frameHandler.IsInterpreterBuiltinFrame()) {
+                break;
+            }
             continue;
         }
         if (frameHandler.IsBuiltinFrame()) {
