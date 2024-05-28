@@ -121,7 +121,6 @@ inline T OffsetAlignUp(U *addr, uint64_t offset, uint32_t align)
     return reinterpret_cast<T>(result);
 }
 
-
 struct StubAnInfo {
     uintptr_t fileAddr;
     Elf64_Ehdr *ehdr;
@@ -173,11 +172,11 @@ inline int InfoGetBind(unsigned char info)
 
 StubAnInfo CollectStubAnInfo(uintptr_t fileAddr)
 {
-    Elf64_Ehdr *ehdr = (Elf64_Ehdr *)fileAddr;
-    Elf64_Shdr *shdrTab = (Elf64_Shdr *)(fileAddr + ehdr->e_shoff);
+    auto *ehdr = reinterpret_cast<Elf64_Ehdr *>(fileAddr);
+    auto *shdrTab = reinterpret_cast<Elf64_Shdr *>(fileAddr + ehdr->e_shoff);
     uint32_t shStrIdx = ehdr->e_shstrndx;
     Elf64_Shdr *shStrHdr = &shdrTab[shStrIdx];
-    const char *shstrtab = (const char *)(fileAddr + shStrHdr->sh_offset);
+    const char *shstrtab = reinterpret_cast<const char *>(fileAddr + shStrHdr->sh_offset);
     Elf64_Shdr *textHdr = nullptr;
     Elf64_Shdr *asmstubHdr = nullptr;
     Elf64_Shdr *symtabHdr = nullptr;
@@ -195,8 +194,8 @@ StubAnInfo CollectStubAnInfo(uintptr_t fileAddr)
             strtabHdr = shdr;
         }
     }
-    Elf64_Sym *symtab = (Elf64_Sym *)(fileAddr + symtabHdr->sh_offset);
-    const char *strtab = (const char *)(fileAddr + strtabHdr->sh_offset);
+    Elf64_Sym *symtab = reinterpret_cast<Elf64_Sym *>(fileAddr + symtabHdr->sh_offset);
+    const char *strtab = reinterpret_cast<const char *>(fileAddr + strtabHdr->sh_offset);
     uint32_t symCnt = 2;
     uint64_t bcStubBegin = UINT64_MAX;
     uint64_t bcStubEnd = 0;
@@ -222,10 +221,10 @@ StubAnInfo CollectStubAnInfo(uintptr_t fileAddr)
     };
 }
 
-bool CopyStrTab(void *buffer, const StubAnInfo &info)
+bool CopyStrTab(uintptr_t baseAddr, const StubAnInfo &info)
 {
-    Elf64_Ehdr *newEhdr = (Elf64_Ehdr *)(buffer);
-    Elf64_Phdr *newPhdr = (Elf64_Phdr *)(newEhdr + 1);
+    Elf64_Ehdr *newEhdr = reinterpret_cast<Elf64_Ehdr *>(baseAddr);
+    Elf64_Phdr *newPhdr = reinterpret_cast<Elf64_Phdr *>(newEhdr + 1);
     char *shStrBuff = reinterpret_cast<char *>(newPhdr + 1);
     if (memcpy_s(shStrBuff, sizeof(SHSTR), SHSTR, sizeof(SHSTR)) != EOK) {
         return false;
@@ -244,7 +243,7 @@ bool CopyStrTab(void *buffer, const StubAnInfo &info)
 
 void ConstructSymTab(Elf64_Sym *newSymtab, const StubAnInfo &info)
 {
-    Elf64_Sym *symtab = (Elf64_Sym *)(info.fileAddr + info.symtabHdr->sh_offset);
+    Elf64_Sym *symtab = reinterpret_cast<Elf64_Sym *>(info.fileAddr + info.symtabHdr->sh_offset);
     const char *strtab = reinterpret_cast<const char *>(info.fileAddr + info.strtabHdr->sh_offset);
     memset_s(newSymtab, sizeof(Elf64_Sym), 0, sizeof(Elf64_Sym));
     uint32_t newSymIdx = 1;
@@ -268,9 +267,9 @@ void ConstructSymTab(Elf64_Sym *newSymtab, const StubAnInfo &info)
     bcSym->st_size = info.bcStubEnd - info.bcStubBegin;
 }
 
-void ConstructEhdrAndPhdr(Elf64_Ehdr *newEhdr, Elf64_Shdr *newShdrtab, char *buffer, const StubAnInfo &info)
+void ConstructEhdrAndPhdr(Elf64_Ehdr *newEhdr, Elf64_Shdr *newShdrtab, uintptr_t baseAddr, const StubAnInfo &info)
 {
-    Elf64_Phdr *newPhdr = (Elf64_Phdr *)(newEhdr + 1);
+    Elf64_Phdr *newPhdr = reinterpret_cast<Elf64_Phdr *>(newEhdr + 1);
     {
         *newEhdr = *info.ehdr;
         newEhdr->e_flags = info.ehdr->e_flags;
@@ -281,7 +280,7 @@ void ConstructEhdrAndPhdr(Elf64_Ehdr *newEhdr, Elf64_Shdr *newShdrtab, char *buf
         }
         newEhdr->e_version = 1;
         newEhdr->e_phoff = sizeof(Elf64_Ehdr);
-        newEhdr->e_shoff = (uintptr_t)newShdrtab - (uintptr_t)buffer;
+        newEhdr->e_shoff = reinterpret_cast<uintptr_t>(newShdrtab) - baseAddr;
         newEhdr->e_ehsize = sizeof(Elf64_Ehdr);
         newEhdr->e_phentsize = sizeof(Elf64_Phdr);
         newEhdr->e_phnum = 1;
@@ -305,7 +304,7 @@ void ConstructEhdrAndPhdr(Elf64_Ehdr *newEhdr, Elf64_Shdr *newShdrtab, char *buf
     }
 }
 
-void ConstructShdrTab(Elf64_Shdr *newShdrTab, Elf64_Sym *newSymtab, char *buffer, void *ehFrame,
+void ConstructShdrTab(Elf64_Shdr *newShdrTab, Elf64_Sym *newSymtab, uintptr_t baseAddr, void *ehFrame,
                       uint32_t ehFrameSize, const StubAnInfo &info)
 {
     Elf64_Shdr hdr{};
@@ -320,26 +319,26 @@ void ConstructShdrTab(Elf64_Shdr *newShdrTab, Elf64_Sym *newSymtab, char *buffer
     newShstrHdr->sh_offset = sizeof(Elf64_Ehdr) + sizeof(Elf64_Phdr);
     newShstrHdr->sh_size = sizeof(SHSTR);
     newShstrHdr->sh_name = SHSTRTAB_NAME;
-    newShstrHdr->sh_addr = newStrtabHdr->sh_offset + (uintptr_t)buffer;
+    newShstrHdr->sh_addr = newStrtabHdr->sh_offset + baseAddr;
     newShstrHdr->sh_type = SHT_STRTAB;
     newShstrHdr->sh_flags = SHF_ALLOC;
 
     newStrtabHdr->sh_offset = newShstrHdr->sh_offset + newShstrHdr->sh_size;
     newStrtabHdr->sh_size = info.strtabHdr->sh_size;
     newStrtabHdr->sh_name = STRTAB_NAME;
-    newStrtabHdr->sh_addr = newStrtabHdr->sh_offset + (uintptr_t)buffer;
+    newStrtabHdr->sh_addr = newStrtabHdr->sh_offset + baseAddr;
     newStrtabHdr->sh_addralign = 1;
     newStrtabHdr->sh_type = SHT_STRTAB;
     newStrtabHdr->sh_flags = SHF_ALLOC;
     newStrtabHdr->sh_link = SHSTRTAB_HDR_IDX;
 
     *newSymHdr = *info.symtabHdr;
-    newSymHdr->sh_offset = (uintptr_t)newSymtab - (uintptr_t)buffer;
+    newSymHdr->sh_offset = reinterpret_cast<uintptr_t>(newSymtab) - baseAddr;
     newSymHdr->sh_size = info.symCnt * info.symtabHdr->sh_entsize;
     newSymHdr->sh_entsize = info.symtabHdr->sh_entsize;
     newSymHdr->sh_addralign = info.symtabHdr->sh_addralign;
     newSymHdr->sh_name = SYMTAB_NAME;
-    newSymHdr->sh_addr = (uintptr_t)newSymtab;
+    newSymHdr->sh_addr = reinterpret_cast<uintptr_t>(newSymtab);
     newSymHdr->sh_link = STRTAB_HDR_IDX;
 
     newTextHdr->sh_offset = 0;
@@ -351,10 +350,10 @@ void ConstructShdrTab(Elf64_Shdr *newShdrTab, Elf64_Sym *newSymtab, char *buffer
     newTextHdr->sh_flags = SHF_ALLOC | SHF_EXECINSTR;
     newTextHdr->sh_link = SYMTAB_HDR_IDX;
 
-    ehFrameHdr->sh_offset = (uintptr_t)ehFrame - (uintptr_t)buffer;
+    ehFrameHdr->sh_offset = reinterpret_cast<uintptr_t>(ehFrame) - baseAddr;
     ehFrameHdr->sh_size = ehFrameSize;
     ehFrameHdr->sh_name = EH_FRAME_NAME;
-    ehFrameHdr->sh_addr = (uintptr_t)ehFrame;
+    ehFrameHdr->sh_addr = reinterpret_cast<uintptr_t>(ehFrame);
     ehFrameHdr->sh_addralign = sizeof(uintptr_t);
     ehFrameHdr->sh_type = SHT_PROGBITS;
     ehFrameHdr->sh_flags = SHF_ALLOC;
@@ -389,11 +388,11 @@ bool CreateDebuggerElf(uintptr_t fileAddr, void **result, uint64_t *elfSize)
     totalSize += sizeof(Elf64_Shdr) * HEADER_CNT + sizeof(Elf64_Shdr); // for align
 
     char *buffer = new char[totalSize];
-    Elf64_Ehdr *newEhdr = (Elf64_Ehdr *)(buffer);
-    Elf64_Phdr *newPhdr = (Elf64_Phdr *)(newEhdr + 1);
-    const char *shStrBuff = (const char *)(newPhdr + 1);
+    Elf64_Ehdr *newEhdr = reinterpret_cast<Elf64_Ehdr *>(buffer);
+    Elf64_Phdr *newPhdr = reinterpret_cast<Elf64_Phdr *>(newEhdr + 1);
+    const char *shStrBuff = reinterpret_cast<const char *>(newPhdr + 1);
     const char *newStrtab = shStrBuff + sizeof(SHSTR);
-    if (!CopyStrTab(buffer, info)) {
+    if (!CopyStrTab(reinterpret_cast<uintptr_t>(buffer), info)) {
         delete[] buffer;
         return false;
     }
@@ -408,8 +407,8 @@ bool CreateDebuggerElf(uintptr_t fileAddr, void **result, uint64_t *elfSize)
     }
 
     auto newShdrtab = OffsetAlignUp<Elf64_Shdr *>(ehFrameBuffer, ehFrame.size(), sizeof(uintptr_t));
-    ConstructEhdrAndPhdr(newEhdr, newShdrtab, buffer, info);
-    ConstructShdrTab(newShdrtab, newSymtab, buffer, ehFrameBuffer, ehFrame.size(), info);
+    ConstructEhdrAndPhdr(newEhdr, newShdrtab, reinterpret_cast<uintptr_t>(buffer), info);
+    ConstructShdrTab(newShdrtab, newSymtab, reinterpret_cast<uintptr_t>(buffer), ehFrameBuffer, ehFrame.size(), info);
 
     *result = reinterpret_cast<void *>(buffer);
     *elfSize = totalSize;
@@ -419,7 +418,9 @@ bool CreateDebuggerElf(uintptr_t fileAddr, void **result, uint64_t *elfSize)
 static bool RegisterStubAnToDebuggerImpl(const char *fileAddr)
 {
     auto *entry = new jit_code_entry;
-    if (!CreateDebuggerElf((uintptr_t)fileAddr, (void **)&entry->symfile_addr, &entry->symfile_size)) {
+    if (!CreateDebuggerElf(reinterpret_cast<uintptr_t>(fileAddr),
+        reinterpret_cast<void **>(const_cast<char **>(&entry->symfile_addr)), &entry->symfile_size)) {
+        delete entry;
         return false;
     }
     entry->prev_entry = nullptr;
