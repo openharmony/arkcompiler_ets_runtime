@@ -1617,5 +1617,16 @@ public:
     ecmascript::EcmaRuntimeCallInfo *GetEcmaRuntimeCallInfo(const EcmaVM *vm);
     static Local<ArrayRef> Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo);
 };
+
+/* Attention pls, ExternalStringCache only can be utilized in main thread. Threads of Worker or Taskpool call
+ * functions of this class will cause data race.
+ */
+class ECMA_PUBLIC_API ExternalStringCache final {
+public:
+    static bool RegisterStringCacheTable(const EcmaVM *vm, uint32_t size);
+    static bool SetCachedString(const EcmaVM *vm, const char *name, uint32_t propertyIndex);
+    static bool HasCachedString(const EcmaVM *vm, uint32_t propertyIndex);
+    static Local<StringRef> GetCachedString(const EcmaVM *vm, uint32_t propertyIndex);
+};
 }
 #endif
