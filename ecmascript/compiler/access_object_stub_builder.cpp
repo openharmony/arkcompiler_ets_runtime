@@ -29,6 +29,7 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label tryFastPath(env);
+    Label checkIsProxy(env);
     Label slowPath(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
@@ -39,7 +40,7 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        result = GetPropertyByName(glue, receiver, propKey, callback, True());
+        result = GetPropertyByName(glue, receiver, propKey, callback, True(), false, true);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
@@ -73,7 +74,7 @@ GateRef AccessObjectStubBuilder::LoadPrivatePropertyByName(
     builder.LoadICByName(&result, &tryFastPath, &slowPath, &exit, callback);
     Bind(&tryFastPath);
     {
-        result = GetPropertyByName(glue, receiver, key, callback, True());
+        result = GetPropertyByName(glue, receiver, key, callback, True(), false, false);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
@@ -102,7 +103,7 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByName(GateRef glue, GateRef r
     BRANCH(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        result = GetPropertyByName(glue, receiver, propKey, ProfileOperation(), True());
+        result = GetPropertyByName(glue, receiver, propKey, ProfileOperation(), True(), false, false);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);

@@ -1707,6 +1707,17 @@ DEF_RUNTIME_STUBS(LoadICByName)
     return icRuntime.LoadMiss(receiverHandle, keyHandle).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetOwnPropertyByname)
+{
+    RUNTIME_STUBS_HEADER(LoadICByName);
+    JSHandle<JSTaggedValue> receiverHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the first parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the second parameter
+    PropertyDescriptor targetDesc(thread);
+    JSTaggedValue::GetOwnProperty(thread, receiverHandle, keyHandle, targetDesc);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return targetDesc.GetValue().GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(TryLdGlobalICByName)
 {
     RUNTIME_STUBS_HEADER(TryLdGlobalICByName);
@@ -2950,6 +2961,46 @@ DEF_RUNTIME_STUBS(DefinePrivateProperty)
     JSTaggedValue obj = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue value = GetArg(argv, argc, 4);  // 4: means the fourth parameter
     return RuntimeDefinePrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetJSPrxoyProperty)
+{
+    RUNTIME_STUBS_HEADER(GetJSPrxoyProperty);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    return JSProxy::GetProperty(thread, proxy, key, receiver).GetValue().GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CheckProxyGetResult)
+{
+    RUNTIME_STUBS_HEADER(CheckProxyGetResult);
+    JSHandle<JSTaggedValue> resultHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+
+    return RuntimeCheckProxyGetResult(thread, resultHandle, target, key).GetValue().GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CheckProxySetResult)
+{
+    RUNTIME_STUBS_HEADER(CheckProxyGetResult);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    RuntimeCheckProxySetResult(thread, value, target, key);
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(SetJSProxyProperty)
+{
+    RUNTIME_STUBS_HEADER(SetJSProxyProperty);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: param index
+    JSProxy::SetProperty(thread, proxy, key, value, receiver, true);
+    return JSTaggedValue::True().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ContainerRBTreeForEach)

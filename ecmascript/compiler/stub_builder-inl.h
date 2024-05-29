@@ -1324,6 +1324,18 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
 }
 
+inline GateRef StubBuilder::IsProxy(GateRef jsType)
+{
+    return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
+}
+
+inline GateRef StubBuilder::IsJSString(GateRef jsType)
+{
+    return BoolAnd(
+        Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::STRING_LAST))),
+        Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::STRING_FIRST))));
+}
+
 inline GateRef StubBuilder::IsJSShared(GateRef obj)
 {
     return TaggedIsSharedObj(obj);
@@ -1353,6 +1365,11 @@ inline GateRef StubBuilder::IsJSPrimitiveRef(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PRIMITIVE_REF)));
+}
+
+inline GateRef StubBuilder::IsPrimitiveRef(GateRef jsType)
+{
+    return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_PRIMITIVE_REF)));
 }
 
 inline GateRef StubBuilder::IsJsArray(GateRef obj)

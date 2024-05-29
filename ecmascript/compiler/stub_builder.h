@@ -249,6 +249,7 @@ public:
     GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
+    GateRef IsJSString(GateRef jsType);
     GateRef TaggedIsStringIterator(GateRef obj);
     GateRef TaggedIsSharedObj(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
@@ -365,11 +366,13 @@ public:
     GateRef TaggedIsPropertyBox(GateRef obj);
     GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
+    GateRef IsProxy(GateRef jsType);
     GateRef IsJSShared(GateRef obj);
     GateRef IsJSGlobalObject(GateRef obj);
     GateRef IsModuleNamespace(GateRef obj);
     GateRef ObjIsSpecialContainer(GateRef obj);
     GateRef IsJSPrimitiveRef(GateRef obj);
+    GateRef IsPrimitiveRef(GateRef jsType);
     GateRef IsJSFunctionBase(GateRef obj);
     GateRef IsConstructor(GateRef object);
     GateRef IsBase(GateRef func);
@@ -667,8 +670,12 @@ public:
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, ProfileOperation callback);
     GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-                              ProfileOperation callback, GateRef isInternal, bool canUseIsInternal = false);
-    GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback);
+                              ProfileOperation callback, GateRef isInternal,
+                              bool useOwn, bool judgeProxy, bool canUseIsInternal = false);
+    GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key,
+        ProfileOperation callback, bool judgeProxy = false);
+    GateRef FastGetOwnPropertyByName(GateRef glue, GateRef obj, GateRef key,
+        ProfileOperation callback, bool judgeProxy = false);
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, ProfileOperation callback);
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue, ProfileOperation callback);
     void FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, GateRef value,
@@ -848,6 +855,8 @@ public:
                                       ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
+    GateRef GetJSProxyPropertyByName(GateRef glue, GateRef proxy, GateRef key, GateRef receiver);
+    GateRef SetJSProxyPropertyByName(GateRef glue, GateRef proxy, GateRef key, GateRef value, GateRef receiver);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                        GateRef jsType);
     GateRef TryStringOrSymbolToElementIndex(GateRef glue, GateRef key);
