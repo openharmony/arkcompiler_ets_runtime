@@ -27,6 +27,7 @@
 
 #include <csetjmp>
 #include <csignal>
+#include <sys/syscall.h>
 using namespace panda::ecmascript;
 
 namespace panda::test {
@@ -71,6 +72,15 @@ public:
         return sigaction(SIGSEGV, &act, nullptr);
     }
 };
+
+static pid_t ForkBySyscall(void)
+{
+#ifdef SYS_fork
+    return syscall(SYS_fork);
+#else
+    return syscall(SYS_clone, SIGCHLD, 0);
+#endif
+}
 
 HWTEST_F_L0(ReadOnlySpaceTest, ReadOnlyTest)
 {
@@ -135,7 +145,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
     std::string rawStr = "fork string";
     JSHandle<EcmaString> string = factory->NewFromStdString(rawStr);
     JSNApi::PreFork(vm);
-    if (fork() != 0) {
+    if (ForkBySyscall() != 0) {
         // test gc in parent process
         heap->CollectGarbage(TriggerGCType::OLD_GC);
     } else {
