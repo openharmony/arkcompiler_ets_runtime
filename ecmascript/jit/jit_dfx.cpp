@@ -18,6 +18,7 @@
 #include "libpandafile/file.h"
 #include "libpandafile/code_data_accessor.h"
 #include "libpandafile/class_data_accessor-inl.h"
+#include "ecmascript/platform/file.h"
 
 #ifdef ENABLE_HISYSEVENT
 #include "hisysevent.h"
@@ -58,7 +59,11 @@ void JitDfx::OpenLogFile(uint32_t threadId)
 #else
     CString path = CString("jit_dfx_") + ToCString(threadId) + CString(".log");
 #endif
-    logFiles_[threadId].open(path.c_str(), std::ios::out);
+    std::string realOutPath;
+    if (!ecmascript::RealPath(path.c_str(), realOutPath, false)) {
+        return;
+    }
+    logFiles_[threadId].open(realOutPath, std::ios::out);
 }
 
 std::ostream &JitDfx::GetLogFileStream()

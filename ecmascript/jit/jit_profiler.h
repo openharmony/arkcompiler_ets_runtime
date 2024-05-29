@@ -161,14 +161,14 @@ private:
     }
 
     EcmaVM *vm_ { nullptr };
-    kungfu::PGOTypeManager *ptManager_;
-    ProfileTypeInfo* profileTypeInfo_;
-    ApEntityId abcId_;
-    EntityId methodId_;
+    kungfu::PGOTypeManager *ptManager_ { nullptr };
+    ProfileTypeInfo* profileTypeInfo_ { nullptr };
+    ApEntityId abcId_ {};
+    EntityId methodId_ {};
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_{};
-    CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
+    CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_ {};
     RecursiveMutex mutex_;
 };
 

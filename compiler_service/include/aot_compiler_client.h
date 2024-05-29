@@ -51,7 +51,7 @@ private:
 private:
     std::condition_variable loadSaCondition_;
     std::mutex loadSaMutex_;
-    bool loadSaFinished_;
+    bool loadSaFinished_ {false};
     std::mutex mutex_;
     sptr<IAotCompilerInterface> aotCompilerProxy_ = nullptr;
     sptr<AotCompilerDiedRecipient> aotCompilerDiedRecipient_ = nullptr;
