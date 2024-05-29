@@ -129,15 +129,20 @@ public:
           highWaterMark_(end),
           aliveObject_(0),
           wasted_(0),
-          snapshotData_(0)
-    {
-        lock_ = new Mutex();
-    }
+          snapshotData_(0) {}
 
     ~Region() = default;
 
     NO_COPY_SEMANTIC(Region);
     NO_MOVE_SEMANTIC(Region);
+
+    void Initialize()
+    {
+        lock_ = new Mutex();
+        if (InSparseSpace()) {
+            InitializeFreeObjectSets();
+        }
+    }
 
     void LinkNext(Region *next)
     {
@@ -368,6 +373,22 @@ public:
         return flag >= RegionSpaceFlag::SHARED_SPACE_BEGIN && flag <= RegionSpaceFlag::SHARED_SPACE_END;
     }
 
+    bool InSparseSpace() const
+    {
+        auto flag = packedData_.flags_.spaceFlag_;
+        switch (flag) {
+            case RegionSpaceFlag::IN_OLD_SPACE:
+            case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:
+            case RegionSpaceFlag::IN_MACHINE_CODE_SPACE:
+            case RegionSpaceFlag::IN_APPSPAWN_SPACE:
+            case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
+            case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     bool InHeapSpace() const
     {
         uint8_t space = packedData_.flags_.spaceFlag_;
@@ -485,14 +506,18 @@ public:
 
     void InitializeFreeObjectSets()
     {
-        freeObjectSets_ = Span<FreeObjectSet *>(new FreeObjectSet *[FreeObjectList::NumberOfSets()](),
-            FreeObjectList::NumberOfSets());
+        FreeObjectSet **sets = new FreeObjectSet *[FreeObjectList::NumberOfSets()];
+        for (int i = 0; i < FreeObjectList::NumberOfSets(); i++) {
+            sets[i] = new FreeObjectSet(i);
+        }
+        freeObjectSets_ = Span<FreeObjectSet *>(sets, FreeObjectList::NumberOfSets());
     }
 
     void DestroyFreeObjectSets()
     {
-        for (auto set : freeObjectSets_) {
-            delete set;
+        for (int i = 0; i < FreeObjectList::NumberOfSets(); i++) {
+            delete freeObjectSets_[i];
+            freeObjectSets_[i] = nullptr;
         }
         delete[] freeObjectSets_.data();
     }
