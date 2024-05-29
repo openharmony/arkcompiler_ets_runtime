@@ -34,6 +34,7 @@ public:
 
 private:
     void LowerTypedFloor(GateRef gate);
+    GateRef TypedLocaleCompare(GateRef glue, GateRef gate, GateRef thisObj, GateRef thatObj);
     GateRef TypedFloor(GateRef gate);
     GateRef IntToTaggedIntPtr(GateRef x);
     GateRef LowerCallRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
