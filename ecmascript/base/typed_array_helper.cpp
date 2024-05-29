@@ -609,6 +609,22 @@ JSTaggedValue TypedArrayHelper::CreateSharedFromTypedArray(EcmaRuntimeCallInfo *
     return obj.GetTaggedValue();
 }
 
+void SetArrayBufferProperties(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj, const uint64_t newByteLength,
+                              const uint32_t offset, const uint32_t arrayLength)
+{
+    JSThread *thread = argv->GetThread();
+    JSHandle<JSTaggedValue> buffer = BuiltinsBase::GetCallArg(argv, 0);
+    // 13. Set O.[[ViewedArrayBuffer]] to buffer.
+    // 14. Set O.[[ByteLength]] to newByteLength.
+    // 15. Set O.[[ByteOffset]] to offset.
+    // 16. Set O.[[ArrayLength]] to newByteLength / elementSize.
+    JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
+    jsTypedArray->SetViewedArrayBufferOrByteArray(thread, buffer);
+    jsTypedArray->SetByteLength(newByteLength);
+    jsTypedArray->SetByteOffset(offset);
+    jsTypedArray->SetArrayLength(arrayLength);
+}
+
 // es11 22.2.4.5 TypedArray ( buffer [ , byteOffset [ , length ] ] )
 JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                                       const DataViewType arrayType)
@@ -670,15 +686,7 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
             THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is out of range.", JSTaggedValue::Exception());
         }
     }
-    // 13. Set O.[[ViewedArrayBuffer]] to buffer.
-    // 14. Set O.[[ByteLength]] to newByteLength.
-    // 15. Set O.[[ByteOffset]] to offset.
-    // 16. Set O.[[ArrayLength]] to newByteLength / elementSize.
-    JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
-    jsTypedArray->SetViewedArrayBufferOrByteArray(thread, buffer);
-    jsTypedArray->SetByteLength(newByteLength);
-    jsTypedArray->SetByteOffset(offset);
-    jsTypedArray->SetArrayLength(newByteLength / elementSize);
+    SetArrayBufferProperties(argv, obj, newByteLength, offset, newByteLength / elementSize);
     // 17. Return O.
     return obj.GetTaggedValue();
 }
@@ -745,15 +753,7 @@ JSTaggedValue TypedArrayHelper::CreateFromSendableArrayBuffer(EcmaRuntimeCallInf
             THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is out of range.", JSTaggedValue::Exception());
         }
     }
-    // 13. Set O.[[ViewedArrayBuffer]] to buffer.
-    // 14. Set O.[[ByteLength]] to newByteLength.
-    // 15. Set O.[[ByteOffset]] to offset.
-    // 16. Set O.[[ArrayLength]] to newByteLength / elementSize.
-    JSSharedTypedArray *jsTypedArray = JSSharedTypedArray::Cast(*obj);
-    jsTypedArray->SetViewedArrayBufferOrByteArray(thread, buffer);
-    jsTypedArray->SetByteLength(newByteLength);
-    jsTypedArray->SetByteOffset(offset);
-    jsTypedArray->SetArrayLength(newByteLength / elementSize);
+    SetArrayBufferProperties(argv, obj, newByteLength, offset, newByteLength / elementSize);
     // 17. Return O.
     return obj.GetTaggedValue();
 }
