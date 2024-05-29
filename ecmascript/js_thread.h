@@ -850,14 +850,10 @@ public:
         uint64_t oldValue = interruptValue->load(std::memory_order_relaxed);
         auto newValue = oldValue;
         do {
-            T::Set(value, &newValue);
-            bool done = std::atomic_compare_exchange_strong_explicit(interruptValue, &oldValue, newValue,
-                std::memory_order_release, std::memory_order_relaxed);
-            if (LIKELY(done)) {
-                return;
-            }
             newValue = oldValue;
-        } while (true);
+            T::Set(value, &newValue);
+        } while (!std::atomic_compare_exchange_strong_explicit(interruptValue, &oldValue, newValue,
+            std::memory_order_release, std::memory_order_relaxed));
     }
 
     void InvokeWeakNodeFreeGlobalCallBack();
