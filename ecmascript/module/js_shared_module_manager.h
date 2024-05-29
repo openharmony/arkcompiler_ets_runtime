@@ -29,6 +29,7 @@ namespace panda::ecmascript {
 struct StateVisit {
     Mutex mutex;
     ConditionVariable cv;
+    uint32_t threadId;
 };
 class SharedModuleManager {
 public:

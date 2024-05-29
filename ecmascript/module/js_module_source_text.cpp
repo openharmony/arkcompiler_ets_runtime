@@ -1202,11 +1202,13 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Sou
         StateVisit stateVisit = SharedModuleManager::GetInstance()->findModuleMutexWithLock(thread, module);
         if (IsInstaniatedModule(thread, stateVisit, module)) {
             RuntimeLockHolder locker(thread, stateVisit.mutex);
+            stateVisit.threadId = thread->GetThreadId();
             int idx = SourceTextModule::InnerModuleEvaluationUnsafe(
                 thread, moduleRecord, stack, index, buffer, size, executeFromJob);
             stateVisit.cv.SignalAll();
             return idx;
-        } else if (IsEvaluatingModule(thread, stateVisit, module)) {
+        } else if (IsEvaluatingModule(thread, stateVisit, module) &&
+            !(stateVisit.threadId != thread->GetThreadId())) {
             WaitModuleEvaluated(thread, stateVisit, module);
         }
         return index;
