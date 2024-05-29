@@ -41,6 +41,8 @@ ParamType TypeInfoAccessor::PGOSampleTypeToParamType() const
             return ParamType::BooleanType();
         } else if (sample->IsNumber()) {
             return ParamType::NumberType();
+        } else if (sample->IsNumberOrString()) {
+            return ParamType::StringType();
         }
     }
     return ParamType::AnyType();

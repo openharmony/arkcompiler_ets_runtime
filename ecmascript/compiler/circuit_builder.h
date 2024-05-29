@@ -769,6 +769,7 @@ public:
     GateRef StringSlice(GateRef thisValue, GateRef startTag, GateRef endTag);
     GateRef NumberIsNaN(GateRef gate);
     GateRef NumberParseFloat(GateRef gate, GateRef frameState);
+    GateRef NumberParseInt(GateRef gate, GateRef radix);
     GateRef NumberIsFinite(GateRef gate);
     GateRef NumberIsInteger(GateRef gate);
     GateRef NumberIsSafeInteger(GateRef gate);

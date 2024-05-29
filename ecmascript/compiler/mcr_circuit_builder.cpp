@@ -1845,6 +1845,19 @@ GateRef CircuitBuilder::NumberParseFloat(GateRef gate, GateRef frameState)
     return ret;
 }
 
+GateRef CircuitBuilder::NumberParseInt(GateRef gate, GateRef radix)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->NumberParseInt(), MachineType::I64,
+            { currentControl, currentDepend, gate, radix }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::NumberIsSafeInteger(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();

@@ -206,6 +206,8 @@ private:
     void SpeculateStrings(const BinOpTypeInfoAccessor& tacc);
     template<TypedBinOp Op>
     void SpeculateNumbers(const BinOpTypeInfoAccessor& tacc);
+    template<TypedBinOp Op>
+    void SpeculateNumbersOrString(const BinOpTypeInfoAccessor& tacc);
     template<TypedUnOp Op>
     void SpeculateNumber(const UnOpTypeInfoAccessor& tacc);
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);

@@ -85,6 +85,7 @@ public:
         SPECIAL = 0x1ULL << 5,
         BOOLEAN_OR_SPECIAL = BOOLEAN | SPECIAL,
         STRING = 0x1ULL << 6,
+        NUMBER_OR_STRING = NUMBER | STRING,
         BIG_INT = 0x1ULL << 7,
         HEAP_OBJECT = 0x1ULL << 8,
         HEAP_OR_UNDEFINED_OR_NULL = HEAP_OBJECT | UNDEFINED_OR_NULL,
@@ -166,6 +167,11 @@ public:
     static int32_t StringType()
     {
         return static_cast<int32_t>(Type::STRING);
+    }
+
+    static int32_t NumberOrStringType()
+    {
+        return static_cast<int32_t>(Type::NUMBER_OR_STRING);
     }
 
     static int32_t BigIntType()
@@ -356,6 +362,15 @@ public:
         }
         auto primType = GetPrimitiveType();
         return primType == Type::NUMBER || primType == Type::NUMBER1;
+    }
+
+    bool IsNumberOrString() const
+    {
+        if (type_.index() != 0) {
+            return false;
+        }
+        auto primType = GetPrimitiveType();
+        return primType == Type::NUMBER_OR_STRING;
     }
 
     bool HasNumber() const
@@ -941,6 +956,11 @@ public:
     bool IsHeapObject() const
     {
         return GetPGOSampleType()->IsHeapObject();
+    }
+
+    bool IsNumberOrString() const
+    {
+        return GetPGOSampleType()->IsNumberOrString();
     }
 
     const PGORWOpType* GetPGORWOpType()

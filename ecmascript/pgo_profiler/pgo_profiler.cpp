@@ -656,6 +656,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             }
             case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+            case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
             case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8: {
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);

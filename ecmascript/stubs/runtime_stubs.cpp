@@ -3815,6 +3815,25 @@ DEF_RUNTIME_STUBS(LocaleCompareWithGc)
         options, cacheable).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ParseInt)
+{
+    RUNTIME_STUBS_HEADER(ParseInt);
+    JSHandle<JSTaggedValue> msg = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> arg2 = GetHArg<JSTaggedValue>(argv, argc, 1);    // 1: means the first parameter
+
+    int32_t radix = 0;
+    // 1. Let inputString be ToString(string).
+    JSHandle<EcmaString> numberString = JSTaggedValue::ToString(thread, msg);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    if (!arg2->IsUndefined()) {
+        // 7. Let R = ToInt32(radix).
+        radix = JSTaggedValue::ToInt32(thread, arg2);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    }
+
+    return base::NumberHelper::StringToNumber(*numberString, radix).GetRawData();
+}
+
 int RuntimeStubs::FastArraySort(JSTaggedType x, JSTaggedType y)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -3832,6 +3851,13 @@ JSTaggedValue RuntimeStubs::LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType lo
         result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
     }
     return result;
+}
+
+JSTaggedValue RuntimeStubs::StringToNumber(JSTaggedType numberString, int32_t radix)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto input = EcmaString::Cast(JSTaggedValue(numberString));
+    return base::NumberHelper::StringToNumber(input, radix);
 }
 
 void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength)

@@ -142,6 +142,7 @@ namespace panda::ecmascript::kungfu {
 
 #define BUILTINS_WITH_NUMBER_STUB_BUILDER(V)        \
     V(ParseFloat,      Number,    Undefined())      \
+    V(ParseInt,        Number,    Undefined())      \
     V(ToString,        Number,    Undefined())
 
 #define BUILTINS_WITH_REFLECT_STUB_BUILDER(V)       \
@@ -389,6 +390,7 @@ public:
             case BuiltinsStubCSigns::ID::SetClear:
             case BuiltinsStubCSigns::ID::SetAdd:
             case BuiltinsStubCSigns::ID::NumberParseFloat:
+            case BuiltinsStubCSigns::ID::NumberParseInt:
             case BuiltinsStubCSigns::ID::ObjectIs:
             case BuiltinsStubCSigns::ID::ObjectGetPrototypeOf:
             case BuiltinsStubCSigns::ID::ObjectGetProto:
@@ -633,6 +635,8 @@ public:
                 return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
             case BuiltinsStubCSigns::ID::NumberParseFloat:
                 return ConstantIndex::NUMBER_PARSE_FLOAT_INDEX;
+            case BuiltinsStubCSigns::ID::NumberParseInt:
+                return ConstantIndex::NUMBER_PARSE_INT_INDEX;
             case BuiltinsStubCSigns::ID::ObjectIs:
                 return ConstantIndex::OBJECT_IS_INDEX;
             case BuiltinsStubCSigns::ID::ObjectGetPrototypeOf:
@@ -737,6 +741,7 @@ public:
             {SetAdd, "Set.add"},
             {BigIntConstructor, "BigInt"},
             {NumberParseFloat, "Number.parseFloat"},
+            {NumberParseInt, "Number.parseInt"},
             {StringSubstring, "String.prototype.substring"},
             {StringSubStr, "String.prototype.substr"},
             {StringSlice, "String.prototype.slice"},

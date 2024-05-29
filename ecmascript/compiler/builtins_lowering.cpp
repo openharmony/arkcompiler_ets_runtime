@@ -70,19 +70,34 @@ GateRef BuiltinLowering::TypedLocaleCompare(GateRef glue, GateRef gate, GateRef 
     Label entry(&builder_);
     env->SubCfgEntry(&entry);
 
+    Label slowPath(&builder_);
+    Label fastPath(&builder_);
     Label localeCompareGC(&builder_);
     Label exit(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
 
-    result = builder_.CallNGCRuntime(glue, RTSTUB_ID(LocaleCompareNoGc), Gate::InvalidGateRef,
-        { glue, builder_.Undefined(), thisObj, thatObj }, gate);
-    GateRef status = builder_.TaggedIsUndefined(*result);
-    builder_.Branch(status, &localeCompareGC, &exit, BranchWeight::ONE_WEIGHT, BranchWeight::STRONG_WEIGHT,
-        "TypedLocaleCompare");
-    builder_.Bind(&localeCompareGC);
+    GateRef thisIsString = builder_.TaggedIsString(thisObj);
+    GateRef thatIsString = builder_.TaggedIsString(thatObj);
+    GateRef isString = builder_.BoolAnd(thisIsString, thatIsString);
+    builder_.Branch(isString, &fastPath, &slowPath);
+    builder_.Bind(&fastPath);
     {
-        result = builder_.CallRuntime(glue, RTSTUB_ID(LocaleCompareWithGc), Gate::InvalidGateRef,
-            { builder_.Undefined(), thisObj, thatObj, builder_.Undefined() }, gate);
+        result = builder_.CallNGCRuntime(glue, RTSTUB_ID(LocaleCompareNoGc), Gate::InvalidGateRef,
+            { glue, builder_.Undefined(), thisObj, thatObj }, gate);
+        GateRef status = builder_.TaggedIsUndefined(*result);
+        builder_.Branch(status, &localeCompareGC, &exit, BranchWeight::ONE_WEIGHT, BranchWeight::STRONG_WEIGHT,
+            "TypedLocaleCompare");
+        builder_.Bind(&localeCompareGC);
+        {
+            result = builder_.CallRuntime(glue, RTSTUB_ID(LocaleCompareWithGc), Gate::InvalidGateRef,
+                { builder_.Undefined(), thisObj, thatObj, builder_.Undefined() }, gate);
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&slowPath);
+    {
+        result = LowerCallRuntime(glue, gate, RTSTUB_ID(LocaleCompare),
+            { thisObj, thatObj, builder_.Undefined(), builder_.Undefined()});
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);

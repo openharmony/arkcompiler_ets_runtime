@@ -107,6 +107,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::NumberParseFloat:
                 TryInlineNumberParseFloat(gate, argc, skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::NumberParseInt:
+                TryInlineNumberParseInt(gate, argc, skipThis);
+                break;
             case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
                 TryInlineNumberIsSafeInteger(gate, argc, skipThis);
                 break;
@@ -594,6 +597,28 @@ void NativeInlineLowering::TryInlineNumberParseFloat(GateRef gate, size_t argc, 
         AddTraceLogs(gate, id);
     }
     GateRef ret = builder_.NumberParseFloat(arg, acc_.GetFrameState(gate));
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineNumberParseInt(GateRef gate, size_t argc, bool skipThis)
+{
+    auto firstParam = skipThis ? 1 : 0;
+    auto func = acc_.GetValueIn(gate, argc + firstParam);
+    auto arg = acc_.GetValueIn(gate, firstParam);
+    auto radix = builder_.Undefined();
+    if (argc > 1) {
+        radix = acc_.GetValueIn(gate, firstParam + 1);
+    }
+
+    Environment env(gate, circuit_, &builder_);
+    auto id = BuiltinsStubCSigns::ID::NumberParseInt;
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+    GateRef ret = builder_.NumberParseInt(arg, radix);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 

@@ -295,6 +295,7 @@ group("ark_aot_ts_test") {
     "sendablecontext",
     "createarraywithbuffer2",
     "builtins_number2",
+    "builtins_parseint",
   ]
 
   if (!is_debug) {

@@ -213,6 +213,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::NUMBER_PARSE_FLOAT:
             LowerNumberParseFloat(gate);
             break;
+        case OpCode::NUMBER_PARSE_INT:
+            LowerNumberParseInt(gate);
+            break;
         case OpCode::MAP_GET:
             LowerToCommonStub(gate, CommonStubCSigns::JSMapGet);
             break;
@@ -1899,6 +1902,55 @@ void TypedNativeInlineLowering::LowerNumberIsNaN(GateRef gate)
     GateRef result = builder_.DoubleIsNAN(value);
 
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+}
+
+void TypedNativeInlineLowering::LowerNumberParseInt(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    Label exit(&builder_);
+    Label slowPath(&builder_);
+    Label msgIsString(&builder_);
+    Label radixIsSpecial(&builder_);
+    Label radixIsSpecialInt(&builder_);
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVALUE(radix, (&builder_), VariableType::INT32(), builder_.Int32(base::DECIMAL));
+    GateRef msg = acc_.GetValueIn(gate, 0);
+    GateRef arg2 = acc_.GetValueIn(gate, 1);
+
+    builder_.Branch(builder_.TaggedIsString(msg), &msgIsString, &slowPath);
+
+    builder_.Bind(&msgIsString);
+    {
+        builder_.Branch(builder_.TaggedIsUndefined(arg2), &radixIsSpecialInt, &radixIsSpecial);
+        builder_.Bind(&radixIsSpecial);
+        {
+            Label radixIsInt(&builder_);
+            builder_.Branch(builder_.TaggedIsInt(arg2), &radixIsInt, &slowPath);
+            builder_.Bind(&radixIsInt);
+            {
+                radix = builder_.GetInt32OfTInt(arg2);
+                builder_.Jump(&radixIsSpecialInt);
+            }
+        }
+        builder_.Bind(&radixIsSpecialInt);
+        {
+            GateRef glue = acc_.GetGlueFromArgList();
+            result = builder_.CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), Gate::InvalidGateRef,
+                { msg, *radix }, gate);
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&slowPath);
+    {
+        GateRef glue = acc_.GetGlueFromArgList();
+        result = builder_.CallRuntime(glue, RTSTUB_ID(ParseInt), Gate::InvalidGateRef, { msg, arg2 }, gate);
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerNumberParseFloat(GateRef gate)

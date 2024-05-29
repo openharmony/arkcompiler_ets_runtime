@@ -1810,21 +1810,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
     Environment env(gate, circuit_, &builder_);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateRef leftIsUtf8 = builder_.IsUtf8String(left);
-    GateRef rightIsUtf8 = builder_.IsUtf8String(right);
     GateRef leftLength = builder_.GetLengthFromString(left);
-    GateRef rightLength = builder_.GetLengthFromString(right);
-    GateRef newLength = builder_.Int32Add(leftLength, rightLength);
-    GateRef backStoreLength = builder_.Int32Mul(newLength, builder_.Int32(LineEcmaString::INIT_LENGTH_TIMES));
-    GateRef canBeCompressed = builder_.BoolAnd(leftIsUtf8, rightIsUtf8);
-    GateRef isValidFirstOpt = builder_.Equal(leftIsUtf8, rightIsUtf8);
-    GateRef isValidOpt = builder_.Equal(leftIsUtf8, rightIsUtf8);
-    if (!IsFirstConcatInStringAdd(gate)) {
-        isValidFirstOpt = builder_.False();
-    }
-    if (!ConcatIsInStringAdd(gate)) {
-        isValidOpt = builder_.False();
-    }
 
     Label isFirstConcat(&builder_);
     Label isNotFirstConcat(&builder_);
@@ -1848,6 +1834,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
     {
         Label rightEmpty(&builder_);
         Label rightNotEmpty(&builder_);
+        GateRef rightLength = builder_.GetLengthFromString(right);
         BRANCH_CIR(builder_.Equal(rightLength, builder_.Int32(0)), &rightEmpty, &rightNotEmpty);
         builder_.Bind(&rightEmpty);
         {
@@ -1857,10 +1844,25 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
         builder_.Bind(&rightNotEmpty);
         {
             Label stringConcatOpt(&builder_);
+            GateRef newLength = builder_.Int32Add(leftLength, rightLength);
             BRANCH_CIR(builder_.Int32LessThan(newLength,
                 builder_.Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)), &slowPath, &stringConcatOpt);
             builder_.Bind(&stringConcatOpt);
             {
+                GateRef backStoreLength =
+                    builder_.Int32Mul(newLength, builder_.Int32(LineEcmaString::INIT_LENGTH_TIMES));
+                GateRef leftIsUtf8 = builder_.IsUtf8String(left);
+                GateRef rightIsUtf8 = builder_.IsUtf8String(right);
+                GateRef canBeCompressed = builder_.BoolAnd(leftIsUtf8, rightIsUtf8);
+                GateRef isValidFirstOpt = builder_.Equal(leftIsUtf8, rightIsUtf8);
+                GateRef isValidOpt = builder_.Equal(leftIsUtf8, rightIsUtf8);
+                if (!IsFirstConcatInStringAdd(gate)) {
+                    isValidFirstOpt = builder_.False();
+                }
+                if (!ConcatIsInStringAdd(gate)) {
+                    isValidOpt = builder_.False();
+                }
+
                 BRANCH_CIR(builder_.IsSpecialSlicedString(left), &isNotFirstConcat, &isFirstConcat);
                 builder_.Bind(&isFirstConcat);
                 {

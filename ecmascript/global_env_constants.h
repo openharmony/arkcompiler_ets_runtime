@@ -245,6 +245,7 @@ class ObjectFactory;
     V(JSTaggedValue, NumberIsInteger, NUMBER_IS_INTEGER_INDEX, ecma_roots_builtins)                     \
     V(JSTaggedValue, NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER_INDEX, ecma_roots_builtins)             \
     V(JSTaggedValue, NumberParseFloat, NUMBER_PARSE_FLOAT_INDEX, ecma_roots_builtins)                   \
+    V(JSTaggedValue, NumberParseInt, NUMBER_PARSE_INT_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, ObjectIs, OBJECT_IS_INDEX, ecma_roots_special)                                     \
     V(JSTaggedValue, ObjectGetPrototypeOf, OBJECT_GET_PROTOTYPE_OF_INDEX, ecma_roots_special)           \
     V(JSTaggedValue, ObjectGetPrototo, OBJECT_GET_PROTO_INDEX, ecma_roots_special)                      \
