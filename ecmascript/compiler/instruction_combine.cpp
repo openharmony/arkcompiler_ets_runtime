@@ -123,7 +123,7 @@ template <typename signed_type> inline signed_type ShlWithWraparound(signed_type
 {
     using unsigned_type = typename std::make_unsigned<signed_type>::type;
     const unsigned_type kMask = (sizeof(a) * 8) - 1;
-    return static_cast<signed_type>(static_cast<unsigned_type>(a) << (b & kMask));
+    return static_cast<signed_type>(static_cast<unsigned_type>(a) << (static_cast<unsigned_type>(b) & kMask));
 }
 
 template <typename signed_type> inline signed_type NegateWithWraparound(signed_type a)
@@ -334,7 +334,7 @@ GateRef InstructionCombine::VisitICMP(GateRef gate)
                 Int64BinopMatcher orOp(andOp.Left().Gate(), circuit_);
                 auto constant2 = andOp.Right().ResolvedValue();
                 auto constant1 = orOp.Right().HasResolvedValue() ? orOp.Right().ResolvedValue() : 0;
-                bool flag = ((constant1 & constant2) != 0);
+                bool flag = ((static_cast<uint64_t>(constant1) & static_cast<uint64_t>(constant2)) != 0);
                 result = flag ? builder_.False() : Circuit::NullGate();
             }
         }
@@ -1060,7 +1060,8 @@ GateRef InstructionCombine::ReduceWord64Or(GateRef gate)
     if (m.Right().HasResolvedValue() && m.Left().IsmInt64And()) {
         Int64BinopMatcher mand(m.Left().Gate(), circuit_);
         if (mand.Right().HasResolvedValue()) {
-            if ((m.Right().ResolvedValue() | mand.Right().ResolvedValue()) == -1) {
+            if ((static_cast<uint64_t>(m.Right().ResolvedValue()) |
+                static_cast<uint64_t>(mand.Right().ResolvedValue())) == -1) {
                 acc_.ReplaceValueIn(gate, mand.Left().Gate(), 0);
                 return gate;
             }
@@ -1163,7 +1164,8 @@ GateRef InstructionCombine::ReduceWord64Lsr(GateRef gate)
     }
     if (m.IsFoldable()) {
         // The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
-        return builder_.Int64(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 63));
+        return builder_.Int64(static_cast<uint64_t>(m.Left().ResolvedValue()) >>
+            (static_cast<uint64_t>(m.Right().ResolvedValue()) & 63));
     }
     return Circuit::NullGate();
 }
@@ -1177,7 +1179,8 @@ GateRef InstructionCombine::ReduceWord32Lsr(GateRef gate)
     }
     if (m.IsFoldable()) {
         // The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
-        return builder_.Int32(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 31));
+        return builder_.Int32(static_cast<uint32_t>(m.Left().ResolvedValue()) >>
+            (static_cast<uint32_t>(m.Right().ResolvedValue()) & 31));
     }
     // (m >>> s) == 0 implies ((x & m) >>> s) == 0
     if (m.Left().IsmInt32And() && m.Right().HasResolvedValue()) {
