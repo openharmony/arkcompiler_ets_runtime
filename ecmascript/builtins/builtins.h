@@ -108,6 +108,10 @@ private:
 
     void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
+    JSHandle<JSObject> InitializeArrayPrototype(JSHandle<JSHClass> &arrBaseFuncInstanceHClass) const;
+    
+    JSHandle<JSHClass> InitializeArrayPrototypeHClass(const JSHandle<JSObject> &arrFuncPrototype) const;
+
     void InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjIHClass,
                                JSHandle<JSFunction> &sFuncPrototype) const;
 
