@@ -31,9 +31,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
 {
     auto op = acc_.GetOpCode(gate);
     switch (op) {
-        case OpCode::GET_UNSHARED_CONSTPOOL:
-            LowerGetUnsharedConstpool(gate);
-            break;
         case OpCode::STATE_SPLIT:
             DeleteStateSplit(gate);
             break;
@@ -56,7 +53,7 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             LowerLoadConstOffset(gate);
             break;
         case OpCode::LOAD_HCLASS_FROM_CONSTPOOL:
-            LowerLoadHClassFromUnsharedConstpool(gate);
+            LowerLoadHClassFromConstpool(gate);
             break;
         case OpCode::STORE_CONST_OFFSET:
             LowerStoreConstOffset(gate);
@@ -178,7 +175,7 @@ void MCRLowering::LowerLoadConstOffset(GateRef gate)
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
-void MCRLowering::LowerLoadHClassFromUnsharedConstpool(GateRef gate)
+void MCRLowering::LowerLoadHClassFromConstpool(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef constpool = acc_.GetValueIn(gate, 0);
@@ -283,18 +280,6 @@ void MCRLowering::LowerIsSpecificObjectType(GateRef gate)
         }
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-}
-
-void MCRLowering::LowerGetUnsharedConstpool(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef constpool = acc_.GetValueIn(gate, 0); // 0: this object
-    GateRef newGate = builder_.GetUnsharedConstpoolFromGlue(glue_, constpool);
-
-    acc_.UpdateAllUses(gate, newGate);
-
-    // delete old gate
-    acc_.DeleteGate(gate);
 }
 
 void MCRLowering::DeleteStateSplit(GateRef gate)

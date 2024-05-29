@@ -277,15 +277,14 @@ public:
     GateRef LoadBuiltinObject(size_t offset);
 
     // Get
-    GateRef GetUnsharedConstpool(GateRef constpool);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
     GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpoolIndex(GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef arrayAddr, GateRef index);
     GateRef GetCodeAddr(GateRef jsFunc);
     GateRef GetBaselineCodeAddr(GateRef baselineCode);
-    GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
-                                   ConstPoolType type);
+    GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef shardConstPool, GateRef unsharedConstPool,
+                                   GateRef module, GateRef index, ConstPoolType type);
     GateRef GetFunctionLexicalEnv(GateRef function);
     GateRef GetGlobalEnv();
     GateRef GetGlobalEnvObj(GateRef env, size_t index);
@@ -636,7 +635,7 @@ public:
     GateRef LoadMapSize(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
         MemoryOrder order = MemoryOrder::Default());
-    GateRef LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index);
+    GateRef LoadHClassFromConstpool(GateRef constpool, size_t index);
     GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);

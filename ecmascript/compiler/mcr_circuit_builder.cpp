@@ -920,11 +920,11 @@ GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, siz
     return ret;
 }
 
-GateRef CircuitBuilder::LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index)
+GateRef CircuitBuilder::LoadHClassFromConstpool(GateRef constpool, size_t index)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(circuit_->LoadHClassFromUnsharedConstpool(index), MachineType::I64,
+    auto ret = GetCircuit()->NewGate(circuit_->LoadHClassFromConstpool(index), MachineType::I64,
                                      { currentDepend, constpool }, GateType::AnyType());
     currentLabel->SetDepend(ret);
     return ret;
@@ -1576,23 +1576,24 @@ GateRef CircuitBuilder::BooleanConstructorCheck(GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::MonoLoadPropertyOnProto(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex)
+GateRef CircuitBuilder::MonoLoadPropertyOnProto(GateRef receiver, GateRef plrGate, GateRef unsharedConstPool,
+                                                size_t hclassIndex)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
     auto ret = GetCircuit()->NewGate(circuit_->MonoLoadPropertyOnProto(), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex), jsFunc,
-                                       frameState },
+                                     { currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex),
+                                       unsharedConstPool, frameState },
                                      GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::MonoCallGetterOnProto(GateRef gate, GateRef receiver, GateRef plrGate, GateRef jsFunc,
-                                              size_t hclassIndex)
+GateRef CircuitBuilder::MonoCallGetterOnProto(GateRef gate, GateRef receiver, GateRef plrGate,
+                                              GateRef unsharedConstPool, size_t hclassIndex)
 {
     uint64_t pcOffset = acc_.TryGetPcOffset(gate);
     ASSERT(pcOffset != 0);
@@ -1601,8 +1602,8 @@ GateRef CircuitBuilder::MonoCallGetterOnProto(GateRef gate, GateRef receiver, Ga
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    std::vector<GateRef> args = { currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex), jsFunc,
-                                  frameState };
+    std::vector<GateRef> args = { currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex),
+                                  unsharedConstPool, frameState };
     auto callGate = GetCircuit()->NewGate(circuit_->MonoCallGetterOnProto(pcOffset),
                                           MachineType::I64,
                                           args.size(),
@@ -1613,7 +1614,7 @@ GateRef CircuitBuilder::MonoCallGetterOnProto(GateRef gate, GateRef receiver, Ga
     return callGate;
 }
 
-GateRef CircuitBuilder::MonoStorePropertyLookUpProto(GateRef receiver, GateRef plrGate, GateRef jsFunc,
+GateRef CircuitBuilder::MonoStorePropertyLookUpProto(GateRef receiver, GateRef plrGate, GateRef unsharedConstPool,
                                                      size_t hclassIndex, GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -1621,21 +1622,21 @@ GateRef CircuitBuilder::MonoStorePropertyLookUpProto(GateRef receiver, GateRef p
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
     auto ret = GetCircuit()->NewGate(circuit_->MonoStorePropertyLookUpProto(false), MachineType::I64,
-        { currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex), jsFunc, value, frameState},
+        { currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex), unsharedConstPool, value, frameState},
         GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::MonoStoreProperty(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
-                                          GateRef value, GateRef key)
+GateRef CircuitBuilder::MonoStoreProperty(GateRef receiver, GateRef plrGate, GateRef unsharedConstPool,
+                                          size_t hclassIndex, GateRef value, GateRef key)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->MonoStoreProperty(false), MachineType::I64,
-        { currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex), jsFunc, value, key },
+        { currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex), unsharedConstPool, value, key },
         GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

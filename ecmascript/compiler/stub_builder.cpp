@@ -6739,27 +6739,31 @@ GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, Gat
 {
     GateRef module = Circuit::NullGate();
     GateRef hirGate = Circuit::NullGate();
-    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::STRING);
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, Circuit::NullGate(), module, index,
+                                                      ConstPoolType::STRING);
 }
 
 GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index)
 {
     GateRef module = Circuit::NullGate();
     GateRef hirGate = Circuit::NullGate();
-    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::METHOD);
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, Circuit::NullGate(), module, index,
+                                                      ConstPoolType::METHOD);
 }
 
 GateRef StubBuilder::GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module)
 {
     GateRef hirGate = Circuit::NullGate();
-    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index,
+    GateRef unsharedConstPool = env_->GetBuilder()->GetUnsharedConstpoolFromGlue(glue, constpool);
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, unsharedConstPool, module, index,
                                                       ConstPoolType::ARRAY_LITERAL);
 }
 
 GateRef StubBuilder::GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module)
 {
     GateRef hirGate = Circuit::NullGate();
-    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index,
+    GateRef unsharedConstPool = env_->GetBuilder()->GetUnsharedConstpoolFromGlue(glue, constpool);
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, unsharedConstPool, module, index,
                                                       ConstPoolType::OBJECT_LITERAL);
 }
 

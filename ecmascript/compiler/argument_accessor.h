@@ -45,7 +45,8 @@ enum class FrameArgIdx : uint8_t {
     THIS_OBJECT,
     ACTUAL_ARGC,
     ACTUAL_ARGV,
-    CONST_POOL,
+    SHARED_CONST_POOL,
+    UNSHARED_CONST_POOL,
     NUM_OF_ARGS,
 };
 

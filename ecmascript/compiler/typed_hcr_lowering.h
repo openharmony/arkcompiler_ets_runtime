@@ -259,7 +259,7 @@ private:
     GateRef GetLengthFromSupers(GateRef supers);
     GateRef GetValueFromSupers(GateRef supers, size_t index);
     GateRef LoadFromTaggedArray(GateRef array, size_t index);
-    GateRef LoadFromConstPool(GateRef constpool, size_t index, size_t valVecType);
+    GateRef LoadFromConstPool(GateRef unsharedConstPool, size_t index, size_t valVecType);
     GateRef LoadFromVTable(GateRef receiver, size_t index);
     GateRef GetLengthFromString(GateRef gate);
     GateRef LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr);

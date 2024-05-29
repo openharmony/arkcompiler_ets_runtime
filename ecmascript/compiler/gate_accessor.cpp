@@ -1987,7 +1987,7 @@ bool GateAccessor::IsNoBarrier(GateRef gate) const
 
 uint32_t GateAccessor::GetConstpoolId(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::GET_CONSTPOOL);
+    ASSERT(GetOpCode(gate) == OpCode::GET_SHARED_CONSTPOOL);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }

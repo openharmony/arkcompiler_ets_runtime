@@ -461,17 +461,6 @@ void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate
     }
 }
 
-GateRef CircuitBuilder::GetUnsharedConstpool(GateRef constpool)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentDepend = currentLabel->GetDepend();
-    auto newGate = GetCircuit()->NewGate(circuit_->GetUnsharedConstpool(), MachineType::I64,
-                                         { currentDepend, constpool },
-                                         GateType::AnyType());
-    currentLabel->SetDepend(newGate);
-    return newGate;
-}
-
 GateRef CircuitBuilder::GetGlobalEnv()
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -790,8 +779,9 @@ GateRef CircuitBuilder::CheckJSType(GateRef object, JSType jsType)
     return ret;
 }
 
-GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module,
-                                               GateRef index, ConstPoolType type)
+GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef sharedConstPool,
+                                               GateRef unsharedConstPool, GateRef module, GateRef index,
+                                               ConstPoolType type)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -808,7 +798,6 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     // Call runtime to create unshared constpool when current context's cache is hole in multi-thread.
     DEFVALUE(cacheValue, env_, VariableType::JS_ANY(), Hole());
     if (type == ConstPoolType::ARRAY_LITERAL || type == ConstPoolType::OBJECT_LITERAL) {
-        GateRef unsharedConstPool = GetUnsharedConstpoolFromGlue(glue, constPool);
         BRANCH_CIR2(TaggedIsNotHole(unsharedConstPool), &unshareCpHit, &unshareCpMiss);
         Bind(&unshareCpHit);
         {
@@ -816,7 +805,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Jump(&unshareCpMiss);
         }
     } else {
-        cacheValue = GetValueFromTaggedArray(constPool, index);
+        cacheValue = GetValueFromTaggedArray(sharedConstPool, index);
         Jump(&unshareCpMiss);
     }
     Bind(&unshareCpMiss);
@@ -826,16 +815,16 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     {
         if (type == ConstPoolType::STRING) {
             result = CallRuntime(glue, RTSTUB_ID(GetStringFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index) }, hirGate);
+                { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
             result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
             result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
         } else {
             result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index) }, hirGate);
+                { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
         }
         Jump(&exit);
     }
@@ -847,7 +836,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index) }, hirGate);
+                    { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
@@ -856,7 +845,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                    { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
@@ -865,7 +854,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                    { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
         } else {
@@ -928,9 +917,8 @@ GateRef CircuitBuilder::GetBaselineCodeAddr(GateRef baselineCode)
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
-    GateRef constPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
-    GateRef unsharedConstpool = GetUnsharedConstpool(constPool);
-    return LoadHClassFromUnsharedConstpool(unsharedConstpool, index);
+    GateRef unsharedConstpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
+    return LoadHClassFromConstpool(unsharedConstpool, index);
 }
 
 GateRef Variable::AddPhiOperand(GateRef val)
