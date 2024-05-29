@@ -416,7 +416,13 @@
             "mjsunit/regress/regress-552302.js",
             "mjsunit/regress/regress-472504.js",
             "mjsunit/regress/regress-1151.js",
-            "mjsunit/regress/regress-115452.js"
+            "mjsunit/regress/regress-115452.js",
+            "intl/overrides/security.js",
+            "intl/string/normalization.js",
+            "intl/date-format/invalid-time.js",
+            "intl/general/smp-identifier.js",
+            "intl/general/invalid-locale.js",
+            "intl/number-format/check-digit-ranges.js"
         ]
     },
     {
@@ -1566,20 +1572,62 @@
       ]
     },
     {
-      "reason": "Add remaining Intl test cases and temporarily skip execution failure cases(111)",
+      "reason": "Not support Intl.v8BreakIterator",
       "files": [
-        "intl/localematcher/bestfit-supplemental-files.js",
-        "intl/relative-time-format/resolved-options-nu.js",
-        "intl/relative-time-format/format-en.js",
-        "intl/locale/locale-info-gettextinfo.js",
-        "intl/locale/locale-numberingSystems.js",
+        "intl/break-iterator/zh-break.js",
+        "intl/break-iterator/supported-locales-is-method.js",
+        "intl/break-iterator/options.js",
+        "intl/break-iterator/subclass.js",
+        "intl/break-iterator/resolved-options-is-method.js",
+        "intl/break-iterator/en-break.js",
+        "intl/break-iterator/default-locale.js",
+        "intl/break-iterator/property-override.js"
+      ]
+    },
+    {
+      "reason": "Not support Temporal",
+      "files": [
+        "intl/temporal/calendar/fields.js"
+      ]
+    },
+    {
+      "reason": "Not support Intl.Locale.prototype.getTextInfo",
+      "files": [
+        "intl/locale/locale-info-gettextinfo.js"
+      ]
+    },
+    {
+      "reason": "Not support Intl.Locale.prototype.getNumberingSystems",
+      "files": [
+        "intl/locale/locale-numberingSystems.js"
+      ]
+    },
+    {
+      "reason": "Not support Intl.Locale.prototype.getTimeZones",
+      "files": [
+        "intl/locale/locale-info-timezones-sorted.js"
+      ]
+    },
+    {
+      "reason": "Not support Intl.DurationFormat",
+      "files": [
+        "intl/duration-format/format-basic-digital.js"
+      ]
+    },
+    {
+      "reason": "Not support Intl.Locale.prototype.getCalendars",
+      "files": [
         "intl/locale/locale-getCalendars.js",
         "intl/locale/locale-info-no-undefined.js",
         "intl/locale/locale-info-check-property.js",
-        "intl/locale/locale-info-timezones-sorted.js",
         "intl/locale/locale-info-check-return-types.js",
         "intl/locale/locale-info-ext.js",
-        "intl/locale/locale-getCollations.js",
+        "intl/locale/locale-getCollations.js"
+      ]
+    },
+    {
+      "reason": "New specifications 8.3.2 Intl.supportedValuesOf ( key )",
+      "files": [
         "intl/enumeration/timeZone-sorted.js",
         "intl/enumeration/numberingSystem-sorted.js",
         "intl/enumeration/callendar-syntax-valid.js",
@@ -1594,33 +1642,42 @@
         "intl/enumeration/supported-values-of-name.js",
         "intl/enumeration/currency-syntax-valid.js",
         "intl/enumeration/collation-syntax-valid.js",
-        "intl/enumeration/collation-sorted.js",
-        "intl/overrides/caching.js",
-        "intl/overrides/security.js",
-        "intl/temporal/calendar/fields.js",
-        "intl/plural-rules/select-range.js",
-        "intl/break-iterator/zh-break.js",
-        "intl/break-iterator/supported-locales-is-method.js",
-        "intl/break-iterator/options.js",
-        "intl/break-iterator/subclass.js",
-        "intl/break-iterator/resolved-options-is-method.js",
-        "intl/break-iterator/en-break.js",
-        "intl/break-iterator/default-locale.js",
-        "intl/break-iterator/property-override.js",
-        "intl/string/normalization.js",
+        "intl/enumeration/collation-sorted.js"
+      ]
+    },
+    {
+      "reason": "New specifications 16.3.4 Intl.PluralRules.prototype.selectRange ( start, end )",
+      "files": [
+        "intl/plural-rules/select-range.js"
+      ]
+    },
+    {
+      "reason": "New specifications 15.3.5 Intl.NumberFormat.prototype.formatRange ( start, end )",
+      "files": [
+        "intl/number-format/format-range-string.js",
+        "intl/number-format/format-range-numbering-system.js"
+      ]
+    },
+    {
+      "reason": "New specifications 15.3.6 Intl.NumberFormat.prototype.formatRangeToParts ( start, end )",
+      "files": [
+        "intl/number-format/format-range-v3.js"
+      ]
+    },
+    {
+      "reason": "Add remaining Intl test cases and temporarily skip execution failure cases(111)",
+      "files": [
+        "intl/localematcher/bestfit-supplemental-files.js",
+        "intl/relative-time-format/resolved-options-nu.js",
+        "intl/relative-time-format/format-en.js",
         "intl/date-format/format-range.js",
-        "intl/date-format/invalid-time.js",
         "intl/date-format/date_style_time_style_hour_cycle.js",
         "intl/date-format/check-numbering-system.js",
         "intl/date-format/time_style_hour_cycle.js",
         "intl/date-format/format_range_hour_cycle.js",
         "intl/date-format/en-format-range-to-parts.js",
-        "intl/general/smp-identifier.js",
-        "intl/general/invalid-locale.js",
         "intl/general/getCanonicalLocales.js",
-        "intl/general/supported-locales-of.js",
         "intl/general/constructor.js",
-        "intl/number-format/format-range-v3.js",
         "intl/number-format/rounding-mode-table-v3.js",
         "intl/number-format/rounding-increment-value-v3.js",
         "intl/number-format/use-grouping-v3.js",
@@ -1632,15 +1689,11 @@
         "intl/number-format/trailing-zero-display-v3.js",
         "intl/number-format/trailing-zero-display-resolved-options-v3.js",
         "intl/number-format/rounding-increment-v3.js",
-        "intl/number-format/format-range-string.js",
         "intl/number-format/format-string.js",
         "intl/number-format/rounding-increment-resolved-match-v3.js",
-        "intl/number-format/format-range-numbering-system.js",
-        "intl/number-format/check-digit-ranges.js",
         "intl/number-format/unified/style-unit.js",
         "intl/number-format/unified/percent.js",
         "intl/number-format/unified/currency-display.js",
-        "intl/duration-format/format-basic-digital.js",
         "intl/number-format/unified/notation.js"
       ]
     },
