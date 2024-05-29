@@ -39,7 +39,8 @@ public:
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
     void DoSort(GateRef glue, GateRef receiver, Variable *result, Label *exit, Label *slowPath);
     void FastSetPropertyByIndex(GateRef glue, GateRef value, GateRef array, GateRef index, GateRef jsType);
-    void SetValueToBuffer(GateRef glue, GateRef value, GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
+    void SetValueToBuffer(GateRef glue, GateRef value, GateRef buffer, GateRef index,
+                          GateRef offset, GateRef jsType, Label *slowPath);
 
 #define DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(method, ...)           \
     void method(GateRef glue, GateRef numArgs, GateRef end, Variable *result, Label *exit, Label *slowPath);

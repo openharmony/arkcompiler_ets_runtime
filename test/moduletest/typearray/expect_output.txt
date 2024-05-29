@@ -186,3 +186,12 @@ BigInt64Array test success !!!
 BigUint64Array test success !!!
 true
 true
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+-0 -0 0 0 1 2 3 NaN NaN
+-0 -0 0 0 1 2 3 NaN NaN

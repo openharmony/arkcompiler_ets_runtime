@@ -435,17 +435,14 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
 {
     auto env = GetEnvironment();
     Label ecmaObj(env);
-    Label typedArray(env);
     Label isFastTypedArray(env);
     Label defaultConstr(env);
     Label notDetached(env);
 
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
-    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
-    Bind(&typedArray);
     GateRef arrayType = GetObjectType(LoadHClass(thisValue));
-    Branch(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
     Bind(&isFastTypedArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -1380,7 +1377,6 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
     auto env = GetEnvironment();
     Label thisExists(env);
     Label isEcmaObject(env);
-    Label isTypedArray(env);
     Label isFastTypedArray(env);
     Label defaultConstr(env);
     Label prototypeIsEcmaObj(env);
@@ -1390,8 +1386,6 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
     Bind(&thisExists);
     BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
-    BRANCH(IsTypedArray(thisValue), &isTypedArray, slowPath);
-    Bind(&isTypedArray);
     GateRef arrayType = GetObjectType(LoadHClass(thisValue));
     BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
     Bind(&isFastTypedArray);
@@ -1401,9 +1395,9 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
     BRANCH(IsEcmaObject(prototype), &prototypeIsEcmaObj, slowPath);
     Bind(&prototypeIsEcmaObj);
     GateRef marker = GetProtoChangeMarkerFromHClass(LoadHClass(prototype));
-    Branch(TaggedIsProtoChangeMarker(marker), &isProtoChangeMarker, slowPath);
+    BRANCH(TaggedIsProtoChangeMarker(marker), &isProtoChangeMarker, slowPath);
     Bind(&isProtoChangeMarker);
-    Branch(GetAccessorHasChanged(marker), slowPath, &accessorNotChanged);
+    BRANCH(GetAccessorHasChanged(marker), slowPath, &accessorNotChanged);
     Bind(&accessorNotChanged);
 
     Label arg0HeapObject(env);
@@ -1518,15 +1512,12 @@ void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateR
     auto env = GetEnvironment();
     Label thisExists(env);
     Label isEcmaObject(env);
-    Label isTypedArray(env);
     Label isFastTypedArray(env);
     Label defaultConstr(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
-    BRANCH(IsTypedArray(thisValue), &isTypedArray, slowPath);
-    Bind(&isTypedArray);
     GateRef arrayType = GetObjectType(LoadHClass(thisValue));
     BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
     Bind(&isFastTypedArray);
@@ -2000,13 +1991,11 @@ void BuiltinsTypedArrayStubBuilder::DoSort(
                                 {
                                     Label mIsPositive0(env);
                                     Label mIsNotPositive0(env);
-                                    GateRef valueEqual = StubBuilder::SameValueZero(
-                                        glue, *middleValue, DoubleToTaggedDoublePtr(Double(0.0)));
+                                    GateRef valueEqual = Equal(*middleValue, DoubleToTaggedDoublePtr(Double(0.0)));
                                     BRANCH(valueEqual, &mIsPositive0, &mIsNotPositive0);
                                     Bind(&mIsPositive0);
                                     {
-                                        valueEqual = StubBuilder::SameValueZero(
-                                            glue, *presentValue, DoubleToTaggedDoublePtr(Double(-0.0)));
+                                        valueEqual = Equal(*presentValue, DoubleToTaggedDoublePtr(Double(-0.0)));
                                         BRANCH(valueEqual, &floatGreater, &mIsNotPositive0);
                                     }
                                     Bind(&mIsNotPositive0);
@@ -2065,7 +2054,7 @@ void BuiltinsTypedArrayStubBuilder::DoSort(
                         Label hasException3(env);
                         Label notHasException3(env);
                         previousValue = FastGetPropertyByIndex(glue, receiver,
-                            TruncInt64ToInt32(Int64Sub(*j, Int64(1))), GetObjectType(LoadHClass(receiver)));
+                            TruncInt64ToInt32(Int64Sub(*j, Int64(1))), jsType);
                         BRANCH(HasPendingException(glue), &hasException3, &notHasException3);
                         Bind(&hasException3);
                         {
@@ -2074,8 +2063,7 @@ void BuiltinsTypedArrayStubBuilder::DoSort(
                         }
                         Bind(&notHasException3);
                         {
-                            StoreTypedArrayElement(
-                                glue, receiver, *j, *previousValue, GetObjectType(LoadHClass(receiver)));
+                            FastSetPropertyByIndex(glue, *previousValue, receiver, TruncInt64ToInt32(*j), jsType);
                             Jump(&loopEnd2);
                         }
                     }
@@ -2083,7 +2071,7 @@ void BuiltinsTypedArrayStubBuilder::DoSort(
                     j = Int64Sub(*j, Int64(1));
                     LoopEnd(&loopHead2);
                     Bind(&loopExit2);
-                    StoreTypedArrayElement(glue, receiver, *j, *presentValue, GetObjectType(LoadHClass(receiver)));
+                    FastSetPropertyByIndex(glue, *presentValue, receiver, TruncInt64ToInt32(*j), jsType);
                     Jump(&loopEnd);
                 }
             }
@@ -2150,15 +2138,12 @@ void BuiltinsTypedArrayStubBuilder::Set(GateRef glue, GateRef thisValue, GateRef
     auto env = GetEnvironment();
     Label thisExists(env);
     Label ecmaObj(env);
-    Label typedArray(env);
     Label typedArrayIsFast(env);
 
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
-    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
-    Bind(&typedArray);
     BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(thisValue))), &typedArrayIsFast, slowPath);
     Bind(&typedArrayIsFast);
     GateRef len = ZExtInt32ToInt64(GetArrayLength(thisValue));
@@ -2484,15 +2469,14 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
     Label isEcmaObject(env);
     Label isConstructor(env);
     Label thisObjIsECmaObject(env);
-    Label thisObjIsTypedArray(env);
     Label thisObjIsFastTypedArray(env);
     Label defaultConstr(env);
     Label numArgsInRange(env);
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
-    Branch(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
+    BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
-    Branch(IsConstructor(thisValue), &isConstructor, slowPath);
+    BRANCH(IsConstructor(thisValue), &isConstructor, slowPath);
     Bind(&isConstructor);
     // 3: maximum of numArgs
     BRANCH(Int32LessThanOrEqual(TruncPtrToInt32(numArgs), Int32(3)), &numArgsInRange, slowPath);
@@ -2503,13 +2487,11 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
     GateRef thisObj = newBuilder.FastNewThisObject(glue, thisValue);
     GateRef arrayType = GetObjectType(LoadHClass(thisObj));
 
-    Branch(IsEcmaObject(thisObj), &thisObjIsECmaObject, slowPath);
+    BRANCH(IsEcmaObject(thisObj), &thisObjIsECmaObject, slowPath);
     Bind(&thisObjIsECmaObject);
-    Branch(IsTypedArray(thisObj), &thisObjIsTypedArray, slowPath);
-    Bind(&thisObjIsTypedArray);
-    Branch(IsFastTypeArray(arrayType), &thisObjIsFastTypedArray, slowPath);
+    BRANCH(IsFastTypeArray(arrayType), &thisObjIsFastTypedArray, slowPath);
     Bind(&thisObjIsFastTypedArray);
-    Branch(HasConstructor(thisObj), slowPath, &defaultConstr);
+    BRANCH(HasConstructor(thisObj), slowPath, &defaultConstr);
     Bind(&defaultConstr);
 
     newBuilder.SetParameters(glue, 0);
@@ -2532,7 +2514,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
             TaggedIsUndefined(*kValue)), &setValue0, slowPath);
         Bind(&setValue0);
         // 0: first element in newArray
-        StoreTypedArrayElement(glue, newArray, Int64(0), *kValue, arrayType);
+        FastSetPropertyByIndex(glue, *kValue, newArray, Int32(0), arrayType);
         BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
         Bind(&hasException0);
         {
@@ -2552,7 +2534,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
                 TaggedIsUndefined(*kValue)), &setValue1, slowPath);
             Bind(&setValue1);
             // 1: second element in newArray
-            StoreTypedArrayElement(glue, newArray, Int64(1), *kValue, arrayType);
+            FastSetPropertyByIndex(glue, *kValue, newArray, Int32(1), arrayType);
             BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
             Bind(&hasException1);
             {
@@ -2571,7 +2553,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
                     TaggedIsUndefined(*kValue)), &setValue2, slowPath);
                 Bind(&setValue2);
                 // 2: third element in newArray
-                StoreTypedArrayElement(glue, newArray, Int64(2), *kValue, arrayType);
+                FastSetPropertyByIndex(glue, *kValue, newArray, Int32(2), arrayType);
                 BRANCH(HasPendingException(glue), &hasException2, &writeResult);
                 Bind(&hasException2);
                 {
@@ -2596,7 +2578,6 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
     Label thisExists(env);
     Label isHeapObject(env);
     Label defaultConstr(env);
-    Label typedArray(env);
     Label typedArrayIsFast(env);
     Label prototypeIsEcmaObj(env);
     Label isProtoChangeMarker(env);
@@ -2605,20 +2586,18 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
-    Bind(&typedArray);
+    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(thisValue))), &typedArrayIsFast, slowPath);
+    Bind(&typedArrayIsFast);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
     GateRef prototype = GetPrototypeFromHClass(LoadHClass(thisValue));
     BRANCH(IsEcmaObject(prototype), &prototypeIsEcmaObj, slowPath);
     Bind(&prototypeIsEcmaObj);
     GateRef marker = GetProtoChangeMarkerFromHClass(LoadHClass(prototype));
-    Branch(TaggedIsProtoChangeMarker(marker), &isProtoChangeMarker, slowPath);
+    BRANCH(TaggedIsProtoChangeMarker(marker), &isProtoChangeMarker, slowPath);
     Bind(&isProtoChangeMarker);
-    Branch(GetAccessorHasChanged(marker), slowPath, &accessorNotChanged);
+    BRANCH(GetAccessorHasChanged(marker), slowPath, &accessorNotChanged);
     Bind(&accessorNotChanged);
-    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(thisValue))), &typedArrayIsFast, slowPath);
-    Bind(&typedArrayIsFast);
     Label arg0HeapObject(env);
     Label callable(env);
     Label next(env);
@@ -2660,7 +2639,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
 
             Bind(&notHasException1);
             {
-                StoreTypedArrayElement(glue, newArray, *i, retValue, jsType);
+                FastSetPropertyByIndex(glue, retValue, newArray, TruncInt64ToInt32(*i), jsType);
                 Jump(&loopEnd);
             }
         }
@@ -2678,15 +2657,12 @@ void BuiltinsTypedArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, 
 {
     auto env = GetEnvironment();
     Label ecmaObj(env);
-    Label typedArray(env);
     Label defaultConstr(env);
     Label isFastTypedArray(env);
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
-    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
-    Bind(&typedArray);
     GateRef arrayType = GetObjectType(LoadHClass(thisValue));
-    Branch(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
     Bind(&isFastTypedArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -2720,7 +2696,7 @@ void BuiltinsTypedArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, 
             }
             Bind(&notHasException0);
             {
-                StoreTypedArrayElement(glue, newArray, *k, fromValue, arrayType);
+                FastSetPropertyByIndex(glue, fromValue, newArray, TruncInt64ToInt32(*k), arrayType);
                 BRANCH(HasPendingException(glue), &hasException1, &loopEnd);
                 Bind(&hasException1);
                 {
@@ -2749,6 +2725,8 @@ void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef
     Label notDetached(env);
     Label slowPath(env);
     Label indexIsvalid(env);
+    Label notFloatArray(env);
+    Label valueIsNumber(env);
 
     GateRef buffer = GetViewedArrayBuffer(array);
     BRANCH(IsDetachedBuffer(buffer), &isDetached, &notDetached);
@@ -2762,9 +2740,18 @@ void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef
         BRANCH(Int32GreaterThanOrEqual(index, arrLen), &exit, &indexIsvalid);
         Bind(&indexIsvalid);
         {
-            GateRef offset = GetByteOffset(array);
-            SetValueToBuffer(glue, value, buffer, index, offset, jsType);
-            Jump(&exit);
+            BRANCH(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_UINT32_ARRAY))),
+                &notFloatArray, &slowPath);
+            Bind(&notFloatArray);
+            {
+                BRANCH(TaggedIsNumber(value), &valueIsNumber, &slowPath);
+                Bind(&valueIsNumber);
+                {
+                    GateRef offset = GetByteOffset(array);
+                    SetValueToBuffer(glue, value, buffer, index, offset, jsType, &slowPath);
+                    Jump(&exit);
+                }
+            }
         }
     }
     Bind(&slowPath);
@@ -2778,19 +2765,22 @@ void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef
     return;
 }
 
-void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value, GateRef buffer,
-                                                     GateRef index, GateRef offset, GateRef jsType)
+void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value, GateRef buffer, GateRef index,
+                                                     GateRef offset, GateRef jsType, Label *slowPath)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
     env->SubCfgEntry(&entryPass);
+
     Label exit(env);
     Label defaultLabel(env);
     Label isInt8(env);
     Label notInt8(env);
     Label isInt16(env);
     Label notInt16(env);
-
+    Label fastPath(env);
+    Label valueTypeIsInt(env);
+    Label valueTypeIsDouble(env);
     Label labelBuffer[3] = { Label(env), Label(env), Label(env) };
     Label labelBuffer1[3] = { Label(env), Label(env), Label(env) };
     Label labelBuffer2[3] = { Label(env), Label(env), Label(env) };
@@ -2804,6 +2794,26 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
         static_cast<int64_t>(JSType::JS_UINT32_ARRAY), static_cast<int64_t>(JSType::JS_FLOAT32_ARRAY),
         static_cast<int64_t>(JSType::JS_FLOAT64_ARRAY) };
 
+    GateRef valueType = TaggedIsInt(value);
+    BRANCH(valueType, &valueTypeIsInt, &valueTypeIsDouble);
+    Bind(&valueTypeIsInt);
+    {
+        GateRef valueLessthanMin = Int32LessThanOrEqual(TruncInt64ToInt32(
+            ChangeTaggedPointerToInt64(value)), Int32(INT32_MIN));
+        GateRef valueMorethanMax = Int32GreaterThanOrEqual(TruncInt64ToInt32(
+            ChangeTaggedPointerToInt64(value)), Int32(INT32_MAX));
+        BRANCH(BoolOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
+    }
+    Bind(&valueTypeIsDouble);
+    {
+        GateRef valueLessthanMin = Int32LessThanOrEqual(ChangeFloat64ToInt32(CastInt64ToFloat64(
+            ChangeTaggedPointerToInt64(value))), Int32(INT32_MIN));
+        GateRef valueMorethanMax = Int32GreaterThanOrEqual(ChangeFloat64ToInt32(CastInt64ToFloat64(
+            ChangeTaggedPointerToInt64(value))), Int32(INT32_MAX));
+        BRANCH(BoolOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
+    }
+    Bind(&fastPath);
+
     BRANCH(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_UINT8_CLAMPED_ARRAY))),
         &isInt8, &notInt8);
     Bind(&isInt8);
@@ -2813,29 +2823,68 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
         // 0 : index of this buffer
         Bind(&labelBuffer[0]);
         {
+            Label valueIsInt(env);
+            Label valueIsDouble(env);
             GateRef byteIndex = Int32Add(index, offset);
             GateRef block = GetDataPointFromBuffer(buffer);
-            GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
-            Store(VariableType::INT8(), glue, block, byteIndex, val);
-            Jump(&exit);
+            BRANCH(valueType, &valueIsInt, &valueIsDouble);
+            Bind(&valueIsInt);
+            {
+                GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                Store(VariableType::INT8(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
+            Bind(&valueIsDouble);
+            {
+                GateRef val = TruncInt32ToInt8(ChangeFloat64ToInt32(CastInt64ToFloat64(
+                    ChangeTaggedPointerToInt64(value))));
+                Store(VariableType::INT8(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
         }
         // 1 : index of this buffer
         Bind(&labelBuffer[1]);
         {
+            Label valueIsInt(env);
+            Label valueIsDouble(env);
             GateRef byteIndex = Int32Add(index, offset);
             GateRef block = GetDataPointFromBuffer(buffer);
-            GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
-            Store(VariableType::INT8(), glue, block, byteIndex, val);
-            Jump(&exit);
+            BRANCH(valueType, &valueIsInt, &valueIsDouble);
+            Bind(&valueIsInt);
+            {
+                GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                Store(VariableType::INT8(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
+            Bind(&valueIsDouble);
+            {
+                GateRef val = TruncInt32ToInt8(ChangeFloat64ToInt32(CastInt64ToFloat64(
+                    ChangeTaggedPointerToInt64(value))));
+                Store(VariableType::INT8(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
         }
         // 2 : index of this buffer
         Bind(&labelBuffer[2]);
         {
+            Label valueIsInt(env);
+            Label valueIsDouble(env);
             GateRef byteIndex = Int32Add(index, offset);
             GateRef block = GetDataPointFromBuffer(buffer);
-            GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
-            Store(VariableType::INT8(), glue, block, byteIndex, val);
-            Jump(&exit);
+            BRANCH(valueType, &valueIsInt, &valueIsDouble);
+            Bind(&valueIsInt);
+            {
+                GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                Store(VariableType::INT8(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
+            Bind(&valueIsDouble);
+            {
+                GateRef val = TruncInt32ToInt8(ChangeFloat64ToInt32(CastInt64ToFloat64(
+                    ChangeTaggedPointerToInt64(value))));
+                Store(VariableType::INT8(), glue, block, byteIndex, val);
+                Jump(&exit);
+            }
         }
     }
 
@@ -2850,29 +2899,67 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
             // 0 : index of this buffer
             Bind(&labelBuffer1[0]);
             {
+                Label valueIsInt(env);
+                Label valueIsDouble(env);
                 GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::TWO)), offset);
                 GateRef block = GetDataPointFromBuffer(buffer);
-                GateRef val = TruncInt32ToInt16(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
-                Store(VariableType::INT16(), glue, block, byteIndex, val);
-                Jump(&exit);
+                BRANCH(valueType, &valueIsInt, &valueIsDouble);
+                Bind(&valueIsInt);
+                {
+                    GateRef val = TruncInt32ToInt16(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                    Store(VariableType::INT16(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
+                Bind(&valueIsDouble);
+                {
+                    GateRef val = TruncInt32ToInt16(ChangeFloat64ToInt32(CastInt64ToFloat64(
+                        ChangeTaggedPointerToInt64(value))));
+                    Store(VariableType::INT16(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
             }
             // 1 : index of this buffer
             Bind(&labelBuffer1[1]);
             {
+                Label valueIsInt(env);
+                Label valueIsDouble(env);
                 GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::TWO)), offset);
                 GateRef block = GetDataPointFromBuffer(buffer);
-                GateRef val = TruncInt32ToInt16(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
-                Store(VariableType::INT16(), glue, block, byteIndex, val);
-                Jump(&exit);
+                BRANCH(valueType, &valueIsInt, &valueIsDouble);
+                Bind(&valueIsInt);
+                {
+                    GateRef val = TruncInt32ToInt16(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                    Store(VariableType::INT16(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
+                Bind(&valueIsDouble);
+                {
+                    GateRef val = TruncInt32ToInt16(ChangeFloat64ToInt32(CastInt64ToFloat64(
+                        ChangeTaggedPointerToInt64(value))));
+                    Store(VariableType::INT16(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
             }
             // 2 : index of this buffer
             Bind(&labelBuffer1[2]);
             {
+                Label valueIsInt(env);
+                Label valueIsDouble(env);
                 GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
                 GateRef block = GetDataPointFromBuffer(buffer);
-                GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
-                Store(VariableType::INT32(), glue, block, byteIndex, val);
-                Jump(&exit);
+                BRANCH(valueType, &valueIsInt, &valueIsDouble);
+                Bind(&valueIsInt);
+                {
+                    GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                    Store(VariableType::INT32(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
+                Bind(&valueIsDouble);
+                {
+                    GateRef val = ChangeFloat64ToInt32(CastInt64ToFloat64(ChangeTaggedPointerToInt64(value)));
+                    Store(VariableType::INT32(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
             }
         }
         Bind(&notInt16);
@@ -2882,29 +2969,65 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
             // 0 : index of this buffer
             Bind(&labelBuffer2[0]);
             {
+                Label valueIsInt(env);
+                Label valueIsDouble(env);
                 GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
                 GateRef block = GetDataPointFromBuffer(buffer);
-                GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
-                Store(VariableType::INT32(), glue, block, byteIndex, val);
-                Jump(&exit);
+                BRANCH(valueType, &valueIsInt, &valueIsDouble);
+                Bind(&valueIsInt);
+                {
+                    GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                    Store(VariableType::INT32(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
+                Bind(&valueIsDouble);
+                {
+                    GateRef val = ChangeFloat64ToInt32(CastInt64ToFloat64(ChangeTaggedPointerToInt64(value)));
+                    Store(VariableType::INT32(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
             }
             // 1 : index of this buffer
             Bind(&labelBuffer2[1]);
             {
+                Label valueIsInt(env);
+                Label valueIsDouble(env);
                 GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
                 GateRef block = GetDataPointFromBuffer(buffer);
-                GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
-                Store(VariableType::INT32(), glue, block, byteIndex, val);
-                Jump(&exit);
+                BRANCH(valueType, &valueIsInt, &valueIsDouble);
+                Bind(&valueIsInt);
+                {
+                    GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                    Store(VariableType::INT32(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
+                Bind(&valueIsDouble);
+                {
+                    GateRef val = ChangeFloat64ToInt32(CastInt64ToFloat64(ChangeTaggedPointerToInt64(value)));
+                    Store(VariableType::INT32(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
             }
             // 2 : index of this buffer
             Bind(&labelBuffer2[2]);
             {
+                Label valueIsInt(env);
+                Label valueIsDouble(env);
                 GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::EIGHT)), offset);
                 GateRef block = GetDataPointFromBuffer(buffer);
-                GateRef val = ChangeTaggedPointerToInt64(value);
-                Store(VariableType::INT64(), glue, block, byteIndex, val);
-                Jump(&exit);
+                BRANCH(valueType, &valueIsInt, &valueIsDouble);
+                Bind(&valueIsInt);
+                {
+                    GateRef val = ChangeTaggedPointerToInt64(value);
+                    Store(VariableType::INT64(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
+                Bind(&valueIsDouble);
+                {
+                    GateRef val = ChangeTaggedPointerToInt64(value);
+                    Store(VariableType::INT64(), glue, block, byteIndex, val);
+                    Jump(&exit);
+                }
             }
         }
     }

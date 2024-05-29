@@ -1393,7 +1393,7 @@ void BuiltinsArrayStubBuilder::Sort(GateRef glue, GateRef thisValue,
     Bind(&notCOWArray);
 
     GateRef callbackFnHandle = GetCallArg0(numArgs);
-    Branch(TaggedIsUndefined(callbackFnHandle), &argUndefined, slowPath);
+    BRANCH(TaggedIsUndefined(callbackFnHandle), &argUndefined, slowPath);
     Bind(&argUndefined);
     result->WriteVariable(DoSort(glue, thisValue, Boolean(false), result, exit, slowPath));
     Jump(exit);
