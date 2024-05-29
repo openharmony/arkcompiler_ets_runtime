@@ -392,6 +392,9 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+        if (index == JSTaggedValue(0)) {
+            return OperationResult(thread, JSTaggedValue::Undefined(), PropertyMetaData(true));
+        }
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer",
                                     OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
     }

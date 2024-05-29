@@ -34,6 +34,7 @@
 #include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass-inl.h"
@@ -122,7 +123,7 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
                                                      JSMutableHandle<JSTaggedValue> keyHandle)
 {
     JSTaggedValue key = keyHandle.GetTaggedValue();
-    if (UNLIKELY(!receiver.IsHeapObject() || !(receiver.IsRegularObject()))) {
+    if (UNLIKELY(!receiver.IsHeapObject() || !receiver.IsRegularObject())) {
         return JSTaggedValue::Hole();
     }
     if (UNLIKELY(!key.IsNumber() && !key.IsString())) {
@@ -137,9 +138,8 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
         if (!ElementAccessor::IsDictionaryMode(receiverObj)) {
             if (index < ElementAccessor::GetElementsLength(receiverObj)) {
                 JSTaggedValue value = ElementAccessor::Get(receiverObj, index);
-                return value.IsHole() ? JSTaggedValue::False() : JSTaggedValue::True();
+                return value.IsHole() ? JSTaggedValue::Hole() : JSTaggedValue::True();
             }
-            return JSTaggedValue::False();
         }
         return JSTaggedValue::Hole();
     }
@@ -161,7 +161,6 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
         if (entry != -1) {
             return JSTaggedValue::True();
         }
-        return JSTaggedValue::False();
     }
     return JSTaggedValue::Hole();
 }
@@ -171,7 +170,7 @@ JSTaggedValue ObjectFastOperator::TryFastGetPropertyByValue(JSThread *thread, JS
                                                             JSMutableHandle<JSTaggedValue> keyHandle)
 {
     JSTaggedValue key = keyHandle.GetTaggedValue();
-    if (UNLIKELY(!receiver.IsHeapObject() || !(receiver.IsRegularObject()))) {
+    if (UNLIKELY(!receiver.IsHeapObject() || !receiver.IsRegularObject())) {
         return JSTaggedValue::Hole();
     }
     if (UNLIKELY(!key.IsNumber() && !key.IsString())) {
@@ -1060,6 +1059,10 @@ JSTaggedValue ObjectFastOperator::GetContainerProperty(JSThread *thread, JSTagge
             res = JSAPIList::Cast(receiver.GetTaggedObject())->Get(index);
             break;
         }
+        case JSType::JS_API_BITVECTOR: {
+            res = JSAPIBitVector::Cast(receiver.GetTaggedObject())->Get(thread, index);
+            break;
+        }
         case JSType::JS_API_LINKED_LIST: {
             res = JSAPILinkedList::Cast(receiver.GetTaggedObject())->Get(index);
             break;
@@ -1094,6 +1097,9 @@ JSTaggedValue ObjectFastOperator::SetContainerProperty(JSThread *thread, JSTagge
             break;
         case JSType::JS_API_VECTOR:
             res = JSAPIVector::Cast(receiver.GetTaggedObject())->Set(thread, index, value);
+            break;
+        case JSType::JS_API_BITVECTOR:
+            res = JSAPIBitVector::Cast(receiver.GetTaggedObject())->Set(thread, index, value);
             break;
         case JSType::JS_API_LIST: {
             JSHandle<JSAPIList> singleList(thread, receiver);

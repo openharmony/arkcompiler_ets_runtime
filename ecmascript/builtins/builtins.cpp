@@ -60,6 +60,7 @@
 #include "ecmascript/builtins/builtins_weak_ref.h"
 #include "ecmascript/builtins/builtins_weak_set.h"
 #include "ecmascript/containers/containers_private.h"
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_index.h"
 #include "ecmascript/js_array.h"
@@ -393,6 +394,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     thread->CheckSafepointIfSuspended();
 #endif
     InitializeModuleNamespace(env, objFuncClass);
+    InitializeNativeModuleError(env, objFuncClass);
     InitializeCjsModule(env);
     InitializeCjsExports(env);
     InitializeCjsRequire(env);
@@ -643,7 +645,8 @@ void Builtins::InitializeFunctionPrototype(const JSHandle<GlobalEnv> &env, JSHan
     SetInlineFunction(env, funcFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
                       Function::FunctionPrototypeToString, fieldIndex++, FunctionLength::ZERO);
     SetInlineFunction(env, funcFuncPrototypeObj, "[Symbol.hasInstance]",
-                      Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE);
+                      Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE,
+                      BUILTINS_STUB_ID(FunctionPrototypeHasInstance));
 }
 
 void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
@@ -717,6 +720,9 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     JSHandle<JSTaggedValue> protoGetter = CreateGetter(env, Object::ProtoGetter, "__proto__", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> protoSetter = CreateSetter(env, Object::ProtoSetter, "__proto__", FunctionLength::ONE);
     SetAccessor(objFuncPrototype, protoKey, protoGetter, protoSetter);
+
+    GlobalEnvConstants *globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    globalConst->SetConstant(ConstantIndex::OBJECT_GET_PROTO_INDEX, protoGetter);
 
     GlobalIndex globalIndex;
     globalIndex.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::OBJECT_FUNCTION_INDEX));
@@ -1019,6 +1025,7 @@ void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<
                 Boolean::BooleanPrototypeValueOf, FunctionLength::ZERO);
 
     env->SetBooleanFunction(thread_, booleanFunction);
+    env->SetBooleanPrototype(thread_, booleanFuncPrototype);
 }
 
 void Builtins::InitializeProxy(const JSHandle<GlobalEnv> &env)
@@ -1855,7 +1862,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
 
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::ITERATOR, nullptr,
         *iteratorFuncClass, iteratorPrototype->GetJSHClass());
-    
+
     // iteratorPrototype hclass
     JSHandle<JSHClass> iteratorPrototypeHClass(thread_, iteratorPrototype->GetJSHClass());
 
@@ -3733,6 +3740,7 @@ JSHandle<JSObject> Builtins::InitializeArkPrivate(const JSHandle<GlobalEnv> &env
     SetConstant(arkPrivate, "Deque", JSTaggedValue(static_cast<int>(containers::ContainerTag::Deque)));
     SetConstant(arkPrivate, "Stack", JSTaggedValue(static_cast<int>(containers::ContainerTag::Stack)));
     SetConstant(arkPrivate, "Vector", JSTaggedValue(static_cast<int>(containers::ContainerTag::Vector)));
+    SetConstant(arkPrivate, "BitVector", JSTaggedValue(static_cast<int>(containers::ContainerTag::BitVector)));
     SetConstant(arkPrivate, "List", JSTaggedValue(static_cast<int>(containers::ContainerTag::List)));
     SetConstant(arkPrivate, "LinkedList", JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
     SetConstant(arkPrivate, "TreeMap", JSTaggedValue(static_cast<int>(containers::ContainerTag::TreeMap)));
@@ -3763,6 +3771,21 @@ void Builtins::InitializeModuleNamespace(const JSHandle<GlobalEnv> &env,
 
     // moduleNamespace.prototype [ @@toStringTag ]
     SetStringTagSymbol(env, moduleNamespacePrototype, "Module");
+}
+
+void Builtins::InitializeNativeModuleError(const JSHandle<GlobalEnv> &env,
+                                           const JSHandle<JSHClass> &objFuncClass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    // NativeModuleError.prototype
+    JSHandle<JSObject> nativeModuleErrorPrototype = factory_->NewJSObjectWithInit(objFuncClass);
+    JSHandle<JSTaggedValue> nativeModuleErrorPrototypeValue(nativeModuleErrorPrototype);
+
+    // NativeModuleError.prototype_or_hclass
+    JSHandle<JSHClass> nativeModuleErrorHClass =
+        factory_->NewEcmaHClass(NativeModuleError::SIZE, JSType::NATIVE_MODULE_ERROR, nativeModuleErrorPrototypeValue);
+    nativeModuleErrorHClass->SetPrototype(thread_, JSTaggedValue::Null());
+    env->SetNativeModuleErrorClass(thread_, nativeModuleErrorHClass.GetTaggedValue());
 }
 
 void Builtins::InitializeCjsModule(const JSHandle<GlobalEnv> &env) const

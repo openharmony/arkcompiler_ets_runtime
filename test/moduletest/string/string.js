@@ -376,3 +376,36 @@ print('abc'.padEnd(-Infinity, 'def') );
 print('abc'.padEnd(0, 'def') );
 print('abc'.padEnd(-1, 'def') );
 print('abc'.padEnd(5, ''))
+
+const abc_str = "abc";
+const negativeHeapNumber = -1 * 2**32;
+const positiveHeapNumber = 2**32;
+print(abc_str.substr(positiveHeapNumber));
+print(abc_str.substr(negativeHeapNumber, positiveHeapNumber));
+print(abc_str.substr(-abc_str.length, positiveHeapNumber));
+print(abc_str.substr(0, positiveHeapNumber));
+print(abc_str.substr(-2, positiveHeapNumber));
+print(abc_str.substr(-1, positiveHeapNumber));
+
+{
+    function f(n) { return "cba".endsWith("a", n); }
+    print(f());
+    print(f(4294967296));
+}
+
+[
+  ['a', 'b', 'c'],
+  'abc',
+  new Uint8Array([8, 9, 10])
+].forEach((v) => {
+    // Test the limit value.
+    print(v.at(-Infinity) == undefined);
+});
+
+const arr_at = new Uint8Array([8, 9, 10]);
+ArkTools.arrayBufferDetach(arr_at.buffer);
+try {
+    arr_at.at(0);
+} catch (e) {
+    print(e instanceof TypeError)
+}

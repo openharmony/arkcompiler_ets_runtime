@@ -29,32 +29,8 @@ using namespace panda::ecmascript::builtins;
 using BuiltinsBase = panda::ecmascript::base::BuiltinsBase;
 
 namespace panda::test {
-class BuiltinsGlobalTest : public testing::Test {
+class BuiltinsGlobalTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
     static JSHandle<JSObject> NewJSObject(JSThread *thread, ObjectFactory *factory, JSHandle<GlobalEnv> globalEnv)
     {
     JSFunction *jsFunc = globalEnv->GetObjectFunction().GetObject<JSFunction>();
@@ -154,11 +130,8 @@ HWTEST_F_L0(BuiltinsGlobalTest, Escape)
         EcmaStringAccessor(ecmaStrHandle2).ToCString().c_str());
 
     JSHandle<EcmaString> str3 = factory->NewFromASCII("Hello World!");
-    auto ecmaRuntimeCallInfo3 =
-        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // NOLINT
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetCallArg(0, str3.GetTaggedValue());
+    std::vector<JSTaggedValue> args{str3.GetTaggedValue()};
+    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6);
 
     [[maybe_unused]] auto prev3 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
     JSTaggedValue result3 = BuiltinsGlobal::Escape(ecmaRuntimeCallInfo3);
@@ -201,11 +174,8 @@ HWTEST_F_L0(BuiltinsGlobalTest, Unescape)
         EcmaStringAccessor(ecmaStrHandle2).ToCString().c_str());
 
     JSHandle<EcmaString> str3 = factory->NewFromASCII("Hello%20World%21");
-    auto ecmaRuntimeCallInfo3 =
-        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // NOLINT 6 means 3 paras
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetCallArg(0, str3.GetTaggedValue());
+    std::vector<JSTaggedValue> args{str3.GetTaggedValue()};
+    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6);
 
     [[maybe_unused]] auto prev3 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
     JSTaggedValue result3 = BuiltinsGlobal::Escape(ecmaRuntimeCallInfo3);

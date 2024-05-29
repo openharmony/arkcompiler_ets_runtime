@@ -72,54 +72,6 @@ void ClassInit::GenPostClassInitCheck(MIRFunction &func, const MIRSymbol &classI
     func.GetBody()->InsertAfter(clinit, callPostClinit);
 }
 
-void ClassInit::ProcessFunc(MIRFunction *func)
-{
-    // No field will be involved in critical native funcs.
-    DEBUG_ASSERT(func != nullptr, "null ptr check!");
-    if (func->IsEmpty() || func->GetAttr(FUNCATTR_critical_native)) {
-        return;
-    }
-    currFunc = func;
-    builder->SetCurrentFunction(*func);
-    // Insert clinit check for static methods.
-    MIRType *selfClassType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->GetClassTyIdx());
-    std::string selfClassName;
-    if (selfClassType != nullptr) {
-        selfClassName = GlobalTables::GetStrTable().GetStringFromStrIdx(selfClassType->GetNameStrIdx());
-    } else {
-        const std::string &funcName = func->GetName();
-        size_t pos = funcName.find(namemangler::kNameSplitterStr);
-        constexpr size_t prePos = 2;
-        constexpr size_t ligalPos = 2;
-        while (pos != std::string::npos &&
-               (pos >= ligalPos && funcName[pos - 1] == '_' && funcName[pos - prePos] != '_')) {
-            constexpr size_t nextPos = 3;
-            pos = funcName.find(namemangler::kNameSplitterStr, pos + nextPos);
-        }
-        selfClassName = funcName.substr(0, pos);
-    }
-    if (func->IsStatic() && !func->IsPrivate() && !func->IsClinit() && func->IsNative()) {
-        MIRType *classType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->GetClassTyIdx());
-        CHECK_FATAL(classType != nullptr, "class type is nullptr");
-        const std::string &className = GlobalTables::GetStrTable().GetStringFromStrIdx(classType->GetNameStrIdx());
-        if (!CanRemoveClinitCheck(className)) {
-            Klass *klass = klassHierarchy->GetKlassFromName(className);
-            CHECK_FATAL(klass != nullptr, "klass is nullptr in ClassInit::ProcessFunc");
-            if (klass->GetClinit() && func != klass->GetClinit()) {
-                MIRSymbol *classInfo = GetClassInfo(className);
-                BaseNode *classInfoNode = builder->CreateExprAddrof(0, *classInfo);
-                if (trace) {
-                    LogInfo::MapleLogger() << "\t- low-cost clinit - insert check in static method " << func->GetName()
-                                           << "clasname " << className << "\n";
-                }
-                MapleVector<BaseNode *> args(builder->GetCurrentFuncCodeMpAllocator()->Adapter());
-                args.push_back(classInfoNode);
-                DEBUG_ASSERT(classInfo != nullptr, "null ptr check!");
-            }
-        }
-    }
-}
-
 MIRSymbol *ClassInit::GetClassInfo(const std::string &classname)
 {
     const std::string &classInfoName = CLASSINFO_PREFIX_STR + classname;

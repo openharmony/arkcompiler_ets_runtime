@@ -40,7 +40,7 @@ class GeneratorContext;
 struct EcmaRuntimeCallInfo;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
-                                              uintptr_t prevFp, bool needPushUndefined);
+                                              uintptr_t prevFp, bool needPushArgv);
 using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
                                               uintptr_t prevFp);
 
@@ -123,18 +123,20 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(JSFunctionEntry)                       \
     V(JSCall)                                \
     V(JSCallWithArgV)                        \
-    V(JSCallWithArgVAndPushUndefined)        \
+    V(JSCallWithArgVAndPushArgv)             \
     V(JSProxyCallInternalWithArgV)           \
-    V(OptimizedCallAndPushUndefined)         \
+    V(OptimizedCallAndPushArgv)              \
     V(DeoptHandlerAsm)                       \
     V(JSCallNew)                             \
-    V(CallOptimized)
+    V(CallOptimized)                         \
+    V(AOTCallToAsmInterBridge)               \
+    V(FastCallToAsmInterBridge)
 
 #define FAST_CALL_TRAMPOLINE_LIST(V)         \
     V(OptimizedFastCallEntry)                \
-    V(OptimizedFastCallAndPushUndefined)     \
+    V(OptimizedFastCallAndPushArgv)          \
     V(JSFastCallWithArgV)                    \
-    V(JSFastCallWithArgVAndPushUndefined)
+    V(JSFastCallWithArgVAndPushArgv)
 
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
@@ -321,6 +323,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LdSendableClass)                    \
     V(SetClassConstructorLength)          \
     V(LoadICByName)                       \
+    V(GetOwnPropertyByname)               \
     V(StoreICByName)                      \
     V(UpdateHotnessCounter)               \
     V(CheckSafePoint)                     \
@@ -449,6 +452,10 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DefineField)                        \
     V(CreatePrivateProperty)              \
     V(DefinePrivateProperty)              \
+    V(GetJSPrxoyProperty)                 \
+    V(CheckProxyGetResult)                \
+    V(SetJSProxyProperty)                 \
+    V(CheckProxySetResult)                 \
     V(LdPrivateProperty)                  \
     V(StPrivateProperty)                  \
     V(TestIn)                             \
@@ -475,7 +482,15 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DumpObject)                         \
     V(TryGetInternString)                 \
     V(TryToElementsIndexOrFindInStringTable) \
-    V(BigIntConstructor)
+    V(BigIntConstructor)                  \
+    V(ObjectPrototypeHasOwnProperty)      \
+    V(ReflectHas)                         \
+    V(ReflectConstruct)                   \
+    V(ReflectApply)                       \
+    V(FunctionPrototypeApply)             \
+    V(FunctionPrototypeBind)              \
+    V(FunctionPrototypeCall)              \
+    V(SetPrototypeTransition)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -587,7 +602,11 @@ public:
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);
     static void EndCallTimer(uintptr_t argGlue, JSTaggedType func);
     static JSTaggedValue RuntimeArraySort(JSThread *thread, JSHandle<JSTaggedValue> thisHandle);
-
+    static inline OperationResult RuntimeCheckProxyGetResult(JSThread *thread,
+        const JSHandle<JSTaggedValue> &resultHandle, const JSHandle<JSTaggedValue> &target,
+        const JSHandle<JSTaggedValue> &key);
+    static inline bool RuntimeCheckProxySetResult(JSThread *thread, const JSHandle<JSTaggedValue> &value,
+        const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &key);
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
 
     static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);

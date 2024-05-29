@@ -1782,7 +1782,6 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
             DEBUG_ASSERT(false, "should not run here");
         }
     }
-    CHECK_FATAL(static_cast<int64>(arrayType.GetSizeArrayItem(0)) + 1 > uNum, "must not be zero");
     int64 iNum = (arrayType.GetSizeArrayItem(0) > 0) ? (static_cast<int64>(arrayType.GetSizeArrayItem(0)) - uNum) : 0;
     if (iNum > 0) {
         if (!cg->GetMIRModule()->IsCModule()) {

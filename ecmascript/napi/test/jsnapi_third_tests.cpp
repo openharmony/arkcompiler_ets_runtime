@@ -125,9 +125,23 @@ public:
     }
 
 protected:
+    void RegisterStringCacheTable();
+
     JSThread *thread_ = nullptr;
     EcmaVM *vm_ = nullptr;
+    bool isStringCacheTableCreated_ = false;
 };
+
+void JSNApiTests::RegisterStringCacheTable()
+{
+    constexpr uint32_t STRING_CACHE_TABLE_SIZE = 1000;
+    auto res = ExternalStringCache::RegisterStringCacheTable(vm_, STRING_CACHE_TABLE_SIZE);
+    if (isStringCacheTableCreated_) {
+        ASSERT_FALSE(res);
+    } else {
+        ASSERT_TRUE(res);
+    }
+}
 
 Local<JSValueRef> FunctionCallback(JsiRuntimeCallInfo *info)
 {
@@ -688,7 +702,8 @@ HWTEST_F_L0(JSNApiTests, SetHostPromiseRejectionTracker)
 HWTEST_F_L0(JSNApiTests, SetHostResolveBufferTracker)
 {
     LocalScope scope(vm_);
-    JSNApi::SetHostResolveBufferTracker(vm_, [&](std::string, uint8_t **, size_t *) -> bool { return true; });
+    JSNApi::SetHostResolveBufferTracker(vm_,
+        [&](std::string, uint8_t **, size_t *, std::string &) -> bool { return true; });
 }
 
 /*
@@ -1176,9 +1191,8 @@ HWTEST_F_L0(JSNApiTests, EcmaObjectToInt)
     }
 }
 
-HWTEST_F_L0(JSNApiTests, NapiFastPathGetHasDeleteTest)
+HWTEST_F_L0(JSNApiTests, NapiTryFastTest)
 {
-    LocalScope scope(vm_);
     Local<ObjectRef> object = ObjectRef::New(vm_);
     JSTaggedValue a(0);
     JSHandle<JSTaggedValue> handle(thread_, a);
@@ -1188,12 +1202,12 @@ HWTEST_F_L0(JSNApiTests, NapiFastPathGetHasDeleteTest)
     Local<JSValueRef> value = ObjectRef::New(vm_);
     object->Set(vm_, key, value);
     object->Set(vm_, key2, value);
-    Local<JSValueRef> value1 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+    Local<JSValueRef> res1 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
                                                        reinterpret_cast<uintptr_t>(*key));
-    ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
-    Local<JSValueRef> value2 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+    ASSERT_TRUE(value->IsStrictEquals(vm_, res1));
+    Local<JSValueRef> res2 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
                                                        reinterpret_cast<uintptr_t>(*key2));
-    ASSERT_TRUE(value->IsStrictEquals(vm_, value2));
+    ASSERT_TRUE(value->IsStrictEquals(vm_, res2));
     
     Local<JSValueRef> flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object),
                                                      reinterpret_cast<uintptr_t>(*key));
@@ -1210,5 +1224,92 @@ HWTEST_F_L0(JSNApiTests, NapiFastPathGetHasDeleteTest)
     ASSERT_FALSE(flag->BooleaValue());
     flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
     ASSERT_FALSE(flag->BooleaValue());
+}
+
+HWTEST_F_L0(JSNApiTests, NapiTryFastHasMethodTest)
+{
+    LocalScope scope(vm_);
+    auto array = JSArray::ArrayCreate(thread_, JSTaggedNumber(0));
+    auto arr = JSNApiHelper::ToLocal<ObjectRef>(array);
+    const char* utf8Key = "concat";
+    Local<JSValueRef> key3 = StringRef::NewFromUtf8(vm_, utf8Key);
+    auto flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*arr), reinterpret_cast<uintptr_t>(*key3));
+    ASSERT_TRUE(flag->BooleaValue());
+}
+
+HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest001)
+{
+    isStringCacheTableCreated_ = ExternalStringCache::RegisterStringCacheTable(vm_, 0);
+    ASSERT_FALSE(isStringCacheTableCreated_);
+}
+
+HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest002)
+{
+    constexpr uint32_t STRING_CACHE_TABLE_SIZE = 3000;
+    isStringCacheTableCreated_ = ExternalStringCache::RegisterStringCacheTable(vm_, STRING_CACHE_TABLE_SIZE);
+    ASSERT_FALSE(isStringCacheTableCreated_);
+}
+
+HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest003)
+{
+    constexpr uint32_t STRING_CACHE_TABLE_SIZE = 1000;
+    isStringCacheTableCreated_ = ExternalStringCache::RegisterStringCacheTable(vm_, STRING_CACHE_TABLE_SIZE);
+    ASSERT_TRUE(isStringCacheTableCreated_);
+}
+
+HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest004)
+{
+    RegisterStringCacheTable();
+    constexpr uint32_t PROPERTY_INDEX = 1001;
+    constexpr char property[] = "hello";
+    auto res = ExternalStringCache::SetCachedString(vm_, property, PROPERTY_INDEX);
+    ASSERT_FALSE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest005)
+{
+    RegisterStringCacheTable();
+    constexpr uint32_t PROPERTY_INDEX = 0;
+    constexpr char property[] = "hello";
+    auto res = ExternalStringCache::SetCachedString(vm_, property, PROPERTY_INDEX);
+    ASSERT_TRUE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest006)
+{
+    RegisterStringCacheTable();
+    constexpr uint32_t PROPERTY_INDEX = 1;
+    constexpr char property[] = "hello";
+    auto res = ExternalStringCache::SetCachedString(vm_, property, PROPERTY_INDEX);
+    ASSERT_TRUE(res);
+
+    constexpr uint32_t QUERY_PROPERTY_INDEX = 2;
+    res = ExternalStringCache::HasCachedString(vm_, QUERY_PROPERTY_INDEX);
+    ASSERT_FALSE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest007)
+{
+    RegisterStringCacheTable();
+    constexpr uint32_t PROPERTY_INDEX = 2;
+    constexpr char property[] = "hello";
+    auto res = ExternalStringCache::SetCachedString(vm_, property, PROPERTY_INDEX);
+    ASSERT_TRUE(res);
+
+    constexpr uint32_t QUERY_PROPERTY_INDEX = 2;
+    res = ExternalStringCache::HasCachedString(vm_, QUERY_PROPERTY_INDEX);
+    ASSERT_TRUE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest008)
+{
+    RegisterStringCacheTable();
+    constexpr uint32_t PROPERTY_INDEX = 3;
+    constexpr char property[] = "hello world";
+    auto res = ExternalStringCache::SetCachedString(vm_, property, PROPERTY_INDEX);
+    ASSERT_TRUE(res);
+    Local<StringRef> value = ExternalStringCache::GetCachedString(vm_, PROPERTY_INDEX);
+    ASSERT_FALSE(value->IsUndefined());
+    EXPECT_EQ(value->ToString(), property);
 }
 } // namespace panda::test

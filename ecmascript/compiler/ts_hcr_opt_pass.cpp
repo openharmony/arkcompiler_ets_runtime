@@ -20,6 +20,7 @@ namespace panda::ecmascript::kungfu {
 
 GateRef TSHCROptPass::VisitGate(GateRef gate)
 {
+    AddProfiling(gate);
     auto opcode = acc_.GetOpCode(gate);
     switch (opcode) {
         case OpCode::TYPED_BINARY_OP:
@@ -28,6 +29,20 @@ GateRef TSHCROptPass::VisitGate(GateRef gate)
             break;
     }
     return Circuit::NullGate();
+}
+
+void TSHCROptPass::AddProfiling(GateRef gate)
+{
+    if (IsTypedOpProfiling() && acc_.UseForTypeOpProfilerGate(gate)) {
+        Environment env(gate, circuit_, &builder_);
+        OpCode opcode  = acc_.GetOpCode(gate);
+        auto opcodeGate = builder_.Int32(static_cast<uint32_t>(opcode));
+        GateRef constOpcode = builder_.Int32ToTaggedInt(opcodeGate);
+        GateRef traceGate = builder_.CallRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(ProfileTypedOp),
+                                                 acc_.GetDep(gate), { constOpcode }, gate);
+        acc_.SetDep(gate, traceGate);
+        builder_.SetDepend(acc_.GetDep(gate));
+    }
 }
 
 GateRef TSHCROptPass::VisitTypedBinaryOp(GateRef gate)

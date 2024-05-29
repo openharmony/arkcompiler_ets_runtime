@@ -404,7 +404,7 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
         if (posVal.GetNumber() == BuiltinsNumber::POSITIVE_INFINITY) {
             pos = static_cast<int32_t>(thisLen);
         } else {
-            pos = posVal.ToInt32();
+            pos = base::NumberHelper::DoubleInRangeInt32(posVal.GetNumber());
         }
     }
     pos = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
@@ -1675,7 +1675,7 @@ JSTaggedValue BuiltinsString::CreateArrayFromString(JSThread *thread, EcmaVM *ec
     if (EcmaStringAccessor(thisString).IsLineOrConstantString()) {
         canBeCompressed = EcmaStringAccessor::CanBeCompressed(*thisString);
     }
-    bool isOneByte = isUtf8 & canBeCompressed;
+    bool isOneByte = isUtf8 && canBeCompressed;
     JSHandle<EcmaString> seperatorString = thread->GetEcmaVM()->GetFactory()->GetEmptyString();
     if (lim == UINT32_MAX - 1) {
         JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
@@ -2144,7 +2144,7 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
     JSTaggedNumber numStart = JSTaggedValue::ToInteger(thread, intStart);
     // 5. ReturnIfAbrupt(intStart).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t start = numStart.ToInt32();
+    int32_t start = base::NumberHelper::DoubleInRangeInt32(numStart.GetNumber());
     JSHandle<JSTaggedValue> lengthTag = GetCallArg(argv, 1);
     // 6. If length is undefined, let end be +; otherwise let end be ToInteger(length).
     int32_t end = 0;
@@ -2154,7 +2154,7 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
         JSTaggedNumber lengthNumber = JSTaggedValue::ToInteger(thread, lengthTag);
         // 7. ReturnIfAbrupt(end).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        end = lengthNumber.ToInt32();
+        end = base::NumberHelper::DoubleInRangeInt32(lengthNumber.GetNumber());
     }
     // 8. Let size be the number of code units in S.
     int32_t size = static_cast<int32_t>(EcmaStringAccessor(thisString).GetLength());
@@ -2194,7 +2194,7 @@ JSTaggedValue BuiltinsString::At(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> indexTag = BuiltinsString::GetCallArg(argv, 0);
     JSTaggedNumber indexVal = JSTaggedValue::ToInteger(thread, indexTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t relativeIndex = ConvertDoubleToInt(indexVal.GetNumber());
+    int32_t relativeIndex = base::NumberHelper::DoubleInRangeInt32(indexVal.GetNumber());
 
     // 5. If relativeIndex ≥ 0, then Let k be relativeIndex. 6. Else, Let k be len + relativeIndex.
     int32_t k = 0;

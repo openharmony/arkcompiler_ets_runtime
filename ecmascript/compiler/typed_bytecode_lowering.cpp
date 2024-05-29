@@ -131,23 +131,9 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::CREATEEMPTYOBJECT:
             LowerCreateEmptyObject(gate);
             break;
-        case EcmaOpcode::CALLTHIS0_IMM8_V8:
-            LowerTypedCallthis0(gate);
-            break;
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-            LowerTypedCallthis1(gate);
-            break;
-        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-            LowerTypedCallthis2(gate);
-            break;
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
             LowerCreateObjectWithBuffer(gate);
-            break;
-        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
-        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
-            LowerTypedNewObjRange(gate);
             break;
         case EcmaOpcode::ADD2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_ADD>(gate);
@@ -229,23 +215,18 @@ void TypedBytecodeLowering::Lower(GateRef gate)
             LowerTypedEqOrNotEq<TypedBinOp::TYPED_STRICTEQ>(gate);
             break;
         case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
             LowerTypedIsTrueOrFalse(gate, true);
             break;
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
             LowerTypedIsTrueOrFalse(gate, false);
-            break;
-        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-            LowerTypedCallthis3(gate);
-            break;
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-            LowerTypedCallthisrange(gate);
-            break;
-        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
-            LowerTypedSuperCall(gate);
             break;
         case EcmaOpcode::CALLARG0_IMM8:
             LowerTypedCallArg0(gate);
+            break;
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+            LowerTypedCallArg1(gate);
             break;
         case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
             LowerTypedCallArg2(gate);
@@ -255,6 +236,33 @@ void TypedBytecodeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
             LowerTypedCallrange(gate);
+            break;
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+            LowerTypedCallthis0(gate);
+            break;
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            LowerTypedCallthis1(gate);
+            break;
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            LowerTypedCallthis2(gate);
+            break;
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            LowerTypedCallthis3(gate);
+            break;
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            LowerTypedCallthisrange(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+            LowerTypedCallInit(gate);
+            break;
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+            LowerTypedSuperCall(gate);
+            break;
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            LowerTypedNewObjRange(gate);
             break;
         case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
             LowerTypedStPrivateProperty(gate);
@@ -273,6 +281,7 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
             LowerTypedStObjByName(gate);
             break;
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
@@ -280,11 +289,6 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::LDTHISBYVALUE_IMM8:
         case EcmaOpcode::LDTHISBYVALUE_IMM16:
             LowerTypedLdObjByValue(gate);
-            break;
-        case EcmaOpcode::JEQZ_IMM8:
-        case EcmaOpcode::JEQZ_IMM16:
-        case EcmaOpcode::JEQZ_IMM32:
-            LowerConditionJump(gate, false);
             break;
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
@@ -312,16 +316,15 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
             LowerTypedStOwnByName(gate);
             break;
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+            LowerConditionJump(gate, false);
+            break;
         case EcmaOpcode::JNEZ_IMM8:
         case EcmaOpcode::JNEZ_IMM16:
         case EcmaOpcode::JNEZ_IMM32:
             LowerConditionJump(gate, true);
-            break;
-        case EcmaOpcode::CALLARG1_IMM8_V8:
-            LowerTypedCallArg1(gate);
-            break;
-        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
-            LowerTypedCallInit(gate);
             break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
@@ -672,7 +675,8 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                opcode == EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8 ||
                opcode == EcmaOpcode::STTHISBYNAME_IMM8_ID16 ||
                opcode == EcmaOpcode::STTHISBYNAME_IMM16_ID16 ||
-               opcode == EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8) {
+               opcode == EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8 ||
+               opcode == EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8) {
         frameState = acc_.GetFrameState(gate);
     } else {
         UNREACHABLE();
@@ -1081,10 +1085,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
             kind = tacc.TryGetArrayElementsKind();
         }
 
-        // This check is not required by String, since string is a primitive type.
-        if (type != BuiltinTypeId::STRING) {
-            builder_.BuiltinPrototypeHClassCheck(receiver, type, kind, isPrototypeOfPrototype);
-        }
+        builder_.BuiltinPrototypeHClassCheck(receiver, type, kind, isPrototypeOfPrototype);
     }
     // Successfully goes to typed path
     GateRef plrGate = builder_.Int32(plr.GetData());
@@ -1340,7 +1341,7 @@ bool TypedBytecodeLowering::TryLowerTypedStObjByValueForBuiltin(GateRef gate)
 {
     StoreBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     // Just supported mono.
-    if (tacc.IsMono()) {
+    if (tacc.IsMono() && !tacc.IsStoreOutOfBounds()) {
         if (tacc.IsBuiltinsArray()) {
             AddProfiling(gate);
             StoreJSArrayByIndex(tacc);
@@ -1364,13 +1365,22 @@ void TypedBytecodeLowering::LowerTypedStObjByValue(GateRef gate)
     }
 }
 
+bool TypedBytecodeLowering::IsTrueOrFalseHasProfileType(GateRef gate) const
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::JS_BYTECODE);
+    return acc_.GetByteCodeOpcode(gate) == EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8 ||
+           acc_.GetByteCodeOpcode(gate) == EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8;
+}
+
 void TypedBytecodeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
 {
     UnOpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     ParamType paramType;
-    if (TypeInfoAccessor::IsTrustedBooleanType(acc_, tacc.GetValue())) {
+    if (TypeInfoAccessor::IsTrustedBooleanType(acc_, tacc.GetValue()) ||
+    (IsTrueOrFalseHasProfileType(gate) && tacc.IsBooleanType())) {
         paramType = ParamType::BooleanType();
-    } else if (TypeInfoAccessor::IsTrustedNumberType(acc_, tacc.GetValue())) {
+    } else if (TypeInfoAccessor::IsTrustedNumberType(acc_, tacc.GetValue()) ||
+    (IsTrueOrFalseHasProfileType(gate) && tacc.HasNumberType())) {
         paramType = ParamType::NumberType();
     } else {
         return;
@@ -1454,12 +1464,13 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     size_t actualArgc = static_cast<size_t>(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
     GateRef argc = builder_.Int64(actualArgc);
-    std::vector<GateRef> args { glue_, argc, ctor, ctor, thisObj }; // func thisobj numofargs
+    GateRef argv = builder_.IntPtr(0);
+    std::vector<GateRef> args { glue_, argc, argv, ctor, ctor, thisObj }; // func thisobj numofargs
     for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
-    bool needPushUndefined = (expectedArgc > actualArgc);
-    GateRef result = builder_.CallNew(gate, args, needPushUndefined);
+    bool needPushArgv = (expectedArgc != actualArgc);
+    GateRef result = builder_.CallNew(gate, args, needPushArgv);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -1485,6 +1496,14 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
             builder_.ObjectConstructorCheck(ctor);
         }
         constructGate = builder_.BuiltinConstructor(BuiltinTypeId::OBJECT, gate);
+    } else if (tacc.IsBuiltinConstructor(BuiltinTypeId::BOOLEAN)) {
+        if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
+            AddProfiling(gate);
+            if (!Uncheck()) {
+                builder_.BooleanConstructorCheck(ctor);
+            }
+            constructGate = builder_.BuiltinConstructor(BuiltinTypeId::BOOLEAN, gate);
+        }
     }
     if (constructGate == Circuit::NullGate()) {
         return false;
@@ -1513,7 +1532,8 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
     // call constructor
     size_t range = acc_.GetNumValueIn(gate);
     GateRef actualArgc = builder_.Int64(range + 3);  // 3: ctor, newTaget, this
-    std::vector<GateRef> args { glue_, actualArgc, superCtor, newTarget, thisObj };
+    GateRef actualArgv = builder_.IntPtr(0);
+    std::vector<GateRef> args { glue_, actualArgc, actualArgv, superCtor, newTarget, thisObj };
     for (size_t i = 0; i < range; ++i) {
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
@@ -1615,9 +1635,7 @@ void TypedBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(const Type
 {
     GateRef func = tacc.GetFunc();
     GateRef gate = tacc.GetGate();
-    if (!Uncheck()) {
-        builder_.JSCallTargetFromDefineFuncCheck(func, gate);
-    }
+    // NO CHECK
     if (tacc.CanFastCall()) {
         LowerFastCall(gate, func, argsFastCall, isNoGC);
     } else {
@@ -1665,9 +1683,13 @@ void TypedBytecodeLowering::CheckCallTargetAndLowerCall(const TypeAccessor &tacc
 template<EcmaOpcode Op, class TypeAccessor>
 void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
 {
+    if (!tacc.IsHotnessFunc()) {
+        return;
+    }
     uint32_t argc = tacc.GetArgc();
     GateRef gate = tacc.GetGate();
     GateRef actualArgc = Circuit::NullGate();
+    GateRef actualArgv = builder_.IntPtr(0);
     switch (Op) {
         case EcmaOpcode::CALLARG0_IMM8: {
             actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
@@ -1697,15 +1719,12 @@ void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
         default:
             UNREACHABLE();
     }
-    if (!tacc.IsHotnessFunc()) {
-        return;
-    }
     uint32_t len = tacc.GetFunctionTypeLength();
     GateRef func = tacc.GetFunc();
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     std::vector<GateRef> argsFastCall { glue_, func, thisObj};
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
+    std::vector<GateRef> args { glue_, actualArgc, actualArgv, func, newTarget, thisObj };
     for (uint32_t i = 0; i < argc; i++) {
         GateRef value = acc_.GetValueIn(gate, i);
         argsFastCall.emplace_back(value);
@@ -1714,6 +1733,9 @@ void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
     for (uint32_t i = argc; i < len; i++) {
         argsFastCall.emplace_back(builder_.Undefined());
         args.emplace_back(builder_.Undefined());
+    }
+    if (argc != len) {
+        return ;
     }
     AddProfiling(gate);
     CheckCallTargetAndLowerCall(tacc, args, argsFastCall);
@@ -1800,9 +1822,13 @@ bool TypedBytecodeLowering::IsLoadVtable(GateRef func)
 template<EcmaOpcode Op, class TypeAccessor>
 void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
 {
+    if (!tacc.IsHotnessFunc()) {
+        return;
+    }
     uint32_t argc = tacc.GetArgc();
     GateRef gate = tacc.GetGate();
     GateRef actualArgc = Circuit::NullGate();
+    GateRef actualArgv = builder_.IntPtr(0);
     switch (Op) {
         case EcmaOpcode::CALLTHIS0_IMM8_V8: {
             actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
@@ -1838,7 +1864,7 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = tacc.GetThisObj();
     std::vector<GateRef> argsFastCall { glue_, func, thisObj};
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
+    std::vector<GateRef> args { glue_, actualArgc, actualArgv, func, newTarget, thisObj };
     for (uint32_t i = 0; i < argc; i++) {
         GateRef value = acc_.GetValueIn(gate, i + 1);
         argsFastCall.emplace_back(value);
@@ -1873,7 +1899,7 @@ void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS1(pgoFuncId)) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArg0() }, pgoFuncId, true);
+        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArgs() }, pgoFuncId, true);
         return;
     }
     if (!tacc.CanOptimizeAsFastCall()) {

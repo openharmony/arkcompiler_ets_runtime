@@ -36,32 +36,8 @@ namespace panda::test {
 using BuiltinsSet = ecmascript::builtins::BuiltinsSet;
 using JSSet = ecmascript::JSSet;
 
-class BuiltinsSetTest : public testing::Test {
+class BuiltinsSetTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
     class TestClass : public base::BuiltinsBase {
     public:
         static JSTaggedValue TestFunc(EcmaRuntimeCallInfo *argv)
@@ -94,6 +70,37 @@ JSSet *CreateBuiltinsSet(JSThread *thread)
     EXPECT_TRUE(result.IsECMAObject());
     return JSSet::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData()));
 }
+
+enum class AlgorithmType {
+    ADD,
+    HAS,
+};
+
+JSTaggedValue SetAlgorithm(JSThread *thread, JSTaggedValue jsSet, std::vector<JSTaggedValue>& args,
+    uint32_t argLen = 8, AlgorithmType type = AlgorithmType::ADD)
+{
+    auto ecmaRuntimeCallInfos = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), argLen);
+    ecmaRuntimeCallInfos->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfos->SetThis(jsSet);
+    for (size_t i = 0; i < args.size(); i++) {
+        ecmaRuntimeCallInfos->SetCallArg(i, args[i]);
+    }
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfos);
+    JSTaggedValue result;
+    switch (type) {
+        case AlgorithmType::ADD:
+            result = BuiltinsSet::Add(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::HAS:
+            result = BuiltinsSet::Has(ecmaRuntimeCallInfos);
+            break;
+        default:
+            break;
+    }
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
+
 // new Set("abrupt").toString()
 HWTEST_F_L0(BuiltinsSetTest, CreateAndGetSize)
 {
@@ -159,42 +166,23 @@ HWTEST_F_L0(BuiltinsSetTest, AddAndHas)
     EXPECT_EQ(jsSet->GetSize(), 1);
 
     // test Has()
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue(jsSet));
-    ecmaRuntimeCallInfo1->SetCallArg(0, key.GetTaggedValue());
-    {
-        [[maybe_unused]] auto prevLocal = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-        JSTaggedValue result3 = BuiltinsSet::Has(ecmaRuntimeCallInfo1);
-        TestHelper::TearDownFrame(thread, prevLocal);
+    JSTaggedValue jsSetTag(jsSet);
+    std::vector<JSTaggedValue> args{key.GetTaggedValue()};
+    auto result3 = SetAlgorithm(thread, jsSetTag, args, 6, AlgorithmType::HAS);
 
-        EXPECT_EQ(result3.GetRawData(), JSTaggedValue::True().GetRawData());
-    }
+    EXPECT_EQ(result3.GetRawData(), JSTaggedValue::True().GetRawData());
 
     // test -0.0
     JSHandle<JSTaggedValue> negativeZero(thread, JSTaggedValue(-0.0));
     JSHandle<JSTaggedValue> positiveZero(thread, JSTaggedValue(+0.0));
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(JSTaggedValue(jsSet));
-    ecmaRuntimeCallInfo2->SetCallArg(0, negativeZero.GetTaggedValue());
-    {
-        [[maybe_unused]] auto prevLocal = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-        BuiltinsSet::Add(ecmaRuntimeCallInfo2);
-        TestHelper::TearDownFrame(thread, prevLocal);
-    }
 
-    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(JSTaggedValue(jsSet));
-    ecmaRuntimeCallInfo3->SetCallArg(0, positiveZero.GetTaggedValue());
-    {
-        [[maybe_unused]] auto prevLocal = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
-        [[maybe_unused]] JSTaggedValue result4 = BuiltinsSet::Has(ecmaRuntimeCallInfo3);
-        TestHelper::TearDownFrame(thread, prevLocal);
+    args[0] = negativeZero.GetTaggedValue();
+    SetAlgorithm(thread, jsSetTag, args, 6, AlgorithmType::ADD);
 
-        EXPECT_EQ(result4.GetRawData(), JSTaggedValue::True().GetRawData());
-    }
+    args[0] = positiveZero.GetTaggedValue();
+    auto result4 = SetAlgorithm(thread, jsSetTag, args, 6, AlgorithmType::HAS);
+
+    EXPECT_EQ(result4.GetRawData(), JSTaggedValue::True().GetRawData());
 }
 
 HWTEST_F_L0(BuiltinsSetTest, ForEach)
@@ -206,14 +194,9 @@ HWTEST_F_L0(BuiltinsSetTest, ForEach)
     for (uint32_t i = 0U; i < 5U; i++) {
         keyArray[3] = '1' + i;
         JSHandle<JSTaggedValue> key(factory->NewFromASCII(keyArray));
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(set.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, key.GetTaggedValue());
 
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result1 = BuiltinsSet::Add(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
+        std::vector<JSTaggedValue> args{key.GetTaggedValue()};
+        auto result1 = SetAlgorithm(thread, set.GetTaggedValue(), args, 6, AlgorithmType::ADD);
 
         EXPECT_TRUE(result1.IsECMAObject());
         JSSet *jsSet = JSSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
@@ -249,15 +232,8 @@ HWTEST_F_L0(BuiltinsSetTest, DeleteAndRemove)
     for (uint32_t i = 0; i < 40; i++) {
         keyArray[3] = '1' + i;
         JSHandle<JSTaggedValue> key(factory->NewFromASCII(keyArray));
-
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(set.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, key.GetTaggedValue());
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result1 = BuiltinsSet::Add(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
+        std::vector<JSTaggedValue> args{key.GetTaggedValue()};
+        auto result1 = SetAlgorithm(thread, set.GetTaggedValue(), args, 6, AlgorithmType::ADD);
 
         EXPECT_TRUE(result1.IsECMAObject());
         JSSet *jsSet = JSSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));

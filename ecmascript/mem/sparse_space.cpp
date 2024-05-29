@@ -123,9 +123,14 @@ void SparseSpace::PrepareSweeping()
     liveObjectSize_ = 0;
     EnumerateRegions([this](Region *current) {
         if (!current->InCollectSet()) {
+            if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
+                current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) {
+                LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << current;
+            }
             IncreaseLiveObjectSize(current->AliveObject());
             current->ResetWasted();
-            current->SwapRSetForConcurrentSweeping();
+            current->SwapOldToNewRSetForCS();
+            current->SwapLocalToShareRSetForCS();
             AddSweepingRegion(current);
         }
     });
@@ -142,9 +147,9 @@ void SparseSpace::AsyncSweep(bool isMain)
         // Main thread sweeping region is added;
         if (!isMain) {
             AddSweptRegionSafe(current);
-            current->SetSwept();
         } else {
-            current->MergeRSetForConcurrentSweeping();
+            current->MergeOldToNewRSetForCS();
+            current->MergeLocalToShareRSetForCS();
         }
         current = GetSweepingRegionSafe();
     }
@@ -172,7 +177,8 @@ bool SparseSpace::TryFillSweptRegion()
     while ((region = GetSweptRegionSafe()) != nullptr) {
         allocator_->CollectFreeObjectSet(region);
         region->ResetSwept();
-        region->MergeRSetForConcurrentSweeping();
+        region->MergeOldToNewRSetForCS();
+        region->MergeLocalToShareRSetForCS();
     }
     return true;
 }
@@ -212,6 +218,7 @@ void SparseSpace::AddSweptRegionSafe(Region *region)
 {
     LockHolder holder(lock_);
     sweptList_.emplace_back(region);
+    region->SetSwept();
 }
 
 Region *SparseSpace::GetSweptRegionSafe()
@@ -228,7 +235,8 @@ Region *SparseSpace::GetSweptRegionSafe()
 void SparseSpace::FreeRegionFromSpace(Region *region)
 {
     region->ResetSwept();
-    region->MergeRSetForConcurrentSweeping();
+    region->MergeOldToNewRSetForCS();
+    region->MergeLocalToShareRSetForCS();
     RemoveRegion(region);
     DecreaseLiveObjectSize(region->AliveObject());
 }
@@ -375,7 +383,6 @@ Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
             return availableRegion;
         } else {
             AddSweptRegionSafe(availableRegion);
-            availableRegion->SetSwept();
         }
     }
     return nullptr;
@@ -420,7 +427,9 @@ void OldSpace::Merge(LocalSpace *localSpace)
     size_t hugeSpaceCommitSize = localHeap_->GetHugeObjectSpace()->GetCommittedSize();
     if (committedSize_ + hugeSpaceCommitSize > GetOverShootMaximumCapacity()) {
         LOG_ECMA_MEM(ERROR) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
-        localHeap_->ShouldThrowOOMError(true);
+        if (localHeap_->CanThrowOOMError()) {
+            localHeap_->ShouldThrowOOMError(true);
+        }
         IncreaseMergeSize(committedSize_ - oldCommittedSize);
         // if throw OOM, temporarily increase space size to avoid vm crash
         IncreaseOutOfMemoryOvershootSize(committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity());
@@ -530,7 +539,8 @@ void OldSpace::ReclaimCSet()
         region->DeleteCrossRegionRSet();
         region->DeleteOldToNewRSet();
         region->DeleteLocalToShareRSet();
-        region->DeleteSweepingRSet();
+        region->DeleteSweepingOldToNewRSet();
+        region->DeleteSweepingLocalToShareRSet();
         region->DestroyFreeObjectSets();
         heapRegionAllocator_->FreeRegion(region, cachedSize);
     });
@@ -559,8 +569,10 @@ void LocalSpace::FreeBumpPoint()
 
 void LocalSpace::Stop()
 {
+    Region *currentRegion = GetCurrentRegion();
     if (GetCurrentRegion() != nullptr) {
-        GetCurrentRegion()->SetHighWaterMark(allocator_->GetTop());
+        // Do not use allocator_->GetTop(), because it may point to freeObj from other regions.
+        currentRegion->SetHighWaterMark(currentRegion->GetBegin() + currentRegion->AliveObject());
     }
 }
 

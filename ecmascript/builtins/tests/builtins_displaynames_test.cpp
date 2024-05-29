@@ -22,42 +22,7 @@
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 namespace panda::test {
-class BuiltinsDisplayNamesTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data/icudt67l.dat as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsDisplayNamesTest : public BaseTestWithScope<true> {
 };
 
 static JSTaggedValue JSDisplayNamesCreateWithOptionTest(JSThread *thread, JSHandle<JSTaggedValue> &locale,
@@ -73,11 +38,8 @@ static JSTaggedValue JSDisplayNamesCreateWithOptionTest(JSThread *thread, JSHand
     JSObject::SetProperty(thread, optionsObj, typeKey, typeValue);
 
     JSHandle<JSTaggedValue> localesString = locale;
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
-    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
+    std::vector<JSTaggedValue> args{localesString.GetTaggedValue(), optionsObj.GetTaggedValue()};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, newTarget, args, 8);
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsDisplayNames::DisplayNamesConstructor(ecmaRuntimeCallInfo);
@@ -109,11 +71,8 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, DisplayNamesConstructor)
     JSObject::SetProperty(thread, optionsObj, styleKey, styleValue);
     JSObject::SetProperty(thread, optionsObj, fallbackKey, fallbackValue);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
-    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, localeString.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
+    std::vector<JSTaggedValue> args{localeString.GetTaggedValue(), optionsObj.GetTaggedValue()};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, newTarget, args, 8);
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsDisplayNames::DisplayNamesConstructor(ecmaRuntimeCallInfo);
@@ -273,9 +232,8 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, ResolvedOptions)
     JSHandle<JSDisplayNames> jsDisplayNames =
         JSHandle<JSDisplayNames>(thread, JSDisplayNamesCreateWithOptionTest(
                                             thread, locale, typeValue));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDisplayNames.GetTaggedValue());
+    std::vector<JSTaggedValue> args{};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 4, jsDisplayNames.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsDisplayNames::ResolvedOptions(ecmaRuntimeCallInfo);

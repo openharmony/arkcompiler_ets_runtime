@@ -767,7 +767,9 @@ bool JSThread::CheckSafepoint()
 
     if (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()
         && !heap->GetOnSerializeEvent()) {
+        heap->SetCanThrowOOMError(false);
         heap->GetConcurrentMarker()->HandleMarkingFinished();
+        heap->SetCanThrowOOMError(true);
         gcTriggered = true;
     }
     return gcTriggered;
@@ -1144,6 +1146,7 @@ void JSThread::WaitSuspension()
     ThreadState oldState = GetState();
     UpdateState(ThreadState::IS_SUSPENDED);
     {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::WaitSuspension");
         LockHolder lock(suspendLock_);
         while (suspendCount_ > 0) {
             suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);

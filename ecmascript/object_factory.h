@@ -131,11 +131,14 @@ class JSAPITreeSetIterator;
 class JSAPITreeMapIterator;
 class JSAPIVector;
 class JSAPIVectorIterator;
+class JSAPIBitVector;
+class JSAPIBitVectorIterator;
 class JSAPILinkedList;
 class JSAPIList;
 class JSAPILinkedListIterator;
 class JSAPIListIterator;
 class ModuleNamespace;
+class NativeModuleError;
 class ImportEntry;
 class LocalExportEntry;
 class IndirectExportEntry;
@@ -172,6 +175,7 @@ class ProfileTypeInfo;
 class MachineCode;
 class ClassInfoExtractor;
 class AOTLiteralInfo;
+class ProfileTypeInfoCell;
 class VTable;
 namespace kungfu {
 class TSHClassGenerator;
@@ -639,6 +643,8 @@ public:
     JSHandle<JSAPIStackIterator> NewJSAPIStackIterator(const JSHandle<JSAPIStack> &stack);
     JSHandle<JSAPIVector> NewJSAPIVector(uint32_t capacity);
     JSHandle<JSAPIVectorIterator> NewJSAPIVectorIterator(const JSHandle<JSAPIVector> &vector);
+    JSHandle<JSAPIBitVector> NewJSAPIBitVector(uint32_t capacity);
+    JSHandle<JSAPIBitVectorIterator> NewJSAPIBitVectorIterator(const JSHandle<JSAPIBitVector> &bitVector);
     JSHandle<JSAPIHashMapIterator> NewJSAPIHashMapIterator(const JSHandle<JSAPIHashMap> &hashMap, IterationKind kind);
     JSHandle<JSAPIHashSetIterator> NewJSAPIHashSetIterator(const JSHandle<JSAPIHashSet> &hashSet, IterationKind kind);
     JSHandle<TaggedHashArray> NewTaggedHashArray(uint32_t length);
@@ -649,6 +655,7 @@ public:
                                      const JSHandle<JSTaggedValue> &value);
     // --------------------------------------module--------------------------------------------
     JSHandle<ModuleNamespace> NewModuleNamespace();
+    JSHandle<NativeModuleError> NewNativeModuleError();
     JSHandle<ImportEntry> NewImportEntry();
     JSHandle<ImportEntry> NewImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                          const JSHandle<JSTaggedValue> &importName,
@@ -693,6 +700,7 @@ public:
 
     // ---------------------------------------Used by AOT------------------------------------------------
     JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<ProfileTypeInfoCell> NewProfileTypeInfoCell(const JSHandle<JSTaggedValue> &value);
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
                                      uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
@@ -827,6 +835,8 @@ public:
     JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
 
     JSHandle<LayoutInfo> PUBLIC_API CreateSLayoutInfo(uint32_t properties);
+
+    JSHandle<ProfileTypeInfoCell> NewSEmptyProfileTypeInfoCell();
 
     JSHandle<TaggedArray> NewSEmptyArray(); // only used for EcmaVM.
 

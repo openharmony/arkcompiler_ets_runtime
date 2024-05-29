@@ -3535,8 +3535,8 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SetHostResolveBufferTracker)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    std::function<bool(std::string dirPath, uint8_t * *buff, size_t * buffSize)> cb = [](const std::string &inputPath,
-        uint8_t **buff, size_t *buffSize) -> bool {
+    std::function<bool(std::string dirPath, uint8_t * *buff, size_t * buffSize, std::string &errorMsg)> cb =
+        [](const std::string &inputPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg) -> bool {
         if (inputPath.empty() || buff == nullptr || buffSize == nullptr) {
             return false;
         }

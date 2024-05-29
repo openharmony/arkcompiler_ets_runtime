@@ -28,6 +28,7 @@
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
@@ -75,6 +76,14 @@ std::pair<bool, int> CheckVersion(JSRuntimeOptions &runtimeOptions, bool result)
     return std::pair(false, 0);
 }
 
+bool IsExistsPkgInfo(AotCompilerPreprocessor &cPreprocessor)
+{
+    if (cPreprocessor.GetMainPkgArgs()) {
+        return true;
+    }
+    return false;
+}
+
 int Main(const int argc, const char **argv)
 {
     if (argc < 2) { // 2: at least have two arguments
@@ -106,10 +115,6 @@ int Main(const int argc, const char **argv)
         LOG_COMPILER(ERROR) << "Cannot Create vm";
         return ERR_FAIL;
     }
-    if (JSNApi::IsAotEscape()) {
-        LOG_COMPILER(ERROR) << " Stop compile AOT because there are more crashes";
-        return ERR_FAIL;
-    }
 
     {
         AOTCompilationEnv aotCompilationEnv(vm);
@@ -127,6 +132,10 @@ int Main(const int argc, const char **argv)
         AotCompilerPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgsMap, profilerDecoder, pandaFileNames);
         if (!cPreprocessor.HandleTargetCompilerMode(cOptions) || !cPreprocessor.HandlePandaFileNames(argc, argv)) {
             return ERR_HELP;
+        }
+        if (IsExistsPkgInfo(cPreprocessor) && JSNApi::IsAotEscape(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
+            LOG_COMPILER(ERROR) << " Stop compile AOT because there are more crashes";
+            return ERR_FAIL;
         }
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
             // no need to compile in partial mode without any ap files.
@@ -219,6 +228,9 @@ int Main(const int argc, const char **argv)
         log.Print();
         if (runtimeOptions.IsTargetCompilerMode()) {
             compilerStats.PrintCompilerStatsLog();
+        }
+        if (IsExistsPkgInfo(cPreprocessor)) {
+            ohos::EnableAotListHelper::GetInstance()->AddEnableListCount(cPreprocessor.GetMainPkgArgs()->GetPgoDir());
         }
     }
 

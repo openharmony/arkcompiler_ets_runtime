@@ -175,6 +175,12 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::OBJECT_CONSTRUCTOR:
             LowerObjectConstructor(gate, glue);
             break;
+        case OpCode::BOOLEAN_CONSTRUCTOR_CHECK:
+            LowerBooleanConstructorCheck(gate, glue);
+            break;
+        case OpCode::BOOLEAN_CONSTRUCTOR:
+            LowerBooleanConstructor(gate, glue);
+            break;
         case OpCode::ORDINARY_HAS_INSTANCE:
             LowerOrdinaryHasInstance(gate, glue);
             break;
@@ -215,10 +221,6 @@ void TypedHCRLowering::LowerJSCallTargetCheck(GateRef gate)
 {
     TypedCallTargetCheckOp Op = acc_.GetTypedCallTargetCheckOp(gate);
     switch (Op) {
-        case TypedCallTargetCheckOp::JSCALL_IMMEDIATE_AFTER_FUNC_DEF: {
-            LowerJSCallTargetFromDefineFuncCheck(gate);
-            break;
-        }
         case TypedCallTargetCheckOp::JSCALL: {
             LowerJSCallTargetTypeCheck(gate);
             break;
@@ -537,12 +539,12 @@ GateRef TypedHCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
     if (!isHeapObject) {
         builder_.HeapObjectCheck(receiver, frameState);
     }
-
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
     auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
     ArgumentAccessor argAcc(circuit_);
     GateRef constpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::CONST_POOL);
-    GateRef aotHCGate = LoadFromConstPool(constpool, hclassIndex, ConstantPool::AOT_HCLASS_INFO_INDEX);
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
+    auto aotHCGate = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, hclassIndex);
     GateRef receiverHClass = builder_.LoadConstOffset(
         VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     return builder_.Equal(aotHCGate, receiverHClass, "checkHClass");
@@ -653,14 +655,32 @@ void TypedHCRLowering::BuiltinPrototypeHClassCheck(Environment *env, GateRef gat
     }
 }
 
+void TypedHCRLowering::BuiltinInstanceStringTypeCheck(GateRef gate)
+{
+    BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
+    [[maybe_unused]] BuiltinTypeId type = accessor.GetBuiltinTypeId();
+    ASSERT(type == BuiltinTypeId::STRING);
+    GateRef frameState = GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedObjectIsString(receiver);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::BUILTININSTANCEHCLASSMISMATCH2);
+}
+
 void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
-    BuiltinInstanceHClassCheck(&env, gate); // check IHC
-    BuiltinPrototypeHClassCheck(&env, gate); // check PHC
+    BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
+    BuiltinTypeId type = accessor.GetBuiltinTypeId();
+    // BuiltinTypeId::STRING represents primitive string, only need to check the type of hclass here.
+    if (type == BuiltinTypeId::STRING) {
+        BuiltinInstanceStringTypeCheck(gate);
+    } else {
+        BuiltinInstanceHClassCheck(&env, gate); // check IHC
+        BuiltinPrototypeHClassCheck(&env, gate); // check PHC
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -756,7 +776,6 @@ GateRef TypedHCRLowering::LoadFromConstPool(GateRef constpool, size_t index, siz
 void TypedHCRLowering::LowerLoadProperty(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    AddProfiling(gate);
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
@@ -991,7 +1010,6 @@ VariableType TypedHCRLowering::GetVariableType(BuiltinTypeId id)
 void TypedHCRLowering::LowerLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    AddProfiling(gate);
     LoadElementAccessor accessor = acc_.GetLoadElementAccessor(gate);
     TypedLoadOp op = accessor.GetTypedLoadOp();
     switch (op) {
@@ -1439,16 +1457,6 @@ void TypedHCRLowering::LowerTypedCallBuitin(GateRef gate)
     lowering.LowerTypedCallBuitin(gate);
 }
 
-void TypedHCRLowering::LowerJSCallTargetFromDefineFuncCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = GetFrameState(gate);
-    auto func = acc_.GetValueIn(gate, 0);
-    GateRef check = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT);
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT1);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
 void TypedHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1459,11 +1467,8 @@ void TypedHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
     auto methodIndex = acc_.GetValueIn(gate, 1);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
     GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
-    GateRef isOptimized = builder_.JudgeAotAndFastCallWithMethod(funcMethodTarget,
-        CircuitBuilder::JudgeMethodType::HAS_AOT);
-    GateRef checkFunc = builder_.BoolAnd(isObj, isOptimized);
     GateRef methodTarget = builder_.GetValueFromTaggedArray(constpool, methodIndex);
-    GateRef check = builder_.BoolAnd(checkFunc, builder_.Equal(funcMethodTarget, methodTarget));
+    GateRef check = builder_.BoolAnd(isObj, builder_.Equal(funcMethodTarget, methodTarget));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT2);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1477,11 +1482,9 @@ void TypedHCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate)
     auto func = acc_.GetValueIn(gate, 0);
     auto methodIndex = acc_.GetValueIn(gate, 1);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef canFastCall = builder_.CanFastCall(func);
     GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
-    GateRef checkFunc = builder_.BoolAnd(isObj, canFastCall);
     GateRef methodTarget = builder_.GetValueFromTaggedArray(constpool, methodIndex);
-    GateRef check = builder_.BoolAnd(checkFunc, builder_.Equal(funcMethodTarget, methodTarget));
+    GateRef check = builder_.BoolAnd(isObj, builder_.Equal(funcMethodTarget, methodTarget));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1492,9 +1495,7 @@ void TypedHCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef isOptimized = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_NOTFASTCALL);
-    GateRef check = builder_.BoolAnd(isObj, isOptimized);
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT3);
+    builder_.DeoptCheck(isObj, frameState, DeoptType::NOTJSCALLTGT3);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -1504,10 +1505,8 @@ void TypedHCRLowering::LowerJSNoGCCallThisTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef isOptimized = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_NOTFASTCALL);
     GateRef methodId = builder_.GetMethodId(func);
-    GateRef checkOptimized = builder_.BoolAnd(isObj, isOptimized);
-    GateRef check = builder_.BoolAnd(checkOptimized, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
+    GateRef check = builder_.BoolAnd(isObj, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT4);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1518,9 +1517,7 @@ void TypedHCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef canFastCall = builder_.CanFastCall(func);
-    GateRef check = builder_.BoolAnd(isObj, canFastCall);
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT2);
+    builder_.DeoptCheck(isObj, frameState, DeoptType::NOTJSFASTCALLTGT2);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -1530,10 +1527,8 @@ void TypedHCRLowering::LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     GateRef isObj = builder_.TaggedIsHeapObject(func);
-    GateRef canFastCall = builder_.CanFastCall(func);
     GateRef methodId = builder_.GetMethodId(func);
-    GateRef checkOptimized = builder_.BoolAnd(isObj, canFastCall);
-    GateRef check = builder_.BoolAnd(checkOptimized, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
+    GateRef check = builder_.BoolAnd(isObj, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT3);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1672,7 +1667,8 @@ GateRef TypedHCRLowering::CallAccessor(GateRef glue, GateRef gate, GateRef funct
     GateRef target = builder_.IntPtr(RTSTUB_ID(JSCall));
     GateRef newTarget = builder_.Undefined();
     GateRef argc = builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS + (mode == AccessorMode::SETTER ? 1 : 0));  // 1: value
-    std::vector<GateRef> args { glue, argc, function, newTarget, receiver };
+    GateRef argv = builder_.IntPtr(0);
+    std::vector<GateRef> args { glue, argc, argv, function, newTarget, receiver };
     if (mode == AccessorMode::SETTER) {
         args.emplace_back(value);
     }
@@ -2290,7 +2286,7 @@ void TypedHCRLowering::LowerArrayConstructorCheck(GateRef gate, GateRef glue)
         }
     }
     builder_.Bind(&exit);
-    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTORFAIL1);
+    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTORARRAY);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -2435,7 +2431,7 @@ void TypedHCRLowering::LowerObjectConstructorCheck(GateRef gate, GateRef glue)
         }
     }
     builder_.Bind(&exit);
-    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTORFAIL2);
+    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTOROBJECT);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -2521,6 +2517,77 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
     ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
 }
 
+void TypedHCRLowering::LowerBooleanConstructorCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef newTarget = acc_.GetValueIn(gate, 0);
+    Label isHeapObject(&builder_);
+    Label exit(&builder_);
+    DEFVALUE(check, (&builder_), VariableType::BOOL(), builder_.True());
+    check = builder_.TaggedIsHeapObject(newTarget);
+    BRANCH_CIR(*check, &isHeapObject, &exit);
+    builder_.Bind(&isHeapObject);
+    {
+        Label isJSFunction(&builder_);
+        check = builder_.IsJSFunction(newTarget);
+        BRANCH_CIR(*check, &isJSFunction, &exit);
+        builder_.Bind(&isJSFunction);
+        {
+            Label getHclass(&builder_);
+            GateRef glueGlobalEnvOffset = builder_.IntPtr(
+                JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
+            GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef booleanFunc =
+                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
+            check = builder_.Equal(booleanFunc, newTarget);
+            BRANCH_CIR(*check, &getHclass, &exit);
+            builder_.Bind(&getHclass);
+            {
+                GateRef intialHClass = builder_.Load(VariableType::JS_ANY(), newTarget,
+                                                     builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+                check = builder_.IsJSHClass(intialHClass);
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTORBOOLEAN);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypedHCRLowering::LowerBooleanConstructor(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef value = builder_.Undefined();
+    ASSERT(acc_.GetNumValueIn(gate) <= 2); // 2: new target and arg0
+    if (acc_.GetNumValueIn(gate) > 1) {
+        value = acc_.GetValueIn(gate, 1);
+    }
+    DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label isBoolean(&builder_);
+    Label slowPath(&builder_);
+    Label exit(&builder_);
+    BRANCH_CIR(builder_.TaggedIsBoolean(value), &isBoolean, &slowPath);
+    builder_.Bind(&isBoolean);
+    {
+        res = NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BOOLEAN, glue, value);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&slowPath);
+    {
+        size_t range = acc_.GetNumValueIn(gate);
+        std::vector<GateRef> args(range);
+        for (size_t i = 0; i < range; ++i) {
+            args[i] = acc_.GetValueIn(gate, i);
+        }
+        res = LowerCallRuntime(glue, gate, RTSTUB_ID(OptNewObjRange), args, true);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
+}
+
 GateRef TypedHCRLowering::NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value)
 {
     GateRef glueGlobalEnvOffset = builder_.IntPtr(
@@ -2579,7 +2646,6 @@ void TypedHCRLowering::LowerLoadBuiltinObject(GateRef gate)
         return;
     }
     Environment env(gate, circuit_, &builder_);
-    AddProfiling(gate);
     auto frameState = GetFrameState(gate);
     GateRef glue = acc_.GetGlueFromArgList();
     auto builtinEntriesOffset = JSThread::GlueData::GetBuiltinEntriesOffset(false);
@@ -2659,7 +2725,22 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                                                         { target, prototypeString }, gate);
             builder_.Jump(&gotCtorPrototype);
         }
+        // 6. If Type(P) is not Object, throw a TypeError exception.
+        Label prototypeIsEcmaObj(&builder_);
+        Label prototypeNotEcmaObj(&builder_);
         builder_.Bind(&gotCtorPrototype);
+        {
+            BRANCH_CIR(builder_.IsEcmaObject(*constructorPrototype), &prototypeIsEcmaObj, &prototypeNotEcmaObj);
+            builder_.Bind(&prototypeNotEcmaObj);
+            {
+                GateRef taggedId = builder_.Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
+                builder_.CallRuntime(glue, RTSTUB_ID(ThrowTypeError), Gate::InvalidGateRef,
+                                     { builder_.Int32ToTaggedInt(taggedId) }, gate);
+                result = builder_.ExceptionConstant();
+                builder_.Jump(&exit);
+            }
+        }
+        builder_.Bind(&prototypeIsEcmaObj);
         // 7. Repeat
         //    a.Let O be O.[[GetPrototypeOf]]().
         //    b.ReturnIfAbrupt(O).
@@ -3083,19 +3164,6 @@ void TypedHCRLowering::StorePropertyOnHolder(GateRef holder, GateRef value, Prop
             builder_.SetValueToTaggedArray(
                 GetVarType(plr), acc_.GetGlueFromArgList(), properties, builder_.Int32(plr.GetOffset()), value);
         }
-    }
-}
-
-void TypedHCRLowering::AddProfiling(GateRef gate)
-{
-    if (IsTypedOpProfiling()) {
-        OpCode opcode  = acc_.GetOpCode(gate);
-        auto opcodeGate = builder_.Int32(static_cast<uint32_t>(opcode));
-        GateRef constOpcode = builder_.Int32ToTaggedInt(opcodeGate);
-        GateRef traceGate = builder_.CallRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(ProfileTypedOp),
-                                                 acc_.GetDep(gate), { constOpcode }, gate);
-        acc_.SetDep(gate, traceGate);
-        builder_.SetDepend(acc_.GetDep(gate));
     }
 }
 

@@ -63,7 +63,6 @@ print(JSON.stringify(objHandler2));
  */
 let arr1 = [1, 3, 2];
 arr1.sort((a, b) => {
-    print(`comparing a = ${a}, b = ${b}`);
     return a - b;
 });
 print(JSON.stringify(arr1));
@@ -283,3 +282,43 @@ try {
 } catch (e) {
     print(e.message);
 }
+const items = [
+    { name: "Edward", value: 21 },
+    { name: "Sharpe", value: 37 },
+    { name: "And", value: 45 },
+    { name: "The", value: -12 },
+    { name: "Magnetic", value: 13 },
+    { name: "Zeros", value: 37 },
+  ];
+
+items.sort((a, b) => a.value - b.value);
+print(JSON.stringify(items));
+
+items.sort((a, b) => {
+    const nameA = a.name.toUpperCase();
+    const nameB = b.name.toUpperCase();
+    if (nameA < nameB) {
+      return -1;
+    }
+    if (nameA > nameB) {
+      return 1;
+    }
+    return 0;
+  });
+
+print(JSON.stringify(items));
+
+const numbers = [3, 1, 4, 1, 5];
+const sorted = numbers.sort((a, b) => a - b);
+sorted[0] = 10;
+print(numbers[0]); // 10
+
+const students = [
+    { name: "Alex", grade: 15 },
+    { name: "Devlin", grade: 15 },
+    { name: "Eagle", grade: 13 },
+    { name: "Sam", grade: 14 },
+];
+// stable
+students.sort((firstItem, secondItem) => firstItem.grade - secondItem.grade);
+print(JSON.stringify(students));

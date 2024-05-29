@@ -450,7 +450,7 @@ JSTaggedValue BuiltinsArkTools::CheckDeoptStatus(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(true);
 }
 
-JSTaggedValue BuiltinsArkTools::PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo *info)
+JSTaggedValue BuiltinsArkTools::PrintTypedOpProfiler(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
@@ -460,7 +460,20 @@ JSTaggedValue BuiltinsArkTools::PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo
     std::string opStr = EcmaStringAccessor(opStrVal.GetTaggedValue()).ToStdString();
     TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
     if (profiler != nullptr) {
-        profiler->PrintAndReset(opStr);
+        profiler->Print(opStr);
+    }
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::ClearTypedOpProfiler(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
+    if (profiler != nullptr) {
+        profiler->Clear();
     }
     return JSTaggedValue::Undefined();
 }
@@ -542,7 +555,7 @@ JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *i
     return JSTaggedValue(scope.GetCurTime());
 }
 
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
 JSTaggedValue BuiltinsArkTools::StartScopeLockStats(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();

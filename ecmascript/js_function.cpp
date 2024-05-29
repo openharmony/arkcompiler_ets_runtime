@@ -101,7 +101,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetBaselineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
@@ -348,11 +348,11 @@ bool JSFunction::OrdinaryHasInstance(JSThread *thread, const JSHandle<JSTaggedVa
     //    d.If SameValue(P, O) is true, return true.
     JSMutableHandle<JSTaggedValue> object(thread, obj.GetTaggedValue());
     while (!object->IsNull()) {
+        object.Update(JSTaggedValue::GetPrototype(thread, object));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (JSTaggedValue::SameValue(object, constructorPrototype)) {
             return true;
         }
-        object.Update(JSTaggedValue::GetPrototype(thread, object));
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
     return false;
 }
@@ -540,14 +540,14 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     ASSERT(thread->IsInManagedState());
     Method *method = func->GetCallTarget();
     JSTaggedValue resultValue;
-    uint32_t numArgs = method->GetNumArgsWithCallField();
-    bool needPushUndefined = numArgs > info->GetArgsNumber();
+    size_t numArgs = method->GetNumArgsWithCallField();
+    bool needPushArgv = numArgs != info->GetArgsNumber();
     const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
 #endif
     if (method->IsFastCall()) {
-        if (needPushUndefined) {
+        if (needPushArgv) {
             info = EcmaInterpreter::ReBuildRuntimeCallInfo(thread, info, numArgs);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
@@ -556,7 +556,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         resultValue = thread->GetEcmaVM()->FastCallAot(info->GetArgsNumber(), stackArgs + 1, prevFp);
     } else {
         resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(info->GetArgsNumber(),
-            info->GetArgs(), prevFp, needPushUndefined);
+            info->GetArgs(), prevFp, needPushArgv);
     }
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), func.GetTaggedType());
@@ -885,6 +885,12 @@ JSTaggedValue JSFunction::GetRecordName() const
     return JSTaggedValue::Hole();
 }
 
+JSTaggedValue JSFunction::GetProfileTypeInfo() const
+{
+    JSTaggedValue raw = GetRawProfileTypeInfo();
+    return ProfileTypeInfoCell::Cast(raw.GetTaggedObject())->GetValue();
+}
+
 // Those interface below is discarded
 void JSFunction::InitializeJSFunction(JSThread *thread, [[maybe_unused]] const JSHandle<GlobalEnv> &env,
                                       const JSHandle<JSFunction> &func, FunctionKind kind)
@@ -989,6 +995,19 @@ void JSFunction::SetSFunctionExtraInfo(
     }
 }
 
+void JSFunction::SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
+                                    const JSHandle<JSTaggedValue> &value, BarrierMode mode)
+{
+    JSHandle<ProfileTypeInfoCell> handleRaw(thread, func->GetRawProfileTypeInfo());
+    if (handleRaw->IsEmptyProfileTypeInfoCell(thread)) {
+        JSHandle<ProfileTypeInfoCell> handleProfileTypeInfoCell =
+            thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(value);
+        func->SetRawProfileTypeInfo(thread, handleProfileTypeInfoCell, WRITE_BARRIER);
+        return;
+    }
+    handleRaw->SetValue(thread, value, mode);
+}
+
 JSTaggedValue JSFunction::GetFunctionExtraInfo() const
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
@@ -1068,6 +1087,15 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     } else {
         this->SetModule(thread, moduleRecord);
     }
+}
+
+bool JSFunction::IsSendableFunction() const
+{
+    if (this->GetClass()->IsJSSharedFunction() ||
+        this->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        return true;
+    }
+    return false;
 }
 
 void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)

@@ -170,10 +170,10 @@ void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end
             case EcmaOpcode::JEQZ_IMM16:
             case EcmaOpcode::JNEZ_IMM16:
             case EcmaOpcode::JMP_IMM16: {
-                int16_t jumpOffset = *(start + 2); // 2: get two bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 1);        // 1: get one byte in bytecodes
-                size_t jumpTo = offset + jumpOffset;
+                int16_t jumpOffset = *(start + 2);                              // 2: get two bytes in bytecodes
+                uint16_t tmpValue = static_cast<uint16_t>(jumpOffset) << 8;    // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 1));                 // 1: get one byte in bytecodes
+                size_t jumpTo = offset + static_cast<int16_t>(tmpValue);
                 jumpToOffsets.insert(jumpTo);
                 break;
             }
@@ -181,13 +181,13 @@ void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end
             case EcmaOpcode::JNEZ_IMM32:
             case EcmaOpcode::JMP_IMM32: {
                 int32_t jumpOffset = *(start + 4); // 4: get four bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 3);        // 3: get three bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 2);        // 2: get two bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 1);        // 1: get one byte in bytecodes
-                size_t jumpTo = offset + jumpOffset;
+                uint32_t tmpValue = static_cast<uint32_t>(jumpOffset) << 8;    // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 3));                 // 3: get three bytes in bytecodes
+                tmpValue <<= 8;                                                 // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 2));                 // 2: get two bytes in bytecodes
+                tmpValue <<= 8;                                                 // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 1));                 // 1: get one byte in bytecodes
+                size_t jumpTo = offset + static_cast<int32_t>(tmpValue);
                 jumpToOffsets.insert(jumpTo);
                 break;
             }
@@ -3166,6 +3166,21 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ISTRUE)
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_ISTRUE_PREF_IMM8)
+{
+    (void)bytecodeArray;
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallRuntimeIstruePrefImm8);
+    LOG_INST() << "    BaselineCallRuntimeIstruePrefImm8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(ISFALSE)
 {
     (void)bytecodeArray;
@@ -3180,6 +3195,22 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ISFALSE)
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_ISFALSE_PREF_IMM8)
+{
+    (void)bytecodeArray;
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallRuntimeIsfalsePrefImm8);
+    LOG_INST() << "    BaselineCallRuntimeIsfalsePrefImm8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
 // ------- End parse bytecodes about comparison  -------
 
 // ------- parse bytecodes about control flow  -------
@@ -5170,6 +5201,28 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINEFIELDBYNAME_IMM8_ID16_V8)
     Address builtinAddress =
             thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDefineFieldByNameImm8Id16V8);
     LOG_INST() << "    BaselineDefineFieldByNameImm8Id16V8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(slotIdI8);
+    parameters.emplace_back(stringId);
+    parameters.emplace_back(v0);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
+// GLUE, SP, ACC, PROFILE_TYPE_INFO, SLOT_ID_I8, STRING_ID, V0
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINEPROPERTYBYNAME_IMM8_ID16_V8)
+{
+    uint8_t slotIdI8 = READ_INST_8_0();
+    int16_t stringId = READ_INST_16_1();
+    uint8_t v0 = READ_INST_8_3();
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDefinePropertyByNameImm8Id16V8);
+    LOG_INST() << "    BaselineDefinePropertyByNameImm8Id16V8 Address: " << std::hex << builtinAddress;
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);

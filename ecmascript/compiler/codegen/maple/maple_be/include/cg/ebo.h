@@ -187,9 +187,7 @@ public:
     void RemoveInsn(InsnInfo &info);
     void RemoveUses(uint32 opndNum, const MapleVector<OpndInfo *> &origInfo);
     void HashInsn(Insn &insn, const MapleVector<OpndInfo *> &origInfo, const MapleVector<OpndInfo *> &opndInfos);
-    void BuildAllInfo(BB &bb);
     InsnInfo *LocateInsnInfo(const OpndInfo &info);
-    void RemoveUnusedInsns(BB &bb, bool normal);
     void UpdateNextInfo(const OpndInfo &opndInfo);
     void BackupOpndInfoList(OpndInfo *saveLast);
     void BackupInsnInfoList(InsnInfo *saveLast);
@@ -211,11 +209,6 @@ protected:
     virtual bool IsGlobalNeeded(Insn &insn) const = 0;
     virtual bool IsDecoupleStaticOp(Insn &insn) const = 0;
     virtual bool IsFmov(const Insn &insn) const = 0;
-    virtual bool SpecialSequence(Insn &insn, const MapleVector<OpndInfo *> &origInfos) = 0;
-    virtual bool DoConstProp(Insn &insn, uint32 i, Operand &opnd) = 0;
-    virtual bool Csel2Cset(Insn &insn, const MapleVector<Operand *> &opnds) = 0;
-    virtual bool SimplifyConstOperand(Insn &insn, const MapleVector<Operand *> &opnds,
-                                      const MapleVector<OpndInfo *> &opndInfo) = 0;
     virtual int32 GetOffsetVal(const MemOperand &mem) const = 0;
     virtual bool OperandEqSpecial(const Operand &op1, const Operand &op2) const = 0;
     virtual void BuildCallerSaveRegisters() = 0;
@@ -226,7 +219,6 @@ protected:
     virtual void DefineClinitSpecialRegisters(InsnInfo &insnInfo) = 0;
     virtual bool IsMovToSIMDVmov(Insn &insn, const Insn &replaceInsn) const = 0;
     virtual bool IsPseudoRet(Insn &insn) const = 0;
-    virtual bool ChangeLdrMop(Insn &insn, const Operand &opnd) const = 0;
     virtual bool IsAdd(const Insn &insn) const = 0;
     virtual bool IsClinitCheck(const Insn &insn) const = 0;
     virtual bool IsLastAndBranch(BB &bb, Insn &insn) const = 0;
@@ -238,10 +230,6 @@ protected:
     virtual bool IsConstantImmOrReg(const Operand &opnd) const = 0;
     OpndInfo *BuildMemOpndInfo(BB &bb, Insn &insn, Operand &opnd, uint32 opndIndex);
     OpndInfo *BuildOperandInfo(BB &bb, Insn &insn, Operand &opnd, uint32 opndIndex, MapleVector<OpndInfo *> &origInfos);
-    bool ForwardPropagateOpnd(Insn &insn, Operand *&opnd, uint32 opndIndex, OpndInfo *&opndInfo,
-                              MapleVector<OpndInfo *> &origInfos);
-    void SimplifyInsn(Insn &insn, bool &insnReplaced, bool opndsConstant, const MapleVector<Operand *> &opnds,
-                      const MapleVector<OpndInfo *> &opndInfos, const MapleVector<OpndInfo *> &origInfos);
     void FindRedundantInsns(BB &bb, Insn *&insn, const Insn *prev, bool insnReplaced, MapleVector<Operand *> &opnds,
                             MapleVector<OpndInfo *> &opndInfos, const MapleVector<OpndInfo *> &origInfos);
     void PreProcessSpecialInsn(Insn &insn);

@@ -33,7 +33,9 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_bigint.h"
+#include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_iterator.h"
+#include "ecmascript/builtins/builtins_reflect.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/builtins/builtins_array.h"
@@ -53,6 +55,7 @@
 #include "ecmascript/ic/ic_runtime.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/properties_cache.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -1704,6 +1707,17 @@ DEF_RUNTIME_STUBS(LoadICByName)
     return icRuntime.LoadMiss(receiverHandle, keyHandle).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetOwnPropertyByname)
+{
+    RUNTIME_STUBS_HEADER(LoadICByName);
+    JSHandle<JSTaggedValue> receiverHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the first parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the second parameter
+    PropertyDescriptor targetDesc(thread);
+    JSTaggedValue::GetOwnProperty(thread, receiverHandle, keyHandle, targetDesc);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return targetDesc.GetValue().GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(TryLdGlobalICByName)
 {
     RUNTIME_STUBS_HEADER(TryLdGlobalICByName);
@@ -2949,6 +2963,46 @@ DEF_RUNTIME_STUBS(DefinePrivateProperty)
     return RuntimeDefinePrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetJSPrxoyProperty)
+{
+    RUNTIME_STUBS_HEADER(GetJSPrxoyProperty);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    return JSProxy::GetProperty(thread, proxy, key, receiver).GetValue().GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CheckProxyGetResult)
+{
+    RUNTIME_STUBS_HEADER(CheckProxyGetResult);
+    JSHandle<JSTaggedValue> resultHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+
+    return RuntimeCheckProxyGetResult(thread, resultHandle, target, key).GetValue().GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CheckProxySetResult)
+{
+    RUNTIME_STUBS_HEADER(CheckProxyGetResult);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    RuntimeCheckProxySetResult(thread, value, target, key);
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(SetJSProxyProperty)
+{
+    RUNTIME_STUBS_HEADER(SetJSProxyProperty);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: param index
+    JSProxy::SetProperty(thread, proxy, key, value, receiver, true);
+    return JSTaggedValue::True().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
 {
     RUNTIME_STUBS_HEADER(ContainerRBTreeForEach);
@@ -3235,7 +3289,7 @@ void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
 {
     Region *region = Region::ObjectAddressToRange(object);
     uintptr_t slotAddr = object + offset;
-    region->AtomicInsertLocalToShareRSet(slotAddr);
+    region->InsertLocalToShareRSet(slotAddr);
 }
 
 void RuntimeStubs::SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
@@ -3304,7 +3358,7 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         objectRegion->InsertOldToNewRSet(slotAddr);
     }
     if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        objectRegion->AtomicInsertLocalToShareRSet(slotAddr);
+        objectRegion->InsertLocalToShareRSet(slotAddr);
     }
     if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
@@ -3412,8 +3466,11 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     JSFunction* func = JSFunction::Cast(function.GetTaggedObject());
     Method *method = func->GetCallTarget();
     if (method->IsAotWithCallField()) {
+        bool isFastCall = method->IsFastCall();  // get this flag before clear it
+        uintptr_t entry = isFastCall ? thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
+                                     : thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
+        func->SetCodeEntry(entry);
         method->ClearAOTStatusWhenDeopt();
-        func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
     }
     context->SetMethod(thread, function);
     context->SetThis(thread, frameHandler.GetThis());
@@ -3832,6 +3889,15 @@ DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SetPrototypeTransition)
+{
+    RUNTIME_STUBS_HEADER(SetPrototypeTransition);
+    JSHandle<JSObject> obj = GetHArg<JSObject>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> proto = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the third parameter
+    JSHClass::SetPrototypeTransition(thread, obj, proto);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(HasProperty)
 {
     RUNTIME_STUBS_HEADER(HasProperty);
@@ -3841,6 +3907,86 @@ DEF_RUNTIME_STUBS(HasProperty)
     bool res = JSTaggedValue::HasProperty(thread, obj, index);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return JSTaggedValue(res).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ObjectPrototypeHasOwnProperty)
+{
+    RUNTIME_STUBS_HEADER(ObjectPrototypeHasOwnProperty);
+    JSHandle<JSTaggedValue> thisValue = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue result = builtins::BuiltinsObject::HasOwnPropertyInternal(thread, thisValue, key);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ReflectHas)
+{
+    RUNTIME_STUBS_HEADER(ReflectHas);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue result = builtins::BuiltinsReflect::ReflectHasInternal(thread, target, key);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ReflectConstruct)
+{
+    // newTarget = target, args = []
+    RUNTIME_STUBS_HEADER(ReflectConstruct);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->EmptyArray();
+    JSTaggedValue result = builtins::BuiltinsReflect::ReflectConstructInternal(thread, target, args, target);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ReflectApply)
+{
+    RUNTIME_STUBS_HEADER(ReflectApply);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisValue = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> argumentsList = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue result = builtins::BuiltinsReflect::ReflectApplyInternal(thread, target, thisValue, argumentsList);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(FunctionPrototypeApply)
+{
+    RUNTIME_STUBS_HEADER(FunctionPrototypeApply);
+    JSHandle<JSTaggedValue> thisFunc = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisArg = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> argArray = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue result = builtins::BuiltinsFunction::FunctionPrototypeApplyInternal(thread, thisFunc,
+                                                                                      thisArg, argArray);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(FunctionPrototypeBind)
+{
+    RUNTIME_STUBS_HEADER(FunctionPrototypeBind);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisArg = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<TaggedArray> argsArray = thread->GetEcmaVM()->GetFactory()->EmptyArray();
+    JSTaggedValue result = builtins::BuiltinsFunction::FunctionPrototypeBindInternal(thread, target,
+                                                                                     thisArg, argsArray);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(FunctionPrototypeCall)
+{
+    RUNTIME_STUBS_HEADER(FunctionPrototypeCall);
+    JSHandle<JSTaggedValue> thisFunc = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisArg = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    if (!thisFunc->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "call target is not callable", JSTaggedValue::VALUE_EXCEPTION);
+    }
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    uint32_t argsLength = argc - 2;  // 2: thisFunc and thisArg
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, thisFunc, thisArg, undefined, argsLength);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::VALUE_EXCEPTION);
+    uint32_t index = 0;
+    for (uint32_t i = 2; i < argc; ++i) {  // 2: thisFunc and thisArg
+        JSTaggedValue arg = GetArg(argv, argc, i);
+        info->SetCallArg(index++, arg);
+    }
+    return JSFunction::Call(info).GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

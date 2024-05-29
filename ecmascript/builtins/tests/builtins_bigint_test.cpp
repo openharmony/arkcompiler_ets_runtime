@@ -25,56 +25,63 @@ using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
 using BigInt = ecmascript::BigInt;
-class BuiltinsBigIntTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsBigIntTest : public BaseTestWithScope<true> {
 };
+
+enum class AlgorithmType {
+    BIGINT_CONSTRUCTOR,
+    BIGINT_ASINTN,
+    BIGINT_ASUINTN,
+    BIGINT_TOLOCALSTR,
+    BIGINT_TOSTR,
+    BIGINT_VALUEOF
+};
+
+static JSTaggedValue BigIntAlgorithm(JSThread *thread, std::vector<JSTaggedValue>& args, int32_t argLen,
+    AlgorithmType type, JSTaggedValue argThis = JSTaggedValue::Undefined())
+{
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), argLen);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(argThis);
+    for (size_t i = 0; i < args.size(); i++) {
+        ecmaRuntimeCallInfo->SetCallArg(i, args[i]);
+    }
+
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result;
+    switch (type) {
+        case AlgorithmType::BIGINT_CONSTRUCTOR:
+            result = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::BIGINT_ASINTN:
+            result = BuiltinsBigInt::AsIntN(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::BIGINT_ASUINTN:
+            result = BuiltinsBigInt::AsUintN(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::BIGINT_TOLOCALSTR:
+            result = BuiltinsBigInt::ToLocaleString(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::BIGINT_TOSTR:
+            result = BuiltinsBigInt::ToString(ecmaRuntimeCallInfo);
+            break;
+        case AlgorithmType::BIGINT_VALUEOF:
+            result = BuiltinsBigInt::ValueOf(ecmaRuntimeCallInfo);
+            break;
+        default:
+            break;
+    }
+    
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
 
 // new BigInt(123)
 HWTEST_F_L0(BuiltinsBigIntTest, BigIntConstructor_001)
 {
     JSHandle<JSTaggedValue> numericValue(thread, JSTaggedValue(123));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
 
     EXPECT_TRUE(result.IsBigInt());
 }
@@ -85,15 +92,8 @@ HWTEST_F_L0(BuiltinsBigIntTest, BigIntConstructor_002)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("456"));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
     EXPECT_TRUE(result.IsBigInt());
 }
 
@@ -103,18 +103,10 @@ HWTEST_F_L0(BuiltinsBigIntTest, AsIntN_001)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("9223372036854775807"));
     int bit = 64; // 64-bit
-
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(bit)));
-    ecmaRuntimeCallInfo->SetCallArg(1, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsBigInt::AsIntN(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<int>(bit)), numericValue.GetTaggedValue()};
+    auto result = BigIntAlgorithm(thread, vals, 8, AlgorithmType::BIGINT_ASINTN);
     EXPECT_TRUE(result.IsBigInt());
+
     JSHandle<BigInt> bigIntHandle(thread, result);
     JSHandle<EcmaString> resultStr = BigInt::ToString(thread, bigIntHandle);
     JSHandle<EcmaString> str = factory->NewFromASCII("9223372036854775807");
@@ -127,16 +119,8 @@ HWTEST_F_L0(BuiltinsBigIntTest, AsIntN_002)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("9223372036854775808"));
     int bit = 64; // 64-bit
-
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(bit)));
-    ecmaRuntimeCallInfo->SetCallArg(1, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsBigInt::AsIntN(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<int>(bit)), numericValue.GetTaggedValue()};
+    auto result = BigIntAlgorithm(thread, vals, 8, AlgorithmType::BIGINT_ASINTN);
 
     EXPECT_TRUE(result.IsBigInt());
     JSHandle<BigInt> bigIntHandle(thread, result);
@@ -151,16 +135,8 @@ HWTEST_F_L0(BuiltinsBigIntTest, AsUintN_001)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("18446744073709551615"));
     int bit = 64; // 64-bit
-
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(bit)));
-    ecmaRuntimeCallInfo->SetCallArg(1, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsBigInt::AsUintN(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<int>(bit)), numericValue.GetTaggedValue()};
+    auto result = BigIntAlgorithm(thread, vals, 8, AlgorithmType::BIGINT_ASUINTN);
 
     EXPECT_TRUE(result.IsBigInt());
     JSHandle<BigInt> bigIntHandle(thread, result);
@@ -176,15 +152,8 @@ HWTEST_F_L0(BuiltinsBigIntTest, AsUintN_002)
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("18446744073709551616"));
     int bit = 64; // 64-bit
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(bit)));
-    ecmaRuntimeCallInfo->SetCallArg(1, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsBigInt::AsUintN(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<int>(bit)), numericValue.GetTaggedValue()};
+    auto result = BigIntAlgorithm(thread, vals, 8, AlgorithmType::BIGINT_ASUINTN);
 
     EXPECT_TRUE(result.IsBigInt());
     JSHandle<BigInt> bigIntHandle(thread, result);
@@ -199,27 +168,14 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToLocaleString_001)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("123456789123456789"));
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result1 = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
 
     JSHandle<BigInt> bigIntHandle(thread, result1);
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("de-DE"));
 
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(bigIntHandle.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, locale.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(1, JSTaggedValue::Undefined());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsBigInt::ToLocaleString(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals2{locale.GetTaggedValue(), JSTaggedValue::Undefined()};
+    auto result2 = BigIntAlgorithm(thread, vals2, 8, AlgorithmType::BIGINT_TOLOCALSTR, bigIntHandle.GetTaggedValue());
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
@@ -239,29 +195,16 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToLocaleString_002)
     JSHandle<JSTaggedValue> styleKey(factory->NewFromASCII("currency"));
     JSHandle<JSTaggedValue> styleValue(factory->NewFromASCII("EUR"));
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result1 = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
 
     JSHandle<BigInt> bigIntHandle(thread, result1);
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("de-DE"));
     JSObject::SetProperty(thread, optionsObj, formatStyle, styleKey);
     JSObject::SetProperty(thread, optionsObj, styleKey, styleValue);
 
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(bigIntHandle.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, locale.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(1, optionsObj.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsBigInt::ToLocaleString(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals2{locale.GetTaggedValue(), optionsObj.GetTaggedValue()};
+    auto result2 = BigIntAlgorithm(thread, vals2, 8, AlgorithmType::BIGINT_TOLOCALSTR, bigIntHandle.GetTaggedValue());
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
@@ -274,24 +217,12 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_001)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("17"));
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result1 = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
 
     JSHandle<BigInt> bigIntHandle(thread, result1);
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(bigIntHandle.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue::Undefined());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsBigInt::ToString(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals2{JSTaggedValue::Undefined()};
+    auto result2 = BigIntAlgorithm(thread, vals2, 6, AlgorithmType::BIGINT_TOSTR, bigIntHandle.GetTaggedValue());
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
@@ -304,24 +235,12 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_002)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("-0"));
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result1 = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
 
     JSHandle<BigInt> bigIntHandle(thread, result1);
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(bigIntHandle.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue::Undefined());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsBigInt::ToString(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals2{JSTaggedValue::Undefined()};
+    auto result2 = BigIntAlgorithm(thread, vals2, 6, AlgorithmType::BIGINT_TOSTR, bigIntHandle.GetTaggedValue());
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
@@ -334,25 +253,13 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_003)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("-10"));
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result1 = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
 
     JSHandle<BigInt> bigIntHandle(thread, result1);
     JSHandle<JSTaggedValue> radix(thread, JSTaggedValue(2));
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(bigIntHandle.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, radix.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsBigInt::ToString(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals2{radix.GetTaggedValue()};
+    auto result2 = BigIntAlgorithm(thread, vals2, 6, AlgorithmType::BIGINT_TOSTR, bigIntHandle.GetTaggedValue());
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
@@ -365,25 +272,13 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_004)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("254"));
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result1 = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
 
     JSHandle<BigInt> bigIntHandle(thread, result1);
     JSHandle<JSTaggedValue> radix(thread, JSTaggedValue(16));
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(bigIntHandle.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, radix.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsBigInt::ToString(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals2{radix.GetTaggedValue()};
+    auto result2 = BigIntAlgorithm(thread, vals2, 6, AlgorithmType::BIGINT_TOSTR, bigIntHandle.GetTaggedValue());
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
@@ -396,23 +291,12 @@ HWTEST_F_L0(BuiltinsBigIntTest, ValueOf_001)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("-65536"));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result1 = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result1 = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
 
     JSHandle<BigInt> bigIntHandle(thread, result1);
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(bigIntHandle.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsBigInt::ValueOf(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals2{};
+    auto result2 = BigIntAlgorithm(thread, vals2, 4, AlgorithmType::BIGINT_VALUEOF, bigIntHandle.GetTaggedValue());
 
     EXPECT_EQ(BigInt::SameValue(result1, result2), true);
 }
@@ -423,26 +307,15 @@ HWTEST_F_L0(BuiltinsBigIntTest, ValueOf_002)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> numericValue(factory->NewFromASCII("65535"));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, numericValue.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result1 = BuiltinsBigInt::BigIntConstructor(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{numericValue.GetTaggedValue()};
+    auto result1 = BigIntAlgorithm(thread, vals, 6, AlgorithmType::BIGINT_CONSTRUCTOR);
 
     JSHandle<BigInt> bigIntHandle(thread, result1);
     JSHandle<JSTaggedValue> bigIntObj(bigIntHandle);
+    std::vector<JSTaggedValue> vals2{};
 
     JSHandle<JSPrimitiveRef> jsPrimitiveRef = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BIGINT, bigIntObj);
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsPrimitiveRef.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsBigInt::ValueOf(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
+    auto result2 = BigIntAlgorithm(thread, vals2, 4, AlgorithmType::BIGINT_VALUEOF, jsPrimitiveRef.GetTaggedValue());
 
     EXPECT_EQ(BigInt::SameValue(bigIntHandle.GetTaggedValue(), result2), true);
 }

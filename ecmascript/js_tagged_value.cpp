@@ -21,6 +21,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/js_api/js_api_lightweightmap.h"
@@ -426,11 +427,23 @@ ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTagge
         }
         return res;
     }
-    JSTaggedNumber xNumber = ToNumber(thread, x);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-    JSTaggedNumber yNumber = ToNumber(thread, y);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-    return StrictNumberCompare(xNumber.GetNumber(), yNumber.GetNumber());
+    double resultX = 0;
+    double resultY = 0;
+    if (primX->IsNumber()) {
+        resultX = primX->GetNumber();
+    } else {
+        JSTaggedNumber xNumber = ToNumber(thread, x);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+        resultX = xNumber.GetNumber();
+    }
+    if (primY->IsNumber()) {
+        resultY = primY->GetNumber();
+    } else {
+        JSTaggedNumber yNumber = ToNumber(thread, y);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+        resultY = yNumber.GetNumber();
+    }
+    return StrictNumberCompare(resultX, resultY);
 }
 
 bool JSTaggedValue::IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y)
@@ -1206,6 +1219,9 @@ bool JSTaggedValue::HasContainerProperty(JSThread *thread, const JSHandle<JSTagg
         case JSType::JS_API_VECTOR: {
             return JSHandle<JSAPIVector>::Cast(obj)->Has(key.GetTaggedValue());
         }
+        case JSType::JS_API_BITVECTOR: {
+            return JSHandle<JSAPIBitVector>::Cast(obj)->Has(key.GetTaggedValue());
+        }
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -1251,6 +1267,9 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerPropertyKeys(JSThread *threa
         case JSType::JS_API_VECTOR: {
             return JSAPIVector::OwnKeys(thread, JSHandle<JSAPIVector>::Cast(obj));
         }
+        case JSType::JS_API_BITVECTOR: {
+            return JSAPIBitVector::OwnKeys(thread, JSHandle<JSAPIBitVector>::Cast(obj));
+        }
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -1278,6 +1297,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerEnumPropertyKeys(JSThread *t
             return JSAPILinkedList::OwnKeys(thread, JSHandle<JSAPILinkedList>::Cast(obj));
         }
         case JSType::JS_API_VECTOR:
+        case JSType::JS_API_BITVECTOR:
         case JSType::JS_API_STACK:
         case JSType::JS_API_ARRAY_LIST:
         case JSType::JS_API_PLAIN_ARRAY:
@@ -1326,6 +1346,9 @@ bool JSTaggedValue::GetContainerProperty(JSThread *thread, const JSHandle<JSTagg
             }
             case JSType::JS_API_VECTOR: {
                 return JSAPIVector::GetOwnProperty(thread, JSHandle<JSAPIVector>::Cast(obj), key);
+            }
+            case JSType::JS_API_BITVECTOR: {
+                return JSAPIBitVector::GetOwnProperty(thread, JSHandle<JSAPIBitVector>::Cast(obj), key);
             }
             default: {
                 return JSObject::GetOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
@@ -1413,6 +1436,9 @@ OperationResult JSTaggedValue::GetJSAPIProperty(JSThread *thread, const JSHandle
             case JSType::JS_API_VECTOR: {
                 return JSAPIVector::GetProperty(thread, JSHandle<JSAPIVector>::Cast(obj), key);
             }
+            case JSType::JS_API_BITVECTOR: {
+                return JSAPIBitVector::GetProperty(thread, JSHandle<JSAPIBitVector>::Cast(obj), key);
+            }
             default: {
                 return JSObject::GetProperty(thread, JSHandle<JSObject>(obj), key);
             }
@@ -1454,6 +1480,9 @@ bool JSTaggedValue::SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedVa
             }
             case JSType::JS_API_VECTOR: {
                 return JSAPIVector::SetProperty(thread, JSHandle<JSAPIVector>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_BITVECTOR: {
+                return JSAPIBitVector::SetProperty(thread, JSHandle<JSAPIBitVector>::Cast(obj), key, value);
             }
             default: {
                 return JSObject::SetProperty(thread, JSHandle<JSObject>::Cast(obj), key, value);

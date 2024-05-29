@@ -25,6 +25,7 @@ namespace panda::ecmascript::kungfu {
 enum class CommonArgIdx : uint8_t {
     GLUE = 0,
     ACTUAL_ARGC,
+    ACTUAL_ARGV,
     FUNC,
     NEW_TARGET,
     THIS_OBJECT,
@@ -43,6 +44,7 @@ enum class FrameArgIdx : uint8_t {
     NEW_TARGET,
     THIS_OBJECT,
     ACTUAL_ARGC,
+    ACTUAL_ARGV,
     CONST_POOL,
     NUM_OF_ARGS,
 };
@@ -84,7 +86,7 @@ public:
 
     static size_t GetExtraArgsNum()
     {
-        return static_cast<size_t>(CommonArgIdx::ACTUAL_ARGC) - static_cast<size_t>(CommonArgIdx::GLUE);
+        return static_cast<size_t>(CommonArgIdx::ACTUAL_ARGV) - static_cast<size_t>(CommonArgIdx::GLUE);
     }
 
     GateRef GetFrameArgs() const

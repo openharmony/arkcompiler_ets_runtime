@@ -25,10 +25,10 @@ declare_args() {
   enable_fuzz_option = false
 
   # Enable pgo for building.
-  js_runtime_feature_enable_pgo = false
+  ets_runtime_feature_enable_pgo = false
 
   # Set pgo profdata path.
-  js_runtime_feature_pgo_path = ""
+  ets_runtime_feature_pgo_path = ""
 
   TARGET = "x86_64"
   HOST_ARCH = 64
@@ -201,7 +201,7 @@ template("libark_jsruntime_common_set") {
     }
 
     if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
-        is_standard_system && !is_arkui_x && target_cpu == "arm64") {
+        is_standard_system && !is_arkui_x) {
       defines += [ "ENABLE_FFRT_INTERFACES" ]
       external_deps += [
         "ffrt:libffrt",
@@ -228,6 +228,7 @@ template("libark_jsruntime_common_set") {
       defines += [
         "GET_PARAMETER_FOR_JIT",
         "JIT_ESCAPE_ENABLE",
+        "AOT_ESCAPE_ENABLE",
       ]
     }
 

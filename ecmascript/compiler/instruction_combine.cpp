@@ -123,7 +123,7 @@ template <typename signed_type> inline signed_type ShlWithWraparound(signed_type
 {
     using unsigned_type = typename std::make_unsigned<signed_type>::type;
     const unsigned_type kMask = (sizeof(a) * 8) - 1;
-    return static_cast<signed_type>(static_cast<unsigned_type>(a) << (b & kMask));
+    return static_cast<signed_type>(static_cast<unsigned_type>(a) << (static_cast<unsigned_type>(b) & kMask));
 }
 
 template <typename signed_type> inline signed_type NegateWithWraparound(signed_type a)
@@ -334,7 +334,7 @@ GateRef InstructionCombine::VisitICMP(GateRef gate)
                 Int64BinopMatcher orOp(andOp.Left().Gate(), circuit_);
                 auto constant2 = andOp.Right().ResolvedValue();
                 auto constant1 = orOp.Right().HasResolvedValue() ? orOp.Right().ResolvedValue() : 0;
-                bool flag = ((constant1 & constant2) != 0);
+                bool flag = ((static_cast<uint64_t>(constant1) & static_cast<uint64_t>(constant2)) != 0);
                 result = flag ? builder_.False() : Circuit::NullGate();
             }
         }
@@ -1060,7 +1060,8 @@ GateRef InstructionCombine::ReduceWord64Or(GateRef gate)
     if (m.Right().HasResolvedValue() && m.Left().IsmInt64And()) {
         Int64BinopMatcher mand(m.Left().Gate(), circuit_);
         if (mand.Right().HasResolvedValue()) {
-            if ((m.Right().ResolvedValue() | mand.Right().ResolvedValue()) == -1) {
+            if ((static_cast<uint64_t>(m.Right().ResolvedValue()) |
+                static_cast<uint64_t>(mand.Right().ResolvedValue())) == -1) {
                 acc_.ReplaceValueIn(gate, mand.Left().Gate(), 0);
                 return gate;
             }

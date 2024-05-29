@@ -295,16 +295,23 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     DEFVARIABLE(argumentsList, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(arrayObj, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(actualRestNum, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(argv, VariableType::NATIVE_POINTER(), PtrArgument(1));
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
-    GateRef startIdx = Int32Argument(1);
-    GateRef numArgs = Int32Argument(2);
+    GateRef startIdx = Int32Argument(2); /* 2 : 3rd parameter is index */
+    GateRef numArgs = Int32Argument(3); /* 3 : 4th parameter is index */
     Label afterArgumentsList(env);
     Label newArgumentsObj(env);
     Label numArgsGreater(env);
     Label numArgsNotGreater(env);
-    GateRef argv = CallNGCRuntime(glue, RTSTUB_ID(GetActualArgvNoGC), { glue });
-    GateRef args = PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * 8)); // 8: ptr size
+    Label calcArgv(env);
+    Label hasArgv(env);
+    BRANCH(Equal(*argv, IntPtr(0)), &calcArgv, &hasArgv);
+    Bind(&calcArgv);
+    argv = CallNGCRuntime(glue, RTSTUB_ID(GetActualArgvNoGC), { glue });
+    Jump(&hasArgv);
+    Bind(&hasArgv);
+    GateRef args = PtrAdd(*argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * 8)); // 8: ptr size
     GateRef actualArgc = Int32Sub(numArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
     // 1. Calculate actual rest num.
     BRANCH(Int32UnsignedGreaterThan(actualArgc, startIdx), &numArgsGreater, &numArgsNotGreater);
@@ -334,20 +341,25 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     Return(*arrayObj);
 }
 
-void GetUnmapedArgsStubBuilder::GenerateCircuit()
+void GetUnmappedArgsStubBuilder::GenerateCircuit()
 {
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
-    GateRef numArgs = Int32Argument(1);
-
+    GateRef numArgs = Int32Argument(2); /* 2 : 3rd parameter is index */
     DEFVARIABLE(argumentsList, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(argumentsObj, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(argv, VariableType::NATIVE_POINTER(), PtrArgument(1));
     Label afterArgumentsList(env);
     Label newArgumentsObj(env);
     Label exit(env);
-
-    GateRef argv = CallNGCRuntime(glue, RTSTUB_ID(GetActualArgvNoGC), { glue });
-    GateRef args = PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * 8)); // 8: ptr size
+    Label calcArgv(env);
+    Label hasArgv(env);
+    BRANCH(Equal(*argv, IntPtr(0)), &calcArgv, &hasArgv);
+    Bind(&calcArgv);
+    argv = CallNGCRuntime(glue, RTSTUB_ID(GetActualArgvNoGC), { glue });
+    Jump(&hasArgv);
+    Bind(&hasArgv);
+    GateRef args = PtrAdd(*argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * 8)); // 8: ptr size
     GateRef actualArgc = Int32Sub(numArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef startIdx = Int32(0);
     NewObjectStubBuilder newBuilder(this);
@@ -850,7 +862,7 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
         &methodIsFastCall, &notFastCall);
     Bind(&methodIsFastCall);
     {
-        BRANCH(Int64LessThanOrEqual(expectedArgc, argc), &fastCall, &fastCallBridge);
+        BRANCH(Int64Equal(expectedArgc, argc), &fastCall, &fastCallBridge);
         Bind(&fastCall);
         {
             result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
@@ -859,14 +871,14 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
         }
         Bind(&fastCallBridge);
         {
-            result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgVAndPushUndefined),
+            result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgVAndPushArgv),
                 { glue, func, thisValue, actualArgc, argv, expectedNum });
             Jump(&exit);
         }
     }
     Bind(&notFastCall);
     {
-        BRANCH(Int64LessThanOrEqual(expectedArgc, argc), &slowCall, &slowCallBridge);
+        BRANCH(Int64Equal(expectedArgc, argc), &slowCall, &slowCallBridge);
         Bind(&slowCall);
         {
             result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
@@ -875,7 +887,7 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
         }
         Bind(&slowCallBridge);
         {
-            result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgVAndPushUndefined),
+            result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgVAndPushArgv),
                 { glue, actualArgc, func, newTarget, thisValue, argv });
             Jump(&exit);
         }
@@ -1009,7 +1021,8 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
                         Bind(&slowCall1);
                         {
                             result = CallOptimized(glue, code,
-                                { glue, numArgs, method, Undefined(), handler, target, thisTarget, arrHandle });
+                                { glue, numArgs, IntPtr(0), method, Undefined(),
+                                  handler, target, thisTarget, arrHandle });
                             Jump(&exit);
                         }
                     }
@@ -1018,7 +1031,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
             Bind(&slowPath1);
             {
                 result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                    { glue, numArgs, method, Undefined(), handler, target, thisTarget, arrHandle });
+                    { glue, numArgs, IntPtr(0), method, Undefined(), handler, target, thisTarget, arrHandle });
                 Jump(&exit);
             }
         }
@@ -1250,6 +1263,15 @@ void JSSetAddStubBuilder::GenerateCircuit()
     GateRef newTable = builder.Insert(linkedTable, key, key);
     builder.Store(VariableType::JS_ANY(), glue, obj, IntPtr(JSSet::LINKED_SET_OFFSET), newTable);
     Return(obj);
+}
+
+void SameValueStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef left = TaggedArgument(1);
+    GateRef right = TaggedArgument(2U);
+    GateRef result = SameValue(glue, left, right);
+    Return(result);
 }
 
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];

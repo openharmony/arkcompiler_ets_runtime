@@ -18,6 +18,7 @@
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/ic/profile_type_info_cell.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/js_proxy.h"
@@ -230,12 +231,17 @@ public:
                               void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
     void SetSFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
                                void *data, size_t nativeBindingsize = 0);
+    static void SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
+                                   const JSHandle<JSTaggedValue> &value, BarrierMode mode = WRITE_BARRIER);
 
     JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;
     JSTaggedValue GetRecordName() const;
+    JSTaggedValue GetProfileTypeInfo() const;
 
     void InitializeForConcurrentFunction(JSThread *thread);
+
+    bool IsSendableFunction() const;
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
@@ -251,8 +257,8 @@ public:
     // For runtime native function, the LexicalEnv field is used to store GlobalEnv, such as RegExp's native function
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, MACHINECODE_OFFSET)
     ACCESSORS(MachineCode, MACHINECODE_OFFSET, BASELINECODE_OFFSET)
-    ACCESSORS(BaselineCode, BASELINECODE_OFFSET, PROFILE_TYPE_INFO_OFFSET)
-    ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, HOME_OBJECT_OFFSET)
+    ACCESSORS(BaselineCode, BASELINECODE_OFFSET, RAW_PROFILE_TYPE_INFO_OFFSET)
+    ACCESSORS(RawProfileTypeInfo, RAW_PROFILE_TYPE_INFO_OFFSET, HOME_OBJECT_OFFSET)
     ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, ECMA_MODULE_OFFSET)
     ACCESSORS(Module, ECMA_MODULE_OFFSET, WORK_NODE_POINTER_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(WorkNodePointer, uintptr_t, WORK_NODE_POINTER_OFFSET, LAST_OFFSET)

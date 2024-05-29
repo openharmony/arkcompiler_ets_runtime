@@ -268,6 +268,11 @@ config("ark_jsruntime_common_config") {
   configs = [ ":hiviewdfx_config" ]
 
   defines = [ "PANDA_ENABLE_LTO" ]
+
+  if (ark_standalone_build) {
+    defines += [ "STANDALONE_MODE" ]
+  }
+
   cflags_cc = [
     "-Wall",
     "-Wshadow",
@@ -287,10 +292,10 @@ config("ark_jsruntime_common_config") {
   ]
 
   if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64")) {
-    if (js_runtime_feature_enable_pgo) {
+    if (ets_runtime_feature_enable_pgo) {
       cflags = [
         "-fprofile-use=" + rebase_path(
-                "${js_runtime_feature_pgo_path}/libark_jsruntime.profdata",
+                "${ets_runtime_feature_pgo_path}/libark_jsruntime.profdata",
                 root_build_dir),
         "-Wno-error=backend-plugin",
         "-Wno-profile-instr-out-of-date",
@@ -556,6 +561,7 @@ ecma_source = [
   "ecmascript/base/json_stringifier.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/path_helper.cpp",
+  "ecmascript/base/sort_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
   "ecmascript/base/utf_helper.cpp",
@@ -617,6 +623,7 @@ ecma_source = [
   "ecmascript/compiler/aot_file/an_file_info.cpp",
   "ecmascript/compiler/aot_file/aot_file_info.cpp",
   "ecmascript/compiler/aot_file/stub_file_info.cpp",
+  "ecmascript/compiler/aot_file/gdb_jit.cpp",
   "ecmascript/compiler/aot_file/binary_buffer_parser.cpp",
   "ecmascript/compiler/aot_file/module_section_des.cpp",
   "ecmascript/compiler/aot_file/aot_file_manager.cpp",
@@ -629,6 +636,7 @@ ecma_source = [
   "ecmascript/compiler/pgo_type/pgo_type_parser.cpp",
   "ecmascript/compiler/pgo_type/pgo_type_recorder.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
+  "ecmascript/containers/containers_bitvector.cpp",
   "ecmascript/containers/containers_deque.cpp",
   "ecmascript/containers/containers_errors.cpp",
   "ecmascript/containers/containers_hashmap.cpp",
@@ -649,6 +657,7 @@ ecma_source = [
   "ecmascript/deoptimizer/calleeReg.cpp",
   "ecmascript/deoptimizer/deoptimizer.cpp",
   "ecmascript/dfx/dump_code/jit_dump_elf.cpp",
+  "ecmascript/dfx/native_module_error.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
   "ecmascript/dfx/vmstat/function_call_timer.cpp",
@@ -701,6 +710,8 @@ ecma_source = [
   "ecmascript/jspandafile/program_object.cpp",
   "ecmascript/js_api/js_api_arraylist.cpp",
   "ecmascript/js_api/js_api_arraylist_iterator.cpp",
+  "ecmascript/js_api/js_api_bitvector.cpp",
+  "ecmascript/js_api/js_api_bitvector_iterator.cpp",
   "ecmascript/js_api/js_api_deque.cpp",
   "ecmascript/js_api/js_api_deque_iterator.cpp",
   "ecmascript/js_api/js_api_hashmap.cpp",

@@ -629,6 +629,7 @@ public:
     bool IsJSAPIArrayListIterator() const;
     bool IsJSAPIStackIterator() const;
     bool IsJSAPIVectorIterator() const;
+    bool IsJSAPIBitVectorIterator() const;
     bool IsJSAPILinkedListIterator() const;
     bool IsJSAPIListIterator() const;
     bool IsJSPrimitiveRef() const;

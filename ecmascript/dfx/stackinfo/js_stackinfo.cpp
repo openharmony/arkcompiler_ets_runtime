@@ -24,6 +24,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/ohos/aot_runtime_info.h"
 #include "ecmascript/platform/os.h"
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
@@ -34,10 +35,6 @@
 
 namespace panda::ecmascript {
 [[maybe_unused]] static bool g_needCheck = true;
-
-const int USEC_PER_SEC = 1000 * 1000;
-const int NSEC_PER_USEC = 1000;
-
 std::unordered_map<EntityId, std::string> JsStackInfo::nameMap;
 
 std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
@@ -147,60 +144,22 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
     return data;
 }
 
-uint64_t GetMicrosecondsTimeStamp()
-{
-    struct timespec time;
-    clock_gettime(CLOCK_MONOTONIC, &time);
-    return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
-}
-
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc)
 {
     if (JsStackInfo::loader != nullptr && !JsStackInfo::loader->IsEnableAOT() &&
         JsStackInfo::options != nullptr && !JsStackInfo::options->IsEnableJIT()) {
         return;
     }
-    std::string realOutPath;
-    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(ohos::AotCrashInfo::GetSandBoxPath());
-    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
-        return;
-    }
-    uint64_t timestamp = GetMicrosecondsTimeStamp();
-    ohos::AotCrashInfo aotCrashInfo;
-    std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
-    if (soBuildId == "") {
-        LOG_ECMA(ERROR) << "can't get so buildId";
-        return;
-    }
-    realOutPath = realOutPath + "/" + ohos::AotCrashInfo::GetCrashFileName();
-    std::ifstream ifile(realOutPath.c_str());
-    std::vector<std::string> lines;
-    if (ifile.is_open()) {
-        std::string iline;
-        while (ifile >> iline) {
-            std::string buildId = ohos::AotCrashInfo::GetBuildId(iline);
-            if (buildId != soBuildId) {
-                continue;
-            }
-            lines.emplace_back(iline);
-        }
-        ifile.close();
-    }
-    ohos::CrashType type;
+    ohos::RuntimeInfoType type;
     if (isJsCrash) {
-        type = ohos::CrashType::JS;
+        type = ohos::RuntimeInfoType::JS;
     } else if (pc != 0 && JsStackInfo::loader != nullptr && JsStackInfo::loader->InsideAOT(pc)) {
-        type = ohos::CrashType::AOT;
+        type = ohos::RuntimeInfoType::AOT;
     } else {
-        type = ohos::CrashType::OTHERS;
+        type = ohos::RuntimeInfoType::OTHERS;
     }
-    std::string buildLine = ohos::AotCrashInfo::BuildAotCrashInfo(soBuildId, std::to_string(timestamp), type);
-    lines.emplace_back(buildLine);
-    std::ofstream file(realOutPath.c_str(), std::ofstream::out);
-    for (const std::string& line : lines) {
-        file << line << "\n";
-    }
-    file.close();
+    ohos::AotRuntimeInfo aotRuntimeInfo;
+    aotRuntimeInfo.BuildCrashRuntimeInfo(ohos::AotRuntimeInfo::GetRuntimeInfoTypeStr(type));
 }
 
 std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, bool currentStack)
@@ -890,13 +849,12 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
         if (IsFunctionFrame(frameTypeTmp)) {
             if (static_cast<FrameType>(frameTypeTmp) == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME ||
                 static_cast<FrameType>(frameTypeTmp) == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
-                uintptr_t *function = 0;
+                uintptr_t function = 0;
                 uintptr_t funcAddr = tmpPtr;
                 funcAddr -= OptimizedJSFunctionFrame::GetTypeOffset();
                 funcAddr += OptimizedJSFunctionFrame::GetFunctionOffset();
-                arkUnwindParam->readMem(arkUnwindParam->ctx, funcAddr, function);
-                *(arkUnwindParam->jitCache + *arkUnwindParam->jitSize) = *function;
-                *arkUnwindParam->jitSize += 1;
+                arkUnwindParam->readMem(arkUnwindParam->ctx, funcAddr, &function);
+                arkUnwindParam->jitCache.push_back(function);
             }
         }
     }

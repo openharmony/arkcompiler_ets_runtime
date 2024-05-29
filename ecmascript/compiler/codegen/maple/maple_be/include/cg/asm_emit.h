@@ -35,7 +35,6 @@ protected:
     virtual ~AsmEmitter() = default;
 
     virtual void EmitFastLSDA(FuncEmitInfo &funcEmitInfo) = 0;
-    virtual void EmitFullLSDA(FuncEmitInfo &funcEmitInfo) = 0;
     virtual void EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std::string &name, LabelIdx labIdx) = 0;
     virtual void Run(FuncEmitInfo &funcEmitInfo) = 0;
 };

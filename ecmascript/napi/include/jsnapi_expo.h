@@ -89,6 +89,9 @@ struct HmsMap {
 
 using WeakRefClearCallBack = void (*)(void *);
 using WeakFinalizeTaskCallback = std::function<void()>;
+using NativePointerCallback = void (*)(void *env, void* data, void* hint);
+using NativePointerCallbackData = std::pair<NativePointerCallback, std::tuple<void*, void*, void*>>;
+using NativePointerTaskCallback = std::function<void(std::vector<NativePointerCallbackData>& callbacks)>;
 using EcmaVM = ecmascript::EcmaVM;
 using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
@@ -482,6 +485,7 @@ public:
     bool IsAsyncGeneratorObject();
 
     bool IsModuleNamespaceObject();
+    bool IsNativeModuleErrorObject();
     bool IsSharedArrayBuffer();
     bool IsSendableArrayBuffer();
 
@@ -647,7 +651,6 @@ private:
     bool hasConfigurable_ = false;
 };
 
-using NativePointerCallback = void (*)(void *env, void* data, void* hint);
 class ECMA_PUBLIC_API NativePointerRef : public JSValueRef {
 public:
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize = 0);
@@ -688,6 +691,7 @@ public:
     static Local<ObjectRef> NewSWithProperties(const EcmaVM *vm, SendablePropertiesInfo &info);
     static Local<ObjectRef> NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount, const char **keys,
                                                    const Local<JSValueRef> *values);
+    static Local<ObjectRef> CreateNativeModuleError(const EcmaVM *vm, const std::string &errorMsg);
     static Local<ObjectRef> CreateAccessorData(const EcmaVM *vm, Local<FunctionRef> getter, Local<FunctionRef> setter);
     static Local<ObjectRef> CreateSendableAccessorData(const EcmaVM *vm,
                                                        Local<FunctionRef> getter,
@@ -770,6 +774,12 @@ public:
                                           size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, NativePointerCallback deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewConcurrentClassFunction(EcmaVM *vm,
+                                                         InternalFunctionCallback nativeFunc,
+                                                         NativePointerCallback deleter,
+                                                         void *data,
+                                                         bool callNapi = false,
+                                                         size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm,
                                                InternalFunctionCallback nativeFunc,
                                                NativePointerCallback deleter,
@@ -1010,7 +1020,6 @@ public:
 class ECMA_PUBLIC_API ArrayRef : public ObjectRef {
 public:
     static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
-    static Local<ArrayRef> NewSendable(const EcmaVM *vm, uint32_t length = 0);
     uint32_t Length(const EcmaVM *vm);
     static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
@@ -1461,7 +1470,7 @@ public:
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetHostResolveBufferTracker(EcmaVM *vm,
-        std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb);
+        std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
@@ -1498,6 +1507,7 @@ public:
         std::vector<std::vector<std::string>>> &list);
     static void SetLoop(EcmaVM *vm, void *loop);
     static void SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback);
+    static void SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallback &callback);
     static std::string GetAssetPath(EcmaVM *vm);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func, void *taskInfo);
@@ -1535,7 +1545,7 @@ public:
     static bool KeyIsNumber(const char* utf8);
 
     static bool IsJitEscape();
-    static bool IsAotEscape();
+    static bool IsAotEscape(const std::string &pgoRealPath = "");
 private:
     static int vmCount_;
     static bool initialize_;
@@ -1552,6 +1562,8 @@ private:
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
     static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
+    static void GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_clock::time_point &start,
+                                     std::chrono::system_clock::time_point &end, bool isSerialization);
     template<typename T>
     friend class Global;
     template<typename T>
@@ -1604,6 +1616,17 @@ public:
     static Local<SetIteratorRef> New(const EcmaVM *vm, Local<SetRef> set);
     ecmascript::EcmaRuntimeCallInfo *GetEcmaRuntimeCallInfo(const EcmaVM *vm);
     static Local<ArrayRef> Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo);
+};
+
+/* Attention pls, ExternalStringCache only can be utilized in main thread. Threads of Worker or Taskpool call
+ * functions of this class will cause data race.
+ */
+class ECMA_PUBLIC_API ExternalStringCache final {
+public:
+    static bool RegisterStringCacheTable(const EcmaVM *vm, uint32_t size);
+    static bool SetCachedString(const EcmaVM *vm, const char *name, uint32_t propertyIndex);
+    static bool HasCachedString(const EcmaVM *vm, uint32_t propertyIndex);
+    static Local<StringRef> GetCachedString(const EcmaVM *vm, uint32_t propertyIndex);
 };
 }
 #endif

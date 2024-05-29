@@ -50,6 +50,16 @@ public:
     static bool IsTrustedStringType(
         const CompilationEnv *env, Circuit *circuit, Chunk *chunk, GateAccessor acc, GateRef gate);
 
+    static inline bool IsTrustedBooleanOrNumberOrStringType(const CompilationEnv *env, Circuit *circuit,
+                                                            Chunk *chunk, GateAccessor acc, GateRef gate)
+    {
+        return IsTrustedBooleanType(acc, gate) || IsTrustedNumberType(acc, gate) ||
+               IsTrustedStringType(env, circuit, chunk, acc, gate);
+    }
+
+    static bool IsTrustedNotSameType(const CompilationEnv *env, Circuit *circuit, Chunk *chunk,
+                                     GateAccessor acc, GateRef left, GateRef right);
+
 protected:
     ParamType PGOSampleTypeToParamType() const;
     static ParamType PGOBuiltinTypeToParamType(ProfileType pgoType);
@@ -88,11 +98,17 @@ public:
 
     inline bool HasNumberType() const
     {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return false;
+        }
         return pgoType_.HasNumber();
     }
 
     inline bool IsStringType() const
     {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return false;
+        }
         return pgoType_.IsString();
     }
 
@@ -538,6 +554,11 @@ public:
     GateRef GetArg0() const
     {
         return a0_;
+    }
+
+    std::vector<GateRef> GetArgs()
+    {
+        return { thisObj_, a0_ };
     }
 
     bool Arg0IsNumberType() const
@@ -1100,6 +1121,12 @@ public:
     bool IsBuiltinsTypeArray() const
     {
         return types_[0].IsBuiltinsTypeArray();
+    }
+
+    bool IsStoreOutOfBounds() const
+    {
+        ASSERT(types_.size() > 0);
+        return types_[0].IsEverOutOfBounds();
     }
 
     JSType GetBuiltinsJSType() const

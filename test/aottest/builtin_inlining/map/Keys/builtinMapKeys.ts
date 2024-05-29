@@ -94,9 +94,9 @@ myMap.keys = true_keys
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Map.keys, caller function name:doKeys@builtinMapKeys
+    //aot: [trace] aot inline builtin: Map.keys, caller function name:#*#doKeys@builtinMapKeys
     printKeys(2.5); //: [object Map Iterator]
-    //aot: [trace] aot inline builtin: Map.keys, caller function name:doKeys@builtinMapKeys
+    //aot: [trace] aot inline builtin: Map.keys, caller function name:#*#doKeys@builtinMapKeys
     printKeys("abc"); //: [object Map Iterator]
 } catch (e) {
 }

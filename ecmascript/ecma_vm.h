@@ -95,14 +95,14 @@ class JitThread;
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
-using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
+using ResolveBufferCallback =
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
-using NativePointerCallback = void (*)(void *, void *, void *);
 
 class EcmaVM {
 public:
@@ -202,6 +202,21 @@ public:
                                     << " currentThread:" << JSThread::GetCurrentThreadId();
         }
         return thread_;
+    }
+
+    bool CheckSingleThread() const
+    {
+        if (thread_ == nullptr) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+            return false;
+        }
+        if (thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                            << " thread:" << thread_->GetThreadId()
+                            << " currentThread:" << JSThread::GetCurrentThreadId();
+            return false;
+        }
+        return true;
     }
 
     ARK_INLINE JSThread *GetJSThread() const
@@ -664,16 +679,6 @@ public:
         isEnableOsr_ = state;
     }
 
-    bool isOverLimit() const
-    {
-        return overLimit_;
-    }
-
-    void SetOverLimit(bool state)
-    {
-        overLimit_ = state;
-    }
-
     AOTFileManager *GetAOTFileManager() const
     {
         return aotFileManager_;
@@ -684,9 +689,14 @@ public:
         return thread_->GetThreadId();
     }
 
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetNativePointerCallbacks()
+    std::vector<NativePointerCallbackData> &GetConcurrentNativePointerCallbacks()
     {
-        return nativePointerCallbacks_;
+        return concurrentNativeCallbacks_;
+    }
+
+    std::vector<NativePointerCallbackData> &GetAsyncNativePointerCallbacks()
+    {
+        return asyncNativeCallbacks_;
     }
 
     void SetIsJitCompileVM(bool isJitCompileVM)
@@ -715,7 +725,7 @@ public:
     {
         return sharedNativePointerCallbacks_;
     }
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     void ResetScopeLockStats()
     {
         enterThreadManagedScopeCount_ = 0;
@@ -822,7 +832,8 @@ private:
     ObjectFactory *factory_ {nullptr};
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    std::vector<NativePointerCallbackData> concurrentNativeCallbacks_ {};
+    std::vector<NativePointerCallbackData> asyncNativeCallbacks_ {};
     CList<JSNativePointer *> sharedNativePointerList_;
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
@@ -910,9 +921,8 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
-    bool overLimit_ {false};
 
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks
     bool isCollectingScopeLockStats_ = false;
     int enterThreadManagedScopeCount_ = 0;

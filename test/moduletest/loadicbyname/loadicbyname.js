@@ -95,3 +95,59 @@ for (let i = 0; i < 100; i++) {
   f(120, 1);
 }
 print("load Number ic by name success1!")
+
+print("================Test proto SharedTypedArray IC================");
+function testProtoIc(ctor) {
+  for (let i = 0; i < 100; i++) { };
+  let obj = new ctor(100);
+  let obj1 = {
+    __proto__: obj,
+  }
+  let obj2 = {
+    __proto__: obj1,
+  }
+  let obj3 = {
+    __proto__: obj2
+  }
+  let reduce = obj.reduce;
+  let reduce1 = obj1.reduce;
+  let reduce2 = obj2.reduce;
+  let reduce3 = obj3.reduce;
+  if (reduce != ctor.prototype.reduce) {
+    print("Error in obj.reduce");
+  }
+  if (reduce1 != ctor.prototype.reduce) {
+    print("Error in obj1.reduce");
+  }
+  if (reduce2 != ctor.prototype.reduce) {
+    print("Error in obj2.reduce");
+  }
+  if (reduce3 != ctor.prototype.reduce) {
+    print("Error in obj3.reduce");
+  }
+  print(ctor.name, "test prototype ic success")
+}
+
+[
+  SharedFloat64Array,
+  SharedFloat32Array,
+  SharedInt32Array,
+  SharedInt16Array,
+  SharedInt8Array,
+  SharedUint32Array,
+  SharedUint16Array,
+  SharedUint8Array,
+  SharedUint8ClampedArray
+].forEach((ctor) => {
+  testProtoIc(ctor);
+})
+print("================Test proto SharedTypedArray IC success!================");
+function f(){return 1};
+Object.defineProperty(this,"g",{
+    get:f,
+    set:f,
+})
+for(let i=0;i<2;i++){
+    print(g)
+}
+print("load global ic with accessor success!");

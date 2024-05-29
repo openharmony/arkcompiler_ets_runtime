@@ -23,7 +23,8 @@
 namespace panda::ecmascript::kungfu {
 class NTypeHCRLowering : public PassVisitor {
 public:
-    NTypeHCRLowering(Circuit *circuit, RPOVisitor *visitor, PassContext *ctx, const CString &recordName, Chunk* chunk)
+    NTypeHCRLowering(Circuit *circuit, RPOVisitor *visitor, PassContext *ctx, const CString &recordName,
+                     const MethodLiteral *methodLiteral, Chunk* chunk)
         : PassVisitor(circuit, chunk, visitor),
           circuit_(circuit),
           acc_(circuit),
@@ -32,6 +33,7 @@ public:
           dependEntry_(circuit->GetDependRoot()),
           jsPandaFile_(ctx->GetJSPandaFile()),
           recordName_(recordName),
+          methodLiteral_(methodLiteral),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
           glue_(acc_.GetGlueFromArgList()) {}
@@ -50,6 +52,7 @@ private:
     void LowerLdLocalModuleVar(GateRef gate);
 
     GateRef LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType);
+    GateRef NewActualArgv(GateRef gate, GateRef glue);
     GateRef NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef elements, GateRef length, uint32_t hintLength = 0);
     GateRef NewTaggedArray(size_t length, GateRef glue);
     GateRef CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength);
@@ -81,6 +84,7 @@ private:
     GateRef dependEntry_;
     const JSPandaFile *jsPandaFile_ {nullptr};
     const CString &recordName_;
+    const MethodLiteral *methodLiteral_ {nullptr};
     panda_file::File::EntityId methodId_ {0};
     bool profiling_ {false};
     bool traceBc_ {false};

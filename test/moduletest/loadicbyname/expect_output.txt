@@ -15,3 +15,17 @@ primitiveic load success
 load ic by name test2 success!
 load Number ic by name success!
 load Number ic by name success1!
+================Test proto SharedTypedArray IC================
+SharedFloat64Array test prototype ic success
+SharedFloat32Array test prototype ic success
+SharedInt32Array test prototype ic success
+SharedInt16Array test prototype ic success
+SharedInt8Array test prototype ic success
+SharedUint32Array test prototype ic success
+SharedUint16Array test prototype ic success
+SharedUint8Array test prototype ic success
+SharedUint8ClampedArray test prototype ic success
+================Test proto SharedTypedArray IC success!================
+1
+1
+load global ic with accessor success!

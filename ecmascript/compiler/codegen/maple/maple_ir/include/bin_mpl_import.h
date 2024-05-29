@@ -69,7 +69,6 @@ public:
         imported = importedVal;
     }
 
-    bool Import(const std::string &modid, bool readSymbols = false, bool readSe = false);
     bool ImportForSrcLang(const std::string &modid, MIRSrcLang &srcLang);
     MIRSymbol *GetOrCreateSymbol(TyIdx tyIdx, GStrIdx strIdx, MIRSymKind mclass, MIRStorageClass sclass,
                                  MIRFunction *func, uint8 scpID);
@@ -79,11 +78,7 @@ public:
 private:
     void ReadContentField();
     void ReadStrField();
-    void ReadHeaderField();
-    void ReadTypeField();
-    void ReadSymField();
     void ReadSymTabField();
-    void ReadCgField();
     EAConnectionGraph *ReadEaCgField();
     void ReadEaField();
     EACGBaseNode &InEaCgNode(EAConnectionGraph &newEaCg);
@@ -92,18 +87,14 @@ private:
     void InEaCgFieldNode(EACGFieldNode &field, EAConnectionGraph &newEaCg);
     void InEaCgObjNode(EACGObjectNode &obj, EAConnectionGraph &newEaCg);
     void InEaCgRefNode(EACGRefNode &ref);
-    CallInfo *ImportCallInfo();
     void MergeDuplicated(PUIdx methodPuidx, std::vector<CallInfo *> &targetSet, std::vector<CallInfo *> &newSet);
     void ReadSeField();
     void Jump2NextField();
     void Reset();
     void SkipTotalSize();
     void ImportFieldsOfStructType(FieldVector &fields, uint32 methodSize);
-    MIRType &InsertInTypeTables(MIRType &ptype);
     void InsertInHashTable(MIRType &ptype);
     void UpdateMethodSymbols();
-    void ImportConstBase(MIRConstKind &kind, MIRTypePtr &type);
-    MIRConst *ImportConst(MIRFunction *func);
     GStrIdx ImportStr();
     UStrIdx ImportUsrStr();
     MIRType *CreateMirType(MIRTypeKind kind, GStrIdx strIdx, int64 tag) const;
@@ -111,7 +102,6 @@ private:
     MIRBitFieldType *CreateBitFieldType(uint8 fieldsize, PrimType pt, GStrIdx strIdx) const;
     void CompleteAggInfo(TyIdx tyIdx);
     TyIdx ImportJType(bool forPointedType = false);
-    TyIdx ImportType();
     void ImportTypeBase(PrimType &primType, GStrIdx &strIdx, bool &nameIsLocal);
     void InSymTypeTable();
     void ImportTypePairs(std::vector<TypePair> &insVecType);
@@ -129,8 +119,6 @@ private:
     void SetClassTyidxOfMethods(MIRStructType &type);
     void ImportClassTypeData(MIRClassType &type);
     void ImportInterfaceTypeData(MIRInterfaceType &type);
-    PUIdx ImportFunction();
-    MIRSymbol *InSymbol(MIRFunction *func);
     void ImportInfoVector(MIRInfoVector &infoVector, MapleVector<bool> &infoVectorIsString);
     void ImportLocalTypeNameTable(MIRTypeNameTable *typeNameTab);
     void ImportFuncIdInfo(MIRFunction *func);
@@ -141,11 +129,7 @@ private:
     void ImportAliasMap(MIRFunction *func);
     void ImportSrcPos(SrcPosition &pos);
     void ImportBaseNode(Opcode &o, PrimType &typ);
-    PUIdx ImportFuncViaSym(MIRFunction *func);
-    BaseNode *ImportExpression(MIRFunction *func);
     void ImportReturnValues(MIRFunction *func, CallReturnVector *retv);
-    BlockNode *ImportBlockNode(MIRFunction *fn);
-    void ReadFunctionBodyField();
     void ReadFileAt(const std::string &modid, int32 offset);
     uint8 Read();
     int64 ReadInt64();

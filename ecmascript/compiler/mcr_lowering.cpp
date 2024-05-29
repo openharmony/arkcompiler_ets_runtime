@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/share_opcodes.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass.h"
@@ -182,11 +183,16 @@ void MCRLowering::LowerLoadHClassFromUnsharedConstpool(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef constpool = acc_.GetValueIn(gate, 0);
     uint32_t index = acc_.GetIndex(gate);
-    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constpool);
-    GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(ConstantPool::AOT_HCLASS_INFO_INDEX));
-    GateRef valVec = builder_.GetValueFromTaggedArray(constpool, valVecIndex);
-    GateRef hclass = builder_.GetValueFromTaggedArray(valVec, builder_.Int32(index));
-    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), hclass);
+    if (!env_->IsJitCompiler()) {
+        GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constpool);
+        GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(ConstantPool::AOT_HCLASS_INFO_INDEX));
+        GateRef valVec = builder_.GetValueFromTaggedArray(constpool, valVecIndex);
+        GateRef hclass = builder_.GetValueFromTaggedArray(valVec, builder_.Int32(index));
+        acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), hclass);
+    } else {
+        JSTaggedValue hclass = env_->GetPTManager()->QueryHClassByIndexForJIT(index);
+        acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), builder_.TaggedValueConstant(hclass));
+    }
 }
 
 void MCRLowering::LowerStoreConstOffset(GateRef gate)

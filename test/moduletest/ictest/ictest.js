@@ -114,3 +114,17 @@ for (let v5 = 0;v5 < 2; v5++) {
     print(v5);
     v2.y = 42;
 }
+
+function fun1(n) {
+    function fun2(o) {
+        return o.a;
+    }
+    let obj = {a: 1};
+    for (let i = 0; i < n; i++) {
+        fun2(obj);
+    }
+    return fun2(obj);
+}
+
+print(fun1(100));
+print(fun1(1));

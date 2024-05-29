@@ -94,9 +94,9 @@ mySet.entries = true_entries
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Set.entries, caller function name:doEntries@builtinSetEntries
+    //aot: [trace] aot inline builtin: Set.entries, caller function name:#*#doEntries@builtinSetEntries
     printEntries(2.5); //: [object Set Iterator]
-    //aot: [trace] aot inline builtin: Set.entries, caller function name:doEntries@builtinSetEntries
+    //aot: [trace] aot inline builtin: Set.entries, caller function name:#*#doEntries@builtinSetEntries
     printEntries("abc"); //: [object Set Iterator]
 } catch (e) {
 }

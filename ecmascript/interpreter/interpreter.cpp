@@ -83,7 +83,7 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
 }
 
 EcmaRuntimeCallInfo* EcmaInterpreter::ReBuildRuntimeCallInfo(JSThread *thread, EcmaRuntimeCallInfo* info,
-    uint32_t numArgs, bool needCheckStack)
+    int numArgs, bool needCheckStack)
 {
     JSTaggedValue func = info->GetFunctionValue();
     JSTaggedValue newTarget = info->GetNewTargetValue();
@@ -93,20 +93,20 @@ EcmaRuntimeCallInfo* EcmaInterpreter::ReBuildRuntimeCallInfo(JSThread *thread, E
     InterpretedEntryFrame *currentEntryState = InterpretedEntryFrame::GetFrameFromSp(currentSp);
     JSTaggedType *prevSp = currentEntryState->base.prev;
 
-    uint32_t actualArgc = info->GetArgsNumber();
+    int actualArgc = info->GetArgsNumber();
     std::vector<JSTaggedType> args(actualArgc);
-    for (uint32_t i = 0; i < actualArgc; i++) {
+    for (int i = 0; i < actualArgc; i++) {
         args[i] = info->GetCallArgValue(actualArgc - i - 1).GetRawData();
     }
     currentSp += (info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2); // 2: include thread_ and numArgs_
     if (needCheckStack && UNLIKELY(thread->DoStackOverflowCheck(currentSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
         return nullptr;
     }
-    ASSERT(numArgs > actualArgc);
-    for (uint32_t i = 0; i < (numArgs - actualArgc); i++) {
+    ASSERT(numArgs != actualArgc);
+    for (int i = 0; i < (numArgs - actualArgc); i++) {
         *(--currentSp) = JSTaggedValue::VALUE_UNDEFINED;
     }
-    for (uint32_t i = 0; i < actualArgc; i++) {
+    for (int i = 0; i < actualArgc; i++) {
         *(--currentSp) = args[i];
     }
     *(--currentSp) = thisObj.GetRawData();

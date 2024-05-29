@@ -175,10 +175,10 @@ inline JSTaggedValue JSTaggedValue::ToBigInt64(JSThread *thread, const JSHandle<
 {
     JSHandle<BigInt> value(thread, ToBigInt(thread, tagged));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<BigInt> tVal = BigInt::GetUint64MaxBigint(thread);
+    JSHandle<BigInt> tVal = BigInt::GetUint64MaxBigInt(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<BigInt> int64bitVal = BigInt::FloorMod(thread, value, tVal);
-    JSHandle<BigInt> resValue = BigInt::GetInt64MaxBigint(thread);
+    JSHandle<BigInt> resValue = BigInt::GetInt64MaxBigInt(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!BigInt::LessThan(int64bitVal.GetTaggedValue(), resValue.GetTaggedValue())) {
         return BigInt::Subtract(thread, int64bitVal, tVal).GetTaggedValue();
@@ -196,7 +196,7 @@ inline JSTaggedValue JSTaggedValue::ToBigUint64(JSThread *thread, const JSHandle
     if (!signFlag && len <= 2) { // 2:2 int equal int64
         return value.GetTaggedValue();
     }
-    JSHandle<BigInt> tVal = BigInt::GetUint64MaxBigint(thread);
+    JSHandle<BigInt> tVal = BigInt::GetUint64MaxBigInt(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return BigInt::FloorMod(thread, value, tVal).GetTaggedValue();
 }
@@ -525,6 +525,11 @@ inline bool JSTaggedValue::IsAOTLiteralInfo() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsAOTLiteralInfo();
 }
 
+inline bool JSTaggedValue::IsProfileTypeInfoCell() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsProfileTypeInfoCell();
+}
+
 inline bool JSTaggedValue::IsVTable() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsVTable();
@@ -806,6 +811,11 @@ inline bool JSTaggedValue::IsJSAPIStack() const
 inline bool JSTaggedValue::IsJSAPIVector() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIVector();
+}
+
+inline bool JSTaggedValue::IsJSAPIBitVector() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIBitVector();
 }
 
 inline bool JSTaggedValue::IsJSAPIList() const
@@ -1347,6 +1357,11 @@ inline bool JSTaggedValue::IsJSAPIVectorIterator() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIVectorIterator();
 }
 
+inline bool JSTaggedValue::IsJSAPIBitVectorIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIBitVectorIterator();
+}
+
 inline bool JSTaggedValue::IsIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsIterator();
@@ -1541,6 +1556,11 @@ inline bool JSTaggedValue::IsResolvedRecordBinding() const
 inline bool JSTaggedValue::IsModuleNamespace() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsModuleNamespace();
+}
+
+inline bool JSTaggedValue::IsNativeModuleError() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsNativeModuleError();
 }
 
 inline bool JSTaggedValue::IsJSSharedObject() const

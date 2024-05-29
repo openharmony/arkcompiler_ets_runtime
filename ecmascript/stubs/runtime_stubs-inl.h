@@ -863,7 +863,9 @@ bool RuntimeStubs::ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
                                       const JSHandle<JSTaggedValue> &chc,
                                       const JSHandle<ClassLiteral> &classLiteral)
 {
-    return !(ihc->IsUndefined() || chc->IsUndefined() || classLiteral->GetIsAOTUsed());
+    // In the case of incomplete data collection in PGO, AOT may not create ihc and chc at the same time.
+    // Therefore, there is no need to check for the existence of both at this point.
+    return (!ihc->IsUndefined() || !chc->IsUndefined()) && !classLiteral->GetIsAOTUsed();
 }
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
@@ -913,9 +915,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
 
     if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
         classLiteral->SetIsAOTUsed(true);
-        JSHandle<JSHClass> chclass(chc);
-        cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
-                                                  lexenv, ihc, chclass);
+        cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihc, chc);
     } else {
         cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
     }
@@ -1108,7 +1108,7 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
         profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX, JSTaggedValue::Hole());
         ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + 1);
     }
-    function->SetProfileTypeInfo(thread, profileTypeInfo.GetTaggedValue());
+    JSFunction::SetProfileTypeInfo(thread, function, JSHandle<JSTaggedValue>::Cast(profileTypeInfo));
     return profileTypeInfo.GetTaggedValue();
 }
 
@@ -2802,10 +2802,10 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
     JSTaggedValue resultValue;
     if (isAotMethod && ctor->IsClassConstructor()) {
         uint32_t numArgs = ctor->GetCallTarget()->GetNumArgsWithCallField();
-        bool needPushUndefined = numArgs > size;
+        bool needPushArgv = numArgs != size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
         if (ctor->GetCallTarget()->IsFastCall()) {
-            if (needPushUndefined) {
+            if (needPushArgv) {
                 values.reserve(numArgs + NUM_MANDATORY_JSFUNC_ARGS - 1);
                 for (uint32_t i = size; i < numArgs; i++) {
                     values.emplace_back(JSTaggedValue::VALUE_UNDEFINED);
@@ -2814,7 +2814,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
             }
             resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
         } else {
-            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushUndefined);
+            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushArgv);
         }
     } else {
         ctor->GetCallTarget()->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot
@@ -3277,6 +3277,69 @@ JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, const JS
         return JSTaggedValue::Hole().GetRawData();
     }
     return JSTaggedValue::Cast(static_cast<void *>(str));
+}
+
+OperationResult RuntimeStubs::RuntimeCheckProxyGetResult(JSThread *thread, const JSHandle<JSTaggedValue> &resultHandle,
+    const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &key)
+{
+    JSHandle<JSTaggedValue> exceptionHandle(thread, JSTaggedValue::Exception());
+    PropertyDescriptor targetDesc(thread);
+    bool found = JSTaggedValue::GetOwnProperty(thread, target, key, targetDesc);
+    // 12. ReturnIfAbrupt(targetDesc).
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+
+    // 13. If targetDesc is not undefined, then
+    if (found) {
+        // a. If IsDataDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is
+        // false, then
+        if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && !targetDesc.IsWritable()) {
+            // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
+            if (!JSTaggedValue::SameValue(resultHandle.GetTaggedValue(), targetDesc.GetValue().GetTaggedValue())) {
+                THROW_TYPE_ERROR_AND_RETURN(
+                    thread, "JSProxy::GetProperty: TypeError of trapResult",
+                    OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+            }
+        }
+        // b. If IsAccessorDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Get]] is
+        // undefined, then
+        if (targetDesc.IsAccessorDescriptor() && !targetDesc.IsConfigurable() &&
+            targetDesc.GetGetter()->IsUndefined()) {
+            // i. If trapResult is not undefined, throw a TypeError exception.
+            if (!resultHandle.GetTaggedValue().IsUndefined()) {
+                THROW_TYPE_ERROR_AND_RETURN(
+                    thread, "JSProxy::GetProperty: trapResult is not undefined",
+                    OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+            }
+        }
+    }
+    // 14. Return trapResult.
+    return OperationResult(thread, resultHandle.GetTaggedValue(), PropertyMetaData(true));
+}
+
+bool RuntimeStubs::RuntimeCheckProxySetResult(JSThread *thread, const JSHandle<JSTaggedValue> &value,
+    const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &key)
+{
+    PropertyDescriptor targetDesc(thread);
+    bool found = JSTaggedValue::GetOwnProperty(thread, target, key, targetDesc);
+    // 14. If targetDesc is not undefined, then
+    if (found) {
+        // a. If IsDataDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is
+        // false, then
+        if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && !targetDesc.IsWritable()) {
+            // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
+            if (!JSTaggedValue::SameValue(value, targetDesc.GetValue())) {
+                THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of trapResult", false);
+            }
+        }
+        // b. If IsAccessorDescriptor(targetDesc) and targetDesc.[[Configurable]] is false, then
+        // i. If targetDesc.[[Set]] is undefined, throw a TypeError exception.
+        if (targetDesc.IsAccessorDescriptor() && !targetDesc.IsConfigurable() &&
+            targetDesc.GetSetter()->IsUndefined()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of AccessorDescriptor", false);
+        }
+    }
+    return true;
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

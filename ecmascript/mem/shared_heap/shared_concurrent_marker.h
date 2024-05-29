@@ -90,13 +90,15 @@ private:
         explicit RecursionScope(SharedConcurrentMarker* sMarker) : sMarker_(sMarker)
         {
             if (sMarker_->recursionDepth_++ != 0) {
-                LOG_GC(FATAL) << "Recursion in SharedConcurrentMarker Constructor, depth: " << sMarker_->recursionDepth_;
+                LOG_GC(FATAL) << "Recursion in SharedConcurrentMarker Constructor, depth: "
+                              << sMarker_->recursionDepth_;
             }
         }
         ~RecursionScope()
         {
             if (--sMarker_->recursionDepth_ != 0) {
-                LOG_GC(FATAL) << "Recursion in SharedConcurrentMarker Destructor, depth: " << sMarker_->recursionDepth_;
+                LOG_GC(FATAL) << "Recursion in SharedConcurrentMarker Destructor, depth: "
+                              << sMarker_->recursionDepth_;
             }
         }
     private:

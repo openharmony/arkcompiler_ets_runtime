@@ -1135,9 +1135,9 @@ T ConstantFold::CalIntValueFromFloatValue(T value, const MIRType &resultType) co
     DEBUG_ASSERT(kByteSizeOfBit64 >= resultType.GetSize(), "unsupported type");
     size_t shiftNum = (kByteSizeOfBit64 - resultType.GetSize()) * kBitSizePerByte;
     bool isSigned = IsSignedInteger(resultType.GetPrimType());
-    int64 max = std::numeric_limits<int64>::max() >> shiftNum;
+    int64 max = static_cast<uint64_t>(std::numeric_limits<int64>::max()) >> shiftNum;
     uint64 umax = std::numeric_limits<uint64>::max() >> shiftNum;
-    int64 min = isSigned ? (std::numeric_limits<int64>::min() >> shiftNum) : 0;
+    int64 min = isSigned ? (static_cast<uint64_t>(std::numeric_limits<int64>::min()) >> shiftNum) : 0;
     if (isSigned && (value > max)) {
         return static_cast<T>(max);
     } else if (!isSigned && (value > umax)) {

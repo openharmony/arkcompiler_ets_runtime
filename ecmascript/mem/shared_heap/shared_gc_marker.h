@@ -38,6 +38,7 @@ public:
     void ResetWorkManager(SharedGCWorkManager *workManager);
     void MarkRoots(uint32_t threadId, SharedMarkType markType);
     void MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, SharedMarkType markType);
+    void MarkStringCache(uint32_t threadId);
     void MarkSerializeRoots(uint32_t threadId);
     void MarkSharedModule(uint32_t threadId);
     void ProcessMarkStack(uint32_t threadId);

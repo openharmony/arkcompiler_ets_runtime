@@ -18,6 +18,7 @@
 
 #include <string>
 #include <set>
+#include <vector>
 
 #include "ecmascript/platform/file.h"
 #include "macros.h"
@@ -25,10 +26,6 @@
 namespace panda::ecmascript {
 class FrameworkHelper {
 public:
-    constexpr static const char *const STATEMGMT_ABC_FILE_NAME = "/stateMgmt.abc";
-    constexpr static const char *const JSENUMSTYLE_ABC_FILE_NAME = "/jsEnumStyle.abc";
-    constexpr static const char *const JSUICONTEXT_ABC_FILE_NAME = "/jsUIContext.abc";
-    constexpr static const char *const ARKCOMPONENT_ABC_FILE_NAME = "/arkComponent.abc";
     constexpr static const char *const PRELOAD_PATH_PREFIX = "/system/";
     constexpr static const char *const PRELOAD_AN_FOLDER = "/ark-cache/";
 
@@ -71,12 +68,17 @@ public:
 private:
     void FilePathInit()
     {
+        const std::vector<std::string> arkuiFileNames = {"/stateMgmt.abc"};
         if (vm_->GetJSOptions().WasSetCompilerFrameworkAbcPath()) {
             CompilerFrameworkAotPath_ = vm_->GetJSOptions().GetCompilerFrameworkAbcPath();
-            frameworkAbcFiles_.insert(CompilerFrameworkAotPath_ + STATEMGMT_ABC_FILE_NAME);
-            frameworkAbcFiles_.insert(CompilerFrameworkAotPath_ + JSENUMSTYLE_ABC_FILE_NAME);
-            frameworkAbcFiles_.insert(CompilerFrameworkAotPath_ + JSUICONTEXT_ABC_FILE_NAME);
-            frameworkAbcFiles_.insert(CompilerFrameworkAotPath_ + ARKCOMPONENT_ABC_FILE_NAME);
+        }
+        if (vm_->GetJSOptions().IsEnableFrameworkAOT()) {
+            for (const auto &name : arkuiFileNames) {
+                std::string fileName = CompilerFrameworkAotPath_ + name;
+                if (FileExist(fileName.c_str())) {
+                    frameworkAbcFiles_.insert(fileName);
+                }
+            }
         }
     }
 
@@ -84,7 +86,7 @@ private:
     EcmaVM *vm_ {nullptr};
 
     std::set<std::string> frameworkAbcFiles_ {};
-    std::string CompilerFrameworkAotPath_ {""};
+    std::string CompilerFrameworkAotPath_ {"/etc/abc/framework"};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif

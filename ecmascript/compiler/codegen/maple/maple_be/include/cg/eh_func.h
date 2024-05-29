@@ -113,7 +113,6 @@ public:
         return endLabel;
     }
 
-    void Lower(CGFunc &cgFunc);
     void ConvertThrowToRethrow(CGFunc &cgFunc);
     void ConvertThrowToRuntime(CGFunc &cgFunc, BaseNode &arg);
 
@@ -129,7 +128,6 @@ public:
     explicit EHFunc(CGFunc &func);
     ~EHFunc() = default;
 
-    void CollectEHInformation(std::vector<std::pair<LabelIdx, CatchNode *>> &catchVec);
     void InsertEHSwitchTable();
     void CreateLSDA();
     bool NeedFullLSDA() const;
@@ -137,7 +135,6 @@ public:
     void GenerateCleanupLabel();
     void MergeCatchToTry(const std::vector<std::pair<LabelIdx, CatchNode *>> &catchVec);
     void BuildEHTypeTable(const std::vector<std::pair<LabelIdx, CatchNode *>> &catchVec);
-    void LowerThrow(); /* for non-personality function */
     void CreateTypeInfoSt();
     void DumpEHFunc() const;
 

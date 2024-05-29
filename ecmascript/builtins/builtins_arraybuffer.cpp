@@ -259,6 +259,14 @@ JSTaggedValue BuiltinsArrayBuffer::AllocateArrayBuffer(JSThread *thread, const J
 }
 
 // 24.1.1.2 IsDetachedBuffer()
+void BuiltinsArrayBuffer::IsDetachedBuffer(JSThread *thread, const JSHandle<JSTypedArray> &arrayBuffer)
+{
+    JSTaggedValue detachedBuffer = arrayBuffer->GetViewedArrayBufferOrByteArray();
+    if (IsDetachedBuffer(detachedBuffer)) {
+        THROW_TYPE_ERROR(thread, "The ArrayBuffer of this value is detached buffer.");
+    }
+}
+
 bool BuiltinsArrayBuffer::IsDetachedBuffer(JSTaggedValue arrayBuffer)
 {
     if (arrayBuffer.IsByteArray()) {
@@ -712,6 +720,9 @@ void BuiltinsArrayBuffer::SetValueInBufferForBigInt(JSThread *thread,
 JSTaggedValue BuiltinsArrayBuffer::FastSetValueInBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteIndex,
                                                         DataViewType type, double val, bool littleEndian)
 {
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(arrBuf)) {
+        return JSTaggedValue::Undefined();
+    }
     void *pointer = GetDataPointFromBuffer(arrBuf);
     uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
     return SetValueInBuffer(thread, byteIndex, block, type, val, littleEndian);

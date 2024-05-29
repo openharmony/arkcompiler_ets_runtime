@@ -74,6 +74,7 @@ public:
     uint32_t PUBLIC_API GetHClassIndexByProfileType(ProfileTyper type) const;
 
     JSTaggedValue PUBLIC_API QueryHClass(ProfileType rootType, ProfileType childType) ;
+    JSTaggedValue PUBLIC_API QueryHClassByIndexForJIT(uint32_t hclassIndex) ;
     ElementsKind QueryElementKind(ProfileType rootType);
 
     inline ProfileType GetRootIdByLocation(const PGOTypeLocation &loc)

@@ -94,9 +94,9 @@ mySet.values = true_values
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Set.values, caller function name:doValues@builtinSetValues
+    //aot: [trace] aot inline builtin: Set.values, caller function name:#*#doValues@builtinSetValues
     printValues(2.5); //: [object Set Iterator]
-    //aot: [trace] aot inline builtin: Set.values, caller function name:doValues@builtinSetValues
+    //aot: [trace] aot inline builtin: Set.values, caller function name:#*#doValues@builtinSetValues
     printValues("abc"); //: [object Set Iterator]
 } catch (e) {
 }

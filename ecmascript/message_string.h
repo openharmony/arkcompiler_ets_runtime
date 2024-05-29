@@ -60,7 +60,9 @@ namespace panda::ecmascript {
     V(InvalidStringLength, "Invalid string length")                                          \
     V(InvalidNewTarget, "new.target is not an object")                                       \
     V(ObjIsNotCallable, "obj is not Callable")                                               \
-    V(SharedObjectRefersLocalObject, "shared object refers a local object")
+    V(SharedObjectRefersLocalObject, "shared object refers a local object")                  \
+    V(InvalidRadixLength, "radix must be 2 to 36")                                           \
+    V(SetPrototypeOfFailed, "SetPrototypeOf: prototype set failed")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

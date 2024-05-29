@@ -2801,18 +2801,18 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         // vreg
         for (size_t i = 0; i < envIndex; i++) {
             GateRef vregValue = acc_.GetValueIn(frameValues, i);
-            if (acc_.IsConstantValue(vregValue, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
+            if (acc_.IsConstantTaggedValue(vregValue, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
                 continue;
             }
             SaveDeoptVregInfo(values, i, curDepth, shift, vregValue);
         }
         // env
-        if (!acc_.IsConstantValue(env, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
+        if (!acc_.IsConstantTaggedValue(env, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
             int32_t specEnvVregIndex = static_cast<int32_t>(SpecVregIndex::ENV_INDEX);
             SaveDeoptVregInfo(values, specEnvVregIndex, curDepth, shift, env);
         }
         // acc
-        if (!acc_.IsConstantValue(acc, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
+        if (!acc_.IsConstantTaggedValue(acc, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
             int32_t specAccVregIndex = static_cast<int32_t>(SpecVregIndex::ACC_INDEX);
             SaveDeoptVregInfo(values, specAccVregIndex, curDepth, shift, acc);
         }
@@ -2981,7 +2981,9 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
     std::vector<LLVMTypeRef> paramTys = { glue };
     if (!methodLiteral->IsFastCall()) {
         LLVMTypeRef actualArgc = NewLType(MachineType::I64, GateType::NJSValue());
+        LLVMTypeRef actualArgv = NewLType(MachineType::I64, GateType::NJSValue());
         paramTys.emplace_back(actualArgc);
+        paramTys.emplace_back(actualArgv);
         auto funcIndex = static_cast<uint32_t>(CommonArgIdx::FUNC);
         auto numOfComArgs = static_cast<uint32_t>(CommonArgIdx::NUM_OF_ARGS);
         paramCount = methodLiteral->GetNumArgsWithCallField() + numOfComArgs;

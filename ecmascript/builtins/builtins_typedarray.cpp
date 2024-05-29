@@ -150,100 +150,22 @@ JSTaggedValue BuiltinsTypedArray::BigUint64ArrayConstructor(EcmaRuntimeCallInfo 
                                                    DataViewType::BIGUINT64);
 }
 
-// 22.2.2.1 %TypedArray%.from ( source [ , mapfn [ , thisArg ] ] )
-JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
+JSTaggedValue FromUsingIteratorUndefinedValues(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
+                                               const JSHandle<JSTaggedValue> source,
+                                               const JSHandle<JSTaggedValue> &thisArgHandle,
+                                               const JSHandle<JSTaggedValue> &mapfn)
 {
-    ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, From);
-    JSThread *thread = argv->GetThread();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    // 1. Let C be the this value.
-    // 2. If IsConstructor(C) is false, throw a TypeError exception.
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsConstructor()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the this value is not a Constructor.", JSTaggedValue::Exception());
-    }
-
-    JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     // 3. If mapfn is undefined, let mapping be false.
     // 4. Else,
     //   a. If IsCallable(mapfn) is false, throw a TypeError exception.
     //   b. Let mapping be true.
     bool mapping = false;
-    JSHandle<JSTaggedValue> mapfn = GetCallArg(argv, 1);
     if (!mapfn->IsUndefined()) {
         if (!mapfn->IsCallable()) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "the mapfn is not callable.", JSTaggedValue::Exception());
         }
         mapping = true;
     }
-
-    // 5. Let usingIterator be ? GetMethod(source, @@iterator).
-    JSHandle<JSTaggedValue> source = GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
-    JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, source, iteratorSymbol);
-    // 6. If usingIterator is not undefined, then
-    //   a. Let values be ? IterableToList(source, usingIterator).
-    //   b. Let len be the number of elements in values.
-    //   c. Let targetObj be ? TypedArrayCreate(C, « len »).
-    if (!usingIterator->IsUndefined() &&
-        !TypedArrayHelper::IsNativeArrayIterator(thread, source, usingIterator)) {
-        CVector<JSHandle<JSTaggedValue>> vec;
-        JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, source, usingIterator);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        JSHandle<JSTaggedValue> next(thread, JSTaggedValue::True());
-        while (!next->IsFalse()) {
-            next = JSIterator::IteratorStep(thread, iterator);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (!next->IsFalse()) {
-                JSHandle<JSTaggedValue> nextValue = JSIterator::IteratorValue(thread, next);
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, nextValue.GetTaggedValue());
-                vec.push_back(nextValue);
-            }
-        }
-        uint32_t len = vec.size();
-        JSTaggedType args[1] = {JSTaggedValue(len).GetRawData()};
-        JSHandle<JSObject> targetObj = TypedArrayHelper::TypedArrayCreate(thread, thisHandle, 1, args);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        //   d. Let k be 0.
-        //   e. Repeat, while k < len
-        //     i. Let Pk be ! ToString(k).
-        //     ii. Let kValue be the first element of values and remove that element from values.
-        //     iii. If mapping is true, then
-        //       1. Let mappedValue be ? Call(mapfn, thisArg, « kValue, k »).
-        //     iv. Else, let mappedValue be kValue.
-        //     v. Perform ? Set(targetObj, Pk, mappedValue, true).
-        //     vi. Set k to k + 1.
-        JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
-        JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
-        const uint32_t argsLength = 2;
-        uint32_t k = 0;
-        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-        while (k < len) {
-            tKey.Update(JSTaggedValue(k));
-            JSHandle<JSTaggedValue> kValue = vec[k];
-            if (mapping) {
-                EcmaRuntimeCallInfo *info =
-                    EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                info->SetCallArg(kValue.GetTaggedValue(), tKey.GetTaggedValue());
-                JSTaggedValue callResult = JSFunction::Call(info);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                mapValue.Update(callResult);
-            } else {
-                mapValue.Update(kValue.GetTaggedValue());
-            }
-            ObjectFastOperator::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k,
-                                                       mapValue.GetTaggedValue());
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            k++;
-        }
-        //   f. Assert: values is now an empty List.
-        //   g. Return targetObj.
-        return targetObj.GetTaggedValue();
-    }
-
     // 7. NOTE: source is not an Iterable so assume it is already an array-like object.
     // 8. Let arrayLike be ! ToObject(source).
     JSHandle<JSObject> arrayLikeObj = JSTaggedValue::ToObject(thread, source);
@@ -257,7 +179,6 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     // 6. ReturnIfAbrupt(relativeTarget).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int64_t len = tLen.GetNumber();
-
     // 10. Let targetObj be ? TypedArrayCreate(C, « len »).
     JSTaggedType args[1] = {JSTaggedValue(len).GetRawData()};
     JSHandle<JSObject> targetObj = TypedArrayHelper::TypedArrayCreate(thread, thisHandle, 1, args);
@@ -279,8 +200,8 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> mapValue;
     while (k < len) {
         tKey.Update(JSTaggedValue(k));
-        kValue.Update(ObjectFastOperator::FastGetPropertyByValue(thread, arrayLike.GetTaggedValue(),
-                                                                 tKey.GetTaggedValue()));
+        kValue.Update(
+            ObjectFastOperator::FastGetPropertyByValue(thread, arrayLike.GetTaggedValue(), tKey.GetTaggedValue()));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (mapping) {
             EcmaRuntimeCallInfo *info =
@@ -299,6 +220,114 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     }
     // 13. Return targetObj.
     return targetObj.GetTaggedValue();
+}
+
+JSTaggedValue ProcessFromNotUndefinedValues(JSThread *thread, const CVector<JSHandle<JSTaggedValue>> &vec,
+                                            const JSHandle<JSTaggedValue> &thisHandle,
+                                            JSHandle<JSTaggedValue> &thisArgHandle, JSHandle<JSTaggedValue> &mapfn)
+{
+    // 3. If mapfn is undefined, let mapping be false.
+    // 4. Else,
+    //   a. If IsCallable(mapfn) is false, throw a TypeError exception.
+    //   b. Let mapping be true.
+    bool mapping = false;
+    if (!mapfn->IsUndefined()) {
+        if (!mapfn->IsCallable()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "the mapfn is not callable.", JSTaggedValue::Exception());
+        }
+        mapping = true;
+    }
+    uint32_t len = vec.size();
+    JSTaggedType args[1] = {JSTaggedValue(len).GetRawData()};
+    JSHandle<JSObject> targetObj = TypedArrayHelper::TypedArrayCreate(thread, thisHandle, 1, args);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    //   d. Let k be 0.
+    //   e. Repeat, while k < len
+    //     i. Let Pk be ! ToString(k).
+    //     ii. Let kValue be the first element of values and remove that element from values.
+    //     iii. If mapping is true, then
+    //       1. Let mappedValue be ? Call(mapfn, thisArg, « kValue, k »).
+    //     iv. Else, let mappedValue be kValue.
+    //     v. Perform ? Set(targetObj, Pk, mappedValue, true).
+    //     vi. Set k to k + 1.
+    JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
+    const uint32_t argsLength = 2;
+    uint32_t k = 0;
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    while (k < len) {
+        tKey.Update(JSTaggedValue(k));
+        JSHandle<JSTaggedValue> kValue = vec[k];
+        if (mapping) {
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(kValue.GetTaggedValue(), tKey.GetTaggedValue());
+            JSTaggedValue callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            mapValue.Update(callResult);
+        } else {
+            mapValue.Update(kValue.GetTaggedValue());
+        }
+        ObjectFastOperator::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        k++;
+    }
+    //   f. Assert: values is now an empty List.
+    //   g. Return targetObj.
+    return targetObj.GetTaggedValue();
+}
+
+// 22.2.2.1 %TypedArray%.from ( source [ , mapfn [ , thisArg ] ] )
+JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, From);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    // 1. Let C be the this value.
+    // 2. If IsConstructor(C) is false, throw a TypeError exception.
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsConstructor()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "the this value is not a Constructor.", JSTaggedValue::Exception());
+    }
+    JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
+    // 3. If mapfn is undefined, let mapping be false.
+    // 4. Else,
+    //   a. If IsCallable(mapfn) is false, throw a TypeError exception.
+    //   b. Let mapping be true.
+    JSHandle<JSTaggedValue> mapfn = GetCallArg(argv, 1);
+    if (!mapfn->IsUndefined()) {
+        if (!mapfn->IsCallable()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "the mapfn is not callable.", JSTaggedValue::Exception());
+        }
+    }
+    // 5. Let usingIterator be ? GetMethod(source, @@iterator).
+    JSHandle<JSTaggedValue> source = GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, source, iteratorSymbol);
+    // 6. If usingIterator is not undefined, then
+    //   a. Let values be ? IterableToList(source, usingIterator).
+    //   b. Let len be the number of elements in values.
+    //   c. Let targetObj be ? TypedArrayCreate(C, « len »).
+    if (!usingIterator->IsUndefined() && !TypedArrayHelper::IsNativeArrayIterator(thread, source, usingIterator)) {
+        CVector<JSHandle<JSTaggedValue>> vec;
+        JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, source, usingIterator);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSTaggedValue> next(thread, JSTaggedValue::True());
+        while (!next->IsFalse()) {
+            next = JSIterator::IteratorStep(thread, iterator);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (!next->IsFalse()) {
+                JSHandle<JSTaggedValue> nextValue = JSIterator::IteratorValue(thread, next);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, nextValue.GetTaggedValue());
+                vec.push_back(nextValue);
+            }
+        }
+        return ProcessFromNotUndefinedValues(thread, vec, thisHandle, thisArgHandle, mapfn);
+    }
+    return FromUsingIteratorUndefinedValues(thread, thisHandle, source, thisArgHandle, mapfn);
 }
 
 // 22.2.2.2 %TypedArray%.of ( ...items )
@@ -479,11 +508,10 @@ JSTaggedValue BuiltinsTypedArray::Every(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    // 1. Let O be ToObject(this value).
+    // 1. Let valid be ValidateTypedArray(O).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
-    }
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -493,7 +521,6 @@ JSTaggedValue BuiltinsTypedArray::Every(EcmaRuntimeCallInfo *argv)
     uint32_t len = JSHandle<JSTypedArray>::Cast(thisObjHandle)->GetArrayLength();
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     // 5. If IsCallable(callbackfn) is false, throw a TypeError exception.
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
@@ -667,11 +694,10 @@ JSTaggedValue BuiltinsTypedArray::ForEach(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    // 1. Let O be ToObject(this value).
+    // 1. Let valid be ValidateTypedArray(O).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
-    }
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1665,10 +1691,9 @@ JSTaggedValue BuiltinsTypedArray::At(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    // 2. Perform ? ValidateTypedArray(O).
-    if (!thisHandle->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
-    }
+    // 2. Let valid be ValidateTypedArray(O).
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

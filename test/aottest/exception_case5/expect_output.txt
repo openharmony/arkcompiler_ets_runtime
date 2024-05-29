@@ -12,5 +12,5 @@
 # limitations under the License.
 
 TypeError: CallObj is NonCallable
-exception_case5.js:18:1
+exception_case5.js:18:18
 

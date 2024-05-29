@@ -26,7 +26,7 @@
     /* Array.from ( items [ , mapfn [ , thisArg ] ] ) */    \
     V("from",    From,    1, ArrayFrom)                     \
     /* Array.isArray ( arg ) */                             \
-    V("isArray", IsArray, 1, INVALID)                       \
+    V("isArray", IsArray, 1, ArrayIsArray)                  \
     /* Array.of ( ...items ) */                             \
     V("of",      Of,      0, INVALID)
 

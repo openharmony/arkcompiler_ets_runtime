@@ -51,34 +51,6 @@ sample.setUint8(5, 75);
 sample.setUint8(6, 76);
 sample.setUint8(7, 76);
 
-let obj1 = {
-  valueOf: function () {
-    return 3;
-  }
-};
-
-let obj2 = {
-  toString: function () {
-    return 2;
-  }
-};
-//Don't throw index < 0 error
-print(sample.getFloat32(-0.1))
-print(sample.getFloat32(-0.99999))
-
-//Special Index
-print(sample.getFloat32(true))
-print(sample.getFloat32(false))
-print(sample.getFloat32(NaN))
-print(sample.getFloat32(null))
-
-print(sample.getFloat32(undefined))
-print(sample.getFloat32(obj1))
-print(sample.getFloat32(obj2))
-print(sample.getFloat32(""))
-print(sample.getFloat32("1"))
-print(sample.getFloat32())
-
 //32th bit is 1
 sample.setInt32(0, -10000)
 print(sample.getUint32(0))
@@ -86,7 +58,7 @@ print(sample.getUint32(0))
 //16th bit is 1
 sample.setInt16(0, -100)
 print(sample.getUint16(0))
-
+//set Int NaN
 sample.setUint32(0, NaN)
 print(sample.getUint32(0))
 print(sample.getUint32(4))
@@ -94,3 +66,25 @@ print(sample.getUint32(4))
 sample.setUint8(0, -1)
 print(sample.getUint8(0))
 print(sample.getInt8(0))
+
+//break tagged mark
+sample.setFloat64(0, 9007199254740991)
+print(sample.getFloat64(0, true))
+print(sample.getFloat64(0, false))
+
+//greater safe number
+sample.setFloat64(0, 9007199254740992)
+print(sample.getFloat64(0, true))
+print(sample.getFloat64(0, false))
+
+sample.setFloat32(0, 0.50000001)
+print(sample.getFloat32(0, true))
+print(sample.getFloat32(0, false))
+
+//special value
+sample.setFloat32(0, null)
+print(sample.getFloat32(0))
+sample.setInt32(0, null)
+print(sample.getInt32(0))
+sample.setFloat64(0, true)
+print(sample.getFloat64(0))

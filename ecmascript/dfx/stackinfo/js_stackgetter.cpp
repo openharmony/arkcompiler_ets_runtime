@@ -74,13 +74,20 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
             while (functionName[index] != '#') {
                 index--;
             }
-            functionName += (index + 1);
+            functionName += (index + 1);  // #...#functionName
         }
         if (strlen(functionName) == 0) {
             functionName = "anonymous";
         }
         if (!CheckAndCopy(codeEntry.functionName, sizeof(codeEntry.functionName), functionName)) {
             return false;
+        }
+        uint8_t specialIndex = strlen(codeEntry.functionName) - 1;
+        while (specialIndex > 0 && codeEntry.functionName[specialIndex] != '^') {
+            specialIndex--;
+        }
+        if (codeEntry.functionName[specialIndex] == '^') {
+            codeEntry.functionName[specialIndex] = '\0';  // #...#functionName^1
         }
         // record name
         const char *recordName = MethodLiteral::GetRecordNameWithSymbol(jsPandaFile, methodId);

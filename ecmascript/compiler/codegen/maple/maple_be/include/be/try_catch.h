@@ -138,8 +138,6 @@ public:
     }
 
     ~TryCatchBlocksLower() = default;
-    void RecoverBasicBlock();
-    void TraverseBBList();
     void CheckTryCatchPattern() const;
 
     void SetGenerateEHCode(bool val)
@@ -153,7 +151,6 @@ private:
     BlockNode &body;
     MIRModule &mirModule;
     TryEndTryBlock tryEndTryBlock;
-    StmtNode *bodyFirst = nullptr;
     bool bodyEndWithEndTry = false;
     bool generateEHCode = false;
     MapleVector<BBT *> bbList;
@@ -165,9 +162,7 @@ private:
     void ConnectRemainBB();
     BBT *FindInsertAfterBB();
     void PlaceRelocatedBB(BBT &insertAfter);
-    void PalceCatchSeenSofar(BBT &insertAfter);
     BBT *CreateNewBB(StmtNode *first, StmtNode *last);
-    bool CheckAndProcessCatchNodeInCurrTryBlock(BBT &ebb, LabelIdx ebbLabel, uint32 index);
     BBT *CollectCatchAndFallthruUntilNextCatchBB(BBT *&ebb, uint32 &nextEnclosedIdx, std::vector<BBT *> &currBBThread);
     void WrapCatchWithTryEndTryBlock(std::vector<BBT *> &currBBThread, BBT *&nextBBThreadHead, uint32 &nextEnclosedIdx,
                                      bool hasMoveEndTry);

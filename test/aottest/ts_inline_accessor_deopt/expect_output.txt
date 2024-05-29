@@ -14,5 +14,5 @@
 xiaoming
 xiaohong
 foo
-[trace] aot inline function name: bar@ts_inline_accessor_deopt caller function name: func_main_0@ts_inline_accessor_deopt
+[trace] aot inline function name: #*#bar@ts_inline_accessor_deopt caller function name: func_main_0@ts_inline_accessor_deopt
 bar

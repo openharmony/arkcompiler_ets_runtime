@@ -67,10 +67,11 @@ private:
     void LowerDoubleRounding(GateRef gate);
     void LowerArrayBufferIsView(GateRef gate);
     void LowerDataViewProtoFunc(GateRef gate, DataViewProtoFunc proto);
+    GateRef BuildDoubleIsFinite(GateRef value);
     void LowerNumberIsFinite(GateRef gate);
-    void LowerNumberIsInteger(GateRef gate);
+    GateRef BuildTaggedIsInteger(GateRef gate, GateRef value, bool safe);
+    void LowerNumberIsInteger(GateRef gate, OpCode op);
     void LowerNumberIsNaN(GateRef gate);
-    void LowerNumberIsSafeInteger(GateRef gate);
     void LowerNumberParseFloat(GateRef gate);
     void LowerDateGetTime(GateRef gate);
     void LowerBigIntConstructor(GateRef gate);
@@ -125,6 +126,20 @@ private:
     GateRef LowerGlobalDoubleIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsNan(GateRef value);
+
+    void LowerObjectIs(GateRef gate);
+    void LowerObjectGetPrototypeOf(GateRef gate);
+    void LowerObjectCreate(GateRef gate);
+    void LowerObjectIsPrototypeOf(GateRef gate);
+    void LowerObjectHasOwnProperty(GateRef gate);
+    void LowerReflectGetPrototypeOf(GateRef gate);
+    void LowerReflectGet(GateRef gate);
+    void LowerReflectHas(GateRef gate);
+    void LowerReflectConstruct(GateRef gate);
+    void LowerReflectApply(GateRef gate);
+    void LowerFunctionPrototypeApply(GateRef gate);
+    void LowerFunctionPrototypeBind(GateRef gate);
+    void LowerFunctionPrototypeCall(GateRef gate);
 
     void LowerToCommonStub(GateRef gate, CommonStubCSigns::ID id);
     void LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id);

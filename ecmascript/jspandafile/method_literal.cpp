@@ -98,7 +98,12 @@ std::string MethodLiteral::ParseFunctionName(const JSPandaFile *jsPandaFile, Ent
     }
 
     size_t index = methodName.find_last_of('#');
-    return methodName.substr(index + 1);
+    methodName = methodName.substr(index + 1);  // #...#functionName
+    if (methodName.find('^') != std::string::npos) {
+        index = methodName.find_last_of('^');
+        methodName = methodName.substr(0, index);  // #...#functionName^1
+    }
+    return methodName;
 }
 
 // It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.
@@ -114,7 +119,12 @@ CString MethodLiteral::ParseFunctionNameToCString(const JSPandaFile *jsPandaFile
     }
 
     size_t index = methodName.find_last_of('#');
-    return methodName.substr(index + 1);
+    methodName = methodName.substr(index + 1);  // #...#functionName
+    if (methodName.find('^') != std::string::npos) {
+        index = methodName.find_last_of('^');
+        methodName = methodName.substr(0, index);  // #...#functionName^1
+    }
+    return methodName;
 }
 
 const char *MethodLiteral::GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId, bool cpuProfiler)

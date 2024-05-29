@@ -812,9 +812,6 @@ public:
         fieldID = lr.fieldID;
     }
 
-    bool IsRematerializable(AArch64CGFunc &cgFunc, uint8 rematLevel, const LoopAnalysis &loopInfo) const;
-    std::vector<Insn *> Rematerialize(AArch64CGFunc *cgFunc, RegOperand &regOp);
-
 private:
     MapleAllocator *lrAlloca;
     regno_t regNO = 0;
@@ -1460,7 +1457,10 @@ public:
 
     ~GraphColorRegAllocator() override = default;
 
-    bool AllocateRegisters() override;
+    bool AllocateRegisters() override
+    {
+        return true;
+    }
 
     enum SpillMemCheck : uint8 {
         kSpillMemPre,
@@ -1489,7 +1489,6 @@ public:
     {
         return lrMap;
     }
-    Insn *SpillOperand(Insn &insn, const Operand &opnd, bool isDef, RegOperand &phyOpnd, bool forCall = false);
 
 private:
     struct SetLiveRangeCmpFunc {
@@ -1537,7 +1536,6 @@ private:
     bool IsUnconcernedReg(regno_t regNO) const;
     bool IsUnconcernedReg(const RegOperand &regOpnd) const;
     LiveRange *NewLiveRange();
-    void CalculatePriority(LiveRange &lr) const;
     bool CreateLiveRangeHandleLocal(regno_t regNO, const BB &bb, bool isDef);
     LiveRange *CreateLiveRangeAllocateAndUpdate(regno_t regNO, const BB &bb, bool isDef, uint32 currId);
     void CreateLiveRange(regno_t regNO, const BB &bb, bool isDef, uint32 currPoint, bool updateCount);
@@ -1548,23 +1546,17 @@ private:
     void UpdateCallInfo(uint32 bbId, uint32 currPoint, const Insn &insn);
     void ClassifyOperand(std::unordered_set<regno_t> &pregs, std::unordered_set<regno_t> &vregs,
                          const Operand &opnd) const;
-    void SetOpndConflict(const Insn &insn, bool onlyDef);
-    void UpdateOpndConflict(const Insn &insn, bool multiDef);
     void SetLrMustAssign(const RegOperand *regOpnd);
     void SetupMustAssignedLiveRanges(const Insn &insn);
     void ComputeLiveRangesForEachDefOperand(Insn &insn, bool &multiDef);
     void ComputeLiveRangesForEachUseOperand(Insn &insn);
     void ComputeLiveRangesUpdateIfInsnIsCall(const Insn &insn);
     void ComputeLiveRangesUpdateLiveUnitInsnRange(BB &bb, uint32 currPoint);
-    void ComputeLiveRanges();
     MemOperand *CreateSpillMem(uint32 spillIdx, SpillMemCheck check);
     bool CheckOverlap(uint64 val, uint32 i, LiveRange &lr1, LiveRange &lr2) const;
     void CheckInterference(LiveRange &lr1, LiveRange &lr2) const;
-    void BuildInterferenceGraphSeparateIntFp(std::vector<LiveRange *> &intLrVec, std::vector<LiveRange *> &fpLrVec);
-    void BuildInterferenceGraph();
     void SetBBInfoGlobalAssigned(uint32 bbID, regno_t regNO);
     bool HaveAvailableColor(const LiveRange &lr, uint32 num) const;
-    void Separate();
     void SplitAndColorForEachLr(MapleVector<LiveRange *> &targetLrVec);
     void SplitAndColor();
     void ColorForOptPrologEpilog();
@@ -1586,8 +1578,6 @@ private:
     void LocalRegisterAllocator(bool allocate);
     MemOperand *GetSpillOrReuseMem(LiveRange &lr, uint32 regSize, bool &isOutOfRange, Insn &insn, bool isDef);
     void SpillOperandForSpillPre(Insn &insn, const Operand &opnd, RegOperand &phyOpnd, uint32 spillIdx, bool needSpill);
-    void SpillOperandForSpillPost(Insn &insn, const Operand &opnd, RegOperand &phyOpnd, uint32 spillIdx,
-                                  bool needSpill);
     MemOperand *GetConsistentReuseMem(const uint64 *conflict, const std::set<MemOperand *> &usedMemOpnd, uint32 size,
                                       RegType regType);
     MemOperand *GetCommonReuseMem(const uint64 *conflict, const std::set<MemOperand *> &usedMemOpnd, uint32 size,
@@ -1599,8 +1589,6 @@ private:
     regno_t PickRegForSpill(uint64 &usedRegMask, RegType regType, uint32 spillIdx, bool &needSpillLr);
     bool SetRegForSpill(LiveRange &lr, Insn &insn, uint32 spillIdx, uint64 &usedRegMask, bool isDef);
     bool GetSpillReg(Insn &insn, LiveRange &lr, const uint32 &spillIdx, uint64 &usedRegMask, bool isDef);
-    RegOperand *GetReplaceOpndForLRA(Insn &insn, const Operand &opnd, uint32 &spillIdx, uint64 &usedRegMask,
-                                     bool isDef);
     bool EncountPrevRef(const BB &pred, LiveRange &lr, bool isDef, std::vector<bool> &visitedMap);
     bool FoundPrevBeforeCall(Insn &insn, LiveRange &lr, bool isDef);
     bool EncountNextRef(const BB &succ, LiveRange &lr, bool isDef, std::vector<bool> &visitedMap);
@@ -1608,26 +1596,14 @@ private:
     bool HavePrevRefInCurBB(Insn &insn, LiveRange &lr, bool &contSearch) const;
     bool HaveNextDefInCurBB(Insn &insn, LiveRange &lr, bool &contSearch) const;
     bool NeedCallerSave(Insn &insn, LiveRange &lr, bool isDef);
-    RegOperand *GetReplaceOpnd(Insn &insn, const Operand &opnd, uint32 &spillIdx, uint64 &usedRegMask, bool isDef);
     void MarkCalleeSaveRegs();
     void MarkUsedRegs(Operand &opnd, uint64 &usedRegMask);
-    uint64 FinalizeRegisterPreprocess(FinalizeRegisterInfo &fInfo, const Insn &insn, bool &needProcess);
-    void SplitVregAroundLoop(const LoopDesc &loop, const std::vector<LiveRange*> &lrs, BB &headerPred, BB &exitSucc,
-                             const std::set<regno_t> &cands);
-    bool LoopNeedSplit(const LoopDesc &loop, std::set<regno_t> &cands);
     bool LrGetBadReg(const LiveRange &lr) const;
-    void AnalysisLoopPressureAndSplit(const LoopDesc &loop);
-    void AnalysisLoop(const LoopDesc &loop);
     void OptCallerSave();
-    void FinalizeRegisters();
-    void GenerateSpillFillRegs(const Insn &insn);
-    RegOperand *CreateSpillFillCode(const RegOperand &opnd, Insn &insn, uint32 spillCnt, bool isdef = false);
-    bool SpillLiveRangeForSpills();
 
     MapleVector<LiveRange*>::iterator GetHighPriorityLr(MapleVector<LiveRange*> &lrSet) const;
     void UpdateForbiddenForNeighbors(const LiveRange &lr) const;
     void UpdatePregvetoForNeighbors(const LiveRange &lr) const;
-    regno_t FindColorForLr(const LiveRange &lr) const;
     regno_t TryToAssignCallerSave(const LiveRange &lr) const;
     bool ShouldUseCallee(LiveRange &lr, const MapleSet<regno_t> &calleeUsed,
                          const MapleVector<LiveRange*> &delayed) const;
@@ -1723,7 +1699,6 @@ private:
 #endif
     bool hasSpill = false;
     bool doMultiPass = false;
-    bool seenFP = false;
 };
 
 class CallerSavePre : public CGPre {
@@ -1747,13 +1722,9 @@ public:
     }
 
 private:
-    void CodeMotion();
-    void UpdateLoadSite(CgOccur *occ);
-    void CalLoadSites();
     void ComputeAvail();
-    void Rename1();
     void ComputeVarAndDfPhis() override;
-    void BuildWorkList() override;
+    void BuildWorkList() override {};
     void DumpWorkCandAndOcc();
 
     BB *GetBB(uint32 id) const override

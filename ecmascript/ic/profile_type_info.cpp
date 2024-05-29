@@ -209,7 +209,9 @@ void ProfileTypeAccessor::SetAsMega() const
     }
 
     profileTypeInfo_->Set(thread_, slotId_, JSTaggedValue::Hole());
-    profileTypeInfo_->Set(thread_, slotId_ + 1, JSTaggedValue::Hole());
+    if (!IsGlobalIC(kind_)) {
+        profileTypeInfo_->Set(thread_, slotId_ + 1, JSTaggedValue::Hole());
+    }
 }
 
 std::string ICKindToString(ICKind kind)

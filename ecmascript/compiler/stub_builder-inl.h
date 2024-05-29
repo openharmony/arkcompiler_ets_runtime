@@ -384,10 +384,7 @@ inline GateRef StubBuilder::IntPtrAnd(GateRef x, GateRef y)
 
 inline GateRef StubBuilder::IntPtrEqual(GateRef x, GateRef y)
 {
-    if (env_->Is32Bit()) {
-        return Int32Equal(x, y);
-    }
-    return Int64Equal(x, y);
+    return env_->GetBuilder()->IntPtrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int16Sub(GateRef x, GateRef y)
@@ -1263,6 +1260,11 @@ inline GateRef StubBuilder::IsBase(GateRef func)
     return env_->GetBuilder()->IsBase(func);
 }
 
+inline GateRef StubBuilder::IsDerived(GateRef func)
+{
+    return env_->GetBuilder()->IsDerived(func);
+}
+
 inline GateRef StubBuilder::IsSymbol(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -1322,6 +1324,18 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
 }
 
+inline GateRef StubBuilder::IsProxy(GateRef jsType)
+{
+    return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
+}
+
+inline GateRef StubBuilder::IsJSString(GateRef jsType)
+{
+    return BoolAnd(
+        Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::STRING_LAST))),
+        Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::STRING_FIRST))));
+}
+
 inline GateRef StubBuilder::IsJSShared(GateRef obj)
 {
     return TaggedIsSharedObj(obj);
@@ -1351,6 +1365,11 @@ inline GateRef StubBuilder::IsJSPrimitiveRef(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PRIMITIVE_REF)));
+}
+
+inline GateRef StubBuilder::IsPrimitiveRef(GateRef jsType)
+{
+    return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_PRIMITIVE_REF)));
 }
 
 inline GateRef StubBuilder::IsJsArray(GateRef obj)
@@ -2253,6 +2272,11 @@ inline GateRef StubBuilder::ClearSharedStoreKind(GateRef handlerInfo)
     return Int64And(handlerInfo, Int64Not(Int64(HandlerBase::SSharedBit::Mask())));
 }
 
+inline GateRef StubBuilder::UpdateSOutOfBoundsForHandler(GateRef handlerInfo)
+{
+    return Int64Or(handlerInfo, Int64(HandlerBase::SOutOfBoundsBit::Mask()));
+}
+
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 {
     // arraylist and vector has fast pass now
@@ -2855,6 +2879,53 @@ inline void StubBuilder::SetLengthToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::INT32(), glue, function, offset, value, MemoryOrder::NoBarrier());
 }
 
+inline void StubBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET);
+    Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+inline void StubBuilder::SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value)
+{
+    GateRef offset = IntPtr(ProfileTypeInfoCell::VALUE_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, profileTypeInfoCell, offset, value);
+}
+
+inline void StubBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    // ProfileTypeInfoCell0 -> Cell1 -> CellN
+    Label isProfileTypeInfoCell0(env);
+    Label notProfileTypeInfoCell0(env);
+    Label isProfileTypeInfoCell1(env);
+    Label endProfileTypeInfoCellType(env);
+    GateRef objectType = GetObjectType(LoadHClass(profileTypeInfoCell));
+    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_0))),
+           &isProfileTypeInfoCell0, &notProfileTypeInfoCell0);
+    Bind(&isProfileTypeInfoCell0);
+    {
+        auto profileTypeInfoCell1Class = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                ConstantIndex::PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX);
+        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCell1Class);
+        Jump(&endProfileTypeInfoCellType);
+    }
+    Bind(&notProfileTypeInfoCell0);
+    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_1))),
+           &isProfileTypeInfoCell1, &endProfileTypeInfoCellType);
+    Bind(&isProfileTypeInfoCell1);
+    {
+        auto profileTypeInfoCellNClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                ConstantIndex::PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX);
+        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCellNClass);
+        Jump(&endProfileTypeInfoCellType);
+    }
+    Bind(&endProfileTypeInfoCellType);
+    env->SubCfgExit();
+}
+
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(env_->Is32Bit()));
@@ -3052,10 +3123,7 @@ inline GateRef StubBuilder::ComputeTaggedArraySize(GateRef length)
 
 inline GateRef StubBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
 {
-    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
-        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
-    auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
-    return Load(type, gConstAddr, constantIndex);
+    return env_->GetBuilder()->GetGlobalConstantValue(type, glue, index);
 }
 
 inline GateRef StubBuilder::GetSingleCharTable(GateRef glue)
@@ -3224,7 +3292,8 @@ inline GateRef StubBuilder::IsTypedArray(GateRef obj)
 
 inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
 {
-    return Load(VariableType::JS_POINTER(), jsFunc, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
+    GateRef raw = Load(VariableType::JS_POINTER(), jsFunc, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
 }
 
 inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)
@@ -3396,9 +3465,10 @@ inline GateRef StubBuilder::GetSortedIndex(GateRef layoutInfo, GateRef index)
     return GetSortedIndex(GetAttr(layoutInfo, index));
 }
 
-inline void StubBuilder::SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result)
+inline void StubBuilder::SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result,
+                                              GateRef hir)
 {
-    GateRef hash = HashFromHclassAndKey(glue, cls, key);
+    GateRef hash = HashFromHclassAndKey(glue, cls, key, hir);
     GateRef prop =
         PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(PropertiesCache::PropertyKey::GetPropertyKeySize())));
     StoreWithoutBarrier(VariableType::JS_POINTER(), prop, IntPtr(PropertiesCache::PropertyKey::GetHclassOffset()), cls);
@@ -3412,11 +3482,31 @@ inline void StubBuilder::StoreWithoutBarrier(VariableType type, GateRef base, Ga
     env_->GetBuilder()->StoreWithoutBarrier(type, addr, value);
 }
 
-inline GateRef StubBuilder::HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key)
+inline GateRef StubBuilder::HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key, GateRef hir)
 {
     GateRef clsHash = Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(3));  // skip 8bytes
-    GateRef keyHash = GetKeyHashCode(glue, key);
+    GateRef keyHash = GetKeyHashCode(glue, key, hir);
     return Int32And(Int32Xor(clsHash, keyHash), Int32(PropertiesCache::CACHE_LENGTH_MASK));
+}
+
+inline GateRef StubBuilder::OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto)
+{
+    return env_->GetBuilder()->OrdinaryNewJSObjectCreate(glue, proto);
+}
+
+inline GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
+{
+    return env_->GetBuilder()->NewJSPrimitiveRef(glue, index, obj);
+}
+
+inline GateRef StubBuilder::ToObject(GateRef glue, GateRef obj)
+{
+    return env_->GetBuilder()->ToObject(glue, obj);
+}
+
+inline GateRef StubBuilder::GetPrototype(GateRef glue, GateRef object)
+{
+    return env_->GetBuilder()->GetPrototype(glue, object);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

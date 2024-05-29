@@ -88,6 +88,22 @@ private:
     void ConvertICByName(int32_t bcOffset, uint32_t slotId,  BCType type);
     void ConvertICByNameWithHandler(ApEntityId abcId, int32_t bcOffset, JSHClass *hclass,
 		                    JSTaggedValue secondValue, BCType type);
+    void HandleLoadType(ApEntityId &abcId, int32_t &bcOffset,
+                        JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleLoadTypeInt(ApEntityId &abcId, int32_t &bcOffset,
+                           JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                        JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleOtherTypes(ApEntityId &abcId, int32_t &bcOffset,
+                          JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleTransitionHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                 JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleTransWithProtoHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                     JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleOtherTypesPrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                          JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleStoreTSHandler(ApEntityId &abcId, int32_t &bcOffset,
+                              JSHClass *hclass, JSTaggedValue &secondValue);
     void ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type);
     void ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType type);
     void ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset, JSHClass *hclass,
@@ -103,7 +119,8 @@ private:
     bool AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
 		       JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
     void AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
-                         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
+                         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,
+                         bool everOutOfBounds = false);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalsId);
     void AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver);
     void AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold);

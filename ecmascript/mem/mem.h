@@ -53,6 +53,7 @@ static constexpr size_t MAX_MEM_POOL_CAPACITY = 1536_MB;
 #endif
 
 static constexpr size_t MIN_OLD_SPACE_LIMIT = 2_MB;
+static constexpr size_t MIN_BACKGROUNG_GC_LIMIT = 30_MB;
 
 static constexpr size_t MAX_NONMOVABLE_LIVE_OBJ_SIZE = 60_MB;
 
@@ -80,7 +81,6 @@ static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = DEFAULT_REGION_SIZE * 2 /
 static constexpr size_t CHUNK_ALIGN_SIZE = 4_KB;
 static constexpr size_t MIN_CHUNK_AREA_SIZE = 4_KB;
 static constexpr size_t MAX_CACHED_CHUNK_AREA_SIZE = 16_KB;
-static constexpr size_t MIN_WORKNODE_CHUNK_AREA_SIZE = 256_KB;
 static constexpr uint32_t WORKNODE_SPACE_SIZE = 8_KB;
 static constexpr size_t MAX_CHUNK_AREA_SIZE = 1_MB;
 static constexpr size_t MAX_REGEXP_CACHE_SIZE = 8_KB;

@@ -108,6 +108,10 @@ private:
 
     void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
+    JSHandle<JSObject> InitializeArrayPrototype(JSHandle<JSHClass> &arrBaseFuncInstanceHClass) const;
+    
+    JSHandle<JSHClass> InitializeArrayPrototypeHClass(const JSHandle<JSObject> &arrFuncPrototype) const;
+
     void InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjIHClass,
                                JSHandle<JSFunction> &sFuncPrototype) const;
 
@@ -280,6 +284,8 @@ private:
     void InitializeModuleNamespace(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
 
     void InitializeSModuleNamespace(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass) const;
+
+    void InitializeNativeModuleError(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
 
     void InitializeCjsModule(const JSHandle<GlobalEnv> &env) const;
 

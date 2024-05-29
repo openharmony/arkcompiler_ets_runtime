@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/aot_file/aot_version.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
+#include "ecmascript/compiler/aot_file/gdb_jit.h"
 #include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/platform/file.h"
@@ -60,12 +61,7 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
 
 bool StubFileInfo::MmapLoad(const std::string &fileName)
 {
-    std::string filename = "";
-    if (fileName.empty()) {
-        filename = STUB_AN_FILE;
-    } else {
-        filename = fileName;
-    }
+    std::string filename = fileName.empty() ? STUB_AN_FILE : fileName;
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
         LOG_COMPILER(ERROR) << "Can not load stub file from path [ " << filename << " ], "

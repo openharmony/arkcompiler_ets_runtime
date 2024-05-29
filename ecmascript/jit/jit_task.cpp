@@ -22,6 +22,9 @@
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
+#include "ecmascript/ohos/jit_tools.h"
+#include "ecmascript/dfx/dump_code/jit_dump_elf.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 
 namespace panda::ecmascript {
 
@@ -162,6 +165,36 @@ void JitTask::SetHClassInfoForPGO(JSHandle<Method> &methodHandle)
     unsharedConstantPool->SetAotHClassInfoWithBarrier(hostThread_, info.GetTaggedValue());
 }
 
+void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
+{
+    if (!ohos::JitTools::GetJitDumpObjEanble()) {
+        return;
+    }
+    JsJitDumpElf jitDumpElf;
+    jitDumpElf.Init();
+    char *funcAddr = reinterpret_cast<char *>(machineCode->GetFuncAddr());
+    size_t len = machineCode->GetTextSize();
+    std::vector<uint8> vec(len);
+    if (memmove_s(vec.data(), len, funcAddr, len) != EOK) {
+        LOG_JIT(DEBUG) << "Fail to get machineCode on function addr: " << funcAddr;
+    }
+    jitDumpElf.AppendData(vec);
+    const char *filename =  method->GetMethodName();
+    std::string fileName = std::string(filename);
+    uintptr_t addr = machineCode->GetFuncAddr();
+    fileName = fileName + "_" + std::to_string(addr) + "+" + std::to_string(len);
+    jitDumpElf.AppendSymbolToSymTab(0, 0, len, std::string(filename));
+    std::string realOutPath;
+    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(ohos::AotCrashInfo::GetSandBoxPath());
+    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
+        return;
+    }
+    std::string outFile = realOutPath + "/" + std::string(fileName);
+    int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0664);
+    jitDumpElf.WriteJitElfFile(fd);
+    close(fd);
+}
+
 void JitTask::InstallCode()
 {
     if (!IsCompileSuccess()) {
@@ -170,9 +203,6 @@ void JitTask::InstallCode()
     [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
 
     JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
-    if (GetHostVM()->GetJSOptions().IsEnableJITPGO()) {
-        SetHClassInfoForPGO(methodHandle);
-    }
 
     size_t size = ComputePayLoadSize(codeDesc_);
 
@@ -194,14 +224,14 @@ void JitTask::InstallCode()
     }
 
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
+    DumpJitCode(machineCodeObj, methodHandle);
     if (compilerTier_ == CompilerTier::FAST) {
         FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
         jsFunction_->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
         newMethodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
         if (!hostThread_->IsMachineCodeLowMemory() && methodHandle->GetFunctionKind() == FunctionKind::ARROW_FUNCTION) {
-            hostThread_->GetCurrentEcmaContext()->AddJitMachineCode(
-                methodHandle->GetMethodId(),
+            hostThread_->GetCurrentEcmaContext()->AddJitMachineCode(methodHandle->GetMethodId(),
                 std::make_pair(methodHandle.GetTaggedType(), machineCodeObj.GetTaggedType()));
         }
         uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();

@@ -762,3 +762,118 @@ function testTypeArrayToReversed2(ctor) {
     }
     return true;
 }
+
+var arr_every = new Uint8Array(["a", "b", "c"]);
+ArkTools.arrayBufferDetach(arr_every.buffer);
+try {
+    arr_every.every(() => true)
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+var arr_forEach = new Uint8Array(["a", "b", "c"]);
+ArkTools.arrayBufferDetach(arr_forEach.buffer);
+try {
+    arr_forEach.forEach(() => true)
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+var typedArrayConstructorsSort = [
+    Uint8Array,
+    Int8Array,
+    Uint16Array,
+    Int16Array,
+    Uint32Array,
+    Int32Array,
+    Uint8ClampedArray,
+    Float32Array,
+    Float64Array
+];
+
+for (var constructor of typedArrayConstructorsSort) {
+    // For arrays of floats, certain handling of +-0/NaN
+    var b = new constructor([1, +0, -0, NaN, -0, NaN, +0, 3, 2])
+    b.sort();
+    print(prettyPrinted(b[0]), prettyPrinted(b[1]), prettyPrinted(b[2]),
+          prettyPrinted(b[3]), prettyPrinted(b[4]), prettyPrinted(b[5]),
+          prettyPrinted(b[6]), prettyPrinted(b[7]), prettyPrinted(b[8]))
+}
+
+function prettyPrinted(value) {
+    let visited = new Set();
+    function prettyPrint(value) {
+        try {
+            switch (typeof value) {
+                case "string":
+                    return JSONStringify(value);
+                case "bigint":
+                    return String(value) + "n";
+                case "number":
+                    if (value === 0 && (1 / value) < 0) return "-0";
+                // FALLTHROUGH.
+                case "boolean":
+                case "undefined":
+                case "function":
+                case "symbol":
+                    return String(value);
+                case "object":
+                    if (value === null) return "null";
+                    // Guard against re-visiting.
+                    if (visited.has(value)) return "<...>";
+                    visited.add(value);
+                    var objectClass = classOf(value);
+                    switch (objectClass) {
+                        case "Number":
+                        case "BigInt":
+                        case "String":
+                        case "Boolean":
+                        case "Date":
+                            return objectClass + "(" + prettyPrint(ValueOf(value)) + ")";
+                        case "RegExp":
+                            return RegExpPrototypeToString.call(value);
+                        case "Array":
+                            var mapped = ArrayPrototypeMap.call(
+                                value, (v, i, array) => {
+                                    if (v === undefined && !(i in array)) return "";
+                                    return prettyPrint(v, visited);
+                                });
+                            var joined = ArrayPrototypeJoin.call(mapped, ",");
+                            return "[" + joined + "]";
+                        case "Int8Array":
+                        case "Uint8Array":
+                        case "Uint8ClampedArray":
+                        case "Int16Array":
+                        case "Uint16Array":
+                        case "Int32Array":
+                        case "Uint32Array":
+                        case "Float32Array":
+                        case "Float64Array":
+                        case "BigInt64Array":
+                        case "BigUint64Array":
+                            var joined = ArrayPrototypeJoin.call(value, ",");
+                            return objectClass + "([" + joined + "])";
+                        case "Object":
+                            break;
+                        default:
+                            return objectClass + "(" + String(value) + ")";
+                    }
+                    // classOf() returned "Object".
+                    var name = value.constructor?.name ?? "Object";
+                    var pretty_properties = [];
+                    for (let [k, v] of Object.entries(value)) {
+                        ArrayPrototypePush.call(
+                            pretty_properties, `${k}:${prettyPrint(v, visited)}`);
+                    }
+                    var joined = ArrayPrototypeJoin.call(pretty_properties, ",");
+                    return `${name}({${joined}})`;
+                default:
+                    return "-- unknown value --";
+            }
+        } catch (e) {
+            // Guard against general exceptions (especially stack overflows).
+            return "<error>"
+        }
+    }
+    return prettyPrint(value);
+}

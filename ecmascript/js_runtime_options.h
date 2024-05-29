@@ -28,7 +28,7 @@
 namespace panda::ecmascript {
 using arg_list_t = std::vector<std::string>;
 enum ArkProperties {
-    DEFAULT = -1,  // default value 1000001011100 -> 0x105c
+    DEFAULT = -1,  // default value 000'0000'0001'0000'0101'1100 -> 0x105c
     OPTIONAL_LOG = 1,
     GC_STATS_PRINT = 1 << 1,
     PARALLEL_GC = 1 << 2,  // default enable
@@ -51,7 +51,10 @@ enum ArkProperties {
     ENABLE_HEAP_VERIFY = 1 << 19,
     ENABLE_MICROJOB_TRACE = 1 << 20,
     ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21,
-    SHARED_CONCURRENT_MARK = 1 << 22
+    // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
+    DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
+    ENABLE_NATIVE_MODULE_ERROR = 1 << 23,
+    ENABLE_MODULE_LOG = 1 << 25
 };
 
 // asm interpreter control parsed option
@@ -168,6 +171,7 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_JIT,
     OPTION_COMPILER_ENABLE_JIT_PGO,
     OPTION_COMPILER_ENABLE_AOT_PGO,
+    OPTION_COMPILER_ENABLE_FRAMEWORK_AOT,
     OPTION_COMPILER_ENABLE_PROPFILE_DUMP,
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
@@ -187,6 +191,7 @@ enum CommandValues {
     OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
+    OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -453,13 +458,15 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
     }
 
+    bool EnableNativeModuleError() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_NATIVE_MODULE_ERROR) != 0;
+    }
+
     bool EnableSharedConcurrentMark() const
     {
-#ifndef NDEBUG
-        return true;
-#else
-        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::SHARED_CONCURRENT_MARK) != 0;
-#endif
+        // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::DISABLE_SHARED_CONCURRENT_MARK) == 0;
     }
 
     bool EnableExceptionBacktrace() const
@@ -564,6 +571,11 @@ public:
     bool EnableInitOldSocketSession() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_INIT_OLD_SOCKET_SESSION) != 0;
+    }
+
+    bool EnableModuleLog() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_LOG) != 0;
     }
 
     void DisableReportModuleResolvingFailure()
@@ -1727,6 +1739,26 @@ public:
         return enableAOTPGO_;
     }
 
+    void SetEnableJitFastCompile(bool value)
+    {
+        enableJitFastCompile_ = value;
+    }
+
+    bool IsEnableJitFastCompile() const
+    {
+        return enableJitFastCompile_;
+    }
+    
+    void SetEnableFrameworkAOT(bool value)
+    {
+        enableFrameworkAOT_ = value;
+    }
+
+    bool IsEnableFrameworkAOT() const
+    {
+        return enableFrameworkAOT_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1837,6 +1869,7 @@ private:
     bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};
+    bool enableFrameworkAOT_ {true};
     bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
@@ -1882,6 +1915,7 @@ private:
     bool traceInductionVariableAnalysis_ {false};
     bool enableMemoryAnalysis_ {true};
     bool checkPgoVersion_ {false};
+    bool enableJitFastCompile_ {false};
 };
 }  // namespace panda::ecmascript
 

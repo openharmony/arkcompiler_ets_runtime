@@ -24,42 +24,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
-class BuiltinsNumberFormatTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsNumberFormatTest : public BaseTestWithScope<true> {
 };
 
 // new DateTimeFormat(newTarget is undefined)

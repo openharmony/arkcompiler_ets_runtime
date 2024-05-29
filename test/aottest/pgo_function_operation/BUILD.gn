@@ -17,4 +17,7 @@ host_aot_test_action("pgo_function_operation") {
   deps = []
   is_only_typed_path = true
   is_enable_pgo = true
+  is_enable_trace_deopt = true
+  is_enable_typed_op_profiler = true
+  log_option = " --log-info=trace"
 }
