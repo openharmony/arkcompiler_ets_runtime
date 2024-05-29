@@ -101,10 +101,8 @@ panda::JSValueRef FunctionCallback(JsiRuntimeCallInfo *info)
     return **thisRef;
 }
 
-Local<FunctionRef> GetNewSendableClassFunction(EcmaVM *vm,
-                                               Local<FunctionRef> parent,
-                                               bool isDict = false,
-                                               bool duplicated = false)
+Local<FunctionRef> GetNewSendableClassFunction(
+    EcmaVM *vm, Local<FunctionRef> parent, bool isDict = false, bool duplicated = false, bool isParent = false)
 {
     FunctionRef::SendablePropertiesInfos infos;
 
@@ -128,7 +126,7 @@ Local<FunctionRef> GetNewSendableClassFunction(EcmaVM *vm,
     std::string staticKey = "static";
     std::string nonStaticKey = "nonStatic";
 
-    if (!parent->IsNull()) {
+    if (isParent) {
         instanceKey = "parentInstance";
         staticKey = "parentStatic";
         nonStaticKey = "parentNonStatic";
@@ -150,7 +148,7 @@ Local<FunctionRef> GetNewSendableClassFunction(EcmaVM *vm,
     infos.nonStaticPropertiesInfo.attributes.push_back(PropertyAttribute(nonStaticStr, true, true, true));
 
     if (duplicated) {
-        Local<StringRef> duplicatedKey = StringRef::NewFromUtf8(vm, "instance");
+        Local<StringRef> duplicatedKey = StringRef::NewFromUtf8(vm, "parentInstance");
         Local<NumberRef> duplicatedValue = NumberRef::New(vm, 0);
         infos.instancePropertiesInfo.keys.push_back(duplicatedKey);
         infos.instancePropertiesInfo.types.push_back(FunctionRef::SendableType::NONE);
@@ -343,7 +341,7 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictInstance)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInherit)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_));
+    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_), false, false, true);
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, parent);
     Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
     Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
@@ -370,7 +368,7 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInherit)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictInherit)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_), true);
+    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_), true, false, true);
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, parent);
     Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
     Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
@@ -397,24 +395,18 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictInherit)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInheritWithDuplicatedKey)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_));
+    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_), false, false, true);
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, parent, false, true);
     Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
     Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
 
     ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(parent)));
 
-    // set parent instance property on instance
+    // set duplicated instance property on instance
     Local<StringRef> parentInstanceKey = StringRef::NewFromUtf8(vm_, "parentInstance");
     ASSERT_EQ("undefined", obj->Get(vm_, parentInstanceKey)->ToString(vm_)->ToString());
-    obj->Set(vm_, parentInstanceKey, StringRef::NewFromUtf8(vm_, "parentInstance"));
-    ASSERT_EQ("parentInstance", obj->Get(vm_, parentInstanceKey)->ToString(vm_)->ToString());
-
-    // set duplicated instance property on instance
-    Local<StringRef> duplicatedInstanceKey = StringRef::NewFromUtf8(vm_, "instance");
-    ASSERT_EQ("undefined", obj->Get(vm_, duplicatedInstanceKey)->ToString(vm_)->ToString());
-    obj->Set(vm_, duplicatedInstanceKey, NumberRef::New(vm_, 1));
-    ASSERT_EQ("1", obj->Get(vm_, duplicatedInstanceKey)->ToString(vm_)->ToString());
+    obj->Set(vm_, parentInstanceKey, NumberRef::New(vm_, 0));
+    EXPECT_TRUE(NumberRef::New(vm_, 0)->IsStrictEquals(vm_, obj->Get(vm_, parentInstanceKey)));
 }
 
 HWTEST_F_L0(JSNApiTests, NewSendable)
