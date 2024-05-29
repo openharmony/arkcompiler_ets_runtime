@@ -39,7 +39,6 @@ static constexpr int32_t INDEX_THREE = 3;
 static constexpr int32_t INDEX_FOUR = 4;
 static constexpr int32_t ANS_MAP_SIZE = 5;
 static constexpr int32_t DIGIT_NUM = 64;
-[[maybe_unused]] static constexpr int32_t MILLION_TIME = 1000;
 
 const std::string MEGER_SOURCE_MAP_PATH = "ets/sourceMaps.map";
 static const CString FLAG_SOURCES = "    \"sources\":";
@@ -104,8 +103,8 @@ void SourceMap::Init(const std::string& hapPath)
         SplitSourceMap(sourceMapData);
     }
     auto end = Clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    LOG_ECMA(DEBUG) << "Init sourcemap time: " << (float) (duration.count() / MILLION_TIME) << "ms";
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    LOG_ECMA(DEBUG) << "Init sourcemap time: " << duration.count() << "ms";
 }
 #endif
 

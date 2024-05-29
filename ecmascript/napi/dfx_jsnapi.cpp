@@ -187,6 +187,15 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
+    uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
+    if (loop == nullptr) {
+        LOG_ECMA(ERROR) << "loop nullptr";
+        return;
+    }
+    if (uv_loop_alive(loop) == 0) {
+        LOG_ECMA(ERROR) << "uv_loop_alive dead";
+        return;
+    }
     struct DumpForSnapShotStruct *dumpStruct = new DumpForSnapShotStruct();
     dumpStruct->vm = vm;
     dumpStruct->dumpFormat = dumpFormat;
@@ -200,15 +209,6 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
         return;
     }
     work->data = static_cast<void *>(dumpStruct);
-    uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
-    if (loop == nullptr) {
-        LOG_ECMA(ERROR) << "loop nullptr";
-        return;
-    }
-    if (uv_loop_alive(loop) == 0) {
-        LOG_ECMA(ERROR) << "uv_loop_alive dead";
-        return;
-    }
 
     uint32_t curTid = vm->GetTid();
     int ret = 0;
@@ -279,11 +279,6 @@ void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
-    uv_work_t *work = new uv_work_t;
-    if (work == nullptr) {
-        LOG_ECMA(FATAL) << "DFXJSNApi::TriggerGCWithVm:work is nullptr";
-    }
-    work->data = static_cast<void *>(const_cast<EcmaVM *>(vm));
     uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
     if (loop == nullptr) {
         LOG_ECMA(ERROR) << "loop nullptr";
@@ -293,6 +288,11 @@ void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
         LOG_ECMA(ERROR) << "uv_loop_alive dead";
         return;
     }
+    uv_work_t *work = new uv_work_t;
+    if (work == nullptr) {
+        LOG_ECMA(FATAL) << "DFXJSNApi::TriggerGCWithVm:work is nullptr";
+    }
+    work->data = static_cast<void *>(const_cast<EcmaVM *>(vm));
     int ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
         EcmaVM *vm = static_cast<EcmaVM *>(work->data);
         ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());

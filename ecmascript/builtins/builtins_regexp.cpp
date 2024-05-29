@@ -395,49 +395,49 @@ JSTaggedValue BuiltinsRegExp::GetAllFlagsInternal(JSThread *thread, JSHandle<JST
     JSHandle<EcmaString> emptyString = factory->GetEmptyString();
     JSHandle<JSTaggedValue> hasIndicesKey(factory->NewFromASCII("hasIndices"));
     JSHandle<JSTaggedValue> hasIndicesResult = JSObject::GetProperty(thread, thisObj, hasIndicesKey).GetValue();
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION_WITH_DATA_DELETE(thread, emptyString.GetTaggedValue(), flagsStr);
     if (hasIndicesResult->ToBoolean()) {
         flagsStr[flagsLen] = 'd';
         flagsLen++;
     }
     JSHandle<JSTaggedValue> globalKey(globalConstants->GetHandledGlobalString());
     JSHandle<JSTaggedValue> globalResult = JSObject::GetProperty(thread, thisObj, globalKey).GetValue();
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION_WITH_DATA_DELETE(thread, emptyString.GetTaggedValue(), flagsStr);
     if (globalResult->ToBoolean()) {
         flagsStr[flagsLen] = 'g';
         flagsLen++;
     }
     JSHandle<JSTaggedValue> ignoreCaseKey(factory->NewFromASCII("ignoreCase"));
     JSHandle<JSTaggedValue> ignoreCaseResult = JSObject::GetProperty(thread, thisObj, ignoreCaseKey).GetValue();
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION_WITH_DATA_DELETE(thread, emptyString.GetTaggedValue(), flagsStr);
     if (ignoreCaseResult->ToBoolean()) {
         flagsStr[flagsLen] = 'i';
         flagsLen++;
     }
     JSHandle<JSTaggedValue> multilineKey(factory->NewFromASCII("multiline"));
     JSHandle<JSTaggedValue> multilineResult = JSObject::GetProperty(thread, thisObj, multilineKey).GetValue();
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION_WITH_DATA_DELETE(thread, emptyString.GetTaggedValue(), flagsStr);
     if (multilineResult->ToBoolean()) {
         flagsStr[flagsLen] = 'm';
         flagsLen++;
     }
     JSHandle<JSTaggedValue> dotAllKey(factory->NewFromASCII("dotAll"));
     JSHandle<JSTaggedValue> dotAllResult = JSObject::GetProperty(thread, thisObj, dotAllKey).GetValue();
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION_WITH_DATA_DELETE(thread, emptyString.GetTaggedValue(), flagsStr);
     if (dotAllResult->ToBoolean()) {
         flagsStr[flagsLen] = 's';
         flagsLen++;
     }
     JSHandle<JSTaggedValue> unicodeKey(globalConstants->GetHandledUnicodeString());
     JSHandle<JSTaggedValue> unicodeResult = JSObject::GetProperty(thread, thisObj, unicodeKey).GetValue();
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION_WITH_DATA_DELETE(thread, emptyString.GetTaggedValue(), flagsStr);
     if (unicodeResult->ToBoolean()) {
         flagsStr[flagsLen] = 'u';
         flagsLen++;
     }
     JSHandle<JSTaggedValue> stickyKey(globalConstants->GetHandledStickyString());
     JSHandle<JSTaggedValue> stickyResult = JSObject::GetProperty(thread, thisObj, stickyKey).GetValue();
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION_WITH_DATA_DELETE(thread, emptyString.GetTaggedValue(), flagsStr);
     if (stickyResult->ToBoolean()) {
         flagsStr[flagsLen] = 'y';
         flagsLen++;

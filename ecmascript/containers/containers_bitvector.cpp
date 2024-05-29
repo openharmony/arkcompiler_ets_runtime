@@ -512,15 +512,13 @@ JSTaggedValue ContainersBitVector::GetIteratorObj(EcmaRuntimeCallInfo* argv)
     return values;
 }
 
-void ContainersBitVector::FreeBitsetVectorPointer([[maybe_unused]] void *env, void *pointer, void *data)
+void ContainersBitVector::FreeBitsetVectorPointer([[maybe_unused]] void *env, void *pointer,
+                                                  [[maybe_unused]] void *data)
 {
     if (pointer == nullptr) {
         return;
     }
-    auto bitsetVector = reinterpret_cast<std::bitset<JSAPIBitVector::BIT_SET_LENGTH> *>(pointer);
+    auto bitsetVector = reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(pointer);
     delete bitsetVector;
-    if (data != nullptr) {
-        reinterpret_cast<EcmaVM *>(data)->GetNativeAreaAllocator()->FreeBuffer(pointer);
-    }
 }
 } // namespace panda::ecmascript::containers

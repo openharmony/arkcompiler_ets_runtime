@@ -1173,6 +1173,7 @@ std::string ArkGetFileName(int pid, uintptr_t jsPandaFileAddr, std::string &hapP
     for (size_t i = 0; i < size; i++) {
         if (!ReadUintptrFromAddr(pid, jsPandaFileAddr, jsPandaFilePart[i], g_needCheck)) {
             LOG_ECMA(ERROR) << "ArkGetFilePath failed, jsPandaFileAddr: " << jsPandaFileAddr;
+            delete []jsPandaFilePart;
             return "";
         }
         jsPandaFileAddr += sizeof(long);
