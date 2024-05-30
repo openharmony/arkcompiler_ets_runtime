@@ -579,7 +579,7 @@ void LocalSpace::Stop()
 uintptr_t NonMovableSpace::CheckAndAllocate(size_t size)
 {
     if (maximumCapacity_ == committedSize_ && GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE &&
-        !localHeap_->GetOldGCRequested()) {
+        !localHeap_->GetOldGCRequested() && !localHeap_->NeedStopCollection()) {
         localHeap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
     }
     return Allocate(size);
