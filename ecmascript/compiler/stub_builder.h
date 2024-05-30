@@ -660,7 +660,8 @@ public:
     GateRef IsIntRepInPropAttr(GateRef attr);
     GateRef IsDoubleRepInPropAttr(GateRef attr);
     GateRef SetTaggedRepInPropAttr(GateRef attr);
-    void SetHasConstructorToHClass(GateRef glue, GateRef hClass, GateRef value);
+    template<class T>
+    void SetHClassBit(GateRef glue, GateRef hClass, GateRef value);
     template<typename DictionaryT>
     void UpdateValueInDict(GateRef glue, GateRef elements, GateRef index, GateRef value);
     GateRef GetBitMask(GateRef bitoffset);
@@ -715,6 +716,7 @@ public:
     void SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value);
     void SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value);
     void UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell);
+    void SetJSObjectTaggedField(GateRef glue, GateRef object, size_t offset, GateRef value);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
