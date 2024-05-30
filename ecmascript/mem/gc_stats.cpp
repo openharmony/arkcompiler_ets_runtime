@@ -712,7 +712,7 @@ void SharedGCStats::RecordStatisticAfterGC()
     IncreaseRecordData(RecordData::SHARED_TOTAL_ALIVE, heapAliveSize);
 
     IncreaseTotalDuration(scopeDuration_[Scope::ScopeId::TotalGC]);
-    IncreaseAccumulatedFreeSize(GetRecordDataIndex(RecordData::START_OBJ_SIZE) -
-                                GetRecordDataIndex(RecordData::END_OBJ_SIZE));
+    IncreaseAccumulatedFreeSize(GetRecordData(RecordData::START_OBJ_SIZE) -
+                                GetRecordData(RecordData::END_OBJ_SIZE));
 }
 }  // namespace panda::ecmascript
