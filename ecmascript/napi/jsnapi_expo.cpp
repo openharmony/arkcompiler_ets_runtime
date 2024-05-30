@@ -4459,6 +4459,25 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
     return true;
 }
 
+bool JSNApi::ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
+                                    bool needUpdate, bool executeFromJob)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    LOG_ECMA(DEBUG) << "start to execute absolute path ark file: " << fileName;
+    ecmascript::ThreadManagedScope scope(thread);
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile(
+        thread, fileName.c_str(), entry, needUpdate, executeFromJob)) {
+        if (thread->HasPendingException()) {
+            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
+        LOG_ECMA(ERROR) << "Cannot execute absolute path ark file '" << fileName
+                        << "' with entry '" << entry << "'" << std::endl;
+        return false;
+    }
+    return true;
+}
+
 bool JSNApi::Execute(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
                      bool needUpdate, bool executeFromJob)
 {
@@ -4996,7 +5015,7 @@ Local<JSValueRef> JSNApi::NapiGetProperty(const EcmaVM *vm, uintptr_t nativeObj,
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
     }
-    
+
     JSTaggedValue ret = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(),
                                                                    keyValue.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));

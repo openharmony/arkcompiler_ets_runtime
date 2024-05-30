@@ -1388,6 +1388,8 @@ public:
     static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
                                  bool needUpdate = false);
     // JS code
+    static bool ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
+                                       bool needUpdate = false, bool executeFromJob = false);
     static bool Execute(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
                         bool needUpdate = false, bool executeFromJob = false);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
