@@ -156,6 +156,7 @@ public:
     static bool StartTracing(const EcmaVM *vm, std::string &categories);
     static std::unique_ptr<std::vector<TraceEvent>> StopTracing(const EcmaVM *vm);
     static void GetTracingBufferUseage(const EcmaVM *vm, double &percentFull, uint32_t &eventCount, double &value);
+    static void TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column);
 
 private:
     static void UpdateTidAndFdMap(uint32_t tid, std::vector<uint32_t> fdVec, std::vector<uint32_t> tidVec);
