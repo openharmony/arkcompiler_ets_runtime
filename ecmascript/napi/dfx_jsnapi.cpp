@@ -576,6 +576,29 @@ bool DFXJSNApi::StopCpuProfilerForColdStart([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+void DFXJSNApi::CpuProfilerAnyTimeMainThread(const EcmaVM *vm)
+{
+    const uint8_t KILL_COUNT_FACTOR = 2;
+    if (killCount % KILL_COUNT_FACTOR == 0) {
+        uint8_t fileCount = killCount / KILL_COUNT_FACTOR + 1;
+        LOG_ECMA(INFO) << "Start CpuProfiler Any Time Main Thread, killCount = " << killCount;
+        std::string fileName = ConvertToStdString(const_cast<EcmaVM *>(vm)->GetBundleName())
+                               + "_" + std::to_string(fileCount) + ".cpuprofile";
+        if (!BuiltinsArkTools::CreateFile(fileName)) {
+            LOG_ECMA(ERROR) << "createFile failed " << fileName;
+        } else {
+            DFXJSNApi::StartCpuProfilerForFile(vm, fileName, CpuProfiler::INTERVAL_OF_INNER_START);
+        }
+    } else {
+        LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Main Thread, killCount = " << killCount;
+        if (vm->GetJSThread()->GetIsProfiling()) {
+            DFXJSNApi::StopCpuProfilerForFile(vm);
+        }
+    }
+}
+#endif
+
 bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -585,22 +608,7 @@ bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
     auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
     if (options.EnableCpuProfilerAnyTimeMainThread()) {
         success = true;
-        if (killCount % KILL_COUNT_FACTOR == 0) {
-            uint8_t fileCount = killCount / KILL_COUNT_FACTOR + 1;
-            LOG_ECMA(INFO) << "Start CpuProfiler Any Time Main Thread, killCount = " << killCount;
-            std::string fileName = ConvertToStdString(const_cast<EcmaVM *>(vm)->GetBundleName())
-                                    + "_" + std::to_string(fileCount) + ".cpuprofile";
-            if (!BuiltinsArkTools::CreateFile(fileName)) {
-                LOG_ECMA(ERROR) << "createFile failed " << fileName;
-            } else {
-                DFXJSNApi::StartCpuProfilerForFile(vm, fileName, CpuProfiler::INTERVAL_OF_INNER_START);
-            }
-        } else {
-            LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Main Thread, killCount = " << killCount;
-            if (vm->GetJSThread()->GetIsProfiling()) {
-                DFXJSNApi::StopCpuProfilerForFile(vm);
-            }
-        }
+        CpuProfilerAnyTimeMainThread(vm);
     }
 
     if (options.EnableCpuProfilerAnyTimeWorkerThread()) {

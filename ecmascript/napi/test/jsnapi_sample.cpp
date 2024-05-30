@@ -608,56 +608,42 @@ void GetOwnEnumerablePropertyNames(Local<ObjectRef> object, EcmaVM *vm)
     }
 }
 
+void PrintAllProperty(Local<ObjectRef> object, EcmaVM *vm, int flag)
+{
+    Local<ArrayRef> names = object->GetAllPropertyNames(vm, flag);
+    int cnt = names->Length(vm);
+    switch (flag) {
+        case 0: // 0 = NATIVE_DEFAULT
+            GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_DEFAULT: " << cnt;
+            break;
+        case 1: // 1 = NATIVE_WRITABLE
+            GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_WRITABLE: " << cnt;
+            break;
+        case 2: // 2 = NATIVE_ENUMERABLE
+            GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_ENUMERABLE: " << cnt;
+            break;
+        case 3: // 3 = NATIVE_CONFIGURABLE
+            GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_CONFIGURABLE: " << cnt;
+            break;
+        default:
+            break;
+    }
+    for (int i = 0; i < cnt; i++) {
+        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
+        if (value->IsSymbol()) {
+            Local<SymbolRef> symbol = value;
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+        } else {
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+        }
+    }
+}
+
 void GetAllPropertyNames(Local<ObjectRef> object, EcmaVM *vm)
 {
     GTEST_LOG_(INFO) << "GetAllPropertyNames";
-    Local<ArrayRef> names = object->GetAllPropertyNames(vm, 0); // 0 = NATIVE_DEFAULT
-    int cnt = names->Length(vm);
-    GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_DEFAULT: " << cnt;
-    for (int i = 0; i < cnt; i++) {
-        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
-        if (value->IsSymbol()) {
-            Local<SymbolRef> symbol = value;
-            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
-        } else {
-            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
-        }
-    }
-    names = object->GetAllPropertyNames(vm, 1); // 1 = NATIVE_WRITABLE
-    cnt = names->Length(vm);
-    GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_WRITABLE: " << cnt;
-    for (int i = 0; i < cnt; i++) {
-        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
-        if (value->IsSymbol()) {
-            Local<SymbolRef> symbol = value;
-            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
-        } else {
-            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
-        }
-    }
-    names = object->GetAllPropertyNames(vm, 2); // 2 = NATIVE_ENUMERABLE
-    cnt = names->Length(vm);
-    GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_ENUMERABLE: " << cnt;
-    for (int i = 0; i < cnt; i++) {
-        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
-        if (value->IsSymbol()) {
-            Local<SymbolRef> symbol = value;
-            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
-        } else {
-            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
-        }
-    }
-    names = object->GetAllPropertyNames(vm, 3); // 3 = NATIVE_CONFIGURABLE
-    cnt = names->Length(vm);
-    GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_CONFIGURABLE: " << cnt;
-    for (int i = 0; i < cnt; i++) {
-        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
-        if (value->IsSymbol()) {
-            Local<SymbolRef> symbol = value;
-            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
-        } else {
-            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
-        }
+    for (int i = 0; i < 4; i++) { // 4 show Go through all the properties
+        PrintAllProperty(object, vm, i);
     }
 }
 
