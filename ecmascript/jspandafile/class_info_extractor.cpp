@@ -473,41 +473,25 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
     return constructor;
 }
 
-JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
                                                          JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &lexenv,
-                                                         const JSHandle<JSTaggedValue> &prototypeOrHClassVal,
-                                                         const JSHandle<JSTaggedValue> &constructorHClassVal)
+                                                         const JSHandle<JSTaggedValue> &prototypeOrHClass,
+                                                         const JSHandle<JSHClass> &constructorHClass)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> staticKeys(thread, extractor->GetStaticKeys());
     JSHandle<TaggedArray> staticProperties(thread, extractor->GetStaticProperties());
-    JSHandle<JSHClass> constructorHClass;
-    // When constructorHClassVal is undefined, it means that AOT has not generated the corresponding hclass (chc),
-    // then chc will be created through the interpreter.
-    if (constructorHClassVal->IsUndefined()) {
-        constructorHClass = ClassInfoExtractor::CreateConstructorHClass(thread, base, staticKeys, staticProperties);
-    } else {
-        constructorHClass = JSHandle<JSHClass>(constructorHClassVal);
-        ClassInfoExtractor::CorrectConstructorHClass(thread, staticProperties, *constructorHClass);
-    }
-
+    ClassInfoExtractor::CorrectConstructorHClass(thread,
+                                                 staticProperties, *constructorHClass);
     JSHandle<TaggedArray> nonStaticKeys(thread, extractor->GetNonStaticKeys());
     JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
     JSHandle<JSObject> prototype;
-    JSHandle<JSTaggedValue> prototypeOrHClass = prototypeOrHClassVal;
-    // When prototypeOrHClassVal is undefined, it means that AOT has not generated the corresponding hclass or
-    // prototype, then prototype will be created through the interpreter.
-    if (prototypeOrHClassVal->IsUndefined()) {
-        JSHandle<JSHClass> prototypeHClass = ClassInfoExtractor::CreatePrototypeHClass(thread, nonStaticKeys,
-                                                                                       nonStaticProperties);
-        prototype = factory->NewOldSpaceJSObject(prototypeHClass);
-        prototypeOrHClass = JSHandle<JSTaggedValue>(prototype);
-    } else if (prototypeOrHClassVal->IsJSHClass()) {
-        JSHandle<JSHClass> ihclass(prototypeOrHClassVal);
+    if (prototypeOrHClass->IsJSHClass()) {
+        JSHandle<JSHClass> ihclass(prototypeOrHClass);
         prototype = JSHandle<JSObject>(thread, ihclass->GetProto());
     } else {
-        prototype = JSHandle<JSObject>(prototypeOrHClassVal);
+        prototype = JSHandle<JSObject>(prototypeOrHClass);
     }
 
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
