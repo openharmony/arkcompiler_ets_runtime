@@ -331,6 +331,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(PGOPreDump)                         \
     V(JitCompile)                         \
     V(CountInterpExecFuncs)               \
+    V(JitReuseCompiledFunc)               \
     V(BaselineJitCompile)                 \
     V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \

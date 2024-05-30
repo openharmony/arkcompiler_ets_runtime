@@ -869,16 +869,20 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_8_3();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8: {
+            uint16_t slotId = READ_INST_16_0();
             uint16_t methodId = READ_INST_16_2();
             uint16_t length = READ_INST_8_4();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));

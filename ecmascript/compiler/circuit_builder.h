@@ -298,6 +298,7 @@ public:
     GateRef GetSendableEnvFromModule(GateRef module);
     GateRef GetHomeObjectFromFunction(GateRef function);
     GateRef GetHClassGateFromIndex(GateRef gate, int32_t index);
+    GateRef GetProfileTypeInfo(GateRef function);
     inline GateRef GetExpectedNumOfArgs(GateRef method);
     inline GateRef GetGlobalConstantOffset(ConstantIndex index); // shareir
     GateRef GetEmptyArray(GateRef glue);
@@ -330,6 +331,10 @@ public:
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
     void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value);
+    void SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value);
+    void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
+                                             GateRef profileTypeInfo, GateRef slotId);
+    void UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell);
 
     inline GateRef LogicAnd(GateRef x, GateRef y);
     inline GateRef LogicOr(GateRef x, GateRef y);

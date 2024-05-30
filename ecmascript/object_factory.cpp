@@ -4868,6 +4868,7 @@ JSHandle<ProfileTypeInfoCell> ObjectFactory::NewProfileTypeInfoCell(const JSHand
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
     JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
     profileTypeInfoCell->SetValue(thread_, value.GetTaggedValue());
+    profileTypeInfoCell->SetMachineCode(thread_, JSTaggedValue::Hole());
     return profileTypeInfoCell;
 }
 
