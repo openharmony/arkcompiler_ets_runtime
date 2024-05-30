@@ -130,45 +130,53 @@ void VerifyObjectVisitor::VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *o
             ++(*failCount_);
         }
     } else if (value.IsHeapObject()) {
-        if (ToUintPtr(value.GetTaggedObject()) < INVALID_THRESHOLD) {
-            LogErrorForObjSlot(heap_, "Heap verify detected an invalid value.",
-                object, slot, value.GetTaggedObject());
-        }
-        if (!heap_->IsAlive(value.GetTaggedObject())) {
-            LogErrorForObjSlot(heap_, "Heap verify detected a dead object.",
-                object, slot, value.GetTaggedObject());
-            ++(*failCount_);
-        }
-        switch (verifyKind_) {
-            case VerifyKind::VERIFY_PRE_GC:
-            case VerifyKind::VERIFY_POST_GC:
-                break;
-            case VerifyKind::VERIFY_MARK_YOUNG:
-                VerifyMarkYoung(object, slot, value.GetTaggedObject());
-                break;
-            case VerifyKind::VERIFY_EVACUATE_YOUNG:
-                VerifyEvacuateYoung(object, slot, value.GetTaggedObject());
-                break;
-            case VerifyKind::VERIFY_MARK_FULL:
-                VerifyMarkFull(object, slot, value.GetTaggedObject());
-                break;
-            case VerifyKind::VERIFY_EVACUATE_OLD:
-                VerifyEvacuateOld(object, slot, value.GetTaggedObject());
-                break;
-            case VerifyKind::VERIFY_EVACUATE_FULL:
-                VerifyEvacuateFull(object, slot, value.GetTaggedObject());
-                break;
-            case VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC:
-                VerifySharedRSetPostFullGC(object, slot, value.GetTaggedObject());
-                break;
-            case VerifyKind::VERIFY_PRE_SHARED_GC:
-            case VerifyKind::VERIFY_POST_SHARED_GC:
-                VerifySharedObjectReference(object, slot, value.GetTaggedObject());
-                break;
-            default:
-                LOG_GC(FATAL) << "unknown verify kind:" << static_cast<size_t>(verifyKind_);
-                UNREACHABLE();
-        }
+        VerifyHeapObjectSlotLegal(slot, value, object);
+    }
+}
+
+void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
+                                                    JSTaggedValue slotValue,
+                                                    TaggedObject *object) const
+{
+    ASSERT(slotValue.IsHeapObject());
+    if (ToUintPtr(slotValue.GetTaggedObject()) < INVALID_THRESHOLD) {
+        LogErrorForObjSlot(heap_, "Heap verify detected an invalid value.",
+            object, slot, slotValue.GetTaggedObject());
+    }
+    if (!heap_->IsAlive(slotValue.GetTaggedObject())) {
+        LogErrorForObjSlot(heap_, "Heap verify detected a dead object.",
+            object, slot, slotValue.GetTaggedObject());
+        ++(*failCount_);
+    }
+    switch (verifyKind_) {
+        case VerifyKind::VERIFY_PRE_GC:
+        case VerifyKind::VERIFY_POST_GC:
+            break;
+        case VerifyKind::VERIFY_MARK_YOUNG:
+            VerifyMarkYoung(object, slot, slotValue.GetTaggedObject());
+            break;
+        case VerifyKind::VERIFY_EVACUATE_YOUNG:
+            VerifyEvacuateYoung(object, slot, slotValue.GetTaggedObject());
+            break;
+        case VerifyKind::VERIFY_MARK_FULL:
+            VerifyMarkFull(object, slot, slotValue.GetTaggedObject());
+            break;
+        case VerifyKind::VERIFY_EVACUATE_OLD:
+            VerifyEvacuateOld(object, slot, slotValue.GetTaggedObject());
+            break;
+        case VerifyKind::VERIFY_EVACUATE_FULL:
+            VerifyEvacuateFull(object, slot, slotValue.GetTaggedObject());
+            break;
+        case VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC:
+            VerifySharedRSetPostFullGC(object, slot, slotValue.GetTaggedObject());
+            break;
+        case VerifyKind::VERIFY_PRE_SHARED_GC:
+        case VerifyKind::VERIFY_POST_SHARED_GC:
+            VerifySharedObjectReference(object, slot, slotValue.GetTaggedObject());
+            break;
+        default:
+            LOG_GC(FATAL) << "unknown verify kind:" << static_cast<size_t>(verifyKind_);
+            UNREACHABLE();
     }
 }
 
