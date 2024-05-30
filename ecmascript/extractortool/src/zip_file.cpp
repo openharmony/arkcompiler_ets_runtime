@@ -686,6 +686,8 @@ bool ZipFile::UnzipWithInflatedFromMMap(const ZipEntry &zipEntry, [[maybe_unused
     len = zipEntry.uncompressedSize;
     dataPtr = std::make_unique<uint8_t[]>(len);
     if (!dataPtr) {
+        delete[] bufOut;
+        delete[] bufIn;
         return false;
     }
     uint8_t *dstDataPtr = static_cast<uint8_t *>(dataPtr.get());

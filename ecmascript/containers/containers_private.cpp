@@ -895,6 +895,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeBitVector(JSThread* thread)
     SetFrozenFunction(thread, prototype, "getLastIndexOf", ContainersBitVector::GetLastIndexOf, FuncLength::THREE);
     SetFrozenFunction(thread, prototype, "flipBitByIndex", ContainersBitVector::FlipBitByIndex, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "flipBitsByRange", ContainersBitVector::FlipBitsByRange, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "values", ContainersBitVector::GetIteratorObj, FuncLength::ZERO);
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, prototype, "BitVector");
@@ -904,8 +905,6 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeBitVector(JSThread* thread)
     JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
     SetGetter(thread, prototype, lengthKey, lengthGetter);
 
-    SetFunctionAtSymbol(thread, env, prototype, env->GetIteratorSymbol(), "[Symbol.iterator]",
-        ContainersBitVector::GetIteratorObj, FuncLength::ONE);
     ContainersPrivate::InitializeBitVectorIterator(thread, env, globalConst);
 
     globalConst->SetConstant(ConstantIndex::BITVECTOR_FUNCTION_INDEX, bitVectorFunction.GetTaggedValue());
