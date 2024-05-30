@@ -1164,7 +1164,8 @@ GateRef InstructionCombine::ReduceWord64Lsr(GateRef gate)
     }
     if (m.IsFoldable()) {
         // 63: The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
-        return builder_.Int64(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 63));
+        return builder_.Int64(static_cast<uint64_t>(m.Left().ResolvedValue()) >>
+            (static_cast<uint64_t>(m.Right().ResolvedValue()) & 63));
     }
     return Circuit::NullGate();
 }
@@ -1178,7 +1179,8 @@ GateRef InstructionCombine::ReduceWord32Lsr(GateRef gate)
     }
     if (m.IsFoldable()) {
         // 31: The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
-        return builder_.Int32(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 31));
+        return builder_.Int32(static_cast<uint32_t>(m.Left().ResolvedValue()) >>
+            (static_cast<uint32_t>(m.Right().ResolvedValue()) & 31));
     }
     // (m >>> s) == 0 implies ((x & m) >>> s) == 0
     if (m.Left().IsmInt32And() && m.Right().HasResolvedValue()) {
