@@ -204,6 +204,7 @@ namespace panda::ecmascript::kungfu {
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \
     V(NumberConstructor)                            \
+    V(ProxyConstructor)                             \
     V(DateConstructor)                              \
     V(ArrayConstructor)                             \
     V(SetConstructor)                               \

@@ -897,6 +897,8 @@ void EcmaVM::GenerateInternalNativeMethods()
     // cache to global constants shared because context may change
     CacheToGlobalConstants(GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION),
                            ConstantIndex::BOUND_FUNCTION_METHOD_INDEX);
+    CacheToGlobalConstants(GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_PROXY),
+                           ConstantIndex::PROXY_METHOD_INDEX);
 }
 
 void EcmaVM::CacheToGlobalConstants(JSTaggedValue value, ConstantIndex idx)

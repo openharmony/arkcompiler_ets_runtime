@@ -55,6 +55,7 @@ public:
     void NewJSObject(Variable *result, Label *exit, GateRef hclass,
                      MemoryOrder order = MemoryOrder::Default());
     GateRef NewJSObject(GateRef glue, GateRef hclass, MemoryOrder order = MemoryOrder::Default());
+    GateRef NewJSProxy(GateRef glue, GateRef target, GateRef handler);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArray(GateRef glue, GateRef len);
