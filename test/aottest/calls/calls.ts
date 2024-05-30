@@ -209,3 +209,12 @@ fooo(1);
 fooo(1, 2);
 fooo(1, 2, 3);
 fooo(1, 2, 3, 4, 5);
+
+async function f206(a207, a208, a209) {
+    let v210;
+    try {v210 = a208(a207, a209, 2); } catch (e) { print(e instanceof TypeError) }
+    await v210;
+    return v210;
+}
+// @ts-ignore
+f206(1, f206);
