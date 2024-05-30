@@ -29,9 +29,6 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
     if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE)) {
         return ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName, recordName);
     } else if (StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
-        if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
-            baseFileName = thread->GetEcmaVM()->GetAssetPath();
-        }
         return requestName.substr(PREFIX_PACKAGE_LEN);
     } else if (IsImportFile(requestName)) {
         // this branch save for require/dynamic import/old version sdk

@@ -68,6 +68,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
     }
 
     PatchInfo patchInfo;
+    SetCurrentBaseFileName(baseFileName);
     if (baseClassInfo_.empty()) {
         baseClassInfo_ = PatchLoader::CollectClassInfo(baseFile);
     }
@@ -105,6 +106,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
     }
 
     PatchInfo patchInfo;
+    SetCurrentBaseFileName(baseFileName.c_str());
     if (baseClassInfo_.empty()) {
         baseClassInfo_ = PatchLoader::CollectClassInfo(baseFile.get());
     }
@@ -144,6 +146,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread,
     }
 
     PatchInfo patchInfo;
+    SetCurrentBaseFileName(baseFileName.c_str());
     if (baseClassInfo_.empty()) {
         baseClassInfo_ = PatchLoader::CollectClassInfo(baseFile.get());
     }
@@ -288,5 +291,15 @@ CUnorderedSet<CString> QuickFixManager::ParseStackInfo(const CString &stackInfo)
         lineIndex = stackInfo.find("\n", lineIndex + 1);
     }
     return methodNames;
+}
+
+void QuickFixManager::SetCurrentBaseFileName(CString fileName)
+{
+    currentBaseFileName = fileName;
+}
+
+CString QuickFixManager::GetCurrentBaseFileName()
+{
+    return currentBaseFileName;
 }
 }  // namespace panda::ecmascript
