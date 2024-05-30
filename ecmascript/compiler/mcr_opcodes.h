@@ -107,7 +107,7 @@ namespace panda::ecmascript::kungfu {
     V(MathClz32Int32, MATH_CLZ32_INT32, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(MathAbs, MATH_ABS, GateFlags::CHECKABLE, 1, 1, 1)                                         \
     V(MathAbsInt32, MATH_ABS_INT32, GateFlags::CHECKABLE, 1, 1, 1)                              \
-    V(MathAbsDouble, MATH_ABS_DOUBLE, GateFlags::NO_WRITE, 1, 1, 1)                             \
+    V(MathAbsDouble, MATH_ABS_DOUBLE, GateFlags::CHECKABLE, 1, 1, 1)                            \
     V(MathPow, MATH_POW, GateFlags::NO_WRITE, 1, 1, 2)                                          \
     V(MathCbrt, MATH_CBRT, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathMin, MATH_MIN, GateFlags::NO_WRITE, 1, 1, 2)                                          \

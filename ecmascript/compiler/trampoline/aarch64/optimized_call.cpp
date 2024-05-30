@@ -321,25 +321,24 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
     Register sp(SP);
     Register nativeFuncAddr(X4);
     Register temp(X1);
-    Register argv(X5);
 
     // remove argv
     __ Ldr(temp, MemoryOperand(sp, 0));
     __ Stp(glue, temp, MemoryOperand(sp, 0));   // argc, glue
     // returnAddr, callsiteFp
     __ Stp(Register(X29), Register(X30), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Str(sp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false))); // rbp
-    __ Mov(Register(X29), sp); // rbp
+    __ Mov(temp, sp);
+    __ Str(temp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false))); // rbp
+    __ Mov(Register(X29), temp); // rbp
     __ Mov(temp, Immediate(static_cast<int32_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME)));
-    __ Stp(argv, temp, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX)); // frameType, argv
+    __ Stp(Register(Zero), temp, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX)); // frameType, argv
     __ Add(Register(X0), sp, Immediate(QUADRUPLE_SLOT_SIZE));
     __ Blr(nativeFuncAddr);
 
-    __ Ldr(argv, MemoryOperand(sp, 0)); // argv
     __ Mov(sp, Register(FP));
     __ Ldp(Register(X29), Register(X30), MemoryOperand(sp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
     __ Ldr(temp, MemoryOperand(sp, FRAME_SLOT_SIZE)); // argc
-    __ Stp(temp, argv, MemoryOperand(sp, 0)); // argv, argc
+    __ Stp(temp, Register(Zero), MemoryOperand(sp, 0)); // argv, argc
 
     __ Ret();
 }
@@ -381,17 +380,16 @@ void OptimizedCall::CallBuiltinConstructorStub(ExtendedAssembler *assembler, Reg
     __ Stp(glue, temp, MemoryOperand(sp, 0));   // argc, glue
     // returnAddr, callsiteFp
     __ Stp(Register(X29), Register(X30), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Mov(Register(X29), sp); // rbp
+    __ Mov(temp, sp);
+    __ Mov(Register(X29), temp); // rbp
     __ Mov(temp, Immediate(static_cast<int32_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME)));
-    __ Add(argv, sp, Immediate(OCTUPLE_SLOT_SIZE));
-    __ Mov(Register(Zero), Immediate(0));
     __ Stp(Register(Zero), temp, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX)); // frameType, argv
+    __ Add(argv, sp, Immediate(NONUPLE_SLOT_SIZE));
     __ Blr(builtinStub);
 
     __ Mov(sp, Register(FP));
     __ Ldp(Register(X29), Register(X30), MemoryOperand(sp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
     __ Ldr(temp, MemoryOperand(sp, FRAME_SLOT_SIZE)); // argc
-    __ Mov(Register(Zero), Immediate(0));
     __ Stp(temp, Register(Zero), MemoryOperand(sp, 0)); // argv, argc
 
     __ Ret();
@@ -949,7 +947,6 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         const int64_t argoffsetSlot = static_cast<int64_t>(CommonArgIdx::FUNC) - 1;
         __ Add(argV, argV, Immediate((NUM_MANDATORY_JSFUNC_ARGS + argoffsetSlot) * FRAME_SLOT_SIZE));
         PushArgsWithArgv(assembler, glue, actualArgC, argV, tmp, fp, nullptr, nullptr);
-        __ Add(argV, basefp, Immediate(GetStackArgOffSetToFp(0))); // 0: first index id
     }
     __ Bind(&copyBoundArgument);
     {

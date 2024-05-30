@@ -162,13 +162,13 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
         case CreateArgumentsAccessor::Mode::REST_ARGUMENTS: {
             GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::CopyRestArgs,
                 { glue, *actualArgv, startIdx, actualArgc });
-            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+            ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), newGate);
             break;
         }
         case CreateArgumentsAccessor::Mode::UNMAPPED_ARGUMENTS: {
             GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::GetUnmappedArgs,
                 { glue, *actualArgv, actualArgc });
-            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+            ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), newGate);
             break;
         }
         default: {
