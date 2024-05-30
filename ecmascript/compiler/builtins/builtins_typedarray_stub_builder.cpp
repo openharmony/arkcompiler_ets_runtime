@@ -151,7 +151,7 @@ GateRef BuiltinsTypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, Gate
     Label notDetached(env);
     Label slowPath(env);
     Label indexIsvalid(env);
-    
+
     GateRef buffer = GetViewedArrayBuffer(array);
     BRANCH(IsDetachedBuffer(buffer), &isDetached, &notDetached);
     Bind(&isDetached);
@@ -713,10 +713,10 @@ void BuiltinsTypedArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRe
     Label isHeapObject(env);
     Label defaultConstr(env);
     Label typedArray(env);
-    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
-    Bind(&typedArray);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
     GateRef callbackFnHandle = GetCallArg0(numArgs);

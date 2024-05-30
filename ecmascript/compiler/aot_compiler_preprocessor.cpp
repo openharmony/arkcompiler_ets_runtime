@@ -349,6 +349,10 @@ bool AotCompilerPreprocessor::IsSkipMethod(const JSPandaFile *jsPandaFile, const
         return true;
     }
 
+    if (OutCompiledMethodsRange()) {
+        return true;
+    }
+
     if (!cOptions.optionSelectMethods_.empty()) {
         return !FilterOption(cOptions.optionSelectMethods_, ConvertToStdString(recordName), methodName);
     } else if (!cOptions.optionSkipMethods_.empty()) {

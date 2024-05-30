@@ -679,7 +679,8 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
             // set the base reference of derived reference
             if (e1Type == lmirBuilder_->i64RefType) {
                 ASSERT(!e1Value.IsDread());
-                derivedGate2BaseGate_[gate] = e1;
+                auto e1BaseIter = derivedGate2BaseGate_.find(e1);
+                derivedGate2BaseGate_[gate] = (e1BaseIter == derivedGate2BaseGate_.end() ? e1 : e1BaseIter->second);
             }
             return;
         } else {

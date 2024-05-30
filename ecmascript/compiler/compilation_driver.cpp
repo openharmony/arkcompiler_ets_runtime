@@ -22,16 +22,13 @@
 namespace panda::ecmascript::kungfu {
 CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
                                      BytecodeInfoCollector *collector,
-                                     const std::string &optionSelectMethods,
-                                     const std::string &optionSkipMethods,
                                      AOTFileGenerator *fileGenerator,
                                      const std::string &fileName,
                                      const std::string &triple,
                                      LOptions *lOptions,
                                      CompilerLog *log,
                                      bool outputAsm,
-                                     size_t maxMethodsInModule,
-                                     const std::pair<uint32_t, uint32_t> &compilerMethodsRange)
+                                     size_t maxMethodsInModule)
     : compilationEnv_(collector->GetCompilationEnv()),
       jsPandaFile_(collector->GetJSPandaFile()),
       pfDecoder_(profilerDecoder),
@@ -43,21 +40,8 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
       lOptions_(lOptions),
       log_(log),
       outputAsm_(outputAsm),
-      maxMethodsInModule_(maxMethodsInModule),
-      optionMethodsRange_(compilerMethodsRange)
+      maxMethodsInModule_(maxMethodsInModule)
 {
-    if (!optionSelectMethods.empty() && !optionSkipMethods.empty()) {
-        LOG_COMPILER(FATAL) <<
-            "--compiler-select-methods and --compiler-skip-methods should not be set at the same time";
-    }
-
-    if (!optionSelectMethods.empty()) {
-        ParseOption(optionSelectMethods, optionSelectMethods_);
-    }
-
-    if (!optionSkipMethods.empty()) {
-        ParseOption(optionSkipMethods, optionSkipMethods_);
-    }
 }
 
 Module *CompilationDriver::GetModule()
@@ -187,23 +171,6 @@ void CompilationDriver::InitializeCompileQueue()
     }
 }
 
-bool CompilationDriver::FilterMethod(const CString &recordName, const MethodLiteral *methodLiteral,
-                                     const MethodPcInfo &methodPCInfo, const std::string &methodName) const
-{
-    if (methodPCInfo.methodsSize > bytecodeInfo_.GetMaxMethodSize() ||
-        !pfDecoder_.Match(jsPandaFile_, recordName, methodLiteral->GetMethodId())) {
-        return true;
-    }
-
-    if (!optionSelectMethods_.empty()) {
-        return !FilterOption(optionSelectMethods_, ConvertToStdString(recordName), methodName);
-    } else if (!optionSkipMethods_.empty()) {
-        return FilterOption(optionSkipMethods_, ConvertToStdString(recordName), methodName);
-    }
-
-    return false;
-}
-
 std::vector<std::string> CompilationDriver::SplitString(const std::string &str, const char ch) const
 {
     std::vector<std::string> vec {};
@@ -213,42 +180,6 @@ std::vector<std::string> CompilationDriver::SplitString(const std::string &str, 
         vec.emplace_back(split);
     }
     return vec;
-}
-
-void CompilationDriver::ParseOption(const std::string &option,
-                                    std::map<std::string, std::vector<std::string>> &optionMap) const
-{
-    const char colon = ':';
-    const char comma = ',';
-    std::string str = option;
-    size_t posColon = 0;
-    size_t posComma = 0;
-    do {
-        posColon = str.find_last_of(colon);
-        std::string methodNameList = str.substr(posColon + 1, str.size());
-        std::vector<std::string> methodNameVec = SplitString(methodNameList, comma);
-        str = str.substr(0, posColon);
-        posComma = str.find_last_of(comma);
-        std::string recordName = str.substr(posComma + 1, str.size());
-        str = str.substr(0, posComma);
-        optionMap[recordName] = methodNameVec;
-    } while (posComma != std::string::npos);
-}
-
-bool CompilationDriver::FilterOption(const std::map<std::string, std::vector<std::string>> &optionMap,
-                                     const std::string &recordName, const std::string &methodName) const
-{
-    if (optionMap.empty()) {
-        return false;
-    }
-
-    auto it = optionMap.find(recordName);
-    if (it == optionMap.end()) {
-        return false;
-    }
-
-    std::vector<std::string> vec = it->second;
-    return find(vec.begin(), vec.end(), methodName) != vec.end();
 }
 
 void CompilationDriver::SetCurrentCompilationFile() const

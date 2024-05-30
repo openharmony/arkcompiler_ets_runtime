@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_COMPILATION_DRIVER_H
 #define ECMASCRIPT_COMPILER_COMPILATION_DRIVER_H
 
+#include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/js_function.h"
 
@@ -28,16 +29,13 @@ class CompilationDriver {
 public:
     CompilationDriver(PGOProfilerDecoder &profilerDecoder,
                       BytecodeInfoCollector* collector,
-                      const std::string &compilemMethodsOption,
-                      const std::string &compileSkipMethodsOption,
                       AOTFileGenerator *fileGenerator,
                       const std::string &fileName,
                       const std::string &triple,
                       LOptions *lOptions,
                       CompilerLog *log,
                       bool outputAsm,
-                      size_t maxMethodsInModule,
-                      const std::pair<uint32_t, uint32_t> &compilerMethodsRange);
+                      size_t maxMethodsInModule);
     ~CompilationDriver() = default;
 
     NO_COPY_SEMANTIC(CompilationDriver);
@@ -97,7 +95,7 @@ public:
     }
 
     template <class Callback>
-    void Run(const Callback &cb)
+    void Run(const CallMethodFlagMap &callMethonFlagMap, const Callback &cb)
     {
         UpdatePGO();
         InitializeCompileQueue();
@@ -117,8 +115,8 @@ public:
                 auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
                 auto methodLiteral = jsPandaFile_->FindMethodLiteral(compilingMethod);
                 const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile_, methodLiteral->GetMethodId()));
-                if (FilterMethod(bytecodeInfo_.GetRecordName(index), methodLiteral, methodPcInfo, methodName) ||
-                    OutCompiledMethodsRange()) {
+                if (!callMethonFlagMap.IsAotCompile(
+                    jsPandaFile_->GetNormalizedFileDesc(), methodLiteral->GetMethodId().GetOffset())) {
                     bytecodeInfo_.AddSkippedMethod(compilingMethod);
                 } else {
                     if (!methodInfo.IsCompiled()) {
@@ -341,22 +339,7 @@ protected:
         UpdateResolveDepends(importNames, needUpdateCompile);
     }
 
-    bool OutCompiledMethodsRange()
-    {
-        static uint32_t compiledMethodsCount = 0;
-        ++compiledMethodsCount;
-        return compiledMethodsCount < optionMethodsRange_.first || optionMethodsRange_.second <= compiledMethodsCount;
-    }
-
-    bool FilterMethod(const CString &recordName, const MethodLiteral *methodLiteral,
-                      const MethodPcInfo &methodPCInfo, const std::string &methodName) const;
-
     std::vector<std::string> SplitString(const std::string &str, const char ch) const;
-
-    void ParseOption(const std::string &option, std::map<std::string, std::vector<std::string>> &optionMap) const;
-
-    bool FilterOption(const std::map<std::string, std::vector<std::string>> &optionMap, const std::string &recordName,
-                      const std::string &methodName) const;
 
     void SetCurrentCompilationFile() const;
 
@@ -369,8 +352,6 @@ protected:
     BCInfo &bytecodeInfo_;
     std::deque<uint32_t> compileQueue_ {};
     std::map<CString, uint32_t> sortedRecords_ {};
-    std::map<std::string, std::vector<std::string>> optionSelectMethods_ {};
-    std::map<std::string, std::vector<std::string>> optionSkipMethods_ {};
     uint32_t compiledMethodCnt_ {0};
     AOTFileGenerator *fileGenerator_ {nullptr};
     std::string fileName_ {};
@@ -379,26 +360,21 @@ protected:
     CompilerLog *log_ {nullptr};
     bool outputAsm_ {false};
     size_t maxMethodsInModule_ {0};
-    std::pair<uint32_t, uint32_t> optionMethodsRange_ {0, UINT32_MAX};
 };
 
 class JitCompilationDriver : public CompilationDriver {
 public:
     JitCompilationDriver(PGOProfilerDecoder &profilerDecoder,
                          BytecodeInfoCollector* collector,
-                         const std::string &compilemMethodsOption,
-                         const std::string &compileSkipMethodsOption,
                          AOTFileGenerator *fileGenerator,
                          const std::string &fileName,
                          const std::string &triple,
                          LOptions *lOptions,
                          CompilerLog *log,
                          bool outputAsm,
-                         size_t maxMethodsInModule,
-                         const std::pair<uint32_t, uint32_t> &compilerMethodsRange)
-        : CompilationDriver(profilerDecoder, collector, compilemMethodsOption, compileSkipMethodsOption,
-                            fileGenerator, fileName, triple, lOptions, log, outputAsm, maxMethodsInModule,
-                            compilerMethodsRange) { };
+                         size_t maxMethodsInModule)
+        : CompilationDriver(profilerDecoder, collector, fileGenerator, fileName, triple, lOptions,
+                            log, outputAsm, maxMethodsInModule) { };
     ~JitCompilationDriver() = default;
     bool RunCg();
     Module *GetModule();
