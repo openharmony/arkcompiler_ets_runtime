@@ -31,8 +31,8 @@ public:
         OP_GOTO,
         OP_SPLIT_FIRST,
         OP_SPLIT_NEXT,
-        OP_MATCH_AHEAD,
         OP_NEGATIVE_MATCH_AHEAD,
+        OP_MATCH_AHEAD,
         OP_MATCH,
         OP_LOOP,
         OP_LOOP_GREEDY,
@@ -54,6 +54,7 @@ public:
         OP_BACKWARD_BACKREFERENCE,
         OP_CHAR32,
         OP_RANGE32,
+        OP_SPARSE,
         OP_INVALID,
     };
 
@@ -62,6 +63,7 @@ public:
     static constexpr size_t OP_SIZE_THREE = 3;
     static constexpr size_t OP_SIZE_FOUR = 4;
     static constexpr size_t OP_SIZE_FIVE = 5;
+    static constexpr size_t OP_SIZE_SIX = 6;
     static constexpr size_t OP_SIZE_EIGHT = 8;
     static constexpr size_t OP_SIZE_NINE = 9;
     static constexpr size_t OP_SIZE_THIRTEEN = 13;
@@ -138,6 +140,7 @@ class SplitNextOpCode : public RegExpOpCode {
 public:
     SplitNextOpCode() : RegExpOpCode(OP_SPLIT_NEXT, RegExpOpCode::OP_SIZE_FIVE) {}
     uint32_t InsertOpCode(DynChunk *buf, uint32_t offset, uint32_t para) const;
+    uint32_t EmitOpCode(DynChunk *buf, uint32_t para) const;
     ~SplitNextOpCode() override = default;
     NO_COPY_SEMANTIC(SplitNextOpCode);
     NO_MOVE_SEMANTIC(SplitNextOpCode);
@@ -148,6 +151,7 @@ class SplitFirstOpCode : public RegExpOpCode {
 public:
     SplitFirstOpCode() : RegExpOpCode(OP_SPLIT_FIRST, RegExpOpCode::OP_SIZE_FIVE) {}
     uint32_t InsertOpCode(DynChunk *buf, uint32_t offset, uint32_t para) const;
+    uint32_t EmitOpCode(DynChunk *buf, uint32_t para) const;
     ~SplitFirstOpCode() override = default;
     NO_COPY_SEMANTIC(SplitFirstOpCode);
     NO_MOVE_SEMANTIC(SplitFirstOpCode);
@@ -446,6 +450,15 @@ public:
     NO_MOVE_SEMANTIC(Range32OpCode);
     uint32_t DumpOpCode(std::ostream &out, const DynChunk &buf, uint32_t offset) const override;
     uint32_t InsertOpCode(DynChunk *buf, const RangeSet &rangeSet) const;
+};
+
+class SparseOpCode : public RegExpOpCode {
+public:
+    SparseOpCode() : RegExpOpCode(OP_RANGE32, RegExpOpCode::OP_SIZE_ONE) {}
+    ~SparseOpCode() override = default;
+    NO_COPY_SEMANTIC(SparseOpCode);
+    NO_MOVE_SEMANTIC(SparseOpCode);
+    uint32_t DumpOpCode(std::ostream &out, const DynChunk &buf, uint32_t offset) const override;
 };
 }  // namespace ecmascript
 }  // namespace panda
