@@ -5411,7 +5411,7 @@ void SendableEnv::DumpForSnapshot(std::vector<Reference> &vec) const
 void GlobalEnv::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     auto globalConst = GetJSThread()->GlobalConstants();
-#define DUMP_ENV_FIELD(type, name, _) vec.emplace_back(#name, Get##name().GetTaggedValue());
+#define DUMP_ENV_FIELD(type, name, _) vec.emplace_back(#name, GetRaw##name().GetTaggedValue());
 #define DUMP_CONST_FIELD(type, name, ...) vec.emplace_back(#name, globalConst->Get##name());
 #define DUMP_CONST_STRING(name, ...) vec.emplace_back(#name, globalConst->Get##name());
 

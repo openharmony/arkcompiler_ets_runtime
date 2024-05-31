@@ -165,6 +165,13 @@ public:
         }                                                                                               \
         return result;                                                                                  \
     }                                                                                                   \
+    inline JSHandle<type> GetRaw##name() const                                                          \
+    {                                                                                                   \
+        const uintptr_t address =                                                                       \
+            reinterpret_cast<uintptr_t>(this) + HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();  \
+        JSHandle<type> result(address);                                                                 \
+        return result;                                                                                  \
+    }                                                                                                   \
     template<typename T>                                                                                \
     inline void Set##name(const JSThread *thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)  \
     {                                                                                                   \
