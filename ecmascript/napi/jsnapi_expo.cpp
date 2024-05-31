@@ -2997,8 +2997,7 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
             }
         }
         if (LIKELY(thread->IsAsmInterpreter())) {
-            STACK_LIMIT_CHECK(thread, reinterpret_cast<JSValueRef *>(
-                *JSValueRef::Hole(vm)));
+            STACK_LIMIT_CHECK(thread, reinterpret_cast<JSValueRef *>(*JSValueRef::Hole(vm)));
             auto *hclass = func.GetTaggedObject()->GetClass();
             if (hclass->IsClassConstructor()) {
                 RETURN_STACK_BEFORE_THROW_IF_ASM(thread);

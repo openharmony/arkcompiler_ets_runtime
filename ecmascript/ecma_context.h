@@ -584,7 +584,7 @@ public:
     void RemoveSustainingJSHandle(SustainingJSHandle*);
     void ClearKeptObjects();
     void AddToKeptObjects(JSHandle<JSTaggedValue> value);
-    inline bool HasKeptObjects()
+    inline bool HasKeptObjects() const
     {
         return hasKeptObjects_;
     }
@@ -723,7 +723,7 @@ private:
     static constexpr uint32_t JIT_MACHINE_CODE_CACHE_SIZE = 263;
     std::array<std::pair<JSTaggedType, JSTaggedType>, JIT_MACHINE_CODE_CACHE_SIZE> jitMachineCodeCache_ {};
 
-    bool hasKeptObjects_ = false;
+    bool hasKeptObjects_ {false};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

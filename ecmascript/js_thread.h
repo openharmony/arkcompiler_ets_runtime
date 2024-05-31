@@ -853,7 +853,8 @@ public:
             newValue = oldValue;
             T::Set(value, &newValue);
         } while (!std::atomic_compare_exchange_strong_explicit(interruptValue, &oldValue, newValue,
-            std::memory_order_release, std::memory_order_relaxed));
+                                                               std::memory_order_release,
+                                                               std::memory_order_relaxed));
     }
 
     void InvokeWeakNodeFreeGlobalCallBack();
