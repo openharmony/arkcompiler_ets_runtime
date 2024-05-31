@@ -427,7 +427,7 @@ LLVMAssembler::~LLVMAssembler()
     error_ = nullptr;
 }
 
-void LLVMAssembler::Run(const CompilerLog &log, bool fastCompileMode)
+void LLVMAssembler::Run(const CompilerLog &log, bool fastCompileMode, [[maybe_unused]] bool isJit)
 {
     char *error = nullptr;
     std::string originName = llvm::unwrap(module_)->getModuleIdentifier() + ".ll";

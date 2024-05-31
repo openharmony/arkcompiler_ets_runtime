@@ -93,7 +93,7 @@ public:
             return;
         }
         IncCompiledMethod();
-        CompileModuleThenDestroyIfNeeded();
+        CompileModuleThenDestroyIfNeeded(false);
     }
 
     template <class Callback>
@@ -170,7 +170,7 @@ protected:
 
     bool IsCurModuleFull() const;
 
-    void CompileModuleThenDestroyIfNeeded();
+    void CompileModuleThenDestroyIfNeeded(bool isJit = false);
 
     void CompileLastModuleThenDestroyIfNeeded();
 

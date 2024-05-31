@@ -25,6 +25,9 @@
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/platform/file.h"
+#ifdef CODE_SIGN_ENABLE
+#include "jit_buffer_integrity.h"
+#endif
 
 namespace panda::ecmascript::kungfu {
 JitCompiler *JitCompiler::GetInstance(JSRuntimeOptions *options)
@@ -213,4 +216,29 @@ void DeleteJitCompile(void *handle)
     }
     delete reinterpret_cast<JitCompilerTask*>(handle);
 }
+
+int JitVerifyAndCopy(void *codeSigner, void *jitMemory, void *tmpBuffer, int size)
+{
+#ifdef CODE_SIGN_ENABLE
+    LOG_JIT(DEBUG) << "In JitCompiler::JitVerifyAndCopy";
+    OHOS::Security::CodeSign::JitCodeSignerBase *signer =
+        reinterpret_cast<OHOS::Security::CodeSign::JitCodeSignerBase*>(codeSigner);
+    LOG_JIT(DEBUG) << "  In JitCompiler: codeSigner = " << signer;
+    LOG_JIT(DEBUG) << "       : jitMemory = " << std::hex << (uintptr_t)jitMemory;
+    LOG_JIT(DEBUG) << "       : tmpBuffer = " << std::hex << (uintptr_t)tmpBuffer;
+    LOG_JIT(DEBUG) << "       : size to copy = " << size;
+    int err = OHOS::Security::CodeSign::CopyToJitCode(signer, jitMemory, tmpBuffer, size);
+    if (err != EOK) {
+        LOG_JIT(ERROR) << "  In JitCompiler: CopyToJitCode failed, err = " << err;
+    }
+    return err;
+#else
+    (void)codeSigner;
+    (void)jitMemory;
+    (void)tmpBuffer;
+    (void)size;
+    return EOK;
+#endif
+}
+
 }  // namespace panda::ecmascript::kungfu

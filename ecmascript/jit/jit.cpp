@@ -27,6 +27,7 @@ bool(*Jit::jitCompile_)(void*, JitTask*) = nullptr;
 bool(*Jit::jitFinalize_)(void*, JitTask*) = nullptr;
 void*(*Jit::createJitCompilerTask_)(JitTask*) = nullptr;
 void(*Jit::deleteJitCompile_)(void*) = nullptr;
+int (*Jit::jitVerifyAndCopy_)(void*, void*, void*, int) = nullptr;
 void *Jit::libHandle_ = nullptr;
 
 Jit *Jit::GetInstance()
@@ -116,6 +117,7 @@ void Jit::Initialize()
     static const std::string JITCOMPILE = "JitCompile";
     static const std::string JITFINALIZE = "JitFinalize";
     static const std::string DELETEJITCOMPILE = "DeleteJitCompile";
+    static const std::string JITVERIFYANDCOPY = "JitVerifyAndCopy";
     static const std::string LIBARK_JSOPTIMIZER = "libark_jsoptimizer.so";
 
     libHandle_ = LoadLib(LIBARK_JSOPTIMIZER);
@@ -145,6 +147,13 @@ void Jit::Initialize()
         CREATEJITCOMPILETASK.c_str()));
     if (createJitCompilerTask_ == nullptr) {
         LOG_JIT(ERROR) << "jit can't find symbol createJitCompilertask";
+        return;
+    }
+
+    jitVerifyAndCopy_ = reinterpret_cast<int(*)(void*, void*, void*, int)>(
+        FindSymbol(libHandle_, JITVERIFYANDCOPY.c_str()));
+    if (jitVerifyAndCopy_ == nullptr) {
+        LOG_JIT(ERROR) << "jit can't find symbol jitVerifyAndCopy";
         return;
     }
 
@@ -406,6 +415,16 @@ void *Jit::CreateJitCompilerTask(JitTask *jitTask)
 {
     ASSERT(createJitCompilerTask_ != nullptr);
     return createJitCompilerTask_(jitTask);
+}
+
+int Jit::JitVerifyAndCopy(void *codeSigner, void *jit_memory, void *tmpBuffer, int size)
+{
+    ASSERT(jitVerifyAndCopy_ != nullptr);
+    LOG_JIT(DEBUG) << "In Jit::JitVerifyAndCopy "
+        << std::hex << (uintptr_t)codeSigner << " "
+        << std::hex << (uintptr_t)jit_memory << " "
+        << std::hex << (uintptr_t)tmpBuffer << " " << std::dec << size;
+    return jitVerifyAndCopy_(codeSigner, jit_memory, tmpBuffer, size);
 }
 
 void Jit::ClearTask(const std::function<bool(Task *task)> &checkClear)

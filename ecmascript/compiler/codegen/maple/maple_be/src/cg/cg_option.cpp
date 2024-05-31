@@ -125,6 +125,7 @@ bool CGOptions::cgBigEndian = false;
 bool CGOptions::arm64ilp32 = false;
 bool CGOptions::noCommon = false;
 bool CGOptions::doCgirVerify = false;
+bool CGOptions::useJitCodeSign = false;
 
 CGOptions &CGOptions::GetInstance()
 {

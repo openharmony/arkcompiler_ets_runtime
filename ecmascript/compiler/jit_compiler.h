@@ -30,6 +30,7 @@ PUBLIC_API void *CreateJitCompilerTask(JitTask *jitTask);
 PUBLIC_API bool JitCompile(void *compiler, JitTask *jitTask);
 PUBLIC_API bool JitFinalize(void *compiler, JitTask *jitTask);
 PUBLIC_API void DeleteJitCompile(void *handle);
+PUBLIC_API int JitVerifyAndCopy(void *codeSigner, void *jit_memory, void *tmpBuffer, int size);
 };
 
 struct JitCompilationOptions {

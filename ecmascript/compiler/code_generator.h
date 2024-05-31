@@ -114,7 +114,7 @@ class Assembler {
 public:
     explicit Assembler() = default;
     virtual ~Assembler() = default;
-    virtual void Run(const CompilerLog &log, bool fastCompileMode) = 0;
+    virtual void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) = 0;
 
     uintptr_t GetSectionAddr(ElfSecName sec) const
     {

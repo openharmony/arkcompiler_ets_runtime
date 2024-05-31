@@ -53,6 +53,16 @@ namespace panda::ecmascript {
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(thread, size));                       \
     }
 
+#ifdef ENABLE_JITFORT
+#define CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR_FORT(object, size, space, desc, message)                   \
+    if (UNLIKELY((object) == nullptr)) {                                                                    \
+        EcmaVM *vm = GetEcmaVM();                                                                           \
+        size_t oomOvershootSize = vm->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();            \
+        (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
+        SetMachineCodeOutOfMemoryError(GetJSThread(), size, message);                                       \
+        (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size, desc));                         \
+    }
+#else
 #define CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, space, message)                              \
     if (UNLIKELY((object) == nullptr)) {                                                                    \
         EcmaVM *vm = GetEcmaVM();                                                                           \
@@ -61,6 +71,8 @@ namespace panda::ecmascript {
         SetMachineCodeOutOfMemoryError(GetJSThread(), size, message);                                       \
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                               \
     }
+
+#endif
 
 template<class Callback>
 void SharedHeap::EnumerateOldSpaceRegions(const Callback &cb) const
@@ -422,19 +434,56 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
     return object;
 }
 
+#ifdef ENABLE_JITFORT
+TaggedObject *Heap::AllocateHugeMachineCodeObject(size_t size, MachineCodeDesc &desc)
+{
+    auto *object = reinterpret_cast<TaggedObject *>(hugeMachineCodeSpace_->Allocate(
+        size, thread_, desc.instructionsSize, desc.instructionsAddr));
+    return object;
+}
+#else
 TaggedObject *Heap::AllocateHugeMachineCodeObject(size_t size)
 {
     auto *object = reinterpret_cast<TaggedObject *>(hugeMachineCodeSpace_->Allocate(size, thread_));
     return object;
 }
+#endif
 
+#ifdef ENABLE_JITFORT
+TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, MachineCodeDesc &desc)
+#else
 TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
+#endif
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+#ifdef ENABLE_JITFORT
+    desc.instructionsAddr = 0;
+    if (size <= MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        // for non huge code cache obj, allocate fort space before allocating the code object
+        if (machineCodeSpace_->sweepState_ == SweepState::SWEEPING) {
+            GetSweeper()->EnsureTaskFinished(MACHINE_CODE_SPACE);
+            LOG_JIT(DEBUG) << "Heap::AllocateMachineCode: MachineCode space sweep state = "
+                << machineCodeSpace_->GetSweepState();
+            JitFort::GetInstance()->UpdateFreeSpace();
+        }
+        uintptr_t mem = machineCodeSpace_->JitFortAllocate(desc.instructionsSize);
+        if (mem == ToUintPtr(nullptr)) {
+            SetMachineCodeOutOfMemoryError(GetJSThread(), size, "Heap::JitFortAllocate");
+            return nullptr;
+        }
+        desc.instructionsAddr = mem;
+    }
+    auto object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
+        reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
+        reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size, desc));
+    CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR_FORT(object, size, machineCodeSpace_,
+        desc, "Heap::AllocateMachineCodeObject");
+#else
     auto object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
         reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
         reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
     CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
+#endif
     object->SetClass(thread_, hclass);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
@@ -561,8 +610,13 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
     }
 
     inactiveSemiSpace_->ReclaimRegions(cachedSize);
-
     sweeper_->WaitAllTaskFinished();
+#ifdef ENABLE_JITFORT
+    // machinecode space is not sweeped in young GC
+    if (machineCodeSpace_->sweepState_ != SweepState::NO_SWEEP) {
+        JitFort::GetInstance()->UpdateFreeSpace();
+    }
+#endif
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
         region->ClearCrossRegionRSet();

@@ -76,10 +76,10 @@ bool CompilationDriver::IsCurModuleFull() const
     return (compiledMethodCnt_ % maxMethodsInModule_ == 0);
 }
 
-void CompilationDriver::CompileModuleThenDestroyIfNeeded()
+void CompilationDriver::CompileModuleThenDestroyIfNeeded(bool isJit)
 {
     if (IsCurModuleFull()) {
-        fileGenerator_->CompileLatestModuleThenDestroy();
+        fileGenerator_->CompileLatestModuleThenDestroy(isJit);
     }
 }
 
@@ -272,7 +272,7 @@ void CompilationDriver::StoreConstantPoolInfo() const
 bool JitCompilationDriver::RunCg()
 {
     IncCompiledMethod();
-    CompileModuleThenDestroyIfNeeded();
+    CompileModuleThenDestroyIfNeeded(true);
     return true;
 }
 

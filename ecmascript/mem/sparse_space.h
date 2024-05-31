@@ -18,6 +18,9 @@
 
 #include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/mem_common.h"
+#ifdef ENABLE_JITFORT
+#include "ecmascript/mem/jit_fort.h"
+#endif
 
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                             \
@@ -67,9 +70,14 @@ public:
     bool Expand();
 
     // For sweeping
+#ifdef ENABLE_JITFORT
+    virtual void PrepareSweeping();
+    virtual void Sweep();
+#else
     void PrepareSweeping();
-    void AsyncSweep(bool isMain);
     void Sweep();
+#endif
+    void AsyncSweep(bool isMain);
 
     bool TryFillSweptRegion();
     // Ensure All region finished sweeping
@@ -83,7 +91,11 @@ public:
     void FreeRegionFromSpace(Region *region);
     Region *TryToGetSuitableSweptRegion(size_t size);
 
+#ifdef ENABLE_JITFORT
+    virtual void FreeRegion(Region *current, bool isMain = true);
+#else
     void FreeRegion(Region *current, bool isMain = true);
+#endif
     void FreeLiveRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd, bool isMain);
 
     void DetachFreeObjectSet(Region *region);
@@ -133,19 +145,45 @@ public:
 
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
+#ifdef ENABLE_JITFORT
+    std::string GetSweepState()
+    {
+        switch (sweepState_) {
+            case SweepState::NO_SWEEP:
+                return "NO SWEEP";
+            case SweepState::SWEEPING:
+                return "SWEEPING";
+            case SweepState::SWEPT:
+                return "SWEPT";
+        }
+        return "Unknown";
+    }
+#endif
+
 protected:
+#ifdef ENABLE_JITFORT
+    FreeListAllocator<FreeObject> *allocator_;
+#else
     FreeListAllocator *allocator_;
+#endif
     SweepState sweepState_ = SweepState::NO_SWEEP;
     Heap *localHeap_ {nullptr};
+#ifdef ENABLE_JITFORT
+    size_t liveObjectSize_ {0};
+    uintptr_t AllocateAfterSweepingCompleted(size_t size);
+#endif
 
 private:
+#ifndef ENABLE_JITFORT
     // For sweeping
     uintptr_t AllocateAfterSweepingCompleted(size_t size);
-
+#endif
     Mutex lock_;
     std::vector<Region *> sweepingList_;
     std::vector<Region *> sweptList_;
+#ifndef ENABLE_JITFORT
     size_t liveObjectSize_ {0};
+#endif
     size_t overshootSize_ {0};
 };
 
@@ -242,12 +280,37 @@ public:
     void Stop();
 };
 
+#ifdef ENABLE_JITFORT
+class MachineCode;
+struct MachineCodeDesc;
+#endif
 class MachineCodeSpace : public SparseSpace {
 public:
     MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~MachineCodeSpace() override = default;
     NO_COPY_SEMANTIC(MachineCodeSpace);
     NO_MOVE_SEMANTIC(MachineCodeSpace);  // Note: Expand() left for define
+#ifdef ENABLE_JITFORT
+    void Sweep() override;
+    void PrepareSweeping() override;
+    void FreeRegion(Region *current, bool isMain = true) override;
+    uintptr_t Allocate(size_t size, MachineCodeDesc &desc, bool allowGC = true);
+    inline void RecordLiveJitCode(MachineCode *obj);
+
+    uintptr_t JitFortAllocate(size_t size)
+    {
+        return jitFort_->Allocate(size);
+    }
+
+    inline bool IsSweeping()
+    {
+        return sweepState_ == SweepState::SWEEPING ;
+    }
+private:
+    JitFort *jitFort_;
+    friend class Heap;
+    friend class ConcurrentSweeper;
+#endif
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SPARSE_SPACE_H

@@ -268,6 +268,9 @@ config("ark_jsruntime_common_config") {
   configs = [ ":hiviewdfx_config" ]
 
   defines = [ "PANDA_ENABLE_LTO" ]
+  if (enable_jit_fort) {
+    defines += [ "ENABLE_JITFORT" ]
+  }
 
   if (ark_standalone_build) {
     defines += [ "STANDALONE_MODE" ]
@@ -892,6 +895,10 @@ ecma_source = [
   "ecmascript/require/js_cjs_module.cpp",
   "ecmascript/require/js_require_manager.cpp",
 ]
+
+if (enable_jit_fort) {
+  ecma_source += [ "ecmascript/mem/jit_fort.cpp" ]
+}
 
 hitrace_scope_source = []
 if (is_ohos && is_standard_system && enable_hitrace) {

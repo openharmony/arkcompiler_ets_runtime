@@ -65,7 +65,7 @@ class LLVMAssembler : public Assembler {
 public:
     explicit LLVMAssembler(LLVMModule *lm, LOptions option = LOptions());
     virtual ~LLVMAssembler();
-    void Run(const CompilerLog &log, bool fastCompileMode) override;
+    void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) override;
     const LLVMExecutionEngineRef &GetEngine()
     {
         return engine_;

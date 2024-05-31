@@ -136,23 +136,67 @@ void JitTask::InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &co
     return;
 }
 
+#ifdef ENABLE_JITFORT
+static size_t ComputePayLoadSize(MachineCodeDesc &codeDesc)
+#else
 static size_t ComputePayLoadSize(const MachineCodeDesc &codeDesc)
+#endif
 {
     if (codeDesc.codeType == MachineCodeType::BASELINE_CODE) {
         // only code section in BaselineCode
+#ifdef ENABLE_JITFORT
+        return AlignUp(codeDesc.codeSize, MachineCode::TEXT_ALIGN);
+#else
         return AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
+#endif
     }
 
     ASSERT(codeDesc.codeType == MachineCodeType::FAST_JIT_CODE);
     size_t funcEntryDesSizeAlign = AlignUp(codeDesc.funcEntryDesSize, MachineCode::TEXT_ALIGN);
     size_t rodataSizeBeforeTextAlign = AlignUp(codeDesc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
     size_t codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
+#ifdef ENABLE_JITFORT
+    size_t rodataSizeAfterTextAlign = AlignUp(codeDesc.rodataSizeAfterText, MachineCode::TEXT_ALIGN);
+#else
     size_t rodataSizeAfterTextAlign = AlignUp(codeDesc.rodataSizeAfterText, MachineCode::DATA_ALIGN);
+#endif
 
     size_t stackMapSizeAlign = AlignUp(codeDesc.stackMapSize, MachineCode::DATA_ALIGN);
+#ifdef ENABLE_JITFORT
+    if (!codeDesc.rodataSizeAfterText) {
+        // ensure proper align because multiple instruction blocks can be installed in JitFort
+        codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::TEXT_ALIGN);
+    }
+    // instructionsSize: size of JIT generated native instructions
+    // payLoadSize: size of JIT generated output including native code
+    size_t instructionsSize = rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign;
+    size_t payLoadSize = funcEntryDesSizeAlign + instructionsSize + stackMapSizeAlign;
+    size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,  static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    LOG_JIT(INFO) << "InstallCode:: MachineCode Object size to allocate: "
+        << allocSize << " (instruction size): " << instructionsSize;
 
+    codeDesc.instructionsSize = instructionsSize;
+    if (allocSize > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        //
+        // A Huge machine code object is consisted of contiguous 256Kb aligned blocks.
+        // With JitFort, a huge machine code object starts with a page aligned mutable area
+        // (that holds Region and MachineCode object header, FuncEntryDesc and StackMap), followed
+        // by a page aligned nonmutable (JitFort space) area of JIT generated native instructions.
+        // i.e.
+        // mutableSize = align up to PageSize
+        //     (sizeof(Region) + HUGE_OBJECT_BITSET_SIZE +MachineCode::SIZE + payLoadSize - instructionsSize)
+        // immutableSize = instructionsSize (native page boundary aligned)
+        // See comments at HugeMachineCodeSpace::Allocate()
+        //
+        return payLoadSize;
+    } else {
+        // regular sized machine code object instructions are installed in separate jit fort space
+        return payLoadSize - instructionsSize;
+    }
+#else
     return funcEntryDesSizeAlign + rodataSizeBeforeTextAlign + codeSizeAlign +
            rodataSizeAfterTextAlign + stackMapSizeAlign;
+#endif
 }
 
 void JitTask::SetHClassInfoForPGO(JSHandle<Method> &methodHandle)
@@ -208,8 +252,23 @@ void JitTask::InstallCode()
 
     JSHandle<Method> newMethodHandle = hostThread_->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
     jsFunction_->SetMethod(hostThread_, newMethodHandle);
+#ifdef ENABLE_JITFORT
+    // skip install if JitFort out of memory
+    TaggedObject *machineCode = hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_);
+    if (machineCode == nullptr) {
+        LOG_JIT(INFO) << "InstallCode skipped. NewMachineCode NULL for size " << size;
+        if (hostThread_->HasPendingException()) {
+            hostThread_->SetMachineCodeLowMemory(true);
+            hostThread_->ClearException();
+        }
+        return;
+    }
+    JSHandle<MachineCode> machineCodeObj =
+        hostThread_->GetEcmaVM()->GetFactory()->SetMachineCodeObjectData(machineCode, size, codeDesc_, newMethodHandle);
+#else
     JSHandle<MachineCode> machineCodeObj =
         hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_, newMethodHandle);
+#endif
     machineCodeObj->SetOSROffset(offset_);
 
     if (hostThread_->HasPendingException()) {
@@ -223,6 +282,12 @@ void JitTask::InstallCode()
         return;
     }
 
+    InstallCodeByCompilerTier(machineCodeObj, methodHandle, newMethodHandle);
+}
+
+void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
+    JSHandle<Method> &methodHandle, JSHandle<Method> &newMethodHandle)
+{
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
     DumpJitCode(machineCodeObj, methodHandle);
     if (compilerTier_ == CompilerTier::FAST) {
