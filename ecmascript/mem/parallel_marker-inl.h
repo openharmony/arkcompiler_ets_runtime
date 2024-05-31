@@ -77,7 +77,7 @@ inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object
     }
 
     if (objectRegion->AtomicMark(object)) {
-        workManager_->Push(threadId, object, objectRegion);
+        workManager_->Push(threadId, object);
     }
 }
 
