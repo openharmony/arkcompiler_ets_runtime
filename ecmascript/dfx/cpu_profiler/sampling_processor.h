@@ -29,7 +29,7 @@ class EcmaVM;
 class SamplingProcessor {
 public:
     static uint64_t GetMicrosecondsTimeStamp();
-
+    static void *PostSemAndLogEnd(SamplesRecord *generator, pthread_t tid);
     virtual ~SamplingProcessor();
 
     static void *Run(void *arg);
