@@ -359,11 +359,14 @@ void EcmaVM::EnableJit()
 
     GetJSThread()->SwitchJitProfileStubs();
     bool jitEnableLitecg = ohos::JitTools::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
-    LOG_JIT(INFO) << "jit enable litecg: " << jitEnableLitecg;
     options_.SetCompilerEnableLiteCG(jitEnableLitecg);
     uint8_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options_.GetJitCallThreshold());
-    LOG_JIT(INFO) << "jit call threshold: " << std::to_string(jitCallThreshold);
     options_.SetJitCallThreshold(jitCallThreshold);
+
+    uint32_t jitHotnessThreshold = ohos::JitTools::GetJitHotnessThreshold(options_.GetJitHotnessThreshold());
+    options_.SetJitHotnessThreshold(jitHotnessThreshold);
+    LOG_JIT(INFO) << "jit enable litecg:" << jitEnableLitecg << ", call threshold:" <<
+        static_cast<int>(jitCallThreshold) << ", hotness threshold:" << jitHotnessThreshold;
 }
 
 Jit *EcmaVM::GetJit() const

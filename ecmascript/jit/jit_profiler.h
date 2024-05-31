@@ -46,8 +46,9 @@ public:
     JITProfiler(EcmaVM *vm);
 
     virtual ~JITProfiler();
-    void PUBLIC_API ProfileBytecode(JSHandle<ProfileTypeInfo> &profileTypeInfo, EntityId methodId, ApEntityId abcId,
-                                    const uint8_t *pcStart, uint32_t codeSize, const panda_file::File::Header *header);
+    void PUBLIC_API ProfileBytecode(JSThread *thread, JSHandle<ProfileTypeInfo> &profileTypeInfo,
+                                    EntityId methodId, ApEntityId abcId, const uint8_t *pcStart,
+                                    uint32_t codeSize, const panda_file::File::Header *header);
 
     std::unordered_map<int32_t, const PGOSampleType *> GetOpTypeMap()
     {

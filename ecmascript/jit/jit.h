@@ -112,11 +112,9 @@ public:
 
     class JitLockHolder {
     public:
-        explicit JitLockHolder(const CompilationEnv *env) : thread_(nullptr), scope_()
+        explicit JitLockHolder(JSThread *thread) : thread_(nullptr), scope_()
         {
-            if (env->IsJitCompiler()) {
-                JSThread *thread = env->GetJSThread();
-                ASSERT(thread->IsJitThread());
+            if (thread->IsJitThread()) {
                 thread_ = static_cast<JitThread*>(thread);
                 if (thread_->GetState() != ThreadState::RUNNING) {
                     thread_->ManagedCodeBegin();

@@ -39,6 +39,15 @@ public:
         return value;
     }
 
+    static uint32_t GetJitHotnessThreshold([[maybe_unused]] uint32_t threshold)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        uint32_t defaultSize = 150;
+        return OHOS::system::GetUintParameter("ark.jit.hotness.threshold", defaultSize);
+    #endif
+        return threshold;
+    }
+
     static uint8_t GetJitCallThreshold(uint8_t threshold)
     {
     #ifdef GET_PARAMETER_FOR_JIT
