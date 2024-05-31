@@ -291,7 +291,7 @@ void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
         ctorMethodId = slotValue.GetInt();
     } else if (slotValue.IsMethod()) {
         Method *calleeMethod = Method::Cast(slotValue);
-        ctorMethodId = calleeMethod->GetMethodId().GetOffset();
+        ctorMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
     } else {
         return;
     }

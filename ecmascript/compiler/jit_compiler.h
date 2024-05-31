@@ -44,7 +44,6 @@ struct JitCompilationOptions {
     std::string logMethodsList_;
     bool compilerLogTime_;
     bool deviceIsScreenOff_;
-    size_t maxAotMethodSize_;
     uint32_t hotnessThreshold_;
     std::string profilerIn_;
     bool isEnableArrayBoundsCheckElimination_;

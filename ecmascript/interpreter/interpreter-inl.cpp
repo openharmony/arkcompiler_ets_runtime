@@ -2051,7 +2051,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             int32_t opNumber1 = right.GetInt();
             uint32_t shift =
                 static_cast<uint32_t>(opNumber1) & 0x1f; // NOLINT(hicpp-signed-bitwise, readability-magic-numbers)
-            auto ret = static_cast<int32_t>(static_cast<uint32_t>(opNumber0) >> shift); // NOLINT(hicpp-signed-bitwise)
+            auto ret = static_cast<int32_t>(opNumber0 >> shift); // NOLINT(hicpp-signed-bitwise)
             SET_ACC(JSTaggedValue(ret));
         } else if (left.IsNumber() && right.IsNumber()) {
             int32_t opNumber0 =
@@ -2060,7 +2060,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 right.IsInt() ? right.GetInt() : base::NumberHelper::DoubleToInt(right.GetDouble(), base::INT32_BITS);
             uint32_t shift =
                 static_cast<uint32_t>(opNumber1) & 0x1f; // NOLINT(hicpp-signed-bitwise, readability-magic-numbers)
-            auto ret = static_cast<int32_t>(static_cast<uint32_t>(opNumber0) >> shift); // NOLINT(hicpp-signed-bitwise)
+            auto ret = static_cast<int32_t>(opNumber0 >> shift); // NOLINT(hicpp-signed-bitwise)
             SET_ACC(JSTaggedValue(ret));
         } else {
             // slow path
