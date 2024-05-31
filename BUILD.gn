@@ -1302,7 +1302,11 @@ ohos_shared_library("libark_jsruntime_test") {
 
 ohos_prebuilt_etc("app_aot_enable_list") {
   relative_install_dir = "ark"
-  source = "$js_root/ecmascript/ohos/app_aot_enable_list.conf"
+  if (js_runtime_feature_enable_list) {
+    source = "$js_root/ecmascript/ohos/app_aot_enable_list.conf"
+  } else {
+    source = "$js_root/ecmascript/ohos/app_aot_enable_list_default.conf"
+  }
 
   # Set the subsystem name
   part_name = "ets_runtime"
@@ -1311,7 +1315,11 @@ ohos_prebuilt_etc("app_aot_enable_list") {
 
 ohos_prebuilt_etc("app_aot_disable_list") {
   relative_install_dir = "ark"
-  source = "$js_root/ecmascript/ohos/app_aot_disable_list.conf"
+  if (js_runtime_feature_enable_list) {
+    source = "$js_root/ecmascript/ohos/app_aot_disable_list.conf"
+  } else {
+    source = "$js_root/ecmascript/ohos/app_aot_disable_list_default.conf"
+  }
 
   # Set the subsystem name
   part_name = "ets_runtime"
@@ -1320,7 +1328,11 @@ ohos_prebuilt_etc("app_aot_disable_list") {
 
 ohos_prebuilt_etc("app_jit_enable_list") {
   relative_install_dir = "ark"
-  source = "$js_root/ecmascript/ohos/app_jit_enable_list.conf"
+  if (js_runtime_feature_enable_list) {
+    source = "$js_root/ecmascript/ohos/app_jit_enable_list.conf"
+  } else {
+    source = "$js_root/ecmascript/ohos/app_jit_enable_list_default.conf"
+  }
 
   # Set the subsystem name
   part_name = "ets_runtime"
