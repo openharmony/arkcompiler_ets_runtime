@@ -138,6 +138,9 @@ public:
     static void SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, const JSHandle<JSFunction> &fun,
                                                      JSTaggedValue protoOrHClass);
 
+    static EcmaString* GetFunctionNameString(JSThread *thread, JSHandle<EcmaString> concatString,
+                                             ObjectFactory *factory, JSHandle<JSTaggedValue> target);
+
     inline bool HasInitialClass() const
     {
         JSTaggedValue protoOrHClass = GetProtoOrHClass();

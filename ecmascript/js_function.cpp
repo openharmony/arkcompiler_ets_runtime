@@ -201,6 +201,24 @@ void JSFunction::SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, co
     }
 }
 
+EcmaString* JSFunction::GetFunctionNameString(JSThread *thread, JSHandle<EcmaString> concatString,
+                                              ObjectFactory *factory, JSHandle<JSTaggedValue> target)
+{
+    JSTaggedValue method = JSHandle<JSFunction>::Cast(target)->GetMethod();
+    JSHandle<EcmaString> newString = factory->ConcatFromString(concatString, factory->GetEmptyString());
+    if (!method.IsUndefined()) {
+        Method *targetObj = Method::Cast(method.GetTaggedObject());
+        std::string funcName = targetObj->ParseFunctionName();
+        if (!funcName.empty()) {
+            JSHandle<JSTaggedValue> methodName(thread,
+                                               factory->NewFromStdString(funcName).GetTaggedValue());
+            JSHandle<EcmaString> functionName = JSHandle<EcmaString>::Cast(methodName);
+            newString = factory->ConcatFromString(concatString, functionName);
+        }
+    }
+    return *newString;
+}
+
 JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> &self)
 {
     if (self->IsBoundFunction()) {
@@ -220,8 +238,7 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
 
         EcmaString *newString;
         if (!targetName->IsString()) {
-            JSHandle<EcmaString> emptyString = factory->GetEmptyString();
-            newString = *factory->ConcatFromString(concatString, emptyString);
+            newString = GetFunctionNameString(thread, concatString, factory, target);
         } else {
             JSHandle<EcmaString> functionName = JSHandle<EcmaString>::Cast(targetName);
             newString = *factory->ConcatFromString(concatString, functionName);
@@ -668,6 +685,16 @@ bool JSFunctionBase::SetFunctionName(JSThread *thread, const JSHandle<JSFunction
         newString = *functionName;
     }
     JSHandle<JSTaggedValue> nameHandle(thread, newString);
+    // String.prototype.trimLeft.name shoud be trimStart
+    if (!nameHandle.IsEmpty()
+        && nameHandle.GetTaggedValue() == globalConst->GetHandledTrimLeftString().GetTaggedValue()) {
+        nameHandle = globalConst->GetHandledTrimStartString();
+    }
+    // String.prototype.trimRight.name shoud be trimEnd
+    if (!nameHandle.IsEmpty()
+        && nameHandle.GetTaggedValue() == globalConst->GetHandledTrimRightString().GetTaggedValue()) {
+        nameHandle = globalConst->GetHandledTrimEndString();
+    }
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
     PropertyDescriptor nameDesc(thread, nameHandle, false, false, true);
     JSHandle<JSTaggedValue> funcHandle(func);

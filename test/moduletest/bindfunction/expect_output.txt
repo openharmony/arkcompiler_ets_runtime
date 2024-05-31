@@ -28,3 +28,4 @@ TypeError: Constructor is false
 5
 bound testFunc
 bound testFuncChanged
+true
