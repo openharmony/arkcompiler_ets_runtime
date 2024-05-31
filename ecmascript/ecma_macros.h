@@ -226,6 +226,15 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define RETURN_VALUE_IF_ABRUPT_COMPLETION_WITH_DATA_DELETE(thread, value, flagsStr) \
+    do {                                                                            \
+        if ((thread)->HasPendingException()) {                                      \
+            delete[] flagsStr;                                                      \
+            return (value);                                                         \
+        }                                                                           \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread) \
     do {                                              \
         if ((thread)->HasPendingException()) {        \

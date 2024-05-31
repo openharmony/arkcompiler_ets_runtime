@@ -38,6 +38,7 @@
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "ffrt.h"
+#include "c/executor_task.h"
 #endif
 
 namespace panda::ecmascript {

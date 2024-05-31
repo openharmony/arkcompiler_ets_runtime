@@ -811,6 +811,7 @@ private:
 
     // For Internal Native MethodLiteral.
     void GenerateInternalNativeMethods();
+    void CacheToGlobalConstants(JSTaggedValue value, ConstantIndex constant);
 
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);

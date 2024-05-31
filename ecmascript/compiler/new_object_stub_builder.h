@@ -70,6 +70,7 @@ public:
                        FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind,
                               FunctionKind getKind = FunctionKind::LAST_FUNCTION_KIND);
+    GateRef NewJSBoundFunction(GateRef glue, GateRef target, GateRef boundThis, GateRef args);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);

@@ -246,6 +246,7 @@ bool PGOProfilerDecoder::InitMergeData()
     if (!header_) {
         // For merge scene, we only care about the ap capability which is in the version field.
         PGOProfilerHeader::Build(&header_, sizeof(PGOProfilerHeader));
+        ASSERT(header_ != nullptr);
         memset_s(header_, sizeof(PGOProfilerHeader), 0, sizeof(PGOProfilerHeader));
     }
     if (!abcFilePool_) {

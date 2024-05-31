@@ -51,6 +51,10 @@ int32_t AotCompilerInterfaceStub::CommandAOTCompiler(MessageParcel &data,
 {
     std::unordered_map<std::string, std::string> argsMap;
     int32_t argsMapSize = data.ReadInt32();
+    if (argsMapSize > mapMaxSize) {
+        HiLog::Error(LABEL, "The map size exceeds ths security limit!");
+        return ERR_INVALID_DATA;
+    }
     for (int32_t i = 0; i < argsMapSize; ++i) {
         std::string key = Str16ToStr8(data.ReadString16());
         std::string value = Str16ToStr8(data.ReadString16());

@@ -863,9 +863,7 @@ bool RuntimeStubs::ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
                                       const JSHandle<JSTaggedValue> &chc,
                                       const JSHandle<ClassLiteral> &classLiteral)
 {
-    // In the case of incomplete data collection in PGO, AOT may not create ihc and chc at the same time.
-    // Therefore, there is no need to check for the existence of both at this point.
-    return (!ihc->IsUndefined() || !chc->IsUndefined()) && !classLiteral->GetIsAOTUsed();
+    return !(ihc->IsUndefined() || chc->IsUndefined() || classLiteral->GetIsAOTUsed());
 }
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
@@ -915,7 +913,9 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
 
     if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
         classLiteral->SetIsAOTUsed(true);
-        cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihc, chc);
+        JSHandle<JSHClass> chclass(chc);
+        cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
+                                                  lexenv, ihc, chclass);
     } else {
         cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
     }
