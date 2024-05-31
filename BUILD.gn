@@ -782,6 +782,7 @@ ecma_source = [
   "ecmascript/linked_hash_table.cpp",
   "ecmascript/log.cpp",
   "ecmascript/message_string.cpp",
+  "ecmascript/mem/assert_scope.cpp",
   "ecmascript/mem/barriers.cpp",
   "ecmascript/mem/c_string.cpp",
   "ecmascript/mem/chunk.cpp",

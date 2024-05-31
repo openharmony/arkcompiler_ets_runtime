@@ -298,6 +298,7 @@ void SharedHeap::WaitGCFinished(JSThread *thread)
     ASSERT(thread->GetThreadId() != dThread_->GetThreadId());
     ASSERT(thread->IsInRunningState());
     ThreadSuspensionScope scope(thread);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::WaitGCFinished");
     LockHolder lock(waitGCFinishedMutex_);
     while (!gcFinished_) {
         waitGCFinishedCV_.Wait(&waitGCFinishedMutex_);

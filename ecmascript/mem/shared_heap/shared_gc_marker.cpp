@@ -51,7 +51,9 @@ void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, Shared
     if (localBuffer != nullptr) {
         sWorkManager_->PushLocalBufferToGlobal(localBuffer);
     }
-    ProcessLocalToShareNoMarkStack(threadId, const_cast<Heap*>(localVm->GetHeap()), markType);
+    if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
+        ProcessLocalToShareNoMarkStack(threadId, const_cast<Heap*>(localVm->GetHeap()), markType);
+    }
 }
 
 void SharedGCMarker::MarkSerializeRoots(uint32_t threadId)

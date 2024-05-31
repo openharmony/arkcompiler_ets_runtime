@@ -254,7 +254,7 @@ public:
     void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearSweepingLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     template <typename Visitor>
-    void AtomicIterateAllLocalToShareBits(Visitor visitor);
+    void IterateAllLocalToShareBits(Visitor visitor);
     void DeleteLocalToShareRSet();
     void DeleteSweepingLocalToShareRSet();
     // Cross region remembered set

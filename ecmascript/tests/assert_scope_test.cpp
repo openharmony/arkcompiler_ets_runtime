@@ -51,4 +51,21 @@ HWTEST_F_L0(AssertScopeTest, AssertScopeChecker)
     EXPECT_TRUE(AllowHeapAlloc::IsAllowed());
     EXPECT_TRUE(AllowGarbageCollection::IsAllowed());
 }
+
+HWTEST_F_L0(AssertScopeTest, AssertScopeChecker_LocalToShareWeakRef)
+{
+#ifndef NDEBUG
+    EXPECT_FALSE(AllowLocalToShareWeakRefHandle::IsAllowed());
+    {
+        [[maybe_unused]] AllowLocalToShareWeakRefHandle weakRef;  // set allow local-to-share weak ref
+        EXPECT_TRUE(AllowLocalToShareWeakRefHandle::IsAllowed());
+        {
+            [[maybe_unused]] DisAllowLocalToShareWeakRefHandle noWeakRef;  // set dis-allow local-to-share weak ref
+            EXPECT_FALSE(AllowLocalToShareWeakRefHandle::IsAllowed());
+        }
+        EXPECT_TRUE(AllowLocalToShareWeakRefHandle::IsAllowed());
+    }
+    EXPECT_FALSE(AllowLocalToShareWeakRefHandle::IsAllowed());
+#endif
+}
 }  // namespace panda::test
