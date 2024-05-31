@@ -295,11 +295,11 @@ CUnorderedSet<CString> QuickFixManager::ParseStackInfo(const CString &stackInfo)
 
 void QuickFixManager::SetCurrentBaseFileName(CString fileName)
 {
-    currentBaseFileName = fileName;
+    currentBaseFileName_ = fileName;
 }
 
 CString QuickFixManager::GetCurrentBaseFileName()
 {
-    return currentBaseFileName;
+    return currentBaseFileName_;
 }
 }  // namespace panda::ecmascript
