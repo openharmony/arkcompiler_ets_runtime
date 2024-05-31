@@ -440,6 +440,7 @@ private:
     V(PushSuperCallAndDispatch)                 \
     V(CallGetter)                               \
     V(CallSetter)                               \
+    V(CallContainersArgs2)                      \
     V(CallContainersArgs3)                      \
     V(JSCallWithArgV)                           \
     V(JSFastCallWithArgV)                       \

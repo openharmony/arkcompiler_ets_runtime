@@ -165,6 +165,67 @@ void BuiltinsFunctionStubBuilder::PrototypeBind(GateRef glue, GateRef thisValue,
     }
 }
 
+void BuiltinsFunctionStubBuilder::PrototypeCall(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label funcIsHeapObject(env);
+    Label funcIsCallable(env);
+
+    // 1. If IsCallable(func) is false, throw a TypeError exception.
+    GateRef func = thisValue;
+    BRANCH(TaggedIsHeapObject(func), &funcIsHeapObject, slowPath);
+    Bind(&funcIsHeapObject);
+    BRANCH(IsCallable(func), &funcIsCallable, slowPath);
+    Bind(&funcIsCallable);
+    {
+        Label call0(env);
+        Label moreThan0(env);
+        Label call1(env);
+        Label moreThan1(env);
+        Label call2(env);
+        Label moreThan2(env);
+        Label createTaggedArray(env);
+        GateRef thisArg = GetCallArg0(numArgs);
+        // 2. Let argList be an empty List.
+        // 3. If this method was called with more than one argument then in left to right order,
+        //    starting with the second argument, append each argument as the last element of argList.
+        // 5. Return Call(func, thisArg, argList).
+        BRANCH(Int64LessThanOrEqual(numArgs, Int64(1)), &call0, &moreThan0);  // 1: thisArg
+        Bind(&call0);
+        {
+            res->WriteVariable(JSCallDispatch(glue, func, Int32(0), 0, Circuit::NullGate(),  // 0: call 0
+                JSCallMode::CALL_GETTER, { thisArg }));
+            Jump(exit);
+        }
+        Bind(&moreThan0);
+        BRANCH(Int64Equal(numArgs, Int64(2)), &call1, &moreThan1);  // 2: thisArg + 1 arg
+        Bind(&call1);
+        {
+            res->WriteVariable(JSCallDispatch(glue, func, Int32(1), 0, Circuit::NullGate(),  // 1: call 1
+                JSCallMode::CALL_SETTER, { thisArg, GetCallArg1(numArgs) }));
+            Jump(exit);
+        }
+        Bind(&moreThan1);
+        BRANCH(Int64Equal(numArgs, Int64(3)), &call2, &moreThan2);  // 3: thisArg + 2 args
+        Bind(&call2);
+        {
+            res->WriteVariable(JSCallDispatch(glue, func, Int32(2), 0, Circuit::NullGate(),  // 2: call 2
+                JSCallMode::CALL_THIS_ARG2_WITH_RETURN, { thisArg, GetCallArg1(numArgs), GetCallArg2(numArgs) }));
+            Jump(exit);
+        }
+        Bind(&moreThan2);
+        {
+            // currently argv will not be used in builtins IR except constructor
+            GateRef argsLength = Int32Sub(TruncInt64ToInt32(numArgs), Int32(1));  // 1: thisArg
+            GateRef elementArgv = PtrAdd(GetArgv(), IntPtr(JSTaggedValue::TaggedTypeSize()));
+            res->WriteVariable(JSCallDispatch(glue, func, argsLength, 0, Circuit::NullGate(),
+                JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg }));
+            Jump(exit);
+        }
+    }
+}
+
 // return elements
 GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue, GateRef arrayObj)
 {

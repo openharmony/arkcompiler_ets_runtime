@@ -77,6 +77,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ResumeRspAndRollback)                  \
     V(CallSetter)                            \
     V(CallGetter)                            \
+    V(CallContainersArgs2)                   \
     V(CallContainersArgs3)                   \
     V(CallReturnWithArgv)
 

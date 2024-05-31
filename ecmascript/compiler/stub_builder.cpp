@@ -7594,6 +7594,7 @@ bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
         case JSCallMode::CALL_GENERATOR:
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return false;
@@ -7764,6 +7765,10 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
                 ret = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                                      { nativeCode, glue, numArgs, func, newTarget, data[0], data[1] });
                 break;
+            case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                ret = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                     { nativeCode, glue, numArgs, func, newTarget, data[0], data[1], data[2] });
+                break;
             case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                 ret = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                                      { nativeCode, glue, numArgs, func, newTarget, data[0], data[1], data[2], data[3] });
@@ -7886,6 +7891,9 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
                     case JSCallMode::CALL_SETTER:
                         ret = FastCallOptimized(glue, code, { glue, func, data[0], data[1] });
                         break;
+                    case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                        ret = FastCallOptimized(glue, code, { glue, func, data[0], data[1], data[2] });
+                        break;
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                         ret = FastCallOptimized(glue, code, { glue, func, data[0], data[1], data[2], data[3] });
                         break;
@@ -7961,6 +7969,10 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
                     case JSCallMode::CALL_SETTER:
                         ret = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushArgv),
                             { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1]});
+                        break;
+                    case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                        ret = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushArgv),
+                            { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1], data[2] });
                         break;
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                         ret = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushArgv),
@@ -8050,6 +8062,10 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
                         ret = CallOptimized(glue, code,
                             { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1] });
                         break;
+                    case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                        ret = CallOptimized(glue, code,
+                            { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1], data[2] });
+                        break;
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                         ret = CallOptimized(glue, code,
                             { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1], data[2], data[3] });
@@ -8126,6 +8142,10 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
                     case JSCallMode::CALL_SETTER:
                         ret = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushArgv),
                             { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1]});
+                        break;
+                    case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                        ret = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushArgv),
+                            { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1], data[2] });
                         break;
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                         ret = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushArgv),
@@ -8224,6 +8244,10 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
                     ret = CallNGCRuntime(glue, RTSTUB_ID(CallSetter),
                                          { glue, func, method, callField, data[1], data[0] });
                     break;
+                case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                    ret = CallNGCRuntime(glue, RTSTUB_ID(CallContainersArgs2),
+                                         { glue, func, method, callField, data[1], data[2], data[0] });
+                    break;
                 case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                     ret = CallNGCRuntime(glue, RTSTUB_ID(CallContainersArgs3),
                                          { glue, func, method, callField, data[1], data[2], data[3], data[0] });
@@ -8319,6 +8343,10 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
             case JSCallMode::CALL_SETTER:
                 ret = CallNGCRuntime(glue, RTSTUB_ID(CallSetter),
                                      { glue, func, method, callField, data[1], data[0] });
+                break;
+            case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                ret = CallNGCRuntime(glue, RTSTUB_ID(CallContainersArgs2),
+                                     { glue, func, method, callField, data[1], data[2], data[0] });
                 break;
             case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                 ret = CallNGCRuntime(glue, RTSTUB_ID(CallContainersArgs3),
@@ -8495,6 +8523,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, data[0], data[1] });
                 break;
+            case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                    { nativeCode, glue, numArgs, func, newTarget, data[0], data[1], data[2] });
+                break;
             case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, data[0], data[1], data[2], data[3] });
@@ -8623,6 +8655,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         result = FastCallOptimized(glue, code, { glue, func, data[0], data[1] });
                         Jump(&exit);
                         break;
+                    case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                        result = FastCallOptimized(glue, code, { glue, func, data[0], data[1], data[2] });
+                        Jump(&exit);
+                        break;
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                         result = FastCallOptimized(glue, code, { glue, func, data[0], data[1], data[2], data[3] });
                         Jump(&exit);
@@ -8706,6 +8742,11 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     case JSCallMode::CALL_SETTER:
                         result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushArgv),
                             { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1]});
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushArgv),
+                            { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1], data[2] });
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
@@ -8806,6 +8847,11 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                             { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1] });
                         Jump(&exit);
                         break;
+                    case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                        result = CallOptimized(glue, code,
+                            { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1], data[2] });
+                        Jump(&exit);
+                        break;
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                         result = CallOptimized(glue, code,
                             { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1], data[2], data[3] });
@@ -8890,6 +8936,11 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     case JSCallMode::CALL_SETTER:
                         result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushArgv),
                             { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1]});
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushArgv),
+                            { glue, realNumArgs, IntPtr(0), func, newTarget, data[0], data[1], data[2] });
                         Jump(&exit);
                         break;
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
@@ -8994,6 +9045,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 case JSCallMode::CALL_SETTER:
                     Jump(&methodNotAot);
                     break;
+                case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                    Jump(&methodNotAot);
+                    break;
                 case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                     Jump(&methodNotAot);
                     break;
@@ -9088,6 +9142,11 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             case JSCallMode::CALL_SETTER:
                 result = CallNGCRuntime(glue, RTSTUB_ID(CallSetter),
                     { glue, func, method, callField, data[1], data[0] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallContainersArgs2),
+                    { glue, func, method, callField, data[1], data[2], data[0] });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:

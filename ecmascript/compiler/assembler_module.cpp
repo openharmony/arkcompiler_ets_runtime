@@ -98,6 +98,7 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
         case JSCallMode::CALL_ARG2:
         case JSCallMode::CALL_THIS_ARG2:
         case JSCallMode::DEPRECATED_CALL_ARG2:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
             return 2; // 2: arg2
         case JSCallMode::CALL_ARG3:
         case JSCallMode::CALL_THIS_ARG3:
@@ -149,6 +150,7 @@ bool AssemblerModule::IsCallNew(JSCallMode mode)
         case JSCallMode::CALL_SETTER:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return false;
@@ -192,6 +194,7 @@ bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return true;
@@ -218,6 +221,7 @@ bool AssemblerModule::JSModeHaveNewTargetArg(JSCallMode mode)
         case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG0:
         case JSCallMode::CALL_THIS_ARG1:
@@ -264,6 +268,7 @@ bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
             return true;
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_GENERATOR:

@@ -121,3 +121,14 @@ try {
 } catch (e) {
     print(e);
 }
+
+function prototypeCallTest(...arr) {
+    print(this);
+    print(arr);
+}
+
+prototypeCallTest.call(0);
+prototypeCallTest.call(0, 1);
+prototypeCallTest.call(0, 1, 2);
+prototypeCallTest.call(0, 1, 2, 3);
+prototypeCallTest.call(0, 1, 2, 3, 4);

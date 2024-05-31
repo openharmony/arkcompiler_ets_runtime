@@ -139,7 +139,8 @@ namespace panda::ecmascript::kungfu {
 
 #define BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)      \
     V(PrototypeApply,  Function,  Undefined())      \
-    V(PrototypeBind,   Function,  Undefined())
+    V(PrototypeBind,   Function,  Undefined())      \
+    V(PrototypeCall,   Function,  Undefined())
 
 #define BUILTINS_WITH_NUMBER_STUB_BUILDER(V)        \
     V(ParseFloat,      Number,    Undefined())      \
@@ -295,7 +296,6 @@ namespace panda::ecmascript::kungfu {
     V(ReflectHas)                                   \
     V(ReflectConstruct)                             \
     V(ReflectApply)                                 \
-    V(FunctionPrototypeCall)                        \
     V(FunctionPrototypeHasInstance)                 \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
     V(TYPED_BUILTINS_INLINE_LAST = FunctionPrototypeHasInstance)
