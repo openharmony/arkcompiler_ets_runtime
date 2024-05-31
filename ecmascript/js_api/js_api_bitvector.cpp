@@ -428,8 +428,8 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         bitVector.GetTaggedValue().GetTaggedObject());
     int length = bitVector->GetLength().GetInt();
-    uint32_t elementsLength = ((length - 1) >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
-    uint32_t newElementsLength = ((newSize - 1) >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
+    uint32_t elementsLength = ((length - 1) / BIT_SET_LENGTH) + 1;
+    uint32_t newElementsLength = ((newSize - 1) / BIT_SET_LENGTH) + 1;
 
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
