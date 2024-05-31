@@ -492,6 +492,8 @@ namespace panda::ecmascript {
     V(Global, EncodeURIComponent)             \
     V(Global, Escape)                         \
     V(Global, Unescape)                       \
+    V(Global, GetCurrentModuleName)           \
+    V(Global, GetCurrentBundleName)           \
     V(Intl, GetCanonicalLocales)              \
     V(Iterator, Constructor)                  \
     V(Iterator, Next)                         \

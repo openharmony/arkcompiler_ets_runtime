@@ -189,6 +189,7 @@ public:
     static void ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                             [[maybe_unused]] CString &baseFileName, CString &requestPath);
     static CString ConcatNormalizedOhmurlWithData(CVector<CString> &data, CString &pkgName, CString &entryPath);
+    static CString GetBundleNameWithRecordName(EcmaVM *vm, const CString &recordName);
     static inline bool IsSandboxPath(const CString &moduleFileName)
     {
         return base::StringHelper::StringStartWith(moduleFileName, ModulePathHelper::BUNDLE_INSTALL_PATH);
