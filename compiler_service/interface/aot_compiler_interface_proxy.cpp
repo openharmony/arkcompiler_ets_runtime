@@ -112,5 +112,75 @@ ErrCode AotCompilerInterfaceProxy::StopAotCompiler()
 
     return ERR_OK;
 }
+
+ErrCode AotCompilerInterfaceProxy::GetAOTVersion(std::string& sigData)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+
+    if (!data.WriteInterfaceToken(GetDescriptor())) {
+        HiLog::Error(LABEL, "Write interface token failed!");
+        return ERR_INVALID_VALUE;
+    }
+
+    sptr<IRemoteObject> remote = Remote();
+    if (remote == nullptr) {
+        HiLog::Error(LABEL, "Remote is nullptr!");
+        return ERR_INVALID_DATA;
+    }
+    int32_t result = remote->SendRequest(COMMAND_GET_AOT_VERSION, data, reply, option);
+    if (FAILED(result)) {
+        HiLog::Error(LABEL, "Send request failed!");
+        return result;
+    }
+
+    ErrCode errCode = reply.ReadInt32();
+    if (FAILED(errCode)) {
+        HiLog::Error(LABEL, "Read Int32 failed!");
+        return errCode;
+    }
+
+    sigData = Str16ToStr8(reply.ReadString16());
+
+    return ERR_OK;
+}
+
+ErrCode AotCompilerInterfaceProxy::NeedReCompile(const std::string& args, bool& sigData)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+
+    if (!data.WriteInterfaceToken(GetDescriptor())) {
+        HiLog::Error(LABEL, "Write interface token failed!");
+        return ERR_INVALID_VALUE;
+    }
+
+    data.WriteString16(Str8ToStr16(args));
+
+    sptr<IRemoteObject> remote = Remote();
+    if (remote == nullptr) {
+        HiLog::Error(LABEL, "Remote is nullptr!");
+        return ERR_INVALID_DATA;
+    }
+    int32_t result = remote->SendRequest(COMMAND_NEED_RE_COMPILE, data, reply, option);
+    if (FAILED(result)) {
+        HiLog::Error(LABEL, "Send request failed!");
+        return result;
+    }
+
+    ErrCode errCode = reply.ReadInt32();
+    if (FAILED(errCode)) {
+        HiLog::Error(LABEL, "Read Int32 failed!");
+        return errCode;
+    }
+
+    sigData = reply.ReadBool();
+
+    return ERR_OK;
+}
 } // namespace ArkCompiler
 } // namespace OHOS

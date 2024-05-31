@@ -62,6 +62,31 @@ public:
         return ret;
     }
 
+    static std::optional<VersionType> strToVersion(const std::string& version)
+    {
+        std::vector<std::string> versionNumber = StringHelper::SplitString(version, ".");
+        VersionType formatVersion;
+        if (versionNumber.size() != VERSION_SIZE) {
+            return {};
+        }
+        for (uint32_t i = 0; i < VERSION_SIZE; i++) {
+            uint32_t result = 0;
+            if (!StringHelper::StrToUInt32(versionNumber[i].c_str(), &result)) {
+                return {};
+            }
+            formatVersion.at(i) = static_cast<uint8_t>(result);
+        }
+        return formatVersion;
+    }
+
+    static bool VerifyVersionWithoutFile(const VersionType& currVersion, const VersionType& lastVersion)
+    {
+        if (currVersion > lastVersion) {
+            return true;
+        }
+        return false;
+    }
+
     bool VerifyVersion(const char *fileDesc, const VersionType &lastVersion, bool strictMatch) const
     {
         if (magic_ != MAGIC) {

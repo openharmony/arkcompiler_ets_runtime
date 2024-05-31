@@ -183,6 +183,21 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     return ret ? ERR_AOT_COMPILER_CALL_FAILED : AOTLocalCodeSign(hapArgs.fileName, hapArgs.signature, sigData);
 }
 
+int32_t AotCompilerImpl::GetAOTVersion(std::string& sigData)
+{
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::GetAOTVersion");
+    sigData = panda::ecmascript::AOTFileVersion::GetAOTVersion();
+
+    return ERR_OK;
+}
+
+int32_t AotCompilerImpl::NeedReCompile(const std::string& args, bool& sigData)
+{
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::NeedReCompile");
+    sigData = panda::ecmascript::AOTFileVersion::CheckAOTVersion(args);
+    return ERR_OK;
+}
+
 int32_t AotCompilerImpl::AOTLocalCodeSign(const std::string &fileName, const std::string &appSignature,
                                           std::vector<int16_t> &sigData)
 {
@@ -258,4 +273,6 @@ void AotCompilerImpl::ResetState()
     state_.running = false;
     state_.childPid = -1;
 }
+
+
 } // namespace ArkCompiler::OHOS

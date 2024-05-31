@@ -66,6 +66,31 @@ int32_t AotCompilerClient::StopAotCompiler()
     return aotCompilerProxy->StopAotCompiler();
 }
 
+int32_t AotCompilerClient::GetAOTVersion(std::string& sigData)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    HiviewDFX::HiLog::Debug(LABEL, "aot compiler get AOT version called");
+    auto aotCompilerProxy = GetAotCompilerProxy();
+    if (aotCompilerProxy == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "get aot compiler service failed");
+        return ERR_AOT_COMPILER_CONNECT_FAILED;
+    }
+
+    return aotCompilerProxy->GetAOTVersion(sigData);
+}
+
+int32_t AotCompilerClient::NeedReCompile(const std::string& oldVersion, bool& sigData)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    HiviewDFX::HiLog::Debug(LABEL, "aot compiler check need re-compile called");
+    auto aotCompilerProxy = GetAotCompilerProxy();
+    if (aotCompilerProxy == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "get aot compiler service failed");
+        return ERR_AOT_COMPILER_CONNECT_FAILED;
+    }
+    return aotCompilerProxy->NeedReCompile(oldVersion, sigData);
+}
+
 sptr<IAotCompilerInterface> AotCompilerClient::GetAotCompilerProxy()
 {
     HiviewDFX::HiLog::Debug(LABEL, "get aot compiler proxy function called");
