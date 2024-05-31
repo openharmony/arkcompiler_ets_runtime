@@ -119,6 +119,7 @@ public:
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);
     static bool CpuProfilerSamplingAnyTime(const EcmaVM *vm);
+    static void CpuProfilerAnyTimeMainThread(const EcmaVM *vm);
     static void SetJsDumpThresholds(EcmaVM *vm, size_t thresholds);
     static bool StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
