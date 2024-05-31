@@ -340,16 +340,20 @@ bool EcmaVM::IsEnableBaselineJit() const
 
 void EcmaVM::EnableJit()
 {
-    // check enable aot pgo, if have enable aot pgo, thread installed pgo stubs
-    if (!IsEnablePGOProfiler() && pgoProfiler_ != nullptr) {
-        // only jit enable pgo, disable aot pgo dump
-        options_.SetEnableProfileDump(false);
-        Jit::GetInstance()->SetProfileNeedDump(false);
-        // enable pgo profile
-        options_.SetEnablePGOProfiler(true);
-        ResetPGOProfiler();
-    }
-    if (pgoProfiler_ != nullptr) {
+    if (!options_.IsEnableJITPGO() || pgoProfiler_ == nullptr) {
+        thread_->SwitchJitProfileStubs(false);
+    } else {
+        // if not enable aot pgo
+        if (!PGOProfilerManager::GetInstance()->IsEnable()) {
+            // disable dump
+            options_.SetEnableProfileDump(false);
+            Jit::GetInstance()->SetProfileNeedDump(false);
+            // enable profiler
+            options_.SetEnablePGOProfiler(true);
+            pgoProfiler_->Reset(true);
+            // switch pgo stub
+            thread_->SwitchJitProfileStubs(true);
+        }
         pgoProfiler_->InitJITProfiler();
     }
     bool isApp = Jit::GetInstance()->IsAppJit();
@@ -357,7 +361,6 @@ void EcmaVM::EnableJit()
     bool profileNeedDump = Jit::GetInstance()->IsProfileNeedDump();
     options_.SetEnableProfileDump(profileNeedDump);
 
-    GetJSThread()->SwitchJitProfileStubs();
     bool jitEnableLitecg = ohos::JitTools::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
     options_.SetCompilerEnableLiteCG(jitEnableLitecg);
     uint8_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options_.GetJitCallThreshold());

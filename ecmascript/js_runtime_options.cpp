@@ -169,6 +169,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-osr-hotness-threshold:     Set hotness threshold for osr. Default: '2'\n"
     "--compiler-force-jit-compile-main:    Enable jit compile main function: Default: 'false'\n"
     "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n"
+    "--compiler-enable-jit-pgo:            Enable jit pgo: Default: 'true'\n"
     "--compiler-typed-op-profiler:         Enable Typed Opcode Statistics for aot runtime. Default: 'false'\n"
     "--compiler-opt-branch-profiling:      Enable branch profiling for aot compiler. Default: 'true'\n"
     "--test-assert:                        Set Assert Model. Default: 'false'\n"

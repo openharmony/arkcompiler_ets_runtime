@@ -424,7 +424,7 @@ public:
 
     void PUBLIC_API CheckSwitchDebuggerBCStub();
     void CheckOrSwitchPGOStubs();
-    void SwitchJitProfileStubs();
+    void SwitchJitProfileStubs(bool isEnablePgo);
 
     ThreadId GetThreadId() const
     {
