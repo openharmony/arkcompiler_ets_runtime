@@ -261,6 +261,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
                                                            std::string_view entryPoint, bool executeFromJob)
 {
     ThreadManagedScope managedScope(thread);
+    if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+        CString traceInfo = "FileExecute: " + CString(entryPoint);
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    }
     // For Ark application startup
     EcmaContext *context = thread->GetCurrentEcmaContext();
 

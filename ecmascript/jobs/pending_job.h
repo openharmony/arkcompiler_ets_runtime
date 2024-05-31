@@ -46,10 +46,6 @@ public:
 #if defined(ENABLE_HITRACE)
         jobId = pendingJob->GetJobId();
 #endif
-        std::string strTrace = "PendingJob::ExecutePendingJob: jobId: " + std::to_string(jobId);
-        strTrace += ", threadId: " + std::to_string(thread->GetThreadId());
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, strTrace);
-
         JSHandle<JSTaggedValue> job(thread, pendingJob->GetJob());
         ASSERT(job->IsCallable());
         JSHandle<TaggedArray> argv(thread, pendingJob->GetArguments());
