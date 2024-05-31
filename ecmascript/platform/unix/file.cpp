@@ -41,7 +41,7 @@ std::string GetPathSeparator()
 bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
 {
     if (path.empty() || path.size() > PATH_MAX) {
-        LOG_ECMA(WARN) << "File path is illeage";
+        LOG_ECMA(WARN) << "File path is illegal";
         return false;
     }
     char buffer[PATH_MAX] = { '\0' };
@@ -51,7 +51,7 @@ bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
             realPath = path;
             return true;
         }
-        LOG_ECMA(ERROR) << "File path:" << path << " realpath failure. errno: " << errno;
+        LOG_ECMA(ERROR) << "File path: " << path << " realpath failure. errno: " << errno;
         return false;
     }
     realPath = std::string(buffer);
@@ -161,7 +161,7 @@ JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue d
 
 bool FileExist(const char *filename)
 {
-    return (access(filename, 0) != -1);
+    return (access(filename, F_OK) != -1);
 }
 
 int Unlink(const char *filename)

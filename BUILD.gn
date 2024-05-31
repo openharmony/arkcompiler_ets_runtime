@@ -951,6 +951,7 @@ ecma_platform_source = []
 ecma_platform_source += [
   "ecmascript/platform/common/map.cpp",
   "ecmascript/platform/common/mutex.cpp",
+  "ecmascript/platform/common/filesystem.cpp",
 ]
 
 config("include_llvm") {
