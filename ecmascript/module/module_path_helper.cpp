@@ -661,7 +661,8 @@ CString ModulePathHelper::RemoveSuffix(const CString &requestName)
     size_t pos = res.rfind(PathHelper::POINT_TAG);
     if (pos != CString::npos) {
         CString suffix = res.substr(pos);
-        if (IsShouldRemoveSuffix(suffix)) {
+        if (suffix == EXT_NAME_JS || suffix == EXT_NAME_TS || suffix == EXT_NAME_ETS ||
+            suffix == EXT_NAME_JSON || suffix == EXT_NAME_MJS) {
             res.erase(pos, suffix.length());
         }
     }

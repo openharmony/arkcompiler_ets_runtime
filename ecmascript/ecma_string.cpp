@@ -1270,12 +1270,6 @@ std::u16string FlatStringInfo::ToU16String(uint32_t len)
     return result;
 }
 
-EcmaStringAccessor::EcmaStringAccessor(EcmaString *string)
-{
-    ASSERT(string != nullptr);
-    string_ = string;
-}
-
 EcmaStringAccessor::EcmaStringAccessor(TaggedObject *obj)
 {
     ASSERT(obj != nullptr);
