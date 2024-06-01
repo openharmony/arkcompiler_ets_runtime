@@ -126,6 +126,16 @@ private:
     static JSTaggedValue IndexOfString(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
     static JSTaggedValue IndexOfBigInt(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
     static JSTaggedValue IndexOfDispatch(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
+    static JSTaggedValue UpdateArrayCapacity(JSHandle<JSObject> &thisObjHandle, uint32_t &len,
+                                             uint32_t &insertCount, uint32_t &actualDeleteCount,
+                                             JSHandle<JSArray> &receiver, uint32_t &start,
+                                             JSThread *thread, bool &needTransition,
+                                             JSHandle<JSTaggedValue> &holeHandle,
+                                             EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> &thisObjVal,
+                                             JSHandle<JSTaggedValue> &lengthKey);
+    static void HandleArray(JSHandle<JSObject> &newArrayHandle, uint32_t &actualDeleteCount,
+                            JSThread *thread, uint32_t &start, JSHandle<JSObject> &thisObjHandle,
+                            JSHandle<JSTaggedValue> &holeHandle);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H
