@@ -388,6 +388,7 @@ private:
     V(TryStoreICByName)                         \
     V(TryStoreICByValue)                        \
     V(SetValueWithBarrier)                      \
+    V(SetValueWithEdenBarrier)                  \
     V(NewLexicalEnv)                            \
     V(CopyRestArgs)                             \
     V(GetUnmappedArgs)                          \
@@ -466,6 +467,7 @@ private:
     V(FatalPrint)                               \
     V(FatalPrintCustom)                         \
     V(GetActualArgvNoGC)                        \
+    V(InsertNewToEdenRSet)                      \
     V(InsertOldToNewRSet)                       \
     V(InsertLocalToShareRSet)                   \
     V(SetBitAtomic)                             \
@@ -501,6 +503,7 @@ private:
     V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
+    V(MarkingBarrierWithEden)                   \
     V(SharedGCMarkingBarrier)                   \
     V(StoreBarrier)                             \
     V(CallArg0)                                 \

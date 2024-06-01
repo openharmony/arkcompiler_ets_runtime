@@ -44,6 +44,17 @@ inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
     return crossRegionSet_;
 }
 
+inline RememberedSet *Region::GetOrCreateNewToEdenRememberedSet()
+{
+    if (UNLIKELY(packedData_.newToEdenSet_ == nullptr)) {
+        LockHolder lock(*lock_);
+        if (packedData_.newToEdenSet_ == nullptr) {
+            packedData_.newToEdenSet_ = CreateRememberedSet();
+        }
+    }
+    return packedData_.newToEdenSet_;
+}
+
 inline RememberedSet *Region::GetOrCreateOldToNewRememberedSet()
 {
     if (UNLIKELY(packedData_.oldToNewSet_ == nullptr)) {
@@ -131,6 +142,18 @@ inline bool Region::Test(void *addr) const
     auto addrPtr = reinterpret_cast<uintptr_t>(addr);
     ASSERT(InRange(addrPtr));
     return packedData_.markGCBitset_->TestBit((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+}
+
+// ONLY used for heap verification.
+inline bool Region::TestNewToEden(uintptr_t addr)
+{
+    ASSERT(InRange(addr));
+    // Only used for heap verification, so donot need to use lock
+    auto set = packedData_.newToEdenSet_;
+    if (set == nullptr) {
+        return false;
+    }
+    return set->TestBit(ToUintPtr(this), addr);
 }
 
 // ONLY used for heap verification.
@@ -281,6 +304,24 @@ inline void Region::DeleteCrossRegionRSet()
     }
 }
 
+inline void Region::InsertNewToEdenRSet(uintptr_t addr)
+{
+    auto set = GetOrCreateNewToEdenRememberedSet();
+    set->Insert(ToUintPtr(this), addr);
+}
+
+inline void Region::AtomicInsertNewToEdenRSet(uintptr_t addr)
+{
+    auto set = GetOrCreateNewToEdenRememberedSet();
+    set->AtomicInsert(ToUintPtr(this), addr);
+}
+
+inline void Region::ClearNewToEdenRSet(uintptr_t addr)
+{
+    auto set = GetOrCreateNewToEdenRememberedSet();
+    set->ClearBit(ToUintPtr(this), addr);
+}
+
 inline void Region::InsertOldToNewRSet(uintptr_t addr)
 {
     auto set = GetOrCreateOldToNewRememberedSet();
@@ -291,6 +332,14 @@ inline void Region::ClearOldToNewRSet(uintptr_t addr)
 {
     auto set = GetOrCreateOldToNewRememberedSet();
     set->ClearBit(ToUintPtr(this), addr);
+}
+
+template <typename Visitor>
+inline void Region::IterateAllNewToEdenBits(Visitor visitor)
+{
+    if (packedData_.newToEdenSet_ != nullptr) {
+        packedData_.newToEdenSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
 }
 
 template <typename Visitor>
@@ -314,6 +363,33 @@ inline void Region::IterateAllSweepingRSetBits(Visitor visitor)
 {
     if (sweepingOldToNewRSet_ != nullptr) {
         sweepingOldToNewRSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
+}
+
+inline RememberedSet *Region::GetNewToEdenRSet()
+{
+    return  packedData_.newToEdenSet_;
+}
+
+inline void Region::ClearNewToEdenRSet()
+{
+    if (packedData_.newToEdenSet_ != nullptr) {
+        packedData_.newToEdenSet_->ClearAll();
+    }
+}
+
+inline void Region::ClearNewToEdenRSetInRange(uintptr_t start, uintptr_t end)
+{
+    if (packedData_.newToEdenSet_ != nullptr) {
+        packedData_.newToEdenSet_->ClearRange(ToUintPtr(this), start, end);
+    }
+}
+
+inline void Region::DeleteNewToEdenRSet()
+{
+    if (packedData_.newToEdenSet_ != nullptr) {
+        nativeAreaAllocator_->Free(packedData_.newToEdenSet_, packedData_.newToEdenSet_->Size());
+        packedData_.newToEdenSet_ = nullptr;
     }
 }
 

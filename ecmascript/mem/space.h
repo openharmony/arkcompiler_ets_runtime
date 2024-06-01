@@ -32,6 +32,7 @@ enum MemSpaceType {
     NON_MOVABLE,
     MACHINE_CODE_SPACE,
     HUGE_OBJECT_SPACE,
+    EDEN_SPACE,
     SEMI_SPACE,
     SNAPSHOT_SPACE,
     COMPRESS_SPACE,
@@ -80,6 +81,8 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "machine code space";
         case HUGE_OBJECT_SPACE:
             return "huge object space";
+        case EDEN_SPACE:
+            return "eden space";
         case SEMI_SPACE:
             return "semi space";
         case SNAPSHOT_SPACE:

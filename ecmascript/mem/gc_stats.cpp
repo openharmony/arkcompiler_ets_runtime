@@ -16,6 +16,7 @@
 #include "ecmascript/mem/gc_stats.h"
 
 #include <iomanip>
+#include "ecmascript/common.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mem.h"
@@ -34,6 +35,7 @@ void GCStats::PrintStatisticResult()
 {
     LOG_GC(INFO) << "/******************* GCStats statistic: *******************/";
     PrintGCSummaryStatistic(GCType::STW_YOUNG_GC);
+    PrintGCSummaryStatistic(GCType::PARTIAL_EDEN_GC);
     PrintGCSummaryStatistic(GCType::PARTIAL_YOUNG_GC);
     PrintGCSummaryStatistic(GCType::PARTIAL_OLD_GC);
     PrintGCSummaryStatistic(GCType::COMPRESS_GC);
@@ -102,6 +104,10 @@ void GCStats::PrintGCMemoryStatistic()
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetHeapObjectSize())) << "KB"
                     << "     committed:"
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetCommittedSize())) << "KB\n"
+                    << "EdenSpace        used:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetEdenSpace()->GetHeapObjectSize())) << "KB"
+                    << "     committed:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetEdenSpace()->GetCommittedSize())) << "KB\n"
                     << "ActiveSemiSpace  used:"
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetNewSpace()->GetHeapObjectSize())) << "KB"
                     << "     committed:"
@@ -160,6 +166,17 @@ void GCStats::PrintGCMemoryStatistic()
                 << STATS_DESCRIPTION_FORMAT("Young survival rate:") << STATS_DATA_FORMAT(survivalRate);
             break;
         }
+        case GCType::PARTIAL_EDEN_GC: {
+            size_t commitSize = GetRecordData(RecordData::EDEN_COMMIT_SIZE);
+            double copiedRate = commitSize == 0 ? 0 : (double(GetRecordData(RecordData::EDEN_ALIVE_SIZE)) / commitSize);
+            double premotedRate =
+                commitSize == 0 ? 0 : (double(GetRecordData(RecordData::EDEN_PROMOTE_SIZE)) / commitSize);
+            double survivalRate = std::min(copiedRate + premotedRate, 1.0);
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Eden copied rate:") << STATS_DATA_FORMAT(copiedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Eden promoted rate:") << STATS_DATA_FORMAT(premotedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Eden survival rate:") << STATS_DATA_FORMAT(survivalRate);
+            break;
+        }
         case GCType::PARTIAL_YOUNG_GC: {
             double copiedRate = double(GetRecordData(RecordData::YOUNG_ALIVE_SIZE)) /
                                 GetRecordData(RecordData::YOUNG_COMMIT_SIZE);
@@ -208,6 +225,7 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DESCRIPTION_FORMAT("Finish:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
             break;
+        case GCType::PARTIAL_EDEN_GC:
         case GCType::PARTIAL_YOUNG_GC:
         case GCType::PARTIAL_OLD_GC:
             LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
@@ -234,8 +252,18 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Evacuate]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("UpdateReference:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::UpdateReference]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("UpdateWeekRef:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::UpdateWeekRef]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("UpdateRoot:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::UpdateRoot]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ProceeWorkload:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProceeWorkload]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("EvacuateSpace:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::EvacuateSpace]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("EvacuateRegion:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::EvacuateRegion]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("WaitFinish:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::WaitFinish]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("Finish:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
             break;
@@ -266,6 +294,9 @@ bool GCStats::CheckIfNeedPrint(GCType type)
     switch (type) {
         case GCType::STW_YOUNG_GC:
             gcCount = GetRecordData(RecordData::SEMI_COUNT);
+            break;
+        case GCType::PARTIAL_EDEN_GC:
+            gcCount = GetRecordData(RecordData::EDEN_COUNT);
             break;
         case GCType::PARTIAL_YOUNG_GC:
             gcCount = GetRecordData(RecordData::YOUNG_COUNT);
@@ -313,6 +344,27 @@ void GCStats::PrintGCSummaryStatistic(GCType type)
                 << STATS_DESCRIPTION_FORMAT("Young average copied rate:") << STATS_DATA_FORMAT(copiedRate) << "\n"
                 << STATS_DESCRIPTION_FORMAT("Young average promoted rate:") << STATS_DATA_FORMAT(promotedRate) << "\n"
                 << STATS_DESCRIPTION_FORMAT("Young average survival rate:") << STATS_DATA_FORMAT(survivalRate);
+            break;
+        }
+        case GCType::PARTIAL_EDEN_GC: {
+            size_t commitSize = GetRecordData(RecordData::EDEN_TOTAL_COMMIT);
+            double copiedRate =
+                commitSize == 0 ? 0 : (double(GetRecordData(RecordData::EDEN_TOTAL_ALIVE)) / commitSize);
+            double promotedRate =
+                commitSize == 0 ? 0 : (double(GetRecordData(RecordData::EDEN_TOTAL_PROMOTE)) / commitSize);
+            double survivalRate =  std::min(copiedRate + promotedRate, 1.0);
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("EdenGC occurs count")
+                << STATS_DATA_FORMAT(GetRecordData(RecordData::EDEN_COUNT)) << "\n"
+                << STATS_DESCRIPTION_FORMAT("EdenGC max pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::EDEN_MAX_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("EdenGC min pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::EDEN_MIN_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("EdenGC average pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::EDEN_TOTAL_PAUSE) /
+                                     GetRecordData(RecordData::EDEN_COUNT)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("Eden average copied rate:") << STATS_DATA_FORMAT(copiedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Eden average promoted rate:") << STATS_DATA_FORMAT(promotedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Eden average survival rate:") << STATS_DATA_FORMAT(survivalRate);
             break;
         }
         case GCType::PARTIAL_YOUNG_GC: {
@@ -379,6 +431,7 @@ void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
 {
     SetRecordData(RecordData::START_OBJ_SIZE, heap_->GetHeapObjectSize());
     SetRecordData(RecordData::START_COMMIT_SIZE, heap_->GetCommittedSize());
+    SetRecordData(RecordData::START_EDEN_OBJ_SIZE, heap_->GetEdenSpace()->GetHeapObjectSize());
     SetRecordData(RecordData::START_YOUNG_OBJ_SIZE, heap_->GetNewSpace()->GetHeapObjectSize());
     SetRecordData(RecordData::START_NATIVE_POINTER_NUM, heap_->GetEcmaVM()->GetNativePointerListSize());
     gcType_ = GetGCType(gcType);
@@ -391,8 +444,15 @@ void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
             IncreaseRecordData(RecordData::SEMI_TOTAL_COMMIT, semiCommitSize);
             break;
         }
+        case GCType::PARTIAL_EDEN_GC: {
+            size_t edenCommitSize = heap_->GetEdenSpace()->GetCommittedSize();
+            SetRecordData(RecordData::EDEN_COMMIT_SIZE, edenCommitSize);
+            IncreaseRecordData(RecordData::EDEN_TOTAL_COMMIT, edenCommitSize);
+            break;
+        }
         case GCType::PARTIAL_YOUNG_GC: {
-            size_t youngCommitSize = heap_->GetNewSpace()->GetCommittedSize();
+            size_t youngCommitSize =
+                heap_->GetNewSpace()->GetCommittedSize() + heap_->GetEdenSpace()->GetCommittedSize();
             SetRecordData(RecordData::YOUNG_COMMIT_SIZE, youngCommitSize);
             IncreaseRecordData(RecordData::YOUNG_TOTAL_COMMIT, youngCommitSize);
             break;
@@ -439,6 +499,26 @@ void GCStats::RecordStatisticAfterGC()
             size_t promotedSize = heap_->GetPromotedSize();
             SetRecordData(RecordData::SEMI_PROMOTE_SIZE, promotedSize);
             IncreaseRecordData(RecordData::SEMI_TOTAL_PROMOTE, promotedSize);
+            break;
+        }
+        case GCType::PARTIAL_EDEN_GC: {
+            if (GetRecordData(RecordData::EDEN_COUNT) == 0) {
+                SetRecordDuration(RecordDuration::EDEN_MIN_PAUSE, duration);
+                SetRecordDuration(RecordDuration::EDEN_MAX_PAUSE, duration);
+            } else {
+                SetRecordDuration(RecordDuration::EDEN_MIN_PAUSE,
+                    std::min(GetRecordDuration(RecordDuration::EDEN_MIN_PAUSE), duration));
+                SetRecordDuration(RecordDuration::EDEN_MAX_PAUSE,
+                    std::max(GetRecordDuration(RecordDuration::EDEN_MAX_PAUSE), duration));
+            }
+            IncreaseRecordData(RecordData::EDEN_COUNT);
+            IncreaseRecordDuration(RecordDuration::EDEN_TOTAL_PAUSE, duration);
+            size_t edenToYoungSize = heap_->GetEdenToYoungSize();
+            SetRecordData(RecordData::EDEN_ALIVE_SIZE, edenToYoungSize);
+            IncreaseRecordData(RecordData::EDEN_TOTAL_ALIVE, edenToYoungSize);
+            size_t promotedSize = heap_->GetPromotedSize();
+            SetRecordData(RecordData::EDEN_PROMOTE_SIZE, promotedSize);
+            IncreaseRecordData(RecordData::EDEN_TOTAL_PROMOTE, promotedSize);
             break;
         }
         case GCType::PARTIAL_YOUNG_GC: {
@@ -514,11 +594,24 @@ void GCStats::RecordGCSpeed()
     size_t clearNativeSpeed = GetRecordData(RecordData::START_NATIVE_POINTER_NUM) /
                               scopeDuration_[Scope::ScopeId::ClearNativeObject];
 
-    if (gcType_ == GCType::PARTIAL_YOUNG_GC) {
+    if (gcType_ == GCType::PARTIAL_EDEN_GC) {
         gcSpeed_[(uint8_t)SpeedData::MARK_SPEED] =
-            GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) / scopeDuration_[Scope::ScopeId::Mark];
-        size_t evacuateSpeed = survivalRate * GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) /
+            GetRecordData(RecordData::START_EDEN_OBJ_SIZE) / scopeDuration_[Scope::ScopeId::Mark];
+        size_t evacuateSpeed = survivalRate * GetRecordData(RecordData::START_EDEN_OBJ_SIZE) /
                                scopeDuration_[Scope::ScopeId::EvacuateSpace];
+        gcSpeed_[(uint8_t)SpeedData::EDEN_EVACUATE_SPACE_SPEED] =
+            (evacuateSpeed + gcSpeed_[(uint8_t)SpeedData::EDEN_EVACUATE_SPACE_SPEED]) / 2;  // 2 means half
+        gcSpeed_[(uint8_t)SpeedData::EDEN_CLEAR_NATIVE_OBJ_SPEED] =
+            (clearNativeSpeed + gcSpeed_[(uint8_t)SpeedData::EDEN_CLEAR_NATIVE_OBJ_SPEED]) / 2;  // 2 means half
+        size_t updateReferenceSpeed = GetRecordData(RecordData::START_OBJ_SIZE) /
+                                      scopeDuration_[Scope::ScopeId::UpdateReference];
+        gcSpeed_[(uint8_t)SpeedData::EDEN_UPDATE_REFERENCE_SPEED] =
+            (updateReferenceSpeed + gcSpeed_[(uint8_t)SpeedData::EDEN_UPDATE_REFERENCE_SPEED]) / 2;  // 2 means half
+    } else if (gcType_ == GCType::PARTIAL_YOUNG_GC) {
+        size_t objSize =
+            GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) + GetRecordData(RecordData::START_EDEN_OBJ_SIZE);
+        gcSpeed_[(uint8_t)SpeedData::MARK_SPEED] = objSize / scopeDuration_[Scope::ScopeId::Mark];
+        size_t evacuateSpeed = survivalRate * objSize / scopeDuration_[Scope::ScopeId::EvacuateSpace];
         gcSpeed_[(uint8_t)SpeedData::YOUNG_EVACUATE_SPACE_SPEED] =
             (evacuateSpeed + gcSpeed_[(uint8_t)SpeedData::YOUNG_EVACUATE_SPACE_SPEED]) / 2;  // 2 means half
         gcSpeed_[(uint8_t)SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED] =
@@ -536,8 +629,9 @@ void GCStats::RecordGCSpeed()
         gcSpeed_[(uint8_t)SpeedData::OLD_CLEAR_NATIVE_OBJ_SPEED] =
             (clearNativeSpeed + gcSpeed_[(uint8_t)SpeedData::OLD_CLEAR_NATIVE_OBJ_SPEED]) / 2;  // 2 means half
 
-        size_t evacuateSpaceSpeed = (survivalRate * GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) +
-            GetRecordData(RecordData::COLLECT_REGION_SET_SIZE)) / scopeDuration_[Scope::ScopeId::EvacuateSpace];
+        size_t evacuateSpaceSpeed = (survivalRate * (GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) +
+            GetRecordData(RecordData::START_EDEN_OBJ_SIZE)) + GetRecordData(RecordData::COLLECT_REGION_SET_SIZE)) /
+            scopeDuration_[Scope::ScopeId::EvacuateSpace];
         gcSpeed_[(uint8_t)SpeedData::OLD_EVACUATE_SPACE_SPEED] =
             (evacuateSpaceSpeed + gcSpeed_[(uint8_t)SpeedData::OLD_EVACUATE_SPACE_SPEED]) / 2;  // 2 means half
 
@@ -551,9 +645,20 @@ void GCStats::RecordGCSpeed()
 GCType GCStats::GetGCType(TriggerGCType gcType)
 {
     if (heap_ && !heap_->IsReadyToConcurrentMark()) {
-        return heap_->IsConcurrentFullMark() ? GCType::PARTIAL_OLD_GC : GCType::PARTIAL_YOUNG_GC;
+        switch (heap_->GetMarkType()) {
+            case MarkType::MARK_EDEN:
+                return GCType::PARTIAL_EDEN_GC;
+            case MarkType::MARK_YOUNG:
+                return GCType::PARTIAL_YOUNG_GC;
+            case MarkType::MARK_FULL:
+                return GCType::PARTIAL_OLD_GC;
+            default:
+                return GCType::OTHER;
+        }
     }
     switch (gcType) {
+        case TriggerGCType::EDEN_GC:
+            return GCType::PARTIAL_EDEN_GC;
         case TriggerGCType::YOUNG_GC:
             return GCType::PARTIAL_YOUNG_GC;
         case TriggerGCType::OLD_GC:

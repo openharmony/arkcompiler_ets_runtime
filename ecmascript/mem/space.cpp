@@ -65,6 +65,7 @@ void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
 {
     LOG_ECMA_MEM(DEBUG) << "Clear region from:" << region << " to " << ToSpaceTypeName(spaceType_);
     region->DeleteCrossRegionRSet();
+    region->DeleteNewToEdenRSet();
     region->DeleteOldToNewRSet();
     region->DeleteLocalToShareRSet();
     region->DeleteSweepingOldToNewRSet();
@@ -77,7 +78,10 @@ void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
         spaceType_ == MemSpaceType::SHARED_OLD_SPACE) {
         region->DestroyFreeObjectSets();
     }
-    heapRegionAllocator_->FreeRegion(region, cachedSize);
+    // regions of EdenSpace are allocated in EdenSpace constructor and fixed, not allocate by heapRegionAllocator_
+    if (spaceType_ != MemSpaceType::EDEN_SPACE) {
+        heapRegionAllocator_->FreeRegion(region, cachedSize);
+    }
 }
 
 HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,

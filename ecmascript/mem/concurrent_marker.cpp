@@ -22,6 +22,7 @@
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/space-inl.h"
+#include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/gc_stats.h"
@@ -87,7 +88,15 @@ void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep
 {
     LockHolder lock(waitMarkingFinishedMutex_);
     if (notifyMarkingFinished_) {
-        heap_->CollectGarbage(heap_->IsConcurrentFullMark() ? TriggerGCType::OLD_GC : TriggerGCType::YOUNG_GC,
+        TriggerGCType gcType;
+        if (heap_->IsConcurrentFullMark()) {
+            gcType = TriggerGCType::OLD_GC;
+        } else if (heap_->IsEdenMark()) {
+            gcType = TriggerGCType::EDEN_GC;
+        } else {
+            gcType = TriggerGCType::YOUNG_GC;
+        }
+        heap_->CollectGarbage(gcType,
                               GCReason::ALLOCATION_LIMIT);
     }
 }
@@ -141,14 +150,23 @@ void ConcurrentMarker::InitializeMarking()
         heap_->EnumerateNonNewSpaceRegions([](Region *current) {
             current->ResetAliveObject();
         });
+    } else if (heap_->IsEdenMark()) {
+        heapObjectSize_ = heap_->GetEdenSpace()->GetHeapObjectSize();
     } else {
         heapObjectSize_ = heap_->GetNewSpace()->GetHeapObjectSize();
     }
     workManager_->Initialize(TriggerGCType::OLD_GC, ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK);
-    if (!heap_->IsConcurrentFullMark()) {
+    if (heap_->IsYoungMark()) {
         {
             ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkOldToNew");
             heap_->GetNonMovableMarker()->ProcessOldToNewNoMarkStack(MAIN_THREAD_INDEX);
+        }
+        heap_->GetNonMovableMarker()->ProcessSnapshotRSetNoMarkStack(MAIN_THREAD_INDEX);
+    } else if (heap_->IsEdenMark()) {
+        {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkNewToEden");
+            heap_->GetNonMovableMarker()->ProcessOldToNewNoMarkStack(MAIN_THREAD_INDEX);
+            heap_->GetNonMovableMarker()->ProcessNewToEdenNoMarkStack(MAIN_THREAD_INDEX);
         }
         heap_->GetNonMovableMarker()->ProcessSnapshotRSetNoMarkStack(MAIN_THREAD_INDEX);
     }
@@ -177,10 +195,12 @@ void ConcurrentMarker::FinishMarking(float spendTime)
         waitMarkingFinishedCV_.Signal();
     }
     notifyMarkingFinished_ = true;
-    if (!heap_->IsConcurrentFullMark()) {
+    if (heap_->IsYoungMark()) {
         heapObjectSize_ = heap_->GetNewSpace()->GetHeapObjectSize();
-    } else {
+    } else if (heap_->IsConcurrentFullMark()) {
         heapObjectSize_ = heap_->GetHeapObjectSize();
+    } else if (heap_->IsEdenMark()) {
+        heapObjectSize_ = heap_->GetEdenSpace()->GetHeapObjectSize();
     }
     SetDuration(spendTime);
     if (heap_->IsFullMarkRequested()) {
