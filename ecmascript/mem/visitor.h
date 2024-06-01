@@ -52,11 +52,11 @@ class PrimitiveObjectBodyIterator {
 public:
     static inline void IterateBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
     {
-        if (visitType == VisitType::ALL_VISIT) {
-            size_t hclassEnd = sizeof(JSTaggedType);
+        if constexpr (visitType == VisitType::ALL_VISIT) {
+            constexpr size_t hclassEnd = sizeof(JSTaggedType);
             visitor(root, ObjectSlot(ToUintPtr(root)),
                 ObjectSlot(ToUintPtr(root) + hclassEnd), VisitObjectArea::NORMAL);
-            if (size > hclassEnd) {
+            if constexpr (size > hclassEnd) {
                 visitor(root, ObjectSlot(ToUintPtr(root) + hclassEnd),
                     ObjectSlot(ToUintPtr(root) + size), VisitObjectArea::RAW_DATA);
             }
@@ -64,38 +64,42 @@ public:
     }
 };
 
-template <VisitType visitType, size_t startOffset, size_t endOffset, size_t size>
+template <VisitType visitType, size_t startOffset, size_t endOffset,
+          size_t size, size_t startSize = sizeof(JSTaggedType)>
 class ObjectBodyIterator {
 public:
     template <VisitObjectArea area, bool visitHClass>
-    static inline void IterateBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor, size_t startSize)
+    static inline void IterateBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
     {
-        if (visitType == VisitType::ALL_VISIT) {
-            if (visitHClass) {
+        if constexpr (visitType == VisitType::ALL_VISIT) {
+            if constexpr (visitHClass) {
                 IterateHClass(root, visitor);
             }
-            IterateBefore(root, visitor, startSize);
+            IterateBefore(root, visitor);
         }
-        visitor(root, ObjectSlot(ToUintPtr(root) + startOffset),
-            ObjectSlot(ToUintPtr(root) + endOffset), area);
-        if (visitType == VisitType::ALL_VISIT) {
+        if constexpr (startOffset < endOffset) {
+            visitor(root, ObjectSlot(ToUintPtr(root) + startOffset),
+                ObjectSlot(ToUintPtr(root) + endOffset), area);
+        }
+
+        if constexpr (visitType == VisitType::ALL_VISIT) {
             IterateAfter(root, visitor);
         }
     }
 
     static inline void IterateRefBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
     {
-        IterateBody<VisitObjectArea::NORMAL, true>(root, visitor, sizeof(JSTaggedType));
+        IterateBody<VisitObjectArea::NORMAL, true>(root, visitor);
     }
 
     static inline void IterateNativeBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
     {
-        IterateBody<VisitObjectArea::NATIVE_POINTER, true>(root, visitor, sizeof(JSTaggedType));
+        IterateBody<VisitObjectArea::NATIVE_POINTER, true>(root, visitor);
     }
 
-    static inline void IterateRefBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor, size_t parentSize)
+    static inline void IterateDerivedRefBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
     {
-        IterateBody<VisitObjectArea::NORMAL, false>(root, visitor, parentSize);
+        IterateBody<VisitObjectArea::NORMAL, false>(root, visitor);
     }
 
     static inline void IterateHClass(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
@@ -105,16 +109,17 @@ public:
             ObjectSlot(ToUintPtr(root) + hclassEnd), VisitObjectArea::NORMAL);
     }
 
-    static inline void IterateBefore(TaggedObject *root, const EcmaObjectRangeVisitor& visitor, size_t startSize)
+    static inline void IterateBefore(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
     {
-        if (startOffset > startSize) {
+        if constexpr (startOffset > startSize) {
+            ASSERT(startOffset != endOffset);
             IteratorRange(root, visitor, startSize, startOffset);
         }
     }
 
     static inline void IterateAfter(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
     {
-        if (size > endOffset) {
+        if constexpr (size > endOffset) {
             IteratorRange(root, visitor, endOffset, size);
         }
     }
@@ -133,7 +138,7 @@ public:
     static inline void IterateBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor,
         size_t refLength, size_t length)
     {
-        if (visitType == VisitType::ALL_VISIT) {
+        if constexpr (visitType == VisitType::ALL_VISIT) {
             IterateBefore(root, visitor);
         }
         if (LIKELY(refLength != 0)) {
@@ -141,7 +146,7 @@ public:
             visitor(root, ObjectSlot(ToUintPtr(root) + startOffset),
                 ObjectSlot(ToUintPtr(root) + endOffset), VisitObjectArea::NORMAL);
         }
-        if (visitType == VisitType::ALL_VISIT) {
+        if constexpr (visitType == VisitType::ALL_VISIT) {
             IterateAfter(root, visitor, refLength, length);
         }
     }

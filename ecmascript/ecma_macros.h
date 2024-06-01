@@ -562,11 +562,9 @@
     void VisitObjects(const EcmaObjectRangeVisitor &visitor)                                           \
     {                                                                                                  \
         PARENTCLASS::VisitObjects<visitType>(visitor);                                                 \
-        if ((BEGIN_OFFSET) == (END_OFFSET)) {                                                          \
-            return;                                                                                    \
-        }                                                                                              \
+        static constexpr size_t PARENT_SIZE = PARENTCLASS::SIZE;                                       \
         ObjectBodyIterator<visitType, (BEGIN_OFFSET),                                                  \
-            (END_OFFSET), SIZE>::IterateRefBody(this, visitor, PARENTCLASS::SIZE);                     \
+            (END_OFFSET), SIZE, PARENT_SIZE>::IterateDerivedRefBody(this, visitor);                    \
     }
 
 #if ECMASCRIPT_ENABLE_CAST_CHECK
