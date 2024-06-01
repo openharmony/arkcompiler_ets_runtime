@@ -3843,15 +3843,10 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     ThrowException(vm, exception);
 }
 
-// for previewer, cross platform and testcase debugger
-bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
-                           [[maybe_unused]] int32_t instanceId,
-                           [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER) && !defined(PANDA_TARGET_IOS)
+bool JSNApi::StartDebuggerCheckParameters(EcmaVM *vm, const DebugOption &option, int32_t instanceId,
+                                          const DebuggerPostTask &debuggerPostTask)
 {
-#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-#if !defined(PANDA_TARGET_IOS)
-    LOG_ECMA(INFO) << "JSNApi::StartDebugger, isDebugMode = " << option.isDebugMode
-        << ", port = " << option.port << ", instanceId = " << instanceId;
     if (vm == nullptr) {
         LOG_ECMA(ERROR) << "[StartDebugger] vm is nullptr";
         return false;
@@ -3867,7 +3862,6 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
         LOG_ECMA(ERROR) << "[StartDebugger] handler has already loaded";
         return false;
     }
-
     if (option.libraryPath == nullptr) {
         LOG_ECMA(ERROR) << "[StartDebugger] option.libraryPath is nullptr";
         return false;
@@ -3877,15 +3871,13 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
         LOG_ECMA(ERROR) << "[StartDebugger] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
-
-    using StartDebugger = bool (*)(
-        const std::string &, EcmaVM *, bool, int32_t, const DebuggerPostTask &, int);
-
     auto sym = panda::os::library_loader::ResolveSymbol(handle.Value(), "StartDebug");
     if (!sym) {
         LOG_ECMA(ERROR) << "[StartDebugger] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
+    using StartDebugger = bool (*)(
+        const std::string &, EcmaVM *, bool, int32_t, const DebuggerPostTask &, int);
 
     vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
     vm->GetJsDebuggerManager()->SetIsDebugApp(true);
@@ -3899,6 +3891,19 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
         vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(libraryHandle));
     }
     return ret;
+}
+#endif
+
+// for previewer, cross platform and testcase debugger
+bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
+                           [[maybe_unused]] int32_t instanceId,
+                           [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+#if !defined(PANDA_TARGET_IOS)
+    LOG_ECMA(INFO) << "JSNApi::StartDebugger, isDebugMode = " << option.isDebugMode
+        << ", port = " << option.port << ", instanceId = " << instanceId;
+    return StartDebuggerCheckParameters(vm, option, instanceId, debuggerPostTask);
 #else
     if (vm == nullptr) {
         return false;

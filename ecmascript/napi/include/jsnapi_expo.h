@@ -1443,6 +1443,8 @@ public:
     static bool HasPendingJob(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
     // prevewer debugger.
+    static bool StartDebuggerCheckParameters(EcmaVM *vm, const DebugOption &option, int32_t instanceId,
+                                             const DebuggerPostTask &debuggerPostTask);
     static bool StartDebugger(EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
     // To be compatible with the old process.
