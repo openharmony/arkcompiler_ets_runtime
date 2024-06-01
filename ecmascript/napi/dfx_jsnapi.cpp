@@ -206,6 +206,7 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
     uv_work_t *work = new uv_work_t;
     if (work == nullptr) {
         LOG_ECMA(ERROR) << "work nullptr";
+        delete dumpStruct;
         return;
     }
     work->data = static_cast<void *>(dumpStruct);
@@ -221,6 +222,9 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
             delete dump;
             delete work;
         });
+    } else {
+        delete dumpStruct;
+        delete work;
     }
 
     // dump worker vm
@@ -291,6 +295,7 @@ void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
     uv_work_t *work = new uv_work_t;
     if (work == nullptr) {
         LOG_ECMA(FATAL) << "DFXJSNApi::TriggerGCWithVm:work is nullptr";
+        return;
     }
     work->data = static_cast<void *>(const_cast<EcmaVM *>(vm));
     int ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
