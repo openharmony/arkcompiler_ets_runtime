@@ -222,11 +222,20 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
 void MCRLowering::LowerEcmaObjectCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    DEFVALUE(condition, (&builder_), VariableType::BOOL(), builder_.False());
+    Label heapObject(&builder_);
+    Label exit(&builder_);
+
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef condition = builder_.BoolAnd(builder_.TaggedIsHeapObject(value),
-                                         builder_.TaggedObjectIsEcmaObject(value));
-    builder_.DeoptCheck(condition, frameState, DeoptType::NOTECMAOBJECT1);
+    BRANCH_CIR(builder_.TaggedIsHeapObject(value), &heapObject, &exit);
+    builder_.Bind(&heapObject);
+    {
+        condition = builder_.TaggedObjectIsEcmaObject(value);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    builder_.DeoptCheck(*condition, frameState, DeoptType::NOTECMAOBJECT1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
