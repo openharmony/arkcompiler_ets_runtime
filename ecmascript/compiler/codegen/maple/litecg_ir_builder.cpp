@@ -310,8 +310,8 @@ void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
         reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
         lmirBuilder_->SetFuncFrameResverdSlot(reservedSlotsSize);
         if (circuit_->IsOsr()) {
-            SaveFrameTypeOnFrame(methodLiteral_->IsFastCall() ? FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME
-                                                              : frameType);
+            SaveFrameTypeOnFrame(methodLiteral_->IsFastCall() ? FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME :
+                frameType);
             return;
         }
         auto ArgList = circuit_->GetArgRoot();
@@ -331,18 +331,80 @@ void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
                 SaveFrameTypeOnFrame(frameType);
             }
         }
+    } else if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
+        reservedSlotsSize = FASTJITFunctionFrame::ComputeReservedPcOffset(slotSize_);
+        lmirBuilder_->SetFuncFrameResverdSlot(reservedSlotsSize);
+        if (circuit_->IsOsr()) {
+            SaveFrameTypeOnFrame(methodLiteral_->IsFastCall() ? FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME :
+                frameType);
+            return;
+        }
+        auto ArgList = circuit_->GetArgRoot();
+        auto uses = acc_.Uses(ArgList);
+        for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+            int argth = static_cast<int>(acc_.TryGetValue(*useIt));
+            Var &value = lmirBuilder_->GetParam(function, argth);
+            int funcIndex = 0;
+            if (methodLiteral_->IsFastCall()) {
+                frameType = FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
+                funcIndex = static_cast<int>(FastCallArgIdx::FUNC);
+            } else {
+                funcIndex = static_cast<int>(CommonArgIdx::FUNC);
+            }
+            if (argth == funcIndex) {
+                SaveByteCodePcOnOptJSFuncFrame(value);
+                SaveJSFuncOnOptJSFuncFrame(value);
+                SaveFrameTypeOnFrame(frameType);
+            }
+        }
     } else {
         LOG_COMPILER(FATAL) << "frameType interpret type error !";
         ASSERT_PRINT(static_cast<uintptr_t>(frameType), "is not support !");
     }
 }
 
-void LiteCGIRBuilder::SaveJSFuncOnOptJSFuncFrame(maple::litecg::Var &value)
+void LiteCGIRBuilder::SaveByteCodePcOnOptJSFuncFrame(maple::litecg::Var &value)
 {
-    ASSERT(circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    ASSERT(circuit_->GetFrameType() == FrameType::FASTJIT_FUNCTION_FRAME);
+    // load method
+    Expr func = lmirBuilder_->Cvt(lmirBuilder_->i64PtrType, slotType_, lmirBuilder_->GenExprFromVar(value));
+    Expr offsetMethod = lmirBuilder_->ConstVal(
+        lmirBuilder_->CreateIntConst(lmirBuilder_->i64PtrType, JSFunctionBase::METHOD_OFFSET));
+    Expr addrMethod = lmirBuilder_->Add(lmirBuilder_->i64PtrType, func, offsetMethod);
+    Expr method = lmirBuilder_->Iread(
+        lmirBuilder_->i64PtrType, addrMethod, lmirBuilder_->CreatePtrType(lmirBuilder_->i64PtrType));
+    // load byteCodePc
+    Expr offsetByteCodePc = lmirBuilder_->ConstVal(
+        lmirBuilder_->CreateIntConst(lmirBuilder_->i64PtrType, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    Expr addrByteCodePc = lmirBuilder_->Add(lmirBuilder_->i64PtrType, method, offsetByteCodePc);
+    Expr byteCodePc = lmirBuilder_->Iread(
+        lmirBuilder_->i64PtrType, addrByteCodePc, lmirBuilder_->CreatePtrType(lmirBuilder_->i64PtrType));
+    // push byteCodePc
     Expr fpAddr = CallingFp(false);
     Expr frameAddr = lmirBuilder_->Cvt(fpAddr.GetType(), lmirBuilder_->i64Type, fpAddr);
-    size_t reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    size_t reservedOffset = FASTJITFunctionFrame::ComputeReservedPcOffset(slotSize_);
+    Expr frameByteCodePcSlotAddr =
+        lmirBuilder_->Sub(frameAddr.GetType(), frameAddr,
+                          lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(slotType_, reservedOffset)));
+    Expr byteCodePcAddr =
+        lmirBuilder_->Cvt(frameByteCodePcSlotAddr.GetType(),
+                          lmirBuilder_->CreatePtrType(slotType_), frameByteCodePcSlotAddr);
+    auto &stmt = lmirBuilder_->Iassign(byteCodePc, byteCodePcAddr, byteCodePcAddr.GetType());
+    lmirBuilder_->AppendStmt(GetFirstBB(), stmt);
+}
+
+void LiteCGIRBuilder::SaveJSFuncOnOptJSFuncFrame(maple::litecg::Var &value)
+{
+    ASSERT(IsOptimizedJSFunction());
+    Expr fpAddr = CallingFp(false);
+    Expr frameAddr = lmirBuilder_->Cvt(fpAddr.GetType(), lmirBuilder_->i64Type, fpAddr);
+    size_t reservedOffset = 0;
+    if (circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+        reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    } else {
+        reservedOffset = FASTJITFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    }
+     
     Expr frameJSFuncSlotAddr =
         lmirBuilder_->Sub(frameAddr.GetType(), frameAddr,
                           lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(slotType_, reservedOffset)));
@@ -961,7 +1023,8 @@ Expr LiteCGIRBuilder::GetFunction(BB &bb, Expr glue, const CallSignature *signat
 
 bool LiteCGIRBuilder::IsOptimizedJSFunction() const
 {
-    return circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
+    return circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+        circuit_->GetFrameType() == FrameType::FASTJIT_FUNCTION_FRAME;
 }
 
 bool LiteCGIRBuilder::IsOptimized() const
@@ -2042,7 +2105,7 @@ void LiteCGIRBuilder::VisitInitVreg(GateRef gate)
             Expr addrFunc = lmirBuilder_->Add(i64Ptr, frame, offsetFunc);
             Expr ldrFunc = lmirBuilder_->Iread(i64Ref, addrFunc, lmirBuilder_->CreatePtrType(i64Ptr));
             lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(ldrFunc, vreg));
-            if (circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+            if (IsOptimizedJSFunction()) {
                 // reset jsfunc on OptJSFuncFrame
                 Expr fpAddr = CallingFp(false);
                 Expr frameAddr = lmirBuilder_->Cvt(fpAddr.GetType(), lmirBuilder_->i64Type, fpAddr);

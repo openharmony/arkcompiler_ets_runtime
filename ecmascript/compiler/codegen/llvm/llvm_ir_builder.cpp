@@ -394,10 +394,55 @@ void LLVMIRBuilder::GenPrologue()
                 SaveFrameTypeOnFrame(frameType, builder_);
             }
         }
+    } else if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
+        reservedSlotsSize = FASTJITFunctionFrame::ComputeReservedPcOffset(slotSize_);
+        LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
+                                           std::to_string(reservedSlotsSize).c_str());
+        auto ArgList = circuit_->GetArgRoot();
+        auto uses = acc_.Uses(ArgList);
+        for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+            int argth = static_cast<int>(acc_.TryGetValue(*useIt));
+            LLVMValueRef value = LLVMGetParam(function_, argth);
+            int funcIndex = 0;
+            if (isFastCallAot_) {
+                frameType = FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
+                funcIndex = static_cast<int>(FastCallArgIdx::FUNC);
+            } else {
+                funcIndex = static_cast<int>(CommonArgIdx::FUNC);
+            }
+            if (argth == funcIndex) {
+                SaveByteCodePcOnOptJSFuncFrame(value);
+                SaveJSFuncOnOptJSFuncFrame(value);
+                SaveFrameTypeOnFrame(frameType, builder_);
+            }
+        }
     } else {
         LOG_COMPILER(FATAL) << "frameType interpret type error !";
         ASSERT_PRINT(static_cast<uintptr_t>(frameType), "is not support !");
     }
+}
+
+void LLVMIRBuilder::SaveByteCodePcOnOptJSFuncFrame(LLVMValueRef value)
+{
+    ASSERT(circuit_->GetFrameType() == FrameType::FASTJIT_FUNCTION_FRAME);
+    // load method
+    LLVMValueRef func = LLVMBuildPtrToInt(builder_, value, slotType_, "cast_to_i64");
+    LLVMValueRef offsetMethod = LLVMConstInt(GetInt64T(), JSFunctionBase::METHOD_OFFSET, false);
+    LLVMValueRef addrMethod = LLVMBuildAdd(builder_, func, offsetMethod, "");
+    LLVMValueRef method = LLVMBuildLoad(builder_, addrMethod, "");
+    // load byteCodePc
+    LLVMValueRef offsetByteCodePc = LLVMConstInt(GetInt64T(), Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, false);
+    LLVMValueRef addrByteCodePc = LLVMBuildAdd(builder_, method, offsetByteCodePc, "");
+    LLVMValueRef byteCodePc = LLVMBuildLoad(builder_, addrByteCodePc, "");
+    // push byteCodePc
+    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
+    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
+    size_t reservedOffset = FASTJITFunctionFrame::ComputeReservedPcOffset(slotSize_);
+    LLVMValueRef byteCodePcSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
+        reservedOffset, false), "");
+    LLVMValueRef byteCodePcAddr = LLVMBuildIntToPtr(builder_, byteCodePcSlotAddr,
+        LLVMPointerType(slotType_, 0), "byteCodePc.Addr");
+    LLVMBuildStore(builder_, byteCodePc, byteCodePcAddr);
 }
 
 void LLVMIRBuilder::SaveFrameTypeOnFrame(FrameType frameType, LLVMBuilderRef builder)
@@ -575,7 +620,8 @@ bool LLVMIRBuilder::IsOptimized() const
 
 bool LLVMIRBuilder::IsOptimizedJSFunction() const
 {
-    return circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
+    return circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+        circuit_->GetFrameType() == FrameType::FASTJIT_FUNCTION_FRAME;
 }
 
 void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &inList)
@@ -1318,10 +1364,15 @@ void LLVMIRBuilder::VisitParameter(GateRef gate)
 
 void LLVMIRBuilder::SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value)
 {
-    ASSERT(circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    ASSERT(IsOptimizedJSFunction());
+    size_t reservedOffset = 0;
     LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
     LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
-    size_t reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    if (circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+        reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    } else {
+        reservedOffset = FASTJITFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    }
     LLVMValueRef frameJSFuncSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
         reservedOffset, false), "");
     LLVMValueRef jsFuncAddr = LLVMBuildIntToPtr(builder_, frameJSFuncSlotAddr,

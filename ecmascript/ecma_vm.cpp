@@ -241,7 +241,10 @@ void EcmaVM::PostFork()
     }
     ResetPGOProfiler();
 
-    bool jitEscapeDisable = ohos::JitTools::GetJitEscapeEanble();
+    bool enableJitFrame = ohos::JitTools::GetJitFrameEnable();
+    options_.SetEnableJitFrame(enableJitFrame);
+
+    bool jitEscapeDisable = ohos::JitTools::GetJitEscapeDisable();
     if (jitEscapeDisable || !JSNApi::IsJitEscape()) {
         if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName)) {
             bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();

@@ -802,7 +802,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Label unshareCpMiss(env_);
 
     // HirGate Can not be a nullGate in Aot
-    if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate == Circuit::NullGate()) {
+    if (GetCircuit()->IsOptimizedOrFastJit() && hirGate == Circuit::NullGate()) {
         hirGate = index;
     }
     // Call runtime to create unshared constpool when current context's cache is hole in multi-thread.

@@ -93,13 +93,19 @@ public:
 
     bool IsJSFrame(FrameType type) const
     {
-        return IsInterpretedFrame(type) || IsOptimizedJSFunctionFrame(type);
+        return IsInterpretedFrame(type) || IsOptimizedJSFunctionFrame(type) || IsFastJitFunctionFrame(type);
     }
 
     bool IsOptimizedJSFunctionFrame(FrameType type) const
     {
         return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
             type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
+    }
+
+    bool IsFastJitFunctionFrame(FrameType type) const
+    {
+        return type == FrameType::FASTJIT_FUNCTION_FRAME ||
+            type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
     }
 
     bool IsAsmInterpretedFrame() const
