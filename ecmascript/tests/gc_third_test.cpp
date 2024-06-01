@@ -235,4 +235,65 @@ HWTEST_F_L0(GCTest, LargeOverShootSizeTest)
     EXPECT_TRUE(newOverShootSize > newShootSize);
 }
 
+HWTEST_F_L0(GCTest, RecomputeLimitsTest)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto oldCapacity = heap->GetOldSpace()->GetInitialCapacity();
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    EXPECT_FALSE(heap->IsConcurrentFullMark());
+    EXPECT_FALSE(heap->IsFullMarkRequested());
+    auto newCapacity = heap->GetOldSpace()->GetInitialCapacity();
+    EXPECT_NE(newCapacity, oldCapacity);
+    double gcSpeed = heap->GetMemController()->CalculateMarkCompactSpeedPerMS();
+    double mutatorSpeed = heap->GetMemController()->GetCurrentOldSpaceAllocationThroughputPerMS();
+    size_t oldSpaceSize = heap->GetOldSpace()->GetHeapObjectSize() + heap->GetHugeObjectSpace()->GetHeapObjectSize() +
+        heap->GetHugeMachineCodeSpace()->GetHeapObjectSize();
+    size_t newSpaceCapacity = heap->GetNewSpace()->GetInitialCapacity();
+    double growingFactor =  heap->GetMemController()->CalculateGrowingFactor(gcSpeed, mutatorSpeed);
+    size_t maxOldSpaceCapacity = heap->GetOldSpace()->GetMaximumCapacity() - newSpaceCapacity;
+    auto newOldSpaceLimit = heap->GetMemController()->CalculateAllocLimit(oldSpaceSize, MIN_OLD_SPACE_LIMIT,
+        maxOldSpaceCapacity, newSpaceCapacity, growingFactor);
+    EXPECT_EQ(newCapacity, newOldSpaceLimit);
+}
+
+HWTEST_F_L0(GCTest, GlobalNativeSizeLargerThanLimitTest)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto ret = heap->GlobalNativeSizeLargerThanLimit();
+    EXPECT_FALSE(ret);
+    size_t increase = std::numeric_limits<uint32_t>::max();
+    heap->GetNativeAreaAllocator()->IncreaseNativeMemoryUsage(increase);
+    ret = heap->GlobalNativeSizeLargerThanLimit();
+    EXPECT_TRUE(ret);
+}
+
+HWTEST_F_L0(GCTest, AdjustCapacity)
+{
+#if defined(PANDA_TARGET_ARM64)
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SemiSpace * space = heap->GetNewSpace();
+
+    EXPECT_EQ(space->GetSurvivalObjectSize(), 0);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 500; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    EXPECT_GT(space->GetSurvivalObjectSize(), 0);
+
+    EXPECT_FALSE(space->AdjustCapacity(0, thread));
+    size_t size = space->GetInitialCapacity() * GROW_OBJECT_SURVIVAL_RATE / 2;
+    EXPECT_FALSE(space->AdjustCapacity(size, thread));
+
+    space->SetInitialCapacity(space->GetSurvivalObjectSize() / GROW_OBJECT_SURVIVAL_RATE - 1);
+    size = space->GetSurvivalObjectSize() / GROW_OBJECT_SURVIVAL_RATE - 1;
+    size_t oldMaxCapacity = space->GetMaximumCapacity();
+    space->SetMaximumCapacity(space->GetInitialCapacity());
+    EXPECT_FALSE(space->AdjustCapacity(size, thread));
+    space->SetMaximumCapacity(oldMaxCapacity);
+    EXPECT_TRUE(space->AdjustCapacity(size, thread));
+#endif
+}
 } // namespace panda::test
