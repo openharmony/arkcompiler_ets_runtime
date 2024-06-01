@@ -101,7 +101,7 @@ HWTEST_F_L0(GCTest, NoFullConcurrentMarkOldGCTrigger)
                 instance->GetFactory()->NewTaggedArray(1024, JSTaggedValue::Hole(), MemSpaceType::NON_MOVABLE);
         }
         EXPECT_EQ(heap->GetOldSpace()->GetOvershootSize(),
-                  instance->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
+                  instance->GetEcmaParamConfiguration().GetOldSpaceStepOvershootSize());
         EXPECT_TRUE(heap->GetOldGCRequested());
         heap->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
         EXPECT_TRUE(thread->HasPendingException());
