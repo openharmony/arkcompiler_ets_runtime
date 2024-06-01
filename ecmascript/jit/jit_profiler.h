@@ -109,6 +109,14 @@ private:
     void ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType type);
     void ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset, JSHClass *hclass,
 		                     JSTaggedValue secondValue, BCType type);
+    void HandleStoreType(ApEntityId &abcId, int32_t &bcOffset,
+                         JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleTransition(ApEntityId &abcId, int32_t &bcOffset,
+                          JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleTransWithProto(ApEntityId &abcId, int32_t &bcOffset,
+                              JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandlePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                JSHClass *hclass, JSTaggedValue &secondValue);
     void ConvertICByValueWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type);
     void ConvertInstanceof(int32_t bcOffset, uint32_t slotId);
 
