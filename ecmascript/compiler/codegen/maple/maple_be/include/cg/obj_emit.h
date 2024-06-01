@@ -19,8 +19,16 @@
 #include "emit.h"
 #include "ifile.h"
 #include "string_utils.h"
+#ifdef CODE_SIGN_ENABLE
+#include "jit_buffer_integrity.h"
+#include "jit_signcode.h"
+#endif
 
 namespace maplebe {
+#ifdef CODE_SIGN_ENABLE
+using namespace OHOS::Security::CodeSign;
+using namespace panda::ecmascript::kungfu;
+#endif
 enum FixupKind : uint32 {
     kFKNone,
     kExceptFixup,
@@ -189,11 +197,21 @@ public:
     void AppendLocalFixups(LocalFixup &fixup)
     {
         localFixups.push_back(&fixup);
+#ifdef CODE_SIGN_ENABLE
+        if (CGOptions::UseJitCodeSign()) {
+            WillFixUp(JitSignCode::GetInstance()->GetJPtr());
+        }
+#endif
     }
 
     void AppendGlobalFixups(Fixup &fixup)
     {
         globalFixups.push_back(&fixup);
+#ifdef CODE_SIGN_ENABLE
+        if (CGOptions::UseJitCodeSign()) {
+            WillFixUp(JitSignCode::GetInstance()->GetJPtr());
+        }
+#endif
     }
 
     void AppendRelocations(Fixup &fixup)
@@ -230,7 +248,7 @@ public:
         funcName = name;
     }
 
-    const MapleVector<uint8> GetTextData() const
+    MapleVector<uint8> GetTextData() const
     {
         return textData;
     }
@@ -244,6 +262,14 @@ public:
     {
         auto pdata = reinterpret_cast<const uint8 *>(data);  // data:0xa9be7c1d pdata:1d 7c be a9
         (void)textData.insert(textData.end(), pdata, pdata + byteSize);
+#ifdef CODE_SIGN_ENABLE
+        if (CGOptions::UseJitCodeSign()) {
+            JitSignCode *singleton = JitSignCode::GetInstance();
+            RegisterTmpBuffer(singleton->GetJPtr(), textData.data());
+            AppendData(singleton->GetJPtr(), pdata, byteSize);
+            singleton->signTableSize += 1;
+        }
+#endif
     }
 
     void AppendTextData(uint64 data, uint32 byteSize)
@@ -251,6 +277,14 @@ public:
         for (size_t i = 0; i < byteSize; i++) {
             textData.push_back(static_cast<uint8>(data >> (i << k8BitShift)));
         }
+#ifdef CODE_SIGN_ENABLE
+        if (CGOptions::UseJitCodeSign()) {
+            JitSignCode *singleton = JitSignCode::GetInstance();
+            RegisterTmpBuffer(singleton->GetJPtr(), textData.data());
+            AppendData(singleton->GetJPtr(), &data, byteSize);
+            singleton->signTableSize += 1;
+        }
+#endif
     }
 
     uint32 GetTextDataElem32(size_t index)
@@ -273,6 +307,13 @@ public:
     {
         errno_t res = memcpy_s(textData.data() + index, byteSize, value, byteSize);
         CHECK_FATAL(res == EOK, "call memcpy_s failed");
+#ifdef CODE_SIGN_ENABLE
+        if (CGOptions::UseJitCodeSign()) {
+            JitSignCode *singleton = JitSignCode::GetInstance();
+            RegisterTmpBuffer(singleton->GetJPtr(), textData.data());
+            res = PatchData(singleton->GetJPtr(), index, textData.data() + index, byteSize);
+        }
+#endif
     }
 
     void FillTextDataPadding(uint32 padding)
@@ -378,6 +419,7 @@ public:
     void EmitFuncBinaryCode(ObjFuncEmitInfo &objFuncEmitInfo);
     void EmitInstructions(ObjFuncEmitInfo &objFuncEmitInfo, std::vector<uint32> &label2Offset);
     void EmitLocalFloatValue(ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitFullLSDA(ObjFuncEmitInfo &objFuncEmitInfo, const std::vector<uint32> &label2Offset);
     void EmitFastLSDA(ObjFuncEmitInfo &objFuncEmitInfo, const std::vector<uint32> &label2Offset);
     void EmitSwitchTable(ObjFuncEmitInfo &objFuncEmitInfo, const std::vector<uint32> &symbol2Offset);
     void WriteObjFile();

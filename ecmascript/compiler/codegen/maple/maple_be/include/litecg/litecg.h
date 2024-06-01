@@ -64,7 +64,7 @@ public:
 
     void DumpIRToFile(const std::string &fileName);
     void DumpCGIR();
-    void DoCG();
+    void DoCG(bool isJit = false);
 
 private:
     Module &module;

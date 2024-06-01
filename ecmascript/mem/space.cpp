@@ -20,6 +20,10 @@
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/space.h"
+#ifdef ENABLE_JITFORT
+#include "ecmascript/mem/jit_fort.h"
+#include <sys/mman.h>
+#endif
 
 namespace panda::ecmascript {
 Space::Space(BaseHeap* heap, HeapRegionAllocator *heapRegionAllocator,
@@ -102,6 +106,60 @@ HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heap
         maximumCapacity, MemSpaceType::HUGE_MACHINE_CODE_SPACE)
 {
 }
+
+#ifdef ENABLE_JITFORT
+uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread, size_t instructionsSize,
+    uintptr_t &instructionsAddr, AllocateEventType allocType)
+{
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
+    if (allocType == AllocateEventType::NORMAL) {
+        thread->CheckSafepointIfSuspended();
+    }
+
+    // A Huge machine code object is consisted of contiguous 256Kb aligned blocks.
+    // For JitFort, a huge machine code object starts with a page aligned mutable area
+    // (which holds Region and MachineCode object header, FuncEntryDesc and StackMap), followed
+    // by a page aligned immutable (JitFort space) area for JIT generated native instructions code.
+    //
+    // allocation sizes for Huge Machine Code:
+    //     a: mutable area size (aligned up to PageSize()) =
+    //         sizeof(Region) + HUGE_OBJECT_BITSET_SIZE + MachineCode::SIZE + payLoadSize - instructionsSize
+    //         (note: payLoadSize = funcDesc size + stackMap size + instructionsSize)
+    //     b: immutable area (starts on native page boundary) size = instructionsSize
+    //     c: size to mmap for huge machine code object = Alignup(a + b, 256 Kbyte)
+    //
+    // mmap to enable JIT_FORT rights control:
+    //     1. first mmap (without JIT_FORT option flag) region of size c above
+    //     2. then mmap immutable area with MAP_FIXED and JIT_FORT option flag (to be used by codesigner verify/copy)
+
+    size_t mutableSize = AlignUp(objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE - instructionsSize, PageSize());
+    size_t allocSize = AlignUp(mutableSize + instructionsSize, PANDA_POOL_ALIGNMENT_IN_BYTES);
+    if (heap_->OldSpaceExceedCapacity(allocSize)) {
+        LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
+        return 0;
+    }
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, allocSize, thread, heap_);
+    instructionsAddr = region->GetAllocateBase() + mutableSize;
+
+    // Enabe JitFort rights control
+    [[maybe_unused]] void *addr = mmap((void *)instructionsAddr, allocSize - mutableSize, PAGE_PROT_EXEC_READWRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | JitFort::MAP_JITFORT, -1, 0);
+    ASSERT(addr == (void *)instructionsAddr);
+
+    AddRegion(region);
+    // It need to mark unpoison when huge object being allocated.
+    ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    InvokeAllocationInspector(region->GetBegin(), objectSize);
+#endif
+    return region->GetBegin();
+}
+#endif
 
 uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread, AllocateEventType allocType)
 {

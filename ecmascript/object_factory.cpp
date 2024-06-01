@@ -3997,10 +3997,20 @@ uintptr_t ObjectFactory::NewSpaceBySnapshotAllocator(size_t size)
     return heap_->AllocateSnapshotSpace(size);
 }
 
+#ifdef ENABLE_JITFORT
+TaggedObject *ObjectFactory::NewMachineCodeObject(size_t length,
+    MachineCodeDesc &desc)
+#else
 JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
     const MachineCodeDesc &desc, JSHandle<Method> &method)
+#endif
 {
     NewObjectHook();
+#ifdef ENABLE_JITFORT
+    TaggedObject *obj = heap_->AllocateMachineCodeObject(JSHClass::Cast(
+        thread_->GlobalConstants()->GetMachineCodeClass().GetTaggedObject()), length + MachineCode::SIZE, desc);
+    return (obj);
+#else
     TaggedObject *obj = heap_->AllocateMachineCodeObject(JSHClass::Cast(
         thread_->GlobalConstants()->GetMachineCodeClass().GetTaggedObject()), length + MachineCode::SIZE);
     MachineCode *code = MachineCode::Cast(obj);
@@ -4011,7 +4021,23 @@ JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
     code->SetData(desc, method, length);
     JSHandle<MachineCode> codeObj(thread_, code);
     return codeObj;
+#endif
 }
+
+#ifdef ENABLE_JITFORT
+JSHandle<MachineCode> ObjectFactory::SetMachineCodeObjectData(TaggedObject *obj, size_t length,
+    MachineCodeDesc &desc, JSHandle<Method> &method)
+{
+    MachineCode *code = MachineCode::Cast(obj);
+    if (code == nullptr) {
+        LOG_FULL(FATAL) << "machine code cast failed";
+        UNREACHABLE();
+    }
+    code->SetData(desc, method, length);
+    JSHandle<MachineCode> codeObj(thread_, code);
+    return codeObj;
+}
+#endif
 
 JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTaggedValue> method)
 {

@@ -27,6 +27,9 @@
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
+#ifdef ENABLE_JITFORT
+#include "ecmascript/mem/machine_code.h"
+#endif
 
 namespace panda::ecmascript {
 class ConcurrentMarker;
@@ -925,7 +928,11 @@ public:
     // Huge
     inline TaggedObject *AllocateHugeObject(JSHClass *hclass, size_t size);
     // Machine code
+#ifdef ENABLE_JITFORT
+    inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size, MachineCodeDesc &desc);
+#else
     inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size);
+#endif
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
 
@@ -1283,7 +1290,11 @@ public:
     PUBLIC_API void RemoveGCListener(GCListenerId listenerId);
 private:
     inline TaggedObject *AllocateHugeObject(size_t size);
+#ifdef ENABLE_JITFORT
+    inline TaggedObject *AllocateHugeMachineCodeObject(size_t size, MachineCodeDesc &desc);
+#else
     inline TaggedObject *AllocateHugeMachineCodeObject(size_t size);
+#endif
 
     static constexpr int MIN_JSDUMP_THRESHOLDS = 85;
     static constexpr int MAX_JSDUMP_THRESHOLDS = 95;

@@ -138,6 +138,23 @@ public:
           wasted_(0),
           snapshotData_(0) {}
 
+#ifdef ENABLE_JITFORT
+    // JitFort space is divided into regions (JitForRegion) to enable
+    // reusing free_object_list and free_object_set operations for
+    // JitFort space, and GC marking actually happens in corresponding
+    // MachineCode objects where JitFort space is allocated to. So no
+    // gc mark bits needed in JitFortRegions.
+    Region(NativeAreaAllocator *allocator, uintptr_t allocateBase, uintptr_t end,
+        RegionSpaceFlag spaceType)
+        : packedData_(allocateBase, spaceType), // no markGCBitset_ for JitFort
+          nativeAreaAllocator_(allocator),
+          allocateBase_(allocateBase),
+          end_(end),
+          highWaterMark_(end),
+          aliveObject_(0),
+          wasted_(0),
+          snapshotData_(0) {}
+#endif
     ~Region() = default;
 
     NO_COPY_SEMANTIC(Region);
@@ -544,11 +561,19 @@ public:
 
     void InitializeFreeObjectSets()
     {
+#ifdef ENABLE_JITFORT
+        FreeObjectSet<FreeObject> **sets = new FreeObjectSet<FreeObject> *[FreeObjectList<FreeObject>::NumberOfSets()];
+        for (int i = 0; i < FreeObjectList<FreeObject>::NumberOfSets(); i++) {
+            sets[i] = new FreeObjectSet<FreeObject>(i);
+        }
+        freeObjectSets_ = Span<FreeObjectSet<FreeObject> *>(sets, FreeObjectList<FreeObject>::NumberOfSets());
+#else
         FreeObjectSet **sets = new FreeObjectSet *[FreeObjectList::NumberOfSets()];
         for (int i = 0; i < FreeObjectList::NumberOfSets(); i++) {
             sets[i] = new FreeObjectSet(i);
         }
         freeObjectSets_ = Span<FreeObjectSet *>(sets, FreeObjectList::NumberOfSets());
+#endif
     }
 
     void DestroyFreeObjectSets()
@@ -560,11 +585,19 @@ public:
         delete[] freeObjectSets_.data();
     }
 
+#ifdef ENABLE_JITFORT
+    FreeObjectSet<FreeObject> *GetFreeObjectSet(SetType type)
+#else
     FreeObjectSet *GetFreeObjectSet(SetType type)
+#endif
     {
         // Thread safe
         if (freeObjectSets_[type] == nullptr) {
+#ifdef ENABLE_JITFORT
+            freeObjectSets_[type] = new FreeObjectSet<FreeObject>(type);
+#else
             freeObjectSets_[type] = new FreeObjectSet(type);
+#endif
         }
         return freeObjectSets_[type];
     }
@@ -713,6 +746,16 @@ public:
 #endif
         }
 
+#ifdef ENABLE_JITFORT
+        inline PackedData(uintptr_t begin, RegionSpaceFlag spaceType)
+        {
+            flags_.spaceFlag_ = spaceType;
+            flags_.gcFlags_ = 0;
+            // no markGCBitset
+            begin_ = begin;
+            markGCBitset_ = nullptr;
+        }
+#endif
         static size_t GetFlagOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::FlagIndex)>(isArch32);
@@ -783,7 +826,11 @@ private:
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingOldToNewRSet_ {nullptr};
     RememberedSet *sweepingLocalToShareRSet_ {nullptr};
+#ifdef ENABLE_JITFORT
+    Span<FreeObjectSet<FreeObject> *> freeObjectSets_;
+#else
     Span<FreeObjectSet *> freeObjectSets_;
+#endif
     Mutex *lock_ {nullptr};
     uint64_t wasted_;
     // snapshotdata_ is used to encode the region for snapshot. Its upper 32 bits are used to store the size of

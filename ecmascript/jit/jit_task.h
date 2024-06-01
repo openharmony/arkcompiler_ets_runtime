@@ -104,6 +104,9 @@ public:
     void SetHClassInfoForPGO(JSHandle<Method> &methodHandle);
     void InstallCode();
     void InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj);
+    void InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCode,
+        JSHandle<Method> &methodHandle, JSHandle<Method> &newMethodHandle);
+
     MachineCodeDesc &GetMachineCodeDesc()
     {
         return codeDesc_;

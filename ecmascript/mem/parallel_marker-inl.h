@@ -83,7 +83,19 @@ inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object
     if (heap_->IsEdenMark() && !objectRegion->InEdenSpace()) {
         return;
     }
-
+#ifdef ENABLE_JITFORT
+    if (objectRegion->InMachineCodeSpace()) {
+        LOG_JIT(DEBUG) << "MarkObject MachineCode " << object
+            << " instructionsAddr " << (void *)((MachineCode*)object)->GetInstructionsAddr()
+            << " end " << (void *)(((MachineCode*)object)->GetInstructionsAddr() +
+                                   ((MachineCode*)object)->GetInstructionsSize())
+            << " size " <<((MachineCode *)object)->GetInstructionsSize();
+    }
+#else
+    if (objectRegion->InMachineCodeSpace()) {
+        LOG_JIT(DEBUG) << "MarkObject MachineCode " << object;
+    }
+#endif
     if (objectRegion->AtomicMark(object)) {
         workManager_->Push(threadId, object);
     }

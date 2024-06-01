@@ -873,6 +873,16 @@ public:
         return doRegSavesOpt;
     }
 
+    static void SetUseJitCodeSign(bool isJitCodeSign)
+    {
+        useJitCodeSign = isJitCodeSign;
+    }
+
+    static bool UseJitCodeSign()
+    {
+        return useJitCodeSign;
+    }
+
     static void EnableSsaPreSave()
     {
         useSsaPreSave = true;
@@ -1700,6 +1710,7 @@ private:
     static bool lazyBinding;
     static bool arm64ilp32;
     static bool hotFix;
+    static bool useJitCodeSign;
     /* if true dump scheduling information */
     static bool debugSched;
     /* if true do BruteForceSchedule */

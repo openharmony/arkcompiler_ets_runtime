@@ -19,12 +19,21 @@
 #include <cstdint>
 
 #include "libpandabase/macros.h"
+#ifdef ENABLE_JITFORT
+#include "ecmascript/mem/jit_fort_memdesc.h"
+#endif
 
 namespace panda::ecmascript {
 using SetType = int32_t;
 
 class FreeObject;
 
+#ifdef ENABLE_JITFORT
+template <typename T>
+class FreeObjectList;
+
+template <typename T>
+#endif
 class FreeObjectSet {
 public:
     explicit FreeObjectSet(SetType type) : setType_(type)
@@ -47,10 +56,17 @@ public:
 
     void Rebuild();
 
+#ifdef ENABLE_JITFORT
+    T *LookupSmallFreeObject(size_t size);
+    T *LookupLargeFreeObject(size_t size);
+    T *ObtainSmallFreeObject(size_t size);
+    T *ObtainLargeFreeObject(size_t size);
+#else
     FreeObject *LookupSmallFreeObject(size_t size);
     FreeObject *LookupLargeFreeObject(size_t size);
     FreeObject *ObtainSmallFreeObject(size_t size);
     FreeObject *ObtainLargeFreeObject(size_t size);
+#endif
 
     NO_COPY_SEMANTIC(FreeObjectSet);
     NO_MOVE_SEMANTIC(FreeObjectSet);
@@ -63,9 +79,15 @@ private:
     SetType setType_ = INVALID_SET_TYPE;
     size_t available_ = 0;
     bool isAdded_ = false;
+#ifdef ENABLE_JITFORT
+    T *freeObject_ = nullptr;
+
+    friend class FreeObjectList<T>;
+#else
     FreeObject *freeObject_ = nullptr;
 
     friend class FreeObjectList;
+#endif
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_FREE_OBJECT_SET_H
