@@ -140,7 +140,6 @@ bool SharedSparseSpace::Expand(JSThread *thread)
     if (region == nullptr) {
         LOG_ECMA(FATAL) << "SharedSparseSpace::Expand:region is nullptr";
     }
-    region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
     return true;
@@ -152,7 +151,6 @@ Region *SharedSparseSpace::AllocateDeserializeRegion(JSThread *thread)
     if (region == nullptr) {
         LOG_ECMA(FATAL) << "SharedSparseSpace::AllocateDeserializeRegion:region is nullptr";
     }
-    region->InitializeFreeObjectSets();
     return region;
 }
 

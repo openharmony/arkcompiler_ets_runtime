@@ -1304,7 +1304,6 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
 
         if (space->GetSpaceType() != MemSpaceType::SNAPSHOT_SPACE) {
             auto sparseSpace = reinterpret_cast<SparseSpace *>(space);
-            region->InitializeFreeObjectSets();
             sparseSpace->FreeLiveRange(region, region->GetHighWaterMark(), region->GetEnd(), true);
             sparseSpace->IncreaseLiveObjectSize(liveObjectSize);
             sparseSpace->IncreaseAllocatedSize(liveObjectSize);

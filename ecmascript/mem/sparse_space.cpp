@@ -37,7 +37,6 @@ void SparseSpace::Initialize()
 {
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
-    region->InitializeFreeObjectSets();
     AddRegion(region);
 
     allocator_->Initialize(region);
@@ -98,7 +97,6 @@ bool SparseSpace::Expand()
     }
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
-    region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
     return true;

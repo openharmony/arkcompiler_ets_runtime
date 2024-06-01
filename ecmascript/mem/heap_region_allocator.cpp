@@ -68,6 +68,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     uintptr_t end = mem + capacity;
 
     Region *region = new (ToVoidPtr(mem)) Region(heap->GetNativeAreaAllocator(), mem, begin, end, flags);
+    region->Initialize();
     std::atomic_thread_fence(std::memory_order_seq_cst);
     return region;
 }
