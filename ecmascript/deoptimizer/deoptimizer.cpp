@@ -537,8 +537,8 @@ void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *me
             isFastCall ? thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
                        : thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
         func->SetCodeEntry(entry);
+        method->ClearAOTStatusWhenDeopt(entry);
     }  // Do not change the func code entry if the method is not aot or deopt has happened already
-    method->ClearAOTStatusWhenDeopt();
 }
 
 void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)

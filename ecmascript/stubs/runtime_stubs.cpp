@@ -3470,7 +3470,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
         uintptr_t entry = isFastCall ? thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
                                      : thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
         func->SetCodeEntry(entry);
-        method->ClearAOTStatusWhenDeopt();
+        method->ClearAOTStatusWhenDeopt(entry);
     }
     context->SetMethod(thread, function);
     context->SetThis(thread, frameHandler.GetThis());
