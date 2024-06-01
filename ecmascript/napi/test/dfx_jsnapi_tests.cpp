@@ -334,6 +334,7 @@ HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
         size_t newAllocateSize = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
         EXPECT_TRUE(oldAllocateSize < newAllocateSize);
     }
+    ecmascript::SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     size_t newFreeSize = DFXJSNApi::GetAccumulatedFreeSize(vm_);
     EXPECT_TRUE(oldFreeSize < newFreeSize);
