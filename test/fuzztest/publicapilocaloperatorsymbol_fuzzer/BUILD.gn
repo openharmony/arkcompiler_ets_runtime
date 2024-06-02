@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ####################################fuzztest##################################
-ohos_fuzztest("PublicApiLocalOperatorFuzzTest") {
+ohos_fuzztest("PublicApiLocalOperatorSymbolFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file =
@@ -41,5 +41,5 @@ ohos_fuzztest("PublicApiLocalOperatorFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":PublicApiLocalOperatorFuzzTest" ]
+  deps += [ ":PublicApiLocalOperatorSymbolFuzzTest" ]
 }

@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ##################################fuzztest#####################################
-ohos_fuzztest("JSValueRefIsDataViewFuzzerTest") {
+ohos_fuzztest("JSValueRefIsDataViewFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/jsvaluerefisdataview_fuzzer"
@@ -42,5 +42,5 @@ ohos_fuzztest("JSValueRefIsDataViewFuzzerTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":JSValueRefIsDataViewFuzzerTest" ]
+  deps += [ ":JSValueRefIsDataViewFuzzTest" ]
 }

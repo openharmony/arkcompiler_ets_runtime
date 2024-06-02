@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ####################################fuzztest##################################
-ohos_fuzztest("TemplateClassGlobalFuzzerTest") {
+ohos_fuzztest("TemplateClassGlobalFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/templateclassglobal_fuzzer"
@@ -40,5 +40,5 @@ ohos_fuzztest("TemplateClassGlobalFuzzerTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":TemplateClassGlobalFuzzerTest" ]
+  deps += [ ":TemplateClassGlobalFuzzTest" ]
 }
