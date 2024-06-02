@@ -766,8 +766,10 @@ bool JSThread::CheckSafepoint()
     // Handle exit app senstive scene
     heap->HandleExitHighSensitiveEvent();
 
+    // After concurrent mark finish, should trigger gc here to avoid create much floating garbage
+    // except in serialize or high sensitive event
     if (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()
-        && !heap->GetOnSerializeEvent()) {
+        && !heap->GetOnSerializeEvent() && !heap->InSensitiveStatus()) {
         heap->SetCanThrowOOMError(false);
         heap->GetConcurrentMarker()->HandleMarkingFinished();
         heap->SetCanThrowOOMError(true);

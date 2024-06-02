@@ -872,8 +872,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
 #endif
         RecursionScope recurScope(this, HeapType::LOCAL_HEAP);
-        if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent() ||
-            (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
+        if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent()) {
             ProcessGCListeners();
             return;
         }

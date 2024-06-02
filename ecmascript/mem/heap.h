@@ -274,6 +274,11 @@ public:
         return maxMarkTaskCount_;
     }
 
+    bool InSensitiveStatus() const
+    {
+        return GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE || OnStartupEvent();
+    }
+
     void OnAllocateEvent(EcmaVM *ecmaVm, TaggedObject* address, size_t size);
     inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
                                             [[maybe_unused]] size_t size);
@@ -287,12 +292,6 @@ public:
     void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
 
 protected:
-    bool InSensitiveStatus() const
-    {
-        return GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE ||
-               OnStartupEvent();
-    }
-
     void FatalOutOfMemoryError(size_t size, std::string functionName);
 
     enum class HeapType {

@@ -206,7 +206,7 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
     } else {
         object = AllocateInGeneralNewSpace(size);
         if (object == nullptr) {
-            CollectGarbage(SelectGCType(), GCReason::ALLOCATION_LIMIT);
+            CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
             object = AllocateInGeneralNewSpace(size);
             if (object == nullptr) {
                 CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
@@ -403,7 +403,7 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
 
     auto *object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
     if (UNLIKELY(object == nullptr)) {
-        CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
+        CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
         object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
         if (UNLIKELY(object == nullptr)) {
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
