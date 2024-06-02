@@ -578,7 +578,11 @@ public:
 
     void DestroyFreeObjectSets()
     {
+#ifdef ENABLE_JITFORT
+        for (int i = 0; i < FreeObjectList<FreeObject>::NumberOfSets(); i++) {
+#else
         for (int i = 0; i < FreeObjectList::NumberOfSets(); i++) {
+#endif
             delete freeObjectSets_[i];
             freeObjectSets_[i] = nullptr;
         }
