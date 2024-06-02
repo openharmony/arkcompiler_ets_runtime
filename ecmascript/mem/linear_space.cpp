@@ -263,8 +263,9 @@ Region *EdenSpace::AllocRegion()
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     uintptr_t begin = AlignUp(mem + sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
     uintptr_t end = mem + memmap.GetSize();
-
-    return new (ToVoidPtr(mem)) Region(localHeap_->GetNativeAreaAllocator(), mem, begin, end, GetRegionFlag());
+    auto region = new (ToVoidPtr(mem)) Region(localHeap_->GetNativeAreaAllocator(), mem, begin, end, GetRegionFlag());
+    region->Initialize();
+    return region;
 }
 
 bool EdenSpace::Expand()
