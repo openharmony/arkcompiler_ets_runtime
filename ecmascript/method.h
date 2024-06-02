@@ -383,7 +383,7 @@ public:
     // add for AOT
     void SetCodeEntryAndMarkAOTWhenBinding(uintptr_t codeEntry);
 
-    void ClearAOTStatusWhenDeopt();
+    void ClearAOTStatusWhenDeopt(uintptr_t entry);
 
     void ClearAOTFlagsWhenInit();
 

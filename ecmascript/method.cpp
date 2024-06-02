@@ -112,16 +112,11 @@ void Method::SetCodeEntryAndMarkAOTWhenBinding(uintptr_t codeEntry)
     SetCodeEntryOrLiteral(codeEntry);
 }
 
-void Method::ClearAOTStatusWhenDeopt()
+void Method::ClearAOTStatusWhenDeopt(uintptr_t entry)
 {
     ClearAOTFlagsWhenInit();
     SetDeoptType(kungfu::DeoptType::NOTCHECK);
-    const JSPandaFile *jsPandaFile = GetJSPandaFile();
-    if (jsPandaFile == nullptr) {
-        LOG_ECMA(FATAL) << "Method::ClearAOTStatusWhenDeopt:jsPandaFile is nullptr";
-    }
-    MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
-    SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
+    SetCodeEntryOrLiteral(entry);
 }
 
 void Method::ClearAOTFlagsWhenInit()

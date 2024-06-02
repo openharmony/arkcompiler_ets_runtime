@@ -676,25 +676,29 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     InitializeJSFunction(glue, *result, kind, targetKind);
     SetMethodToFunction(glue, *result, method, knownKind ? MemoryOrder::NoBarrier() : MemoryOrder::Default());
 
-    Label isAotWithCallField(env);
-    Label afterAotWithCallField(env);
+    Label hasCompiledStatus(env);
+    Label afterDealWithCompiledStatus(env);
     Label isJitCompiledCode(env);
-    Label afterJitCompiledCode(env);
-    BRANCH(IsAotWithCallField(method), &isAotWithCallField, &afterAotWithCallField);
+    Label tryInitFuncCodeEntry(env);
+    BRANCH(IsAotWithCallField(method), &hasCompiledStatus, &tryInitFuncCodeEntry);
+    Bind(&hasCompiledStatus);
     {
-        Bind(&isAotWithCallField);
-        BRANCH(IsJitCompiledCode(method), &isJitCompiledCode, &afterJitCompiledCode);
+        BRANCH(IsJitCompiledCode(method), &isJitCompiledCode, &tryInitFuncCodeEntry);
+        Bind(&isJitCompiledCode);
         {
-            Bind(&isJitCompiledCode);
             ClearJitCompiledCodeFlags(glue, method);
-            Jump(&afterAotWithCallField);
+            Jump(&afterDealWithCompiledStatus);
         }
-        Bind(&afterJitCompiledCode);
-
-        SetCodeEntryToFunction(glue, *result, method);
-        Jump(&afterAotWithCallField);
     }
-    Bind(&afterAotWithCallField);
+    // Notice: we set code entries for all function to deal with these senarios
+    // 1) AOT compiled method, set AOT compiled code entry
+    // 2) define func with the deopted method, set the AOTToAsmInterpBridge
+    Bind(&tryInitFuncCodeEntry);
+    {
+        SetCodeEntryToFunction(glue, *result, method);
+        Jump(&afterDealWithCompiledStatus);
+    }
+    Bind(&afterDealWithCompiledStatus);
 
     Label ihcNotUndefined(env);
     BRANCH(TaggedIsUndefined(*ihc), &exit, &ihcNotUndefined);
