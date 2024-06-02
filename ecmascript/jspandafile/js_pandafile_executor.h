@@ -28,12 +28,18 @@ public:
     static constexpr int ROUTE_SUCCESS = 0;
     static constexpr int ROUTE_INTERNAL_ERROR = 100001;
     static constexpr int ROUTE_URI_ERROR = 100002;
-    
+
     std::pair<CString, CString> ParseEntryPointWithUnifiedRules(EcmaVM *vm, const CString &filename,
                                                                 std::string_view entryPoint);
     static std::pair<CString, CString> ParseAbcEntryPoint(JSThread *thread, const CString &filename,
                                                           [[maybe_unused]] std::string_view entryPoint);
-
+    static Expected<JSTaggedValue, bool> ExecuteFromFile(JSThread *thread, const CString &name,
+                                                         CString entry, bool needUpdate = false,
+                                                         bool executeFromJob = false);
+    static Expected<JSTaggedValue, bool> ExecuteFromAbsolutePathAbcFile(JSThread *thread, const CString &filename,
+                                                                        std::string_view entryPoint,
+                                                                        bool needUpdate = false,
+                                                                        bool executeFromJob = false);
     static Expected<JSTaggedValue, bool> ExecuteFromAbcFile(JSThread *thread, const CString &filename,
                                                             std::string_view entryPoint, bool needUpdate = false,
                                                             bool executeFromJob = false);
