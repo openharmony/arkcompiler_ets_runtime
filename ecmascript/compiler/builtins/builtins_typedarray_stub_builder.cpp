@@ -2468,6 +2468,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
     Label thisExists(env);
     Label isEcmaObject(env);
     Label isConstructor(env);
+    Label notDerived(env);
     Label thisObjIsECmaObject(env);
     Label thisObjIsFastTypedArray(env);
     Label defaultConstr(env);
@@ -2478,6 +2479,8 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
     Bind(&isEcmaObject);
     BRANCH(IsConstructor(thisValue), &isConstructor, slowPath);
     Bind(&isConstructor);
+    BRANCH(IsDerived(thisValue), slowPath, &notDerived);
+    Bind(&notDerived);
     // 3: maximum of numArgs
     BRANCH(Int32LessThanOrEqual(TruncPtrToInt32(numArgs), Int32(3)), &numArgsInRange, slowPath);
     Bind(&numArgsInRange);

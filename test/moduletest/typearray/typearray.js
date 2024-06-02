@@ -877,3 +877,21 @@ function prettyPrinted(value) {
     }
     return prettyPrint(value);
 }
+
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    class C extends ctor{
+
+    }
+    C.of();
+    print("Class extends "+ ctor.name + " test success!")
+});
