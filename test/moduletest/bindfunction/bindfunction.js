@@ -115,3 +115,8 @@ print(testFuncBound.name);
 Object.defineProperty(testFunc, "name", {value: "testFuncChanged"});
 testFuncBound = testFunc.bind();
 print(testFuncBound.name);
+
+function func() {}
+var fb = func.bind({});
+Object.defineProperty(func, 'name', {value: 1});
+print('bound func' == fb.name);

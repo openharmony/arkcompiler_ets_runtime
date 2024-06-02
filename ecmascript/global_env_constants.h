@@ -545,6 +545,10 @@ class ObjectFactory;
     V(IncludesString,                 INCLUDES_INDEX,                        "includes")                    \
     V(KeysString,                     KEYS_INDEX,                            "keys")                        \
     V(BoundString,                    BOUND_INDEX,                           "bound")                       \
+    V(TrimLeftString,                 TRIMLEFT_INDEX,                        "trimLeft")                    \
+    V(TrimStartString,                TRIMSTART_INDEX,                       "trimStart")                   \
+    V(TrimRightString,                TRIMRIGHT_INDEX,                       "trimRight")                   \
+    V(TrimEndString,                  TRIMEND_INDEX,                         "trimEnd")                     \
     V(BackslashString,                BACKSLASH_INDEX,                       "/")                           \
     V(SpaceString,                    SPACE_INDEX,                           " ")                           \
     V(NanCapitalString,               NAN_INDEX,                             "NaN")                         \

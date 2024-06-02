@@ -409,3 +409,7 @@ try {
 } catch (e) {
     print(e instanceof TypeError)
 }
+
+print('trimStart' == String.prototype.trimLeft.name);
+print('trimEnd' == String.prototype.trimRight.name);
+
