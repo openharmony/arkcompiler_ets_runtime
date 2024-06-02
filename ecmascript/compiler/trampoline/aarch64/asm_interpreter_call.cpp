@@ -500,7 +500,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
 
     Label pushThis;
     Label stackOverflow;
-    PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV, temp, argc);
+    bool isFrameComplete = PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV, temp, argc);
 
     __ Mov(currentSlotRegister, spRegister);
     // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
@@ -529,7 +529,9 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     // callTarget
     __ Str(callTarget, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Add(temp, currentSlotRegister, Immediate(QUINTUPLE_SLOT_SIZE));
-    __ Add(Register(FP), temp, Operand(argc, LSL, 3));  // 3: argc * 8
+    if (!isFrameComplete) {
+        __ Add(Register(FP), temp, Operand(argc, LSL, 3));  // 3: argc * 8
+    }
 
     __ Add(temp, argc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
     // 2: thread & argc
@@ -556,6 +558,22 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         __ Stp(temp, temp, MemoryOperand(spRegister, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         // 2: fill func&align slots
         __ Stp(Register(Zero), temp, MemoryOperand(spRegister, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Mov(temp, spRegister);
+        // 6：frame type, argc, this, newTarget, func and align
+        // +----------------------------------------------------------------+ <---- fp = sp + 6 * frame_slot_size
+        // |     FrameType =  BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME |
+        // +----------------------------------------------------------------+
+        // |                           argc = 0                             |
+        // |----------------------------------------------------------------|
+        // |                       this = undefined                         |
+        // |----------------------------------------------------------------|
+        // |                      newTarget = undefine                      |
+        // |----------------------------------------------------------------|
+        // |                       function = undefined                     |
+        // |----------------------------------------------------------------|
+        // |                               align                            |
+        // +----------------------------------------------------------------+  <---- sp
+        __ Add(Register(FP), temp, Immediate(FRAME_SLOT_SIZE * 6));
 
         Register runtimeId(X11);
         Register trampoline(X12);
@@ -625,7 +643,7 @@ void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assemb
     __ Ret();
 }
 
-void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
+bool AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
     FrameType type, Register op, Register next)
 {
     Register sp(SP);
@@ -640,11 +658,22 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         // 2: 2 * FRAME_SLOT_SIZE means skip next and frame type
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));
-    } else {
+        return true;
+    } else if (type == FrameType::BUILTIN_ENTRY_FRAME) {
         // 2: -2 * FRAME_SLOT_SIZE means type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         // 2: 2 * FRAME_SLOT_SIZE means skip next and frame type
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));
+        return true;
+    } else if (type == FrameType::BUILTIN_FRAME_WITH_ARGV) {
+        // this frame push stack args must before update FP, otherwise cpu profiler maybe visit incomplete stack
+        // BuiltinWithArgvFrame layout please see frames.h
+        // 2: -2 * FRAME_SLOT_SIZE means type & next
+        __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        return false;
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
     }
 }
 

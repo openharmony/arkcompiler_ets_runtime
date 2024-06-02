@@ -221,7 +221,7 @@ private:
 
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
 
-    static void PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
+    static bool PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
         FrameType type, Register op, Register next);
 
     static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
