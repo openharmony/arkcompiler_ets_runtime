@@ -123,7 +123,12 @@ public:
         overshootSize_ = size;
     }
 
-    size_t GetOvershootSize()
+    void IncreaseOvershootSize(size_t size)
+    {
+        overshootSize_ += size;
+    }
+
+    size_t GetOvershootSize() const
     {
         return overshootSize_;
     }

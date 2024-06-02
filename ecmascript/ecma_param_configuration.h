@@ -76,7 +76,8 @@ public:
             edenSpaceTriggerConcurrentMark_ = 1_MB;
             semiSpaceTriggerConcurrentMark_ = 1_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
-            oldSpaceOvershootSize_ = 4_MB;
+            oldSpaceStepOvershootSize_ = 4_MB;
+            oldSpaceMaxOvershootSize_ = 8_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 2_MB;
             minGrowingStep_ = 4_MB;
@@ -95,7 +96,8 @@ public:
             edenSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
-            oldSpaceOvershootSize_ = 8_MB;
+            oldSpaceStepOvershootSize_ = 8_MB;
+            oldSpaceMaxOvershootSize_ = 16_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 4_MB;
             minGrowingStep_ = 8_MB;
@@ -114,7 +116,8 @@ public:
             edenSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
-            oldSpaceOvershootSize_ = 8_MB;
+            oldSpaceStepOvershootSize_ = 8_MB;
+            oldSpaceMaxOvershootSize_ = 16_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 8_MB;
             minGrowingStep_ = 16_MB;
@@ -180,9 +183,14 @@ public:
         return semiSpaceStepOvershootSize_;
     }
 
-    size_t GetOldSpaceOvershootSize() const
+    size_t GetOldSpaceStepOvershootSize() const
     {
-        return oldSpaceOvershootSize_;
+        return oldSpaceStepOvershootSize_;
+    }
+
+    size_t GetOldSpaceMaxOvershootSize() const
+    {
+        return oldSpaceMaxOvershootSize_;
     }
 
     size_t GetOutOfMemoryOvershootSize() const
@@ -254,7 +262,8 @@ private:
     size_t edenSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceStepOvershootSize_ {0};
-    size_t oldSpaceOvershootSize_ {0};
+    size_t oldSpaceStepOvershootSize_ {0};
+    size_t oldSpaceMaxOvershootSize_ {0};
     size_t outOfMemoryOvershootSize_ {0};
     size_t minAllocLimitGrowingStep_ {0};
     size_t minGrowingStep_ {0};

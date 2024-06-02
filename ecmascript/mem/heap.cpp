@@ -955,7 +955,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                     if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
                         LOG_ECMA(INFO)
                             << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
-                        oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
+                        oldSpace_->SetOvershootSize(config_.GetOldSpaceStepOvershootSize());
                         TriggerConcurrentMarking();
                         oldGCRequested_ = true;
                         ProcessGCListeners();
@@ -1432,11 +1432,15 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
     bool isFullMarking = IsConcurrentFullMark() && GetJSThread()->IsMarking();
     bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimit();
     if (isFullMarking && oldSpace_->GetOvershootSize() == 0) {
-        oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
+        oldSpace_->SetOvershootSize(config_.GetOldSpaceStepOvershootSize());
     }
     if ((isNativeSizeLargeTrigger || OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
         GetHeapObjectSize() > globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize()) &&
         !NeedStopCollection()) {
+        if (isFullMarking && oldSpace_->GetOvershootSize() < config_.GetOldSpaceMaxOvershootSize()) {
+            oldSpace_->IncreaseOvershootSize(config_.GetOldSpaceStepOvershootSize());
+            return false;
+        }
         CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
         if (!oldGCRequested_) {
             return true;
@@ -1955,7 +1959,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
     int64_t semiRemainSize =
         static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
     int64_t overshootSize =
-        static_cast<int64_t>(config_.GetOldSpaceOvershootSize()) - semiRemainSize;
+        static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
     // overshoot size should be larger than 0.
     GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
     GetNewSpace()->SetWaterLineWithoutGC();
@@ -1995,7 +1999,7 @@ void Heap::HandleExitHighSensitiveEvent()
         int64_t semiRemainSize =
             static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
         int64_t overshootSize =
-            static_cast<int64_t>(config_.GetOldSpaceOvershootSize()) - semiRemainSize;
+            static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
@@ -2012,7 +2016,7 @@ void Heap::HandleExitHighSensitiveEvent()
 bool Heap::ObjectExceedMaxHeapSize() const
 {
     size_t configMaxHeapSize = config_.GetMaxHeapSize();
-    size_t overshootSize = config_.GetOldSpaceOvershootSize();
+    size_t overshootSize = config_.GetOldSpaceStepOvershootSize();
     return GetHeapObjectSize() > configMaxHeapSize - overshootSize;
 }
 
