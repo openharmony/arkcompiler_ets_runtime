@@ -134,6 +134,16 @@ void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
         reinterpret_cast<void*>(GetText()) << ", size:" << instrSize  <<
         ", stackMap addr:" << reinterpret_cast<void*>(stackmapAddr) << ", size:" << stackMapSizeAlign <<
         ", funcEntry addr:" << reinterpret_cast<void*>(GetFuncEntryDesAddress()) << ", count:" << cnt;
+
+#ifndef ENABLE_JIT_FORT
+    //todo
+    size_t pageSize = 4096; // 4096 : pageSize
+    uintptr_t startPage = reinterpret_cast<uintptr_t>(textStart) & ~(pageSize - 1);
+    uintptr_t endPage = (reinterpret_cast<uintptr_t>(textStart) + dataSize) & ~(pageSize - 1);
+    size_t protSize = (endPage == startPage) ? ((dataSize + pageSize - 1U) & (~(pageSize - 1))) :
+        (pageSize + ((dataSize + pageSize - 1U) & (~(pageSize - 1))));
+    PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE);
+#endif
 }
 
 void MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
