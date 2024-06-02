@@ -57,6 +57,7 @@ static BackwardBackReferenceOpCode g_backwardBackreferenceOpcode =
     BackwardBackReferenceOpCode();                       // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 static Char32OpCode g_char32Opcode = Char32OpCode();     // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 static Range32OpCode g_range32Opcode = Range32OpCode();  // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
+static SparseOpCode g_sparseOpcode = SparseOpCode();     // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 static std::vector<RegExpOpCode *> g_intrinsicSet = {
     &g_saveStartOpcode,
@@ -65,8 +66,8 @@ static std::vector<RegExpOpCode *> g_intrinsicSet = {
     &g_gotoOpcode,
     &g_splitFirstOpcode,
     &g_splitNextOpcode,
-    &g_matchAheadOpcode,
     &g_negativeMatchAheadOpcode,
+    &g_matchAheadOpcode,
     &g_matchOpcode,
     &g_loopOpcode,
     &g_loopGreedyOpcode,
@@ -88,6 +89,7 @@ static std::vector<RegExpOpCode *> g_intrinsicSet = {
     &g_backwardBackreferenceOpcode,
     &g_char32Opcode,
     &g_range32Opcode,
+    &g_sparseOpcode,
 };
 
 RegExpOpCode::RegExpOpCode(uint8_t opCode, int size) : opCode_(opCode), size_(size) {}
@@ -204,6 +206,13 @@ uint32_t SplitNextOpCode::InsertOpCode(DynChunk *buf, uint32_t offset, uint32_t 
     return GetDynChunkfSize(*buf);
 }
 
+uint32_t SplitNextOpCode::EmitOpCode(DynChunk *buf, uint32_t para) const
+{
+    buf->EmitChar(GetOpCode());
+    buf->EmitU32(para);
+    return GetDynChunkfSize(*buf);
+}
+
 uint32_t SplitNextOpCode::DumpOpCode(std::ostream &out, const DynChunk &buf, uint32_t offset) const
 {
     out << offset << ":\t"
@@ -216,6 +225,13 @@ uint32_t SplitFirstOpCode::InsertOpCode(DynChunk *buf, uint32_t offset, uint32_t
     buf->Insert(offset, GetSize());
     buf->PutU8(offset, GetOpCode());
     buf->PutU32(offset + 1, para);
+    return GetDynChunkfSize(*buf);
+}
+
+uint32_t SplitFirstOpCode::EmitOpCode(DynChunk *buf, uint32_t para) const
+{
+    buf->EmitChar(GetOpCode());
+    buf->EmitU32(para);
     return GetDynChunkfSize(*buf);
 }
 
@@ -500,6 +516,22 @@ uint32_t Range32OpCode::InsertOpCode(DynChunk *buf, const RangeSet &rangeSet) co
         buf->EmitU32(range.second);
     }
     return GetDynChunkfSize(*buf);
+}
+
+uint32_t SparseOpCode::DumpOpCode(std::ostream &out, const DynChunk &buf, uint32_t offset) const
+{
+    out << offset << ":\t"
+        << "sparse\t";
+    size_t size = buf.GetU16(offset + 1);
+    for (size_t i = 0; i < size; i++) {
+        out << static_cast<char>(buf.GetU16(offset + RegExpOpCode::OP_SIZE_THREE + (i * RegExpOpCode::OP_SIZE_SIX)))
+            << "\t" << buf.GetU32(offset + RegExpOpCode::OP_SIZE_THREE +
+                          (i * RegExpOpCode::OP_SIZE_SIX + RegExpOpCode::OP_SIZE_TWO)) +
+                          offset + size * RegExpOpCode::OP_SIZE_SIX + RegExpOpCode::OP_SIZE_THREE
+            << "\t";
+    }
+    out << std::endl;
+    return offset + size * RegExpOpCode::OP_SIZE_SIX + RegExpOpCode::OP_SIZE_THREE;
 }
 
 uint32_t MatchAheadOpCode::InsertOpCode(DynChunk *buf, uint32_t offset, uint32_t para) const
