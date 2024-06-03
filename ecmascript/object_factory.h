@@ -191,6 +191,7 @@ using base::ErrorType;
 
 enum class RemoveSlots { YES, NO };
 enum class GrowMode { KEEP, GROW };
+enum class StackCheck { YES, NO };
 
 class ObjectFactory {
 public:
@@ -207,10 +208,10 @@ public:
     JSHandle<Program> NewProgram();
 
     JSHandle<JSObject> PUBLIC_API GetJSError(const ErrorType &errorType, const char *data = nullptr,
-        bool needCheckStack = true);
+        StackCheck needCheckStack = StackCheck::YES);
 
     JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
-        bool needCheckStack = true);
+        StackCheck needCheckStack = StackCheck::YES);
 
     JSHandle<JSObject> NewJSAggregateError();
 

@@ -967,7 +967,7 @@ JSHandle<JSArguments> ObjectFactory::NewJSArguments()
     return obj;
 }
 
-JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const char *data, bool needCheckStack)
+JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const char *data, StackCheck needCheckStack)
 {
     ASSERT_PRINT(errorType == ErrorType::ERROR || errorType == ErrorType::EVAL_ERROR ||
                      errorType == ErrorType::RANGE_ERROR || errorType == ErrorType::REFERENCE_ERROR ||
@@ -984,7 +984,7 @@ JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const c
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
-    bool needCheckStack)
+    StackCheck needCheckStack)
 {
     // if there have exception in thread, then return current exception, no need to new js error.
     if (thread_->HasPendingException()) {

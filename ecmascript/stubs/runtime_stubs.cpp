@@ -931,7 +931,7 @@ DEF_RUNTIME_STUBS(RegularJSObjDeletePrototype)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (!result) {
         auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property", StackCheck::NO);
         thread->SetException(error.GetTaggedValue());
         return JSTaggedValue::Exception().GetRawData();
     }
@@ -947,7 +947,7 @@ DEF_RUNTIME_STUBS(CallJSObjDeletePrototype)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (!result) {
         auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property", StackCheck::NO);
         thread->SetException(error.GetTaggedValue());
         return JSTaggedValue::Exception().GetRawData();
     }
@@ -2088,7 +2088,7 @@ DEF_RUNTIME_STUBS(ThrowTypeError)
     JSTaggedValue argMessageStringId = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     std::string message = MessageString::GetMessageString(argMessageStringId.GetInt());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, message.c_str());
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
@@ -2107,7 +2107,7 @@ DEF_RUNTIME_STUBS(ThrowRangeError)
     JSTaggedValue argMessageStringId = GetArg(argv, argc, 0);
     std::string message = MessageString::GetMessageString(argMessageStringId.GetInt());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, message.c_str());
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, message.c_str(), StackCheck::NO);
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
@@ -2580,7 +2580,7 @@ DEF_RUNTIME_STUBS(ThrowNotCallableException)
     RUNTIME_STUBS_HEADER(ThrowNotCallableException);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "is not callable");
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "is not callable", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }
@@ -2591,7 +2591,7 @@ DEF_RUNTIME_STUBS(ThrowSetterIsUndefinedException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-        "Cannot set property when setter is undefined");
+        "Cannot set property when setter is undefined", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }
@@ -2602,7 +2602,7 @@ DEF_RUNTIME_STUBS(ThrowCallConstructorException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                   "class constructor cannot called without 'new'");
+                                                   "class constructor cannot called without 'new'", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }
@@ -2613,7 +2613,7 @@ DEF_RUNTIME_STUBS(ThrowNonConstructorException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                   "function is non-constructor");
+                                                   "function is non-constructor", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }
@@ -2626,7 +2626,7 @@ DEF_RUNTIME_STUBS(ThrowStackOverflowException)
     // so check thread here to distinguish it with the actual stack overflow.
     ecmaVm->CheckThread();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", false);
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", StackCheck::NO);
     if (LIKELY(!thread->HasPendingException())) {
         thread->SetException(error.GetTaggedValue());
     }
@@ -2639,7 +2639,8 @@ DEF_RUNTIME_STUBS(ThrowDerivedMustReturnException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                   "Derived constructor must return object or undefined");
+                                                   "Derived constructor must return object or undefined",
+                                                    StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }

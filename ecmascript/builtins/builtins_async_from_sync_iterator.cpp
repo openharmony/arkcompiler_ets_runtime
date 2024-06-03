@@ -120,7 +120,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
     if (!result->IsECMAObject()) {
         // a.Perform ! Call(promiseCapability.[[Reject]], undefined, « a newly created TypeError object »).
         JSHandle<JSObject> resolutionError =
-            factory->GetJSError(ErrorType::TYPE_ERROR, "AsyncFromSyncIteratorPrototype.throw: is not Object.");
+            factory->GetJSError(ErrorType::TYPE_ERROR, "AsyncFromSyncIteratorPrototype.throw: is not Object.", StackCheck::NO);
         JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
@@ -197,7 +197,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
     if (!result->IsECMAObject()) {
         // a.Perform ! Call(promiseCapability.[[Reject]], undefined, « a newly created TypeError object »).
         JSHandle<JSObject> resolutionError =
-            factory->GetJSError(ErrorType::TYPE_ERROR, "AsyncFromSyncIteratorPrototype.return: is not Object.");
+            factory->GetJSError(ErrorType::TYPE_ERROR, "AsyncFromSyncIteratorPrototype.return: is not Object.", StackCheck::NO);
         JSHandle<JSTaggedValue> rstErr = JSHandle<JSTaggedValue>::Cast(resolutionError);
         JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
         EcmaRuntimeCallInfo *info =

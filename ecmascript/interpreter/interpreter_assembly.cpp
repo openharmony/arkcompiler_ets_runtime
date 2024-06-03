@@ -242,7 +242,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
                 EcmaVM *ecmaVm = thread->GetEcmaVM();
                 ObjectFactory *factory = ecmaVm->GetFactory();
                 JSHandle<JSObject> error =
-                    factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'");
+                    factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'", StackCheck::NO);
                 thread->SetException(error.GetTaggedValue());
             }
             return thread->GetException();

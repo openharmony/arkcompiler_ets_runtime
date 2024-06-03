@@ -287,7 +287,7 @@ JSTaggedValue BuiltinsSharedMap::AddEntriesFromIterable(JSThread *thread, const 
 
         // If Type(nextItem) is not Object
         if (!nextValue->IsECMAObject()) {
-            JSHandle<JSObject> typeError = factory->GetJSError(ErrorType::TYPE_ERROR, "nextItem is not Object");
+            JSHandle<JSObject> typeError = factory->GetJSError(ErrorType::TYPE_ERROR, "nextItem is not Object", StackCheck::NO);
             JSHandle<JSTaggedValue> record(
                 factory->NewCompletionRecord(CompletionRecordType::THROW, JSHandle<JSTaggedValue>(typeError)));
             JSTaggedValue ret = JSIterator::IteratorClose(thread, iter, record).GetTaggedValue();

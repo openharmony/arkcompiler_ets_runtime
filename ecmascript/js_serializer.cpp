@@ -1438,7 +1438,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
     }
     JSHandle<JSTaggedValue> msg = DeserializeJSTaggedValue();
     JSHandle<EcmaString> handleMsg(msg);
-    JSHandle<JSTaggedValue> errorTag = JSHandle<JSTaggedValue>::Cast(factory_->NewJSError(errorType, handleMsg));
+    JSHandle<JSTaggedValue> errorTag = JSHandle<JSTaggedValue>::Cast(factory_->NewJSError(errorType, handleMsg, StackCheck::NO));
     referenceMap_.emplace(objectId_++, errorTag);
     return errorTag;
 }

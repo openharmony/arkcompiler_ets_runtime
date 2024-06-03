@@ -71,7 +71,7 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(EcmaRuntimeCallInfo *argv, Tr
 
     uint32_t argc = argv->GetArgsNumber();
     if (argc == 0) {
-        JSHandle<JSObject> syntaxError = factory->GetJSError(base::ErrorType::SYNTAX_ERROR, "arg is empty");
+        JSHandle<JSObject> syntaxError = factory->GetJSError(base::ErrorType::SYNTAX_ERROR, "arg is empty", StackCheck::NO);
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), JSTaggedValue::Exception());
     }
 

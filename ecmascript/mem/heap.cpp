@@ -1087,7 +1087,7 @@ void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std
 
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::OOM_ERROR, oss.str().c_str());
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::OOM_ERROR, oss.str().c_str(), StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
 }
 

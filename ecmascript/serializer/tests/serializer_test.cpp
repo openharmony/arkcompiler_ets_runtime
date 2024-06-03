@@ -1262,7 +1262,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSError1)
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
     JSHandle<JSTaggedValue> errorTag =
-        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg));
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg, StackCheck::NO));
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     serializer->WriteValue(thread, errorTag, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
@@ -1283,7 +1283,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSError2)
     JSHandle<EcmaString> key2(factory->NewFromASCII("error2"));
     JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
     JSHandle<JSTaggedValue> errorTag =
-        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg));
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg, StackCheck::NO));
 
 
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key1), errorTag);

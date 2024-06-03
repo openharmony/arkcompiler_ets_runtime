@@ -1060,7 +1060,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             JSTaggedValue promiseResult = JSPromise::Cast(promise.GetTaggedObject())->GetPromiseResult();
             JSHandle<JSObject> error =
-                factory->GetJSError(base::ErrorType::ERROR, nullptr);
+                factory->GetJSError(base::ErrorType::ERROR, nullptr, StackCheck::NO);
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), promiseResult.GetInt());
         }
         return index;
