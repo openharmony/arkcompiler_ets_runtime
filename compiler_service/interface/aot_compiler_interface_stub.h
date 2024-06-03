@@ -28,8 +28,12 @@ public:
 private:
     int32_t CommandAOTCompiler(MessageParcel &data, MessageParcel &reply);
     int32_t CommandStopAOTCompiler(MessageParcel &reply);
+    int32_t CommandGetAOTVersion(MessageParcel& reply);
+    int32_t CommandNeedReCompile(MessageParcel& data, MessageParcel& reply);
     static constexpr int32_t COMMAND_AOT_COMPILER = MIN_TRANSACTION_ID + 0;
     static constexpr int32_t COMMAND_STOP_AOT_COMPILER = MIN_TRANSACTION_ID + 1;
+    static constexpr int32_t COMMAND_GET_AOT_VERSION = MIN_TRANSACTION_ID + 2;
+    static constexpr int32_t COMMAND_NEED_RE_COMPILE = MIN_TRANSACTION_ID + 3;
 };
 } // namespace ArkCompiler
 } // namespace OHOS

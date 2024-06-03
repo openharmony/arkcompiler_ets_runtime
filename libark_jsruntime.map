@@ -117,6 +117,8 @@
       panda::Logger::logger*;
       panda::ecmascript::AnFileInfo::GenerateMethodToEntryIndexMap*;
       panda::ecmascript::AnFileInfo::Save*;
+      panda::ecmascript::AOTFileVersion::GetAOTVersion*;
+      panda::ecmascript::AOTFileVersion::CheckAOTVersion*;
       panda::ecmascript::Barriers::Update*;
       panda::ecmascript::BigInt::SameValue*;
       panda::ecmascript::BindSmallCpuCore*;

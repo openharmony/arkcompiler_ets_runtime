@@ -40,6 +40,12 @@ int32_t AotCompilerInterfaceStub::OnRemoteRequest(
         case COMMAND_STOP_AOT_COMPILER: {
             return CommandStopAOTCompiler(reply);
         }
+        case COMMAND_GET_AOT_VERSION: {
+            return CommandGetAOTVersion(reply);
+        }
+        case COMMAND_NEED_RE_COMPILE: {
+            return CommandNeedReCompile(data, reply);
+        }
         default:
             return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
     }
@@ -88,6 +94,37 @@ int32_t AotCompilerInterfaceStub::CommandStopAOTCompiler(MessageParcel& reply)
     if (!reply.WriteInt32(errCode)) {
         HiLog::Error(LABEL, "Write Int32 failed!");
         return ERR_INVALID_VALUE;
+    }
+    return ERR_NONE;
+}
+
+int32_t AotCompilerInterfaceStub::CommandGetAOTVersion(MessageParcel& reply)
+{
+    std::string sigData;
+    ErrCode errCode = GetAOTVersion(sigData);
+    if (!reply.WriteInt32(errCode)) {
+        HiLog::Error(LABEL, "Write Int32 failed!");
+        return ERR_INVALID_VALUE;
+    }
+    if (SUCCEEDED(errCode)) {
+        reply.WriteString16(Str8ToStr16(sigData));
+    }
+
+    return ERR_NONE;
+}
+
+int32_t AotCompilerInterfaceStub::CommandNeedReCompile(MessageParcel& data,
+                                                       MessageParcel& reply)
+{
+    std::string regs = Str16ToStr8(data.ReadString16());
+    bool sigData;
+    ErrCode errCode = NeedReCompile(regs, sigData);
+    if (!reply.WriteInt32(errCode)) {
+        HiLog::Error(LABEL, "Write Int32 failed!");
+        return ERR_INVALID_VALUE;
+    }
+    if (SUCCEEDED(errCode)) {
+        reply.WriteBool(sigData);
     }
     return ERR_NONE;
 }

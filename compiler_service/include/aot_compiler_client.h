@@ -34,6 +34,8 @@ public:
     int32_t AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                         std::vector<int16_t> &sigData);
     int32_t StopAotCompiler();
+    int32_t NeedReCompile(const std::string& oldVersion, bool& sigData);
+    int32_t GetAOTVersion(std::string& sigData);
     void OnLoadSystemAbilitySuccess(const sptr<IRemoteObject> &remoteObject);
     void OnLoadSystemAbilityFail();
     void AotCompilerOnRemoteDied(const wptr<IRemoteObject> &remoteObject);

@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//build/ohos.gni")
 import("//build/ohos/sa_profile/sa_profile.gni")
 
@@ -24,6 +25,7 @@ config("aot_compiler_service_config") {
 
 ohos_shared_library("libcompiler_service") {
   public_configs = [ ":aot_compiler_service_config" ]
+  configs = [ "$js_root:ark_jsruntime_public_config" ]
   shlib_type = "sa"
   version_script = "libaot_compiler_service.map"
   sources = [
@@ -46,7 +48,10 @@ ohos_shared_library("libcompiler_service") {
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
     "ipc:ipc_core",
+    "runtime_core:libarkfile_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
