@@ -26,7 +26,7 @@ if (is_standard_system || ark_standalone_build) {
 }
 
 common_options = ""
-if (ark_standalone_build) {
+if (defined(disable_force_gc) && disable_force_gc) {
   common_options += " --enable-force-gc=false"
 }
 
