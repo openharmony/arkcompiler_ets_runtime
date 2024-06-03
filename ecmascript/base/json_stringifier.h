@@ -83,7 +83,10 @@ private:
     bool NoChangedToDictionaryMode(JSTaggedValue key, LayoutInfo *layoutInfo, JSHandle<TaggedArray> &propertiesArr,
     bool IsEnumerable, const JSHandle<JSObject> &obj, bool *isContinue, bool *hasChangedToDictionaryMode,
     const JSHandle<JSTaggedValue> &replacer, JSHandle<JSHClass> &jsHclass, bool hasContent);
-    
+
+    JSHandle<JSTaggedValue> SerializeHolder(const JSHandle<JSTaggedValue> &object,
+                                            const JSHandle<JSTaggedValue> &value);
+
     CString gap_;
     CString result_;
     CString indent_;

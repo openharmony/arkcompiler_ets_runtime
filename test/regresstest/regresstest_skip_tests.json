@@ -1962,7 +1962,6 @@
         "mjsunit/global-load-with-proxy.js",
         "mjsunit/object-define-properties.js",
         "mjsunit/verify-assert-false.js",
-        "mjsunit/json-stringify-holder.js",
         "mjsunit/serialize-deserialize-now.js",
         "mjsunit/setter-on-constructor-prototype.js",
         "mjsunit/string-oom-replace-global-regexp-with-string.js",
