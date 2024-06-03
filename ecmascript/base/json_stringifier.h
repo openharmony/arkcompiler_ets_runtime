@@ -73,6 +73,9 @@ private:
     bool SerializeKeys(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     bool OnlyOwnKeysProc(JSTaggedValue enumCache, JSHandle<JSHClass> jsHclass, const JSHandle<JSObject> &obj,
                          JSHandle<TaggedArray> propertiesArr, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
+    bool OnlyOwnKeysProcWithDictMode(const JSHandle<JSObject> &obj, const JSHandle<TaggedArray> &cache,
+                                           const JSHandle<JSTaggedValue> &replacer, uint32_t startIndex,
+                                           uint32_t length, bool hasContent);
     bool PropsProc(bool hasChangedToDictionaryMode, JSHandle<JSHClass> jsHclass, const JSHandle<JSObject> &obj,
                    JSHandle<TaggedArray> propertiesArr, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     bool JSGlobalObjectProc(bool hasContent, const JSHandle<JSObject> &obj, JSHandle<TaggedArray> propertiesArr,
