@@ -1035,6 +1035,13 @@ void JSFunction::SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFun
     handleRaw->SetValue(thread, value, mode);
 }
 
+void JSFunction::SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode)
+{
+    JSHandle<ProfileTypeInfoCell> handleRaw(thread, GetRawProfileTypeInfo());
+    ASSERT(!handleRaw->IsEmptyProfileTypeInfoCell(thread));
+    handleRaw->SetMachineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef(), WRITE_BARRIER);
+}
+
 JSTaggedValue JSFunction::GetFunctionExtraInfo() const
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);

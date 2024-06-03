@@ -20,6 +20,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
+#include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript {
 void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
@@ -204,36 +205,32 @@ void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
     }
 }
 
-bool Jit::ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &jsFunction)
+// Used for jit machine code reusing of inner functions have the same method to improve performance.
+void Jit::ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &jsFunction)
 {
-    if (!IsEnableFastJit()) {
-        return false;
+    JSHandle<ProfileTypeInfoCell> profCell(thread, jsFunction->GetRawProfileTypeInfo());
+    JSTaggedValue machineCode = profCell->GetMachineCode().GetWeakRawValue();
+    if (machineCode.IsHole()) {
+        return;
     }
-    if (jsFunction->GetMachineCode() != JSTaggedValue::Undefined()) {
-        return false;
+    if (machineCode.IsUndefined()) {
+        LOG_JIT(DEBUG) << "reset fuction jit hotness count";
+        // if old gc triggered, jit hotness cnt need to be recounted
+        ProfileTypeInfo::Cast(profCell->GetValue().GetTaggedObject())->SetJitHotnessCnt(0);
+        profCell->SetMachineCode(thread, JSTaggedValue::Hole());
+        return;
     }
-    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    if (method->GetFunctionKind() != FunctionKind::ARROW_FUNCTION) {
-        return false;
-    }
-    auto id = method->GetMethodId();
-    if (thread->GetCurrentEcmaContext()->MatchJitMachineCode(id, method)) {
-        CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
-        CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
-        LOG_JIT(DEBUG) << "reuse fuction machine code : " << methodName;
-        auto machineCodeObj = thread->GetCurrentEcmaContext()->GetJitMachineCode(id).second;
-        JSHandle<Method> methodHandle(thread, method);
-        JSHandle<Method> newMethodHandle = thread->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
-        jsFunction->SetMethod(thread, newMethodHandle);
-        JSHandle<MachineCode> machineCodeHandle(thread, JSTaggedValue(machineCodeObj).GetTaggedObject());
-        uintptr_t codeAddr = machineCodeHandle->GetFuncAddr();
-        FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes *>(machineCodeHandle->GetFuncEntryDes());
-        jsFunction->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
-        newMethodHandle->SetDeoptThreshold(thread->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
-        jsFunction->SetMachineCode(thread, machineCodeHandle);
-        return true;
-    }
-    return false;
+    JSHandle<MachineCode> machineCodeHandle(thread, machineCode.GetTaggedObject());
+    JSHandle<Method> method(thread, Method::Cast(jsFunction->GetMethod().GetTaggedObject()));
+    LOG_JIT(DEBUG) << "reuse fuction machine code : " << method->GetJSPandaFile()->GetJSPandaFileDesc()
+        << ":" << method->GetRecordNameStr() << "." << CString(method->GetMethodName());
+    JSHandle<Method> newMethodHandle = thread->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(method);
+    jsFunction->SetMethod(thread, newMethodHandle);
+    uintptr_t codeAddr = machineCodeHandle->GetFuncAddr();
+    FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes *>(machineCodeHandle->GetFuncEntryDes());
+    jsFunction->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
+    newMethodHandle->SetDeoptThreshold(thread->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
+    jsFunction->SetMachineCode(thread, machineCodeHandle);
 }
 
 void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
@@ -242,10 +239,6 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     auto jit = Jit::GetInstance();
     if ((!jit->IsEnableBaselineJit() && tier == CompilerTier::BASELINE) ||
         (!jit->IsEnableFastJit() && tier == CompilerTier::FAST)) {
-        return;
-    }
-
-    if (jit->ReuseCompiledFunc(vm->GetJSThread(), jsFunction)) {
         return;
     }
 

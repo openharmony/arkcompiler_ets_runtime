@@ -236,6 +236,7 @@ public:
                                void *data, size_t nativeBindingsize = 0);
     static void SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
                                    const JSHandle<JSTaggedValue> &value, BarrierMode mode = WRITE_BARRIER);
+    void SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode);
 
     JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;

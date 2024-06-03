@@ -1333,4 +1333,83 @@ GateRef CircuitBuilder::GetPropertiesFromSendableEnv(GateRef object, GateRef ind
     GateRef valueIndex = Int32Add(index, Int32(SendableEnv::SENDABLE_RESERVED_ENV_LENGTH));
     return GetValueFromTaggedArray(object, valueIndex);
 }
+
+GateRef CircuitBuilder::GetProfileTypeInfo(GateRef function)
+{
+    GateRef raw = Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
+}
+
+void CircuitBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET);
+    Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+void CircuitBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
+                                                         GateRef profileTypeInfo, GateRef slotId)
+{
+    Label subEntry(env_);
+    env_->SubCfgEntry(&subEntry);
+
+    Label profileTypeInfoNotUndefined(env_);
+    Label slotValueUpdate(env_);
+    Label slotValueNotUndefined(env_);
+    Label profileTypeInfoEnd(env_);
+    NewObjectStubBuilder newBuilder(env_);
+    BRANCH_CIR2(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
+    Bind(&profileTypeInfoNotUndefined);
+    {
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        BRANCH_CIR2(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
+        Bind(&slotValueUpdate);
+        {
+            GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
+            SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell);
+            Jump(&profileTypeInfoEnd);
+        }
+        Bind(&slotValueNotUndefined);
+        UpdateProfileTypeInfoCellType(glue, slotValue);
+        SetRawProfileTypeInfoToFunction(glue, function, slotValue);
+        Jump(&profileTypeInfoEnd);
+    }
+    Bind(&profileTypeInfoEnd);
+
+    env_->SubCfgExit();
+}
+
+void CircuitBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell)
+{
+    Label subEntry(env_);
+    env_->SubCfgEntry(&subEntry);
+
+    // ProfileTypeInfoCell0 -> Cell1 -> CellN
+    Label isProfileTypeInfoCell0(env_);
+    Label notProfileTypeInfoCell0(env_);
+    Label isProfileTypeInfoCell1(env_);
+    Label endProfileTypeInfoCellType(env_);
+    GateRef objectType = GetObjectType(LoadHClass(profileTypeInfoCell));
+    BRANCH_CIR2(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_0))),
+                &isProfileTypeInfoCell0, &notProfileTypeInfoCell0);
+    Bind(&isProfileTypeInfoCell0);
+    {
+        auto profileTypeInfoCell1Class = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                ConstantIndex::PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX);
+        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCell1Class);
+        Jump(&endProfileTypeInfoCellType);
+    }
+    Bind(&notProfileTypeInfoCell0);
+    BRANCH_CIR2(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_1))),
+                &isProfileTypeInfoCell1, &endProfileTypeInfoCellType);
+    Bind(&isProfileTypeInfoCell1);
+    {
+        auto profileTypeInfoCellNClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                ConstantIndex::PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX);
+        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCellNClass);
+        Jump(&endProfileTypeInfoCellType);
+    }
+    Bind(&endProfileTypeInfoCellType);
+    env_->SubCfgExit();
+}
 }  // namespace panda::ecmascript::kungfu

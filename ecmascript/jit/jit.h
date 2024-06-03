@@ -73,7 +73,7 @@ public:
     // dfx for jit warmup compile
     static void CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction);
 
-    bool ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &function);
+    void ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &function);
 
     bool IsAppJit() const
     {

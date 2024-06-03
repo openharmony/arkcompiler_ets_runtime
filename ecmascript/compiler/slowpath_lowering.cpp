@@ -2662,7 +2662,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef methodId = acc_.GetValueIn(gate, 0);
+    GateRef methodId = acc_.GetValueIn(gate, 1);
 
     FunctionKind kind = FunctionKind::LAST_FUNCTION_KIND;
     if (acc_.IsConstantNumber(methodId)) {
@@ -2680,8 +2680,9 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
         }
     }
 
-    GateRef length = acc_.GetValueIn(gate, 1);
-    GateRef lexEnv = acc_.GetValueIn(gate, 2); // 2: Get current env
+    GateRef length = acc_.GetValueIn(gate, 2);
+    GateRef lexEnv = acc_.GetValueIn(gate, 3); // 3: Get current env
+    GateRef slotId = acc_.GetValueIn(gate, 0);
     StateDepend successControl;
     StateDepend failControl;
     Label success(&builder_);
@@ -2696,6 +2697,14 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     }
     builder_.Bind(&success);
     {
+#if ECMASCRIPT_ENABLE_IC
+        builder_.UpdateProfileTypeInfoCellToFunction(glue_, result.ReadVariable(),
+            builder_.GetProfileTypeInfo(jsFunc), slotId);
+        if (compilationEnv_->IsJitCompiler()) {
+            builder_.CallRuntime(glue_, RTSTUB_ID(JitReuseCompiledFunc), Gate::InvalidGateRef,
+                { result.ReadVariable() }, glue_);
+        }
+#endif
         successControl.SetState(builder_.GetState());
         successControl.SetDepend(builder_.GetDepend());
     }

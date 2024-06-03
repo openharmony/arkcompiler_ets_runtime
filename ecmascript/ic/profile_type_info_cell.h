@@ -27,7 +27,8 @@ public:
     CAST_CHECK(ProfileTypeInfoCell, IsProfileTypeInfoCell);
 
     static constexpr size_t VALUE_OFFSET = TaggedObjectSize();
-    ACCESSORS(Value, VALUE_OFFSET, LAST_OFFSET);
+    ACCESSORS(Value, VALUE_OFFSET, MACHINE_CODE_OFFSET);
+    ACCESSORS(MachineCode, MACHINE_CODE_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     DECL_VISIT_OBJECT(VALUE_OFFSET, LAST_OFFSET);
