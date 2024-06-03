@@ -612,6 +612,8 @@ public:
         if (uncatchableErrorHandler_ != nullptr) {
             panda::TryCatch trycatch(this);
             uncatchableErrorHandler_(trycatch);
+        } else {
+            LOG_ECMA_MEM(FATAL) << "Out of Memory";
         }
     }
 
