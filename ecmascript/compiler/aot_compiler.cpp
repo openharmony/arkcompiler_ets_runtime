@@ -19,10 +19,10 @@
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/compiler/aot_compilation_env.h"
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/compiler/aot_compilation_env.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
@@ -31,7 +31,6 @@
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/platform/file.h"
-#include "ecmascript/platform/filesystem.h"
 #include "ecmascript/platform/os.h"
 
 #include "ecmascript/compiler/aot_compiler_stats.h"
@@ -43,7 +42,6 @@ enum ErrCode {
     ERR_FAIL = (-1),
     ERR_HELP = (1),
     ERR_NO_AP = (2),
-    ERR_MERGE_AP = (3),
 };
 
 void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bool &ret,
@@ -62,19 +60,20 @@ void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bo
 }
 } // namespace
 
-bool CheckVersion(JSRuntimeOptions& runtimeOptions, AotCompilerStats& compilerStats, bool isPgoMerged)
+std::pair<bool, int> CheckVersion(JSRuntimeOptions &runtimeOptions, bool result)
 {
     if (runtimeOptions.IsCheckPgoVersion()) {
-        if (!isPgoMerged) {
-            LOG_COMPILER(ERROR) << "CheckVersion ap and abc may not match";
-            compilerStats.SetPgoFileLegal(false);
+        if (result) {
+            return std::pair(true, 0);
+        } else {
+            LOG_COMPILER(ERROR) << "CheckVersion ap and abc do not match";
+            return std::pair(true, 1);
         }
-        if (runtimeOptions.IsTargetCompilerMode()) {
-            compilerStats.PrintCompilerStatsLog();
-        }
-        return true;
     }
-    return false;
+    if (!result) {
+        return std::pair(true, 1);
+    }
+    return std::pair(false, 0);
 }
 
 bool IsExistsPkgInfo(AotCompilerPreprocessor &cPreprocessor)
@@ -135,7 +134,7 @@ int Main(const int argc, const char **argv)
             return ERR_HELP;
         }
         if (IsExistsPkgInfo(cPreprocessor) && JSNApi::IsAotEscape(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
-            LOG_COMPILER(ERROR) << "Stop compile AOT because there are multiple crashes";
+            LOG_COMPILER(ERROR) << " Stop compile AOT because there are more crashes";
             return ERR_FAIL;
         }
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
@@ -152,20 +151,23 @@ int Main(const int argc, const char **argv)
         compilerStats.SetAotFilePath(cOptions.outputFileName_);
         compilerStats.SetPgoPath(cOptions.profilerIn_);
         compilerStats.StartCompiler();
+        cPreprocessor.CreateEmptyFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN);
+        cPreprocessor.CreateEmptyFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI);
         profilerDecoder.SetHotnessThreshold(cOptions.hotnessThreshold_);
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
         uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
         // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
-        // need support multiple abc
-        auto isPgoMerged = cPreprocessor.HandleMergedPgoFile(checksum);
-        if (CheckVersion(runtimeOptions, compilerStats, isPgoMerged)) {
-            return ERR_OK;
-        }
-        if (!isPgoMerged) {
-            filesystem::CreateEmptyFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN);
-            filesystem::CreateEmptyFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI);
-            return ERR_MERGE_AP;
+        // need support muilt abc
+        auto result = CheckVersion(runtimeOptions, cPreprocessor.HandleMergedPgoFile(checksum));
+        if (result.first) {
+            if (result.second != 0) {
+                compilerStats.SetPgoFileLegal(false);
+            }
+            if (runtimeOptions.IsTargetCompilerMode()) {
+                compilerStats.PrintCompilerStatsLog();
+            }
+            return result.second;
         }
         cPreprocessor.GeneratePGOTypes(cOptions);
         cPreprocessor.SnapshotInitialize();
