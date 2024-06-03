@@ -51,7 +51,7 @@ private:
     void LowerStoreModuleVar(GateRef gate, GateRef glue);
     void LowerLdLocalModuleVar(GateRef gate);
 
-    GateRef LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType);
+    GateRef LoadFromConstPool(GateRef unsharedConstPool, size_t index, size_t valVecType);
     GateRef NewActualArgv(GateRef gate, GateRef glue);
     GateRef NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef elements, GateRef length, uint32_t hintLength = 0);
     GateRef NewTaggedArray(size_t length, GateRef glue);

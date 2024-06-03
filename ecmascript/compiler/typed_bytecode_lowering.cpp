@@ -508,12 +508,12 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             builder_.ProtoChangeMarkerCheck(receiver, frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef constpoool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
+            GateRef unsharedConstPoool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
             size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
             if (LIKELY(!plr.IsAccessor())) {
-                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, constpoool, holderHClassIndex);
+                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, unsharedConstPoool, holderHClassIndex);
             } else {
-                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, constpoool, holderHClassIndex);
+                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, unsharedConstPoool, holderHClassIndex);
             }
         }
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
@@ -689,15 +689,17 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef constpool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
+            GateRef unsharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
             size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
             GateRef value = tacc.GetValue();
             if (tacc.IsHolderEqNewHolder(0)) {
-                builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, constpool, holderHClassIndex, value);
+                builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, unsharedConstPool, holderHClassIndex,
+                                                      value);
             } else {
-                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL),
-                                                                tacc.GetKey());
-                builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, constpool, holderHClassIndex, value,
+                auto propKey =
+                    builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL),
+                                                     tacc.GetKey());
+                builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, unsharedConstPool, holderHClassIndex, value,
                                            propKey);
             }
         } else if (tacc.IsReceiverEqHolder(0)) {
@@ -754,8 +756,9 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
                     BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
                 builder_.Bind(&isProto);
-                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL),
-                                                                tacc.GetKey());
+                auto propKey =
+                    builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL),
+                                                     tacc.GetKey());
                 builder_.CallRuntime(glue_, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
                     { receiverHC, newHolderHC, propKey }, gate);
                 builder_.Jump(&notProto);

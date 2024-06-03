@@ -417,7 +417,11 @@ void BytecodeCircuitBuilder::BuildFrameArgs()
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGV);
-    args[idx++] = GetCurrentConstpool(argAcc_.GetCommonArgGate(CommonArgIdx::FUNC));
+    GateRef sharedConstpool = Circuit::NullGate();
+    GateRef unSharedConstpool = Circuit::NullGate();
+    GetCurrentConstpool(argAcc_.GetCommonArgGate(CommonArgIdx::FUNC), sharedConstpool, unSharedConstpool);
+    args[idx++] = sharedConstpool;
+    args[idx++] = unSharedConstpool;
     args[idx++] = GetPreFrameArgs();
     GateRef frameArgs = circuit_->NewGate(metaData, args);
     argAcc_.SetFrameArgs(frameArgs);

@@ -333,7 +333,8 @@ private:
     void DeleteLoopExit(GateRef gate);
     void DeleteLoopExitValue(GateRef gate);
     void LowerLdStr(GateRef gate);
-    void LowerGetConstPool(GateRef gate);
+    void LowerGetSharedConstPool(GateRef gate);
+    void LowerGetUnsharedConstPool(GateRef gate);
 
     CompilationEnv *compilationEnv_;
     const MethodLiteral *methodLiteral_ {nullptr};
@@ -347,6 +348,7 @@ private:
     bool stressDeopt_ {false};
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
+    CVector<GateRef> unsharedCP_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_SLOWPATH_LOWERING_H
