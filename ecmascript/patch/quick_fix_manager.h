@@ -39,6 +39,8 @@ public:
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
     JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId);
+    void SetCurrentBaseFileName(CString fileName);
+    CString GetCurrentBaseFileName();
 private:
     // check whether the callback is registered.
     bool HasQueryQuickFixInfoFunc() const
@@ -55,6 +57,7 @@ private:
                         void **patchBuffer,
                         size_t &patchSize)> callBack_;
     CMap<uint32_t, CString> baseClassInfo_ {};
+    CString currentBaseFileName_;
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H

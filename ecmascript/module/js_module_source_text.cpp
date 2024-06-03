@@ -37,6 +37,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/tagged_dictionary.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -93,8 +94,13 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     CString moduleRequestName = ConvertToString(moduleRequest.GetTaggedValue());
     JSHandle<JSTaggedValue> moduleRequestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
 
-    ASSERT(module->GetEcmaModuleFilename().IsHeapObject());
-    CString baseFilename = ConvertToString(module->GetEcmaModuleFilename());
+    CString baseFilename;
+    if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
+        baseFilename = thread->GetEcmaVM()->GetQuickFixManager()->GetCurrentBaseFileName();
+    } else {
+        ASSERT(module->GetEcmaModuleFilename().IsHeapObject());
+        baseFilename = ConvertToString(module->GetEcmaModuleFilename());
+    }
 
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
