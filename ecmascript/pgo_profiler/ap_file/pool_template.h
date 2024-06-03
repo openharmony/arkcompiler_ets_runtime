@@ -48,10 +48,11 @@ public:
 
     bool TryAdd(const V &value, ApEntityId &entryId)
     {
-        auto it = valueToId_.find(value);
-        if (it != valueToId_.end()) {
-            entryId = it->second;
-            return true;
+        for (auto &entry : pool_) {
+            if (entry.second.GetData() == value) {
+                entryId = entry.second.GetEntryId();
+                return true;
+            }
         }
 
         entryId = ApEntityId(IsReserved(value) ? (++reservedUsed_, GetReservedId(value))
@@ -60,7 +61,6 @@ public:
         auto result = pool_.emplace(entryId, value);
         auto &entry = result.first->second;
         entry.SetEntryId(entryId);
-        valueToId_[value] = entryId;
         return true;
     }
 
@@ -231,7 +231,6 @@ private:
     SupportCb supportCb_;
     GetSectionCb getSectionCb_;
     std::unordered_map<ApEntityId, Entry> pool_;
-    std::unordered_map<V, ApEntityId> valueToId_;
 };
 }  // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_AP_FILE_POOL_TEMPLATE_H
