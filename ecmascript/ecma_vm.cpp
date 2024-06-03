@@ -225,10 +225,7 @@ void EcmaVM::PostFork()
     DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
-    if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
-        options_.SetEnablePGOProfiler(false);
-        PGOProfilerManager::GetInstance()->SetDisableAot(true);
-    } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+    if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
     if (ohos::EnableAotListHelper::GetInstance()->IsAotCompileSuccessOnce()) {

@@ -93,8 +93,9 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/ohos/aot_crash_info.h"
-#include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/ohos/aot_runtime_info.h"
+#include "ecmascript/ohos/enable_aot_list_helper.h"
+#include "ecmascript/ohos/framework_helper.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -202,6 +203,8 @@ using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
 using FrameIterator = ecmascript::FrameIterator;
 using Concurrent = ecmascript::Concurrent;
 using CrashInfo = ecmascript::ohos::AotCrashInfo;
+using EnableAotListHelper = ecmascript::ohos::EnableAotListHelper;
+using PGOProfilerManager = ecmascript::pgo::PGOProfilerManager;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
@@ -4381,6 +4384,11 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     if (IsAotEscape()) {
         LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
+        return;
+    }
+    if (!vm->GetJSOptions().WasAOTOutputFileSet() &&
+        !EnableAotListHelper::GetInstance()->IsEnableList(PGOProfilerManager::GetInstance()->GetBundleName())) {
+        LOG_ECMA(INFO) << "Stop load AOT because it's not in enable list";
         return;
     }
 
