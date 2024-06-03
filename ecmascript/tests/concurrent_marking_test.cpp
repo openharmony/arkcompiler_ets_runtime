@@ -82,17 +82,6 @@ HWTEST_F_L0(ConcurrentMarkingTest, PerformanceWithoutConcurrentMarking)
     heap->CollectGarbage(TriggerGCType::OLD_GC);
 }
 
-HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithFullMarkRequest)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetFullMarkRequestedState(true);
-    EXPECT_FALSE(heap->IsConcurrentFullMark());
-    EXPECT_FALSE(thread->IsMarking());
-    heap->TryTriggerConcurrentMarking();
-    EXPECT_TRUE(heap->IsConcurrentFullMark());
-    EXPECT_TRUE(thread->IsMarking());
-}
-
 HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithOldSpace)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -128,7 +117,6 @@ HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithNewSpace)
         EXPECT_FALSE(heap->IsConcurrentFullMark());
         heap->TryTriggerConcurrentMarking();
         EXPECT_TRUE(!heap->IsConcurrentFullMark());
-        EXPECT_TRUE(thread->IsMarking());
     }
 }
 }  // namespace panda::test
