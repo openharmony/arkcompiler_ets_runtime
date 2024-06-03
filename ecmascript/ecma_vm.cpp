@@ -1055,8 +1055,8 @@ std::pair<std::string, std::string> EcmaVM::GetCurrentModuleInfo(bool needRecord
 {
     std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread_);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, std::make_pair("", ""));
-    CString recordName = ConvertToString(moduleInfo.first);
-    CString fileName = ConvertToString(moduleInfo.second);
+    CString recordName = ModulePathHelper::Utf8ConvertToString(moduleInfo.first);
+    CString fileName = ModulePathHelper::Utf8ConvertToString(moduleInfo.second);
     LOG_FULL(INFO) << "Current recordName is " << recordName <<", current fileName is " << fileName;
     if (needRecordName) {
         if (fileName.length() > ModulePathHelper::BUNDLE_INSTALL_PATH_LEN &&

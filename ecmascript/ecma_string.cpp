@@ -1309,6 +1309,19 @@ std::string EcmaStringAccessor::ToStdString(StringConvertedUsage usage)
     return res;
 }
 
+CString EcmaStringAccessor::Utf8ConvertToString()
+{
+    std::string stdStr;
+    if (IsLineString()) {
+        base::StringHelper::Utf8ToString(GetDataUtf8(), GetLength(), stdStr);
+        return stdStr.c_str();
+    }
+    CVector<uint8_t> buf;
+    const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
+    base::StringHelper::Utf8ToString(data, GetLength(), stdStr);
+    return stdStr.c_str();
+}
+
 std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)
 {
     if (string_ == nullptr) {

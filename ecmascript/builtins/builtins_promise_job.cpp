@@ -153,8 +153,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     // Resolve request module's ohmurl
     JSMutableHandle<JSTaggedValue> moduleName(thread, thread->GlobalConstants()->GetUndefined());
     CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
-    CString fileNameStr = ConvertToString(dirPath.GetTaggedValue());
-    CString requestPath = ConvertToString(specifierString.GetTaggedValue());
+    CString fileNameStr = ModulePathHelper::Utf8ConvertToString(dirPath.GetTaggedValue());
+    CString requestPath = ModulePathHelper::Utf8ConvertToString(specifierString.GetTaggedValue());
     LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
     if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
         CString traceInfo = "DynamicImportJob: " + requestPath;
@@ -163,7 +163,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     CString recordNameStr;
     if (!recordName->IsUndefined()) {
-        recordNameStr = ConvertToString(recordName.GetTaggedValue());
+        recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
         curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr, recordNameStr.c_str());
         if (curJsPandaFile == nullptr) {
             LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
@@ -190,7 +190,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         moduleName.Update(ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
             specifierString.GetTaggedValue()).GetTaggedValue());
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-        fileNameStr = ConvertToString(moduleName.GetTaggedValue());
+        fileNameStr =
+            ModulePathHelper::Utf8ConvertToString(moduleName.GetTaggedValue());
     } else {
         entryPoint =
             ModulePathHelper::ConcatFileNameWithMerge(thread, curJsPandaFile.get(),

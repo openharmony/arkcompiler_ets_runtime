@@ -1232,6 +1232,9 @@ public:
     // if string is not flat, this func has low efficiency.
     std::string ToStdString(StringConvertedUsage usage = StringConvertedUsage::PRINT);
 
+    // this function convert for Utf8
+    CString Utf8ConvertToString();
+
     std::string DebuggerToStdString(StringConvertedUsage usage = StringConvertedUsage::PRINT);
     // not change string data structure.
     // if string is not flat, this func has low efficiency.

@@ -430,7 +430,7 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
     } else {
         filename.Update(func->GetModule());
         ASSERT(filename->IsString());
-        CString fullName = ConvertToString(filename.GetTaggedValue());
+        CString fullName = ModulePathHelper::Utf8ConvertToString(filename.GetTaggedValue());
         dirname.Update(PathHelper::ResolveDirPath(thread_, fullName));
     }
     CJSInfo cjsInfo(module, require, exports, filename, dirname);

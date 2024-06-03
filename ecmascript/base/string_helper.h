@@ -86,11 +86,10 @@ public:
         return u16str;
     }
 
-    static inline std::string Utf8ToString(const uint8_t *utf8Data, uint32_t dataLen)
+    static inline void Utf8ToString(const uint8_t *utf8Data, uint32_t dataLen, std::string& str)
     {
         auto *charData = reinterpret_cast<const char *>(utf8Data);
-        std::string str(charData, dataLen);
-        return str;
+        str.append(charData, 0, dataLen); // 0: start
     }
 
     static inline std::u16string Utf8ToU16String(const uint8_t *utf8Data, uint32_t dataLen)
