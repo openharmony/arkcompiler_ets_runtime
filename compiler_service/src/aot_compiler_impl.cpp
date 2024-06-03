@@ -45,15 +45,44 @@ AotCompilerImpl& AotCompilerImpl::GetInstance()
     return aotCompiler;
 }
 
-void AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap)
+inline int32_t AotCompilerImpl::FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
+                                                     const std::string &keyName, int32_t &bundleID)
+{
+    if (argsMap.find(keyName) == argsMap.end()) {
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+    size_t sz;
+    bundleID = static_cast<int32_t>(std::stoi(argsMap.at(keyName), &sz));
+    if (sz < static_cast<size_t>(argsMap.at(keyName).size())) {
+        HiviewDFX::HiLog::Error(LABEL, "trigger exception as converting string to integer");
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+    return ERR_OK;
+}
+
+inline int32_t AotCompilerImpl::FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
+                                                    const std::string &keyName, std::string &bundleArg)
+{
+    if ((argsMap.find(keyName) == argsMap.end()) || argsMap.at(keyName).empty()) {
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+    bundleArg = argsMap.at(keyName);
+    return ERR_OK;
+}
+
+int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap)
 {
     for (const auto &arg : argsMap) {
         HiviewDFX::HiLog::Debug(LABEL, "%{public}s: %{public}s", arg.first.c_str(), arg.second.c_str());
     }
-    hapArgs.bundleUid = static_cast<int32_t>(std::stoi(argsMap.at(ArgsIdx::BUNDLE_UID)));
-    hapArgs.bundleGid = static_cast<int32_t>(std::stoi(argsMap.at(ArgsIdx::BUNDLE_GID)));
-    hapArgs.fileName = argsMap.at(ArgsIdx::AN_FILE_NAME);
-    hapArgs.signature = argsMap.at(ArgsIdx::APP_SIGNATURE);
+    std::string abcPath;
+    if ((FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_UID, hapArgs.bundleUid) != ERR_OK)   ||
+        (FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_GID, hapArgs.bundleGid) != ERR_OK)   ||
+        (FindArgsIdxToString(argsMap, ArgsIdx::AN_FILE_NAME, hapArgs.fileName) != ERR_OK)   ||
+        (FindArgsIdxToString(argsMap, ArgsIdx::APP_SIGNATURE, hapArgs.signature) != ERR_OK) ||
+        (FindArgsIdxToString(argsMap, ArgsIdx::ABC_PATH, abcPath) != ERR_OK)) {
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
     hapArgs.argVector.clear();
     hapArgs.argVector.emplace_back(Cmds::ARK_AOT_COMPILER);
     for (auto &argPair : argsMap) {
@@ -61,7 +90,8 @@ void AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::str
             hapArgs.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
         }
     }
-    hapArgs.argVector.emplace_back(argsMap.at(ArgsIdx::ABC_PATH));
+    hapArgs.argVector.emplace_back(abcPath);
+    return ERR_OK;
 }
 
 void AotCompilerImpl::DropCapabilities(const int32_t &bundleUid, const int32_t &bundleGid) const
@@ -159,11 +189,10 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     if (!allowAotCompiler_) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
-    if (argsMap.empty()) {
+    if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {
         HiviewDFX::HiLog::Error(LABEL, "aot compiler arguments error");
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
-    PrepareArgs(argsMap);
     int32_t ret = ERR_OK;
     std::lock_guard<std::mutex> lock(mutex_);
     HiviewDFX::HiLog::Debug(LABEL, "begin to fork");
