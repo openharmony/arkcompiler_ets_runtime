@@ -18,7 +18,6 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
-#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "macros.h"
 #include "ecmascript/compiler/aot_compilation_env.h"
@@ -198,6 +197,14 @@ private:
     void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
 
     void RecordArrayElement(const CompilationOptions &cOptions);
+
+    bool OutCompiledMethodsRange() const
+    {
+        static uint32_t compiledMethodsCount = 0;
+        ++compiledMethodsCount;
+        return compiledMethodsCount < runtimeOptions_.GetCompilerMethodsRange().first ||
+            runtimeOptions_.GetCompilerMethodsRange().second <= compiledMethodsCount;
+    }
 
     EcmaVM *vm_;
     JSRuntimeOptions &runtimeOptions_;

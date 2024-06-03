@@ -48,16 +48,13 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
     lOptions_ = new LOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
     cmpDriver_ = new JitCompilationDriver(profilerDecoder_,
                                           collector_,
-                                          compilationEnv_->GetJSOptions().GetCompilerSelectMethods(),
-                                          compilationEnv_->GetJSOptions().GetCompilerSkipMethods(),
                                           &gen,
                                           fileName,
                                           triple_,
                                           lOptions_,
                                           log_,
                                           log_->OutputASM(),
-                                          maxMethodsInModule_,
-                                          compilationEnv_->GetJSOptions().GetCompilerMethodsRange());
+                                          maxMethodsInModule_);
     cmpDriver_->CompileMethod(jsPandaFile, methodLiteral, profileTypeInfo, pcStart, header, abcId,
                               [this, &fileName, &osrOffset] (
                                 const CString recordName,
@@ -234,18 +231,15 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
     LOptions lOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
     CompilationDriver cmpDriver(profilerDecoder_,
                                 &collector,
-                                compilationEnv_->GetJSOptions().GetCompilerSelectMethods(),
-                                compilationEnv_->GetJSOptions().GetCompilerSkipMethods(),
                                 &gen,
                                 fileName,
                                 triple_,
                                 &lOptions,
                                 log_,
                                 log_->OutputASM(),
-                                maxMethodsInModule_,
-                                compilationEnv_->GetJSOptions().GetCompilerMethodsRange());
+                                maxMethodsInModule_);
 
-    cmpDriver.Run([this, &fileName, &collector](const CString recordName,
+    cmpDriver.Run(*callMethodFlagMap_, [this, &fileName, &collector](const CString recordName,
                                                 const std::string &methodName,
                                                 MethodLiteral *methodLiteral,
                                                 uint32_t methodOffset,
