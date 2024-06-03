@@ -370,7 +370,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
         return globalConst->GetEmptyString();
     }
     JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
-    size_t allocateLength = 0;
+    uint64_t allocateLength = 0;
     bool isOneByte = (sep != JSStableArray::SeparatorFlag::MINUS_ONE) || EcmaStringAccessor(sepStringHandle).IsUtf8();
     CVector<JSHandle<EcmaString>> vec;
     JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
@@ -410,9 +410,14 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
         }
     }
     if (len > 0) {
-        allocateLength += sepLength * (len - 1);
+        allocateLength += static_cast<uint64_t>(sepLength) * (len - 1);
     }
-    auto newString = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), allocateLength, isOneByte);
+    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+        context->JoinStackPopFastPath(receiverValue);
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+    }
+    auto newString =
+    EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), static_cast<size_t>(allocateLength), isOneByte);
     int current = 0;
     DISALLOW_GARBAGE_COLLECTION;
     for (uint32_t k = 0; k < len; k++) {

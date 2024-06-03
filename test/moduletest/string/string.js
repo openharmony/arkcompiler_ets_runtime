@@ -377,6 +377,8 @@ print('abc'.padEnd(0, 'def') );
 print('abc'.padEnd(-1, 'def') );
 print('abc'.padEnd(5, ''))
 
+let arr1 = [0,0,0,0,0];
+print(arr1.toString("a"));
 const abc_str = "abc";
 const negativeHeapNumber = -1 * 2**32;
 const positiveHeapNumber = 2**32;

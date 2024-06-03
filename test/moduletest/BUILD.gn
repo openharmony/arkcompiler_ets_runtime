@@ -384,6 +384,7 @@ group("ark_asm_test") {
   if (!is_debug) {
     release_test_list = [
       "asmstackoverflow",
+      "arrayRelease",
       "supercallRelease",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
@@ -550,6 +551,7 @@ group("ark_asm_single_step_test") {
   if (!is_debug) {
     release_test_list = [
       "asmstackoverflow",
+      "arrayRelease",
       "supercallRelease",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
