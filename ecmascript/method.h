@@ -411,6 +411,7 @@ public:
     const CString GetRecordNameStr() const;
 
     uint32_t FindCatchBlock(uint32_t pc) const;
+    bool HasCatchBlock() const;
 
     /* callfield */
     static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455
