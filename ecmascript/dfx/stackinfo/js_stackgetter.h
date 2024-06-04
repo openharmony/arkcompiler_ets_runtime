@@ -29,6 +29,7 @@ enum class RunningState : size_t {
     CINT,
     AINT,
     AOT,
+    AINT_D,
     BUILTIN,
     NAPI,
     ARKUI_ENGINE,

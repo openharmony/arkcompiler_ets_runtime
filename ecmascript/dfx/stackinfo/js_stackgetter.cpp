@@ -199,6 +199,12 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
             return RunningState::AOT;
         }
         if (thread->IsAsmInterpreter()) {
+            // For Methods that is compiled in AOT but deoptimized at runtime, we mark it as AINT-D
+            JSHandle<Method> method = JSHandle<Method>(thread, function->GetMethod());
+            MethodLiteral *methodLiteral = method->GetMethodLiteral();
+            if (methodLiteral != nullptr && MethodLiteral::IsAotWithCallField(methodLiteral->GetCallField())) {
+                return RunningState::AINT_D;
+            }
             return RunningState::AINT;
         }
         return RunningState::CINT;

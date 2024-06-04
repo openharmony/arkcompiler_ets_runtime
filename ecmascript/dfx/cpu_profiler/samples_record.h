@@ -69,6 +69,7 @@ struct ProfileInfo {
     uint64_t cInterpreterTime = 0;
     uint64_t asmInterpreterTime = 0;
     uint64_t aotTime = 0;
+    uint64_t asmInterpreterDeoptTime = 0;
     uint64_t builtinTime = 0;
     uint64_t napiTime = 0;
     uint64_t arkuiEngineTime = 0;
