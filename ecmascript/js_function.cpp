@@ -486,7 +486,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     if (mainFunc->IsClassConstructor()) {
         {
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, 
+            JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
                 "class constructor cannot called without 'new'", StackCheck::NO);
             thread->SetException(error.GetTaggedValue());
         }

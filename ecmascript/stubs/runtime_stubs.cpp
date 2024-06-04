@@ -2639,8 +2639,7 @@ DEF_RUNTIME_STUBS(ThrowDerivedMustReturnException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                   "Derived constructor must return object or undefined",
-                                                    StackCheck::NO);
+        "Derived constructor must return object or undefined", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }

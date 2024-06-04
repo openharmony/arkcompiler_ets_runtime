@@ -136,7 +136,8 @@ void BaseDeserializer::DeserializeJSError(JSErrorInfo *info)
     JSTaggedValue errorMsg = info->errorMsg_;
     bool root = info->root_;
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(thread_, errorMsg), StackCheck::NO);
+    JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(thread_, errorMsg),
+                                                      StackCheck::NO);
     ObjectSlot slot = info->GetSlot();
     slot.Update(errorTag.GetTaggedType());
     if (!root && !errorTag.GetTaggedValue().IsInvalidValue()) {

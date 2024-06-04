@@ -854,8 +854,9 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
         {
             EcmaVM *ecmaVm = thread->GetEcmaVM();
             ObjectFactory *factory = ecmaVm->GetFactory();
-            JSHandle<JSObject> error =
-                factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'", StackCheck::NO);
+            JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
+                                                           "class constructor cannot called without 'new'",
+                                                           StackCheck::NO);
             thread->SetException(error.GetTaggedValue());
         }
         return thread->GetException();
@@ -1433,8 +1434,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             if (func->IsClassConstructor()) {
                 {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-                    JSHandle<JSObject> error =
-                    factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'", StackCheck::NO);
+                    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
+                        "class constructor cannot called without 'new'", StackCheck::NO);
                     thread->SetException(error.GetTaggedValue());
                 }
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
