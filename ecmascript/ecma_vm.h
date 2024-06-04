@@ -820,16 +820,6 @@ private:
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
     bool overLimit_ {false};
-
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
-    // Stats for Thread-State-Transition and String-Table Locks
-    bool isCollectingScopeLockStats_ = false;
-    int enterThreadManagedScopeCount_ = 0;
-    int enterFastNativeScopeCount_ = 0;
-    int enterJsiNativeScopeCount_ = 0;
-    int updateThreadStateTransCount_ = 0;
-    int stringTableLockCount_ = 0;
-#endif
 };
 }  // namespace ecmascript
 }  // namespace panda
