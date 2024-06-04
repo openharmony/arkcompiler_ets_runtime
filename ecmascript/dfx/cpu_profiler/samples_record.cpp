@@ -164,7 +164,8 @@ void SamplesRecord::StringifyStateTimeStatistic()
         + std::to_string(profileInfo_->gcTime) + ",\"cInterpreterTime\":"
         + std::to_string(profileInfo_->cInterpreterTime) + ",\"asmInterpreterTime\":"
         + std::to_string(profileInfo_->asmInterpreterTime) + ",\"aotTime\":"
-        + std::to_string(profileInfo_->aotTime) + ",\"builtinTime\":"
+        + std::to_string(profileInfo_->aotTime) + ",\"asmInterpreterDeoptTime\":"
+        + std::to_string(profileInfo_->asmInterpreterDeoptTime) + ",\"builtinTime\":"
         + std::to_string(profileInfo_->builtinTime) + ",\"napiTime\":"
         + std::to_string(profileInfo_->napiTime) + ",\"arkuiEngineTime\":"
         + std::to_string(profileInfo_->arkuiEngineTime) + ",\"runtimeTime\":"
@@ -401,10 +402,10 @@ struct FrameInfo SamplesRecord::GetMethodInfo(struct MethodKey &methodKey)
 std::string SamplesRecord::AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type)
 {
     std::string temp = functionName;
-    if (state == RunningState::AOT && type != kungfu::DeoptType::NONE) {
-        state = RunningState::AINT;
-    }
     switch (state) {
+        case RunningState::AINT_D:
+            temp.append("(AINT-D)");
+            break;
         case RunningState::GC:
             temp.append("(GC)");
             break;
@@ -443,7 +444,7 @@ std::string SamplesRecord::AddRunningState(char *functionName, RunningState stat
         default:
             break;
     }
-    if (type != kungfu::DeoptType::NONE && enableVMTag_) {
+    if (state == RunningState::AINT_D && type != kungfu::DeoptType::NONE && enableVMTag_) {
         std::string typeCheckStr = "(DEOPT:" + Deoptimizier::DisplayItems(type) + ")";
         temp.append(typeCheckStr);
     }
@@ -453,6 +454,10 @@ std::string SamplesRecord::AddRunningState(char *functionName, RunningState stat
 void SamplesRecord::StatisticStateTime(int timeDelta, RunningState state)
 {
     switch (state) {
+        case RunningState::AINT_D: {
+            profileInfo_->asmInterpreterDeoptTime += static_cast<uint64_t>(timeDelta);
+            return;
+        }
         case RunningState::GC: {
             profileInfo_->gcTime += static_cast<uint64_t>(timeDelta);
             return;
