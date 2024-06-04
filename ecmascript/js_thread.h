@@ -580,6 +580,16 @@ public:
         return runtimeState_;
     }
 
+    bool SetMainThread()
+    {
+        return isMainThread_ = true;
+    }
+
+    bool IsMainThreadFast() const
+    {
+        return isMainThread_;
+    }
+
     void SetCpuProfileName(std::string &profileName)
     {
         profileName_ = profileName;
@@ -1532,6 +1542,7 @@ private:
 
     bool finalizationCheckState_ {false};
     // Shared heap
+    bool isMainThread_ {false};
     bool fullMarkRequest_ {false};
 
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
