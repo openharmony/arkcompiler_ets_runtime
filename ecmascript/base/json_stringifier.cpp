@@ -326,6 +326,10 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
             case JSType::BIGINT: {
                 THROW_TYPE_ERROR_AND_RETURN(thread_, "cannot serialize a BigInt", JSTaggedValue::Exception());
             }
+            case JSType::JS_NATIVE_POINTER: {
+                result_ += "{}";
+                return tagValue;
+            }
             default: {
                 if (!tagValue.IsCallable()) {
                     JSHClass *jsHclass = tagValue.GetTaggedObject()->GetClass();
