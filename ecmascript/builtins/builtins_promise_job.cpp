@@ -209,7 +209,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     if (!hasRecord) {
         CString normalizeStr = ModulePathHelper::ReformatPath(entryPoint);
         CString msg =  "Cannot find dynamic-import module '" + normalizeStr;
-        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str(), StackCheck::NO).GetTaggedValue();
+        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR,
+            msg.c_str(), StackCheck::NO).GetTaggedValue();
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
     }
     if (jsPandaFile->IsJson(recordInfo)) {

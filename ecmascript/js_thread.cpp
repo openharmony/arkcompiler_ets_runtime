@@ -702,7 +702,8 @@ void JSThread::TerminateExecution()
 {
     // set the TERMINATE_ERROR to exception
     ObjectFactory *factory = GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TERMINATION_ERROR, "Terminate execution!", StackCheck::NO);
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TERMINATION_ERROR,
+        "Terminate execution!", StackCheck::NO);
     SetException(error.GetTaggedValue());
 }
 
