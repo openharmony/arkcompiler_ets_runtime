@@ -1413,7 +1413,7 @@ JSHandle<JSHClass> JSHClass::CreateSHClass(JSThread *thread,
     if (parentHClass) {
         if (parentHClass->IsDictionaryMode()) {
             auto dict = reinterpret_cast<NameDictionary *>(parentHClass->GetLayout().GetTaggedObject());
-            length += dict->EntriesCount();
+            length += static_cast<uint32_t>(dict->EntriesCount());
         } else {
             length += parentHClass->NumberOfProps();
         }
@@ -1510,8 +1510,8 @@ void JSHClass::CreateSDictLayout(JSThread *thread,
     uint32_t parentLength{0};
     if (parentHClass) {
         if (parentHClass->IsDictionaryMode()) {
-            parentLength =
-                reinterpret_cast<NameDictionary *>(parentHClass->GetLayout().GetTaggedObject())->EntriesCount();
+            parentLength = static_cast<uint32_t>(
+                reinterpret_cast<NameDictionary *>(parentHClass->GetLayout().GetTaggedObject())->EntriesCount());
         } else {
             parentLength = parentHClass->NumberOfProps();
         }

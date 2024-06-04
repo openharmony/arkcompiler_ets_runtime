@@ -836,7 +836,7 @@ bool BytecodeCircuitBuilder::FindOsrLoopHeadBB()
     int32_t loopBackBcIndex {-1};
     for (size_t k = 0; k < pcOffsets_.size(); k++) {
         if (static_cast<int32_t>(pcOffsets_[k] - pcOffsets_[0]) == osrOffset_) {
-            loopBackBcIndex = k;
+            loopBackBcIndex = static_cast<int32_t>(k);
         }
     }
     if (loopBackBcIndex == -1) {

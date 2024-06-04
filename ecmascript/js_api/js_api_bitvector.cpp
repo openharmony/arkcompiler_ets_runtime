@@ -239,7 +239,7 @@ JSTaggedValue JSAPIBitVector::SetAllBits(
         bitVector.GetTaggedValue().GetTaggedObject());
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
-    int size = elements->size();
+    int size = static_cast<int>(elements->size());
     if (value->IsZero()) {
         for (int index = 0; index < size; index++) {
             (*elements)[index] = std::bitset<BIT_SET_LENGTH>(0);
@@ -448,7 +448,7 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
 
 JSHandle<TaggedArray> JSAPIBitVector::OwnKeys(JSThread* thread, const JSHandle<JSAPIBitVector>& obj)
 {
-    uint32_t numOfElements = obj->GetLength().GetInt();
+    uint32_t numOfElements = static_cast<uint32_t>(obj->GetLength().GetInt());
     JSHandle<TaggedArray> keyArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(numOfElements);
 
     if (numOfElements > 0) {
