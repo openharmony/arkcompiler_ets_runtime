@@ -1044,7 +1044,8 @@ JSHandle<JSFunction> Builtins::InitializeExoticConstructor(const JSHandle<Global
                                                            std::string_view name, int length)
 {
     JSHandle<JSFunction> ctor =
-        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
+        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_PROXY_CONSTRUCTOR,
+                                BUILTINS_STUB_ID(ProxyConstructor));
 
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));

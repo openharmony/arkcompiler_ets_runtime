@@ -267,3 +267,15 @@ try {
 } catch(e) {
     print(e);
 }
+
+try {
+    new Proxy(undefined, undefined);
+} catch(e) {
+    print(e);
+}
+
+try {
+    new Proxy({}, undefined);
+} catch(e) {
+    print(e);
+}

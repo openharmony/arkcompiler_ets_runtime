@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
+#include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/stub_builder.h"
@@ -150,6 +151,75 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     {
         Jump(exit);
     }
+}
+
+GateRef NewObjectStubBuilder::NewJSProxy(GateRef glue, GateRef target, GateRef handler)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isCallable(env);
+    Label notCallable(env);
+    Label noException(env);
+    Label allocateProxy(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
+    DEFVARIABLE(hclass, VariableType::JS_ANY(), Undefined());
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef objectFunctionPrototype = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                        GlobalEnv::OBJECT_FUNCTION_PROTOTYPE_INDEX);
+    GateRef emptyObject = OrdinaryNewJSObjectCreate(glue, objectFunctionPrototype);
+    BRANCH(IsCallable(target), &isCallable, &notCallable);
+    Bind(&isCallable);
+    {
+        Label isConstructor(env);
+        Label notConstructor(env);
+        BRANCH(IsConstructor(target), &isConstructor, &notConstructor);
+        Bind(&isConstructor);
+        {
+            hclass = GetGlobalConstantValue(
+                VariableType::JS_POINTER(), glue, ConstantIndex::JS_PROXY_CONSTRUCT_CLASS_INDEX);
+            Jump(&allocateProxy);
+        }
+        Bind(&notConstructor);
+        {
+            hclass = GetGlobalConstantValue(
+                VariableType::JS_POINTER(), glue, ConstantIndex::JS_PROXY_CALLABLE_CLASS_INDEX);
+            Jump(&allocateProxy);
+        }
+    }
+    Bind(&notCallable);
+    {
+        hclass = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue, ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX);
+        Jump(&allocateProxy);
+    }
+    Bind(&allocateProxy);
+    {
+        size_ = GetObjectSizeFromHClass(*hclass);
+        AllocateInYoung(&result, &exit, &noException, *hclass);
+    }
+    Bind(&noException);
+    {
+        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+        Store(VariableType::INT64(), glue, *result, hashOffset, Int64(JSTaggedValue(0).GetRawData()));
+        GateRef proxyMethod = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue, ConstantIndex::PROXY_METHOD_INDEX);
+        StoreHClassWithoutBarrier(glue_, *result, *hclass);
+        BuiltinsProxyStubBuilder builtinsProxyStubBuilder(this);
+        builtinsProxyStubBuilder.SetMethod(glue, *result, proxyMethod);
+        builtinsProxyStubBuilder.SetTarget(glue, *result, target);
+        builtinsProxyStubBuilder.SetHandler(glue, *result, handler);
+        builtinsProxyStubBuilder.SetPrivateField(glue, *result, emptyObject);
+        builtinsProxyStubBuilder.SetIsRevoked(glue, *result, False());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hclass, GateRef size)

@@ -634,6 +634,7 @@ class ObjectFactory;
     V(JSTaggedValue, EmptySLayoutInfo, EMPTY_SLAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)       \
     V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)                    \
     V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)       \
+    V(JSTaggedValue, ProxyMethod, PROXY_METHOD_INDEX, ecma_roots_special)                         \
     V(JSTaggedValue, Uint64MaxBigInt, UINT64_MAX_BIGINT_INDEX, ecma_roots_special)                \
     V(JSTaggedValue, Int64MaxBigInt, INT64_MAX_BIGINT_INDEX, ecma_roots_special)                  \
     V(JSTaggedValue, EmptyProfileTypeInfoCell, EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, ecma_roots_special) \

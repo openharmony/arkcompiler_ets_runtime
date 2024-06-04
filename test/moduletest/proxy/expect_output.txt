@@ -36,3 +36,5 @@ TypeError: JSProxy::SetProperty: TypeError of trapResult
 TypeError: JSProxy::SetProperty: 'set' return false
 kkk
 wode
+TypeError: ProxyCreate: target is not Object
+TypeError: ProxyCreate: handler is not Object
