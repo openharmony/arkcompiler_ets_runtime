@@ -89,9 +89,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
         }
         if (compilationEnv_->GetJSOptions().IsEnableJITPGO()) {
-            Jit::JitLockHolder lock(compilationEnv_, "PGO ProfileBytecode");
             jitProfiler_ = compilationEnv_->GetPGOProfiler()->GetJITProfile();
-            LOG_COMPILER(INFO) << "GetPGOProfiler(): " << static_cast<void *>(compilationEnv_->GetPGOProfiler().get());
             jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo,
                                           methodLiteral->GetMethodId(), abcId, pcStart,
                                           methodLiteral->GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),

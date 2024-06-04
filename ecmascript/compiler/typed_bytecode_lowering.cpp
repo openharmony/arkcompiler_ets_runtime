@@ -528,7 +528,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     if (tacc.IsMono()) {
         GateRef receiver = tacc.GetReceiver();
-        builder_.ObjectTypeCheck(true, receiver,
+        builder_.ObjectTypeCheck(false, receiver,
                                  builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         if (tacc.IsReceiverEqHolder(0)) {
             result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
@@ -548,6 +548,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
         DeleteConstDataIfNoUser(tacc.GetKey());
         return;
     }
+    builder_.HeapObjectCheck(tacc.GetReceiver(), frameState);
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), tacc.GetReceiver(),
                                                TaggedObject::HCLASS_OFFSET);
     for (size_t i = 0; i < typeCount; ++i) {
