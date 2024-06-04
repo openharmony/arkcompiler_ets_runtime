@@ -1601,6 +1601,21 @@ DEF_CALL_SIGNATURE(LocaleCompareNoGc)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(StringToNumber)
+{
+    // 4 : 4 input parameters
+    CallSignature stringToNumber("StringToDoubleWithRadix", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = stringToNumber;
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(ArrayTrim)
 {
     // 3 : 3 input parameters

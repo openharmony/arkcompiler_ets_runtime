@@ -359,6 +359,8 @@ void TypedBytecodeLowering::LowerTypedBinOp(GateRef gate)
         SpeculateNumbers<Op>(tacc);
     } else if (tacc.IsStringType()) {
         SpeculateStrings<Op>(tacc);
+    } else if (tacc.IsNumberOrStringType()) {
+        SpeculateNumbersOrString<Op>(tacc);
     }
 }
 
@@ -395,10 +397,14 @@ void TypedBytecodeLowering::SpeculateStrings(const BinOpTypeInfoAccessor &tacc)
         GateRef left = tacc.GetLeftGate();
         GateRef right = tacc.GetReightGate();
         if (!TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, left)) {
-            builder_.EcmaStringCheck(left);
+            if (!Uncheck()) {
+                builder_.EcmaStringCheck(left);
+            }
         }
         if (!TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, right)) {
-            builder_.EcmaStringCheck(right);
+            if (!Uncheck()) {
+                builder_.EcmaStringCheck(right);
+            }
         }
         GateRef result = builder_.TypedBinaryOp<Op>(left, right, tacc.GetParamType());
         acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
@@ -423,6 +429,28 @@ void TypedBytecodeLowering::SpeculateNumber(const UnOpTypeInfoAccessor &tacc)
     pgoTypeLog_.CollectGateTypeLogInfo(tacc.GetGate(), false);
     GateRef result = builder_.TypedUnaryOp<Op>(tacc.GetValue(), tacc.GetParamType());
     acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+}
+
+template<TypedBinOp Op>
+void TypedBytecodeLowering::SpeculateNumbersOrString(const BinOpTypeInfoAccessor &tacc)
+{
+    if (Op == TypedBinOp::TYPED_ADD) {
+        AddProfiling(tacc.GetGate());
+        GateRef left = tacc.GetLeftGate();
+        GateRef right = tacc.GetReightGate();
+
+        if (TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, left)) {
+            DEFVALUE(rightVal, (&builder_), VariableType::JS_ANY(), right);
+            rightVal = builder_.NumberToString(right);
+            GateRef result = builder_.TypedBinaryOp<Op>(left, *rightVal, tacc.GetParamType());
+            acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+        } else if (TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, right)) {
+            DEFVALUE(leftVal, (&builder_), VariableType::JS_ANY(), left);
+            leftVal = builder_.NumberToString(left);
+            GateRef result = builder_.TypedBinaryOp<Op>(*leftVal, right, tacc.GetParamType());
+            acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+        }
+    }
 }
 
 void TypedBytecodeLowering::LowerTypeToNumeric(GateRef gate)

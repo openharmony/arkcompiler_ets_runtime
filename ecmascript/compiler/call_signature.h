@@ -556,6 +556,7 @@ private:
     V(GetStringToListCacheArray)                \
     V(FastArraySort)                            \
     V(LocaleCompareNoGc)                        \
+    V(StringToNumber)                           \
     V(StringGetStart)                           \
     V(StringGetEnd)                             \
     V(ArrayTrim)                                \

@@ -78,6 +78,7 @@ namespace panda::ecmascript::kungfu {
     V(NumberIsNaN, NUMBER_IS_NAN, GateFlags::NO_WRITE, 1, 1, 1)                                 \
     V(NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER, GateFlags::NO_WRITE, 1, 1, 1)                 \
     V(NumberParseFloat, NUMBER_PARSE_FLOAT, GateFlags::CHECKABLE, 1, 1, 1)                      \
+    V(NumberParseInt, NUMBER_PARSE_INT, GateFlags::NO_WRITE, 1, 1, 2)                           \
     V(MathAcos, MATH_ACOS, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathAcosh, MATH_ACOSH, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathAsin, MATH_ASIN, GateFlags::NO_WRITE, 1, 1, 1)                                        \

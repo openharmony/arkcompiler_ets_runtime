@@ -203,6 +203,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetStringToListCacheArray)               \
     V(FastArraySort)                           \
     V(LocaleCompareNoGc)                       \
+    V(StringToNumber)                          \
     V(StringGetStart)                          \
     V(StringGetEnd)                            \
     V(ArrayTrim)                               \
@@ -475,6 +476,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(JSObjectGrowElementsCapacity)       \
     V(HClassCloneWithAddProto)            \
     V(LocaleCompareWithGc)                \
+    V(ParseInt)                           \
     V(ArrayForEachContinue)               \
     V(NumberDictionaryPut)                \
     V(ThrowRangeError)                    \
@@ -602,6 +604,7 @@ public:
     static int FastArraySort(JSTaggedType x, JSTaggedType y);
     static JSTaggedValue LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
                                            EcmaString *thatHandle);
+    static JSTaggedValue StringToNumber(JSTaggedType numberString, int32_t radix);
     static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);

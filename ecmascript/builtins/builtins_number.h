@@ -45,7 +45,7 @@
 // where BuiltinsNumber::func refers to the native implementation of Number[name].
 #define BUILTIN_NUMBER_GLOBAL_FUNCTIONS(V)                                              \
     V("parseFloat", ParseFloat, 1, NumberParseFloat) /* Number.parseFloat ( string ) */ \
-    V("parseInt",   ParseInt,   2, INVALID) /* Number.parseInt ( string, radix ) */
+    V("parseInt",   ParseInt,   2, NumberParseInt) /* Number.parseInt ( string, radix ) */
 
 #define BUILTIN_NUMBER_FUNCTIONS(V)         \
     BUILTIN_NUMBER_NON_GLOBAL_FUNCTIONS(V)  \
@@ -175,8 +175,8 @@ public:
         return reinterpret_cast<NumberToStringResultCache*>(object);
     }
     static JSTaggedValue CreateCacheTable(const JSThread *thread);
-    JSTaggedValue FindCachedResult(JSTaggedValue &number);
-    void SetCachedResult(const JSThread *thread, JSTaggedValue &number, JSHandle<EcmaString> &result);
+    JSTaggedValue FindCachedResult(int entry, JSTaggedValue &target);
+    void SetCachedResult(const JSThread *thread, int entry, JSTaggedValue &number, JSHandle<EcmaString> &result);
     int GetNumberHash(JSTaggedValue &number)
     {
         unsigned int mask = INITIAL_CACHE_NUMBER - 1;

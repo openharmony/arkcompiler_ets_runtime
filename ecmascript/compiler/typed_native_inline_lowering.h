@@ -73,6 +73,7 @@ private:
     void LowerNumberIsInteger(GateRef gate, OpCode op);
     void LowerNumberIsNaN(GateRef gate);
     void LowerNumberParseFloat(GateRef gate);
+    void LowerNumberParseInt(GateRef gate);
     void LowerDateGetTime(GateRef gate);
     void LowerBigIntConstructor(GateRef gate);
     void LowerStringSubstring(GateRef gate);

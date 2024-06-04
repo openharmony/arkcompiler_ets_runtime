@@ -263,6 +263,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitOthers(gate, GateType::UndefinedType());
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
             return VisitOthersWithoutConvert(gate);
+        case OpCode::NUMBER_PARSE_INT:
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:
@@ -1683,6 +1684,15 @@ GateRef NumberSpeculativeRetype::VisitNumberParseFloat(GateRef gate)
 {
     if (IsRetype()) {
         return SetOutputType(gate, GateType::DoubleType());
+    }
+    ASSERT(IsConvert());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitNumberParseInt(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::IntType());
     }
     ASSERT(IsConvert());
     return Circuit::NullGate();

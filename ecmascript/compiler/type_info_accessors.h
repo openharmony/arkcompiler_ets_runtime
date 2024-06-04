@@ -112,6 +112,14 @@ public:
         return pgoType_.IsString();
     }
 
+    inline bool IsNumberOrStringType() const
+    {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return false;
+        }
+        return pgoType_.IsNumberOrString();
+    }
+
     inline bool LeftOrRightIsUndefinedOrNull() const
     {
         return acc_.IsUndefinedOrNullOrHole(left_) || acc_.IsUndefinedOrNullOrHole(right_);
