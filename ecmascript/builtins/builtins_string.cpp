@@ -1048,7 +1048,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
             uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, searchTag, true));
             JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, thisTag,
                 RegExpExecResultCache::REPLACE_TYPE, searchTag, JSTaggedValue(lastIndex),
-                replaceTag.GetTaggedValue());
+                replaceTag);
             if (!cacheResult.IsUndefined()) {
                 return cacheResult;
             }
