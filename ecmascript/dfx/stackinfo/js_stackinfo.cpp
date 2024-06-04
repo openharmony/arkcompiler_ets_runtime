@@ -1504,24 +1504,21 @@ bool JSSymbolExtractor::ParseHapFileData([[maybe_unused]] std::string& hapName)
     auto &entrys = zipFile->GetAllEntries();
     for (const auto &entry : entrys) {
         std::string fileName = entry.first;
-        if (fileName.rfind("modules.abc") == std::string::npos) {
-            continue;
-        }
+        if (fileName.rfind("modules.abc") != std::string::npos) {
+            ZipPos offset = 0;
+            uint32_t length = 0;
+            if (!zipFile->GetDataOffsetRelative(fileName, offset, length)) {
+                break;
+            }
 
-        ZipPos offset = 0;
-        uint32_t length = 0;
-        if (!zipFile->GetDataOffsetRelative(fileName, offset, length)) {
-            break;
+            loadOffset_ = static_cast<uintptr_t>(offset);
+            if (zipFile->ExtractToBufByName(fileName, data_, dataSize_)) {
+                ret = true;
+                break;
+            }
+        } else if (fileName.rfind("sourceMaps.map") != std::string::npos) {
+            CreateSourceMap(hapName);
         }
-
-        loadOffset_ = static_cast<uintptr_t>(offset);
-        if (zipFile->ExtractToBufByName(fileName, data_, dataSize_)) {
-            ret = true;
-            break;
-        }
-    }
-    if (ret && sourceMap_ == nullptr) {
-        CreateSourceMap(hapName);
     }
 #endif
     return ret;
@@ -1778,7 +1775,7 @@ void JSSymbolExtractor::CreateJSPandaFile(uint8_t *data, size_t dataSize)
 
 SourceMap* JSSymbolExtractor::GetSourceMap(uint8_t *data, size_t dataSize)
 {
-    if (sourceMap_ == nullptr) {
+    if (sourceMap_ == nullptr && data != nullptr) {
         JSSymbolExtractor::CreateSourceMap(data, dataSize);
     }
     return sourceMap_.get();
@@ -1787,8 +1784,10 @@ SourceMap* JSSymbolExtractor::GetSourceMap(uint8_t *data, size_t dataSize)
 void JSSymbolExtractor::CreateSourceMap([[maybe_unused]] const std::string &hapPath)
 {
 #if defined(PANDA_TARGET_OHOS)
-    sourceMap_ = std::make_shared<SourceMap>();
-    sourceMap_->Init(hapPath);
+    if (sourceMap_ == nullptr) {
+        sourceMap_ = std::make_shared<SourceMap>();
+        sourceMap_->Init(hapPath);
+    }
 #endif
 }
 
