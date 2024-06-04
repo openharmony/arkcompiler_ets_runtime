@@ -74,11 +74,9 @@ public:
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
                                  bool captureNumericValue = false, bool isFullGC = true);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
-                                 bool captureNumericValue, bool isFullGC, uint32_t tid, std::vector<uint32_t> fdVec,
-                                 std::vector<uint32_t> tidVec);
+                                 bool captureNumericValue, bool isFullGC, uint32_t tid);
     static void DumpHeapSnapshotWithVm(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
-                                       bool captureNumericValue, bool isFullGC, uint32_t tid,
-                                       std::vector<uint32_t> fdVec, std::vector<uint32_t> tidVec);
+                                       bool captureNumericValue, bool isFullGC, uint32_t tid);
     static void TriggerGC(const EcmaVM *vm, uint32_t tid);
     static void TriggerGCWithVm(const EcmaVM *vm);
     static void DestroyHeapProfiler(const EcmaVM *vm);
@@ -158,9 +156,6 @@ public:
     static std::unique_ptr<std::vector<TraceEvent>> StopTracing(const EcmaVM *vm);
     static void GetTracingBufferUseage(const EcmaVM *vm, double &percentFull, uint32_t &eventCount, double &value);
     static void TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column);
-
-private:
-    static void UpdateTidAndFdMap(uint32_t tid, std::vector<uint32_t> fdVec, std::vector<uint32_t> tidVec);
 };
 }
 #endif
