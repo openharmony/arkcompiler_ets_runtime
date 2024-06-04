@@ -1841,7 +1841,7 @@ void Heap::ChangeGCParams(bool inBackground)
         sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
         maxMarkTaskCount_ = 1;
         maxEvacuateTaskCount_ = 1;
-        Taskpool::GetCurrentTaskpool()->SetThreadPriority(false);
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::BACKGROUND);
     } else {
         LOG_GC(INFO) << "app is not inBackground";
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
@@ -1853,7 +1853,7 @@ void Heap::ChangeGCParams(bool inBackground)
         maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
             Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1);
         maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-        Taskpool::GetCurrentTaskpool()->SetThreadPriority(true);
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
     }
 }
 

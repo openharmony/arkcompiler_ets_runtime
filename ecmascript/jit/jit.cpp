@@ -472,9 +472,9 @@ void Jit::ChangeTaskPoolState(bool inBackground)
 {
     if (fastJitEnable_ || baselineJitEnable_) {
         if (inBackground) {
-            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(false);
+            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::BACKGROUND);
         } else {
-            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(true);
+            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
         }
     }
 }

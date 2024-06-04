@@ -48,7 +48,10 @@ void PartialGC::RunPhases()
         + ";TotalCommit" + std::to_string(heap_->GetCommittedSize()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
-
+    bool mainThreadInForeground = heap_->GetJSThread()->IsMainThreadFast() && !heap_->IsInBackground();
+    if (mainThreadInForeground) {
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::STW);
+    }
     markingInProgress_ = heap_->CheckOngoingConcurrentMarking();
 
     LOG_GC(DEBUG) << "markingInProgress_" << markingInProgress_;
@@ -66,6 +69,9 @@ void PartialGC::RunPhases()
         Verification::VerifyEvacuate(heap_);
     }
     Finish();
+    if (mainThreadInForeground) {
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
+    }
     if (heap_->IsConcurrentFullMark()) {
         heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());
     }
