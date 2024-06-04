@@ -39,7 +39,7 @@ enum class RunningState : size_t {
 struct MethodKey {
     void *methodIdentifier = nullptr;
     RunningState state = RunningState::OTHER;
-    kungfu::DeoptType deoptType = kungfu::DeoptType::NOTCHECK;
+    kungfu::DeoptType deoptType = kungfu::DeoptType::NONE;
     int lineNumber = 0;
     bool operator < (const MethodKey &methodKey) const
     {

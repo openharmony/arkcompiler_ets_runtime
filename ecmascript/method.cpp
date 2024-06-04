@@ -61,12 +61,17 @@ const JSPandaFile *Method::GetJSPandaFile() const
 
 MethodLiteral *Method::GetMethodLiteral() const
 {
-    if (IsAotWithCallField()) {
+    if (IsAotWithCallField() || IsDeoptimized()) {
         ASSERT(!IsNativeWithCallField());
         const JSPandaFile *jsPandaFile = GetJSPandaFile();
         return jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
     }
     return reinterpret_cast<MethodLiteral *>(GetCodeEntryOrLiteral());
+}
+
+bool Method::IsDeoptimized() const
+{
+    return GetDeoptType() != kungfu::DeoptType::NONE;
 }
 
 uint32_t Method::FindCatchBlock(uint32_t pc) const
@@ -123,7 +128,7 @@ void Method::SetCodeEntryAndMarkAOTWhenBinding(uintptr_t codeEntry)
 void Method::ClearAOTStatusWhenDeopt(uintptr_t entry)
 {
     ClearAOTFlagsWhenInit();
-    SetDeoptType(kungfu::DeoptType::NOTCHECK);
+    // Do not clear deopt type, which records a method has deoptimized before
     SetCodeEntryOrLiteral(entry);
 }
 
@@ -131,6 +136,20 @@ void Method::ClearAOTFlagsWhenInit()
 {
     SetAotCodeBit(false);
     SetIsFastCall(false);
+}
+
+void Method::InitInterpreterStatusForCompiledMethod(const JSThread *thread)
+{
+    if (!IsAotWithCallField()) {
+        return;
+    }
+    bool isFastCall = IsFastCall();
+    uintptr_t entry =
+        isFastCall ? thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
+                   : thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
+    SetCodeEntryOrLiteral(entry);
+    ClearAOTFlagsWhenInit();
+    SetDeoptType(kungfu::DeoptType::INIT_AOT_FAILED);
 }
 
 bool Method::IsJitCompiledCode() const
