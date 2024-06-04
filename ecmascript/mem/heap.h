@@ -589,6 +589,9 @@ public:
     void CompactHeapBeforeFork();
     void DisableParallelGC();
     void EnableParallelGC();
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    void SetJsDumpThresholds(size_t thresholds) const;
+#endif
     // fixme: Rename NewSpace to YoungSpace.
     // This is the active young generation space that the new objects are allocated in
     // or copied into (from the other semi space) during semi space GC.
@@ -1052,6 +1055,8 @@ private:
     inline TaggedObject *AllocateHugeObject(size_t size);
     inline TaggedObject *AllocateHugeMachineCodeObject(size_t size);
 
+    static constexpr int MIN_JSDUMP_THRESHOLDS = 85;
+    static constexpr int MAX_JSDUMP_THRESHOLDS = 95;
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
     static constexpr int IDLE_MAINTAIN_TIME = 500;

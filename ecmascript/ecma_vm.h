@@ -659,16 +659,6 @@ public:
         isEnableOsr_ = state;
     }
 
-    bool isOverLimit() const
-    {
-        return overLimit_;
-    }
-
-    void SetOverLimit(bool state)
-    {
-        overLimit_ = state;
-    }
-
     AOTFileManager *GetAOTFileManager() const
     {
         return aotFileManager_;
