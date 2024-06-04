@@ -746,10 +746,10 @@ HWTEST_F_L0(EcmaModuleTest, ConcatUnifiedOhmUrl)
 
 HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurl)
 {
-    CString recordPath = "entry/ets/";
+    CString recordPath = "&entry/ets/";
     CString requestName = "test";
     CString outFileName = ModulePathHelper::ConcatImportFileNormalizedOhmurl(recordPath, requestName, "");
-    CString exceptOutFileName = "@normalized:N&&entry/ets/test&";
+    CString exceptOutFileName = "&entry/ets/test&";
     EXPECT_EQ(outFileName, exceptOutFileName);
 }
 

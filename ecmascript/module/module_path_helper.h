@@ -139,7 +139,8 @@ public:
     static CString ParseUrl(EcmaVM *vm, const CString &recordName);
     static CString ParsePrefixBundle(JSThread *thread, const JSPandaFile *jsPandaFile,
         [[maybe_unused]] CString &baseFileName, CString moduleRequestName, [[maybe_unused]] CString recordName);
-    static CString ParseNormalizedOhmUrl(JSThread *thread, CString &baseFileName, CString requestName);
+    static CString ParseNormalizedOhmUrl(JSThread *thread, CString &baseFileName, const CString &recordName,
+                                         CString requestName);
     static CString MakeNewRecord(JSThread *thread, const JSPandaFile *jsPandaFile, CString &baseFileName,
                                  const CString &recordName, const CString &requestName);
     static CString FindOhpmEntryPoint(const JSPandaFile *jsPandaFile, const CString &ohpmPath,
@@ -167,9 +168,9 @@ public:
                                                    CString &baseFileName, const CString &requestName);
     static void ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CString &requestPath);
     static CString ReformatPath(CString requestName);
-    static void TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                [[maybe_unused]] CString &baseFileName, CString recordName,
-                                                CString &requestPath);
+    static CString TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                   [[maybe_unused]] CString &baseFileName, const CString &recordName,
+                                                   CString &requestPath);
     static CVector<CString> GetPkgContextInfoListElements(EcmaVM *vm, CString &moduleName,
                                                           CString &packageName);
     static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
@@ -183,9 +184,10 @@ public:
                                                const CString &pkgName, const CString &entryPath,
                                                const CString &version);
     static CString ConcatMergeFileNameToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                   CString &baseFileName, CString recordName, CString requestName);
+                                                   CString &baseFileName, const CString &recordName,
+                                                   CString requestName);
     static CVector<CString> SplitNormalizedRecordName(const CString &recordName);
-    static CString ConcatImportFileNormalizedOhmurlWithRecordName(CString &recordName, CString &requestName);
+    static CString ConcatImportFileNormalizedOhmurlWithRecordName(const CString &recordName, CString &requestName);
     static void ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                             [[maybe_unused]] CString &baseFileName, CString &requestPath);
     static CString ConcatNormalizedOhmurlWithData(CVector<CString> &data, CString &pkgName, CString &entryPath);

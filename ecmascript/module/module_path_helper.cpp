@@ -55,24 +55,28 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
 }
 
 CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
-    CString &baseFileName, CString recordName, CString requestName)
+    CString &baseFileName, const CString &recordName, CString requestName)
 {
-    if (!StringHelper::StringStartWith(requestName, PREFIX_NORMALIZED)) {
-        if (StringHelper::StringStartWith(requestName, PREFIX_ETS)) {
-            CString msg = "can not use different packing ways in same app, current requestName is " + requestName;
-            THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), "");
+    CString prefix(1, PathHelper::NORMALIZED_OHMURL_TAG);
+    if (StringHelper::StringStartWith(requestName, prefix)) {
+        return requestName;
+    } else if (IsImportFile(requestName)) {
+        // this branch save for import "xxx.js" in npm
+        CString inputPath = requestName;
+        CString entryPoint = ConcatImportFileNormalizedOhmurlWithRecordName(recordName, requestName);
+        if (!jsPandaFile->HasRecord(requestName)) {
+            THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, inputPath, recordName, requestName);
         }
-    }
-    if (IsImportFile(requestName)) {
-        ConcatImportFileNormalizedOhmurlWithRecordName(recordName, requestName);
+        return entryPoint;
     } else {
         // this branch save for require npm
         TranslateExpressionToNormalized(thread, jsPandaFile, baseFileName, recordName, requestName);
     }
-    return ParseNormalizedOhmUrl(thread, baseFileName, requestName);
+    return ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
 }
 
-CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(CString &recordName, CString &requestName)
+CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(const CString &recordName,
+    CString &requestName)
 {
     CVector<CString> res = SplitNormalizedRecordName(recordName);
     CString path = PathHelper::NORMALIZED_OHMURL_TAG + res[NORMALIZED_IMPORT_PATH_INDEX];
@@ -243,8 +247,8 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
         version = data[PKGINFO_VERSION_INDEX];
         entryPath = data[PKGINFO_ENTRY_PATH_INDEX];
     }
-    // If the inputFileName contains '.test', it is a preview test, no need to splice the entry path.
-    if (inputFileName.find(PREVIER_TEST_DIR) != CString::npos) {
+    // If the inputFileName starts with '.test', it is a preview test, no need to splice the entry path.
+    if (StringHelper::StringStartWith(inputFileName, PREVIER_TEST_DIR)) {
         return ConcatPreviewTestUnifiedOhmUrl("", pkgname, path, version);
     }
     // When the entry path ends with a slash (/), use the entry path to concatenate ohmurl.
@@ -343,12 +347,13 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
 }
 
 
-CString ModulePathHelper::ParseNormalizedOhmUrl(JSThread *thread, CString &baseFileName, CString requestName)
+CString ModulePathHelper::ParseNormalizedOhmUrl(JSThread *thread, CString &baseFileName, const CString &recordName,
+    CString requestName)
 {
     ASSERT(StringHelper::StringStartWith(requestName, PREFIX_NORMALIZED_NOT_SO));
     CVector<CString> res = SplitNormalizedOhmurl(requestName);
     if (res.size() != NORMALIZED_OHMURL_ARGS_NUM) {
-        LOG_FULL(FATAL) << "Invalid normalized ohmurl";
+        THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestName, recordName, requestName);
     }
     CString moduleName = res[NORMALIZED_MODULE_NAME_INDEX];
     CString bundleName = res[NORMALIZED_BUNDLE_NAME_INDEX];
@@ -833,9 +838,7 @@ CVector<CString> ModulePathHelper::GetPkgContextInfoListElements(EcmaVM *vm, CSt
 CString ModulePathHelper::ConcatImportFileNormalizedOhmurl(const CString &recordPath, const CString &requestName,
     const CString &version)
 {
-    CString prefix = PREFIX_NORMALIZED_NOT_SO;
-    return prefix + PathHelper::NORMALIZED_OHMURL_TAG + PathHelper::NORMALIZED_OHMURL_TAG +
-        recordPath + requestName + PathHelper::NORMALIZED_OHMURL_TAG + version;
+    return recordPath + requestName + PathHelper::NORMALIZED_OHMURL_TAG + version;
 }
 
 CString ModulePathHelper::ConcatNativeSoNormalizedOhmurl(const CString &moduleName, const CString &bundleName,
@@ -867,13 +870,14 @@ bool ModulePathHelper::NeedTranslateToNormalized(const CString &requestName)
     return true;
 }
 
-void ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
-    [[maybe_unused]] CString &baseFileName, CString recordName, CString &requestPath)
+CString ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
+    [[maybe_unused]] CString &baseFileName, const CString &recordName, CString &requestPath)
 {
     if (!NeedTranslateToNormalized(requestPath)) {
-        return;
+        return requestPath;
     }
     EcmaVM *vm = thread->GetEcmaVM();
+    CString inputPath = requestPath;
     if (IsImportFile(requestPath)) {
         CString moduleRequestName = RemoveSuffix(requestPath);
         size_t pos = moduleRequestName.find(PathHelper::CURRENT_DIREATORY_TAG);
@@ -884,14 +888,21 @@ void ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, const J
         if (pos != CString::npos) {
             requestPath = ConcatImportFileNormalizedOhmurl(recordName.substr(0, pos + 1), moduleRequestName);
         }
+        if (!jsPandaFile->HasRecord(requestPath)) {
+            THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, inputPath, recordName, requestPath);
+        }
     } else if (StringHelper::StringStartWith(requestPath, PREFIX_ETS)) {
         size_t pos = recordName.find(PREFIX_ETS);
         if (pos != CString::npos) {
             requestPath = ConcatImportFileNormalizedOhmurl(recordName.substr(0, pos), requestPath);
         }
+        if (!jsPandaFile->HasRecord(requestPath)) {
+            THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, inputPath, recordName, requestPath);
+        }
     } else {
         ConcatOtherNormalizedOhmurl(vm, jsPandaFile, baseFileName, requestPath);
     }
+    return requestPath;
 }
 
 /*
