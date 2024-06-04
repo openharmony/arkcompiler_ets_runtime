@@ -1194,14 +1194,15 @@ ohos_source_set("libark_jsruntime_static") {
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 
-  if ((current_cpu == "amd64" || current_cpu == "x64" ||
-       current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios") {
-    deps += [ "ecmascript/compiler:libark_stub_set" ]
-  } else {
-    deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
+  if (!is_ohos) {
+    if ((current_cpu == "amd64" || current_cpu == "x64" ||
+         current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
+        !is_mac && target_os != "ios") {
+      deps += [ "ecmascript/compiler:libark_stub_set" ]
+    } else {
+      deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
+    }
   }
-
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }

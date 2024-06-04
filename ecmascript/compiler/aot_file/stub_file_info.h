@@ -109,7 +109,9 @@ private:
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 4;
 
     bool MmapLoad(const std::string &fileName);
+#ifndef PANDA_TARGET_OHOS
     bool Load();
+#endif
     const std::vector<ElfSecName> &GetDumpSectionNames();
     void *asmStubAddr_ {nullptr};
     size_t asmStubSize_ {0};
