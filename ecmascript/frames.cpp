@@ -91,7 +91,7 @@ JSTaggedValue FrameIterator::GetFunction() const
         }
         case FrameType::FASTJIT_FUNCTION_FRAME:
         case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
-            auto frame = GetFrame<FASTJITFunctionFrame>();
+            auto frame = FASTJITFunctionFrame::GetFrameFromSp(GetSp());
             return frame->GetFunction();
         }
         case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME :
@@ -709,8 +709,7 @@ ARK_INLINE void FASTJITFunctionFrame::GCIterate(const FrameIterator &it,
     const RootBaseAndDerivedVisitor &derivedVisitor, FrameType frameType) const
 {
     FASTJITFunctionFrame *frame = FASTJITFunctionFrame::GetFrameFromSp(it.GetSp());
-    uintptr_t *jsFuncPtr = reinterpret_cast<uintptr_t *>(frame);
-    uintptr_t jsFuncSlot = ToUintPtr(jsFuncPtr);
+    uintptr_t jsFuncSlot = GetFuncAddrFromSp(it.GetSp());
     visitor(Root::ROOT_FRAME, ObjectSlot(jsFuncSlot));
     if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
         uintptr_t *preFrameSp = frame->ComputePrevFrameSp(it);

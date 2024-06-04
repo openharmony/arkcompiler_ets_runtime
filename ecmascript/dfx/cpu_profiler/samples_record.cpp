@@ -169,7 +169,8 @@ void SamplesRecord::StringifyStateTimeStatistic()
         + std::to_string(profileInfo_->builtinTime) + ",\"napiTime\":"
         + std::to_string(profileInfo_->napiTime) + ",\"arkuiEngineTime\":"
         + std::to_string(profileInfo_->arkuiEngineTime) + ",\"runtimeTime\":"
-        + std::to_string(profileInfo_->runtimeTime) + ",\"otherTime\":"
+        + std::to_string(profileInfo_->runtimeTime) + ",\"jitTime\":"
+        + std::to_string(profileInfo_->jitTime) + ",\"otherTime\":"
         + std::to_string(profileInfo_->otherTime) + ",";
 }
 
