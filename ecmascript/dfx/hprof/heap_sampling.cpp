@@ -157,7 +157,7 @@ void HeapSampling::FillScriptIdAndStore()
 std::string HeapSampling::AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type)
 {
     std::string result = functionName;
-    if (state == RunningState::AOT && type != kungfu::DeoptType::NOTCHECK) {
+    if (state == RunningState::AOT && type != kungfu::DeoptType::NONE) {
         state = RunningState::AINT;
     }
     if (state == RunningState::BUILTIN) {

@@ -131,10 +131,11 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(TotalSizeOverflow,               TOTALSIZEOVERFLOW)              \
     V(NotJSFunction,                   NOTJSFUNCTION)                  \
     V(NotSymbol,                       NOTSYMBOL)                      \
-    V(IndexNotInt,                     INDEXNOTINT)
+    V(IndexNotInt,                     INDEXNOTINT)                    \
+    V(InitAotFailed,                   INIT_AOT_FAILED)
 
 enum class DeoptType : uint8_t {
-    NOTCHECK = 0,
+    NONE = 0,
 #define DECLARE_DEOPT_TYPE(NAME, TYPE) TYPE,
     GATE_META_DATA_DEOPT_REASON(DECLARE_DEOPT_TYPE)
 #undef DECLARE_DEOPT_TYPE

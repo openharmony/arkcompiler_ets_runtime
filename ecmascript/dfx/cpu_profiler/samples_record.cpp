@@ -401,7 +401,7 @@ struct FrameInfo SamplesRecord::GetMethodInfo(struct MethodKey &methodKey)
 std::string SamplesRecord::AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type)
 {
     std::string temp = functionName;
-    if (state == RunningState::AOT && type != kungfu::DeoptType::NOTCHECK) {
+    if (state == RunningState::AOT && type != kungfu::DeoptType::NONE) {
         state = RunningState::AINT;
     }
     switch (state) {
@@ -443,7 +443,7 @@ std::string SamplesRecord::AddRunningState(char *functionName, RunningState stat
         default:
             break;
     }
-    if (type != kungfu::DeoptType::NOTCHECK && enableVMTag_) {
+    if (type != kungfu::DeoptType::NONE && enableVMTag_) {
         std::string typeCheckStr = "(DEOPT:" + Deoptimizier::DisplayItems(type) + ")";
         temp.append(typeCheckStr);
     }

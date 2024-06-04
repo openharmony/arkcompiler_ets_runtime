@@ -2049,7 +2049,7 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(jsPandaFile, nullptr, *method, entryIndex, canFastCall);
     } else {
-        method->ClearAOTFlagsWhenInit();
+        method->InitInterpreterStatusForCompiledMethod(thread_);
     }
     return method;
 }

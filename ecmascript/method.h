@@ -177,6 +177,8 @@ public:
         return MethodLiteral::IsAotWithCallField(callField);
     }
 
+    bool IsDeoptimized() const;
+
     bool OnlyHaveThisWithCallField() const
     {
         uint64_t callField = GetCallField();
@@ -386,6 +388,8 @@ public:
     void ClearAOTStatusWhenDeopt(uintptr_t entry);
 
     void ClearAOTFlagsWhenInit();
+
+    void InitInterpreterStatusForCompiledMethod(const JSThread *thread);
 
     void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
 

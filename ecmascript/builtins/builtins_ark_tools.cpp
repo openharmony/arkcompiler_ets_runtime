@@ -443,7 +443,7 @@ JSTaggedValue BuiltinsArkTools::CheckDeoptStatus(EcmaRuntimeCallInfo *info)
     // check status after deopt
     if (isAotCompiled ||
         method->IsFastCall() ||
-        method->GetDeoptType() != kungfu::DeoptType::NOTCHECK ||
+        method->GetDeoptType() != kungfu::DeoptType::NONE ||
         method->GetCodeEntryOrLiteral() == 0) {
         return JSTaggedValue(false);
     }

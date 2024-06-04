@@ -395,7 +395,7 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
     TypedArrayMetaDateAccessor accessor = acc_.GetTypedArrayMetaDateAccessor(gate);
     size_t typedArrayRootHclassIndex = GlobalEnv::INT8_ARRAY_ROOT_HCLASS_INDEX;
     size_t typedArrayRootHclassOnHeapIndex = GlobalEnv::INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
-    auto deoptType = DeoptType::NOTCHECK;
+    auto deoptType = DeoptType::NONE;
     ParamType paramType = accessor.GetParamType();
     ASSERT(paramType.IsBuiltinType());
     auto builtinType = paramType.GetBuiltinType();
