@@ -102,6 +102,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
 
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
+    jsThread->glueData_.isEnableElementsKind_ = vm->IsEnableElementsKind();
     jsThread->SetThreadId();
 
     RegisterThread(jsThread);
