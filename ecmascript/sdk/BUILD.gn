@@ -49,11 +49,9 @@ if (is_standard_system) {
       sources += [ "$prof_dump_path/arkcompiler/ets_runtime/profdump.exe" ]
 
       # Add dynamic library "hilog"
-      hilog_path =
-          get_label_info("$hilog_root:libhilog_windows", "root_out_dir")
-      deps += [ "$hilog_root:libhilog_windows" ]
-      sources +=
-          [ "${hilog_path}/hiviewdfx/hilog/libhilog_windows${dylib_suffix}" ]
+      hilog_path = get_label_info("$hilog_root:libhilog", "root_out_dir")
+      deps += [ "$hilog_root:libhilog" ]
+      sources += [ "${hilog_path}/hiviewdfx/hilog/libhilog${dylib_suffix}" ]
 
       # Add dynamic library "icu"
       icu_path =
@@ -232,9 +230,9 @@ if (is_standard_system) {
           [ zlib_path + "/thirdparty/zlib/libshared_libz${dylib_suffix}" ]
 
       # Add dynamic library "hilog"
-      hilog_path = get_label_info("$hilog_root:libhilog_mac", "root_out_dir")
-      deps += [ "$hilog_root:libhilog_mac" ]
-      sources += [ "${hilog_path}/hiviewdfx/hilog/libhilog_mac${dylib_suffix}" ]
+      hilog_path = get_label_info("$hilog_root:libhilog", "root_out_dir")
+      deps += [ "$hilog_root:libhilog" ]
+      sources += [ "${hilog_path}/hiviewdfx/hilog/libhilog${dylib_suffix}" ]
 
       # Set the output directory for all dynamic libraries.
       outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-mac/bin/{{source_file_part}}" ]
