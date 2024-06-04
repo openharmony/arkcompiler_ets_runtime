@@ -343,7 +343,7 @@
             return;                                                                                     \
         }                                                                                               \
         ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                  \
-        JSHandle<JSObject> _error = _factory->GetJSError(type, message, ecmascript::StackCheck::NO);    \
+        JSHandle<JSObject> _error = _factory->GetJSError(type, message, StackCheck::NO);                \
         (thread)->SetException(_error.GetTaggedValue());                                                \
         return;                                                                                         \
     } while (false)
@@ -353,7 +353,7 @@
     do {                                                                                                \
         EcmaVM *_ecmaVm = (thread)->GetEcmaVM();                                                        \
         ObjectFactory *_factory = _ecmaVm->GetFactory();                                                \
-        JSHandle<JSObject> _error = _factory->GetJSError(type, message, ecmascript::StackCheck::NO);    \
+        JSHandle<JSObject> _error = _factory->GetJSError(type, message, StackCheck::NO);                \
         (thread)->SetException(_error.GetTaggedValue());                                                \
         _ecmaVm->HandleUncatchableError();                                                              \
     } while (false)
@@ -374,7 +374,7 @@
             return JSHandle<type>(thread, JSTaggedValue::Exception());                                      \
         }                                                                                                   \
         ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                      \
-        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message, ecmascript::StackCheck::NO);   \
+        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message, StackCheck::NO);               \
         (thread)->SetException(_error.GetTaggedValue());                                                    \
         return JSHandle<type>(thread, JSTaggedValue::Exception());                                          \
     } while (false)
@@ -401,7 +401,7 @@
         CString normalizeStr = ModulePathHelper::ReformatPath(currentRecord);                               \
         CString msg =  "Cannot find module '" + requestStr + "' imported from '" + normalizeStr + "'.";     \
         JSHandle<JSObject> _error = _factory->GetJSError(ErrorType::REFERENCE_ERROR,                        \
-                                                         msg.c_str(), ecmascript::StackCheck::NO);          \
+                                                         msg.c_str(), StackCheck::NO);                      \
         (thread)->SetException(_error.GetTaggedValue());                                                    \
         return (value);                                                                                     \
     } while (false)
