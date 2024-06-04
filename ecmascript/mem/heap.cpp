@@ -25,7 +25,6 @@
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/js_native_pointer.h"
-#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
@@ -1336,20 +1335,6 @@ void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] Tagg
 #endif
 }
 
-void Heap::AddToKeptObjects(JSHandle<JSTaggedValue> value) const
-{
-    JSHandle<GlobalEnv> env = ecmaVm_->GetGlobalEnv();
-    JSHandle<LinkedHashSet> linkedSet;
-    if (env->GetWeakRefKeepObjects()->IsUndefined()) {
-        linkedSet = LinkedHashSet::Create(thread_);
-    } else {
-        linkedSet =
-            JSHandle<LinkedHashSet>(thread_, LinkedHashSet::Cast(env->GetWeakRefKeepObjects()->GetTaggedObject()));
-    }
-    linkedSet = LinkedHashSet::Add(thread_, linkedSet, value);
-    env->SetWeakRefKeepObjects(thread_, linkedSet);
-}
-
 void Heap::AdjustSpaceSizeForAppSpawn()
 {
     SetHeapMode(HeapMode::SPAWN);
@@ -1388,11 +1373,6 @@ void Heap::ClearAllocationInspectorFromAllSpaces()
     machineCodeSpace_->ClearAllocationInspector();
     hugeObjectSpace_->ClearAllocationInspector();
     hugeMachineCodeSpace_->ClearAllocationInspector();
-}
-
-void Heap::ClearKeptObjects() const
-{
-    ecmaVm_->GetGlobalEnv()->SetWeakRefKeepObjects(thread_, JSTaggedValue::Undefined());
 }
 
 void Heap::RecomputeLimits()

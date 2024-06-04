@@ -384,6 +384,7 @@ class ECMA_PUBLIC_API JSValueRef {
 public:
     static Local<PrimitiveRef> Undefined(const EcmaVM *vm);
     static Local<PrimitiveRef> Null(const EcmaVM *vm);
+    static Local<PrimitiveRef> Hole(const EcmaVM *vm);
     static Local<PrimitiveRef> True(const EcmaVM *vm);
     static Local<PrimitiveRef> False(const EcmaVM *vm);
 
@@ -926,10 +927,6 @@ protected:
     inline LocalScope(const EcmaVM *vm, JSTaggedType value);
 
 private:
-    void OpenLocalScope(EcmaContext *context);
-    void OpenPrimitiveScope(EcmaContext *context);
-    void CloseLocalScope(EcmaContext *context);
-    void ClosePrimitiveScope(EcmaContext *context);
     void *prevNext_ = nullptr;
     void *prevEnd_ = nullptr;
     int prevHandleStorageIndex_ {-1};

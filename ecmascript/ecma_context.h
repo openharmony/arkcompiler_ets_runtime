@@ -370,6 +370,7 @@ public:
         return currentHandleStorageIndex_;
     }
 
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     void HandleScopeCountAdd()
     {
         handleScopeCount_++;
@@ -379,6 +380,17 @@ public:
     {
         handleScopeCount_--;
     }
+
+    void PrimitiveScopeCountAdd()
+    {
+        primitiveScopeCount_++;
+    }
+
+    void PrimitiveScopeCountDec()
+    {
+        primitiveScopeCount_--;
+    }
+#endif
 
     void SetLastHandleScope(EcmaHandleScope *scope)
     {
@@ -413,16 +425,6 @@ public:
     int GetCurrentPrimitiveStorageIndex() const
     {
         return currentPrimitiveStorageIndex_;
-    }
-
-    void PrimitiveScopeCountAdd()
-    {
-        primitiveScopeCount_++;
-    }
-
-    void PrimitiveScopeCountDec()
-    {
-        primitiveScopeCount_--;
     }
 
     void SetLastPrimitiveScope(EcmaHandleScope *scope)
@@ -561,6 +563,12 @@ public:
 
     void AddSustainingJSHandle(SustainingJSHandle*);
     void RemoveSustainingJSHandle(SustainingJSHandle*);
+    void ClearKeptObjects();
+    void AddToKeptObjects(JSHandle<JSTaggedValue> value);
+    inline bool HasKeptObjects() const
+    {
+        return hasKeptObjects_;
+    }
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
@@ -658,7 +666,10 @@ private:
     JSTaggedType *handleScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
     int32_t currentHandleStorageIndex_ {-1};
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     int32_t handleScopeCount_ {0};
+    int32_t primitiveScopeCount_ {0};
+#endif
     EcmaHandleScope *lastHandleScope_ {nullptr};
     // PrimitveScope
     static constexpr int32_t MIN_PRIMITIVE_STORAGE_SIZE = 2;
@@ -666,7 +677,6 @@ private:
     JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
     int32_t currentPrimitiveStorageIndex_ {-1};
-    int32_t primitiveScopeCount_ {0};
     EcmaHandleScope *lastPrimitiveScope_ {nullptr};
 
     // Frame pointer
@@ -687,6 +697,8 @@ private:
 
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
+
+    bool hasKeptObjects_ {false};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

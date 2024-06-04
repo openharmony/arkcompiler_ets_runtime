@@ -849,14 +849,13 @@ public:
         volatile auto interruptValue =
             reinterpret_cast<volatile std::atomic<uint64_t> *>(&glueData_.interruptVector_);
         uint64_t oldValue = interruptValue->load(std::memory_order_relaxed);
-        uint64_t oldValueBeforeCAS;
+        auto newValue = oldValue;
         do {
-            auto newValue = oldValue;
+            newValue = oldValue;
             T::Set(value, &newValue);
-            oldValueBeforeCAS = oldValue;
-            std::atomic_compare_exchange_strong_explicit(interruptValue, &oldValue, newValue,
-                std::memory_order_release, std::memory_order_relaxed);
-        } while (oldValue != oldValueBeforeCAS);
+        } while (!std::atomic_compare_exchange_strong_explicit(interruptValue, &oldValue, newValue,
+                                                               std::memory_order_release,
+                                                               std::memory_order_relaxed));
     }
 
     void InvokeWeakNodeFreeGlobalCallBack();

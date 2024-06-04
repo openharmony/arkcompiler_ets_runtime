@@ -32,6 +32,8 @@ public:
             oldState_ = self_->GetState();
             if constexpr (std::is_same_v<DaemonThread, T>) {
                 if (oldState_ != newState) {
+                    ASSERT(hasSwitchState_ == false);
+                    hasSwitchState_ = true;
                     if constexpr (newState == ThreadState::RUNNING) {
                         self_->TransferDaemonThreadToRunning();
                     } else {
@@ -52,6 +54,8 @@ public:
                         vm->IncreaseUpdateThreadStateTransCount();
                     }
 #endif
+                    ASSERT(hasSwitchState_ == false);
+                    hasSwitchState_ = true;
                     self_->UpdateState(newState);
                 }
             }
@@ -59,7 +63,7 @@ public:
 
     ~ThreadStateTransitionScope()
     {
-        if (oldState_ != self_->GetState()) {
+        if (hasSwitchState_) {
             if constexpr (std::is_same_v<DaemonThread, T>) {
                 if (oldState_ == ThreadState::RUNNING) {
                     self_->TransferDaemonThreadToRunning();
@@ -75,6 +79,7 @@ public:
 private:
     T* self_;
     ThreadState oldState_;
+    bool hasSwitchState_ {false};
     NO_COPY_SEMANTIC(ThreadStateTransitionScope);
 };
 

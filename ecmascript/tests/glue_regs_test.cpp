@@ -36,9 +36,14 @@ HWTEST_F_L0(GlueRegsTest, ConstantClassTest)
     ASSERT_NE(globalConst, nullptr);
 
     const JSTaggedValue *address = globalConst->BeginSlot();
+    size_t curIndex = static_cast<size_t>(ConstantIndex::CONSTANT_BEGIN);
+    size_t holeIndex = static_cast<size_t>(ConstantIndex::HOLE_INDEX);
     while (address < globalConst->EndSlot()) {
-        EXPECT_TRUE(!(*address).IsHole());  // Visit barely
+        if (curIndex != holeIndex) {
+            EXPECT_TRUE(!(*address).IsHole());  // Visit barely
+        }
         address += 1;
+        curIndex += 1;
     }
 }
 

@@ -126,11 +126,4 @@ void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> 
         }
     }
 }
-
-bool MicroJobQueue::HasPendingJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueue)
-{
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<TaggedQueue> promiseQueue(thread, jobQueue->GetPromiseJobQueue());
-    return !promiseQueue->Empty();
-}
 }  // namespace panda::ecmascript::job
