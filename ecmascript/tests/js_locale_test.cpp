@@ -81,10 +81,6 @@ void CreateLanguageIterator(std::vector<std::string>& languageTemp)
  */
 HWTEST_F_L0(JSLocaleTest, JSIntlIteratorTest)
 {
-    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
-        // skip this test for rk3568 because enviroment is different
-        return;
-    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::vector<std::string> languageVector;
     CreateLanguageIterator(languageVector);
@@ -100,7 +96,8 @@ HWTEST_F_L0(JSLocaleTest, JSIntlIteratorTest)
     EXPECT_TRUE(jsIntlIterator.hasNext());
     // call "next" function to traverse the container
     for (uint32_t i = 0; i < arrayDataLength; i++) {
-        EXPECT_TRUE(jsIntlIterator.next() != nullptr);
+        EXPECT_TRUE(jsIntlIterator.hasNext());
+        jsIntlIterator.next();
         EXPECT_STREQ(jsIntlIterator[i].c_str(), languageVector[i].c_str());
     }
     EXPECT_FALSE(jsIntlIterator.hasNext());
@@ -571,10 +568,6 @@ HWTEST_F_L0(JSLocaleTest, GetOptionOfBool)
  */
 HWTEST_F_L0(JSLocaleTest, ResolveLocale_001)
 {
-    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
-        // skip this test for rk3568 because enviroment is different
-        return;
-    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> availableLocales = factory->EmptyArray();
     JSHandle<TaggedArray> requestedLocales = factory->EmptyArray();
@@ -584,7 +577,8 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_001)
     // availableLocales and requestLocales is empty
     ResolvedLocale result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
                                                     LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
-    EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
+    std::string defaultLocale = intl::LocaleHelper::ConvertToStdString(intl::LocaleHelper::DefaultLocale(thread));
+    EXPECT_STREQ(defaultLocale.c_str(), result.locale.c_str()); // default locale
     // availableLocales and requestLocales is not empty
     std::vector<std::string> availableStringLocales =
         intl::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
@@ -616,10 +610,6 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_001)
 
 HWTEST_F_L0(JSLocaleTest, ResolveLocale_002)
 {
-    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
-        // skip this test for rk3568 because enviroment is different
-        return;
-    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> availableLocales = factory->EmptyArray();
     JSHandle<TaggedArray> requestedLocales = factory->EmptyArray();
@@ -629,7 +619,8 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_002)
     // availableLocales and requestLocales is empty
     ResolvedLocale result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
                                                     LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
-    EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
+    std::string defaultLocale = intl::LocaleHelper::ConvertToStdString(intl::LocaleHelper::DefaultLocale(thread));
+    EXPECT_STREQ(defaultLocale.c_str(), result.locale.c_str()); // default locale
     // availableLocales and requestLocales is not empty
     std::vector<std::string> availableStringLocales =
         intl::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);

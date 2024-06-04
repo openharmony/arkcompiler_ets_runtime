@@ -149,10 +149,6 @@ HWTEST_F_L0(JSDateTimeFormatTest, Set_Get_IcuLocale)
  */
 HWTEST_F_L0(JSDateTimeFormatTest, Set_Get_IcuSimpleDateFormat)
 {
-    if (sizeof(uintptr_t) == sizeof(uint32_t)) {
-        // skip this test for rk3568 because enviroment is different
-        return;
-    }
     auto vm = thread->GetEcmaVM();
     auto factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
@@ -168,7 +164,8 @@ HWTEST_F_L0(JSDateTimeFormatTest, Set_Get_IcuSimpleDateFormat)
     icu::UnicodeString dateTime3("2022.May.25 AD 11:09:34 AM");
 
     icu::UnicodeString pattern("yyyy.MM.dd HH:mm:ss");
-    icu::SimpleDateFormat sdf(pattern, status);
+    icu::Locale icuLocale("en", "Latn", "US");
+    icu::SimpleDateFormat sdf(pattern, icuLocale, status);
     JSDateTimeFormat::SetIcuSimpleDateFormat(thread, dtf, sdf, JSDateTimeFormat::FreeSimpleDateFormat);
     icu::SimpleDateFormat *resSdf = dtf->GetIcuSimpleDateFormat();
     UDate timeStamp = resSdf->parse(dateTime1, status);
@@ -182,7 +179,7 @@ HWTEST_F_L0(JSDateTimeFormatTest, Set_Get_IcuSimpleDateFormat)
 
     status = UErrorCode::U_ZERO_ERROR;
     icu::UnicodeString pattern2("yyyyy.MMMMM.dd GGG hh:mm::ss aaa");
-    icu::SimpleDateFormat sdf2(pattern2, status);
+    icu::SimpleDateFormat sdf2(pattern2, icuLocale, status);
     JSDateTimeFormat::SetIcuSimpleDateFormat(thread, dtf, sdf2, JSDateTimeFormat::FreeSimpleDateFormat);
     icu::SimpleDateFormat *resSdf2 = dtf->GetIcuSimpleDateFormat();
     timeStamp = resSdf2->parse(dateTime1, status);
