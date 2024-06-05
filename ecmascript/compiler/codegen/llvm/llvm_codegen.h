@@ -63,7 +63,8 @@ struct LOptions {
 
 class LLVMAssembler : public Assembler {
 public:
-    explicit LLVMAssembler(LLVMModule *lm, LOptions option = LOptions());
+    explicit LLVMAssembler(LLVMModule *lm, CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand,
+                           LOptions option = LOptions());
     virtual ~LLVMAssembler();
     void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) override;
     const LLVMExecutionEngineRef &GetEngine()
@@ -106,7 +107,7 @@ private:
         LLVMAssembler* as_ {nullptr};
     };
 
-    void UseRoundTripSectionMemoryManager();
+    void UseRoundTripSectionMemoryManager(bool isJit);
     bool BuildMCJITEngine();
     void BuildAndRunPasses();
     void BuildAndRunPassesFastMode();
