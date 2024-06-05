@@ -260,6 +260,7 @@ JSTaggedValue ArrayHelper::SortIndexedProperties(JSThread *thread, const JSHandl
 {
     // 1. Let items be a new empty List.
     JSHandle<TaggedArray> items(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len));
+    CVector<JSHandle<JSTaggedValue>> itemsVector;
     // 2. Let k be 0.
     int64_t k = 0;
     // 3. Repeat, while k < len,
@@ -289,9 +290,13 @@ JSTaggedValue ArrayHelper::SortIndexedProperties(JSThread *thread, const JSHandl
         if (kRead) {
             JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            items->Set(thread, k, kValue.GetTaggedValue());
+            itemsVector.push_back(kValue);
         }
         ++k;
+    }
+    items = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(itemsVector.size());
+    for (size_t i = 0; i < itemsVector.size(); ++i) {
+        items->Set(thread, i, itemsVector[i].GetTaggedValue());
     }
     JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, items));
     JSHandle<JSObject> arrayObj = JSHandle<JSObject>::Cast(array);
