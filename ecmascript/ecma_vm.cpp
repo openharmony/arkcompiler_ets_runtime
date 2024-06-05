@@ -179,11 +179,6 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     if (JsStackInfo::options == nullptr) {
         JsStackInfo::options = &(vm->GetJSOptions());
     }
-#if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
-    if (SetThreadInfoCallback != nullptr) {
-        SetThreadInfoCallback(CrashCallback);
-    }
-#endif
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     vm->GetJSOptions().SetArkProperties(arkProperties);

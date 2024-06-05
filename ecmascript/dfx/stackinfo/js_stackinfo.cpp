@@ -281,60 +281,6 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, 
     return jsFrame;
 }
 
-void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((unused)),
-                   void *ucontext __attribute__((unused)))
-{
-#if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
-    if (ucontext == nullptr) {
-        // should not happen
-        return;
-    }
-    auto uctx = static_cast<ucontext_t *>(ucontext);
-    uintptr_t pc = uctx->uc_mcontext.pc;
-    uintptr_t fp = uctx->uc_mcontext.regs[29];  // 29: fp
-    // 1. check pc is between ark code heap
-    // 2. assemble crash info for ark code with signal-safe code
-    // 3. do not do much things inside callback, stack size is limited
-    // 4. do not use normal log
-    if (JsStackInfo::loader == nullptr) {
-        return;
-    }
-    if (!JsStackInfo::loader->InsideStub(pc) && !JsStackInfo::loader->InsideAOT(pc)) {
-        return;
-    }
-    LOG_ECMA(ERROR) << std::hex << "CrashCallback pc:" << pc << " fp:" << fp;
-    FrameIterator frame(reinterpret_cast<JSTaggedType *>(fp));
-    bool isBuiltinStub = (frame.GetFrameType() == FrameType::OPTIMIZED_FRAME);
-    Method *method = frame.CheckAndGetMethod();
-    while (method == nullptr) {
-        frame.Advance();
-        if (frame.Done()) {
-            break;
-        }
-        method = frame.CheckAndGetMethod();
-    }
-    std::string faultInfo;
-    if (method != nullptr) {
-        std::string methodName = method->GetMethodName();
-        std::string recordName = method->GetRecordNameStr().c_str();
-        faultInfo = "Method Name:" + methodName + " Record Name:" + recordName;
-    } else {
-        faultInfo = "method is nullptr!";
-    }
-    if (isBuiltinStub) {
-        uintptr_t func = uctx->uc_mcontext.regs[2];  // 2: func
-        JSTaggedValue builtinMethod = JSFunction::Cast(reinterpret_cast<TaggedObject *>(func))->GetMethod();
-        uint8_t builtinId = Method::Cast(builtinMethod.GetTaggedObject())->GetBuiltinId();
-        size_t builtinStart = static_cast<size_t>(GET_MESSAGE_STRING_ID(StringCharCodeAt) - 1);  // 1: offset NONE
-        std::string builtinStr = MessageString::GetMessageString(builtinStart + builtinId);
-        faultInfo += " " + builtinStr;
-    }
-    if (memcpy_s(buf, len, faultInfo.c_str(), faultInfo.length()) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s fail in CrashCallback()!";  // not FATAL to avoid further crash
-    }
-#endif
-}
-
 bool ReadUintptrFromAddr(int pid, uintptr_t addr, uintptr_t &value, bool needCheckRegion)
 {
     if (pid == getpid()) {
