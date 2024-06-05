@@ -14,5 +14,7 @@
  */
 
 #include <cstdint>
+#ifndef PANDA_TARGET_OHOS
 extern const uint8_t _binary_stub_an_start[1] = {0x0};
 extern const uint32_t _binary_stub_an_length = 1;
+#endif
