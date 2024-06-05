@@ -167,7 +167,6 @@ public:
     static std::unordered_map<EntityId, std::string> nameMap;
     static std::unordered_map<EntityId, std::vector<uint8>> machineCodeMap;
 };
-void CrashCallback(char *buf, size_t len, void *ucontext);
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
 extern "C" int step_ark_managed_native_frame(
