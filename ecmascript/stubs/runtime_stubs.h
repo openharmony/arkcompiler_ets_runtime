@@ -253,7 +253,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(UpdateLayOutAndAddTransition)       \
     V(CopyAndUpdateObjLayout)             \
     V(UpdateHClassForElementsKind)        \
-    V(IsElementsKindSwitchOn)             \
     V(SetValueWithElementsKind)           \
     V(UpdateArrayHClassAndMigrateArrayWithKind) \
     V(MigrateArrayWithKind)               \
