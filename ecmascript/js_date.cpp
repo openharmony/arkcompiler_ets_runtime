@@ -819,8 +819,7 @@ JSTaggedValue JSDate::ValueOf() const
 void JSDate::GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
 {
     int64_t tz = 0;
-    int64_t timeMsInt;
-    timeMsInt = static_cast<int64_t>(timeMs);
+    int64_t timeMsInt = static_cast<int64_t>(timeMs);
     if (isLocal) {  // timezone offset
         tz = GetLocalOffsetFromOS(timeMsInt, isLocal);
         timeMsInt += tz * MS_PER_SECOND * SEC_PER_MINUTE;

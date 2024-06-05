@@ -38,7 +38,7 @@ template <typename IntType> static void ByteSwap(IntType& x)
     static constexpr unsigned int iByteMuskOff1 = iByteMuskOff0 << 8;
     static constexpr unsigned int iByteMuskOff2 = iByteMuskOff1 << 8;
     static constexpr unsigned int iByteMuskOff3 = iByteMuskOff2 << 8;
-    static constexpr unsigned long long llByteMuskOff0 = 0xffull;
+    static constexpr unsigned long long llByteMuskOff0 = 0xffuLL;
     static constexpr unsigned long long llByteMuskOff1 = llByteMuskOff0 << 8;
     static constexpr unsigned long long llByteMuskOff2 = llByteMuskOff1 << 8;
     static constexpr unsigned long long llByteMuskOff3 = llByteMuskOff2 << 8;

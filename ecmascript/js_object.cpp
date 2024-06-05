@@ -70,7 +70,7 @@ PropertyAttributes::PropertyAttributes(const PropertyDescriptor &desc)
 
 void ThroughputJSObjectResizingStrategy::UpdateGrowStep(JSThread *thread, uint32_t step)
 {
-    // 2 : double
+    // 2 : multiple double
     thread->SetPropertiesGrowStep(std::min(static_cast<uint32_t>(JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2),
                                            step));
 }

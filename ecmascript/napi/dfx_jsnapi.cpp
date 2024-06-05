@@ -44,7 +44,6 @@
 #include "uv.h"
 #endif
 
-sem_t g_heapdumpCnt;
 
 namespace panda {
 using ecmascript::CString;
@@ -61,6 +60,7 @@ using ecmascript::FileStream;
 using ecmascript::FileDescriptorStream;
 using ecmascript::CMap;
 using ecmascript::Tracing;
+sem_t g_heapdumpCnt;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] const std::string &path, [[maybe_unused]] bool isVmMode,
