@@ -107,6 +107,19 @@
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER) && defined(PANDA_TARGET_IOS)
+namespace OHOS::ArkCompiler::Toolchain {
+using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
+extern "C" {
+    bool StartDebug(const std::string& componentName, void* vm, bool isDebugMode, int32_t instanceId,
+        const DebuggerPostTask& debuggerPostTask, int port);
+    void StopDebug(void* vm);
+    void WaitForDebugger(void* vm);
+}
+} // namespace OHOS::ArkCompiler::Toolchain
+const std::string DEBUGGER_NAME = "PandaDebugger";
+#endif
+
 namespace panda {
 using ecmascript::AccessorData;
 using ecmascript::BigInt;

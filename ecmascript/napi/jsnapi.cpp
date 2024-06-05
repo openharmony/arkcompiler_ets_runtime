@@ -99,19 +99,6 @@
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/platform/log.h"
 
-#if defined(ECMASCRIPT_SUPPORT_DEBUGGER) && defined(PANDA_TARGET_IOS)
-namespace OHOS::ArkCompiler::Toolchain {
-using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
-extern "C" {
-    bool StartDebug(const std::string& componentName, void* vm, bool isDebugMode, int32_t instanceId,
-        const DebuggerPostTask& debuggerPostTask, int port);
-    void StopDebug(void* vm);
-    void WaitForDebugger(void* vm);
-}
-} // namespace OHOS::ArkCompiler::Toolchain
-const std::string DEBUGGER_NAME = "PandaDebugger";
-#endif
-
 namespace panda {
 using ecmascript::ECMAObject;
 using ecmascript::EcmaString;
