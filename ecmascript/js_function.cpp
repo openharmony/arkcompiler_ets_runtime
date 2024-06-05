@@ -604,7 +604,7 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     JSTaggedValue resultValue;
     info->SetThis(obj.GetTaggedValue());
     Method *method = func->GetCallTarget();
-    if (method->IsAotWithCallField() && func->IsClassConstructor()) {
+    if (!thread->IsWorker() && method->IsAotWithCallField() && func->IsClassConstructor()) {
         resultValue = InvokeOptimizedEntrypoint(thread, func, info);
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);

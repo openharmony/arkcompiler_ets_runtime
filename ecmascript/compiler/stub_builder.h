@@ -722,6 +722,7 @@ public:
     void UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell);
     void SetJSObjectTaggedField(GateRef glue, GateRef object, size_t offset, GateRef value);
     GateRef GetGlobalObject(GateRef glue);
+    GateRef IsWorker(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
     GateRef GetHomeObjectFromFunction(GateRef function);

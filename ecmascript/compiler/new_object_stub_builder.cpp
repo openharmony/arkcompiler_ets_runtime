@@ -718,6 +718,11 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
 
     Label isHeapObject(env);
     Label afterAOTLiteral(env);
+    // Worker/Taskpool disable aot optimization
+    Label aotLiteral(env);
+    GateRef isWoker = IsWorker(glue);
+    BRANCH(isWoker, &afterAOTLiteral, &aotLiteral);
+    Bind(&aotLiteral);
     BRANCH(TaggedIsHeapObject(*val), &isHeapObject, &afterAOTLiteral);
     {
         Bind(&isHeapObject);
@@ -750,6 +755,10 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     Label afterDealWithCompiledStatus(env);
     Label isJitCompiledCode(env);
     Label tryInitFuncCodeEntry(env);
+    // Worker/Taskpool disable aot optimization
+    Label judgeAotWithCallField(env);
+    BRANCH(isWoker, &tryInitFuncCodeEntry, &judgeAotWithCallField);
+    Bind(&judgeAotWithCallField);
     BRANCH(IsAotWithCallField(method), &hasCompiledStatus, &tryInitFuncCodeEntry);
     Bind(&hasCompiledStatus);
     {
@@ -1459,7 +1468,7 @@ GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superC
     Label callRuntime(env);
     Label newObject(env);
     Label isFunction(env);
-    
+
     BRANCH(IsJSFunction(newTarget), &isFunction, &callRuntime);
     Bind(&isFunction);
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
