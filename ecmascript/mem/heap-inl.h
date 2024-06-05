@@ -161,11 +161,14 @@ void Heap::EnumerateRegions(const Callback &cb) const
 template<class Callback>
 void Heap::IterateOverObjects(const Callback &cb, bool isSimplify) const
 {
+    edenSpace_->IterateOverObjects(cb);
     activeSemiSpace_->IterateOverObjects(cb);
     oldSpace_->IterateOverObjects(cb);
     nonMovableSpace_->IterateOverObjects(cb);
     hugeObjectSpace_->IterateOverObjects(cb);
+    machineCodeSpace_->IterateOverObjects(cb);
     hugeMachineCodeSpace_->IterateOverObjects(cb);
+    snapshotSpace_->IterateOverObjects(cb);
     if (!isSimplify) {
         readOnlySpace_->IterateOverObjects(cb);
         appSpawnSpace_->IterateOverMarkedObjects(cb);
@@ -576,6 +579,8 @@ size_t Heap::GetCommittedSize() const
                     nonMovableSpace_->GetCommittedSize() +
                     machineCodeSpace_->GetCommittedSize() +
                     hugeMachineCodeSpace_->GetCommittedSize() +
+                    readOnlySpace_->GetCommittedSize() +
+                    appSpawnSpace_->GetCommittedSize() +
                     snapshotSpace_->GetCommittedSize();
     return result;
 }
