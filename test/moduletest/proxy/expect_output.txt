@@ -27,14 +27,3 @@ TypeError
 TypeError: function.toString() target is incompatible object
 test proxy constructor success!
 false
-kkk
-TypeError: JSProxy::GetProperty: TypeError of trapResult
-kkk
-TypeError: JSProxy::GetProperty: trapResult is not undefined
-TypeError: JSProxy::SetProperty: TypeError of AccessorDescriptor
-TypeError: JSProxy::SetProperty: TypeError of trapResult
-TypeError: JSProxy::SetProperty: 'set' return false
-kkk
-wode
-TypeError: ProxyCreate: target is not Object
-TypeError: ProxyCreate: handler is not Object
