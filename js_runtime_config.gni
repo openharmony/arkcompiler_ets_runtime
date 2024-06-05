@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Copyright (c) 2024 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -116,6 +116,9 @@ enable_bytrace =
 enable_hitrace =
     !ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
     is_standard_system
+enable_unwinder =
+    !ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
+    is_standard_system
 
 hiviewdfx_deps = []
 hiviewdfx_ext_deps = []
@@ -124,6 +127,9 @@ if (enable_dump_in_faultlog) {
     "faultloggerd:libfaultloggerd",
     "init:libbegetutil",
   ]
+}
+if (enable_unwinder) {
+  hiviewdfx_ext_deps += [ "faultloggerd:libunwinder" ]
 }
 if (enable_bytrace) {
   hiviewdfx_ext_deps += [ "hitrace:hitrace_meter" ]
