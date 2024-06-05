@@ -207,8 +207,8 @@ void EcmaVM::PreFork()
     heap_->CompactHeapBeforeFork();
     heap_->AdjustSpaceSizeForAppSpawn();
     heap_->GetReadOnlySpace()->SetReadOnly();
-    SharedHeap::GetInstance()->DisableParallelGC();
     heap_->DisableParallelGC();
+    SharedHeap::GetInstance()->DisableParallelGC(thread_);
 }
 
 void EcmaVM::PostFork()
@@ -222,31 +222,35 @@ void EcmaVM::PostFork()
     SignalAllReg();
 #endif
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
+    DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
-    if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
-        options_.SetEnablePGOProfiler(false);
-        PGOProfilerManager::GetInstance()->SetDisableAot(true);
-    } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+    if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
-    if (JSNApi::IsAotEscape(this)) {
+    if (ohos::EnableAotListHelper::GetInstance()->IsAotCompileSuccessOnce()) {
         options_.SetEnablePGOProfiler(false);
+        LOG_ECMA(INFO) << "Aot has compile success once.";
+    }
+    if (JSNApi::IsAotEscape()) {
+        options_.SetEnablePGOProfiler(false);
+        LOG_ECMA(INFO) << "Aot has escaped.";
     }
     ResetPGOProfiler();
-    bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
-    bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
-    if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
-        options_.SetEnableAPPJIT(true);
-        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
-        bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
-        if ((!jitEscapeDisable) && JSNApi::IsJitEscape()) {
-            isEnableFastJit = false;
-            isEnableBaselineJit = false;
-            options_.SetEnableJIT(false);
-        }
-        if (isEnableFastJit || isEnableBaselineJit) {
-            EnableJit();
+
+    bool enableJitFrame = ohos::JitTools::GetJitFrameEnable();
+    options_.SetEnableJitFrame(enableJitFrame);
+
+    bool jitEscapeDisable = ohos::JitTools::GetJitEscapeDisable();
+    if (jitEscapeDisable || !JSNApi::IsJitEscape()) {
+        if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName)) {
+            bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
+            bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
+            options_.SetEnableAPPJIT(true);
+            Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
+            if (isEnableFastJit || isEnableBaselineJit) {
+                EnableJit();
+            }
         }
     }
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
@@ -266,7 +270,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
       ecmaParamConfiguration_(std::move(config))
 {
     options_ = std::move(options);
-    LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
+    LOG_ECMA(DEBUG) << "multi-thread check enabled: " << options_.EnableThreadCheck();
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
@@ -298,11 +302,6 @@ void EcmaVM::InitializePGOProfiler()
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
 }
 
-void EcmaVM::InitializeEnableAotCrash()
-{
-    SetEnableAotCrashEscapeVM(options_.IsEnableAotCrashEscape());
-}
-
 void EcmaVM::ResetPGOProfiler()
 {
     if (pgoProfiler_ != nullptr) {
@@ -323,9 +322,6 @@ bool EcmaVM::IsEnablePGOProfiler() const
 
 bool EcmaVM::IsEnableElementsKind() const
 {
-    if (options_.IsWorker()) {
-        return false;
-    }
     return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();
 }
 
@@ -341,16 +337,20 @@ bool EcmaVM::IsEnableBaselineJit() const
 
 void EcmaVM::EnableJit()
 {
-    // check enable aot pgo, if have enable aot pgo, thread installed pgo stubs
-    if (!IsEnablePGOProfiler() && pgoProfiler_ != nullptr) {
-        // only jit enable pgo, disable aot pgo dump
-        options_.SetEnableProfileDump(false);
-        Jit::GetInstance()->SetProfileNeedDump(false);
-        // enable pgo profile
-        options_.SetEnablePGOProfiler(true);
-        ResetPGOProfiler();
-    }
-    if (pgoProfiler_ != nullptr) {
+    if (!options_.IsEnableJITPGO() || pgoProfiler_ == nullptr) {
+        thread_->SwitchJitProfileStubs(false);
+    } else {
+        // if not enable aot pgo
+        if (!PGOProfilerManager::GetInstance()->IsEnable()) {
+            // disable dump
+            options_.SetEnableProfileDump(false);
+            Jit::GetInstance()->SetProfileNeedDump(false);
+            // enable profiler
+            options_.SetEnablePGOProfiler(true);
+            pgoProfiler_->Reset(true);
+            // switch pgo stub
+            thread_->SwitchJitProfileStubs(true);
+        }
         pgoProfiler_->InitJITProfiler();
     }
     bool isApp = Jit::GetInstance()->IsAppJit();
@@ -358,13 +358,15 @@ void EcmaVM::EnableJit()
     bool profileNeedDump = Jit::GetInstance()->IsProfileNeedDump();
     options_.SetEnableProfileDump(profileNeedDump);
 
-    GetJSThread()->SwitchJitProfileStubs();
-    bool jitEnableLitecg = panda::ecmascript::ohos::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
-    LOG_JIT(INFO) << "jit enable litecg: " << jitEnableLitecg;
+    bool jitEnableLitecg = ohos::JitTools::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
     options_.SetCompilerEnableLiteCG(jitEnableLitecg);
-    uint8_t jitCallThreshold = panda::ecmascript::ohos::GetJitCallThreshold(options_.GetJitCallThreshold());
-    LOG_JIT(INFO) << "jit call threshold: " << std::to_string(jitCallThreshold);
+    uint8_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options_.GetJitCallThreshold());
     options_.SetJitCallThreshold(jitCallThreshold);
+
+    uint32_t jitHotnessThreshold = ohos::JitTools::GetJitHotnessThreshold(options_.GetJitHotnessThreshold());
+    options_.SetJitHotnessThreshold(jitHotnessThreshold);
+    LOG_JIT(INFO) << "jit enable litecg:" << jitEnableLitecg << ", call threshold:" <<
+        static_cast<int>(jitCallThreshold) << ", hotness threshold:" << jitHotnessThreshold;
 }
 
 Jit *EcmaVM::GetJit() const
@@ -377,7 +379,6 @@ bool EcmaVM::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
-    InitializeEnableAotCrash();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);
@@ -397,6 +398,7 @@ bool EcmaVM::Initialize()
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     thread_->SetReadyForGCIterating(true);
+    thread_->SetSharedMarkStatus(DaemonThread::GetInstance()->GetSharedMarkStatus());
     snapshotEnv_ = new SnapshotEnv(this);
     context->Initialize();
     snapshotEnv_->AddGlobalConstToMap();
@@ -407,6 +409,9 @@ bool EcmaVM::Initialize()
     quickFixManager_ = new QuickFixManager();
     if (options_.GetEnableAsmInterpreter()) {
         thread_->GetCurrentEcmaContext()->LoadStubFile();
+    }
+    if (options_.EnableEdenGC()) {
+        heap_->EnableEdenGC();
     }
 
     callTimer_ = new FunctionCallTimer();
@@ -505,12 +510,10 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
-    SharedHeap *sHeap = SharedHeap::GetInstance();
-    const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
-    if (heap && IsWorkerThread() && Runtime::SharedGCRequest() && !heap->InSensitiveStatus()) {
+    if (IsWorkerThread() && Runtime::SharedGCRequest()) {
         // destory workervm to release mem.
         thread_->SetReadyForGCIterating(false);
-        sHeap->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION);
+        SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
     }
 
     if (debuggerManager_ != nullptr) {
@@ -631,7 +634,8 @@ void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) cons
 
 void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
-    if (!heap_->IsYoungGC()) {
+    // ProcessNativeDelete should be limited to OldGC or FullGC only
+    if (!heap_->IsGeneralYoungGC()) {
         auto iter = nativePointerList_.begin();
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
         while (iter != nativePointerList_.end()) {
@@ -639,7 +643,8 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy(thread_);
+                asyncNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 iter = nativePointerList_.erase(iter);
             } else {
                 ++iter;
@@ -652,9 +657,8 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
-                                                                    std::make_pair(object->GetExternalPointer(),
-                                                                                   object->GetData())));
+                concurrentNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 newIter = concurrentNativePointerList_.erase(newIter);
             } else {
                 ++newIter;
@@ -684,7 +688,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
     if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
         thread_->GetCurrentEcmaContext()->GetRegExpParserCache()->Clear();
     }
-    if (!heap_->IsYoungGC()) {
+    // process native ref should be limited to OldGC or FullGC only
+    if (!heap_->IsGeneralYoungGC()) {
         heap_->ResetNativeBindingSize();
         // array buffer
         auto iter = nativePointerList_.begin();
@@ -694,7 +699,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                object->Destroy(thread_);
+                asyncNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 iter = nativePointerList_.erase(iter);
                 continue;
             }
@@ -711,9 +717,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
-                                                                    std::make_pair(object->GetExternalPointer(),
-                                                                                   object->GetData())));
+                concurrentNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
                 newIter = concurrentNativePointerList_.erase(newIter);
                 continue;
             }
@@ -810,6 +815,9 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (pgoProfiler_ != nullptr) {
         pgoProfiler_->Iterate(v);
     }
+    if (aotFileManager_) {
+        aotFileManager_->Iterate(v);
+    }
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -894,6 +902,19 @@ void EcmaVM::GenerateInternalNativeMethods()
         method->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
         internalNativeMethods_.emplace_back(method.GetTaggedValue());
     }
+    // cache to global constants shared because context may change
+    CacheToGlobalConstants(GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION),
+                           ConstantIndex::BOUND_FUNCTION_METHOD_INDEX);
+    CacheToGlobalConstants(GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_PROXY),
+                           ConstantIndex::PROXY_METHOD_INDEX);
+}
+
+void EcmaVM::CacheToGlobalConstants(JSTaggedValue value, ConstantIndex idx)
+{
+    auto thread = GetJSThread();
+    auto context = thread->GetCurrentEcmaContext();
+    auto constants = const_cast<GlobalEnvConstants *>(context->GlobalConstants());
+    constants->SetConstant(idx, value);
 }
 
 JSTaggedValue EcmaVM::GetMethodByIndex(MethodIndex idx)
@@ -917,7 +938,7 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         auto status = promise->GetPromiseState();
         if (status == PromiseState::PENDING) {
             result = JSHandle<JSTaggedValue>::Cast(factory_->GetJSError(
-                ErrorType::ERROR, "Can't return Promise in pending state")).GetTaggedValue();
+                ErrorType::ERROR, "Can't return Promise in pending state", StackCheck::NO)).GetTaggedValue();
         } else {
             result = promise->GetPromiseResult();
         }

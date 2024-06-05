@@ -16,6 +16,7 @@
 #include "ecmascript/base/array_helper.h"
 
 #include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/base/sort_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -388,7 +389,8 @@ JSHandle<TaggedArray> ArrayHelper::SortIndexedProperties(JSThread *thread, const
                                                          HolesType holes)
 {
     // 1. Let items be a new empty List.
-    JSHandle<TaggedArray> items(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len));
+    JSHandle<TaggedArray> items(thread->GetEcmaVM()->GetFactory()->EmptyArray());
+    CVector<JSHandle<JSTaggedValue>> itemsVector;
     // 2. Let k be 0.
     int64_t k = 0;
     // 3. Repeat, while k < len,
@@ -405,7 +407,6 @@ JSHandle<TaggedArray> ArrayHelper::SortIndexedProperties(JSThread *thread, const
     bool kRead = false;
     JSMutableHandle<JSTaggedValue> pk(thread, JSTaggedValue::Undefined());
 
-    int64_t index = 0;
     while (k < len) {
         if (holes == HolesType::SKIP_HOLES) {
             pk.Update(JSTaggedValue(k));
@@ -418,17 +419,18 @@ JSHandle<TaggedArray> ArrayHelper::SortIndexedProperties(JSThread *thread, const
         if (kRead) {
             JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObj, k);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
-            items->Set(thread, index++, kValue.GetTaggedValue());
+            itemsVector.push_back(kValue);
         }
         ++k;
     }
-    if (index < k) {
-        items->Trim(thread, index);
+    items = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(itemsVector.size());
+    for (size_t i = 0; i < itemsVector.size(); ++i) {
+        items->Set(thread, i, itemsVector[i].GetTaggedValue());
     }
     // 4. Sort items using an implementation-defined sequence of calls to SortCompare.
     // If any such call returns an abrupt completion,
     // stop before performing any further calls to SortCompare and return that Completion Record.
-    JSArray::SortElements(thread, items, callbackFnHandle);
+    TimSort::Sort(thread, items, callbackFnHandle);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
     // 5. Return items.
     return items;

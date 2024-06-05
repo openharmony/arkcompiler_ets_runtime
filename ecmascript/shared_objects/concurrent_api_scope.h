@@ -143,7 +143,8 @@ private:
     uint32_t desiredModRecord_ {0};
 
     static_assert(std::is_same_v<Container, JSSharedSet> || std::is_same_v<Container, JSSharedMap> ||
-                  std::is_same_v<Container, JSSharedArray> || std::is_same_v<Container, JSSharedTypedArray>);
+                  std::is_same_v<Container, JSSharedArray> || std::is_same_v<Container, JSSharedTypedArray> ||
+                  std::is_same_v<Container, JSAPIBitVector>);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_API_SCOPE_H

@@ -27,8 +27,6 @@ public:
     BaseNode *ExtFoldTernary(TernaryNode *node);
     StmtNode *ExtSimplify(StmtNode *node);
     BaseNode *ExtFold(BaseNode *node);
-    BaseNode *ExtFoldIor(BinaryNode *node);
-    BaseNode *ExtFoldXand(BinaryNode *node);
     StmtNode *ExtSimplifyBlock(BlockNode *node);
     StmtNode *ExtSimplifyIf(IfStmtNode *node);
     StmtNode *ExtSimplifyDassign(DassignNode *node);

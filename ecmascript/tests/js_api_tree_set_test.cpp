@@ -26,64 +26,38 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_tree.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSAPITreeSetTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPITreeSetTest : public BaseTestWithScope<false> {
 protected:
     JSAPITreeSet *CreateTreeSet()
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::TreeSet)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
+        auto result = TestCommon::CreateContainerTaggedValue(thread, containers::ContainerTag::TreeSet);
         JSHandle<JSTaggedValue> constructor(thread, result);
         JSHandle<JSAPITreeSet> set(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
         JSTaggedValue internal = TaggedTreeSet::Create(thread);
         set->SetTreeSet(thread, internal);
         return *set;
+    }
+
+    JSHandle<JSAPITreeSet> TestCommon(JSMutableHandle<JSTaggedValue>& key, std::string& myKey, uint32_t nums)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        // test JSAPITreeSet
+        JSHandle<JSAPITreeSet> tset(thread, CreateTreeSet());
+        for (int i = 0; i < nums; i++) {
+            std::string ikey = myKey + std::to_string(i);
+            key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+            JSAPITreeSet::Add(thread, tset, key);
+        }
+        EXPECT_EQ(tset->GetSize(), nums);
+        return tset;
     }
 };
 
@@ -100,14 +74,8 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetAddAndHas)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
 
     // test JSAPITreeSet
-    JSHandle<JSAPITreeSet> tset(thread, CreateTreeSet());
     std::string myKey("mykey");
-    for (int i = 0; i < NODE_NUMBERS; i++) {
-        std::string ikey = myKey + std::to_string(i);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        JSAPITreeSet::Add(thread, tset, key);
-    }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+    auto tset = TestCommon(key, myKey, NODE_NUMBERS);
 
     // test Add exception
     key.Update(JSTaggedValue::Hole());
@@ -132,14 +100,8 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetDeleteAndHas)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
 
     // test JSAPITreeSet
-    JSHandle<JSAPITreeSet> tset(thread, CreateTreeSet());
     std::string myKey("mykey");
-    for (int i = 0; i < NODE_NUMBERS; i++) {
-        std::string ikey = myKey + std::to_string(i);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        JSAPITreeSet::Add(thread, tset, key);
-    }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+    auto tset = TestCommon(key, myKey, NODE_NUMBERS);
 
     // test delete
     {
@@ -183,14 +145,8 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetClear)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
 
     // test TaggedTreeSet
-    JSHandle<JSAPITreeSet> tset(thread, CreateTreeSet());
     std::string myKey("mykey");
-    for (int i = 0; i < NODE_NUMBERS; i++) {
-        std::string ikey = myKey + std::to_string(i);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        JSAPITreeSet::Add(thread, tset, key);
-    }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+    auto tset = TestCommon(key, myKey, NODE_NUMBERS);
 
     JSAPITreeSet::Clear(thread, tset);
     EXPECT_EQ(tset->GetSize(), 0);

@@ -19,7 +19,7 @@
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/object_factory-inl.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -27,112 +27,8 @@ using namespace panda::ecmascript::base;
 using LocaleHelper = panda::ecmascript::intl::LocaleHelper;
 
 namespace panda::test {
-class JSDateTimeFormatTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JSDateTimeFormatTest : public BaseTestWithScope<true> {
 };
-
-JSHandle<JSDateTimeFormat> CreateDateTimeFormatTest(JSThread *thread, icu::Locale icuLocale, JSHandle<JSObject> options)
-{
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
-
-    JSHandle<JSTaggedValue> localeCtor = env->GetLocaleFunction();
-    JSHandle<JSTaggedValue> dtfCtor = env->GetDateTimeFormatFunction();
-    JSHandle<JSLocale> locales =
-        JSHandle<JSLocale>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(localeCtor), localeCtor));
-    JSHandle<JSDateTimeFormat> dtf =
-        JSHandle<JSDateTimeFormat>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(dtfCtor), dtfCtor));
-
-    JSHandle<JSTaggedValue> optionsVal = JSHandle<JSTaggedValue>::Cast(options);
-    factory->NewJSIntlIcuData(locales, icuLocale, JSLocale::FreeIcuLocale);
-    dtf = JSDateTimeFormat::InitializeDateTimeFormat(thread, dtf, JSHandle<JSTaggedValue>::Cast(locales), optionsVal);
-    return dtf;
-}
-
-void SetDateOptionsTest(JSThread *thread, JSHandle<JSObject> &optionsObj,
-    std::map<std::string, std::string> &dateOptions)
-{
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto globalConst = thread->GlobalConstants();
-    // Date options keys.
-    JSHandle<JSTaggedValue> weekdayKey = globalConst->GetHandledWeekdayString();
-    JSHandle<JSTaggedValue> yearKey = globalConst->GetHandledYearString();
-    JSHandle<JSTaggedValue> monthKey = globalConst->GetHandledMonthString();
-    JSHandle<JSTaggedValue> dayKey = globalConst->GetHandledDayString();
-    // Date options values.
-    JSHandle<JSTaggedValue> weekdayValue(factory->NewFromASCII(dateOptions["weekday"].c_str()));
-    JSHandle<JSTaggedValue> yearValue(factory->NewFromASCII(dateOptions["year"].c_str()));
-    JSHandle<JSTaggedValue> monthValue(factory->NewFromASCII(dateOptions["month"].c_str()));
-    JSHandle<JSTaggedValue> dayValue(factory->NewFromASCII(dateOptions["day"].c_str()));
-    // Set date options.
-    JSObject::SetProperty(thread, optionsObj, weekdayKey, weekdayValue);
-    JSObject::SetProperty(thread, optionsObj, yearKey, yearValue);
-    JSObject::SetProperty(thread, optionsObj, monthKey, monthValue);
-    JSObject::SetProperty(thread, optionsObj, dayKey, dayValue);
-}
-
-void SetTimeOptionsTest(JSThread *thread, JSHandle<JSObject> &optionsObj,
-    std::map<std::string, std::string> &timeOptionsMap)
-{
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto globalConst = thread->GlobalConstants();
-    // Time options keys.
-    JSHandle<JSTaggedValue> dayPeriodKey = globalConst->GetHandledDayPeriodString();
-    JSHandle<JSTaggedValue> hourKey = globalConst->GetHandledHourString();
-    JSHandle<JSTaggedValue> minuteKey = globalConst->GetHandledMinuteString();
-    JSHandle<JSTaggedValue> secondKey = globalConst->GetHandledSecondString();
-    JSHandle<JSTaggedValue> fractionalSecondDigitsKey = globalConst->GetHandledFractionalSecondDigitsString();
-    // Time options values.
-    JSHandle<JSTaggedValue> dayPeriodValue(factory->NewFromASCII(timeOptionsMap["dayPeriod"].c_str()));
-    JSHandle<JSTaggedValue> hourValue(factory->NewFromASCII(timeOptionsMap["hour"].c_str()));
-    JSHandle<JSTaggedValue> minuteValue(factory->NewFromASCII(timeOptionsMap["minute"].c_str()));
-    JSHandle<JSTaggedValue> secondValue(factory->NewFromASCII(timeOptionsMap["second"].c_str()));
-    JSHandle<JSTaggedValue> fractionalSecondDigitsValue(
-        factory->NewFromASCII(timeOptionsMap["fractionalSecond"].c_str()));
-    // Set time options.
-    JSObject::SetProperty(thread, optionsObj, dayPeriodKey, dayPeriodValue);
-    JSObject::SetProperty(thread, optionsObj, hourKey, hourValue);
-    JSObject::SetProperty(thread, optionsObj, minuteKey, minuteValue);
-    JSObject::SetProperty(thread, optionsObj, secondKey, secondValue);
-    JSObject::SetProperty(thread, optionsObj, fractionalSecondDigitsKey, fractionalSecondDigitsValue);
-}
 
 HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_002)
 {
@@ -152,7 +48,7 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_002)
     JSObject::SetProperty(thread, options, hourCycleKey, hourCycleValue);
     options = JSDateTimeFormat::ToDateTimeOptions(
         thread, JSHandle<JSTaggedValue>::Cast(options), RequiredOption::ANY, DefaultsOption::ALL);
-    JSHandle<JSDateTimeFormat> dtf = CreateDateTimeFormatTest(thread, icuLocale, options);
+    JSHandle<JSDateTimeFormat> dtf = EcmaTestCommon::CreateDateTimeFormatTest(thread, icuLocale, options);
 
     double timeStamp1 = 1653448174000; // test "2022-05-25 11:09:34.000"
     double timeStamp2 = 1653921012999; // test "2022-05-30 22:30:12.999"
@@ -164,22 +60,29 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_002)
     EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr2).c_str(), "2022/5/30 下午10:30:12");
 }
 
-HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_003)
+static JSHandle<JSDateTimeFormat> FormatCommonSet(JSThread *thread, JSHandle<JSObject>& options, icu::Locale& icuLocale,
+    std::map<std::string, std::string>& dateOptionsMap)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
-    auto globalConst = thread->GlobalConstants();
+    std::map<std::string, std::string> timeOptionsMap {
+        { "dayPeriod", "long" },
+        { "hour", "2-digit" },
+        { "minute", "2-digit" },
+        { "second", "2-digit" },
+        { "fractionalSecond", "3" }
+    };
+    EcmaTestCommon::SetDateOptionsTest(thread, options, dateOptionsMap);
+    EcmaTestCommon::SetTimeOptionsTest(thread, options, timeOptionsMap);
+    options = JSDateTimeFormat::ToDateTimeOptions(
+        thread, JSHandle<JSTaggedValue>::Cast(options), RequiredOption::ANY, DefaultsOption::ALL);
+    JSHandle<JSDateTimeFormat> dtf = EcmaTestCommon::CreateDateTimeFormatTest(thread, icuLocale, options);
+    return dtf;
+}
 
-    icu::Locale icuLocale("zh", "Hans", "Cn");
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> options = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> hourCycleKey = globalConst->GetHandledHourCycleString();
-    JSHandle<JSTaggedValue> hourCycleValue(factory->NewFromASCII("h12"));
-    JSHandle<JSTaggedValue> timeZoneKey = globalConst->GetHandledTimeZoneString();
-    JSHandle<JSTaggedValue> timeZoneValue(factory->NewFromASCII("ETC/GMT-8"));
-    JSObject::SetProperty(thread, options, timeZoneKey, timeZoneValue);
-    JSObject::SetProperty(thread, options, hourCycleKey, hourCycleValue);
+static JSHandle<JSDateTimeFormat> FormatDateTimeCommon(JSThread *thread, icu::Locale& icuLocale)
+{
+    std::string cycle("h12");
+    std::string zone("ETC/GMT-8");
+    auto options = EcmaTestCommon::SetHourCycleKeyValue(thread, cycle, zone);
 
     // Set custom date time format.
     std::map<std::string, std::string> dateOptionsMap {
@@ -188,19 +91,15 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_003)
         { "month", "2-digit" },
         { "day", "2-digit" }
     };
-    std::map<std::string, std::string> timeOptionsMap {
-        { "dayPeriod", "long" },
-        { "hour", "2-digit" },
-        { "minute", "2-digit" },
-        { "second", "2-digit" },
-        { "fractionalSecond", "3" }
-    };
-    SetDateOptionsTest(thread, options, dateOptionsMap);
-    SetTimeOptionsTest(thread, options, timeOptionsMap);
-    options = JSDateTimeFormat::ToDateTimeOptions(
-        thread, JSHandle<JSTaggedValue>::Cast(options), RequiredOption::ANY, DefaultsOption::ALL);
-    JSHandle<JSDateTimeFormat> dtf = CreateDateTimeFormatTest(thread, icuLocale, options);
+    auto dtf = FormatCommonSet(thread, options, icuLocale, dateOptionsMap);
+    return dtf;
+}
 
+HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_003)
+{
+    icu::Locale icuLocale("zh", "Hans", "Cn");
+   
+    auto dtf = FormatDateTimeCommon(thread, icuLocale);
     double timeStamp1 = 1653448174000; // test "2022-05-25 11:09:34.000"
     double timeStamp2 = 1653921012999; // test "2022-05-30 22:30:12.999"
 
@@ -212,40 +111,8 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_003)
 
 HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_004)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
-    auto globalConst = thread->GlobalConstants();
-
     icu::Locale icuLocale("en", "Latn", "US");
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> options = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> hourCycleKey = globalConst->GetHandledHourCycleString();
-    JSHandle<JSTaggedValue> hourCycleValue(factory->NewFromASCII("h12"));
-    JSHandle<JSTaggedValue> timeZoneKey = globalConst->GetHandledTimeZoneString();
-    JSHandle<JSTaggedValue> timeZoneValue(factory->NewFromASCII("ETC/GMT-8"));
-    JSObject::SetProperty(thread, options, timeZoneKey, timeZoneValue);
-    JSObject::SetProperty(thread, options, hourCycleKey, hourCycleValue);
-
-    // Set custom date time format.
-    std::map<std::string, std::string> dateOptionsMap {
-        { "weekday", "long" },
-        { "year", "2-digit" },
-        { "month", "2-digit" },
-        { "day", "2-digit" }
-    };
-    std::map<std::string, std::string> timeOptionsMap {
-        { "dayPeriod", "long" },
-        { "hour", "2-digit" },
-        { "minute", "2-digit" },
-        { "second", "2-digit" },
-        { "fractionalSecond", "3" }
-    };
-    SetDateOptionsTest(thread, options, dateOptionsMap);
-    SetTimeOptionsTest(thread, options, timeOptionsMap);
-    options = JSDateTimeFormat::ToDateTimeOptions(
-        thread, JSHandle<JSTaggedValue>::Cast(options), RequiredOption::ANY, DefaultsOption::ALL);
-    JSHandle<JSDateTimeFormat> dtf = CreateDateTimeFormatTest(thread, icuLocale, options);
+    auto dtf = FormatDateTimeCommon(thread, icuLocale);
 
     double timeStamp1 = 1653448174000; // test "2022-05-25 11:09:34.000"
     double timeStamp2 = 1653921012999; // test "2022-05-30 22:30:12.999"
@@ -277,24 +144,16 @@ std::string GetDateTimePartStringTest(JSThread *thread, JSHandle<JSTaggedValue> 
  */
 HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTimeToParts_001)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> typeKey = globalConst->GetHandledTypeString();
     JSHandle<JSTaggedValue> valueKey = globalConst->GetHandledValueString();
 
     icu::Locale icuLocale("zh", "Hans", "Cn");
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> options = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> hourCycleKey = globalConst->GetHandledHourCycleString();
-    JSHandle<JSTaggedValue> hourCycleValue(factory->NewFromASCII("h12"));
-    JSHandle<JSTaggedValue> timeZoneKey = globalConst->GetHandledTimeZoneString();
-    JSHandle<JSTaggedValue> timeZoneValue(factory->NewFromASCII("ETC/GMT-8"));
-    JSObject::SetProperty(thread, options, timeZoneKey, timeZoneValue);
-    JSObject::SetProperty(thread, options, hourCycleKey, hourCycleValue);
-    JSHandle<JSDateTimeFormat> dtf = CreateDateTimeFormatTest(thread, icuLocale, options);
+    std::string cycle("h12");
+    std::string zone("ETC/GMT-8");
+    auto options = EcmaTestCommon::SetHourCycleKeyValue(thread, cycle, zone);
+    JSHandle<JSDateTimeFormat> dtf = EcmaTestCommon::CreateDateTimeFormatTest(thread, icuLocale, options);
 
     double timeStamp = 1653448174123; // test "2022-05-25 11:09:34.123"
     // Use default date time format and format date and time to parts.
@@ -318,24 +177,67 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTimeToParts_001)
     EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, day).c_str(), "25");
 }
 
+void CheckOther(JSThread *thread, JSHandle<JSArray>& dateTimeArray, JSHandle<JSTaggedValue>& typeKey,
+    JSHandle<JSTaggedValue>& valueKey)
+{
+    auto month = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 2).GetValue();
+    auto literal2 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 3).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, month).c_str(), "month");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, month).c_str(), "05");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal2).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal2).c_str(), "月");
+
+    auto day = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 4).GetValue();
+    auto literal3 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 5).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, day).c_str(), "day");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, day).c_str(), "25");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal3).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal3).c_str(), "日");
+
+    auto weekday = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 6).GetValue();
+    auto literal4 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 7).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, weekday).c_str(), "weekday");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, weekday).c_str(), "星期三");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal4).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal4).c_str(), " ");
+
+    auto dayPeriod = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 8).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, dayPeriod).c_str(), "dayPeriod");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, dayPeriod).c_str(), "上午");
+
+    auto hour = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 9).GetValue();
+    auto literal5 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 10).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, hour).c_str(), "hour");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, hour).c_str(), "11");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal5).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal5).c_str(), ":");
+    auto minute = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 11).GetValue();
+    auto literal6 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 12).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, minute).c_str(), "minute");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, minute).c_str(), "09");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal6).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal6).c_str(), ":");
+    auto second = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 13).GetValue();
+    auto literal7 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 14).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, second).c_str(), "second");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, second).c_str(), "34");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal7).c_str(), "literal");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal7).c_str(), ".");
+    auto fracSec = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 15).GetValue();
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, fracSec).c_str(), "fractionalSecond");
+    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, fracSec).c_str(), "123");
+}
+
 HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTimeToParts_002)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    auto env = vm->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> typeKey = globalConst->GetHandledTypeString();
     JSHandle<JSTaggedValue> valueKey = globalConst->GetHandledValueString();
     icu::Locale icuLocale("zh", "Hans", "Cn");
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> options = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> hourCycleKey = globalConst->GetHandledHourCycleString();
-    JSHandle<JSTaggedValue> hourCycleValue(factory->NewFromASCII("h12"));
-    JSHandle<JSTaggedValue> timeZoneKey = globalConst->GetHandledTimeZoneString();
-    JSHandle<JSTaggedValue> timeZoneValue(factory->NewFromASCII("ETC/GMT-8"));
-    JSObject::SetProperty(thread, options, timeZoneKey, timeZoneValue);
-    JSObject::SetProperty(thread, options, hourCycleKey, hourCycleValue);
+    std::string cycle("h12");
+    std::string zone("ETC/GMT-8");
+    auto options = EcmaTestCommon::SetHourCycleKeyValue(thread, cycle, zone);
 
     double timeStamp = 1653448174123; // test "2022-05-25 11:09:34.123"
     // Set custom date time format and format date and time to parts.
@@ -352,63 +254,22 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTimeToParts_002)
         { "second", "2-digit" },
         { "fractionalSecond", "3" }
     };
-    SetDateOptionsTest(thread, options, dateOptionsMap);
-    SetTimeOptionsTest(thread, options, timeOptionsMap);
+    EcmaTestCommon::SetDateOptionsTest(thread, options, dateOptionsMap);
+    EcmaTestCommon::SetTimeOptionsTest(thread, options, timeOptionsMap);
     options = JSDateTimeFormat::ToDateTimeOptions(
         thread, JSHandle<JSTaggedValue>::Cast(options), RequiredOption::ANY, DefaultsOption::ALL);
-    JSHandle<JSDateTimeFormat> dtf = CreateDateTimeFormatTest(thread, icuLocale, options);
+    JSHandle<JSDateTimeFormat> dtf = EcmaTestCommon::CreateDateTimeFormatTest(thread, icuLocale, options);
     JSHandle<EcmaString> dateTimeEcamStr = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp);
     EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr).c_str(), "22年05月25日星期三 上午11:09:34.123");
 
     JSHandle<JSArray> dateTimeArray = JSDateTimeFormat::FormatDateTimeToParts(thread, dtf, timeStamp);
     auto year = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 0).GetValue();
     auto literal1 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 1).GetValue();
-    auto month = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 2).GetValue();
-    auto literal2 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 3).GetValue();
-    auto day = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 4).GetValue();
-    auto literal3 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 5).GetValue();
-    auto weekday = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 6).GetValue();
-    auto literal4 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 7).GetValue();
-    auto dayPeriod = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 8).GetValue();
-    auto hour = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 9).GetValue();
-    auto literal5 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 10).GetValue();
-    auto minute = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 11).GetValue();
-    auto literal6 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 12).GetValue();
-    auto second = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 13).GetValue();
-    auto literal7 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 14).GetValue();
-    auto fracSec = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 15).GetValue();
     EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, year).c_str(), "year");
     EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, year).c_str(), "22");
     EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal1).c_str(), "literal");
     EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal1).c_str(), "年");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, month).c_str(), "month");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, month).c_str(), "05");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal2).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal2).c_str(), "月");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, day).c_str(), "day");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, day).c_str(), "25");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal3).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal3).c_str(), "日");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, weekday).c_str(), "weekday");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, weekday).c_str(), "星期三");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal4).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal4).c_str(), " ");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, dayPeriod).c_str(), "dayPeriod");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, dayPeriod).c_str(), "上午");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, hour).c_str(), "hour");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, hour).c_str(), "11");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal5).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal5).c_str(), ":");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, minute).c_str(), "minute");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, minute).c_str(), "09");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal6).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal6).c_str(), ":");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, second).c_str(), "second");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, second).c_str(), "34");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, literal7).c_str(), "literal");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, literal7).c_str(), ".");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, typeKey, fracSec).c_str(), "fractionalSecond");
-    EXPECT_STREQ(GetDateTimePartStringTest(thread, valueKey, fracSec).c_str(), "123");
+    CheckOther(thread, dateTimeArray, typeKey, valueKey);
 }
 /**
  * @tc.name: GainAvailableLocales

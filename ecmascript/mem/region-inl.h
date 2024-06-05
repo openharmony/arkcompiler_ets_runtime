@@ -44,14 +44,25 @@ inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
     return crossRegionSet_;
 }
 
+inline RememberedSet *Region::GetOrCreateNewToEdenRememberedSet()
+{
+    if (UNLIKELY(packedData_.newToEdenSet_ == nullptr)) {
+        LockHolder lock(*lock_);
+        if (packedData_.newToEdenSet_ == nullptr) {
+            packedData_.newToEdenSet_ = CreateRememberedSet();
+        }
+    }
+    return packedData_.newToEdenSet_;
+}
+
 inline RememberedSet *Region::GetOrCreateOldToNewRememberedSet()
 {
     if (UNLIKELY(packedData_.oldToNewSet_ == nullptr)) {
         LockHolder lock(*lock_);
         if (packedData_.oldToNewSet_ == nullptr) {
-            if (sweepingRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
-                packedData_.oldToNewSet_ = sweepingRSet_;
-                sweepingRSet_ = nullptr;
+            if (sweepingOldToNewRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
+                packedData_.oldToNewSet_ = sweepingOldToNewRSet_;
+                sweepingOldToNewRSet_ = nullptr;
             } else {
                 packedData_.oldToNewSet_ = CreateRememberedSet();
             }
@@ -65,24 +76,44 @@ inline RememberedSet *Region::GetOrCreateLocalToShareRememberedSet()
     if (UNLIKELY(packedData_.localToShareSet_ == nullptr)) {
         LockHolder lock(*lock_);
         if (packedData_.localToShareSet_ == nullptr) {
-            packedData_.localToShareSet_ = CreateRememberedSet();
+            if (sweepingLocalToShareRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
+                packedData_.localToShareSet_ = sweepingLocalToShareRSet_;
+                sweepingLocalToShareRSet_ = nullptr;
+            } else {
+                packedData_.localToShareSet_ = CreateRememberedSet();
+            }
         }
     }
     return packedData_.localToShareSet_;
 }
 
-inline void Region::MergeRSetForConcurrentSweeping()
+inline void Region::MergeLocalToShareRSetForCS()
 {
-    if (sweepingRSet_ == nullptr) {
+    if (sweepingLocalToShareRSet_ == nullptr) {
+        return;
+    }
+    if (packedData_.localToShareSet_ == nullptr) {
+        packedData_.localToShareSet_ = sweepingLocalToShareRSet_;
+        sweepingLocalToShareRSet_ = nullptr;
+    } else {
+        packedData_.localToShareSet_->Merge(sweepingLocalToShareRSet_);
+        DeleteSweepingLocalToShareRSet();
+        sweepingLocalToShareRSet_ = nullptr;
+    }
+}
+
+inline void Region::MergeOldToNewRSetForCS()
+{
+    if (sweepingOldToNewRSet_ == nullptr) {
         return;
     }
     if (packedData_.oldToNewSet_ == nullptr) {
-        packedData_.oldToNewSet_ = sweepingRSet_;
-        sweepingRSet_ = nullptr;
+        packedData_.oldToNewSet_ = sweepingOldToNewRSet_;
+        sweepingOldToNewRSet_   = nullptr;
     } else {
-        packedData_.oldToNewSet_->Merge(sweepingRSet_);
-        DeleteSweepingRSet();
-        sweepingRSet_ = nullptr;
+        packedData_.oldToNewSet_->Merge(sweepingOldToNewRSet_);
+        DeleteSweepingOldToNewRSet();
+        sweepingOldToNewRSet_ = nullptr;
     }
 }
 
@@ -111,6 +142,18 @@ inline bool Region::Test(void *addr) const
     auto addrPtr = reinterpret_cast<uintptr_t>(addr);
     ASSERT(InRange(addrPtr));
     return packedData_.markGCBitset_->TestBit((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+}
+
+// ONLY used for heap verification.
+inline bool Region::TestNewToEden(uintptr_t addr)
+{
+    ASSERT(InRange(addr));
+    // Only used for heap verification, so donot need to use lock
+    auto set = packedData_.newToEdenSet_;
+    if (set == nullptr) {
+        return false;
+    }
+    return set->TestBit(ToUintPtr(this), addr);
 }
 
 // ONLY used for heap verification.
@@ -179,6 +222,13 @@ inline void Region::AtomicInsertLocalToShareRSet(uintptr_t addr)
     set->AtomicInsert(ToUintPtr(this), addr);
 }
 
+inline void Region::ClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
+{
+    if (packedData_.localToShareSet_ != nullptr) {
+        packedData_.localToShareSet_->ClearRange(ToUintPtr(this), start, end);
+    }
+}
+
 inline void Region::AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
 {
     if (packedData_.localToShareSet_ != nullptr) {
@@ -191,6 +241,21 @@ inline void Region::DeleteLocalToShareRSet()
     if (packedData_.localToShareSet_ != nullptr) {
         nativeAreaAllocator_->Free(packedData_.localToShareSet_, packedData_.localToShareSet_->Size());
         packedData_.localToShareSet_ = nullptr;
+    }
+}
+
+inline void Region::AtomicClearSweepingLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
+{
+    if (sweepingLocalToShareRSet_ != nullptr) {
+        sweepingLocalToShareRSet_->AtomicClearRange(ToUintPtr(this), start, end);
+    }
+}
+
+inline void Region::DeleteSweepingLocalToShareRSet()
+{
+    if (sweepingLocalToShareRSet_!= nullptr) {
+        nativeAreaAllocator_->Free(sweepingLocalToShareRSet_, sweepingLocalToShareRSet_->Size());
+        sweepingLocalToShareRSet_ = nullptr;
     }
 }
 
@@ -239,6 +304,24 @@ inline void Region::DeleteCrossRegionRSet()
     }
 }
 
+inline void Region::InsertNewToEdenRSet(uintptr_t addr)
+{
+    auto set = GetOrCreateNewToEdenRememberedSet();
+    set->Insert(ToUintPtr(this), addr);
+}
+
+inline void Region::AtomicInsertNewToEdenRSet(uintptr_t addr)
+{
+    auto set = GetOrCreateNewToEdenRememberedSet();
+    set->AtomicInsert(ToUintPtr(this), addr);
+}
+
+inline void Region::ClearNewToEdenRSet(uintptr_t addr)
+{
+    auto set = GetOrCreateNewToEdenRememberedSet();
+    set->ClearBit(ToUintPtr(this), addr);
+}
+
 inline void Region::InsertOldToNewRSet(uintptr_t addr)
 {
     auto set = GetOrCreateOldToNewRememberedSet();
@@ -252,6 +335,14 @@ inline void Region::ClearOldToNewRSet(uintptr_t addr)
 }
 
 template <typename Visitor>
+inline void Region::IterateAllNewToEdenBits(Visitor visitor)
+{
+    if (packedData_.newToEdenSet_ != nullptr) {
+        packedData_.newToEdenSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
+}
+
+template <typename Visitor>
 inline void Region::IterateAllOldToNewBits(Visitor visitor)
 {
     if (packedData_.oldToNewSet_ != nullptr) {
@@ -262,16 +353,43 @@ inline void Region::IterateAllOldToNewBits(Visitor visitor)
 template <typename Visitor>
 inline void Region::AtomicIterateAllSweepingRSetBits(Visitor visitor)
 {
-    if (sweepingRSet_ != nullptr) {
-        sweepingRSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
+    if (sweepingOldToNewRSet_ != nullptr) {
+        sweepingOldToNewRSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
     }
 }
 
 template <typename Visitor>
 inline void Region::IterateAllSweepingRSetBits(Visitor visitor)
 {
-    if (sweepingRSet_ != nullptr) {
-        sweepingRSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
+    if (sweepingOldToNewRSet_ != nullptr) {
+        sweepingOldToNewRSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
+}
+
+inline RememberedSet *Region::GetNewToEdenRSet()
+{
+    return  packedData_.newToEdenSet_;
+}
+
+inline void Region::ClearNewToEdenRSet()
+{
+    if (packedData_.newToEdenSet_ != nullptr) {
+        packedData_.newToEdenSet_->ClearAll();
+    }
+}
+
+inline void Region::ClearNewToEdenRSetInRange(uintptr_t start, uintptr_t end)
+{
+    if (packedData_.newToEdenSet_ != nullptr) {
+        packedData_.newToEdenSet_->ClearRange(ToUintPtr(this), start, end);
+    }
+}
+
+inline void Region::DeleteNewToEdenRSet()
+{
+    if (packedData_.newToEdenSet_ != nullptr) {
+        nativeAreaAllocator_->Free(packedData_.newToEdenSet_, packedData_.newToEdenSet_->Size());
+        packedData_.newToEdenSet_ = nullptr;
     }
 }
 
@@ -297,25 +415,25 @@ inline void Region::DeleteOldToNewRSet()
     }
 }
 
-inline void Region::AtomicClearSweepingRSetInRange(uintptr_t start, uintptr_t end)
+inline void Region::AtomicClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end)
 {
-    if (sweepingRSet_ != nullptr) {
-        sweepingRSet_->AtomicClearRange(ToUintPtr(this), start, end);
+    if (sweepingOldToNewRSet_ != nullptr) {
+        sweepingOldToNewRSet_->AtomicClearRange(ToUintPtr(this), start, end);
     }
 }
 
-inline void Region::ClearSweepingRSetInRange(uintptr_t start, uintptr_t end)
+inline void Region::ClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end)
 {
-    if (sweepingRSet_ != nullptr) {
-        sweepingRSet_->ClearRange(ToUintPtr(this), start, end);
+    if (sweepingOldToNewRSet_ != nullptr) {
+        sweepingOldToNewRSet_->ClearRange(ToUintPtr(this), start, end);
     }
 }
 
-inline void Region::DeleteSweepingRSet()
+inline void Region::DeleteSweepingOldToNewRSet()
 {
-    if (sweepingRSet_ != nullptr) {
-        nativeAreaAllocator_->Free(sweepingRSet_, sweepingRSet_->Size());
-        sweepingRSet_ = nullptr;
+    if (sweepingOldToNewRSet_ != nullptr) {
+        nativeAreaAllocator_->Free(sweepingOldToNewRSet_, sweepingOldToNewRSet_->Size());
+        sweepingOldToNewRSet_ = nullptr;
     }
 }
 }  // namespace panda::ecmascript

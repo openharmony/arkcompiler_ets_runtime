@@ -65,17 +65,17 @@ void OptimizedFastCall::OptimizedFastCallEntry(ExtendedAssembler *assembler)
     __ Ret();
 }
 
-// * uint64_t OptimizedFastCallAndPushUndefined(uintptr_t glue, uint32_t expectedNumArgs, uint32_t actualNumArgs,
+// * uint64_t OptimizedFastCallAndPushArgv(uintptr_t glue, uint32_t expectedNumArgs, uint32_t actualNumArgs,
 //                                   uintptr_t codeAddr, uintptr_t argv)
 // * Arguments wil CC calling convention:
 //         %x0 - glue
 //         %x1 - actualNumArgs
-//         %x2 - func
-//         %x3 - new target
-//         %x4  - this
-//         %x5  - arg0
-//         %x6  - arg1
-//         %x7  - arg2
+//         %x2 - actualArgv
+//         %x3 - func
+//         %x4  - new target
+//         %x5  - this
+//         %x6  - arg0
+//         %x7  - arg1
 //
 // * The OptimizedJSFunctionArgsConfig Frame's structure is illustrated as the following:
 //          +--------------------------+
@@ -93,13 +93,14 @@ void OptimizedFastCall::OptimizedFastCallEntry(ExtendedAssembler *assembler)
 //          |       frameType          |                 |
 //          |                          |                 V
 //          +--------------------------+ -----------------
-void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *assembler)
+void OptimizedFastCall::OptimizedFastCallAndPushArgv(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
+    __ BindAssemblerStub(RTSTUB_ID(OptimizedFastCallAndPushArgv));
     Register glue(X0);
     Register actualNumArgs(X1);
-    Register jsfunc(X2);
-    Register codeAddr(X3);
+    Register actualArgv(X2);
+    Register jsfunc(X3);
+    Register codeAddr(X4);
     Register sp(SP);
     Register currentSp = __ AvailableRegister1();
     Register op = __ AvailableRegister1();
@@ -109,6 +110,7 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
     Label arg6;
     Label argc;
     Label checkExpectedArgs;
+    Label pushUndefined;
 
     // construct frame
     OptimizedCall::PushOptimizedArgsConfigFrame(assembler);
@@ -130,8 +132,8 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
 
     Label arg7;
     Label arg8;
-    __ Mov(Register(X1), Register(X2)); // func move to argc
-    __ Mov(Register(X2), Register(X4)); // this move to func
+    __ Mov(Register(X1), Register(X3)); // func move to argc
+    __ Mov(Register(X2), Register(X5)); // this move to func
     jsfunc = Register(X1);
 
     __ Cmp(actualNumArgsReg, Immediate(3)); // 3: 3 args
@@ -145,7 +147,7 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
 
     __ Bind(&arg4);
     {
-        __ Mov(Register(X3), Register(X5));
+        __ Mov(Register(X3), Register(X6));
         __ Cmp(actualNumArgsReg, Immediate(4)); // 4: 4 args
         __ B(Condition::NE, &arg5);
         __ Mov(Register(X4), Immediate(JSTaggedValue::VALUE_UNDEFINED));
@@ -157,7 +159,7 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
 
     __ Bind(&arg5);
     {
-        __ Mov(Register(X4), Register(X6));
+        __ Mov(Register(X4), Register(X7));
         __ Cmp(actualNumArgsReg, Immediate(5)); // 5: 5 args
         __ B(Condition::NE, &arg6);
         __ Mov(Register(X5), Immediate(JSTaggedValue::VALUE_UNDEFINED));
@@ -168,7 +170,9 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
 
     __ Bind(&arg6);
     {
-        __ Mov(Register(X5), Register(X7));
+        __ Ldr(op, MemoryOperand(argV, 0));
+        __ Mov(Register(X5), op);
+        __ Add(argV, argV, Immediate(FRAME_SLOT_SIZE));
         __ Cmp(actualNumArgsReg, Immediate(6)); // 6: 6 args
         __ B(Condition::NE, &arg7);
         __ Mov(Register(X6), Immediate(JSTaggedValue::VALUE_UNDEFINED));
@@ -199,13 +203,23 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
 
     __ Bind(&argc);
     {
-        __ Sub(expectedNumArgs, expectedNumArgs, Immediate(8)); // 8 : register save 8 arg
-        __ Sub(actualNumArgsReg, actualNumArgsReg, Immediate(8)); // 8 : register save 8 arg
-        OptimizedCall::IncreaseStackForArguments(assembler, expectedNumArgs, currentSp);
         TempRegister1Scope scope1(assembler);
         TempRegister2Scope scope2(assembler);
         Register tmp = __ TempRegister1();
         Register undefinedValue = __ TempRegister2();
+
+        __ Cmp(expectedNumArgs, actualNumArgsReg);
+        __ B(Condition::GT, &pushUndefined);
+        __ Sub(expectedNumArgs, expectedNumArgs, Immediate(8)); // 8 : register save 8 arg
+        __ Sub(actualNumArgsReg, actualNumArgsReg, Immediate(8)); // 8 : register save 8 arg
+        OptimizedCall::IncreaseStackForArguments(assembler, actualNumArgsReg, currentSp);
+        PushArgsWithArgv(assembler, glue, actualNumArgsReg, argV, undefinedValue, currentSp, nullptr, nullptr);
+        __ B(&call);
+
+        __ Bind(&pushUndefined);
+        __ Sub(expectedNumArgs, expectedNumArgs, Immediate(8)); // 8 : register save 8 arg
+        __ Sub(actualNumArgsReg, actualNumArgsReg, Immediate(8)); // 8 : register save 8 arg
+        OptimizedCall::IncreaseStackForArguments(assembler, expectedNumArgs, currentSp);
         __ Sub(tmp, expectedNumArgs, actualNumArgsReg);
         PushUndefinedWithArgc(assembler, glue, tmp, undefinedValue, currentSp, nullptr, nullptr);
         PushArgsWithArgv(assembler, glue, actualNumArgsReg, argV, undefinedValue, currentSp, nullptr, nullptr);
@@ -323,9 +337,9 @@ void OptimizedFastCall::JSFastCallWithArgV(ExtendedAssembler *assembler)
 //        %x3 - actualNumArgs
 //        %x4 -  argv
 //        %x5 -  expectedNumArgs
-void OptimizedFastCall::JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *assembler)
+void OptimizedFastCall::JSFastCallWithArgVAndPushArgv(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(JSFastCallWithArgVAndPushUndefined));
+    __ BindAssemblerStub(RTSTUB_ID(JSFastCallWithArgVAndPushArgv));
     Register sp(SP);
     Register glue(X0);
     Register jsfunc(X1);
@@ -341,6 +355,7 @@ void OptimizedFastCall::JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *as
     Label arg5;
     Label argc;
     Label checkExpectedArgs;
+    Label pushUndefined;
     __ Mov(callsiteSp, sp);
     OptimizedCall::PushOptimizedUnfoldArgVFrame(assembler, callsiteSp);
     Register actualNumArgsReg = __ AvailableRegister3();
@@ -421,13 +436,23 @@ void OptimizedFastCall::JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *as
 
     __ Bind(&argc);
     {
-        __ Sub(expectedNumArgs, expectedNumArgs, Immediate(5)); // 5 : register save 5 arg
-        __ Sub(actualNumArgsReg, actualNumArgsReg, Immediate(5)); // 5 : register save 5 arg
-        OptimizedCall::IncreaseStackForArguments(assembler, expectedNumArgs, currentSp);
-        TempRegister1Scope scope1(assembler);
+            TempRegister1Scope scope1(assembler);
         TempRegister2Scope scope2(assembler);
         Register tmp = __ TempRegister1();
         Register undefinedValue = __ TempRegister2();
+
+        __ Cmp(expectedNumArgs, actualNumArgsReg);
+        __ B(Condition::GT, &pushUndefined);
+        __ Sub(expectedNumArgs, expectedNumArgs, Immediate(5)); // 5 : register save 5 arg
+        __ Sub(actualNumArgsReg, actualNumArgsReg, Immediate(5)); // 5 : register save 5 arg
+        OptimizedCall::IncreaseStackForArguments(assembler, actualNumArgsReg, currentSp);
+        PushArgsWithArgv(assembler, glue, actualNumArgsReg, argV, undefinedValue, currentSp, nullptr, nullptr);
+        __ B(&call);
+
+        __ Bind(&pushUndefined);
+        __ Sub(expectedNumArgs, expectedNumArgs, Immediate(5)); // 5 : register save 5 arg
+        __ Sub(actualNumArgsReg, actualNumArgsReg, Immediate(5)); // 5 : register save 5 arg
+        OptimizedCall::IncreaseStackForArguments(assembler, expectedNumArgs, currentSp);
         __ Sub(tmp, expectedNumArgs, actualNumArgsReg);
         PushUndefinedWithArgc(assembler, glue, tmp, undefinedValue, currentSp, nullptr, nullptr);
         PushArgsWithArgv(assembler, glue, actualNumArgsReg, argV, undefinedValue, currentSp, nullptr, nullptr);

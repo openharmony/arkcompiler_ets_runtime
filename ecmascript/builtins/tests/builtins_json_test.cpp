@@ -43,39 +43,12 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
-class BuiltinsJsonTest : public testing::Test {
+class BuiltinsJsonTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
     class TestClass : public base::BuiltinsBase {
     public:
-        static JSTaggedValue TestForParse(EcmaRuntimeCallInfo *argv)
+        static JSTaggedValue TestForCommon(EcmaRuntimeCallInfo *argv)
         {
-            uint32_t argc = argv->GetArgsNumber();
-            if (argc > 0) {
-            }
             JSTaggedValue key = GetCallArg(argv, 0).GetTaggedValue();
             if (key.IsUndefined()) {
                 return JSTaggedValue::Undefined();
@@ -88,11 +61,14 @@ public:
             return JSTaggedValue(value);
         }
 
+        static JSTaggedValue TestForParse(EcmaRuntimeCallInfo *argv)
+        {
+            return TestForCommon(argv);
+        }
+
         static JSTaggedValue TestForParse1(EcmaRuntimeCallInfo *argv)
         {
-            uint32_t argc = argv->GetArgsNumber();
-            if (argc > 0) {
-            }
+            (void)argv;
             return JSTaggedValue::Undefined();
         }
 
@@ -100,15 +76,7 @@ public:
         {
             uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
-                JSTaggedValue key = GetCallArg(argv, 0).GetTaggedValue();
-                if (key.IsUndefined()) {
-                    return JSTaggedValue::Undefined();
-                }
-                JSTaggedValue value = GetCallArg(argv, 1).GetTaggedValue();
-                if (value.IsUndefined()) {
-                    return JSTaggedValue::Undefined();
-                }
-                return JSTaggedValue(value);
+                return TestForCommon(argv);
             }
 
             return JSTaggedValue::Undefined();
@@ -191,11 +159,8 @@ HWTEST_F_L0(BuiltinsJsonTest, Parse)
 
     JSHandle<JSTaggedValue> msg(factory->NewFromASCII("[100,2.5,\"abc\"]"));
     JSHandle<EcmaString> str(JSTaggedValue::ToString(thread, msg));
-
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    std::vector<JSTaggedValue> args{str.GetTaggedValue()};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6);
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsJson::Parse(ecmaRuntimeCallInfo);
@@ -214,10 +179,8 @@ HWTEST_F_L0(BuiltinsJsonTest, Parse2)
     JSHandle<JSTaggedValue> msg(factory->NewFromASCII("{\"epf\":100,\"key1\":200}"));
     JSHandle<EcmaString> str(JSTaggedValue::ToString(thread, msg));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    std::vector<JSTaggedValue> args{str.GetTaggedValue()};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6);
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsJson::Parse(ecmaRuntimeCallInfo);
@@ -321,12 +284,8 @@ HWTEST_F_L0(BuiltinsJsonTest, Stringify13)
     JSHandle<JSTaggedValue> msg(factory->NewFromASCII("tttt"));
     JSHandle<EcmaString> str(JSTaggedValue::ToString(thread, msg));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, obj.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, handleFunc.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(2, str.GetTaggedValue());
+    std::vector<JSTaggedValue> args{obj.GetTaggedValue(), handleFunc.GetTaggedValue(), str.GetTaggedValue()};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 10);
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsJson::Stringify(ecmaRuntimeCallInfo);
@@ -403,12 +362,8 @@ HWTEST_F_L0(BuiltinsJsonTest, Stringify1)
     JSHandle<JSTaggedValue> msg(factory->NewFromASCII("tttt"));
     JSHandle<EcmaString> str(JSTaggedValue::ToString(thread, msg));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, obj.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, handleFunc.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(2, str.GetTaggedValue());
+    std::vector<JSTaggedValue> args{obj.GetTaggedValue(), handleFunc.GetTaggedValue(), str.GetTaggedValue()};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 10);
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsJson::Stringify(ecmaRuntimeCallInfo);

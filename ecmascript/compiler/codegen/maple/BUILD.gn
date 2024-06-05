@@ -70,7 +70,6 @@ config("mapleallcompilecfg") {
     "-DDYNAMICLANG",
     "-DRC_NO_MMAP",
     "-DMIR_FEATURE_FULL=1",
-    "-DMIR_JAVA=1",
     "-std=c++17",
     "-fno-common",
   ]

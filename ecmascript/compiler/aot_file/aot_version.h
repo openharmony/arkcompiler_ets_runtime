@@ -25,10 +25,23 @@ public:
     // Release Version           Snapshot Version
     //     3.2                      0.0.0.x
     //     4.0                      4.0.0.x
-    static constexpr base::FileHeaderBase::VersionType AN_VERSION = {4, 0, 0, 5};
+    static constexpr base::FileHeaderBase::VersionType AN_VERSION = {4, 0, 0, 7};
     static constexpr bool AN_STRICT_MATCH = true;
     static constexpr base::FileHeaderBase::VersionType AI_VERSION = {4, 0, 0, 3};
     static constexpr bool AI_STRICT_MATCH = true;
+    static PUBLIC_API std::string GetAOTVersion()
+    {
+        return base::FileHeaderBase::ConvToStr(AN_VERSION);
+    }
+    static PUBLIC_API bool CheckAOTVersion(const std::string& oldVersion)
+    {
+        std::optional<base::FileHeaderBase::VersionType> oldVersionFormat =
+            base::FileHeaderBase::strToVersion(oldVersion);
+        if (oldVersionFormat) {
+            return base::FileHeaderBase::VerifyVersionWithoutFile(AN_VERSION, *oldVersionFormat);
+        }
+        return true;
+    }
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_AOT_VERSION_H

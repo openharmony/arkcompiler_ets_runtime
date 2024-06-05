@@ -215,6 +215,8 @@ private:
     JSHandle<JSTaggedValue> ReadNativeBindingObject();
     JSHandle<JSTaggedValue> ReadBigInt();
     JSHandle<JSTaggedValue> DeserializeJSTaggedValue();
+    JSHandle<JSTaggedValue> GetTypedArrayFunction(JSHandle<GlobalEnv> &env, SerializationUID &uid);
+    bool SetTypedArrayProperties(JSHandle<JSTypedArray> &typedArray);
     bool JudgeType(SerializationUID targetUid);
     void *GetBuffer(uint32_t bufferSize);
     bool ReadJSTaggedValue(JSTaggedValue *originalFlags);

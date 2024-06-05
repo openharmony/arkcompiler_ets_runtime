@@ -485,9 +485,6 @@ public:
         return nodesMap;
     }
 
-    void HandleBody(MIRFunction &, BlockNode &, CGNode &, uint32);
-    void HandleCall(CGNode &, StmtNode *, uint32);
-    void HandleICall(BlockNode &, CGNode &, StmtNode *, uint32);
     MIRType *GetFuncTypeFromFuncAddr(const BaseNode *);
     void RecordLocalConstValue(const StmtNode *stmt);
     CallNode *ReplaceIcallToCall(BlockNode &body, IcallNode *icall, PUIdx newPUIdx);
@@ -501,7 +498,6 @@ public:
     void UpdateCaleeCandidate(PUIdx callerPuIdx, IcallNode *icall, std::set<PUIdx> &candidate);
     SCCNode<CGNode> *GetSCCNode(MIRFunction *func) const;
     bool IsRootNode(MIRFunction *func) const;
-    void UpdateCallGraphNode(CGNode &node);
     MIRFunction *CurFunction() const
     {
         return mirModule->CurFunction();
@@ -551,11 +547,6 @@ public:
     }
 
 private:
-    void ReadCallGraphFromMplt();
-    void FixIcallCallee();
-    void GetMatchedCGNode(TyIdx idx, std::vector<CGNode *> &result);
-
-    CGNode *GetOrGenCGNode(PUIdx puIdx, bool isVcall = false, bool isIcall = false);
     CallType GetCallType(Opcode op) const;
     void FindRootNodes();
     void RemoveFileStaticRootNodes();  // file static and inline but not extern root nodes can be removed
@@ -589,24 +580,20 @@ private:
 class IPODevirtulize {
 public:
     IPODevirtulize(MIRModule *m, MemPool *memPool, KlassHierarchy *kh)
-        : cgAlloc(memPool), mirBuilder(cgAlloc.GetMemPool()->New<MIRBuilder>(m)), klassh(kh), debugFlag(false)
+        : cgAlloc(memPool), mirBuilder(cgAlloc.GetMemPool()->New<MIRBuilder>(m)), klassh(kh)
     {
     }
 
     ~IPODevirtulize() = default;
-    void DevirtualFinal();
     const KlassHierarchy *GetKlassh() const
     {
         return klassh;
     }
 
 private:
-    void SearchDefInMemberMethods(const Klass &klass);
-    void SearchDefInClinit(const Klass &klass);
     MapleAllocator cgAlloc;
     MIRBuilder *mirBuilder;
     KlassHierarchy *klassh;
-    bool debugFlag;
 };
 
 }  // namespace maple

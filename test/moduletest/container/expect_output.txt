@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-container test start
 Test ArrayList success!!!
 Test Deque success!!!
 Test HashMap success!!!
@@ -27,3 +26,18 @@ Test TreeMap success!!!
 Test TreeMap set After Clear Success
 Test TreeSet success!!!
 Test Vector success!!!
+Test ArrayList
+Test Deque done
+Test hashmap done
+Test hashset done
+Test LightWeightMap done
+Test LightWeightSet done
+Test LinkedList done
+Test List done
+Test PlainArray done
+Test Queue done
+Test Stack done
+Test TreeMap done
+Test TreeSet done
+Test Vector done
+container test end

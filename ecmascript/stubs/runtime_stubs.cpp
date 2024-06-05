@@ -33,13 +33,16 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_bigint.h"
+#include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_iterator.h"
+#include "ecmascript/builtins/builtins_reflect.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
@@ -52,6 +55,7 @@
 #include "ecmascript/ic/ic_runtime.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/properties_cache.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -250,8 +254,8 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
     JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
-    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize) + srcArray->GetByteOffset();
-    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize) + targetArray->GetByteOffset();
+    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize + srcArray->GetByteOffset());
+    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize + targetArray->GetByteOffset());
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);
@@ -614,15 +618,6 @@ DEF_RUNTIME_STUBS(CopyAndUpdateObjLayout)
     return JSTaggedValue::Hole().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(IsElementsKindSwitchOn)
-{
-    RUNTIME_STUBS_HEADER(IsElementsKindSwitchOn);
-    if (thread->GetEcmaVM()->IsEnableElementsKind()) {
-        return JSTaggedValue::True().GetRawData();
-    }
-    return JSTaggedValue::False().GetRawData();
-}
-
 DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
 {
     RUNTIME_STUBS_HEADER(UpdateHClassForElementsKind);
@@ -927,7 +922,7 @@ DEF_RUNTIME_STUBS(RegularJSObjDeletePrototype)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (!result) {
         auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property", StackCheck::NO);
         thread->SetException(error.GetTaggedValue());
         return JSTaggedValue::Exception().GetRawData();
     }
@@ -943,7 +938,7 @@ DEF_RUNTIME_STUBS(CallJSObjDeletePrototype)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (!result) {
         auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property", StackCheck::NO);
         thread->SetException(error.GetTaggedValue());
         return JSTaggedValue::Exception().GetRawData();
     }
@@ -1678,6 +1673,14 @@ DEF_RUNTIME_STUBS(CountInterpExecFuncs)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JitReuseCompiledFunc)
+{
+    RUNTIME_STUBS_HEADER(JitReuseCompiledFunc);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
+    Jit::GetInstance()->ReuseCompiledFunc(thread, thisFunc);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CheckSafePoint)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
@@ -1701,6 +1704,17 @@ DEF_RUNTIME_STUBS(LoadICByName)
     LoadICRuntime icRuntime(
         thread, JSHandle<ProfileTypeInfo>::Cast(profileHandle), slotId.GetInt(), ICKind::NamedLoadIC);
     return icRuntime.LoadMiss(receiverHandle, keyHandle).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetOwnPropertyByname)
+{
+    RUNTIME_STUBS_HEADER(LoadICByName);
+    JSHandle<JSTaggedValue> receiverHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the first parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the second parameter
+    PropertyDescriptor targetDesc(thread);
+    JSTaggedValue::GetOwnProperty(thread, receiverHandle, keyHandle, targetDesc);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return targetDesc.GetValue().GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(TryLdGlobalICByName)
@@ -2065,7 +2079,7 @@ DEF_RUNTIME_STUBS(ThrowTypeError)
     JSTaggedValue argMessageStringId = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     std::string message = MessageString::GetMessageString(argMessageStringId.GetInt());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, message.c_str());
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
@@ -2084,7 +2098,7 @@ DEF_RUNTIME_STUBS(ThrowRangeError)
     JSTaggedValue argMessageStringId = GetArg(argv, argc, 0);
     std::string message = MessageString::GetMessageString(argMessageStringId.GetInt());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, message.c_str());
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, message.c_str(), StackCheck::NO);
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
@@ -2557,7 +2571,7 @@ DEF_RUNTIME_STUBS(ThrowNotCallableException)
     RUNTIME_STUBS_HEADER(ThrowNotCallableException);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "is not callable");
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "is not callable", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }
@@ -2568,7 +2582,7 @@ DEF_RUNTIME_STUBS(ThrowSetterIsUndefinedException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-        "Cannot set property when setter is undefined");
+        "Cannot set property when setter is undefined", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }
@@ -2579,7 +2593,7 @@ DEF_RUNTIME_STUBS(ThrowCallConstructorException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                   "class constructor cannot called without 'new'");
+                                                   "class constructor cannot called without 'new'", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }
@@ -2590,7 +2604,7 @@ DEF_RUNTIME_STUBS(ThrowNonConstructorException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                   "function is non-constructor");
+                                                   "function is non-constructor", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }
@@ -2603,7 +2617,7 @@ DEF_RUNTIME_STUBS(ThrowStackOverflowException)
     // so check thread here to distinguish it with the actual stack overflow.
     ecmaVm->CheckThread();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", false);
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", StackCheck::NO);
     if (LIKELY(!thread->HasPendingException())) {
         thread->SetException(error.GetTaggedValue());
     }
@@ -2616,7 +2630,7 @@ DEF_RUNTIME_STUBS(ThrowDerivedMustReturnException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                   "Derived constructor must return object or undefined");
+        "Derived constructor must return object or undefined", StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }
@@ -2948,6 +2962,46 @@ DEF_RUNTIME_STUBS(DefinePrivateProperty)
     return RuntimeDefinePrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetJSPrxoyProperty)
+{
+    RUNTIME_STUBS_HEADER(GetJSPrxoyProperty);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    return JSProxy::GetProperty(thread, proxy, key, receiver).GetValue().GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CheckProxyGetResult)
+{
+    RUNTIME_STUBS_HEADER(CheckProxyGetResult);
+    JSHandle<JSTaggedValue> resultHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+
+    return RuntimeCheckProxyGetResult(thread, resultHandle, target, key).GetValue().GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CheckProxySetResult)
+{
+    RUNTIME_STUBS_HEADER(CheckProxyGetResult);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    RuntimeCheckProxySetResult(thread, value, target, key);
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(SetJSProxyProperty)
+{
+    RUNTIME_STUBS_HEADER(SetJSProxyProperty);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: param index
+    JSProxy::SetProperty(thread, proxy, key, value, receiver, true);
+    return JSTaggedValue::True().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
 {
     RUNTIME_STUBS_HEADER(ContainerRBTreeForEach);
@@ -3058,9 +3112,14 @@ JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
     FrameIterator it(current, thread);
     ASSERT(it.IsOptimizedFrame());
     it.Advance<GCVisitedFlag::VISITED>();
-    ASSERT(it.IsOptimizedJSFunctionFrame());
-    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
-    return reinterpret_cast<uintptr_t>(optimizedJSFunctionFrame->GetArgv(it));
+    ASSERT(it.IsAotOrJitFunctionFrame());
+    if (it.IsFastJitFunctionFrame()) {
+        auto fastJitFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
+        return reinterpret_cast<uintptr_t>(fastJitFunctionFrame->GetArgv(it));
+    } else {
+        auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+        return reinterpret_cast<uintptr_t>(optimizedJSFunctionFrame->GetArgv(it));
+    }
 }
 
 double RuntimeStubs::FloatMod(double x, double y)
@@ -3221,6 +3280,14 @@ JSTaggedType RuntimeStubs::DoubleToLength(double x)
     return JSTaggedNumber(length).GetRawData();
 }
 
+void RuntimeStubs::InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue,
+    uintptr_t object, size_t offset)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    uintptr_t slotAddr = object + offset;
+    return region->InsertNewToEdenRSet(slotAddr);
+}
+
 void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset)
 {
@@ -3234,7 +3301,7 @@ void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
 {
     Region *region = Region::ObjectAddressToRange(object);
     uintptr_t slotAddr = object + offset;
-    region->AtomicInsertLocalToShareRSet(slotAddr);
+    region->InsertLocalToShareRSet(slotAddr);
 }
 
 void RuntimeStubs::SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
@@ -3260,16 +3327,46 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t slotAddr = object + offset;
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
+    ASSERT(!valueRegion->InSharedHeap());
     auto thread = JSThread::GlueToJSThread(argGlue);
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
     if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
         LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrier checked value:" << value << " is invalid!";
     }
 #endif
-    if (!thread->IsConcurrentMarkingOrFinished()) {
-        return;
+    ASSERT(thread->IsConcurrentMarkingOrFinished());
+    Barriers::UpdateWithoutEden(thread, slotAddr, objectRegion, value, valueRegion);
+}
+
+void RuntimeStubs::MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
+    uintptr_t object, size_t offset, TaggedObject *value)
+{
+    uintptr_t slotAddr = object + offset;
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    ASSERT(!valueRegion->InSharedHeap());
+    auto thread = JSThread::GlueToJSThread(argGlue);
+#if ECMASCRIPT_ENABLE_BARRIER_CHECK
+    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+        LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrierWithEden checked value:" << value << " is invalid!";
     }
+#endif
+    ASSERT(thread->IsConcurrentMarkingOrFinished());
     Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
+}
+
+void RuntimeStubs::SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, TaggedObject *value)
+{
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    ASSERT(valueRegion->InSharedSweepableSpace());
+    auto thread = JSThread::GlueToJSThread(argGlue);
+#if ECMASCRIPT_ENABLE_BARRIER_CHECK
+    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+        LOG_FULL(FATAL) << "RuntimeStubs::SharedGCMarkingBarrier checked value:" << value << " is invalid!";
+    }
+#endif
+    ASSERT(thread->IsSharedConcurrentMarkingOrFinished());
+    Barriers::UpdateShared(thread, value, valueRegion);
 }
 
 void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
@@ -3284,18 +3381,21 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         LOG_FULL(FATAL) << "RuntimeStubs::StoreBarrier checked value:" << value << " is invalid!";
     }
 #endif
-    if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
         // Should align with '8' in 64 and 32 bit platform
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
+    } else if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+        objectRegion->InsertLocalToShareRSet(slotAddr);
+    } else if (valueRegion->InEdenSpace() && objectRegion->InYoungSpace()) {
+        objectRegion->InsertNewToEdenRSet(slotAddr);
     }
-    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        objectRegion->AtomicInsertLocalToShareRSet(slotAddr);
+    if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
+        Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
     }
-    if (!thread->IsConcurrentMarkingOrFinished()) {
-        return;
+    if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
+        Barriers::UpdateShared(thread, value, valueRegion);
     }
-    Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
 bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
@@ -3396,8 +3496,11 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     JSFunction* func = JSFunction::Cast(function.GetTaggedObject());
     Method *method = func->GetCallTarget();
     if (method->IsAotWithCallField()) {
-        method->ClearAOTStatusWhenDeopt();
-        func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
+        bool isFastCall = method->IsFastCall();  // get this flag before clear it
+        uintptr_t entry = isFastCall ? thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
+                                     : thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
+        func->SetCodeEntry(entry);
+        method->ClearAOTStatusWhenDeopt(entry);
     }
     context->SetMethod(thread, function);
     context->SetThis(thread, frameHandler.GetThis());
@@ -3742,6 +3845,25 @@ DEF_RUNTIME_STUBS(LocaleCompareWithGc)
         options, cacheable).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ParseInt)
+{
+    RUNTIME_STUBS_HEADER(ParseInt);
+    JSHandle<JSTaggedValue> msg = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> arg2 = GetHArg<JSTaggedValue>(argv, argc, 1);    // 1: means the first parameter
+
+    int32_t radix = 0;
+    // 1. Let inputString be ToString(string).
+    JSHandle<EcmaString> numberString = JSTaggedValue::ToString(thread, msg);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    if (!arg2->IsUndefined()) {
+        // 7. Let R = ToInt32(radix).
+        radix = JSTaggedValue::ToInt32(thread, arg2);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    }
+
+    return base::NumberHelper::StringToNumber(*numberString, radix).GetRawData();
+}
+
 int RuntimeStubs::FastArraySort(JSTaggedType x, JSTaggedType y)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -3759,6 +3881,13 @@ JSTaggedValue RuntimeStubs::LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType lo
         result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
     }
     return result;
+}
+
+JSTaggedValue RuntimeStubs::StringToNumber(JSTaggedType numberString, int32_t radix)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto input = EcmaString::Cast(JSTaggedValue(numberString));
+    return base::NumberHelper::StringToNumber(input, radix);
 }
 
 void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength)
@@ -3816,6 +3945,15 @@ DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SetPrototypeTransition)
+{
+    RUNTIME_STUBS_HEADER(SetPrototypeTransition);
+    JSHandle<JSObject> obj = GetHArg<JSObject>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> proto = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the third parameter
+    JSHClass::SetPrototypeTransition(thread, obj, proto);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(HasProperty)
 {
     RUNTIME_STUBS_HEADER(HasProperty);
@@ -3825,6 +3963,86 @@ DEF_RUNTIME_STUBS(HasProperty)
     bool res = JSTaggedValue::HasProperty(thread, obj, index);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return JSTaggedValue(res).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ObjectPrototypeHasOwnProperty)
+{
+    RUNTIME_STUBS_HEADER(ObjectPrototypeHasOwnProperty);
+    JSHandle<JSTaggedValue> thisValue = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue result = builtins::BuiltinsObject::HasOwnPropertyInternal(thread, thisValue, key);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ReflectHas)
+{
+    RUNTIME_STUBS_HEADER(ReflectHas);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue result = builtins::BuiltinsReflect::ReflectHasInternal(thread, target, key);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ReflectConstruct)
+{
+    // newTarget = target, args = []
+    RUNTIME_STUBS_HEADER(ReflectConstruct);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->EmptyArray();
+    JSTaggedValue result = builtins::BuiltinsReflect::ReflectConstructInternal(thread, target, args, target);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ReflectApply)
+{
+    RUNTIME_STUBS_HEADER(ReflectApply);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisValue = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> argumentsList = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue result = builtins::BuiltinsReflect::ReflectApplyInternal(thread, target, thisValue, argumentsList);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(FunctionPrototypeApply)
+{
+    RUNTIME_STUBS_HEADER(FunctionPrototypeApply);
+    JSHandle<JSTaggedValue> thisFunc = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisArg = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> argArray = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue result = builtins::BuiltinsFunction::FunctionPrototypeApplyInternal(thread, thisFunc,
+                                                                                      thisArg, argArray);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(FunctionPrototypeBind)
+{
+    RUNTIME_STUBS_HEADER(FunctionPrototypeBind);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisArg = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<TaggedArray> argsArray = thread->GetEcmaVM()->GetFactory()->EmptyArray();
+    JSTaggedValue result = builtins::BuiltinsFunction::FunctionPrototypeBindInternal(thread, target,
+                                                                                     thisArg, argsArray);
+    return result.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(FunctionPrototypeCall)
+{
+    RUNTIME_STUBS_HEADER(FunctionPrototypeCall);
+    JSHandle<JSTaggedValue> thisFunc = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisArg = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    if (!thisFunc->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "call target is not callable", JSTaggedValue::VALUE_EXCEPTION);
+    }
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    uint32_t argsLength = argc - 2;  // 2: thisFunc and thisArg
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, thisFunc, thisArg, undefined, argsLength);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::VALUE_EXCEPTION);
+    uint32_t index = 0;
+    for (uint32_t i = 2; i < argc; ++i) {  // 2: thisFunc and thisArg
+        JSTaggedValue arg = GetArg(argv, argc, i);
+        info->SetCallArg(index++, arg);
+    }
+    return JSFunction::Call(info).GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

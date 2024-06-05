@@ -21,31 +21,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 
 namespace panda::test {
-class JsonStringifierTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JsonStringifierTest : public BaseTestWithScope<false> {
 };
 
 static JSTaggedValue CreateBaseJSObject(JSThread *thread, const CString keyCStr)
@@ -344,5 +320,63 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_008)
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
     EXPECT_STREQ("\"\\\"\\\\\\b\\f\\n\\r\\t\"", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+}
+
+static void* Detach(void *param1, void *param2, void *hint, void *detachData)
+{
+    GTEST_LOG_(INFO) << "detach is running";
+    if (param1 == nullptr && param2 == nullptr) {
+        GTEST_LOG_(INFO) << "detach: two params is nullptr";
+    }
+    if (hint == nullptr && detachData) {
+        GTEST_LOG_(INFO) << "detach: hint is nullptr";
+    }
+    return nullptr;
+}
+
+static void* Attach([[maybe_unused]] void *enginePointer, [[maybe_unused]] void *buffer, [[maybe_unused]] void *hint,
+                    [[maybe_unused]] void *attachData)
+{
+    GTEST_LOG_(INFO) << "attach is running";
+    return nullptr;
+}
+
+static panda::JSNApi::NativeBindingInfo* CreateNativeBindingInfo(void* attach, void* detach)
+{
+    GTEST_LOG_(INFO) << "CreateNativeBindingInfo";
+    auto info = panda::JSNApi::NativeBindingInfo::CreateNewInstance();
+    info->attachFunc = attach;
+    info->detachFunc = detach;
+    return info;
+}
+
+HWTEST_F_L0(JsonStringifierTest, Stringify_009)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JsonStringifier stringifier(thread);
+
+    EcmaVM *ecmaVM = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objectFunc(globalEnv->GetObjectFunction());
+    JSHandle<JSObject> jsObject(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc));
+    EXPECT_TRUE(*jsObject != nullptr);
+
+    JSHandle<JSTaggedValue> key1(factory->NewFromASCII("key1"));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(Attach), reinterpret_cast<void*>(Detach));
+    JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(info)));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(jsObject), key1, value1);
+
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("key2"));
+    JSHandle<JSTaggedValue> value2(factory->NewFromASCII("abc"));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(jsObject), key2, value2);
+
+    JSHandle<JSTaggedValue> handleValue(thread, jsObject.GetTaggedValue());
+    JSHandle<JSTaggedValue> handleReplacer(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap(thread, JSTaggedValue::Undefined());
+
+    JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
+    EXPECT_TRUE(resultString->IsString());
+    JSHandle<EcmaString> handleEcmaStr(resultString);
+    EXPECT_STREQ("{\"key1\":{},\"key2\":\"abc\"}", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 }  // namespace panda::test

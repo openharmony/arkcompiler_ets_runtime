@@ -82,16 +82,16 @@ myMap.has = replace
 print(myMap.has(2.5)); //: 2.5
 myMap.has = true_has
 
-//aot: [trace] aot inline builtin: Map.has, caller function name:doHas@builtinMapHas
+//aot: [trace] aot inline builtin: Map.has, caller function name:#*#doHas@builtinMapHas
 printHas(-1); //: true
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: Map.has, caller function name:doHas@builtinMapHas
+//aot: [trace] aot inline builtin: Map.has, caller function name:#*#doHas@builtinMapHas
 printHas("abc"); //: false
-//aot: [trace] aot inline builtin: Map.has, caller function name:doHas@builtinMapHas
+//aot: [trace] aot inline builtin: Map.has, caller function name:#*#doHas@builtinMapHas
 printHas("-1"); //: false
-//aot: [trace] aot inline builtin: Map.has, caller function name:doHas@builtinMapHas
+//aot: [trace] aot inline builtin: Map.has, caller function name:#*#doHas@builtinMapHas
 printHas(56); //: true
-//aot: [trace] aot inline builtin: Map.has, caller function name:doHas@builtinMapHas
+//aot: [trace] aot inline builtin: Map.has, caller function name:#*#doHas@builtinMapHas
 printHas("xyz"); //: true
 
 if (ArkTools.isAOTCompiled(printHas)) {
@@ -110,9 +110,9 @@ myMap.has = true_has
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Map.has, caller function name:doHas@builtinMapHas
+    //aot: [trace] aot inline builtin: Map.has, caller function name:#*#doHas@builtinMapHas
     printHas(2000); //: true
-    //aot: [trace] aot inline builtin: Map.has, caller function name:doHas@builtinMapHas
+    //aot: [trace] aot inline builtin: Map.has, caller function name:#*#doHas@builtinMapHas
     printHas("abc"); //: false
 } catch (e) {
 }

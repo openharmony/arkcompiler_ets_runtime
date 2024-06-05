@@ -19,20 +19,16 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-[
-    Float64Array,
-    Float32Array,
-    Int32Array,
-    Int16Array,
-    Int8Array,
-    Uint32Array,
-    Uint16Array,
-    Uint8Array,
+
+const typedArrayConstructors = [
+    Float64Array, Float32Array, Int32Array, Int16Array, Int8Array, Uint32Array, Uint16Array, Uint8Array,
     Uint8ClampedArray
-].forEach(function(ctor, i) {
+];
+
+typedArrayConstructors.forEach(function(ctor, i) {
     if (testTypeArray1(ctor) && testTypeArray2(ctor) &&
         testTypeArray3(ctor) && testTypeArray4(ctor) &&
-        testTypeArray6(ctor) && testTypeArray7(ctor) &&
+        testTypeArrayWithSize(ctor, 10) && testTypeArrayWithSize(ctor, 50) &&
         testTypeArrayIC(ctor)) {
         print(ctor.name + " test success !!!")
     } else {
@@ -132,27 +128,9 @@ function testTypeArray5(ctor) {
     return true;
 }
 
-function testTypeArray6(ctor) {
+function testTypeArrayWithSize(ctor, size) {
     let result = []
-    let test = new Array(10);
-    for (var i = 0; i < 10; i++) {
-        test[i] = i;
-    }
-    let obj = new ctor(test);
-    for (var i = 0; i < 10; i++) {
-        result.push(obj[i] == i);
-    }
-    for (let i = 0; i < result.length; i++) {
-        if (!result[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-function testTypeArray7(ctor) {
-    let result = []
-    let test = new Array(50);
+    let test = new Array(size);
     for (var i = 0; i < 10; i++) {
         test[i] = i;
     }
@@ -784,3 +762,136 @@ function testTypeArrayToReversed2(ctor) {
     }
     return true;
 }
+
+var arr_every = new Uint8Array(["a", "b", "c"]);
+ArkTools.arrayBufferDetach(arr_every.buffer);
+try {
+    arr_every.every(() => true)
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+var arr_forEach = new Uint8Array(["a", "b", "c"]);
+ArkTools.arrayBufferDetach(arr_forEach.buffer);
+try {
+    arr_forEach.forEach(() => true)
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+var typedArrayConstructorsSort = [
+    Uint8Array,
+    Int8Array,
+    Uint16Array,
+    Int16Array,
+    Uint32Array,
+    Int32Array,
+    Uint8ClampedArray,
+    Float32Array,
+    Float64Array
+];
+
+for (var constructor of typedArrayConstructorsSort) {
+    // For arrays of floats, certain handling of +-0/NaN
+    var b = new constructor([1, +0, -0, NaN, -0, NaN, +0, 3, 2])
+    b.sort();
+    print(prettyPrinted(b[0]), prettyPrinted(b[1]), prettyPrinted(b[2]),
+          prettyPrinted(b[3]), prettyPrinted(b[4]), prettyPrinted(b[5]),
+          prettyPrinted(b[6]), prettyPrinted(b[7]), prettyPrinted(b[8]))
+}
+
+function prettyPrinted(value) {
+    let visited = new Set();
+    function prettyPrint(value) {
+        try {
+            switch (typeof value) {
+                case "string":
+                    return JSONStringify(value);
+                case "bigint":
+                    return String(value) + "n";
+                case "number":
+                    if (value === 0 && (1 / value) < 0) return "-0";
+                // FALLTHROUGH.
+                case "boolean":
+                case "undefined":
+                case "function":
+                case "symbol":
+                    return String(value);
+                case "object":
+                    if (value === null) return "null";
+                    // Guard against re-visiting.
+                    if (visited.has(value)) return "<...>";
+                    visited.add(value);
+                    var objectClass = classOf(value);
+                    switch (objectClass) {
+                        case "Number":
+                        case "BigInt":
+                        case "String":
+                        case "Boolean":
+                        case "Date":
+                            return objectClass + "(" + prettyPrint(ValueOf(value)) + ")";
+                        case "RegExp":
+                            return RegExpPrototypeToString.call(value);
+                        case "Array":
+                            var mapped = ArrayPrototypeMap.call(
+                                value, (v, i, array) => {
+                                    if (v === undefined && !(i in array)) return "";
+                                    return prettyPrint(v, visited);
+                                });
+                            var joined = ArrayPrototypeJoin.call(mapped, ",");
+                            return "[" + joined + "]";
+                        case "Int8Array":
+                        case "Uint8Array":
+                        case "Uint8ClampedArray":
+                        case "Int16Array":
+                        case "Uint16Array":
+                        case "Int32Array":
+                        case "Uint32Array":
+                        case "Float32Array":
+                        case "Float64Array":
+                        case "BigInt64Array":
+                        case "BigUint64Array":
+                            var joined = ArrayPrototypeJoin.call(value, ",");
+                            return objectClass + "([" + joined + "])";
+                        case "Object":
+                            break;
+                        default:
+                            return objectClass + "(" + String(value) + ")";
+                    }
+                    // classOf() returned "Object".
+                    var name = value.constructor?.name ?? "Object";
+                    var pretty_properties = [];
+                    for (let [k, v] of Object.entries(value)) {
+                        ArrayPrototypePush.call(
+                            pretty_properties, `${k}:${prettyPrint(v, visited)}`);
+                    }
+                    var joined = ArrayPrototypeJoin.call(pretty_properties, ",");
+                    return `${name}({${joined}})`;
+                default:
+                    return "-- unknown value --";
+            }
+        } catch (e) {
+            // Guard against general exceptions (especially stack overflows).
+            return "<error>"
+        }
+    }
+    return prettyPrint(value);
+}
+
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    class C extends ctor{
+
+    }
+    C.of();
+    print("Class extends "+ ctor.name + " test success!")
+});

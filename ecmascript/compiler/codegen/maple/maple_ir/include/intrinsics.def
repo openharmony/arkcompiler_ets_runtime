@@ -22,16 +22,12 @@ DEF_MIR_INTRINSIC(DEX_ATOMIC_DEC,\
                   "__dex_adec", kIntrnIsAtomic, kArgTyI32, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(MPL_ATOMIC_EXCHANGE_PTR,\
                   "__mpl_atomic_exchange_ptr", kIntrnIsAtomic, kArgTyPtr, kArgTyPtr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
-DEF_MIR_INTRINSIC(MPL_CLINIT_CHECK,\
-                  "__mpl_clinit_check", INTRNISJAVA | INTRNNOSIDEEFFECT | INTRNISSPECIAL, kArgTyVoid, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(MPL_PROF_COUNTER_INC,\
                   "__mpl_prof_counter_inc", INTRNNOSIDEEFFECT | INTRNISSPECIAL, kArgTyVoid, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(MPL_CLEAR_STACK,\
                   "__mpl_clear_stack", kIntrnUndef, kArgTyVoid, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(MPL_GET_VTAB_FUNC,\
                   "MCC_getFuncPtrFromVtab", kIntrnUndef, kArgTyA64, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
-DEF_MIR_INTRINSIC(MPL_READ_STATIC_OFFSET_TAB,\
-                  "__mpl_read_static_offset", INTRNISJAVA | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(MPL_READ_OVTABLE_ENTRY,\
                   "__mpl_const_offset", INTRNISPURE, kArgTyA32, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(MPL_READ_OVTABLE_ENTRY2,\
@@ -42,8 +38,6 @@ DEF_MIR_INTRINSIC(MPL_READ_OVTABLE_ENTRY_VTAB_LAZY,\
                   "__mpl_const_offset_vtab_lazy", INTRNISPURE, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(MPL_READ_OVTABLE_ENTRY_FIELD_LAZY,\
                   "__mpl_const_offset_field_lazy", INTRNISPURE, kArgTyA32, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
-DEF_MIR_INTRINSIC(MPL_BOUNDARY_CHECK,\
-                  "", INTRNISJAVA | INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyU1, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(MPL_READ_ARRAYCLASS_CACHE_ENTRY,\
                   "__mpl_const_arrayclass_cache", kIntrnUndef, kArgTyPtr, kArgTyU32, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 
@@ -123,17 +117,10 @@ DEF_MIR_INTRINSIC(MCCWriteVolWeak,\
 DEF_MIR_INTRINSIC(MCCWriteWeak,\
                   "MCC_WriteWeakField", INTRNISRC | INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyRef, kArgTyRef, kArgTyRef)
 
-DEF_MIR_INTRINSIC(MPL_CLEANUP_LOCALREFVARS,\
-                  "__mpl_cleanup_localrefvars", INTRNISJAVA | INTRNNOSIDEEFFECT | INTRNISSPECIAL, kArgTyUndef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
-DEF_MIR_INTRINSIC(MPL_CLEANUP_LOCALREFVARS_SKIP,\
-                  "__mpl_cleanup_localrefvars_skip", INTRNISJAVA | INTRNNOSIDEEFFECT | INTRNISSPECIAL, kArgTyUndef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
 DEF_MIR_INTRINSIC(MPL_MEMSET_LOCALVAR,\
                   "", kIntrnUndef, kArgTyPtr, kArgTyU32, kArgTyU8, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(MPL_SET_CLASS,\
                   "", kIntrnUndef, kArgTyPtr, kArgTyPtr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
-DEF_MIR_INTRINSIC(MPL_CLEANUP_NORETESCOBJS,\
-                  "__mpl_cleanup_noretescobjs", INTRNISJAVA | INTRNNOSIDEEFFECT | INTRNISSPECIAL, kArgTyUndef, kArgTyRef, kArgTyRef,\
-                  kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
 
 // start of GC Intrinsics
 DEF_MIR_INTRINSIC(MCCGCCheck,\
@@ -143,13 +130,9 @@ DEF_MIR_INTRINSIC(MCCGCCheck,\
 DEF_MIR_INTRINSIC(MCCSaveProf,\
                   "MCC_SaveProfile", INTRNISRC | INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyRef)
 
-#include "intrinsic_java.def"
-#include "simplifyintrinsics.def"
 #include "intrinsic_c.def"
 #include "intrinsic_js.def"
 #include "intrinsic_js_eng.def"
-#include "dex2mpl/dexintrinsic.def"
-#include "intrinsic_dai.def"
 #include "intrinsic_vector.def"
 DEF_MIR_INTRINSIC(LAST,\
                   nullptr, kIntrnUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)

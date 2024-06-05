@@ -30,6 +30,7 @@ enum class AccessType { ATOMIC, NON_ATOMIC };
 class GCBitset {
 public:
     using GCBitsetWord = uint32_t;
+    using GCBitsetTwoWords = uint64_t;
     static constexpr uint32_t BYTE_PER_WORD = sizeof(GCBitsetWord);
     static constexpr uint32_t BYTE_PER_WORD_LOG2 = base::MathHelper::GetIntLog2(BYTE_PER_WORD);
     static constexpr uint32_t BIT_PER_BYTE = 8;
@@ -53,6 +54,11 @@ public:
     GCBitsetWord *Words()
     {
         return reinterpret_cast<GCBitsetWord *>(this);
+    }
+
+    GCBitsetTwoWords *TwoWords()
+    {
+        return reinterpret_cast<GCBitsetTwoWords *>(this);
     }
 
     const GCBitsetWord *Words() const
@@ -158,10 +164,11 @@ public:
 
     void Merge(GCBitset *bitset, size_t bitSize)
     {
-        auto words = Words();
-        uint32_t wordCount = WordCount(bitSize);
+        ASSERT(bitSize % sizeof(GCBitsetTwoWords) == 0);
+        auto words = TwoWords();
+        uint32_t wordCount = TwoWordsCount(bitSize);
         for (uint32_t i = 0; i < wordCount; i++) {
-            words[i] |= bitset->Words()[i];
+            words[i] |= bitset->TwoWords()[i];
         }
     }
 
@@ -184,6 +191,11 @@ private:
     size_t WordCount(size_t size) const
     {
         return size >> BYTE_PER_WORD_LOG2;
+    }
+
+    size_t TwoWordsCount(size_t size) const
+    {
+        return size >> (BYTE_PER_WORD_LOG2 + 1);
     }
 
     template <AccessType mode = AccessType::NON_ATOMIC>

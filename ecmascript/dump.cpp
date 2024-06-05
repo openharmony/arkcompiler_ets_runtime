@@ -20,6 +20,7 @@
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
@@ -37,6 +38,8 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
@@ -165,7 +168,7 @@ static void AddAnonymousEdge(TaggedObject *obj, std::vector<Reference> &vec)
         return;
     }
     ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(obj, hclass,
-        [&vec]([[maybe_unused]]TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+        [&vec]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
             if (area != VisitObjectArea::NORMAL) {
                 return;
             }
@@ -228,6 +231,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Shared Function";
         case JSType::JS_ERROR:
             return "Error";
+        case JSType::NATIVE_MODULE_ERROR:
+            return "NativeModule Error";
         case JSType::JS_EVAL_ERROR:
             return "Eval Error";
         case JSType::JS_RANGE_ERROR:
@@ -508,6 +513,10 @@ CString JSHClass::DumpJSType(JSType type)
             return "Vector";
         case JSType::JS_API_VECTOR_ITERATOR:
             return "VectorIterator";
+        case JSType::JS_API_BITVECTOR:
+            return "BitVector";
+        case JSType::JS_API_BITVECTOR_ITERATOR:
+            return "BitVectorIterator";
         case JSType::JS_API_QUEUE:
             return "Queue";
         case JSType::JS_API_QUEUE_ITERATOR:
@@ -544,6 +553,10 @@ CString JSHClass::DumpJSType(JSType type)
             return "AOTLiteralInfo";
         case JSType::CLASS_LITERAL:
             return "ClassLiteral";
+        case JSType::PROFILE_TYPE_INFO_CELL_0:
+        case JSType::PROFILE_TYPE_INFO_CELL_1:
+        case JSType::PROFILE_TYPE_INFO_CELL_N:
+            return "ProfileTypeInfoCell";
         case JSType::VTABLE:
             return "VTable";
         case JSType::SOURCE_TEXT_MODULE_RECORD:
@@ -811,6 +824,11 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::PROFILE_TYPE_INFO:
             ProfileTypeInfo::Cast(obj)->Dump(os);
+            break;
+        case JSType::PROFILE_TYPE_INFO_CELL_0:
+        case JSType::PROFILE_TYPE_INFO_CELL_1:
+        case JSType::PROFILE_TYPE_INFO_CELL_N:
+            ProfileTypeInfoCell::Cast(obj)->Dump(os);
             break;
         case JSType::VTABLE:
             VTable::Cast(obj)->Dump(os);
@@ -1204,6 +1222,12 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_API_ARRAYLIST_ITERATOR:
             JSAPIArrayListIterator::Cast(obj)->Dump(os);
             break;
+        case JSType::JS_API_BITVECTOR:
+            JSAPIBitVector::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_API_BITVECTOR_ITERATOR:
+            JSAPIBitVectorIterator::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_API_LIGHT_WEIGHT_MAP:
             JSAPILightWeightMap::Cast(obj)->Dump(os);
             break;
@@ -1307,6 +1331,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->Dump(os);
+            break;
+        case JSType::NATIVE_MODULE_ERROR:
+            NativeModuleError::Cast(obj)->Dump(os);
             break;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->Dump(os);
@@ -1743,6 +1770,14 @@ void ProfileTypeInfo::Dump(std::ostream &os) const
     }
 }
 
+void ProfileTypeInfoCell::Dump(std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    os << " - Value: ";
+    GetValue().Dump(os);
+    os << "\n";
+}
+
 void VTable::Dump(std::ostream &os) const
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -1776,8 +1811,8 @@ void JSFunction::Dump(std::ostream &os) const
         GetLexicalEnv().Dump(os);
         os << "\n";
     }
-    os << " - ProfileTypeInfo: ";
-    GetProfileTypeInfo().Dump(os);
+    os << " - RawProfileTypeInfo: ";
+    GetRawProfileTypeInfo().Dump(os);
     os << "\n";
     os << " - HomeObject: ";
     GetHomeObject().Dump(os);
@@ -2586,6 +2621,20 @@ void JSAPIVectorIterator::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void JSAPIBitVector::Dump(std::ostream &os) const
+{
+    os << " - length: " << std::dec << GetSize() << "\n";
+    JSObject::Dump(os);
+}
+
+void JSAPIBitVectorIterator::Dump(std::ostream &os) const
+{
+    JSAPIBitVector *bitVector = JSAPIBitVector::Cast(GetIteratedBitVector().GetTaggedObject());
+    os << " - length: " << std::dec << bitVector->GetSize() << "\n";
+    os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
+    JSObject::Dump(os);
+}
+
 void JSStringIterator::Dump(std::ostream &os) const
 {
     EcmaString *str = EcmaString::Cast(GetIteratedString().GetTaggedObject());
@@ -2782,6 +2831,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     globalConst->GetEmptyString().Dump(os);
     os << " - EmptyTaggedQueue: ";
     globalConst->GetEmptyTaggedQueue().Dump(os);
+    os << " - EmptyProfileTypeInfoCell: ";
+    globalConst->GetEmptyProfileTypeInfoCell().Dump(os);
     os << " - PrototypeString: ";
     globalConst->GetPrototypeString().Dump(os);
     os << " - HasInstanceSymbol: ";
@@ -3798,6 +3849,13 @@ void ModuleNamespace::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void NativeModuleError::Dump(std::ostream &os) const
+{
+    os << " - ArkNativeModuleError: ";
+    GetArkNativeModuleError().Dump(os);
+    os << "\n";
+}
+
 void CjsModule::Dump(std::ostream &os) const
 {
     os << " - current module path: ";
@@ -3987,6 +4045,11 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             break;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
+            break;
+        case JSType::PROFILE_TYPE_INFO_CELL_0:
+        case JSType::PROFILE_TYPE_INFO_CELL_1:
+        case JSType::PROFILE_TYPE_INFO_CELL_N:
+            ProfileTypeInfoCell::Cast(obj)->DumpForSnapshot(vec);
             break;
         case JSType::VTABLE:
             VTable::Cast(obj)->DumpForSnapshot(vec);
@@ -4351,6 +4414,12 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_API_VECTOR_ITERATOR:
             JSAPIVectorIterator::Cast(obj)->DumpForSnapshot(vec);
             break;
+        case JSType::JS_API_BITVECTOR:
+            JSAPIBitVector::Cast(obj)->DumpForSnapshot(vec);
+            break;
+        case JSType::JS_API_BITVECTOR_ITERATOR:
+            JSAPIBitVectorIterator::Cast(obj)->DumpForSnapshot(vec);
+            break;
         case JSType::JS_API_QUEUE:
             JSAPIQueue::Cast(obj)->DumpForSnapshot(vec);
             break;
@@ -4410,6 +4479,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             break;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->DumpForSnapshot(vec);
+            break;
+        case JSType::NATIVE_MODULE_ERROR:
+            NativeModuleError::Cast(obj)->DumpForSnapshot(vec);
             break;
         case JSType::JS_API_PLAIN_ARRAY:
             JSAPIPlainArray::Cast(obj)->DumpForSnapshot(vec);
@@ -4727,9 +4799,9 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
     if (jshclass != nullptr) {
         vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
     }
+    vec.emplace_back(CString("hash"), JSTaggedValue(GetHash()));
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
-
     vec.emplace_back("(object elements)", JSTaggedValue(elements));
     if (elements->GetLength() == 0) {
     } else if (!elements->IsDictionaryMode()) {
@@ -4795,7 +4867,7 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ProtoOrHClass"), GetProtoOrHClass());
     vec.emplace_back(CString("LexicalEnv"), GetLexicalEnv());
-    vec.emplace_back(CString("ProfileTypeInfo"), GetProfileTypeInfo());
+    vec.emplace_back(CString("RawProfileTypeInfo"), GetRawProfileTypeInfo());
     vec.emplace_back(CString("HomeObject"), GetHomeObject());
     vec.emplace_back(CString("Module"), GetModule());
     vec.emplace_back(CString("Method"), GetMethod());
@@ -4834,6 +4906,11 @@ void LinkedNode::DumpForSnapshot(std::vector<Reference> &vec) const
 void ConstantPool::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DumpArrayClass(this, vec);
+}
+
+void ProfileTypeInfoCell::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("Value"), GetValue());
 }
 
 void VTable::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5227,6 +5304,20 @@ void JSAPIVectorIterator::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSAPIBitVector::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSAPIBitVectorIterator::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSAPIVector *vector = JSAPIVector::Cast(GetIteratedBitVector().GetTaggedObject());
+    vec.emplace_back("iteratedbitvector", GetIteratedBitVector());
+    vector->DumpForSnapshot(vec);
+    vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSStringIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("IteratedString"), GetIteratedString());
@@ -5320,7 +5411,7 @@ void SendableEnv::DumpForSnapshot(std::vector<Reference> &vec) const
 void GlobalEnv::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     auto globalConst = GetJSThread()->GlobalConstants();
-#define DUMP_ENV_FIELD(type, name, _) vec.emplace_back(#name, Get##name().GetTaggedValue());
+#define DUMP_ENV_FIELD(type, name, _) vec.emplace_back(#name, GetRaw##name().GetTaggedValue());
 #define DUMP_CONST_FIELD(type, name, ...) vec.emplace_back(#name, globalConst->Get##name());
 #define DUMP_CONST_STRING(name, ...) vec.emplace_back(#name, globalConst->Get##name());
 
@@ -5914,6 +6005,12 @@ void ModuleNamespace::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("Module"), GetModule());
     vec.emplace_back(CString("Exports"), GetExports());
     vec.emplace_back(CString("DeregisterProcession"), GetDeregisterProcession());
+    JSObject::DumpForSnapshot(vec);
+}
+
+void NativeModuleError::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("ArkNativeModuleError"), GetArkNativeModuleError());
     JSObject::DumpForSnapshot(vec);
 }
 

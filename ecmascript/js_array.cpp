@@ -205,43 +205,60 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
     return result;
 }
 
-void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
-                          bool isNew)
+void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
+                          uint32_t oldLen, uint32_t newLen, bool isNew)
 {
     TaggedArray *element = TaggedArray::Cast(array->GetElements().GetTaggedObject());
 
     if (element->IsDictionaryMode()) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        uint32_t numOfElements = array->GetNumberOfElements();
-        uint32_t newNumOfElements = newLen;
-        if (newLen < oldLen && numOfElements != 0U) {
-            JSHandle<NumberDictionary> dictHandle(thread, element);
-            JSHandle<TaggedArray> newArr = factory->NewTaggedArray(numOfElements);
-            GetAllElementKeys(thread, array, 0, newArr);
-            for (uint32_t i = numOfElements - 1; i >= newLen; i--) {
-                JSTaggedValue value = newArr->Get(i);
-                uint32_t output = 0;
-                JSTaggedValue::StringToElementIndex(value, &output);
-                JSTaggedValue key(static_cast<int>(output));
-                int entry = dictHandle->FindEntry(key);
-                auto attr = dictHandle->GetAttributes(entry).GetValue();
-                PropertyAttributes propAttr(attr);
-                if (propAttr.IsConfigurable()) {
-                    JSHandle<NumberDictionary> newDict = NumberDictionary::Remove(thread, dictHandle, entry);
-                    array->SetElements(thread, newDict);
-                    if (i == 0) {
-                        newNumOfElements = i;
-                        break;
-                    }
-                } else {
-                    newNumOfElements = i + 1;
-                    break;
-                }
-            }
-        }
-        JSArray::Cast(*array)->SetArrayLength(thread, newNumOfElements);
+        HandleDictionaryMode(thread, array, oldLen, newLen, element);
         return;
     }
+
+    HandleNormalMode(thread, array, oldLen, newLen, isNew, element);
+    JSArray::Cast(*array)->SetArrayLength(thread, newLen);
+    UpdateElementsKind(thread, array, newLen);
+}
+
+void JSArray::HandleDictionaryMode(JSThread *thread, const JSHandle<JSObject> &array,
+                                   uint32_t &oldLen, uint32_t &newLen, TaggedArray *element)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t numOfElements = array->GetNumberOfElements();
+    uint32_t newNumOfElements = newLen;
+
+    if (newLen < oldLen && numOfElements != 0U) {
+        JSHandle<NumberDictionary> dictHandle(thread, element);
+        JSHandle<TaggedArray> newArr = factory->NewTaggedArray(numOfElements);
+        GetAllElementKeys(thread, array, 0, newArr);
+        for (uint32_t i = numOfElements - 1; i >= newLen; i--) {
+            JSTaggedValue value = newArr->Get(i);
+            uint32_t output = 0;
+            JSTaggedValue::StringToElementIndex(value, &output);
+            JSTaggedValue key(static_cast<int>(output));
+            int entry = dictHandle->FindEntry(key);
+            auto attr = dictHandle->GetAttributes(entry).GetValue();
+            PropertyAttributes propAttr(attr);
+            if (propAttr.IsConfigurable()) {
+                JSHandle<NumberDictionary> newDict = NumberDictionary::Remove(thread, dictHandle, entry);
+                array->SetElements(thread, newDict);
+                if (i == 0) {
+                    newNumOfElements = i;
+                    break;
+                }
+            } else {
+                newNumOfElements = i + 1;
+                break;
+            }
+        }
+    }
+    JSArray::Cast(*array)->SetArrayLength(thread, newNumOfElements);
+    return;
+}
+
+void JSArray::HandleNormalMode(JSThread *thread, const JSHandle<JSObject> &array,
+                               uint32_t &oldLen, uint32_t &newLen, bool &isNew, TaggedArray *element)
+{
     uint32_t capacity = element->GetLength();
     if (newLen <= capacity) {
         // judge if need to cut down the array size, else fill the unused tail with holes
@@ -253,8 +270,10 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uin
     } else if (newLen > capacity) {
         JSObject::GrowElementsCapacity(thread, array, newLen, isNew);
     }
-    JSArray::Cast(*array)->SetArrayLength(thread, newLen);
+}
 
+void JSArray::UpdateElementsKind(JSThread *thread, const JSHandle<JSObject> &array, uint32_t &newLen)
+{
     // Update ElementsKind after reset array length.
     // Add this switch because we do not support ElementsKind for instance from new Array
     if (thread->GetEcmaVM()->IsEnableElementsKind() && !array->IsElementDict()) {
@@ -543,7 +562,7 @@ void JSArray::MergeSortedElements(JSThread *thread, const JSHandle<TaggedArray> 
         leftArray->Set(thread, i, elements->Get(startIdx + i));
     }
     for (int64_t j = 0; j < rightLength; j++) {
-        rightArray->Set(thread, j, elements->Get(middleIdx + 1 + j));
+        rightArray->Set(thread, j, elements->Get(static_cast<int32_t>(middleIdx + 1 + j)));
     }
 
     int64_t i = 0;

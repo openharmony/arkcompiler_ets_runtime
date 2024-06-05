@@ -79,7 +79,7 @@ myMap.delete = replace
 print(myMap.delete(2.5)); //: 2.5
 
 myMap.delete = true_delete
-//aot: [trace] aot inline builtin: Map.delete, caller function name:doDelete@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#doDelete@builtinMapDelete
 printDelete(-1); //: true
 
 // Call standard builtin with non-number param
@@ -108,9 +108,9 @@ myMap.delete = true_delete
 // Check IR correctness inside try-block
 try {
     print("try-block"); //: try-block
-    //aot: [trace] aot inline builtin: Map.delete, caller function name:doDelete@builtinMapDelete
+    //aot: [trace] aot inline builtin: Map.delete, caller function name:#*#doDelete@builtinMapDelete
     printDelete(0); //: false
-    //aot: [trace] aot inline builtin: Map.delete, caller function name:doDelete@builtinMapDelete
+    //aot: [trace] aot inline builtin: Map.delete, caller function name:#*#doDelete@builtinMapDelete
     printDelete("xyz"); //: false
 } catch (e) {
 }
@@ -192,13 +192,13 @@ let m2 = new Map([[1, 2]]);
 let m3 = new Map([[1, 2]]);
 let m4 = new Map([[1, 2]]);
 
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(m, 10); //: true
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(m2, 1); //: true
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(m3, 1); //: true
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(m4, 1); //: true
 
 print("case 0"); //: case 0
@@ -214,11 +214,11 @@ m2.set(10, 20);
 m3.set(10, 20);
 m4.set(10, 20); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
 
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(m, 10);  //: true
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(m2, 10); //: true
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(m3, 10); //: true
 printDelete2(m4, 10); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
                       //: true
@@ -234,9 +234,9 @@ m.set(10, 20);
 m2.set(10, 20);
 m3.set(10, 20);
 
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(m, 10);  //: true
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(m2, 10); //: true
 printDelete2(m3, 10); //pgo: true
                       //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
@@ -248,7 +248,7 @@ let mimicMap = {
 }
 let mm = new Map([[1, 2]]);
 
-//aot: [trace] aot inline builtin: Map.delete, caller function name:printDelete2@builtinMapDelete
+//aot: [trace] aot inline builtin: Map.delete, caller function name:#*#printDelete2@builtinMapDelete
 printDelete2(mm, 1); //: true
 if (ArkTools.isAOTCompiled(printDelete2)) {
     Object.setPrototypeOf(mm, mimicMap);

@@ -57,7 +57,6 @@
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/weak_vector.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "gtest/gtest.h"
 #include "jsnapi_expo.h"
 
@@ -1421,7 +1420,10 @@ HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
         JSNApi::DestroyJSVM(workerVm);
         EXPECT_TRUE(hasDeleted);
     });
-    t1.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread_);
+        t1.join();
+    }
 
     bool hasDeleted = JSNApi::DeleteWorker(vm_, nullptr);
     EXPECT_FALSE(hasDeleted);
@@ -1446,8 +1448,7 @@ HWTEST_F_L0(JSNApiTests, PrimitiveRef_GetValue)
 
     JSHandle<JSTaggedValue> nullHandle(thread_, JSTaggedValue::Null());
     JSHandle<JSHClass> jsClassHandle = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_PRIMITIVE_REF, nullHandle);
-    TaggedObject *taggedObject = factory->NewObject(jsClassHandle);
-    JSHandle<JSTaggedValue> jsTaggedValue(thread_, JSTaggedValue(taggedObject));
+    JSHandle<JSTaggedValue> jsTaggedValue(factory->NewJSObjectWithInit(jsClassHandle));
     Local<PrimitiveRef> jsValueRef = JSNApiHelper::ToLocal<JSPrimitiveRef>(jsTaggedValue);
     EXPECT_TRUE(*(jsValueRef->GetValue(vm_)) != nullptr);
 }
@@ -2091,7 +2092,10 @@ HWTEST_F_L0(JSNApiTests, PrintExceptionInfo)
         JSNApi::PrintExceptionInfo(vm);
         JSNApi::DestroyJSVM(vm);
     });
-    t1.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread_);
+        t1.join();
+    }
 }
 
 /*

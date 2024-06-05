@@ -107,8 +107,10 @@ void MacroAssemblerAArch64::MovParameterIntoParamReg(MacroParameter param, aarch
                 assembler.Ldur(LOCAL_SCOPE_REGISTER,
                                aarch64::MemoryOperand(aarch64::Register(aarch64::X29),
                                                       static_cast<int64_t>(FUNCTION_OFFSET_FROM_SP)));
+                assembler.Ldr(LOCAL_SCOPE_REGISTER,
+                              aarch64::MemoryOperand(LOCAL_SCOPE_REGISTER, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
                 assembler.Ldr(paramReg,
-                              aarch64::MemoryOperand(LOCAL_SCOPE_REGISTER, JSFunction::PROFILE_TYPE_INFO_OFFSET));
+                              aarch64::MemoryOperand(LOCAL_SCOPE_REGISTER, ProfileTypeInfoCell::VALUE_OFFSET));
                 break;
             }
             case BaselineSpecialParameter::SP: {

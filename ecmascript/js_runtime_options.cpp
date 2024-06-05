@@ -77,6 +77,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-bc-range:              Range list for EcmaOpCode range Example '1:2,5:8'\n"
     "--compiler-opt-bc-range-help:         Range list for EcmaOpCode range help. Default: 'false''\n"
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
+    "--enable-eden-gc:                     Enable eden gc. Default: 'false'\n"
     "--force-shared-gc-frequency:          How frequency force shared gc . Default: '1'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
@@ -131,8 +132,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'stub.an'\n"
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
-    "--enable-aot-crash-escape:            Enable AOT crash escape. "
-                                           "Default: 'true'\n"
     "--enable-elements-kind:               Enable elementsKind sampling and usage. Default: 'false'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
@@ -165,11 +164,13 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-litecg:             Enable LiteCG: Default: 'false'\n"
     "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
     "--compiler-enable-osr:                Enable osr: Default: 'false'\n"
+    "--compiler-enable-framework-aot:      Enable frame aot: Default: 'true'\n"
     "--compiler-jit-hotness-threshold:     Set hotness threshold for jit. Default: '2'\n"
     "--compiler-jit-call-threshold:        Set call threshold for jit. Default: '0'\n"
     "--compiler-osr-hotness-threshold:     Set hotness threshold for osr. Default: '2'\n"
     "--compiler-force-jit-compile-main:    Enable jit compile main function: Default: 'false'\n"
     "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n"
+    "--compiler-enable-jit-pgo:            Enable jit pgo: Default: 'true'\n"
     "--compiler-typed-op-profiler:         Enable Typed Opcode Statistics for aot runtime. Default: 'false'\n"
     "--compiler-opt-branch-profiling:      Enable branch profiling for aot compiler. Default: 'true'\n"
     "--test-assert:                        Set Assert Model. Default: 'false'\n"
@@ -180,7 +181,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-escape-analysis:     Enable tracing escape analysis for aot compiler. Default: 'false'\n"
     "--compiler-opt-induction-variable:    Enable induciton variable analysis for aot compiler. Default: 'false'\n"
     "--compiler-trace-induction-variable:  Enable tracing induction variable for aot compiler. Default: 'false'\n"
-    "--compiler-memory-analysis:           Enable memory analysis for aot compiler. Default: 'true'\n\n";
+    "--compiler-memory-analysis:           Enable memory analysis for aot compiler. Default: 'true'\n"
+    "--compiler-enable-jit-fast-compile:   Enable jit fast compile. Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -210,6 +212,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-bc-range", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE},
         {"compiler-opt-bc-range-help", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE_HELP},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
+        {"enable-eden-gc", required_argument, nullptr, OPTION_ENABLE_EDEN_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
         {"compiler-opt-constant-folding", required_argument, nullptr, OPTION_COMPILER_OPT_CONSTANT_FOLDING},
@@ -254,7 +257,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-target-triple", required_argument, nullptr, OPTION_COMPILER_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
-        {"enable-aot-crash-escape", required_argument, nullptr, OPTION_ENABLE_AOT_CRASH_ESCAPE},
         {"enable-elements-kind", required_argument, nullptr, OPTION_ENABLE_ELEMENTSKIND},
         {"compiler-pgo-profiler-path", required_argument, nullptr, OPTION_COMPILER_PGO_PROFILER_PATH},
         {"compiler-pgo-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_PGO_HOTNESS_THRESHOLD},
@@ -288,6 +290,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
         {"compiler-enable-jit-pgo", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_PGO},
         {"compiler-enable-aot-pgo", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_PGO},
+        {"compiler-enable-framework-aot", required_argument, nullptr, OPTION_COMPILER_ENABLE_FRAMEWORK_AOT},
         {"compiler-enable-profile-dump", required_argument, nullptr, OPTION_COMPILER_ENABLE_PROPFILE_DUMP},
         {"compiler-typed-op-profiler", required_argument, nullptr, OPTION_COMPILER_TYPED_OP_PROFILER},
         {"compiler-opt-branch-profiling", required_argument, nullptr, OPTION_COMPILER_OPT_BRANCH_PROFILING},
@@ -303,6 +306,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-baselinejit", required_argument, nullptr, OPTION_COMPILER_ENABLE_BASELINEJIT},
         {"compiler-baselinejit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD},
         {"compiler-force-baselinejit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN},
+        {"compiler-enable-jit-fast-compile", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -506,6 +510,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_ENABLE_EDEN_GC:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableEdenGC(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_FORCE_FULL_GC:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -656,14 +668,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnablePGOProfiler(argBool);
-                } else {
-                    return false;
-                }
-                break;
-            case OPTION_ENABLE_AOT_CRASH_ESCAPE:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetEnableAotCrashEscape(argBool);
                 } else {
                     return false;
                 }
@@ -1066,6 +1070,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_ENABLE_FRAMEWORK_AOT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableFrameworkAOT(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_ENABLE_BASELINEJIT:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -1144,6 +1156,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetForceBaselineCompileMain(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableJitFastCompile(argBool);
                 } else {
                     return false;
                 }

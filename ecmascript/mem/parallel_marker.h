@@ -38,6 +38,8 @@ public:
     }
 
     void MarkRoots(uint32_t threadId);
+    void ProcessNewToEden(uint32_t threadId);                  // for HPPGC only sticky mode
+    void ProcessNewToEdenNoMarkStack(uint32_t threadId);
     void ProcessOldToNew(uint32_t threadId);                  // for HPPGC only semi mode
     void ProcessOldToNewNoMarkStack(uint32_t threadId);
     void ProcessOldToNew(uint32_t threadId, Region *region);  // for SemiGC
@@ -45,6 +47,11 @@ public:
     void ProcessSnapshotRSetNoMarkStack(uint32_t threadId);
 
     virtual void ProcessMarkStack([[maybe_unused]] uint32_t threadId)
+    {
+        LOG_GC(FATAL) << "can not call this method";
+    }
+
+    virtual void ProcessMarkStackConcurrent([[maybe_unused]] uint32_t threadId)
     {
         LOG_GC(FATAL) << "can not call this method";
     }
@@ -69,6 +76,7 @@ protected:
         return SlotStatus::KEEP_SLOT;
     }
 
+    virtual inline void HandleNewToEdenRSet(uint32_t threadId, Region *region) = 0;
     virtual inline void HandleOldToNewRSet(uint32_t threadId, Region *region) = 0;
     virtual inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) = 0;
     virtual inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
@@ -93,6 +101,7 @@ public:
     ~NonMovableMarker() override = default;
 
 protected:
+    void ProcessMarkStackConcurrent(uint32_t threadId) override;
     void ProcessMarkStack(uint32_t threadId) override;
     template <typename Callback>
     inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
@@ -104,7 +113,8 @@ protected:
                                  ObjectSlot end) override;
     inline void HandleDerivedRoots(Root type, ObjectSlot base, ObjectSlot derived,
                                    uintptr_t baseOldObject) override;
-
+    
+    inline void HandleNewToEdenRSet(uint32_t threadId, Region *region) override;
     inline void HandleOldToNewRSet(uint32_t threadId, Region *region) override;
     inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion) override;
     void ProcessIncrementalMarkStack(uint32_t threadId, uint32_t markStepSize) override;
@@ -126,6 +136,7 @@ protected:
     virtual inline SlotStatus EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,
                                              ObjectSlot slot) = 0;
 
+    inline void HandleNewToEdenRSet(uint32_t threadId, Region *region) override;
     inline void HandleOldToNewRSet(uint32_t threadId, Region *region) override;
 
     inline uintptr_t AllocateDstSpace(uint32_t threadId, size_t size, bool &shouldPromote);

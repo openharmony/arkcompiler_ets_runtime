@@ -634,3 +634,24 @@ print("success");
   str.test("text/html");
   print(RegExp.$1);
 }
+
+{
+  let reg52 = /abc/;
+  let count = 0;
+  print(reg52.ignoreCase);
+  print(reg52.global);
+  print(reg52.flags);
+  Object.defineProperty(reg52, "global", {
+    get: function() { count++; return true; }
+  });
+  Object.defineProperty(reg52, "ignoreCase", {
+    get: function() { count++; return true; }
+  });
+
+  print(reg52.ignoreCase);
+  print(count);
+  print(reg52.global);
+  print(count);
+  print(reg52.flags);
+  print(count);
+}

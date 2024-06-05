@@ -189,7 +189,7 @@ public:
     {
         return optBCRange_;
     }
-    
+
     const CallMethodFlagMap *GetCallMethodFlagMap() const
     {
         return callMethodFlagMap_;
@@ -475,7 +475,7 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         NTypeHCRLowering lowering(data->GetCircuit(), &visitor, data->GetPassContext(),
-                                  data->GetRecordName(), &chunk);
+                                  data->GetRecordName(), data->GetMethodLiteral(), &chunk);
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("NTypeHCRLowering");
@@ -495,7 +495,8 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        MCRLowering lowering(data->GetCircuit(), &visitor, data->GetCompilerConfig(), &chunk);
+        MCRLowering lowering(data->GetPassContext()->GetCompilationEnv(), data->GetCircuit(), &visitor,
+                             data->GetCompilerConfig(), &chunk);
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("MCRLowering");
@@ -516,8 +517,8 @@ public:
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
                                   data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset());
         inlining.RunTSInlineLowering();
+        Chunk chunk(data->GetNativeAreaAllocator());
         if (passOptions->EnableLexenvSpecialization()) {
-            Chunk chunk(data->GetNativeAreaAllocator());
             {
                 CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
                 GetEnvSpecializationPass getEnvSpecializationPass(data->GetCircuit(), &visitor, &chunk);
@@ -538,7 +539,7 @@ public:
 
         if (passOptions->EnableInlineNative()) {
             NativeInlineLowering nativeInline(data->GetCircuit(), data->GetCompilerConfig(), data->GetPassContext(),
-                                              enableLog, data->GetMethodName());
+                                              enableLog, data->GetMethodName(), &chunk);
             nativeInline.RunNativeInlineLowering();
         }
         return true;
@@ -775,8 +776,9 @@ public:
                             data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        StateSplitLinearizer(data->GetCircuit(), nullptr, data->GetCompilerConfig(),
-            enableLog, data->GetMethodName(), &chunk).Run();
+        StateSplitLinearizer(data->GetPassContext()->GetCompilationEnv(), data->GetCircuit(), nullptr,
+                             data->GetCompilerConfig(), enableLog, data->GetMethodName(), &chunk)
+            .Run();
         return true;
     }
 };
@@ -822,7 +824,8 @@ public:
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(cgImpl_, data->GetMethodName());
         codegen.Run(data->GetCircuit(), data->GetConstScheduleResult(), data->GetCompilerConfig(),
-                    data->GetMethodLiteral(), data->GetJSPandaFile(), enableOptInlining, enableOptBranchProfiling);
+                    data->GetMethodLiteral(), data->GetJSPandaFile(), data->GetCircuit()->GetFrameType(),
+                    enableOptInlining, enableOptBranchProfiling);
         return true;
     }
 private:

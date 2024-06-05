@@ -184,7 +184,9 @@ struct IntMatcher final : public ValueMatcher<T, kOpcode, kMachineType> {
         if (!this->HasResolvedValue() || this->ResolvedValue() <= 0) {
             return false;
         }
-        return (this->ResolvedValue() & (this->ResolvedValue() - 1)) == 0;
+        using unsigned_type = typename std::make_unsigned<T>::type;
+        const unsigned_type resolvedValue = static_cast<unsigned_type>(this->ResolvedValue());
+        return (resolvedValue & (resolvedValue - 1)) == 0;
     }
 
     bool IsNegativePowerOf2() const

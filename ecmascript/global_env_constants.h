@@ -51,6 +51,7 @@ class ObjectFactory;
     V(JSTaggedValue, COWMutantTaggedArrayClass, COW_MUTANT_TAGGED_ARRAY_CLASS_INDEX, ecma_roots_class)                \
     V(JSTaggedValue, BigIntClass, BIGINT_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, JSNativePointerClass, JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                           \
+    V(JSTaggedValue, SJSNativePointerClass, SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                 \
     V(JSTaggedValue, EnvClass, ENV_CLASS_INDEX, ecma_roots_class)                                                     \
     V(JSTaggedValue, SymbolClass, SYMBOL_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, AccessorDataClass, ACCESSOR_DATA_CLASS_INDEX, ecma_roots_class)                                  \
@@ -91,6 +92,9 @@ class ObjectFactory;
     V(JSTaggedValue, LinkedNode, LINKED_NODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, RBTreeNode, RB_TREENODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
+    V(JSTaggedValue, ProfileTypeInfoCell0Class, PROFILE_TYPE_INFO_CELL_0_CLASS_INDEX, ecma_roots_class)               \
+    V(JSTaggedValue, ProfileTypeInfoCell1Class, PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX, ecma_roots_class)               \
+    V(JSTaggedValue, ProfileTypeInfoCellNClass, PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ResolvedRecordIndexBindingClass, RESOLVED_RECORD_INEDX_BINDING_CLASS_INDEX, ecma_roots_class)    \
     V(JSTaggedValue, ResolvedRecordBindingClass, RESOLVED_RECORD_BINDING_CLASS_INDEX, ecma_roots_class)               \
@@ -119,6 +123,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPIQueueIteratorClass, JS_API_QUEUE_ITERATOR_CLASS_INDEX, ecma_roots_class)                    \
     V(JSTaggedValue, JSAPIStackIteratorClass, JS_API_STACK_ITERATOR_CLASS_INDEX, ecma_roots_class)                    \
     V(JSTaggedValue, JSAPIVectorIteratorClass, JS_API_VECTOR_ITERATOR_CLASS_INDEX, ecma_roots_class)                  \
+    V(JSTaggedValue, JSAPIBitVectorIteratorClass, JS_API_BITVECTOR_ITERATOR_CLASS_INDEX, ecma_roots_class)            \
     V(JSTaggedValue, JSAPIHashMapIteratorClass, JS_API_HASH_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, JSAPIHashSetIteratorClass, JS_API_HASH_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, JSAPITreeMapIteratorClass, JS_API_TREE_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
@@ -239,7 +244,23 @@ class ObjectFactory;
     V(JSTaggedValue, NumberIsFinite, NUMBER_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, NumberIsInteger, NUMBER_IS_INTEGER_INDEX, ecma_roots_builtins)                     \
     V(JSTaggedValue, NumberIsSafeInteger, NUMBER_IS_SAFEINTEGER_INDEX, ecma_roots_builtins)             \
-    V(JSTaggedValue, NumberParseFloat, NUMBER_PARSE_FLOAT_INDEX, ecma_roots_builtins)
+    V(JSTaggedValue, NumberParseFloat, NUMBER_PARSE_FLOAT_INDEX, ecma_roots_builtins)                   \
+    V(JSTaggedValue, NumberParseInt, NUMBER_PARSE_INT_INDEX, ecma_roots_builtins)                       \
+    V(JSTaggedValue, ObjectIs, OBJECT_IS_INDEX, ecma_roots_special)                                     \
+    V(JSTaggedValue, ObjectGetPrototypeOf, OBJECT_GET_PROTOTYPE_OF_INDEX, ecma_roots_special)           \
+    V(JSTaggedValue, ObjectGetPrototo, OBJECT_GET_PROTO_INDEX, ecma_roots_special)                      \
+    V(JSTaggedValue, ObjectCreate, OBJECT_CREATE_INDEX, ecma_roots_special)                             \
+    V(JSTaggedValue, ObjectIsPrototypeOf, OBJECT_IS_PROTOTYPE_OF_INDEX, ecma_roots_special)             \
+    V(JSTaggedValue, ObjectHasOwnProperty, OBJECT_HAS_OWN_PROPERTY_INDEX, ecma_roots_special)           \
+    V(JSTaggedValue, ReflectGetPrototypeOf, REFLECT_GET_PROTOTYPE_OF_INDEX, ecma_roots_special)         \
+    V(JSTaggedValue, ReflectGet, REFLECT_GET_INDEX, ecma_roots_special)                                 \
+    V(JSTaggedValue, ReflectHas, REFLECT_HAS_INDEX, ecma_roots_special)                                 \
+    V(JSTaggedValue, ReflectConstruct, REFLECT_CONSTRUCT_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, ReflectApply, REFLECT_APPLY_INDEX, ecma_roots_special)                             \
+    V(JSTaggedValue, FunctionApply, FUNCTION_PROTOTYPE_APPLY_INDEX, ecma_roots_special)                 \
+    V(JSTaggedValue, FunctionBind, FUNCTION_PROTOTYPE_BIND_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, FunctionCall, FUNCTION_PROTOTYPE_CALL_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, FunctionHasInstance, FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX, ecma_roots_special)
 
 // All of type JSTaggedValue
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \
@@ -525,6 +546,10 @@ class ObjectFactory;
     V(IncludesString,                 INCLUDES_INDEX,                        "includes")                    \
     V(KeysString,                     KEYS_INDEX,                            "keys")                        \
     V(BoundString,                    BOUND_INDEX,                           "bound")                       \
+    V(TrimLeftString,                 TRIMLEFT_INDEX,                        "trimLeft")                    \
+    V(TrimStartString,                TRIMSTART_INDEX,                       "trimStart")                   \
+    V(TrimRightString,                TRIMRIGHT_INDEX,                       "trimRight")                   \
+    V(TrimEndString,                  TRIMEND_INDEX,                         "trimEnd")                     \
     V(BackslashString,                BACKSLASH_INDEX,                       "/")                           \
     V(SpaceString,                    SPACE_INDEX,                           " ")                           \
     V(NanCapitalString,               NAN_INDEX,                             "NaN")                         \
@@ -576,6 +601,8 @@ class ObjectFactory;
     V(JSTaggedValue, TreeSetIteratorPrototype, TREESET_ITERATOR_PROTOTYPE_INDEX, TreeSetIterator)           \
     V(JSTaggedValue, VectorFunction, VECTOR_FUNCTION_INDEX, VectorFunction)                                 \
     V(JSTaggedValue, VectorIteratorPrototype, VECTOR_ITERATOR_PROTOTYPE_INDEX, VectorIterator)              \
+    V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX, BitVectorFunction)                        \
+    V(JSTaggedValue, BitVectorIteratorPrototype, BITVECTOR_ITERATOR_PROTOTYPE_INDEX, BitVectorIterator)     \
     V(JSTaggedValue, QueueIteratorPrototype, QUEUE_ITERATOR_PROTOTYPE_INDEX, QueueIterator)                 \
     V(JSTaggedValue, PlainArrayIteratorPrototype, PLAIN_ARRAY_ITERATOR_PROTOTYPE_INDEX, PlainArrayIterator) \
     V(JSTaggedValue, PlainArrayFunction, PLAIN_ARRAY_FUNCTION_INDEX, PlainArrayFunction)                    \
@@ -599,13 +626,19 @@ class ObjectFactory;
 #define SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                     \
     V(JSTaggedValue, Undefined, UNDEFINED_INDEX, ecma_roots_special)                              \
     V(JSTaggedValue, Null, NULL_INDEX, ecma_roots_special)                                        \
+    V(JSTaggedValue, Hole, HOLE_INDEX, ecma_roots_special)                                        \
     V(JSTaggedValue, True, TRUE_INDEX, ecma_roots_special)                                        \
     V(JSTaggedValue, False, FALSE_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, EmptyString, EMPTY_STRING_OBJECT_INDEX, ecma_roots_special)                  \
     V(JSTaggedValue, SingleCharTable, SINGLE_CHAR_TABLE_INDEX, ecma_roots_special)                \
     V(JSTaggedValue, EmptySLayoutInfo, EMPTY_SLAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)       \
     V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)                    \
-    V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)
+    V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)       \
+    V(JSTaggedValue, ProxyMethod, PROXY_METHOD_INDEX, ecma_roots_special)                         \
+    V(JSTaggedValue, Uint64MaxBigInt, UINT64_MAX_BIGINT_INDEX, ecma_roots_special)                \
+    V(JSTaggedValue, Int64MaxBigInt, INT64_MAX_BIGINT_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, EmptyProfileTypeInfoCell, EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, BoundFunctionMethod, BOUND_FUNCTION_METHOD_INDEX, ecma_roots_special)
 
 #define GLOBAL_ENV_CACHES(V)                \
     V(JSTaggedValue, CachedJSCollatorLocales, CACHED_JSCOLLATOR_LOCALES_INDEX, cachedCollatorLocales)
@@ -636,7 +669,7 @@ enum class ConstantIndex : size_t {
     CONSTANT_END = CONSTANT_COUNT,
 
     SHARED_BEGIN = HCLASS_CLASS_INDEX,
-    SHARED_END = EMPTY_MUTANT_ARRAY_OBJECT_INDEX,
+    SHARED_END = BOUND_FUNCTION_METHOD_INDEX,
 
     SHARED_HCLASS_BEGIN = HCLASS_CLASS_INDEX,
     SHARED_HCLASS_END = VTABLE_CLASS_INDEX,

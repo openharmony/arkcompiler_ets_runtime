@@ -39,31 +39,7 @@ namespace panda::test {
 using BuiltinsWeakMap = ecmascript::builtins::BuiltinsWeakMap;
 using JSWeakMap = ecmascript::JSWeakMap;
 
-class BuiltinsWeakMapTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsWeakMapTest : public BaseTestWithScope<false> {
 };
 
 static JSObject *JSObjectTestCreate(JSThread *thread)
@@ -165,6 +141,23 @@ HWTEST_F_L0(BuiltinsWeakMapTest, SetAndHas)
     }
 }
 
+void KeySetCommon(JSThread* thread, JSHandle<JSWeakMap>& weakMap, JSHandle<JSTaggedValue>& key, int32_t val)
+{
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(weakMap.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(val));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result1 = BuiltinsWeakMap::Set(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_TRUE(result1.IsECMAObject());
+    JSWeakMap *jsWeakMap = JSWeakMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
+    EXPECT_EQ(jsWeakMap->GetSize(), static_cast<int>(val) + 1);
+}
+
 HWTEST_F_L0(BuiltinsWeakMapTest, DeleteAndRemove)
 {
     // create jsWeakMap
@@ -174,19 +167,7 @@ HWTEST_F_L0(BuiltinsWeakMapTest, DeleteAndRemove)
     JSTaggedValue lastKey(JSTaggedValue::Undefined());
     for (int i = 0; i < 40; i++) {
         JSHandle<JSTaggedValue> key(thread, JSObjectTestCreate(thread));
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(weakMap.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, key.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(i)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result1 = BuiltinsWeakMap::Set(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        EXPECT_TRUE(result1.IsECMAObject());
-        JSWeakMap *jsWeakMap = JSWeakMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-        EXPECT_EQ(jsWeakMap->GetSize(), static_cast<int>(i) + 1);
+        KeySetCommon(thread, weakMap, key, static_cast<int32_t>(i));
         lastKey = key.GetTaggedValue();
     }
 
@@ -224,21 +205,7 @@ HWTEST_F_L0(BuiltinsWeakMapTest, SymbolKey)
     for (int i = 0; i < 2; i++) {
         JSHandle<JSSymbol> symbolKey = thread->GetEcmaVM()->GetFactory()->NewJSSymbol();
         JSHandle<JSTaggedValue> key(symbolKey);
-        auto ecmaRuntimeCallInfo =
-            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8 means 2 call args
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(weakMap.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, key.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(i)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        // set
-        JSTaggedValue result1 = BuiltinsWeakMap::Set(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        EXPECT_TRUE(result1.IsECMAObject());
-        JSWeakMap *jsWeakMap = JSWeakMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-        EXPECT_EQ(jsWeakMap->GetSize(), static_cast<int>(i) + 1);
+        KeySetCommon(thread, weakMap, key, static_cast<int32_t>(i));
         lastKey = key.GetTaggedValue();
     }
 

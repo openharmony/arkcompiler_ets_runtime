@@ -23,11 +23,12 @@
     /* Function.prototype.apply ( thisArg, argArray ) */                            \
     V("apply",           FunctionPrototypeApply,      2, FunctionPrototypeApply)    \
     /* Function.prototype.bind ( thisArg , ...args) */                              \
-    V("bind",            FunctionPrototypeBind,       1, INVALID)                   \
+    V("bind",            FunctionPrototypeBind,       1, FunctionPrototypeBind)     \
     /* Function.prototype.call (thisArg , ...args) */                               \
-    V("call",            FunctionPrototypeCall,       1, INVALID)
+    V("call",            FunctionPrototypeCall,       1, FunctionPrototypeCall)
 
 namespace panda::ecmascript::builtins {
+using BuiltinsPropertyConfig = base::BuiltinsPropertyConfig;
 class BuiltinsFunction : public base::BuiltinsBase {
 public:
     // ecma 19.2.1 Function (p1, p2, ... , pn, body)
@@ -38,9 +39,15 @@ public:
 
     // ecma 19.2.3.1 Function.prototype.apply (thisArg, argArray)
     static JSTaggedValue FunctionPrototypeApply(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue FunctionPrototypeApplyInternal(JSThread *thread, JSHandle<JSTaggedValue> func,
+                                                        JSHandle<JSTaggedValue> thisArg,
+                                                        JSHandle<JSTaggedValue> arrayObj);
 
     // ecma 19.2.3.2 Function.prototype.bind (thisArg , ...args)
     static JSTaggedValue FunctionPrototypeBind(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue FunctionPrototypeBindInternal(JSThread *thread, JSHandle<JSTaggedValue> target,
+                                                       JSHandle<JSTaggedValue> thisArg,
+                                                       JSHandle<TaggedArray> argsArray);
 
     // ecma 19.2.3.3 Function.prototype.call (thisArg , ...args)
     static JSTaggedValue FunctionPrototypeCall(EcmaRuntimeCallInfo *argv);
@@ -51,14 +58,14 @@ public:
     // ecma 19.2.3.6 Function.prototype[@@hasInstance] (V)
     static JSTaggedValue FunctionPrototypeHasInstance(EcmaRuntimeCallInfo *argv);
 
-    static Span<const std::pair<std::string_view, bool>> GetFunctionPrototypeProperties()
+    static Span<const BuiltinsPropertyConfig> GetFunctionPrototypeProperties()
     {
-        return Span<const std::pair<std::string_view, bool>>(FUNCTION_PROTOTYPE_PROPERTIES);
+        return Span<const BuiltinsPropertyConfig>(FUNCTION_PROTOTYPE_PROPERTIES);
     }
 
-    static Span<const std::pair<std::string_view, bool>> GetFunctionProperties()
+    static Span<const BuiltinsPropertyConfig> GetFunctionProperties()
     {
-        return Span<const std::pair<std::string_view, bool>>(FUNCTION_PROPERTIES);
+        return Span<const BuiltinsPropertyConfig>(FUNCTION_PROPERTIES);
     }
 
     static Span<const base::BuiltinFunctionEntry> GetFunctionPrototypeFunctions()
@@ -67,22 +74,22 @@ public:
     }
 private:
     static constexpr std::array FUNCTION_PROTOTYPE_PROPERTIES = {
-        std::pair<std::string_view, bool>("length", false),
-        std::pair<std::string_view, bool>("name", false),
-        std::pair<std::string_view, bool>("constructor", false),
-        std::pair<std::string_view, bool>("caller", true),
-        std::pair<std::string_view, bool>("arguments", true),
-        std::pair<std::string_view, bool>("apply", false),
-        std::pair<std::string_view, bool>("bind", false),
-        std::pair<std::string_view, bool>("call", false),
-        std::pair<std::string_view, bool>("toString", false),
-        std::pair<std::string_view, bool>("[Symbol.hasInstance]", false),
+        BuiltinsPropertyConfig("length", false, false, false, true),
+        BuiltinsPropertyConfig("name", false, false, false, true),
+        BuiltinsPropertyConfig("constructor", false, true, false, true),
+        BuiltinsPropertyConfig("caller", true, false, false, true),
+        BuiltinsPropertyConfig("arguments", true, false, false, true),
+        BuiltinsPropertyConfig("apply", false, true, false, true),
+        BuiltinsPropertyConfig("bind", false, true, false, true),
+        BuiltinsPropertyConfig("call", false, true, false, true),
+        BuiltinsPropertyConfig("toString", false, true, false, true),
+        BuiltinsPropertyConfig("[Symbol.hasInstance]", false, false, false, false),
     };
 
     static constexpr std::array FUNCTION_PROPERTIES = {
-        std::pair<std::string_view, bool>("length", false),
-        std::pair<std::string_view, bool>("name", false),
-        std::pair<std::string_view, bool>("prototype", false),
+        BuiltinsPropertyConfig("length", false, false, false, true),
+        BuiltinsPropertyConfig("name", false, false, false, true),
+        BuiltinsPropertyConfig("prototype", false, false, false, false),
     };
 
 #define BUILTIN_FUNCTION_FUNCTION_ENTRY(name, func, length, id) \

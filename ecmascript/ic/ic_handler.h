@@ -40,6 +40,7 @@ public:
         NON_EXIST,
         TOTAL_KINDS,
     };
+    static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
 
     // Store Handler kind combined with KindBit called SWholeKindBit. Which used to quickly check S_FIELD kind
     enum StoreHandlerKind {
@@ -48,29 +49,30 @@ public:
         S_ELEMENT,
         S_TOTAL_KINDS,
     };
+    static_assert(static_cast<size_t>(StoreHandlerKind::S_TOTAL_KINDS) <= (1 << STORE_KIND_BIT_LENGTH));
 
     // For Load
-    using KindBit = BitField<HandlerKind, 0, KIND_BIT_LENGTH>;                                              // 4
-    using InlinedPropsBit = KindBit::NextFlag;                                                              // 5
-    using AccessorBit = InlinedPropsBit::NextFlag;                                                          // 6
-    using IsJSArrayBit = AccessorBit::NextFlag;                                                             // 7
-    using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;           // 17
-    using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>; // 19
-    using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;   // 29
-    using IsOnHeapBit = AttrIndexBit::NextFlag;                                                             // 30
-    using NeedSkipInPGODumpBit  = IsOnHeapBit::NextFlag;                                                    // 31
-    static_assert(
-        NeedSkipInPGODumpBit::START_BIT + NeedSkipInPGODumpBit::SIZE <= MAX_BIT_SIZE, "Invalid");
-    static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
+    using KindBit = BitField<HandlerKind, 0, KIND_BIT_LENGTH>;                                              // [0, 4)
+    using InlinedPropsBit = KindBit::NextFlag;                                                              // [4, 5)
+    using AccessorBit = InlinedPropsBit::NextFlag;                                                          // [5, 6)
+    using IsJSArrayBit = AccessorBit::NextFlag;                                                             // [6, 7)
+    using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;           // [7, 17)
+    using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>; // [17, 19)
+    using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;   // [19, 29)
+    using IsOnHeapBit = AttrIndexBit::NextFlag;                                                             // [29, 30)
+    using NeedSkipInPGODumpBit = IsOnHeapBit::NextFlag;                                                     // [30, 31)
+    static_assert(NeedSkipInPGODumpBit::END_BIT <= MAX_BIT_SIZE, "load handler overflow");
 
     // For Store
-    using SKindBit = BitField<StoreHandlerKind, 0, STORE_KIND_BIT_LENGTH>;
-    using SSharedBit = SKindBit::NextFlag;
     using SWholeKindBit = KindBit;
-    static_assert(SKindBit::START_BIT == SWholeKindBit::START_BIT);
-    static_assert(SSharedBit::Mask() || SKindBit::Mask() == KindBit::Mask());
-    using SFieldTypeBit = AttrIndexBit::NextField<SharedFieldType, PropertyAttributes::FIELD_TYPE_NUM>;
-    static_assert(static_cast<size_t>(StoreHandlerKind::S_TOTAL_KINDS) <= (1 << STORE_KIND_BIT_LENGTH));
+    using SKindBit = BitField<StoreHandlerKind, 0, STORE_KIND_BIT_LENGTH>;                                  // [0, 2)
+    static_assert(SKindBit::START_BIT == KindBit::START_BIT);
+    using SSharedBit = SKindBit::NextFlag;                                                                  // [2, 4)
+    static_assert((SKindBit::SIZE + SSharedBit::SIZE) <= KindBit::SIZE);              // reuse: [0, 4) bits
+                                                                                      // shared with Load bits: [4, 30)
+    using SOutOfBoundsBit = IsOnHeapBit::NextFlag;                                    // reuse: [30, 31) bit
+    using SFieldTypeBit = SOutOfBoundsBit::NextField<SharedFieldType, PropertyAttributes::FIELD_TYPE_NUM>;  // [31, 39)
+    static_assert(SFieldTypeBit::END_BIT <= MAX_BIT_SIZE, "store handler overflow");
     using Type = uint64_t;
     static_assert(sizeof(Type) <= JSTaggedValue::TaggedTypeSize());
 
@@ -110,6 +112,16 @@ public:
     static inline void ClearSharedStoreKind(Type &handler)
     {
         SSharedBit::Set<Type>(false, &handler);
+    }
+
+    static inline bool IsStoreOutOfBounds(Type handler)
+    {
+        return SOutOfBoundsBit::Get(handler);
+    }
+
+    static inline void ClearStoreOutOfBounds(Type &handler)
+    {
+        SOutOfBoundsBit::Set<Type>(false, &handler);
     }
 
     static inline bool IsString(Type handler)
@@ -296,6 +308,7 @@ public:
             SFieldTypeBit::Set<uint64_t>(op.GetAttr().GetDictSharedFieldType(), &handler);
         }
         if (op.IsElement()) {
+            SOutOfBoundsBit::Set<uint64_t>(op.GetElementOutOfBounds(), &handler);
             return StoreElement(thread, op.GetReceiver(), handler);
         }
         JSTaggedValue val = op.GetValue();

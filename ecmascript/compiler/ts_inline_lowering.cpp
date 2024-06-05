@@ -71,6 +71,7 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeIn
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             CandidateAccessor(gate, workList, CallKind::CALL_SETTER);
@@ -335,13 +336,13 @@ GateRef TSInlineLowering::BuildAccessor(InlineTypeInfoAccessor &info)
     int holderHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
     ASSERT(ptManager->QueryHClass(holderType.first, holderType.second).IsJSHClass());
     ArgumentAccessor argAcc(circuit_);
-    GateRef constpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
+    GateRef unsharedConstPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
 
     auto currentLabel = env.GetCurrentLabel();
     auto state = currentLabel->GetControl();
     auto depend = currentLabel->GetDepend();
     GateRef holder = circuit_->NewGate(circuit_->LookUpHolder(), MachineType::I64,
-                                       { state, depend, receiver, builder_.Int32(holderHCIndex), constpool},
+                                       { state, depend, receiver, builder_.Int32(holderHCIndex), unsharedConstPool},
                                        GateType::AnyType());
 
     if (info.IsCallGetter()) {
@@ -541,9 +542,9 @@ void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
     auto callDepend = currentLabel->GetDepend();
     auto frameState = acc_.GetFrameState(gate);
     ArgumentAccessor argAcc(circuit_);
-    GateRef constpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
+    GateRef unsharedConstPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
     GateRef ret = circuit_->NewGate(circuit_->PrototypeCheck(receiverHCIndex), MachineType::I1,
-        {callState, callDepend, constpool, frameState}, GateType::NJSValue());
+        {callState, callDepend, unsharedConstPool, frameState}, GateType::NJSValue());
     acc_.ReplaceStateIn(gate, ret);
     acc_.ReplaceDependIn(gate, ret);
 }

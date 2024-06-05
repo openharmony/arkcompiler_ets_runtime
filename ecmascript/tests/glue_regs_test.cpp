@@ -27,31 +27,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 
 namespace panda::test {
-class GlueRegsTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class GlueRegsTest :  public BaseTestWithScope<false> {
 };
 
 HWTEST_F_L0(GlueRegsTest, ConstantClassTest)
@@ -60,9 +36,14 @@ HWTEST_F_L0(GlueRegsTest, ConstantClassTest)
     ASSERT_NE(globalConst, nullptr);
 
     const JSTaggedValue *address = globalConst->BeginSlot();
+    size_t curIndex = static_cast<size_t>(ConstantIndex::CONSTANT_BEGIN);
+    size_t holeIndex = static_cast<size_t>(ConstantIndex::HOLE_INDEX);
     while (address < globalConst->EndSlot()) {
-        EXPECT_TRUE(!(*address).IsHole());  // Visit barely
+        if (curIndex != holeIndex) {
+            EXPECT_TRUE(!(*address).IsHole());  // Visit barely
+        }
         address += 1;
+        curIndex += 1;
     }
 }
 

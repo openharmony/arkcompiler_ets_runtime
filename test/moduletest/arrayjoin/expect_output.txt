@@ -29,3 +29,4 @@ proxy2: 123,456
 NaN
 NaN
 NaN0
+true

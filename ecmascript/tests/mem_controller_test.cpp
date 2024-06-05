@@ -30,31 +30,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 
 namespace panda::test {
-class MemControllerTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class MemControllerTest : public BaseTestWithScope<false> {
 };
 
 HWTEST_F_L0(MemControllerTest, AllocationVerify)
@@ -134,5 +110,91 @@ HWTEST_F_L0(MemControllerTest, VerifyMutatorSpeed)
     // The allocated size of huge object must be larger than the object size.
     ASSERT_TRUE(hugeObjectAllocSizeInLastGC > hugeArray->ComputeSize(JSTaggedValue::TaggedTypeSize(), SIZE));
 #endif
+}
+
+HWTEST_F_L0(MemControllerTest, RecordAfterConcurrentMarkTest)
+{
+#ifdef NDEBUG
+    auto ecmaVm = thread->GetEcmaVM();
+    auto heap = const_cast<Heap *>(ecmaVm->GetHeap());
+    auto memController = heap->GetMemController();
+    EXPECT_TRUE(heap->GetConcurrentMarker() != nullptr);
+    heap->TryTriggerFullMarkBySharedLimit();
+    memController->RecordAfterConcurrentMark(MarkType::MARK_FULL, heap->GetConcurrentMarker());
+    auto fullSpaceSpeed = memController->GetFullSpaceConcurrentMarkSpeedPerMS();
+    EXPECT_EQ(fullSpaceSpeed, 0);
+    heap->CollectGarbage(TriggerGCType::YOUNG_GC);
+    memController->RecordAfterConcurrentMark(MarkType::MARK_YOUNG, heap->GetConcurrentMarker());
+    auto newSpaceSpeed = memController->GetNewSpaceConcurrentMarkSpeedPerMS();
+    EXPECT_GE(newSpaceSpeed, 0);
+#endif
+}
+
+HWTEST_F_L0(MemControllerTest, CalculateMarkCompactSpeedPerMSTest)
+{
+#ifdef NDEBUG
+    auto ecmaVm = thread->GetEcmaVM();
+    auto heap = const_cast<Heap *>(ecmaVm->GetHeap());
+    auto memController = heap->GetMemController();
+    auto compactSpeed = memController->CalculateMarkCompactSpeedPerMS();
+    EXPECT_TRUE(compactSpeed == 0);
+#endif
+}
+
+HWTEST_F_L0(MemControllerTest, StartCalculationBeforeGC)
+{
+    auto ecmaVm = thread->GetEcmaVM();
+    auto heap = const_cast<Heap *>(ecmaVm->GetHeap());
+    auto memController = heap->GetMemController();
+
+    double allocTimeMsBefore = memController->GetAllocTimeMs();
+    size_t oldSpaceSizeBefore = memController->GetOldSpaceAllocAccumulatedSize();
+    size_t nonMovableSpaceSizeBefore = memController->GetNonMovableSpaceAllocAccumulatedSize();
+    size_t codeSpaceSizeBefore = memController->GetCodeSpaceAllocAccumulatedSize();
+
+    sleep(1);
+    memController->StartCalculationBeforeGC();
+
+    double allocTimeMsAfter = memController->GetAllocTimeMs();
+    size_t oldSpaceSizeAfter = memController->GetOldSpaceAllocAccumulatedSize();
+    size_t nonMovableSpaceSizeAfter = memController->GetNonMovableSpaceAllocAccumulatedSize();
+    size_t codeSpaceSizeAfter = memController->GetCodeSpaceAllocAccumulatedSize();
+    double allocDurationSinceGc = memController->GetAllocDurationSinceGc();
+
+    EXPECT_TRUE(allocTimeMsAfter - allocTimeMsBefore > 1000);
+    EXPECT_TRUE(oldSpaceSizeAfter > oldSpaceSizeBefore);
+    EXPECT_TRUE(nonMovableSpaceSizeAfter > nonMovableSpaceSizeBefore);
+    EXPECT_TRUE(codeSpaceSizeAfter == codeSpaceSizeBefore);
+    EXPECT_TRUE(allocDurationSinceGc == allocTimeMsAfter - allocTimeMsBefore);
+}
+
+HWTEST_F_L0(MemControllerTest, StopCalculationAfterGC)
+{
+    auto ecmaVm = thread->GetEcmaVM();
+    auto heap = const_cast<Heap *>(ecmaVm->GetHeap());
+    auto objectFactory = ecmaVm->GetFactory();
+    auto memController = heap->GetMemController();
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+
+    [[maybe_unused]] auto newArray =
+        objectFactory->NewTaggedArray(2, JSTaggedValue::Undefined(), MemSpaceType::SEMI_SPACE);
+    [[maybe_unused]] auto oldArray =
+        objectFactory->NewTaggedArray(2, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+    [[maybe_unused]] auto nonMovableArray =
+        objectFactory->NewTaggedArray(2, JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE);
+    static constexpr size_t SIZE = 1_MB;
+    [[maybe_unused]] auto hugeArray = objectFactory->NewTaggedArray(SIZE);
+
+    heap->CollectGarbage(TriggerGCType::YOUNG_GC);
+
+    double allocDurationSinceGc = memController->GetAllocDurationSinceGc();
+    size_t codeSpaceAllocSizeSinceGC = memController->GetCodeSpaceAllocAccumulatedSize();
+    EXPECT_EQ(allocDurationSinceGc, static_cast<double>(0.0));
+    EXPECT_EQ(codeSpaceAllocSizeSinceGC, static_cast<size_t>(0));
+    size_t hugeObjectSize = heap->GetHugeObjectSpace()->GetHeapObjectSize();
+    size_t hugeAllocSizeSinceGC = memController->GetHugeObjectAllocSizeSinceGC();
+    EXPECT_EQ(hugeAllocSizeSinceGC, hugeObjectSize);
+    double markCompactSpeed = memController->CalculateMarkCompactSpeedPerMS();
+    EXPECT_GE(markCompactSpeed, 0);
 }
 }  // namespace panda::test

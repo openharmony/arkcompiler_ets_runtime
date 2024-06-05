@@ -26,25 +26,12 @@ namespace namemangler {
 #endif
 
 const int kLocalCodebufSize = 1024;
-const int kMaxCodecbufSize = (1 << 16);  // Java spec support a max name length of 64K.
+const int kMaxCodecbufSize = (1 << 16);
 
 #define GETHEXCHAR(n) static_cast<char>((n) < 10 ? (n) + '0' : (n)-10 + 'a')
 #define GETHEXCHARU(n) static_cast<char>((n) < 10 ? (n) + '0' : (n)-10 + 'A')
 
-bool doCompression = false;
-
-// Store a mapping between full string and its compressed version
-// More frequent and specific strings go before  general ones,
-// e.g. Ljava_2Flang_2FObject_3B goes before Ljava_2Flang_2F
-//
 using StringMap = std::map<const std::string, const std::string>;
-
-const StringMap kInternalMangleTable = {
-    {"Ljava_2Flang_2FObject_3B", "L0_3B"}, {"Ljava_2Flang_2FClass_3B", "L1_3B"}, {"Ljava_2Flang_2FString_3B", "L2_3B"}};
-
-// This mapping is mainly used for compressing annotation strings
-const StringMap kOriginalMangleTable = {
-    {"Ljava/lang/Object", "L0"}, {"Ljava/lang/Class", "L1"}, {"Ljava/lang/String", "L2"}};
 
 // The returned buffer needs to be explicitly freed
 static inline char *AllocCodecBuf(size_t maxLen)
@@ -60,36 +47,6 @@ static inline char *AllocCodecBuf(size_t maxLen)
 static inline void FreeCodecBuf(char *buf)
 {
     free(buf);
-}
-
-static std::string CompressName(std::string &name, const StringMap &mapping = kInternalMangleTable)
-{
-    for (auto &entry : mapping) {
-        if (name.find(entry.first) != std::string::npos) {
-            name = std::regex_replace(name, std::regex(entry.first), entry.second);
-        }
-    }
-    return name;
-}
-
-static std::string DecompressName(std::string &name, const StringMap &mapping = kInternalMangleTable)
-{
-    for (auto &entry : mapping) {
-        if (name.find(entry.second) != std::string::npos) {
-            name = std::regex_replace(name, std::regex(entry.second), entry.first);
-        }
-    }
-    return name;
-}
-
-std::string GetInternalNameLiteral(std::string name)
-{
-    return (doCompression ? CompressName(name) : name);
-}
-
-std::string GetOriginalNameLiteral(std::string name)
-{
-    return (doCompression ? CompressName(name, kOriginalMangleTable) : name);
 }
 
 std::string EncodeName(const std::string &name)
@@ -158,9 +115,6 @@ std::string EncodeName(const std::string &name)
     buf[pos] = '\0';
     std::string newName = std::string(buf, pos);
     FreeCodecBuf(buf);
-    if (doCompression) {
-        newName = CompressName(newName);
-    }
     return newName;
 }
 
@@ -182,7 +136,6 @@ constexpr int kNumLimit = 10;
 constexpr int kCodeOffset3 = 12;
 constexpr int kCodeOffset2 = 8;
 constexpr int kCodeOffset = 4;
-constexpr int kJavaStrLength = 5;
 constexpr size_t k64BitShift = 6; // 64 is 1 << 6
 }
 
@@ -194,16 +147,8 @@ std::string DecodeName(const std::string &name)
     std::string decompressedName;
     const char *namePtr = nullptr;
     size_t nameLen;
-
-    if (doCompression) {
-        decompressedName = name;
-        decompressedName = DecompressName(decompressedName);
-        namePtr = decompressedName.c_str();
-        nameLen = decompressedName.length();
-    } else {
-        namePtr = name.c_str();
-        nameLen = name.length();
-    }
+    namePtr = name.c_str();
+    nameLen = name.length();
 
     // Demangled name is supposed to be shorter. No buffer overflow issue here.
     std::string newName(nameLen, '\0');
@@ -289,8 +234,8 @@ std::string DecodeName(const std::string &name)
 }
 
 // input: maple name
-// output: Ljava/lang/Object;  [Ljava/lang/Object;
-void DecodeMapleNameToJavaDescriptor(const std::string &nameIn, std::string &nameOut)
+// output: Lj/lang/Object;  [Lj/lang/Object;
+void DecodeMapleNameToJDescriptor(const std::string &nameIn, std::string &nameOut)
 {
     nameOut = DecodeName(nameIn);
     if (nameOut[0] == 'A') {
@@ -299,101 +244,6 @@ void DecodeMapleNameToJavaDescriptor(const std::string &nameIn, std::string &nam
             nameOut[i++] = '[';
         }
     }
-}
-
-// convert maple name to java name
-// http://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/design.html#resolving_native_method_names
-std::string NativeJavaName(const std::string &name, bool overLoaded)
-{
-    // Decompress name first because the generated native function name needs
-    // to follow certain spec, not something maple can control.
-    std::string decompressedName(name);
-    if (doCompression) {
-        decompressedName = DecompressName(decompressedName);
-    }
-
-    unsigned int nameLen = static_cast<unsigned int>(decompressedName.length()) + kJavaStrLength;
-    std::string newName = "Java_";
-    unsigned int i = 0;
-
-    // leading A's are array
-    while (i < nameLen && name[i] == 'A') {
-        newName += "_3";
-        i++;
-    }
-
-    bool isProto = false;  // class names in prototype have 'L' and ';'
-    bool isFuncname = false;
-    bool isTypename = false;
-    while (i < nameLen) {
-        char c = decompressedName[i];
-        if (c == '_') {
-            i++;
-            // UTF16 unicode
-            if (decompressedName[i] == 'u') {
-                newName += "_0";
-                i++;
-            } else if (decompressedName[i] == '_') {
-                newName += "_1";
-                i++;
-            } else {
-                // _XX: '_' followed by ascii code in hex
-                c = decompressedName[i++];
-                unsigned char v = (c <= '9') ? c - '0' : c - 'A' + kNumLimit;
-                unsigned char asc = v << kCodeOffset;
-                c = decompressedName[i++];
-                v = (c <= '9') ? c - '0' : c - 'A' + kNumLimit;
-                asc += v;
-                if (asc == '/') {
-                    newName += "_";
-                } else if (asc == '|' && !isFuncname) {
-                    newName += "_";
-                    isFuncname = true;
-                } else if (asc == '|' && isFuncname) {
-                    if (!overLoaded) {
-                        break;
-                    }
-                    newName += "_";
-                    isFuncname = false;
-                } else if (asc == '(') {
-                    newName += "_";
-                    isProto = true;
-                } else if (asc == ')') {
-                    break;
-                } else if (asc == ';' && !isFuncname) {
-                    if (isProto) {
-                        newName += "_2";
-                    }
-                    isTypename = false;
-                } else if (asc == '$') {
-                    newName += "_00024";
-                } else if (asc == '-') {
-                    newName += "_0002d";
-                } else {
-                    printf("name = %s\n", decompressedName.c_str());
-                    printf("c = %c\n", asc);
-                    DEBUG_ASSERT(false && "more cases in NativeJavaName");
-                }
-            }
-        } else {
-            if (c == 'L' && !isFuncname && !isTypename) {
-                if (isProto) {
-                    newName += c;
-                }
-                isTypename = true;
-                i++;
-            } else if (c == 'A' && !isTypename && !isFuncname) {
-                while (name[i] == 'A') {
-                    newName += "_3";
-                    i++;
-                }
-            } else {
-                newName += c;
-                i++;
-            }
-        }
-    }
-    return newName;
 }
 
 static uint16_t ChangeEndian16(uint16_t u16)

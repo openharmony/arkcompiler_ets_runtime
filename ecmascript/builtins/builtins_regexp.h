@@ -177,6 +177,13 @@ private:
                                            const JSHandle<JSTaggedValue> &flags);
     static JSTaggedValue RegExpReplaceFast(JSThread *thread, JSHandle<JSTaggedValue> regexp,
                                            JSHandle<EcmaString> inputString, uint32_t inputLength);
+    static JSTaggedValue GetLastIndex(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+                                      uint32_t &lastIndex);
+    static bool ShouldUseCache(JSThread *thread, JSHandle<EcmaString> inputString);
+    static JSTaggedValue MatchAndReplace(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+                                         JSHandle<EcmaString> inputString, uint32_t &flags,
+                                         uint32_t lastIndex, uint32_t inputLength,
+                                         std::string &resultString);
     static JSTaggedValue RegExpTestFast(JSThread *thread, JSHandle<JSTaggedValue> regexp,
                                         const JSHandle<JSTaggedValue> inputString, bool useCache);
     static JSTaggedValue RegExpExecForTestFast(JSThread *thread, JSHandle<JSTaggedValue> regexp,
@@ -213,21 +220,22 @@ public:
     // extend as an additional parameter to judge cached
     JSTaggedValue FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> input,
                                    CacheType type, const JSHandle<JSTaggedValue> regexp,
-                                   JSTaggedValue lastIndexInput, JSTaggedValue extend = JSTaggedValue::Undefined(),
+                                   JSTaggedValue lastIndexInput, JSHandle<JSTaggedValue> extend,
                                    bool isIntermediateResult = false);
     // extend as an additional parameter to judge cached
     static void AddResultInCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache,
                                  const JSHandle<JSTaggedValue> regexp,
                                  const JSHandle<JSTaggedValue> input, const JSHandle<JSTaggedValue> resultArray,
                                  CacheType type, uint32_t lastIndexInput, uint32_t lastIndex,
-                                 JSTaggedValue extend = JSTaggedValue::Undefined(),
+                                 const JSHandle<JSTaggedValue> extend,
                                  bool isIntermediateResult = false);
 
     static void GrowRegexpCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache);
 
     void ClearEntry(JSThread *thread, int entry);
     void SetEntry(JSThread *thread, int entry, JSTaggedValue &patten, JSTaggedValue &flags, JSTaggedValue &input,
-                  JSTaggedValue &lastIndexInputValue, JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue);
+                  JSTaggedValue &lastIndexInputValue, JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue,
+                  JSTaggedValue &resTableArray);
     void UpdateResultArray(JSThread *thread, int entry, JSTaggedValue resultArray, CacheType type);
     bool Match(int entry, JSTaggedValue &pattenStr, JSTaggedValue &flagsStr, JSTaggedValue &inputStr,
                JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend, CacheType type);
@@ -323,7 +331,8 @@ private:
     static constexpr int RESULT_SEARCH_INDEX = 11;
     // Extend index used for saving an additional parameter to judge cached
     static constexpr int EXTEND_INDEX = 12;
-    static constexpr int ENTRY_SIZE = 13;
+    static constexpr int CAPTURE_SIZE = 13;
+    static constexpr int ENTRY_SIZE = 14;
 };
 
 class RegExpGlobalResult : public TaggedArray {

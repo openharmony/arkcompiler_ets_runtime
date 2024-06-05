@@ -33,8 +33,16 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
+#ifdef CODE_SIGN_ENABLE
+#include "jit_buffer_integrity.h"
+#include "ecmascript/compiler/jit_signcode.h"
+#endif
 
 namespace panda::ecmascript::kungfu {
+#ifdef CODE_SIGN_ENABLE
+using namespace panda::ecmascript::kungfu;
+using namespace OHOS::Security::CodeSign;
+#endif
 class CompilerLog;
 
 using namespace panda::ecmascript;
@@ -79,7 +87,7 @@ void SavePC2CallSiteInfo(void *object, uint64_t pc, std::vector<uint64_t> callSi
     state.SavePC2CallSiteInfo(pc, callSiteInfo);
 }
 
-void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastCompileMode)
+void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastCompileMode, bool isJit)
 {
     maple::litecg::LiteCG liteCG(*lmirModule.GetModule(), litecgOptions);
     if (log.OutputLLIR()) {
@@ -88,7 +96,16 @@ void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastComp
     }
     liteCG.SetupLiteCGEmitMemoryManager(&codeInfo_, AllocateCodeSection, SaveFunc2Addr, SaveFunc2FPtoPrevSPDelta,
                                         SaveFunc2CalleeOffsetInfo, SavePC2DeoptInfo, SavePC2CallSiteInfo);
-    liteCG.DoCG();
+#ifdef CODE_SIGN_ENABLE
+    isJit &= IsSupportJitCodeSigner();
+    if (isJit) {
+        JitCodeSignerBase *jitSigner = CreateJitCodeSigner(JitBufferIntegrityLevel::Level0);
+        JitSignCode *singleton = JitSignCode::GetInstance();
+        singleton->Reset();
+        singleton->SetJPtr(jitSigner);
+    }
+#endif
+    liteCG.DoCG(isJit);
 }
 
 void LiteCGIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, size_t index,
@@ -103,9 +120,10 @@ void LiteCGIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlF
 void LiteCGIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                                          const panda::ecmascript::MethodLiteral *methodLiteral,
                                          const JSPandaFile *jsPandaFile, const std::string &methodName,
+                                         const FrameType frameType,
                                          bool enableOptInlining, [[maybe_unused]]bool enableBranchProfiling)
 {
-    circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    circuit->SetFrameType(frameType);
     CallSignature::CallConv conv;
     if (methodLiteral->IsFastCall()) {
         conv = CallSignature::CallConv::CCallConv;

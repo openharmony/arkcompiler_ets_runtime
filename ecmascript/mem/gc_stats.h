@@ -31,6 +31,7 @@ class SharedHeap;
 
 enum class GCType : int {
     STW_YOUNG_GC = 0,
+    PARTIAL_EDEN_GC,
     PARTIAL_YOUNG_GC,
     PARTIAL_OLD_GC,
     COMPRESS_GC,
@@ -110,6 +111,8 @@ public:
         switch (gcType_) {
             case GCType::STW_YOUNG_GC:
                 return "STWYoungGC";
+            case GCType::PARTIAL_EDEN_GC:
+                return "HPP EdenGC";
             case GCType::PARTIAL_YOUNG_GC:
                 return "HPP YoungGC";
             case GCType::PARTIAL_OLD_GC:
@@ -127,6 +130,15 @@ public:
 
     double GetAvgSurvivalRate()
     {
+        if (gcType_ == GCType::PARTIAL_EDEN_GC) {
+            size_t commitSize = GetRecordData(RecordData::EDEN_TOTAL_COMMIT);
+            if (commitSize == 0) {
+                return 0;
+            }
+            double copiedRate = double(GetRecordData(RecordData::EDEN_TOTAL_ALIVE)) / commitSize;
+            double promotedRate = double(GetRecordData(RecordData::EDEN_TOTAL_PROMOTE)) / commitSize;
+            return std::min(copiedRate + promotedRate, 1.0);
+        }
         double copiedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_ALIVE)) /
                             GetRecordData(RecordData::YOUNG_TOTAL_COMMIT);
         double promotedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_PROMOTE)) /
@@ -167,6 +179,39 @@ public:
     float GetScopeDuration(int pos) const
     {
         return scopeDuration_[pos];
+    }
+
+    void IncreaseTotalDuration(float duration)
+    {
+        gcDuration_ += duration;
+    }
+
+    size_t GetGCCount()
+    {
+        return GetRecordData(RecordData::SEMI_COUNT) + GetRecordData(RecordData::YOUNG_COUNT) +
+            GetRecordData(RecordData::OLD_COUNT) + GetRecordData(RecordData::COMPRESS_COUNT) +
+            GetRecordData(RecordData::SHARED_COUNT);
+    }
+
+    size_t GetGCDuration() const
+    {
+        return static_cast<size_t>(gcDuration_);
+    }
+
+    virtual size_t GetAccumulatedAllocateSize();
+    size_t GetAccumulatedFreeSize() const
+    {
+        return accumulatedFreeSize_;
+    }
+
+    void IncreaseFullGCLongTimeCount()
+    {
+        fullGCLongTimeCount_ += 1;
+    }
+
+    size_t GetFullGCLongTimeCount() const
+    {
+        return fullGCLongTimeCount_;
     }
 
 protected:
@@ -218,6 +263,11 @@ protected:
         concurrentMark_ = true;
     }
 
+    void IncreaseAccumulatedFreeSize(size_t size)
+    {
+        accumulatedFreeSize_ += size;
+    }
+
     size_t TimeToMicroseconds(Duration time)
     {
         return std::chrono::duration_cast<std::chrono::microseconds>(time).count();
@@ -239,7 +289,10 @@ protected:
     }
 
     const Heap *heap_ {nullptr};
+    float gcDuration_ = 0;
     size_t longPauseTime_ = 0;
+    size_t fullGCLongTimeCount_ = 0;
+    size_t accumulatedFreeSize_ = 0;
 
     static constexpr size_t DEFAULT_UPDATE_REFERENCE_SPEED = 10_MB;
     static constexpr size_t DEFAULT_OLD_CLEAR_NATIVE_OBJ_SPEED = 1_KB;
@@ -277,6 +330,7 @@ public:
 
     void RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason) override;
     void RecordStatisticAfterGC() override;
+    size_t GetAccumulatedAllocateSize() override;
 private:
     void PrintSharedGCDuration();
     void PrintSharedGCSummaryStatistic();

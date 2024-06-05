@@ -43,7 +43,6 @@ struct SourceMapInfo {
 struct MappingInfo {
     int32_t row = 0;
     int32_t col = 0;
-    std::string sources;
 };
 
 class SourceMapData final {

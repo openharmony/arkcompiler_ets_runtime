@@ -26,31 +26,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSHClassTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JSHClassTest : public BaseTestWithScope<false> {
 };
 
 HWTEST_F_L0(JSHClassTest, InitializeClass)
@@ -377,7 +353,7 @@ HWTEST_F_L0(JSHClassTest, TransitionToDictionary)
     JSObject::SetProperty(thread, Obj2, obj2Key, JSHandle<JSTaggedValue>(thread, JSTaggedValue(101)));
     JSObject::SetProperty(thread, Obj3, obj3Key, JSHandle<JSTaggedValue>(thread, JSTaggedValue(102)));
     // empty object
-    JSHClass::TransitionToDictionary(thread, Obj0);
+    JSObject::TransitionToDictionary(thread, Obj0);
     JSHandle<JSHClass> obj0Class(thread, Obj0->GetClass());
     EXPECT_TRUE(obj0Class->GetObjectSize() < obj0Class1->GetObjectSize());
     EXPECT_EQ(obj0Class->NumberOfProps(), 0U);
@@ -386,7 +362,7 @@ HWTEST_F_L0(JSHClassTest, TransitionToDictionary)
     // not empty object
     JSHandle<JSHClass> obj3Class(thread, Obj3->GetJSHClass());
     JSHClass::EnableProtoChangeMarker(thread, obj3Class);
-    JSHClass::TransitionToDictionary(thread, Obj2);
+    JSObject::TransitionToDictionary(thread, Obj2);
     // refresh users
     JSHandle<JSHClass> obj1Class(thread, Obj1->GetJSHClass());
     JSTaggedValue protoDetails = obj1Class->GetProtoChangeDetails();

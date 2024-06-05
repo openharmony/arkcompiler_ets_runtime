@@ -24,6 +24,7 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/jit/jit_thread.h"
+#include "ecmascript/jit/jit_dfx.h"
 
 namespace panda::ecmascript {
 class JitTask;
@@ -58,6 +59,7 @@ public:
     }
 
     void DeleteJitCompile(void *compiler);
+    int JitVerifyAndCopy(void *codeSigner, void *jit_memory, void *tmpBuffer, int size);
 
     void RequestInstallCode(std::shared_ptr<JitTask> jitTask);
     void InstallTasks(uint32_t threadId);
@@ -71,7 +73,7 @@ public:
     // dfx for jit warmup compile
     static void CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction);
 
-    bool ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &function);
+    void ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &function);
 
     bool IsAppJit() const
     {
@@ -87,28 +89,33 @@ public:
     {
         return isProfileNeedDump_;
     }
+
+    JitDfx *GetJitDfx() const
+    {
+        return jitDfx_;
+    }
     NO_COPY_SEMANTIC(Jit);
     NO_MOVE_SEMANTIC(Jit);
 
     class TimeScope : public ClockScope {
     public:
-        explicit TimeScope(CString message, CompilerTier tier = CompilerTier::FAST, bool outPutLog = true)
-            : message_(message), tier_(tier), outPutLog_(outPutLog) {}
-        explicit TimeScope() : message_(""), tier_(CompilerTier::FAST), outPutLog_(false) {}
+        explicit TimeScope(CString message, CompilerTier tier = CompilerTier::FAST, bool outPutLog = true,
+            bool isDebugLevel = false)
+            : message_(message), tier_(tier), outPutLog_(outPutLog), isDebugLevel_(isDebugLevel) {}
+        explicit TimeScope() : message_(""), tier_(CompilerTier::FAST), outPutLog_(false), isDebugLevel_(true) {}
         PUBLIC_API ~TimeScope();
     private:
         CString message_;
         CompilerTier tier_;
         bool outPutLog_;
+        bool isDebugLevel_;
     };
 
     class JitLockHolder {
     public:
-        explicit JitLockHolder(const CompilationEnv *env) : thread_(nullptr), scope_()
+        explicit JitLockHolder(JSThread *thread) : thread_(nullptr), scope_()
         {
-            if (env->IsJitCompiler()) {
-                JSThread *thread = env->GetJSThread();
-                ASSERT(thread->IsJitThread());
+            if (thread->IsJitThread()) {
                 thread_ = static_cast<JitThread*>(thread);
                 if (thread_->GetState() != ThreadState::RUNNING) {
                     thread_->ManagedCodeBegin();
@@ -156,7 +163,10 @@ public:
         {
             ASSERT(!thread->IsJitThread());
             if (Jit::GetInstance()->IsEnableFastJit() || Jit::GetInstance()->IsEnableBaselineJit()) {
+                Clock::time_point start = Clock::now();
                 thread_->GetJitLock()->Lock();
+                Jit::GetInstance()->GetJitDfx()->SetLockHoldingTime(
+                    std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - start).count());
                 locked_ = true;
             }
         }
@@ -188,6 +198,8 @@ private:
     std::unordered_map<uint32_t, std::deque<std::shared_ptr<JitTask>>> installJitTasks_;
     Mutex installJitTasksDequeMtx_;
     Mutex setEnableLock_;
+
+    JitDfx *jitDfx_ { nullptr };
     static constexpr int MIN_CODE_SPACE_SIZE = 1_KB;
 
     static void (*initJitCompiler_)(JSRuntimeOptions);
@@ -195,6 +207,7 @@ private:
     static bool(*jitFinalize_)(void*, JitTask*);
     static void*(*createJitCompilerTask_)(JitTask*);
     static void(*deleteJitCompile_)(void*);
+    static int (*jitVerifyAndCopy_)(void*, void*, void*, int);
     static void *libHandle_;
     static bool CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
         const CString &methodName, CompilerTier tier);

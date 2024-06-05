@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "builtin_test_util.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
 
 #include <ctime>
@@ -28,42 +29,7 @@ using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
 using BuiltinsArray = ecmascript::builtins::BuiltinsArray;
-class BuiltinsDateTimeFormatTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsDateTimeFormatTest : public BaseTestWithScope<true> {
 };
 
 // new DateTimeFormat(locale)
@@ -87,66 +53,6 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormatConstructor)
     EXPECT_TRUE(result.IsJSDateTimeFormat());
 }
 
-static JSTaggedValue BuiltinsDateTimeOptionsSet(JSThread *thread)
-{
-    auto globalConst = thread->GlobalConstants();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-
-    JSHandle<JSTaggedValue> weekDay = globalConst->GetHandledWeekdayString();
-    JSHandle<JSTaggedValue> dayPeriod = globalConst->GetHandledDayPeriodString();
-    JSHandle<JSTaggedValue> hourCycle = globalConst->GetHandledHourCycleString();
-    JSHandle<JSTaggedValue> timeZone = globalConst->GetHandledTimeZoneString();
-    JSHandle<JSTaggedValue> numicValue(factory->NewFromASCII("numeric")); // test numeric
-    JSHandle<JSTaggedValue> weekDayValue(factory->NewFromASCII("short")); // test short
-    JSHandle<JSTaggedValue> dayPeriodValue(factory->NewFromASCII("long")); // test long
-    JSHandle<JSTaggedValue> hourCycleValue(factory->NewFromASCII("h24")); // test h24
-    JSHandle<JSTaggedValue> timeZoneValue(factory->NewFromASCII("UTC")); // test UTC
-
-    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(6); // 6 : 6 length
-    keyArray->Set(thread, 0, globalConst->GetHandledYearString()); // 0 : 0 first position
-    keyArray->Set(thread, 1, globalConst->GetHandledMonthString()); // 1 : 1 second position
-    keyArray->Set(thread, 2, globalConst->GetHandledDayString()); // 2 : 2 third position
-    keyArray->Set(thread, 3, globalConst->GetHandledHourString()); // 3 : 3 fourth position
-    keyArray->Set(thread, 4, globalConst->GetHandledMinuteString()); // 4 : 4 fifth position
-    keyArray->Set(thread, 5, globalConst->GetHandledSecondString()); // 5 : 5 sixth position
-
-    uint32_t arrayLen = keyArray->GetLength();
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < arrayLen; i++) {
-        key.Update(keyArray->Get(thread, i));
-        JSObject::SetProperty(thread, optionsObj, key, numicValue);
-    }
-    JSObject::SetProperty(thread, optionsObj, weekDay, weekDayValue);
-    JSObject::SetProperty(thread, optionsObj, dayPeriod, dayPeriodValue);
-    JSObject::SetProperty(thread, optionsObj, hourCycle, hourCycleValue);
-    JSObject::SetProperty(thread, optionsObj, timeZone, timeZoneValue);
-    return optionsObj.GetTaggedValue();
-}
-
-static JSTaggedValue JSDateTimeFormatCreateWithLocaleTest(JSThread *thread, JSHandle<JSTaggedValue> &locale)
-{
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> newTarget(env->GetDateTimeFormatFunction());
-    JSHandle<JSObject> optionsObj(thread, BuiltinsDateTimeOptionsSet(thread));
-
-    JSHandle<JSTaggedValue> localesString = locale;
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
-    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsDateTimeFormat::DateTimeFormatConstructor(ecmaRuntimeCallInfo);
-    EXPECT_TRUE(result.IsJSDateTimeFormat());
-    TestHelper::TearDownFrame(thread, prev);
-    return result;
-}
-
 static double BuiltinsDateCreate(const double year, const double month, const double date)
 {
     const double day = JSDate::MakeDay(year, month, date);
@@ -155,83 +61,81 @@ static double BuiltinsDateCreate(const double year, const double month, const do
     return days;
 }
 
+enum class AlgorithmType {
+    ALGORITHM_FORMAT,
+    ALGORITHM_FORMAT_TO_PARTS,
+    ALGORITHM_FORMAT_RANGE,
+    ALGORITHM_FORMAT_RANGE_TO_PARTS,
+};
+
+static JSTaggedValue AtomicsAlgorithm(JSThread *thread, JSHandle<JSDateTimeFormat>& jsDateTimeFormat,
+    std::vector<JSTaggedValue> vals, uint32_t argLen, AlgorithmType type = AlgorithmType::ALGORITHM_FORMAT)
+{
+    auto ecmaRuntimeCallInfos = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), argLen);
+    ecmaRuntimeCallInfos->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfos->SetThis(jsDateTimeFormat.GetTaggedValue());
+    for (size_t i = 0; i < vals.size(); i++) {
+        ecmaRuntimeCallInfos->SetCallArg(i, vals[i]);
+    }
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfos);
+    JSTaggedValue result;
+    switch (type) {
+        case AlgorithmType::ALGORITHM_FORMAT:
+            result = BuiltinsDateTimeFormat::Format(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::ALGORITHM_FORMAT_TO_PARTS:
+            result = BuiltinsDateTimeFormat::FormatToParts(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::ALGORITHM_FORMAT_RANGE:
+            result = BuiltinsDateTimeFormat::FormatRange(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::ALGORITHM_FORMAT_RANGE_TO_PARTS:
+            result = BuiltinsDateTimeFormat::FormatRangeToParts(ecmaRuntimeCallInfos);
+            break;
+        default:
+            break;
+    }
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
+
+JSHandle<EcmaString> FormatCommon(JSThread *thread, std::string_view localeStr, double days)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> locale(factory->NewFromASCII(localeStr));
+    JSHandle<JSDateTimeFormat> jsDateTimeFormat =
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+
+    std::vector<JSTaggedValue> vals{JSTaggedValue::Undefined()};
+    auto result1 =
+        AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 6, AlgorithmType::ALGORITHM_FORMAT);  // 6: args length
+    JSHandle<JSFunction> jsFunction(thread, result1);
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<double>(days)));
+    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo2->SetFunction(jsFunction.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetThis(jsFunction.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetCallArg(0, value.GetTaggedValue());
+
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = JSFunction::Call(ecmaRuntimeCallInfo2);
+    TestHelper::TearDownFrame(thread, prev);
+    JSHandle<EcmaString> resultStr(thread, result2);
+    return resultStr;
+}
+
 // Format.Tostring(en-US)
 HWTEST_F_L0(BuiltinsDateTimeFormatTest, Format_001)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
-    JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, JSDateTimeFormatCreateWithLocaleTest(thread, locale));
-
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(jsDateTimeFormat.GetTaggedValue());
-    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue::Undefined());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsDateTimeFormat::Format(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
-    // jsDate supports zero to eleven, the month should be added with one
-    JSHandle<JSFunction> jsFunction(thread, result1);
-    JSArray *jsArray =
-        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
-    JSHandle<JSObject> jsObject(thread, jsArray);
-
     double days = BuiltinsDateCreate(2020, 10, 1);
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<double>(days)));
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(jsFunction), true, true, true);
-    JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
-    JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
-
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, value.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
-    JSHandle<EcmaString> resultStr(thread, result2);
+    auto resultStr = FormatCommon(thread, "en-US", days);
     EXPECT_STREQ("Sun, 11/1/2020, 24:00:00", EcmaStringAccessor(resultStr).ToCString().c_str());
 }
 
 // Format.Tostring(pt-BR)
 HWTEST_F_L0(BuiltinsDateTimeFormatTest, Format_002)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> locale(factory->NewFromASCII("pt-BR"));
-    JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, JSDateTimeFormatCreateWithLocaleTest(thread, locale));
-
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(jsDateTimeFormat.GetTaggedValue());
-    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue::Undefined());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result1 = BuiltinsDateTimeFormat::Format(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
-
-    JSHandle<JSFunction> jsFunction(thread, result1);
-    JSArray *jsArray =
-        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
-    JSHandle<JSObject> jsObject(thread, jsArray);
-
     double days = BuiltinsDateCreate(2020, 5, 11);
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<double>(days)));
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(jsFunction), true, true, true);
-    JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
-    JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
-
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, value.GetTaggedValue());
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
-    JSHandle<EcmaString> resultStr(thread, result2);
+    auto resultStr = FormatCommon(thread, "pt-BR", days);
     CString resStr = EcmaStringAccessor(resultStr).ToCString();
     // the index of string "qui" is zero.
     EXPECT_TRUE(resStr.find("qui") == 0);
@@ -244,20 +148,14 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatToParts)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDateTimeFormat.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue::Undefined());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsDateTimeFormat::FormatToParts(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
+    std::vector<JSTaggedValue> vals{JSTaggedValue::Undefined()};
+    auto result = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 6,
+                                   AlgorithmType::ALGORITHM_FORMAT_TO_PARTS);  // 6: args length
     JSHandle<JSArray> resultHandle(thread, result);
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
-    EXPECT_EQ(elements->GetLength(), 16U); // sixteen formatters
+    EXPECT_EQ(elements->GetLength(), 16U);  // sixteen formatters
 }
 
 // FormatRange(zh)
@@ -266,19 +164,15 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRange_001)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("zh"));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
     double days1 = BuiltinsDateCreate(2020, 10, 1);
     double days2 = BuiltinsDateCreate(2021, 6, 1);
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDateTimeFormat.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(days1)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(days2)));
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsDateTimeFormat::FormatRange(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(days1)),
+                                    JSTaggedValue(static_cast<double>(days2))};
+    auto result =
+        AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8, AlgorithmType::ALGORITHM_FORMAT_RANGE);  // 8: args length
 
     JSHandle<EcmaString> handleStr(thread, result);
     JSHandle<EcmaString> resultStr = factory->NewFromUtf8("2020/11/1周日 24:00:00 – 2021/7/1周四 24:00:00");
@@ -291,19 +185,15 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRange_002)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
     double days1 = BuiltinsDateCreate(2020, 12, 1);
     double days2 = BuiltinsDateCreate(2021, 2, 1);
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDateTimeFormat.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(days1)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(days2)));
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsDateTimeFormat::FormatRange(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(days1)),
+                                    JSTaggedValue(static_cast<double>(days2))};
+    auto result =
+        AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8, AlgorithmType::ALGORITHM_FORMAT_RANGE);  // 8: args length
 
     JSHandle<EcmaString> handleStr(thread, result);
     JSHandle<EcmaString> resultStr = factory->NewFromUtf8("Fri, 1/1/2021, 24:00:00 – Mon, 3/1/2021, 24:00:00");
@@ -315,23 +205,18 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRangeToParts)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("en-US"));
     JSHandle<JSDateTimeFormat> jsDateTimeFormat =
-       JSHandle<JSDateTimeFormat>(thread, JSDateTimeFormatCreateWithLocaleTest(thread, locale));
+        JSHandle<JSDateTimeFormat>(thread, BuiltTestUtil::JSDateTimeFormatCreateWithLocaleTest(thread, locale));
 
     double days1 = BuiltinsDateCreate(2020, 12, 1);
     double days2 = BuiltinsDateCreate(2021, 2, 1);
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDateTimeFormat.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(days1)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(days2)));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsDateTimeFormat::FormatRangeToParts(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(days1)),
+                                    JSTaggedValue(static_cast<double>(days2))};
+    auto result = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8,
+                                   AlgorithmType::ALGORITHM_FORMAT_RANGE_TO_PARTS);  // 8: args length
 
     JSHandle<JSArray> resultHandle(thread, result);
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
-    EXPECT_EQ(elements->GetLength(), 39U); // The number of characters of "Fri1/1/202124:00:00–Mon3/1/202124:00:00"
+    EXPECT_EQ(elements->GetLength(), 39U);  // The number of characters of "Fri1/1/202124:00:00–Mon3/1/202124:00:00"
 }
 }  // namespace panda::test
 

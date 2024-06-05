@@ -24,13 +24,21 @@ namespace panda::ecmascript {
 class Region;
 class TaggedObject;
 
+enum class SharedMarkType : uint8_t {
+    NOT_CONCURRENT_MARK,
+    CONCURRENT_MARK_INITIAL_MARK,
+    CONCURRENT_MARK_REMARK,
+};
+
 class SharedGCMarker {
 public:
     explicit SharedGCMarker(SharedGCWorkManager *workManger) : sWorkManager_(workManger) {}
     ~SharedGCMarker() = default;
 
     void ResetWorkManager(SharedGCWorkManager *workManager);
-    void MarkRoots(uint32_t threadId, EcmaVM *localVm);
+    void MarkRoots(uint32_t threadId, SharedMarkType markType);
+    void MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, SharedMarkType markType);
+    void MarkStringCache(uint32_t threadId);
     void MarkSerializeRoots(uint32_t threadId);
     void MarkSharedModule(uint32_t threadId);
     void ProcessMarkStack(uint32_t threadId);
@@ -39,13 +47,17 @@ public:
     inline void MarkValue(uint32_t threadId, ObjectSlot &slot);
     inline void MarkObject(uint32_t threadId, TaggedObject *object);
     inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot);
-    inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
-                                 ObjectSlot end);
-    inline void HandleDerivedRoots(Root type, ObjectSlot base, ObjectSlot derived,
-                                   uintptr_t baseOldObject);
+    inline void HandleLocalRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot);
+    inline void HandleLocalRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
+                                      ObjectSlot end);
+    inline void HandleLocalDerivedRoots(Root type, ObjectSlot base, ObjectSlot derived,
+                                        uintptr_t baseOldObject);
 
-    inline void ProcessLocalToShare(uint32_t threadId, Heap *localHeap);
+    inline void ProcessLocalToShareNoMarkStack(uint32_t threadId, Heap *localHeap, SharedMarkType markType);
     inline void HandleLocalToShareRSet(uint32_t threadId, Region *region);
+    // For now if record weak references from local to share in marking root, the slots
+    // may be invalid due to LocalGC, so only record these in remark.
+    inline void ConcurrentMarkHandleLocalToShareRSet(uint32_t threadId, bool isRemark, Region *region);
     inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref);
 
 private:

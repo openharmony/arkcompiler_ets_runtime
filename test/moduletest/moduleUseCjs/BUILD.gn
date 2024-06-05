@@ -33,12 +33,24 @@ host_moduletest_action("CjsDictionaryMode") {
   is_commonjs = true
 }
 
+host_moduletest_action("esm") {
+  deps = []
+  is_module = true
+}
+
+host_moduletest_action("moduleExportCjs") {
+  deps = []
+  is_module = true
+}
+
 host_moduletest_action("moduleUseCjs") {
   extra_modules = [ "Cjs" ]
   deps = [
     ":gen_CjsDictionaryMode_abc",
     ":gen_Cjs_abc",
     ":gen_cjsWithoutExports_abc",
+    ":gen_esm_abc",
+    ":gen_moduleExportCjs_abc",
     ":gen_someArgsCjs_abc",
   ]
   is_module = true

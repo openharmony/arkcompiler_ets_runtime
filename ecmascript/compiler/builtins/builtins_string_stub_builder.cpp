@@ -1008,7 +1008,7 @@ void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef n
     }
 }
 
-void BuiltinsStringStubBuilder::Trim(GateRef glue, GateRef thisValue, GateRef numArgs [[maybe_unused]],
+void BuiltinsStringStubBuilder::Trim(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
     Variable *res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
@@ -2289,7 +2289,7 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
         {
             Label defvalue(env);
             GateRef resValue = CallNGCRuntime(glue, RTSTUB_ID(LocaleCompareNoGc), {glue, locales, thisValue, arg0});
-            BRANCH(TaggedIsUndefined(resValue), slowPath, &defvalue);
+            BRANCH(TaggedIsUndefined(resValue), &uncacheable, &defvalue);
             Bind(&defvalue);
             *res = resValue;
             Jump(exit);
@@ -2732,7 +2732,6 @@ void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRe
     Label posTagNotExists(env);
     Label posTagIsNumber(env);
     Label posTagIsInt(env);
-    Label posTagIsDouble(env);
     Label afterCallArg(env);
     Label endPosLessThanZero(env);
     Label endPosNotLessThanZero(env);
@@ -2768,29 +2767,11 @@ void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRe
                     GateRef posTag = GetCallArg1(numArgs);
                     BRANCH(TaggedIsNumber(posTag), &posTagIsNumber, slowPath);
                     Bind(&posTagIsNumber);
-                    BRANCH(TaggedIsInt(posTag), &posTagIsInt, &posTagIsDouble);
+                    BRANCH(TaggedIsInt(posTag), &posTagIsInt, slowPath);
                     Bind(&posTagIsInt);
                     {
                         searchPos = GetInt32OfTInt(posTag);
                         Jump(&afterCallArg);
-                    }
-                    Bind(&posTagIsDouble);
-                    {
-                        Label posTagIsPositiveInfinity(env);
-                        Label posTagNotPositiveInfinity(env);
-                        GateRef doubleVal = GetDoubleOfTDouble(posTag);
-                        BRANCH(DoubleEqual(doubleVal, Double(builtins::BuiltinsNumber::POSITIVE_INFINITY)),
-                            &posTagIsPositiveInfinity, &posTagNotPositiveInfinity);
-                        Bind(&posTagIsPositiveInfinity);
-                        {
-                            searchPos = thisLen;
-                            Jump(&afterCallArg);
-                        }
-                        Bind(&posTagNotPositiveInfinity);
-                        {
-                            searchPos = DoubleToInt(glue, doubleVal);
-                            Jump(&afterCallArg);
-                        }
                     }
                 }
                 Bind(&posTagNotExists);
@@ -2956,6 +2937,7 @@ void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRe
     Label fillLessThanPad(env);
     Label fillNotLessThanPad(env);
     Label resultString(env);
+    Label newLengthInRange(env);
 
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -2970,7 +2952,8 @@ void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRe
             Bind(&lengthIsInt);
             {
                 newStringLength = GetInt32OfTInt(newLength);
-                Jump(&next);
+                BRANCH(Int32GreaterThanOrEqual(*newStringLength, Int32(EcmaString::MAX_STRING_LENGTH)),
+                    slowPath, &next);
             }
             Bind(&lengthNotInt);
             {
@@ -2980,6 +2963,9 @@ void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRe
                 Bind(&newLengthIsNotNaN);
                 BRANCH(DoubleIsINF(GetDoubleOfTDouble(newLength)), slowPath, &newLengthIsNotINF);
                 Bind(&newLengthIsNotINF);
+                BRANCH(DoubleGreaterThanOrEqual(GetDoubleOfTDouble(newLength), Double(EcmaString::MAX_STRING_LENGTH)),
+                    slowPath, &newLengthInRange);
+                Bind(&newLengthInRange);
                 newStringLength = DoubleToInt(glue, GetDoubleOfTDouble(newLength));
                 Jump(&next);
             }
@@ -3076,6 +3062,7 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
     Label isNotSelf(env);
     Label padLengthIsNotNaN(env);
     Label padLengthIsNotINF(env);
+    Label newLengthInRange(env);
 
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -3090,7 +3077,8 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
             Bind(&lengthIsInt);
             {
                 newStringLength = GetInt32OfTInt(newLength);
-                Jump(&next);
+                BRANCH(Int32GreaterThanOrEqual(*newStringLength, Int32(EcmaString::MAX_STRING_LENGTH)),
+                    slowPath, &next);
             }
             Bind(&lengthNotInt);
             {
@@ -3100,6 +3088,9 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
                 Bind(&padLengthIsNotNaN);
                 BRANCH(DoubleIsINF(GetDoubleOfTDouble(newLength)), slowPath, &padLengthIsNotINF);
                 Bind(&padLengthIsNotINF);
+                BRANCH(DoubleGreaterThanOrEqual(GetDoubleOfTDouble(newLength), Double(EcmaString::MAX_STRING_LENGTH)),
+                    slowPath, &newLengthInRange);
+                Bind(&newLengthInRange);
                 newStringLength = DoubleToInt(glue, GetDoubleOfTDouble(newLength));
                 Jump(&next);
             }

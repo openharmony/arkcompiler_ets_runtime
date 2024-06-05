@@ -139,8 +139,6 @@ public:
 
     std::string GetFileNameSymbolName(const std::string &fileName) const;
 
-    void SwitchAssertBoundary(StmtNode &stmt, MapleVector<BaseNode *> &argsPrintf);
-
     void LowerAssertBoundary(StmtNode &stmt, BlockNode &block, BlockNode &newBlk, std::vector<StmtNode *> &abortNode);
 
     StmtNode *LowerIntrinsicopDassign(const DassignNode &dassign, IntrinsicopNode &intrinsic, BlockNode &block);
@@ -148,8 +146,6 @@ public:
     void LowerGCMalloc(const BaseNode &node, const GCMallocNode &gcNode, BlockNode &blkNode, bool perm = false);
 
     std::string GetNewArrayFuncName(const uint32 elemSize, const bool perm) const;
-
-    void LowerJarrayMalloc(const StmtNode &stmt, const JarrayMallocNode &node, BlockNode &block, bool perm = false);
 
     BaseNode *LowerAddrof(AddrofNode &addrof) const
     {
@@ -166,7 +162,6 @@ public:
     BaseNode *LowerArrayDim(ArrayNode &array, int32 dim);
     BaseNode *LowerArrayForLazyBiding(BaseNode &baseNode, BaseNode &offsetNode, const BaseNode &parent);
     BaseNode *LowerArray(ArrayNode &array, const BaseNode &parent);
-    BaseNode *LowerCArray(ArrayNode &array);
 
     DassignNode *SaveReturnValueInLocal(StIdx, uint16);
     BaseNode *NeedRetypeWhenLowerCallAssigned(PrimType pType);
@@ -311,15 +306,10 @@ private:
     }
 
     BaseNode *MergeToCvtType(PrimType dtyp, PrimType styp, BaseNode &src) const;
-    BaseNode *LowerJavascriptIntrinsicop(IntrinsicopNode &intrinNode, const IntrinDesc &desc);
     StmtNode *CreateStmtCallWithReturnValue(const IntrinsicopNode &intrinNode, const MIRSymbol &ret, PUIdx bFunc,
                                             BaseNode *extraInfo = nullptr) const;
     StmtNode *CreateStmtCallWithReturnValue(const IntrinsicopNode &intrinNode, PregIdx retPregIdx, PUIdx bFunc,
                                             BaseNode *extraInfo = nullptr) const;
-    BaseNode *LowerIntrinsicop(const BaseNode &parent, IntrinsicopNode &intrinNode);
-    BaseNode *LowerIntrinJavaMerge(const BaseNode &parent, IntrinsicopNode &intrinNode);
-    BaseNode *LowerIntrinJavaArrayLength(const BaseNode &parent, IntrinsicopNode &intrinNode);
-    BaseNode *LowerIntrinsicopWithType(const BaseNode &parent, IntrinsicopNode &intrinNode);
 
     MIRType *GetArrayNodeType(BaseNode &baseNode);
     IreadNode &GetLenNode(BaseNode &opnd0);
@@ -332,8 +322,6 @@ private:
     StmtNode *GenIcallNode(PUIdx &funcCalled, IcallNode &origCall);
     BlockNode *GenBlockNode(StmtNode &newCall, const CallReturnVector &p2nRets, const Opcode &opcode,
                             const PUIdx &funcCalled, bool handledAtLowerLevel, bool uselvar);
-    BaseNode *GetClassInfoExprFromRuntime(const std::string &classInfo);
-    BaseNode *GetClassInfoExprFromArrayClassCache(const std::string &classInfo);
     BaseNode *GetClassInfoExpr(const std::string &classInfo) const;
     BaseNode *GetBaseNodeFromCurFunc(MIRFunction &curFunc, bool isJarray);
 

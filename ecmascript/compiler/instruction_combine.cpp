@@ -123,7 +123,7 @@ template <typename signed_type> inline signed_type ShlWithWraparound(signed_type
 {
     using unsigned_type = typename std::make_unsigned<signed_type>::type;
     const unsigned_type kMask = (sizeof(a) * 8) - 1;
-    return static_cast<signed_type>(static_cast<unsigned_type>(a) << (b & kMask));
+    return static_cast<signed_type>(static_cast<unsigned_type>(a) << (static_cast<unsigned_type>(b) & kMask));
 }
 
 template <typename signed_type> inline signed_type NegateWithWraparound(signed_type a)
@@ -334,7 +334,7 @@ GateRef InstructionCombine::VisitICMP(GateRef gate)
                 Int64BinopMatcher orOp(andOp.Left().Gate(), circuit_);
                 auto constant2 = andOp.Right().ResolvedValue();
                 auto constant1 = orOp.Right().HasResolvedValue() ? orOp.Right().ResolvedValue() : 0;
-                bool flag = ((constant1 & constant2) != 0);
+                bool flag = (constant1 & constant2) != 0;
                 result = flag ? builder_.False() : Circuit::NullGate();
             }
         }
@@ -1113,8 +1113,7 @@ GateRef InstructionCombine::ReduceWord64Xor(GateRef gate)
     }
     // K ^ K => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int64(static_cast<uint64_t>(m.Left().ResolvedValue()) ^
-            static_cast<uint64_t>(m.Right().ResolvedValue()));
+        return builder_.Int64(m.Left().ResolvedValue() ^ m.Right().ResolvedValue());
     }
     if (m.LeftEqualsRight()) {
         return builder_.Int64(0); // x ^ x => 0
@@ -1138,8 +1137,7 @@ GateRef InstructionCombine::ReduceWord32Xor(GateRef gate)
     }
     // K ^ K => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int32(static_cast<uint32_t>(m.Left().ResolvedValue()) ^
-            static_cast<uint32_t>(m.Right().ResolvedValue()));
+        return builder_.Int32(m.Left().ResolvedValue() ^ m.Right().ResolvedValue());
     }
     if (m.LeftEqualsRight()) {
         return builder_.Int32(0); // x ^ x => 0
@@ -1162,7 +1160,7 @@ GateRef InstructionCombine::ReduceWord64Lsr(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        // The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
+        // 63: The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
         return builder_.Int64(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 63));
     }
     return Circuit::NullGate();
@@ -1176,7 +1174,7 @@ GateRef InstructionCombine::ReduceWord32Lsr(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        // The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
+        // 31: The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
         return builder_.Int32(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 31));
     }
     // (m >>> s) == 0 implies ((x & m) >>> s) == 0
@@ -1201,7 +1199,7 @@ GateRef InstructionCombine::ReduceWord64Asr(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        // The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
+        // 63: The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
         return builder_.Int64(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 63));
     }
     return Circuit::NullGate();
@@ -1215,7 +1213,7 @@ GateRef InstructionCombine::ReduceWord32Asr(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        // The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
+        // 31: The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
         return builder_.Int32(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 31));
     }
     if (m.Left().IsmInt32LSL()) {

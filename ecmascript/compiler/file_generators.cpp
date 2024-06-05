@@ -29,6 +29,9 @@
 #include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
 #include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
 #include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
+#ifdef CODE_SIGN_ENABLE
+#include "ecmascript/compiler/jit_signcode.h"
+#endif
 #endif
 
 namespace panda::ecmascript::kungfu {
@@ -304,9 +307,9 @@ uintptr_t Module::GetSectionAddr(ElfSecName sec) const
     return assembler_->GetSectionAddr(sec);
 }
 
-void Module::RunAssembler(const CompilerLog &log, bool fastCompileMode)
+void Module::RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit)
 {
-    assembler_->Run(log, fastCompileMode);
+    assembler_->Run(log, fastCompileMode, isJit);
 }
 
 void Module::DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
@@ -507,7 +510,7 @@ void StubFileGenerator::SaveStubFile(const std::string &filename)
     stubInfo_.Save(filename, cfg_.GetTriple());
 }
 
-void AOTFileGenerator::CompileLatestModuleThenDestroy()
+void AOTFileGenerator::CompileLatestModuleThenDestroy(bool isJit)
 {
     Module *latestModule = GetLatestModule();
 #ifdef COMPILE_MAPLE
@@ -528,7 +531,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     {
         TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));
         bool fastCompileMode = compilationEnv_->GetJSOptions().GetFastAOTCompileMode();
-        latestModule->RunAssembler(*(log_), fastCompileMode);
+        latestModule->RunAssembler(*(log_), fastCompileMode, isJit);
     }
     {
         TimeScope timescope("LLVMCodeGen", const_cast<CompilerLog *>(log_));
@@ -610,6 +613,10 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
         return;
     }
+
+    if (log_->OutputASM()) {
+        PrintMergedCodeComment();
+    }
     GenerateMergedStackmapSection();
 
     // get func entry Map
@@ -636,6 +643,14 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     machineCodeDesc.rodataSizeBeforeText = rodataSizeBeforeText;
     machineCodeDesc.rodataAddrAfterText = rodataAddrAfterText;
     machineCodeDesc.rodataSizeAfterText = rodataSizeAfterText;
+
+#ifdef CODE_SIGN_ENABLE
+    machineCodeDesc.codeSigner = 0;
+    JitSignCode *singleton = JitSignCode::GetInstance();
+    LOG_JIT(DEBUG) << "In GetMemoryCodeInfos, signer = " << singleton->GetJPtr();
+    LOG_JIT(DEBUG) << "     signTableSize = " << singleton->signTableSize;
+    machineCodeDesc.codeSigner = reinterpret_cast<uintptr_t>(singleton->GetJPtr());
+#endif
 
     uint64_t stackMapPtr = reinterpret_cast<uint64_t>(moduleSectionDes.GetArkStackMapSharePtr().get());
     size_t stackMapSize = moduleSectionDes.GetArkStackMapSize();

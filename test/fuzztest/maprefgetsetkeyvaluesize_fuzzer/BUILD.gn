@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ##################################fuzztest#####################################
-ohos_fuzztest("MapRefGetSetKeyvalueSize_FuzzerTest") {
+ohos_fuzztest("MapRefGetSetKeyvalueSizeFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/maprefgetsetkeyvaluesize_fuzzer"
@@ -42,5 +42,5 @@ ohos_fuzztest("MapRefGetSetKeyvalueSize_FuzzerTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":MapRefGetSetKeyvalueSize_FuzzerTest" ]
+  deps += [ ":MapRefGetSetKeyvalueSizeFuzzTest" ]
 }

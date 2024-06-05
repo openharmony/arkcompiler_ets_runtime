@@ -184,3 +184,23 @@ Uint8Array test success !!!
 Uint8ClampedArray test success !!!
 BigInt64Array test success !!!
 BigUint64Array test success !!!
+true
+true
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+-0 -0 0 0 1 2 3 NaN NaN
+-0 -0 0 0 1 2 3 NaN NaN
+Class extends Float64Array test success!
+Class extends Float32Array test success!
+Class extends Int32Array test success!
+Class extends Int16Array test success!
+Class extends Int8Array test success!
+Class extends Uint32Array test success!
+Class extends Uint16Array test success!
+Class extends Uint8Array test success!
+Class extends Uint8ClampedArray test success!

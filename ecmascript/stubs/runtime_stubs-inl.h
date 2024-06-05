@@ -1108,7 +1108,7 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
         profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX, JSTaggedValue::Hole());
         ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + 1);
     }
-    function->SetProfileTypeInfo(thread, profileTypeInfo.GetTaggedValue());
+    JSFunction::SetProfileTypeInfo(thread, function, JSHandle<JSTaggedValue>::Cast(profileTypeInfo));
     return profileTypeInfo.GetTaggedValue();
 }
 
@@ -1495,14 +1495,15 @@ void RuntimeStubs::RuntimeThrowPatternNonCoercible(JSThread *thread)
 {
     JSHandle<EcmaString> msg(thread->GlobalConstants()->GetHandledObjNotCoercibleString());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, false).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread,
+        factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, StackCheck::NO).GetTaggedValue());
 }
 
 void RuntimeStubs::RuntimeThrowDeleteSuperProperty(JSThread *thread)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> info = factory->NewFromASCII("Can not delete super property");
-    JSHandle<JSObject> errorObj = factory->NewJSError(base::ErrorType::REFERENCE_ERROR, info,  false);
+    JSHandle<JSObject> errorObj = factory->NewJSError(base::ErrorType::REFERENCE_ERROR, info,  StackCheck::NO);
     THROW_NEW_ERROR_AND_RETURN(thread, errorObj.GetTaggedValue());
 }
 
@@ -1512,8 +1513,8 @@ void RuntimeStubs::RuntimeThrowUndefinedIfHole(JSThread *thread, const JSHandle<
     JSHandle<EcmaString> info = factory->NewFromASCII(" is not initialized");
 
     JSHandle<EcmaString> msg = factory->ConcatFromString(obj, info);
-    THROW_NEW_ERROR_AND_RETURN(thread,
-                               factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, false).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::REFERENCE_ERROR,
+        msg, StackCheck::NO).GetTaggedValue());
 }
 
 void RuntimeStubs::RuntimeThrowIfNotObject(JSThread *thread)
@@ -1528,7 +1529,8 @@ void RuntimeStubs::RuntimeThrowConstAssignment(JSThread *thread, const JSHandle<
     JSHandle<EcmaString> info = factory->NewFromASCII("Assignment to const variable ");
 
     JSHandle<EcmaString> msg = factory->ConcatFromString(info, value);
-    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, false).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR,
+                                                           msg, StackCheck::NO).GetTaggedValue());
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdGlobalRecord(JSThread *thread, JSTaggedValue key)
@@ -1582,8 +1584,8 @@ JSTaggedValue RuntimeStubs::RuntimeThrowReferenceError(JSThread *thread, const J
     JSHandle<EcmaString> info = factory->NewFromUtf8(desc);
     JSHandle<EcmaString> msg = factory->ConcatFromString(propName, info);
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread,
-                                     factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, false).GetTaggedValue(),
-                                     JSTaggedValue::Exception());
+        factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, StackCheck::NO).GetTaggedValue(),
+        JSTaggedValue::Exception());
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdGlobalVarFromProto(JSThread *thread, const JSHandle<JSTaggedValue> &globalObj,
@@ -2802,10 +2804,10 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
     JSTaggedValue resultValue;
     if (isAotMethod && ctor->IsClassConstructor()) {
         uint32_t numArgs = ctor->GetCallTarget()->GetNumArgsWithCallField();
-        bool needPushUndefined = numArgs > size;
+        bool needPushArgv = numArgs != size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
         if (ctor->GetCallTarget()->IsFastCall()) {
-            if (needPushUndefined) {
+            if (needPushArgv) {
                 values.reserve(numArgs + NUM_MANDATORY_JSFUNC_ARGS - 1);
                 for (uint32_t i = size; i < numArgs; i++) {
                     values.emplace_back(JSTaggedValue::VALUE_UNDEFINED);
@@ -2814,7 +2816,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
             }
             resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
         } else {
-            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushUndefined);
+            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushArgv);
         }
     } else {
         ctor->GetCallTarget()->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot
@@ -2954,9 +2956,14 @@ JSTaggedType *RuntimeStubs::GetActualArgv(JSThread *thread)
     FrameIterator it(current, thread);
     ASSERT(it.IsLeaveFrame());
     it.Advance<GCVisitedFlag::VISITED>();
-    ASSERT(it.IsOptimizedJSFunctionFrame());
-    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
-    return optimizedJSFunctionFrame->GetArgv(it);
+    ASSERT(it.IsAotOrJitFunctionFrame());
+    if (it.IsFastJitFunctionFrame()) {
+        auto optimizedJSJITFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
+        return optimizedJSJITFunctionFrame->GetArgv(it);
+    } else {
+        auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+        return optimizedJSFunctionFrame->GetArgv(it);
+    }
 }
 
 JSTaggedType *RuntimeStubs::GetActualArgvFromStub(JSThread *thread)
@@ -2967,7 +2974,11 @@ JSTaggedType *RuntimeStubs::GetActualArgvFromStub(JSThread *thread)
     it.Advance<GCVisitedFlag::VISITED>();
     ASSERT(it.IsOptimizedFrame());
     it.Advance<GCVisitedFlag::VISITED>();
-    ASSERT(it.IsOptimizedJSFunctionFrame());
+    ASSERT(it.IsAotOrJitFunctionFrame());
+    if (it.IsFastJitFunctionFrame()) {
+        auto optimizedJSJITFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
+        return optimizedJSJITFunctionFrame->GetArgv(it);
+    }
     auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
     return optimizedJSFunctionFrame->GetArgv(it);
 }
@@ -3277,6 +3288,69 @@ JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, const JS
         return JSTaggedValue::Hole().GetRawData();
     }
     return JSTaggedValue::Cast(static_cast<void *>(str));
+}
+
+OperationResult RuntimeStubs::RuntimeCheckProxyGetResult(JSThread *thread, const JSHandle<JSTaggedValue> &resultHandle,
+    const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &key)
+{
+    JSHandle<JSTaggedValue> exceptionHandle(thread, JSTaggedValue::Exception());
+    PropertyDescriptor targetDesc(thread);
+    bool found = JSTaggedValue::GetOwnProperty(thread, target, key, targetDesc);
+    // 12. ReturnIfAbrupt(targetDesc).
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+
+    // 13. If targetDesc is not undefined, then
+    if (found) {
+        // a. If IsDataDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is
+        // false, then
+        if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && !targetDesc.IsWritable()) {
+            // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
+            if (!JSTaggedValue::SameValue(resultHandle.GetTaggedValue(), targetDesc.GetValue().GetTaggedValue())) {
+                THROW_TYPE_ERROR_AND_RETURN(
+                    thread, "JSProxy::GetProperty: TypeError of trapResult",
+                    OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+            }
+        }
+        // b. If IsAccessorDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Get]] is
+        // undefined, then
+        if (targetDesc.IsAccessorDescriptor() && !targetDesc.IsConfigurable() &&
+            targetDesc.GetGetter()->IsUndefined()) {
+            // i. If trapResult is not undefined, throw a TypeError exception.
+            if (!resultHandle.GetTaggedValue().IsUndefined()) {
+                THROW_TYPE_ERROR_AND_RETURN(
+                    thread, "JSProxy::GetProperty: trapResult is not undefined",
+                    OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+            }
+        }
+    }
+    // 14. Return trapResult.
+    return OperationResult(thread, resultHandle.GetTaggedValue(), PropertyMetaData(true));
+}
+
+bool RuntimeStubs::RuntimeCheckProxySetResult(JSThread *thread, const JSHandle<JSTaggedValue> &value,
+    const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &key)
+{
+    PropertyDescriptor targetDesc(thread);
+    bool found = JSTaggedValue::GetOwnProperty(thread, target, key, targetDesc);
+    // 14. If targetDesc is not undefined, then
+    if (found) {
+        // a. If IsDataDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is
+        // false, then
+        if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && !targetDesc.IsWritable()) {
+            // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
+            if (!JSTaggedValue::SameValue(value, targetDesc.GetValue())) {
+                THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of trapResult", false);
+            }
+        }
+        // b. If IsAccessorDescriptor(targetDesc) and targetDesc.[[Configurable]] is false, then
+        // i. If targetDesc.[[Set]] is undefined, throw a TypeError exception.
+        if (targetDesc.IsAccessorDescriptor() && !targetDesc.IsConfigurable() &&
+            targetDesc.GetSetter()->IsUndefined()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of AccessorDescriptor", false);
+        }
+    }
+    return true;
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

@@ -131,11 +131,14 @@ class JSAPITreeSetIterator;
 class JSAPITreeMapIterator;
 class JSAPIVector;
 class JSAPIVectorIterator;
+class JSAPIBitVector;
+class JSAPIBitVectorIterator;
 class JSAPILinkedList;
 class JSAPIList;
 class JSAPILinkedListIterator;
 class JSAPIListIterator;
 class ModuleNamespace;
+class NativeModuleError;
 class ImportEntry;
 class LocalExportEntry;
 class IndirectExportEntry;
@@ -172,6 +175,7 @@ class ProfileTypeInfo;
 class MachineCode;
 class ClassInfoExtractor;
 class AOTLiteralInfo;
+class ProfileTypeInfoCell;
 class VTable;
 namespace kungfu {
 class TSHClassGenerator;
@@ -187,6 +191,7 @@ using base::ErrorType;
 
 enum class RemoveSlots { YES, NO };
 enum class GrowMode { KEEP, GROW };
+enum class StackCheck { YES, NO };
 
 class ObjectFactory {
 public:
@@ -203,10 +208,10 @@ public:
     JSHandle<Program> NewProgram();
 
     JSHandle<JSObject> PUBLIC_API GetJSError(const ErrorType &errorType, const char *data = nullptr,
-        bool needCheckStack = true);
+        StackCheck needCheckStack = StackCheck::YES);
 
     JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
-        bool needCheckStack = true);
+        StackCheck needCheckStack = StackCheck::YES);
 
     JSHandle<JSObject> NewJSAggregateError();
 
@@ -533,6 +538,8 @@ public:
                                                MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSFunction> NewJSFunctionByHClassWithoutAccessor(const void *func,
+        const JSHandle<JSHClass> &clazz, FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = OLD_SPACE);
 
     JSHandle<Method> NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
@@ -550,7 +557,13 @@ public:
 
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
+#ifdef ENABLE_JITFORT
+    TaggedObject *NewMachineCodeObject(size_t length, MachineCodeDesc &desc);
+    JSHandle<MachineCode> SetMachineCodeObjectData(TaggedObject *obj, size_t length,
+        MachineCodeDesc &desc, JSHandle<Method> &method);
+#else
     JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc, JSHandle<Method> &method);
+#endif
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 
@@ -608,6 +621,9 @@ public:
     JSHandle<JSHClass> PUBLIC_API NewEcmaHClass(uint32_t size, JSType type,
                                                 uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
+    JSHandle<JSHClass> PUBLIC_API NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+        const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout);
+
     // It is used to provide iterators for non ECMA standard jsapi containers.
     JSHandle<JSAPIPlainArray> NewJSAPIPlainArray(uint32_t capacity);
     JSHandle<JSAPIPlainArrayIterator> NewJSAPIPlainArrayIterator(const JSHandle<JSAPIPlainArray> &plainarray,
@@ -634,6 +650,8 @@ public:
     JSHandle<JSAPIStackIterator> NewJSAPIStackIterator(const JSHandle<JSAPIStack> &stack);
     JSHandle<JSAPIVector> NewJSAPIVector(uint32_t capacity);
     JSHandle<JSAPIVectorIterator> NewJSAPIVectorIterator(const JSHandle<JSAPIVector> &vector);
+    JSHandle<JSAPIBitVector> NewJSAPIBitVector(uint32_t capacity);
+    JSHandle<JSAPIBitVectorIterator> NewJSAPIBitVectorIterator(const JSHandle<JSAPIBitVector> &bitVector);
     JSHandle<JSAPIHashMapIterator> NewJSAPIHashMapIterator(const JSHandle<JSAPIHashMap> &hashMap, IterationKind kind);
     JSHandle<JSAPIHashSetIterator> NewJSAPIHashSetIterator(const JSHandle<JSAPIHashSet> &hashSet, IterationKind kind);
     JSHandle<TaggedHashArray> NewTaggedHashArray(uint32_t length);
@@ -644,6 +662,7 @@ public:
                                      const JSHandle<JSTaggedValue> &value);
     // --------------------------------------module--------------------------------------------
     JSHandle<ModuleNamespace> NewModuleNamespace();
+    JSHandle<NativeModuleError> NewNativeModuleError();
     JSHandle<ImportEntry> NewImportEntry();
     JSHandle<ImportEntry> NewImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                          const JSHandle<JSTaggedValue> &importName,
@@ -688,6 +707,7 @@ public:
 
     // ---------------------------------------Used by AOT------------------------------------------------
     JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<ProfileTypeInfoCell> NewProfileTypeInfoCell(const JSHandle<JSTaggedValue> &value);
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
                                      uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
@@ -822,6 +842,8 @@ public:
     JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
 
     JSHandle<LayoutInfo> PUBLIC_API CreateSLayoutInfo(uint32_t properties);
+
+    JSHandle<ProfileTypeInfoCell> NewSEmptyProfileTypeInfoCell();
 
     JSHandle<TaggedArray> NewSEmptyArray(); // only used for EcmaVM.
 

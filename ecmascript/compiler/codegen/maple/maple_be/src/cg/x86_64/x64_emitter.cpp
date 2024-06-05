@@ -317,6 +317,7 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
             break;
         /* floating point mov */
         case x64::MOP_movd_fr_r:
+        case x64::MOP_movd_r_fr:
             assmbler.Mov(TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movq_fr_r:

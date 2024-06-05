@@ -90,17 +90,6 @@ bool WorkManager::Push(uint32_t threadId, TaggedObject *object)
     return true;
 }
 
-bool WorkManager::Push(uint32_t threadId, TaggedObject *object, Region *region)
-{
-    if (Push(threadId, object)) {
-        auto klass = object->GetClass();
-        auto size = klass->SizeFromJSHClass(object);
-        region->IncreaseAliveObjectSafe(size);
-        return true;
-    }
-    return false;
-}
-
 void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
 {
     WorkNode *&inNode = works_.at(threadId).inNode_;
@@ -112,6 +101,38 @@ void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
             heap_->PostParallelGCTask(parallelGCTaskPhase_);
         }
     }
+}
+
+bool WorkManager::PushPendingObject(uint32_t threadId, TaggedObject *object)
+{
+    WorkNode *&pendingNode = works_.at(threadId).pendingNode_;
+    if (!pendingNode->PushObject(ToUintPtr(object))) {
+        pendingStack_.Push(pendingNode);
+        pendingNode = AllocateWorkNode();
+        return pendingNode->PushObject(ToUintPtr(object));
+    }
+    return true;
+}
+
+void WorkManager::PushPendingNodeToGlobal(uint32_t threadId)
+{
+    WorkNode *&pendingNode = works_.at(threadId).pendingNode_;
+    if (!pendingNode->IsEmpty()) {
+        pendingStack_.Push(pendingNode);
+        pendingNode = AllocateWorkNode();
+    }
+}
+
+bool WorkManager::PopPendingObject(uint32_t threadId, TaggedObject **object)
+{
+    WorkNode *&pendingNode = works_.at(threadId).pendingNode_;
+    if (!pendingNode->PopObject(reinterpret_cast<uintptr_t *>(object))) {
+        if (!pendingStack_.Pop(&works_.at(threadId).pendingNode_)) {
+            return false;
+        }
+        return pendingNode->PopObject(reinterpret_cast<uintptr_t *>(object));
+    }
+    return true;
 }
 
 bool WorkManager::Pop(uint32_t threadId, TaggedObject **object)
@@ -154,7 +175,7 @@ size_t WorkManager::Finish()
         holder.pendingUpdateSlots_.clear();
         aliveSize += holder.aliveSize_;
     }
-
+    pendingStack_.ResetTop();
     FinishBase();
     initialized_.store(false, std::memory_order_release);
     return aliveSize;
@@ -174,10 +195,12 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
 {
     parallelGCTaskPhase_ = taskPhase;
     InitializeBase();
+    ASSERT(pendingStack_.Top() == nullptr);
     for (uint32_t i = 0; i < threadNum_; i++) {
         WorkNodeHolder &holder = works_.at(i);
         holder.inNode_ = AllocateWorkNode();
         holder.outNode_ = AllocateWorkNode();
+        holder.pendingNode_ = AllocateWorkNode();
         holder.weakQueue_ = new ProcessQueue();
         holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
         holder.aliveSize_ = 0;
@@ -222,7 +245,7 @@ void SharedGCWorkManager::Initialize()
         holder.weakQueue_ = new ProcessQueue();
         holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
     }
-    if (initialized_.load(std::memory_order_relaxed)) {
+    if (initialized_.load(std::memory_order_acquire)) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
@@ -253,6 +276,21 @@ bool SharedGCWorkManager::Push(uint32_t threadId, TaggedObject *object)
     return true;
 }
 
+bool SharedGCWorkManager::PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object)
+{
+    if (UNLIKELY(markingBuffer == nullptr)) {
+        markingBuffer = AllocateWorkNode();
+    }
+    ASSERT(markingBuffer != nullptr);
+    if (UNLIKELY(!markingBuffer->PushObject(ToUintPtr(object)))) {
+        PushLocalBufferToGlobal(markingBuffer);
+        ASSERT(markingBuffer == nullptr);
+        markingBuffer = AllocateWorkNode();
+        return markingBuffer->PushObject(ToUintPtr(object));
+    }
+    return true;
+}
+
 void SharedGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
 {
     WorkNode *&inNode = works_.at(threadId).inNode_;
@@ -263,6 +301,17 @@ void SharedGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
             sHeap_->PostGCMarkingTask();
         }
     }
+}
+
+void SharedGCWorkManager::PushLocalBufferToGlobal(WorkNode *&node, bool postTask)
+{
+    ASSERT(node != nullptr);
+    ASSERT(!node->IsEmpty());
+    workStack_.Push(node);
+    if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
+        sHeap_->PostGCMarkingTask();
+    }
+    node = nullptr;
 }
 
 bool SharedGCWorkManager::Pop(uint32_t threadId, TaggedObject **object)

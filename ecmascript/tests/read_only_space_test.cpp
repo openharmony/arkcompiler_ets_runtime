@@ -27,21 +27,12 @@
 
 #include <csetjmp>
 #include <csignal>
+#include <sys/syscall.h>
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class ReadOnlySpaceTest : public testing::Test {
+class ReadOnlySpaceTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
     void SetUp() override
     {
         InitializeLogger();
@@ -57,15 +48,7 @@ public:
         ecmascript::Log::Initialize(runtimeOptions);
     }
 
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    JSThread *thread {nullptr};
     ObjectFactory *factory {nullptr};
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
 };
 
 static sigjmp_buf g_env;
@@ -89,6 +72,15 @@ public:
         return sigaction(SIGSEGV, &act, nullptr);
     }
 };
+
+static pid_t ForkBySyscall(void)
+{
+#ifdef SYS_fork
+    return syscall(SYS_fork);
+#else
+    return syscall(SYS_clone, SIGCHLD, 0);
+#endif
+}
 
 HWTEST_F_L0(ReadOnlySpaceTest, ReadOnlyTest)
 {
@@ -153,7 +145,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
     std::string rawStr = "fork string";
     JSHandle<EcmaString> string = factory->NewFromStdString(rawStr);
     JSNApi::PreFork(vm);
-    if (fork() != 0) {
+    if (ForkBySyscall() != 0) {
         // test gc in parent process
         heap->CollectGarbage(TriggerGCType::OLD_GC);
     } else {

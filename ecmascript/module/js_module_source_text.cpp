@@ -37,6 +37,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/tagged_dictionary.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -93,8 +94,13 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     CString moduleRequestName = ConvertToString(moduleRequest.GetTaggedValue());
     JSHandle<JSTaggedValue> moduleRequestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
 
-    ASSERT(module->GetEcmaModuleFilename().IsHeapObject());
-    CString baseFilename = ConvertToString(module->GetEcmaModuleFilename());
+    CString baseFilename;
+    if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
+        baseFilename = thread->GetEcmaVM()->GetQuickFixManager()->GetCurrentBaseFileName();
+    } else {
+        ASSERT(module->GetEcmaModuleFilename().IsHeapObject());
+        baseFilename = ConvertToString(module->GetEcmaModuleFilename());
+    }
 
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
@@ -178,6 +184,9 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
         // bind with a number
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
+    if (exports->IsNativeModuleError()) {
+        return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
+    }
     if (exports->IsJSObject()) {
         JSHandle<JSTaggedValue> resolution(thread, JSTaggedValue::Hole());
         JSObject *exportObject = JSObject::Cast(exports.GetTaggedValue().GetTaggedObject());
@@ -201,6 +210,37 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
         }
     }
     return globalConstants->GetHandledNull();
+}
+
+JSHandle<JSTaggedValue> SourceTextModule::ResolveNativeStarExport(JSThread *thread,
+                                                                  const JSHandle<SourceTextModule> &nativeModule,
+                                                                  const JSHandle<JSTaggedValue> &exportName)
+{
+    if (nativeModule->GetStatus() != ModuleStatus::EVALUATED) {
+        auto moduleType = nativeModule->GetTypes();
+        if (!LoadNativeModule(thread, nativeModule, moduleType)) {
+            return thread->GlobalConstants()->GetHandledNull();
+        }
+        nativeModule->SetStatus(ModuleStatus::EVALUATED);
+    }
+
+    JSHandle<JSTaggedValue> nativeExports(thread, nativeModule->GetModuleValue(thread, 0, false));
+    return SourceTextModule::ResolveExportObject(thread, nativeModule, nativeExports, exportName);
+}
+
+JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsStarExport(JSThread *thread,
+                                                               const JSHandle<SourceTextModule> &cjsModule,
+                                                               const JSHandle<JSTaggedValue> &exportName)
+{
+    if (cjsModule->GetStatus() != ModuleStatus::EVALUATED) {
+        SourceTextModule::ModuleExecution(thread, cjsModule);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, thread->GlobalConstants()->GetHandledNull());
+        cjsModule->SetStatus(ModuleStatus::EVALUATED);
+    }
+
+    JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(cjsModule.GetTaggedValue()));
+    JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
+    return SourceTextModule::ResolveExportObject(thread, cjsModule, cjsExports, exportName);
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -367,13 +407,17 @@ void SourceTextModule::MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSVa
     arguments.emplace_back(StringRef::NewFromUtf8(vm, moduleDir.c_str()));
 }
 
-bool SourceTextModule::LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
+bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
                                         ModuleTypes moduleType)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     [[maybe_unused]] LocalScope scope(vm);
 
     CString moduleRequestName = ConvertToString(EcmaString::Cast(requiredModule->GetEcmaModuleRecordName()));
+    if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+        CString traceInfo = "LoadNativeModule: " + moduleRequestName;
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    }
     CString soName = PathHelper::GetStrippedModuleName(moduleRequestName);
 
     CString fileName = ConvertToString(EcmaString::Cast(requiredModule->GetEcmaModuleFilename()));
@@ -398,6 +442,11 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, JSHandle<SourceTextMod
     auto exportObject = funcRef->Call(vm, JSValueRef::Undefined(vm), arguments.data(), arguments.size());
     if (UNLIKELY(exportObject->IsUndefined())) {
         LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
+        return false;
+    }
+    if (UNLIKELY(exportObject->IsNativeModuleErrorObject())) {
+        requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
+        LOG_FULL(ERROR) << "loading fails, NativeModuleErrorObject is returned";
         return false;
     }
     if (UNLIKELY(thread->HasPendingException())) {
@@ -465,10 +514,10 @@ void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<So
             SourceTextModule::ResolveExportObject(thread, requestedModule, exports, importName);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(host->GetModuleRequest()));
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(host->GetModuleRequest()));
             CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(
                 currentModule->GetEcmaModuleRecordName()));
-            CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+            CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                 ConvertToString(importName.GetTaggedValue()) + "' which imported by '" + recordStr + "'";
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
@@ -746,13 +795,13 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
                 SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
             // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
             if (resolution->IsNull() || resolution->IsString()) {
-                CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
-                CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+                CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
+                CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                     ConvertToString(importName.GetTaggedValue());
                 if (!module->GetEcmaModuleRecordName().IsUndefined()) {
                     CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(
                         module->GetEcmaModuleRecordName()));
-                    msg += "' which imported by '" +recordStr + "'";
+                    msg += "' which imported by '" + recordStr + "'";
                 } else {
                     msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
                 }
@@ -830,8 +879,8 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
             if (thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
-                CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
-                CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+                CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
+                CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                             ConvertToString(importName.GetTaggedValue());
                 if (!module->GetEcmaModuleRecordName().IsUndefined()) {
                     CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(
@@ -1011,7 +1060,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             JSTaggedValue promiseResult = JSPromise::Cast(promise.GetTaggedObject())->GetPromiseResult();
             JSHandle<JSObject> error =
-                factory->GetJSError(base::ErrorType::ERROR, nullptr);
+                factory->GetJSError(base::ErrorType::ERROR, nullptr, StackCheck::NO);
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), promiseResult.GetInt());
         }
         return index;
@@ -1585,8 +1634,17 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
         importedModule.Update(JSHandle<SourceTextModule>::Cast(importedVal));
     }
     // b. Let resolution be ? importedModule.ResolveExport(exportName, resolveVector).
-    JSHandle<JSTaggedValue> resolution =
-        SourceTextModule::ResolveExport(thread, importedModule, exportName, resolveVector);
+    auto moduleType = importedModule->GetTypes();
+    bool isNativeModule = IsNativeModule(moduleType);
+    JSHandle<JSTaggedValue> resolution;
+    if (UNLIKELY(isNativeModule || moduleType == ModuleTypes::CJS_MODULE)) {
+        resolution = isNativeModule
+            ? SourceTextModule::ResolveNativeStarExport(thread, importedModule, exportName)
+            : SourceTextModule::ResolveCjsStarExport(thread, importedModule, exportName);
+    } else {
+        resolution = SourceTextModule::ResolveExport(thread, importedModule, exportName, resolveVector);
+    }
+
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // if step into GetStarResolution in aot phase, the module must be a normal SourceTextModule not an empty
     // aot module. Sometimes for normal module, if indirectExportEntries, localExportEntries, starExportEntries
@@ -1760,8 +1818,8 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
             SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
-            CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
+            CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                           ConvertToString(exportName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordName().IsUndefined()) {
             CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(module->GetEcmaModuleRecordName()));
@@ -1798,8 +1856,8 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
             SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString requestStr = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
-            CString msg = "the requested module '" + requestStr + "' does not provide an export named '" +
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
+            CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                 ConvertToString(exportName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordName().IsUndefined()) {
                 CString record = ModulePathHelper::ReformatPath(ConvertToString(module->GetEcmaModuleRecordName()));

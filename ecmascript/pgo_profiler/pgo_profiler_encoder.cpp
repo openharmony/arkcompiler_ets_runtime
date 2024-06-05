@@ -199,6 +199,7 @@ bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
                                                         *abcFilePool_->GetPool());
     }
     header_->SetFileSize(static_cast<uint32_t>(fileStream.tellp()));
+    header_->SetCompatibleAnVersion(AOTFileVersion::AN_VERSION);
     header_->ProcessToBinary(fileStream);
     if (header_->SupportFileConsistency()) {
         AddChecksum(fileStream);

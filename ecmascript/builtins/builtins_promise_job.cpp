@@ -156,7 +156,10 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString fileNameStr = ConvertToString(dirPath.GetTaggedValue());
     CString requestPath = ConvertToString(specifierString.GetTaggedValue());
     LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
-
+    if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+        CString traceInfo = "DynamicImportJob: " + requestPath;
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    }
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     CString recordNameStr;
     if (!recordName->IsUndefined()) {
@@ -170,6 +173,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
             ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), fileNameStr, recordNameStr,
                 requestPath);
             LOG_ECMA(DEBUG) << "Exit Translate Normalized OhmUrl for DynamicImport, resultPath: " << requestPath;
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         } else if (ModulePathHelper::NeedTranstale(requestPath)) {
             ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);
             LOG_ECMA(DEBUG) << "Exit Translate OhmUrl for DynamicImport, resultPath: " << requestPath;
@@ -206,7 +210,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     if (!hasRecord) {
         CString normalizeStr = ModulePathHelper::ReformatPath(entryPoint);
         CString msg =  "Cannot find dynamic-import module '" + normalizeStr;
-        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR,
+            msg.c_str(), StackCheck::NO).GetTaggedValue();
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
     }
     if (jsPandaFile->IsJson(recordInfo)) {
@@ -219,7 +224,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     if (!moduleManager->IsModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
-            JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+            JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str(),
+                                                      StackCheck::NO).GetTaggedValue();
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
         }
     } else {

@@ -125,6 +125,7 @@ bool CGOptions::cgBigEndian = false;
 bool CGOptions::arm64ilp32 = false;
 bool CGOptions::noCommon = false;
 bool CGOptions::doCgirVerify = false;
+bool CGOptions::useJitCodeSign = false;
 
 CGOptions &CGOptions::GetInstance()
 {
@@ -696,9 +697,6 @@ void CGOptions::SetRange(const std::string &str, const std::string &cmd, Range &
 /* Set default options according to different languages. */
 void CGOptions::SetDefaultOptions(const maple::MIRModule &mod)
 {
-    if (mod.IsJavaModule()) {
-        generateFlag = generateFlag | kGenYieldPoint | kGenLocalRc | kGrootList | kPrimorList;
-    }
     insertYieldPoint = GenYieldPoint();
 }
 

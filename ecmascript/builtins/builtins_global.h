@@ -35,29 +35,30 @@
 // The following global object properties are not listed here:
 //   - parseFloat ( string ), listed in builtins_number.h instead.
 //   - parseInt ( string ), listed in builtins_number.h instead.
-#define BUILTIN_GLOBAL_FUNCTIONS_COMMON(V)                               \
-    /* decodeURI ( encodedURI ) */                                       \
-    V("decodeURI",             DecodeURI,             1, INVALID)        \
-    /* decodeURIComponent ( encodedURIComponent ) */                     \
-    V("decodeURIComponent",    DecodeURIComponent,    1, INVALID)        \
-    /* encodeURI ( uri ) */                                              \
-    V("encodeURI",             EncodeURI,             1, INVALID)        \
-    /* encodeURIComponent ( uriComponent ) */                            \
-    V("encodeURIComponent",    EncodeURIComponent,    1, INVALID)        \
-    /* escape ( string ), defined in B.2.1 */                            \
-    V("escape",                Escape,                1, INVALID)        \
-    /* eval ( x ), which is NOT supported in ArkTS engine */             \
-    V("eval",                  NotSupportEval,        1, INVALID)        \
-    /* isFinite ( number ) */                                            \
-    V("isFinite",              IsFinite,              1, GlobalIsFinite) \
-    /* isNaN ( number ) */                                               \
-    V("isNaN",                 IsNaN,                 1, GlobalIsNan)    \
-    /* unescape ( string )*/                                             \
-    V("unescape",              Unescape,              1, INVALID)        \
-    /* The following are ArkTS extensions */                             \
-    V("markModuleCollectable", MarkModuleCollectable, 0, INVALID)        \
-    V("print",                 PrintEntrypoint,       0, INVALID)
-
+#define BUILTIN_GLOBAL_FUNCTIONS_COMMON(V)                                  \
+    /* decodeURI ( encodedURI ) */                                          \
+    V("decodeURI",                DecodeURI,             1, INVALID)        \
+    /* decodeURIComponent ( encodedURIComponent ) */                        \
+    V("decodeURIComponent",       DecodeURIComponent,    1, INVALID)        \
+    /* encodeURI ( uri ) */                                                 \
+    V("encodeURI",                EncodeURI,             1, INVALID)        \
+    /* encodeURIComponent ( uriComponent ) */                               \
+    V("encodeURIComponent",       EncodeURIComponent,    1, INVALID)        \
+    /* escape ( string ), defined in B.2.1 */                               \
+    V("escape",                   Escape,                1, INVALID)        \
+    /* eval ( x ), which is NOT supported in ArkTS engine */                \
+    V("eval",                     NotSupportEval,        1, INVALID)        \
+    /* isFinite ( number ) */                                               \
+    V("isFinite",                 IsFinite,              1, GlobalIsFinite) \
+    /* isNaN ( number ) */                                                  \
+    V("isNaN",                    IsNaN,                 1, GlobalIsNan)    \
+    /* unescape ( string )*/                                                \
+    V("unescape",                 Unescape,              1, INVALID)        \
+    /* The following are ArkTS extensions */                                \
+    V("markModuleCollectable",    MarkModuleCollectable, 0, INVALID)        \
+    V("print",                    PrintEntrypoint,       0, INVALID)        \
+    V("__getCurrentModuleName__", GetCurrentModuleName,  0, INVALID)        \
+    V("__getCurrentBundleName__", GetCurrentBundleName,  0, INVALID)
 #if ECMASCRIPT_ENABLE_RUNTIME_STAT
 #define BUILTIN_GLOBAL_FUNCTIONS_RUNTIME_STAT(V)        \
     V("startRuntimeStat", StartRuntimeStat, 0, INVALID) \
@@ -122,6 +123,9 @@ public:
     static JSTaggedValue MarkModuleCollectable(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue CallJsBoundFunction(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue CallJsProxy(EcmaRuntimeCallInfo *msg);
+
+    static JSTaggedValue GetCurrentModuleName(EcmaRuntimeCallInfo *msg);
+    static JSTaggedValue GetCurrentBundleName(EcmaRuntimeCallInfo *msg);
 #if ECMASCRIPT_ENABLE_RUNTIME_STAT
     static JSTaggedValue StartRuntimeStat(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue StopRuntimeStat(EcmaRuntimeCallInfo *msg);
@@ -171,6 +175,13 @@ private:
     static JSTaggedValue UTF16EncodeCodePoint(JSThread *thread, judgURIFunc IsInURISet,
                                               const std::vector<uint8_t> &oct, const JSHandle<EcmaString> &str,
                                               uint32_t &start, int32_t &k, std::u16string &sStr);
+    static void HandleSingleByteCharacter(JSThread *thread, uint8_t &bb,
+                                          const JSHandle<EcmaString> &str,
+                                          uint32_t &start, int32_t &k,
+                                          std::u16string &sStr, judgURIFunc IsInURISet);
+    static JSTaggedValue DecodePercentEncoding(JSThread *thread, int32_t &n,
+                                               int32_t &k, const JSHandle<EcmaString> &str,
+                                               uint8_t &bb, std::vector<uint8_t> &oct);
     static JSTaggedValue DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
                                                judgURIFunc IsInURISet, int32_t strLen, std::u16string &sStr);
     static bool IsUnescapedURI(uint16_t ch);

@@ -21,6 +21,11 @@
 #include <string_ex.h>
 #include <cstdint>
 #include <iremote_broker.h>
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
 #include "hilog/log.h"
 
 namespace OHOS {
@@ -34,6 +39,8 @@ public:
         std::vector<int16_t>& sigData) = 0;
 
     virtual ErrCode StopAotCompiler() = 0;
+    virtual ErrCode GetAOTVersion(std::string& sigData) = 0;
+    virtual ErrCode NeedReCompile(const std::string& argsString, bool& sigData) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {
         LOG_CORE, 0xD003900, "AotCompilerInterfaceService"

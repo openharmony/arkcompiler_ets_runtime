@@ -102,7 +102,7 @@ void OptimizedCall::IncreaseStackForArguments(ExtendedAssembler *assembler, Regi
     Register sp(SP);
     __ Mov(currentSp, sp);
     // add extra aguments, numArgs
-    __ Add(argc, argc, Immediate(static_cast<int64_t>(CommonArgIdx::ACTUAL_ARGC)));
+    __ Add(argc, argc, Immediate(static_cast<int64_t>(CommonArgIdx::ACTUAL_ARGV)));
     __ Sub(currentSp, currentSp, Operand(argc, UXTW, FRAME_SLOT_SIZE_LOG2));
     Label aligned;
     __ Tst(currentSp, LogicalImmediate::Create(0xf, RegXSize));  // 0xf: 0x1111
@@ -120,7 +120,7 @@ void OptimizedCall::IncreaseStackForArguments(ExtendedAssembler *assembler, Regi
 //        %x1 - actualNumArgs
 //        %x2 - argV
 //        %x3 - prevFp
-//        %x4 - needPushUndefined
+//        %x4 - needPushArgv
 //
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
 //          +--------------------------+
@@ -139,14 +139,14 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     Register glueReg(X0);
     Register argV(X2);
     Register prevFpReg(X3);
-    Register needPushUndefined(X4);
+    Register needPushArgv(X4);
     Register sp(SP);
     Register tmpArgV(X7);
-    Label lJSCallWithArgVAndPushUndefined;
+    Label lJSCallWithArgVAndPushArgv;
     Label lPopFrame;
 
     PushJSFunctionEntryFrame (assembler, prevFpReg);
-    __ Mov(Register(X6), needPushUndefined);
+    __ Mov(Register(X6), needPushArgv);
     __ Mov(tmpArgV, argV);
     __ Mov(Register(X20), glueReg);
     __ Ldr(Register(X2), MemoryOperand(tmpArgV, 0));
@@ -155,19 +155,19 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     __ Add(tmpArgV, tmpArgV, Immediate(TRIPLE_SLOT_SIZE));
     __ Mov(Register(X5), tmpArgV);
     __ Cmp(Register(X6), Immediate(1));
-    __ B(Condition::EQ, &lJSCallWithArgVAndPushUndefined);
+    __ B(Condition::EQ, &lJSCallWithArgVAndPushArgv);
     __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgV), false);
     __ B(&lPopFrame);
 
-    __ Bind(&lJSCallWithArgVAndPushUndefined);
-    __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgVAndPushUndefined), false);
+    __ Bind(&lJSCallWithArgVAndPushArgv);
+    __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgVAndPushArgv), false);
     __ Bind(&lPopFrame);
     __ Mov(Register(X2), Register(X20));
     PopJSFunctionEntryFrame(assembler, Register(X2));
     __ Ret();
 }
 
-// * uint64_t OptimizedCallAndPushUndefined(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, JSTaggedType new,
+// * uint64_t OptimizedCallAndPushArgv(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, JSTaggedType new,
 //                   JSTaggedType this, arg[0], arg[1], arg[2], ..., arg[N-1])
 // * webkit_jscc calling convention call js function()
 //
@@ -186,20 +186,22 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
 //               |       new-target         |
 //               +--------------------------+
 //               |       call-target        |
-//               |--------------------------|
+//               +--------------------------+
+//               |       argv               |
+//               +--------------------------+
 //               |       argc               |
-//               |--------------------------| ---------------
+//     sp ---->  |--------------------------| ---------------
 //               |       returnAddr         |               ^
-//      sp ----> |--------------------------|               |
+//               |--------------------------|               |
 //               |       callsiteFp         |               |
 //               |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
 //               |       call-target        |               v
 //               +--------------------------+ ---------------
-void OptimizedCall::OptimizedCallAndPushUndefined(ExtendedAssembler *assembler)
+void OptimizedCall::OptimizedCallAndPushArgv(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(OptimizedCallAndPushUndefined));
+    __ BindAssemblerStub(RTSTUB_ID(OptimizedCallAndPushArgv));
     Register sp(SP);
     Register jsfunc(X7);
     Register method(X6);
@@ -207,7 +209,9 @@ void OptimizedCall::OptimizedCallAndPushUndefined(ExtendedAssembler *assembler)
     Register actualNumArgs(X2);
     Register codeAddr(X3);
     Register argV(X4);
-    __ Ldr(jsfunc, MemoryOperand(sp, FRAME_SLOT_SIZE));
+
+    auto funcSlotOffSet = kungfu::ArgumentAccessor::GetExtraArgsNum();
+    __ Ldr(jsfunc, MemoryOperand(sp, funcSlotOffSet * FRAME_SLOT_SIZE));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(codeAddr, MemoryOperand(jsfunc, JSFunction::CODE_ENTRY_OFFSET));
     __ Ldr(expectedNumArgs, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
@@ -217,7 +221,7 @@ void OptimizedCall::OptimizedCallAndPushUndefined(ExtendedAssembler *assembler)
             MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegXSize));
     __ Add(expectedNumArgs, expectedNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
 
-    __ Add(argV, sp, Immediate(kungfu::ArgumentAccessor::GetExtraArgsNum() * FRAME_SLOT_SIZE));  // skip numArgs
+    __ Add(argV, sp, Immediate(funcSlotOffSet * FRAME_SLOT_SIZE));  // skip numArgs and argv
     __ Ldr(actualNumArgs, MemoryOperand(sp, 0));
 
     Register glue(X0);
@@ -253,7 +257,8 @@ void OptimizedCall::OptimizedCallAndPushUndefined(ExtendedAssembler *assembler)
     __ Bind(&invokeCompiledJSFunction);
     {
         __ Mov(Register(X19), expectedNumArgs);
-        __ Str(actualNumArgs, MemoryOperand(sp, 0));
+        __ Str(currentSp, MemoryOperand(sp, FRAME_SLOT_SIZE));
+        __ Str(actualNumArgs, MemoryOperand(sp, 0)); // argv, argc
         __ Blr(codeAddr);
     }
 
@@ -316,20 +321,26 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
     Register sp(SP);
     Register nativeFuncAddr(X4);
     Register temp(X1);
+    Register argv(X5);
 
-    __ Stp(Register(X30), glue, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    // remove argv
+    __ Ldr(temp, MemoryOperand(sp, 0));
+    __ Stp(glue, temp, MemoryOperand(sp, 0));   // argc, glue
+    // returnAddr, callsiteFp
+    __ Stp(Register(X29), Register(X30), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(sp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false))); // rbp
+    __ Mov(Register(X29), sp); // rbp
     __ Mov(temp, Immediate(static_cast<int32_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME)));
-    __ Stp(temp, Register(X29), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Add(temp, sp, Immediate(FRAME_SLOT_SIZE));
-    __ Str(temp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
-    __ Mov(Register(X29), temp);
-    __ Add(Register(X0), sp, Immediate(TRIPLE_SLOT_SIZE));
-
+    __ Stp(argv, temp, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX)); // frameType, argv
+    __ Add(Register(X0), sp, Immediate(QUADRUPLE_SLOT_SIZE));
     __ Blr(nativeFuncAddr);
-    __ Mov(temp, Register(FP));
-    __ Ldp(Register(X29), Register(X30), MemoryOperand(temp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
-    __ Add(temp, temp, Immediate(FRAME_SLOT_SIZE));
-    __ Mov(sp, temp);
+
+    __ Ldr(argv, MemoryOperand(sp, 0)); // argv
+    __ Mov(sp, Register(FP));
+    __ Ldp(Register(X29), Register(X30), MemoryOperand(sp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ Ldr(temp, MemoryOperand(sp, FRAME_SLOT_SIZE)); // argc
+    __ Stp(temp, argv, MemoryOperand(sp, 0)); // argv, argc
+
     __ Ret();
 }
 
@@ -366,18 +377,23 @@ void OptimizedCall::CallBuiltinConstructorStub(ExtendedAssembler *assembler, Reg
 {
     Register sp(SP);
 
-    __ Stp(Register(X30), glue, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Ldr(temp, MemoryOperand(sp, 0));
+    __ Stp(glue, temp, MemoryOperand(sp, 0));   // argc, glue
+    // returnAddr, callsiteFp
+    __ Stp(Register(X29), Register(X30), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Mov(Register(X29), sp); // rbp
     __ Mov(temp, Immediate(static_cast<int32_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME)));
-    __ Stp(temp, Register(X29), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Add(temp, sp, Immediate(FRAME_SLOT_SIZE));
-    __ Mov(Register(X29), temp);
     __ Add(argv, sp, Immediate(OCTUPLE_SLOT_SIZE));
-
+    __ Mov(Register(Zero), Immediate(0));
+    __ Stp(Register(Zero), temp, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX)); // frameType, argv
     __ Blr(builtinStub);
-    __ Mov(temp, Register(FP));
-    __ Ldp(Register(X29), Register(X30), MemoryOperand(temp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
-    __ Add(temp, temp, Immediate(FRAME_SLOT_SIZE));
-    __ Mov(sp, temp);
+
+    __ Mov(sp, Register(FP));
+    __ Ldp(Register(X29), Register(X30), MemoryOperand(sp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ Ldr(temp, MemoryOperand(sp, FRAME_SLOT_SIZE)); // argc
+    __ Mov(Register(Zero), Immediate(0));
+    __ Stp(temp, Register(Zero), MemoryOperand(sp, 0)); // argv, argc
+
     __ Ret();
 }
 
@@ -400,6 +416,8 @@ void OptimizedCall::CallBuiltinConstructorStub(ExtendedAssembler *assembler, Reg
 //               |       new-target         |
 //               +--------------------------+
 //               |       call-target        |
+//               +--------------------------+
+//               |       argv               |
 //               |--------------------------|
 //               |       argc               |
 //      sp ----> |--------------------------| ---------------
@@ -416,7 +434,7 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
 {
     Register jsfunc(X1);
     Register sp(SP);
-    __ Ldr(jsfunc, MemoryOperand(sp, FRAME_SLOT_SIZE));
+    __ Ldr(jsfunc, MemoryOperand(sp, DOUBLE_SLOT_SIZE)); // skip 2: argc, argv
     JSCallInternal(assembler, jsfunc, isNew);
 }
 
@@ -463,7 +481,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     __ Bind(&lNotClass);
     {
         Register argV(X5);
-        // skip argc
+        // skip argc and argv
         __ Add(argV, sp, Immediate(kungfu::ArgumentAccessor::GetExtraArgsNum() * FRAME_SLOT_SIZE));
         // asm interpreter argV = argv + 24
         __ Add(argV, argV, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE));
@@ -501,9 +519,9 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         __ Ldr(builtinStub, MemoryOperand(builtinStub, JSThread::GlueData::GetBuiltinsStubEntriesOffset(false)));
 
         __ Ldr(Register(X1), MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-        __ Ldr(Register(X2), MemoryOperand(sp, FRAME_SLOT_SIZE));  // get jsfunc
-        __ Ldr(Register(X3), MemoryOperand(sp, DOUBLE_SLOT_SIZE));  // get newtarget
-        __ Ldr(Register(X4), MemoryOperand(sp, TRIPLE_SLOT_SIZE));  // get this
+        __ Ldr(Register(X2), MemoryOperand(sp, DOUBLE_SLOT_SIZE));  // get jsfunc
+        __ Ldr(Register(X3), MemoryOperand(sp, TRIPLE_SLOT_SIZE));  // get newtarget
+        __ Ldr(Register(X4), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));  // get this
         __ Ldr(Register(X5), MemoryOperand(sp, 0));  // get number args
         __ Sub(Register(X5), Register(X5), Immediate(NUM_MANDATORY_JSFUNC_ARGS));
         if (!isNew) {
@@ -532,7 +550,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
 
             __ Bind(&lCall1);
             {
-                __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));
+                __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUINTUPLE_SLOT_SIZE));
                 __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));  // reset x7
                 __ Str(Register(X7), MemoryOperand(sp, 0));  // reset arg2's position
                 __ B(&lTailCall);
@@ -542,18 +560,18 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
             {
                 __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));
                 __ Str(Register(X7), MemoryOperand(sp, 0));  // reset arg2's position
-                __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));
+                __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUINTUPLE_SLOT_SIZE));
                 __ B(&lTailCall);
             }
 
             __ Bind(&lCall3);
-            __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));  // get arg0 arg1
+            __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUINTUPLE_SLOT_SIZE));  // get arg0 arg1
             PushAsmBridgeFrame(assembler);
             {
                 // push arg2 and call
                 TempRegister2Scope scope2(assembler);
                 Register arg2 = __ TempRegister2();
-                __ Ldr(arg2, MemoryOperand(fp, OCTUPLE_SLOT_SIZE));
+                __ Ldr(arg2, MemoryOperand(fp, NONUPLE_SLOT_SIZE));
                 __ Stp(arg2, Register(X8), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
                 __ Blr(builtinStub);
                 __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE));
@@ -617,6 +635,229 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         __ Add(sp, sp, Immediate(4 * FRAME_SLOT_SIZE));
         __ RestoreFpAndLr();
         __ Ret();
+    }
+}
+
+// After the callee function of common aot call deopt, use this bridge to deal with this aot call.
+// calling convention: webkit_jsc
+// Input structure:
+// %X0 - glue
+// stack:
+// +--------------------------+
+// |       arg[N-1]           |
+// +--------------------------+
+// |       ...                |
+// +--------------------------+
+// |       arg[1]             |
+// +--------------------------+
+// |       arg[0]             |
+// +--------------------------+
+// |       this               |
+// +--------------------------+
+// |       new-target         |
+// +--------------------------+
+// |       call-target        |
+// |--------------------------|
+// |       argv               |
+// |--------------------------|
+// |       argc               |
+// +--------------------------+ <---- sp
+void OptimizedCall::AOTCallToAsmInterBridge(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(AOTCallToAsmInterBridge));
+    Register sp(SP);
+    // params of c++ calling convention
+    Register glue(X0);
+    Register jsfunc(X1);
+    Register method(X2);
+    Register callField(X3);
+    Register actualArgC(X4);
+    Register argV(X5);
+
+    __ Ldr(jsfunc, MemoryOperand(sp, DOUBLE_SLOT_SIZE));
+    __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
+    __ Ldr(callField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
+    __ Ldr(actualArgC, MemoryOperand(sp, 0));
+    // skip argc
+    __ Add(argV, sp, Immediate(kungfu::ArgumentAccessor::GetExtraArgsNum() * FRAME_SLOT_SIZE));
+    // asm interpreter argV = argv + 24
+    __ Add(argV, argV, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE));
+    __ Sub(actualArgC, actualArgC, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum()));
+    OptimizedCallAsmInterpreter(assembler);
+}
+
+// After the callee function of fast aot call deopt, use this bridge to deal with this fast aot call.
+// Notice: no argc and new-target params compared with not-fast aot call because these params are not needed
+// by bytecode-analysis
+// Intruduction: use expected argc as actual argc below for these reasons:
+// 1) when expected argc == actual argc, pass.
+// 2) when expected argc > actual argc, undefineds have been pushed in OptimizedFastCallAndPushArgv.
+// 3) when expected argc < actual argc, redundant params are useless according to bytecode-analysis, just abandon them.
+// calling convention: c++ calling convention
+// Input structure:
+// %X0 - glue
+// %X1 - call-target
+// %X2 - this
+// %X3 - arg0
+// %X4 - arg1
+// %X5 - arg2
+// %X6 - arg3
+// %X7 - arg4
+// stack:
+// +--------------------------+
+// |        arg[N-1]          |
+// +--------------------------+
+// |       ...                |
+// +--------------------------+
+// |       arg[5]             |
+// +--------------------------+ <---- sp
+void OptimizedCall::FastCallToAsmInterBridge(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(FastCallToAsmInterBridge));
+
+    // Add a bridge frame to protect the stack map, because args will be put on the stack to construct argv on stack
+    // and the AsmInterpBridgeFrame pushed below cannot protect the stack map anymore.
+    PushAsmBridgeFrame(assembler);
+
+    Register sp(SP);
+    // Input
+    Register glue(X0);
+    Register jsfunc(X1);
+    Register thisReg(X2);
+
+    Register tempArgc = __ AvailableRegister1();
+    {
+        TempRegister2Scope scope2(assembler);
+        Register tempMethod = __ TempRegister2();
+
+        __ Ldr(tempMethod, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
+        __ Ldr(tempArgc, MemoryOperand(tempMethod, Method::CALL_FIELD_OFFSET));
+        __ Lsr(tempArgc, tempArgc, MethodLiteral::NumArgsBits::START_BIT);
+        __ And(tempArgc, tempArgc,
+            LogicalImmediate::Create(
+                MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegXSize));
+    }
+    {
+        TempRegister1Scope scope1(assembler);
+        Register startSp = __ TempRegister1();
+        __ Mov(startSp, sp);
+
+        Label lCall0;
+        Label lCall1;
+        Label lCall2;
+        Label lCall3;
+        Label lCall4;
+        Label lCall5;
+        Label lPushCommonRegs;
+
+        __ Cmp(tempArgc, Immediate(0));
+        __ B(Condition::EQ, &lCall0);
+        __ Cmp(tempArgc, Immediate(1));
+        __ B(Condition::EQ, &lCall1);
+        __ Cmp(tempArgc, Immediate(2));  // 2: 2 args
+        __ B(Condition::EQ, &lCall2);
+        __ Cmp(tempArgc, Immediate(3));  // 3: 3 args
+        __ B(Condition::EQ, &lCall3);
+        __ Cmp(tempArgc, Immediate(4));  // 4: 4 args
+        __ B(Condition::EQ, &lCall4);
+        __ Cmp(tempArgc, Immediate(5));  // 5: 5 args
+        __ B(Condition::EQ, &lCall5);
+        // default: more than 5 args
+        {
+            TempRegister2Scope scope2(assembler);
+            Register onStackArgs = __ TempRegister2();
+            Register op1 = __ AvailableRegister2();
+            Register op2 = __ AvailableRegister3();
+
+            // skip bridge frame, return addr and a callee save
+            __ Add(onStackArgs, sp, Immediate(QUADRUPLE_SLOT_SIZE));
+            __ Sub(tempArgc, tempArgc, Immediate(5));  // 5: the first 5 args are not on stack
+            Register arg4(X7);
+            PushArgsWithArgvInPair(assembler, tempArgc, onStackArgs, arg4, op1, op2, &lCall4);
+        }
+
+        __ Bind(&lCall0);
+        {
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall1);
+        {
+            __ Stp(Register(X3), Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall2);
+        {
+            __ Stp(Register(X3), Register(X4), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall3);
+        {
+            __ Stp(Register(X5), Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(Register(X3), Register(X4), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall4);
+        {
+            __ Stp(Register(X5), Register(X6), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(Register(X3), Register(X4), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lCall5);
+        {
+            __ Stp(Register(X7), Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(Register(X5), Register(X6), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(Register(X3), Register(X4), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ B(&lPushCommonRegs);
+        }
+
+        __ Bind(&lPushCommonRegs);
+        {
+            Register newTarget(X7);
+            __ Mov(newTarget, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+            __ Stp(newTarget, thisReg, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Stp(startSp, jsfunc, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+            // fall through
+        }
+    }
+
+    // params of c++ calling convention
+    // glue: X0
+    // jsfunc: X1
+    Register method(X2);
+    Register methodCallField(X3);
+    Register argc(X4);
+    Register argV(X5);
+    // reload and prepare args for JSCallCommonEntry
+    __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
+    __ Ldr(methodCallField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
+    __ Mov(argc, methodCallField);
+    __ Lsr(argc, argc, MethodLiteral::NumArgsBits::START_BIT);
+    __ And(argc, argc,
+        LogicalImmediate::Create(
+            MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegXSize));
+    __ Add(argV, sp, Immediate((kungfu::ArgumentAccessor::GetFixArgsNum() + 1) * FRAME_SLOT_SIZE));  // 1: skip startSp
+
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    {
+        PopAsmInterpBridgeFrame(assembler);
+        TempRegister1Scope scope1(assembler);
+        Register startSp = __ TempRegister1();
+        __ Ldp(startSp, Register(Zero), MemoryOperand(sp, ExtendedAssembler::PAIR_SLOT_SIZE, POSTINDEX));
+        __ Mov(sp, startSp);
+        PopAsmBridgeFrame(assembler);
+        __ Ret();
+    }
+    __ Bind(&target);
+    {
+        AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT,
+                                              FrameTransitionType::OTHER_TO_OTHER);
     }
 }
 
@@ -708,6 +949,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         const int64_t argoffsetSlot = static_cast<int64_t>(CommonArgIdx::FUNC) - 1;
         __ Add(argV, argV, Immediate((NUM_MANDATORY_JSFUNC_ARGS + argoffsetSlot) * FRAME_SLOT_SIZE));
         PushArgsWithArgv(assembler, glue, actualArgC, argV, tmp, fp, nullptr, nullptr);
+        __ Add(argV, basefp, Immediate(GetStackArgOffSetToFp(0))); // 0: first index id
     }
     __ Bind(&copyBoundArgument);
     {
@@ -733,7 +975,8 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Stp(newTarget, thisObj, MemoryOperand(fp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         __ Ldr(boundTarget, MemoryOperand(jsfunc, JSBoundFunction::BOUND_TARGET_OFFSET));
         // 2 : 2 means pair
-        __ Stp(Register(X19), boundTarget, MemoryOperand(fp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Stp(argV, boundTarget, MemoryOperand(fp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Str(Register(X19), MemoryOperand(fp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
     JSCallCheck(assembler, boundTarget, Register(X9), &slowCall, &slowCall);
     Register hclass = __ AvailableRegister2();
@@ -751,7 +994,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         // output: glue:x0 argc:x1 calltarget:x2 argv:x3 this:x4 newtarget:x5
         __ Mov(Register(X1), Register(X19));
         __ Mov(Register(X2), boundTarget);
-        __ Add(X3, fp, Immediate(4 * FRAME_SLOT_SIZE)); // 4: skip argc and func new this
+        __ Add(X3, fp, Immediate(5 * FRAME_SLOT_SIZE)); // 5: skip argc and argv func new this
         __ Mov(Register(X5), Register(X6));
         Register boundCallInternalId(X9);
         Register baseAddress(X8);
@@ -781,7 +1024,7 @@ void OptimizedCall::JSProxyCallInternal(ExtendedAssembler *assembler, Register s
     // output: glue:x0 argc:x1 calltarget:x2 argv:x3
     __ Mov(Register(X2), jsfunc);
     __ Ldr(Register(X1), MemoryOperand(sp, 0));
-    __ Add(X3, sp, Immediate(FRAME_SLOT_SIZE)); // get argv
+    __ Add(X3, sp, Immediate(DOUBLE_SLOT_SIZE)); // get argv
 
     Register proxyCallInternalId(X9);
     Register baseAddress(X8);
@@ -804,7 +1047,7 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     __ BindAssemblerStub(RTSTUB_ID(JSProxyCallInternalWithArgV));
     Register jsfunc(X1);
     Register sp(SP);
-    __ Str(jsfunc, MemoryOperand(sp, FRAME_SLOT_SIZE));
+    __ Str(jsfunc, MemoryOperand(sp, DOUBLE_SLOT_SIZE));
     JSCallInternal(assembler, jsfunc);
 }
 
@@ -1046,7 +1289,7 @@ void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 //               |       call-target        |               v
 //               +--------------------------+ ---------------
 
-void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAddExpectedArgs)
+void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, [[maybe_unused]] bool needPushArgv)
 {
     Register sp(SP);
     Register glue(X0);
@@ -1075,10 +1318,15 @@ void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAdd
     }
     __ Bind(&pushCallThis);
     PushMandatoryJSArgs(assembler, jsfunc, thisObj, newTarget, currentSp);
-    __ Str(actualNumArgs, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-
-    if (needAddExpectedArgs) {
-        __ CallAssemblerStub(RTSTUB_ID(OptimizedCallAndPushUndefined), false);
+    {
+        TempRegister1Scope scope1(assembler);
+        Register tmp = __ TempRegister1();
+        __ Mov(tmp, currentSp);
+        __ Str(tmp, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Str(actualNumArgs, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    }
+    if (needPushArgv) {
+        __ CallAssemblerStub(RTSTUB_ID(OptimizedCallAndPushArgv), false);
     } else {
         __ CallAssemblerStub(RTSTUB_ID(CallOptimized), false);
     }
@@ -1089,7 +1337,7 @@ void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAdd
     __ Ret();
 }
 
-// * uint64_t JSCallWithArgVAndPushUndefined(uintptr_t glue, uint32_t argc, JSTaggedType calltarget,
+// * uint64_t JSCallWithArgVAndPushArgv(uintptr_t glue, uint32_t argc, JSTaggedType calltarget,
 //                          JSTaggedType new, JSTaggedType this, argV)
 // * cc calling convention call js function()
 // * arguments:
@@ -1099,9 +1347,9 @@ void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAdd
 //              %x3 - new-target
 //              %x4  - this
 //              %x5  - argv
-void OptimizedCall::JSCallWithArgVAndPushUndefined(ExtendedAssembler *assembler)
+void OptimizedCall::JSCallWithArgVAndPushArgv(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgVAndPushUndefined));
+    __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgVAndPushArgv));
     GenJSCallWithArgV(assembler, true);
 }
 
@@ -1118,7 +1366,8 @@ void OptimizedCall::CallOptimized(ExtendedAssembler *assembler)
     Register jsfunc(X7);
     Register method(X6);
     Register codeAddr(X5);
-    __ Ldr(jsfunc, MemoryOperand(sp, FRAME_SLOT_SIZE));
+    auto funcSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum();
+    __ Ldr(jsfunc, MemoryOperand(sp, funcSlotOffset * FRAME_SLOT_SIZE));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(codeAddr, MemoryOperand(jsfunc, JSFunction::CODE_ENTRY_OFFSET));
     __ Br(codeAddr);

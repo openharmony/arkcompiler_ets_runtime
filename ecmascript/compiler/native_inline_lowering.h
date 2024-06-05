@@ -29,7 +29,7 @@ namespace panda::ecmascript::kungfu {
 class NativeInlineLowering {
 public:
     explicit NativeInlineLowering(Circuit *circuit, CompilationConfig* cmpCfg, PassContext *ctx, bool enableLog,
-                                  const std::string& name)
+                                  const std::string& name, Chunk *chunk)
         : circuit_(circuit),
           builder_(circuit, cmpCfg),
           acc_(circuit),
@@ -38,7 +38,8 @@ public:
           methodName_(name),
           nocheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
           traceInline_(ctx->GetCompilationEnv()->GetJSOptions().GetTraceInline()),
-          compilationEnv_(ctx->GetCompilationEnv()) {}
+          compilationEnv_(ctx->GetCompilationEnv()),
+          chunk_(chunk) {}
     ~NativeInlineLowering() = default;
     void RunNativeInlineLowering();
 
@@ -52,6 +53,7 @@ private:
     void TryInlineNumberIsInteger(GateRef gate, size_t argc, bool skipThis);
     void TryInlineNumberIsNaN(GateRef gate, size_t argc, bool skipThis);
     void TryInlineNumberParseFloat(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineNumberParseInt(GateRef gate, size_t argc, bool skipThis);
     void TryInlineNumberIsSafeInteger(GateRef gate, size_t argc, bool skipThis);
     void TryInlineTypedArrayIteratorBuiltin(GateRef gate, BuiltinsStubCSigns::ID id,
                                             const GateMetaData* op, bool skipThis);
@@ -67,6 +69,7 @@ private:
                                    bool skipThis);
     void TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
                                     double defaultValue, bool skipThis);
+    void TryInlineMathAbsBuiltin(GateRef gate, size_t argc, bool skipThis);
     void TryInlineMathClz32Builtin(GateRef gate, size_t argc, bool skipThis);
     void TryInlineArrayBufferIsView(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineBigIntAsIntN(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
@@ -77,6 +80,21 @@ private:
     void TryInlineDateGetTime(GateRef gate, size_t argc, bool skipThis);
     void TryInlineWhitoutParamBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
                                       const GateMetaData* op, bool skipThis);
+    void TryInlineObjectIs(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineObjectGetPrototypeOf(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineObjectGetProto(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineObjectCreate(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineObjectIsPrototypeOf(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineObjectHasOwnProperty(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineReflectGetPrototypeOf(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineReflectGet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineReflectHas(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineReflectConstruct(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineReflectApply(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineFunctionPrototypeApply(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineFunctionPrototypeBind(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineFunctionPrototypeCall(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineFunctionPrototypeHasInstance(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
 
     void TryInlineBigIntConstructor(GateRef gate, size_t argc, bool skipThis);
     void ReplaceGateWithPendingException(GateRef hirGate, GateRef value);
@@ -112,6 +130,7 @@ private:
     bool nocheck_;
     bool traceInline_;
     const CompilationEnv *compilationEnv_ {nullptr};
+    Chunk* chunk_ {nullptr};
 };
 }
 #endif // ECMASCRIPT_COMPILER_BUILTIN_INLINE_H

@@ -22,6 +22,9 @@
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
+#include "ecmascript/ohos/jit_tools.h"
+#include "ecmascript/dfx/dump_code/jit_dump_elf.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 
 namespace panda::ecmascript {
 
@@ -31,13 +34,14 @@ JitTaskpool *JitTaskpool::GetCurrentTaskpool()
     return taskpool;
 }
 
-uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]]uint32_t threadNum) const
+uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]] uint32_t threadNum) const
 {
     return 1;
 }
 
 JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHandle<JSFunction> &jsFunction,
-    CompilerTier tier, CString &methodName, int32_t offset, uint32_t taskThreadId, JitCompileMode mode)
+    CompilerTier tier, CString &methodName, int32_t offset, uint32_t taskThreadId,
+    JitCompileMode mode, JitDfx *JitDfx)
     : hostThread_(hostThread),
     compilerThread_(compilerThread),
     jit_(jit),
@@ -50,6 +54,7 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     taskThreadId_(taskThreadId),
     ecmaContext_(nullptr),
     jitCompileMode_(mode),
+    jitDfx_(JitDfx),
     runState_(RunState::INIT)
 {
     ecmaContext_ = hostThread->GetCurrentEcmaContext();
@@ -73,6 +78,7 @@ void JitTask::PrepareCompile()
 
 void JitTask::Optimize()
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compiler frontend");
     bool res = jit_->JitCompile(compilerTask_, this);
     if (!res) {
         SetCompileFailed();
@@ -85,6 +91,7 @@ void JitTask::Finalize()
         return;
     }
 
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compiler backend");
     bool res = jit_->JitFinalize(compilerTask_, this);
     if (!res) {
         SetCompileFailed();
@@ -129,23 +136,67 @@ void JitTask::InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &co
     return;
 }
 
+#ifdef ENABLE_JITFORT
+static size_t ComputePayLoadSize(MachineCodeDesc &codeDesc)
+#else
 static size_t ComputePayLoadSize(const MachineCodeDesc &codeDesc)
+#endif
 {
     if (codeDesc.codeType == MachineCodeType::BASELINE_CODE) {
         // only code section in BaselineCode
+#ifdef ENABLE_JITFORT
+        return AlignUp(codeDesc.codeSize, MachineCode::TEXT_ALIGN);
+#else
         return AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
+#endif
     }
 
     ASSERT(codeDesc.codeType == MachineCodeType::FAST_JIT_CODE);
     size_t funcEntryDesSizeAlign = AlignUp(codeDesc.funcEntryDesSize, MachineCode::TEXT_ALIGN);
     size_t rodataSizeBeforeTextAlign = AlignUp(codeDesc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
     size_t codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
+#ifdef ENABLE_JITFORT
+    size_t rodataSizeAfterTextAlign = AlignUp(codeDesc.rodataSizeAfterText, MachineCode::TEXT_ALIGN);
+#else
     size_t rodataSizeAfterTextAlign = AlignUp(codeDesc.rodataSizeAfterText, MachineCode::DATA_ALIGN);
+#endif
 
     size_t stackMapSizeAlign = AlignUp(codeDesc.stackMapSize, MachineCode::DATA_ALIGN);
+#ifdef ENABLE_JITFORT
+    if (!codeDesc.rodataSizeAfterText) {
+        // ensure proper align because multiple instruction blocks can be installed in JitFort
+        codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::TEXT_ALIGN);
+    }
+    // instructionsSize: size of JIT generated native instructions
+    // payLoadSize: size of JIT generated output including native code
+    size_t instructionsSize = rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign;
+    size_t payLoadSize = funcEntryDesSizeAlign + instructionsSize + stackMapSizeAlign;
+    size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,  static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    LOG_JIT(INFO) << "InstallCode:: MachineCode Object size to allocate: "
+        << allocSize << " (instruction size): " << instructionsSize;
 
+    codeDesc.instructionsSize = instructionsSize;
+    if (allocSize > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        //
+        // A Huge machine code object is consisted of contiguous 256Kb aligned blocks.
+        // With JitFort, a huge machine code object starts with a page aligned mutable area
+        // (that holds Region and MachineCode object header, FuncEntryDesc and StackMap), followed
+        // by a page aligned nonmutable (JitFort space) area of JIT generated native instructions.
+        // i.e.
+        // mutableSize = align up to PageSize
+        //     (sizeof(Region) + HUGE_OBJECT_BITSET_SIZE +MachineCode::SIZE + payLoadSize - instructionsSize)
+        // immutableSize = instructionsSize (native page boundary aligned)
+        // See comments at HugeMachineCodeSpace::Allocate()
+        //
+        return payLoadSize;
+    } else {
+        // regular sized machine code object instructions are installed in separate jit fort space
+        return payLoadSize - instructionsSize;
+    }
+#else
     return funcEntryDesSizeAlign + rodataSizeBeforeTextAlign + codeSizeAlign +
            rodataSizeAfterTextAlign + stackMapSizeAlign;
+#endif
 }
 
 void JitTask::SetHClassInfoForPGO(JSHandle<Method> &methodHandle)
@@ -158,6 +209,36 @@ void JitTask::SetHClassInfoForPGO(JSHandle<Method> &methodHandle)
     unsharedConstantPool->SetAotHClassInfoWithBarrier(hostThread_, info.GetTaggedValue());
 }
 
+void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
+{
+    if (!ohos::JitTools::GetJitDumpObjEanble()) {
+        return;
+    }
+    JsJitDumpElf jitDumpElf;
+    jitDumpElf.Init();
+    char *funcAddr = reinterpret_cast<char *>(machineCode->GetFuncAddr());
+    size_t len = machineCode->GetTextSize();
+    std::vector<uint8> vec(len);
+    if (memmove_s(vec.data(), len, funcAddr, len) != EOK) {
+        LOG_JIT(DEBUG) << "Fail to get machineCode on function addr: " << funcAddr;
+    }
+    jitDumpElf.AppendData(vec);
+    const char *filename =  method->GetMethodName();
+    std::string fileName = std::string(filename);
+    uintptr_t addr = machineCode->GetFuncAddr();
+    fileName = fileName + "_" + std::to_string(addr) + "+" + std::to_string(len);
+    jitDumpElf.AppendSymbolToSymTab(0, 0, len, std::string(filename));
+    std::string realOutPath;
+    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(ohos::AotCrashInfo::GetSandBoxPath());
+    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
+        return;
+    }
+    std::string outFile = realOutPath + "/" + std::string(fileName);
+    int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0664);
+    jitDumpElf.WriteJitElfFile(fd);
+    close(fd);
+}
+
 void JitTask::InstallCode()
 {
     if (!IsCompileSuccess()) {
@@ -166,16 +247,28 @@ void JitTask::InstallCode()
     [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
 
     JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
-    if (GetHostVM()->GetJSOptions().IsEnableJITPGO()) {
-        SetHClassInfoForPGO(methodHandle);
-    }
 
     size_t size = ComputePayLoadSize(codeDesc_);
 
     JSHandle<Method> newMethodHandle = hostThread_->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
     jsFunction_->SetMethod(hostThread_, newMethodHandle);
+#ifdef ENABLE_JITFORT
+    // skip install if JitFort out of memory
+    TaggedObject *machineCode = hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_);
+    if (machineCode == nullptr) {
+        LOG_JIT(INFO) << "InstallCode skipped. NewMachineCode NULL for size " << size;
+        if (hostThread_->HasPendingException()) {
+            hostThread_->SetMachineCodeLowMemory(true);
+            hostThread_->ClearException();
+        }
+        return;
+    }
+    JSHandle<MachineCode> machineCodeObj =
+        hostThread_->GetEcmaVM()->GetFactory()->SetMachineCodeObjectData(machineCode, size, codeDesc_, newMethodHandle);
+#else
     JSHandle<MachineCode> machineCodeObj =
         hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_, newMethodHandle);
+#endif
     machineCodeObj->SetOSROffset(offset_);
 
     if (hostThread_->HasPendingException()) {
@@ -189,18 +282,23 @@ void JitTask::InstallCode()
         return;
     }
 
+    InstallCodeByCompilerTier(machineCodeObj, methodHandle, newMethodHandle);
+}
+
+void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
+    JSHandle<Method> &methodHandle, JSHandle<Method> &newMethodHandle)
+{
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
+    DumpJitCode(machineCodeObj, methodHandle);
     if (compilerTier_ == CompilerTier::FAST) {
         FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
         jsFunction_->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
         newMethodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
-        if (!hostThread_->IsMachineCodeLowMemory() && methodHandle->GetFunctionKind() == FunctionKind::ARROW_FUNCTION) {
-            hostThread_->GetCurrentEcmaContext()->AddJitMachineCode(
-                methodHandle->GetMethodId(),
-                std::make_pair(methodHandle.GetTaggedType(), machineCodeObj.GetTaggedType()));
-        }
-        LOG_JIT(DEBUG) <<"Install fast jit machine code:" << GetMethodName();
+        jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);
+        uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
+        LOG_JIT(DEBUG) <<"Install fast jit machine code:" << GetMethodName() << ", code range:" <<
+            reinterpret_cast<void*>(codeAddr) <<"--" << reinterpret_cast<void*>(codeAddrEnd);
 #if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
         auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
         if (profMap.find(GetMethodName()) != profMap.end()) {
@@ -271,11 +369,12 @@ void JitTask::WaitFinish()
 
 bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    if (IsTerminate()) {
+    if (IsTerminate() || !jitTask_->GetHostThread()->GetEcmaVM()->IsInitialized()) {
         return false;
     }
     DISALLOW_HEAP_ACCESS;
 
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compile");
     // JitCompileMode ASYNC
     // check init ok
     jitTask_->SetRunState(RunState::RUNNING);
@@ -299,6 +398,15 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
             // info main thread compile complete
             jitTask_->jit_->RequestInstallCode(jitTask_);
         }
+        int compilerTime = scope.TotalSpentTimeInMicroseconds();
+        jitTask_->jitDfx_->SetTotalTimeOnJitThread(compilerTime);
+        if (jitTask_->jitDfx_->ReportBlockUIEvent(jitTask_->mainThreadCompileTime_)) {
+            jitTask_->jitDfx_->SetBlockUIEventInfo(
+                jitTask_->methodName_,
+                jitTask_->compilerTier_ == CompilerTier::BASELINE ? true : false,
+                jitTask_->mainThreadCompileTime_, compilerTime);
+        }
+        jitTask_->jitDfx_->PrintJitStatsLog();
     }
     jitvm->ReSetHostVM();
     jitTask_->SetRunStateFinish();

@@ -65,7 +65,7 @@ class LLVMAssembler : public Assembler {
 public:
     explicit LLVMAssembler(LLVMModule *lm, LOptions option = LOptions());
     virtual ~LLVMAssembler();
-    void Run(const CompilerLog &log, bool fastCompileMode) override;
+    void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) override;
     const LLVMExecutionEngineRef &GetEngine()
     {
         return engine_;
@@ -134,7 +134,7 @@ public:
                              const CompilationConfig *cfg) override;
     void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
         const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile, const std::string &methodName,
-        bool enableOptInlining, bool enableBranchProfiling) override;
+        const FrameType frameType, bool enableOptInlining, bool enableBranchProfiling) override;
 
     bool IsLogEnabled() const
     {

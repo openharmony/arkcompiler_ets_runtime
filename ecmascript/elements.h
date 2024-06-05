@@ -88,6 +88,15 @@ public:
 private:
     static JSTaggedValue MigrateFromRawValueToHeapValue(const JSThread *thread, const JSHandle<JSObject> object,
                                                          bool needCOW, bool isIntKind);
+    static void HandleIntKindMigration(const JSThread *thread, const JSHandle<JSObject> &object,
+                                       const ElementsKind newKind, bool needCOW);
+    static bool IsNumberKind(const ElementsKind kind);
+    static bool IsStringOrNoneOrHole(const ElementsKind kind);
+    static void HandleNumberKindMigration(const JSThread *thread,
+                                          const JSHandle<JSObject> &object,
+                                          const ElementsKind newKind, bool needCOW);
+    static void HandleOtherKindMigration(const JSThread *thread, const JSHandle<JSObject> &object,
+                                         const ElementsKind newKind, bool needCOW);
     static JSTaggedValue MigrateFromHeapValueToRawValue(const JSThread *thread, const JSHandle<JSObject> object,
                                                         bool needCOW, bool isIntKind);
     static void MigrateFromHoleIntToHoleNumber(const JSThread *thread, const JSHandle<JSObject> object);

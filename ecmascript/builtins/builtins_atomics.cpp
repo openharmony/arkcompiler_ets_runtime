@@ -292,10 +292,8 @@ JSTaggedValue BuiltinsAtomics::AtomicReadModifyWrite(JSThread *thread, const JSH
     // 3. Let arrayTypeName be typedArray.[[TypedArrayName]].
     JSHandle<JSTaggedValue> arrayTypeName(thread,
                                           JSTypedArray::Cast(typedArray->GetTaggedObject())->GetTypedArrayName());
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "The ArrayBuffer of this value is detached buffer.",
-                                    JSTaggedValue::Exception());
-    }
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(typedArray));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 7. NOTE: The above check is not redundant with the check in ValidateIntegerTypedArray because the call to
     // ToBigInt or ToIntegerOrInfinity on the preceding lines can have arbitrary side effects, which could cause the
     // buffer to become detached.
@@ -380,12 +378,16 @@ JSTaggedValue BuiltinsAtomics::HandleWithUint8(JSThread *thread, uint32_t size, 
                                                EcmaRuntimeCallInfo *argv, const callbackfun &op, uint8_t &tag)
 {
     BUILTINS_API_TRACE(thread, Atomics, HandleWithUint8);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (size == 3) { // the number of parameters is 3
         auto result = op((block + indexedPosition), &tag);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     uint8_t newTag = JSTaggedValue::ToUint8(thread, newValue);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint8_t arg[ARGS_NUMBER] = {0};
     arg[0] = tag;
     arg[1] = newTag;
@@ -399,12 +401,16 @@ JSTaggedValue BuiltinsAtomics::HandleWithInt8(JSThread *thread, uint32_t size, u
                                               EcmaRuntimeCallInfo *argv, const callbackfun &op, int8_t &tag)
 {
     BUILTINS_API_TRACE(thread, Atomics, HandleWithInt8);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (size == 3) { // the number of parameters is 3
         auto result = op(reinterpret_cast<int8_t *>(block + indexedPosition), &tag);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     int8_t newTag = JSTaggedValue::ToInt8(thread, newValue);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int8_t arg[ARGS_NUMBER] = {0};
     arg[0] = tag;
     arg[1] = newTag;
@@ -418,12 +424,16 @@ JSTaggedValue BuiltinsAtomics::HandleWithUint16(JSThread *thread, uint32_t size,
                                                 EcmaRuntimeCallInfo *argv, const callbackfun &op, uint16_t &tag)
 {
     BUILTINS_API_TRACE(thread, Atomics, HandleWithUint16);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (size == 3) { // the number of parameters is 3
         auto result = op(reinterpret_cast<uint16_t *>(block + indexedPosition), &tag);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     uint16_t newTag = JSTaggedValue::ToUint16(thread, newValue);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint16_t arg[ARGS_NUMBER] = {0};
     arg[0] = tag;
     arg[1] = newTag;
@@ -437,12 +447,16 @@ JSTaggedValue BuiltinsAtomics::HandleWithInt16(JSThread *thread, uint32_t size, 
                                                EcmaRuntimeCallInfo *argv, const callbackfun &op, int16_t &tag)
 {
     BUILTINS_API_TRACE(thread, Atomics, HandleWithInt16);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (size == 3) { // the number of parameters is 3
         auto result = op(reinterpret_cast<int16_t *>(block + indexedPosition), &tag);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     int16_t newTag = JSTaggedValue::ToInt16(thread, newValue);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int16_t arg[ARGS_NUMBER] = {0};
     arg[0] = tag;
     arg[1] = newTag;
@@ -456,12 +470,16 @@ JSTaggedValue BuiltinsAtomics::HandleWithUint32(JSThread *thread, uint32_t size,
                                                 EcmaRuntimeCallInfo *argv, const callbackfun &op, uint32_t &tag)
 {
     BUILTINS_API_TRACE(thread, Atomics, HandleWithUint32);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (size == 3) { // the number of parameters is 3
         auto result = op(reinterpret_cast<uint32_t *>(block + indexedPosition), &tag);
         return JSTaggedValue(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     uint32_t newTag = JSTaggedValue::ToUint32(thread, newValue);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t arg[ARGS_NUMBER] = {0};
     arg[0] = tag;
     arg[1] = newTag;
@@ -475,12 +493,16 @@ JSTaggedValue BuiltinsAtomics::HandleWithInt32(JSThread *thread, uint32_t size, 
                                                EcmaRuntimeCallInfo *argv, const callbackfun &op, int32_t &tag)
 {
     BUILTINS_API_TRACE(thread, Atomics, HandleWithInt32);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (size == 3) { // the number of parameters is 3
         auto result = op(reinterpret_cast<int32_t *>(block + indexedPosition), &tag);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     int32_t newTag = JSTaggedValue::ToInt32(thread, newValue);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int32_t arg[ARGS_NUMBER] = {0};
     arg[0] = tag;
     arg[1] = newTag;
@@ -496,6 +518,8 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigInt64(JSThread *thread, uint32_t siz
 {
     BUILTINS_API_TRACE(thread, Atomics, HandleWithBigInt64);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (size == 3) { // the number of parameters is 3
         auto result = op(reinterpret_cast<int64_t *>(block + indexedPosition), &tag);
         return BigInt::Int64ToBigInt(thread, result).GetTaggedValue();
@@ -503,6 +527,8 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigInt64(JSThread *thread, uint32_t siz
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     int64_t newVal = 0;
     BigInt::BigIntToInt64(thread, newValue, &newVal, &lossless);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int64_t arg[ARGS_NUMBER] = {0};
     arg[0] = tag;
@@ -518,6 +544,9 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigUint64(JSThread *thread, uint32_t si
                                                    uint64_t &tag, bool &lossless)
 {
     BUILTINS_API_TRACE(thread, Atomics, HandleWithBigUint64);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (size == 3) { // the number of parameters is 3
         auto result = op(reinterpret_cast<uint64_t *>(block + indexedPosition), &tag);
         return BigInt::Uint64ToBigInt(thread, result).GetTaggedValue();
@@ -525,6 +554,9 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigUint64(JSThread *thread, uint32_t si
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     uint64_t newVal = 0;
     BigInt::BigIntToUint64(thread, newValue, &newVal, &lossless);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint64_t arg[ARGS_NUMBER] = {0};
     arg[0] = tag;
     arg[1] = newVal;

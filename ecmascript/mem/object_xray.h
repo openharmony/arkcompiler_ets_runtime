@@ -32,6 +32,8 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
@@ -104,6 +106,7 @@
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/module/js_module_namespace.h"
+#include "ecmascript/dfx/native_module_error.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
@@ -424,6 +427,11 @@ public:
                     JSNativePointer::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
+            case JSType::PROFILE_TYPE_INFO_CELL_0:
+            case JSType::PROFILE_TYPE_INFO_CELL_1:
+            case JSType::PROFILE_TYPE_INFO_CELL_N:
+                ProfileTypeInfoCell::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
             case JSType::TAGGED_ARRAY:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:
@@ -654,8 +662,14 @@ public:
             case JSType::JS_API_VECTOR:
                 JSAPIVector::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::JS_API_BITVECTOR:
+                JSAPIBitVector::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
             case JSType::JS_API_VECTOR_ITERATOR:
                 JSAPIVectorIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_API_BITVECTOR_ITERATOR:
+                JSAPIBitVectorIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LIST:
                 JSAPIList::Cast(object)->VisitRangeSlot<visitType>(visitor);
@@ -718,6 +732,9 @@ public:
                 break;
             case JSType::CLASS_LITERAL:
                 ClassLiteral::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::NATIVE_MODULE_ERROR:
+                NativeModuleError::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);

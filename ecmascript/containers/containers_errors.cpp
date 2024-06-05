@@ -19,7 +19,7 @@ namespace panda::ecmascript::containers {
 JSTaggedValue ContainerError::BusinessError(JSThread *thread, int32_t errorCode, const char *msg)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::ERROR, msg);
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::ERROR, msg, StackCheck::NO);
     JSHandle<JSTaggedValue> code(thread, JSTaggedValue(errorCode));
     JSHandle<EcmaString> key = factory->NewFromUtf8("code");
     JSHandle<EcmaString> name = factory->NewFromUtf8("name");

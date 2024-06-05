@@ -492,6 +492,8 @@ namespace panda::ecmascript {
     V(Global, EncodeURIComponent)             \
     V(Global, Escape)                         \
     V(Global, Unescape)                       \
+    V(Global, GetCurrentModuleName)           \
+    V(Global, GetCurrentBundleName)           \
     V(Intl, GetCanonicalLocales)              \
     V(Iterator, Constructor)                  \
     V(Iterator, Next)                         \
@@ -965,6 +967,21 @@ namespace panda::ecmascript {
     V(ArrayList, Get)                         \
     V(ArrayList, Set)                         \
     V(ArrayList, GetSize)                     \
+    V(BitVector, Constructor)                 \
+    V(BitVector, Push)                        \
+    V(BitVector, Pop)                         \
+    V(BitVector, Has)                         \
+    V(BitVector, SetBitsByRange)              \
+    V(BitVector, GetBitsByRange)              \
+    V(BitVector, Resize)                      \
+    V(BitVector, SetAllBits)                  \
+    V(BitVector, GetBitCountByRange)          \
+    V(BitVector, GetIndexOf)                  \
+    V(BitVector, GetLastIndexOf)              \
+    V(BitVector, FlipBitByIndex)              \
+    V(BitVector, FlipBitsByRange)             \
+    V(BitVector, GetSize)                     \
+    V(BitVector, GetIteratorObj)              \
     V(ListFormat, Constructor)                \
     V(ListFormat, SupportedLocalesOf)         \
     V(ListFormat, Format)                     \

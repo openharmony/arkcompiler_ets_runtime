@@ -114,8 +114,8 @@ public:
     void Destroy(std::shared_ptr<PGOProfiler> &profiler)
     {
         if (profiler != nullptr) {
-            profiler->HandlePGOPreDump();
             profiler->WaitPGODumpFinish();
+            profiler->HandlePGOPreDump();
             Merge(profiler.get());
             {
                 os::memory::LockHolder lock(*mutex_);
@@ -182,7 +182,7 @@ public:
 
     void RegisterSavingSignal();
 
-    void AsynSave()
+    void AsyncSave()
     {
         if (encoder_) {
             encoder_->PostSaveTask();
@@ -205,7 +205,7 @@ public:
         for (const auto &profiler : profilers_) {
             profiler->DumpByForce();
         }
-        GetInstance()->AsynSave();
+        GetInstance()->AsyncSave();
     }
 
     bool PUBLIC_API TextToBinary(const std::string &inPath, const std::string &outPath, uint32_t hotnessThreshold,
@@ -246,6 +246,16 @@ public:
                                         uint32_t hotnessThreshold, ApGenMode mode);
     static bool PUBLIC_API MergeApFiles(uint32_t checksum, PGOProfilerDecoder &merger);
 
+    void SetIsApFileCompatible(bool isCompatible)
+    {
+        isApFileCompatible_ = isCompatible;
+    }
+
+    bool GetIsApFileCompatible() const
+    {
+        return isApFileCompatible_;
+    }
+
 private:
     bool InitializeData()
     {
@@ -265,6 +275,7 @@ private:
     std::atomic_bool enableSignalSaving_ { false };
     os::memory::Mutex *mutex_ = new os::memory::Mutex();
     std::set<std::shared_ptr<PGOProfiler>> profilers_;
+    bool isApFileCompatible_ {true};
 };
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_MANAGER_H

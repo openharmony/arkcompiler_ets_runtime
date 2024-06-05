@@ -38,6 +38,7 @@ public:
     static constexpr int QUADRUPLE_SLOT_SIZE = 32;
     static constexpr int QUINTUPLE_SLOT_SIZE = 40;
     static constexpr int OCTUPLE_SLOT_SIZE = 64;
+    static constexpr int NONUPLE_SLOT_SIZE = 72;
     static constexpr int FRAME_SLOT_SIZE_LOG2 = 3;
     enum BuiltinsLeaveFrameArgId : unsigned {CODE_ADDRESS = 0, ENV, ARGC, ARGV};
     static inline int64_t GetStackArgOffSetToFp(unsigned argId)
@@ -64,6 +65,8 @@ public:
         Register fp, Label *next, Label *stackOverflow);
     static void PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, Register argc, Register argv,
         Register op, Register fp, Label *next, Label *stackOverflow);
+    static void PushArgsWithArgvInPair(ExtendedAssembler *assembler, Register argc, Register argv, Register padding,
+        Register op1, Register op2, Label *next);
     static void PushAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register currentSlot, Register numArgs,
@@ -78,7 +81,7 @@ public:
 
     static void JSFunctionEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedCallAndPushUndefined(ExtendedAssembler *assembler);
+    static void OptimizedCallAndPushArgv(ExtendedAssembler *assembler);
 
     static void JSProxyCallInternalWithArgV(ExtendedAssembler *assembler);
 
@@ -90,7 +93,11 @@ public:
 
     static void JSCallWithArgV(ExtendedAssembler *assembler);
 
-    static void JSCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
+    static void JSCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
+
+    static void AOTCallToAsmInterBridge(ExtendedAssembler *assembler);
+
+    static void FastCallToAsmInterBridge(ExtendedAssembler *assembler);
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
@@ -98,7 +105,7 @@ public:
 
     static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
 
-    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAddExpectedArgs);
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needPushArgv);
 private:
     static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
@@ -131,11 +138,11 @@ class OptimizedFastCall : public CommonCall {
 public:
     static void OptimizedFastCallEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedFastCallAndPushUndefined(ExtendedAssembler *assembler);
+    static void OptimizedFastCallAndPushArgv(ExtendedAssembler *assembler);
 
     static void JSFastCallWithArgV(ExtendedAssembler *assembler);
 
-    static void JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
+    static void JSFastCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 };
 
 class AsmInterpreterCall : public CommonCall {
@@ -198,7 +205,7 @@ public:
 
     static void CallContainersArgs3(ExtendedAssembler *assembler);
 
-    static void CallReturnWithArgv([[maybe_unused]]ExtendedAssembler *assembler);
+    static void CallReturnWithArgv([[maybe_unused]] ExtendedAssembler *assembler);
 
 private:
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
@@ -214,7 +221,7 @@ private:
 
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
 
-    static void PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
+    static bool PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
         FrameType type, Register op, Register next);
 
     static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,

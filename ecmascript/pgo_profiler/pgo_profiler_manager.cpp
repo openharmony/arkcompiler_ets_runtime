@@ -41,33 +41,41 @@ bool PGOProfilerManager::MergeApFiles(const std::string &inFiles, const std::str
                         << " ,hotnessThreshold: " << hotnessThreshold;
         return false;
     }
-    bool isFirstFile = true;
+    bool hasMerged = false;
     std::string firstApFileName;
     for (const auto &fileName : apFileNames) {
         if (!base::StringHelper::EndsWith(fileName, ".ap")) {
-            LOG_ECMA(ERROR) << "The file path(" << fileName << ") does not end with .ap";
+            LOG_ECMA(ERROR) << "The file path (" << fileName << ") does not end with .ap";
             continue;
         }
         PGOProfilerDecoder decoder(fileName, hotnessThreshold);
         if (!decoder.LoadFull(merger.GetAbcFilePool())) {
-            LOG_ECMA(ERROR) << "Fail to load file path(" << fileName << "), skip it.";
+            LOG_ECMA(ERROR) << "Fail to load file path (" << fileName << "), skip it.";
             continue;
         }
-        if (isFirstFile) {
+        if (!hasMerged) {
             firstApFileName = fileName;
         } else {
             if (!merger.VerifyPandaFileMatched(decoder.GetPandaFileInfos(), firstApFileName, fileName)) {
                 continue;
             }
         }
+        if (!decoder.IsCompatibleWithAOTFile()) {
+            LOG_ECMA(ERROR) << "The ap file (" << fileName << ") is not compatible with AOT version. skip it";
+            continue;
+        }
         merger.Merge(decoder.GetRecordDetailInfos());
         merger.Merge(decoder.GetPandaFileInfos());
-        isFirstFile = false;
+        hasMerged = true;
     }
-    if (isFirstFile) {
-        LOG_ECMA(ERROR) << "No input file processed. Input files: " << inFiles;
+    if (!hasMerged) {
+        LOG_ECMA(ERROR)
+            << "No ap file pass verify, no ap file compatible an version, no ap file processed. Input files: "
+            << inFiles;
+        GetInstance()->SetIsApFileCompatible(false);
         return false;
     }
+    GetInstance()->SetIsApFileCompatible(true);
     merger.Save();
     return true;
 }
@@ -81,28 +89,36 @@ bool PGOProfilerManager::MergeApFiles(uint32_t checksum, PGOProfilerDecoder &mer
         return true;
     }
     merger.InitMergeData();
-    bool isFirstFile = true;
+    bool hasMerged = false;
     std::string firstApFileName;
     for (const auto &fileName : pandaFileNames) {
         PGOProfilerDecoder decoder(fileName, hotnessThreshold);
         if (!decoder.LoadAndVerify(checksum, merger.GetAbcFilePool())) {
-            LOG_ECMA(ERROR) << "Load and verify file(" << fileName << ") failed, skip it.";
+            LOG_ECMA(ERROR) << "Load and verify file (" << fileName << ") failed, skip it.";
             continue;
         }
-        if (isFirstFile) {
+        if (!hasMerged) {
             firstApFileName = fileName;
         } else {
             if (!merger.GetPandaFileInfos().VerifyChecksum(decoder.GetPandaFileInfos(), firstApFileName, fileName)) {
                 continue;
             }
         }
+        if (!decoder.IsCompatibleWithAOTFile()) {
+            LOG_ECMA(ERROR) << "The ap file (" << fileName << ") is not compatible with AOT version. skip it";
+            continue;
+        }
         merger.Merge(decoder);
-        isFirstFile = false;
+        hasMerged = true;
     }
-    if (isFirstFile) {
-        LOG_ECMA(ERROR) << "No file pass verify ,No input file processed. Input files: " << inFiles;
+    if (!hasMerged) {
+        LOG_ECMA(ERROR)
+            << "No ap file pass verify, no ap file compatible an version, no ap file processed. Input files: "
+            << inFiles;
+        GetInstance()->SetIsApFileCompatible(false);
         return false;
     }
+    GetInstance()->SetIsApFileCompatible(true);
     return true;
 }
 

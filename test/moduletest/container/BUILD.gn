@@ -13,94 +13,11 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_moduletest_action("container_arraylist") {
-  deps = []
-}
-
-host_moduletest_action("container_deque") {
-  deps = []
-}
-
-host_moduletest_action("container_queue") {
-  deps = []
-}
-
-host_moduletest_action("container_hashmap") {
-  deps = []
-}
-
-host_moduletest_action("container_hashset") {
-  deps = []
-}
-
-host_moduletest_action("container_plainarray") {
-  deps = []
-}
-
-host_moduletest_action("container_stack") {
-  deps = []
-}
-
-host_moduletest_action("container_treemap") {
-  deps = []
-}
-
-host_moduletest_action("container_treeset") {
-  deps = []
-}
-
-host_moduletest_action("container_vector") {
-  deps = []
-}
-
-host_moduletest_action("container_list") {
-  deps = []
-}
-
-host_moduletest_action("container_linked_list") {
-  deps = []
-}
-
-host_moduletest_action("container_lightweightmap") {
-  deps = []
-}
-
-host_moduletest_action("container_lightweightset") {
-  deps = []
-}
-
 host_moduletest_action("container") {
-  extra_modules = [
-    "container_arraylist",
-    "container_deque",
-    "container_hashmap",
-    "container_hashset",
-    "container_lightweightmap",
-    "container_lightweightset",
-    "container_linked_list",
-    "container_list",
-    "container_plainarray",
-    "container_queue",
-    "container_stack",
-    "container_treemap",
-    "container_treeset",
-    "container_vector",
-  ]
-  deps = [
-    ":gen_container_arraylist_abc",
-    ":gen_container_deque_abc",
-    ":gen_container_hashmap_abc",
-    ":gen_container_hashset_abc",
-    ":gen_container_lightweightmap_abc",
-    ":gen_container_lightweightset_abc",
-    ":gen_container_linked_list_abc",
-    ":gen_container_list_abc",
-    ":gen_container_plainarray_abc",
-    ":gen_container_queue_abc",
-    ":gen_container_stack_abc",
-    ":gen_container_treemap_abc",
-    ":gen_container_treeset_abc",
-    ":gen_container_vector_abc",
-  ]
+  deps = []
+  entry_point = "--entry-point=container"
+  is_module = true
+  is_merge = true
+  is_merge_abc = true
   timeout = "300"
 }

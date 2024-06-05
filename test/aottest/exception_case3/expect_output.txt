@@ -13,5 +13,5 @@
 
 ReferenceError: d is not defined
 exception_case3.js:18:18
-exception_case3.js:20:1
+exception_case3.js:20:20
 

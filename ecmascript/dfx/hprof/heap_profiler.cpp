@@ -15,6 +15,7 @@
 
 #include <sys/wait.h>
 #include <sys/prctl.h>
+#include <sys/syscall.h>
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
@@ -34,6 +35,15 @@
 #endif
 
 namespace panda::ecmascript {
+static pid_t ForkBySyscall(void)
+{
+#ifdef SYS_fork
+    return syscall(SYS_fork);
+#else
+    return syscall(SYS_clone, SIGCHLD, 0);
+#endif
+}
+
 std::pair<bool, uint32_t> EntryIdMap::FindId(JSTaggedType addr)
 {
     auto it = idMap_.find(addr);
@@ -135,7 +145,7 @@ void HeapProfiler::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, si
 
 void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
 {
-    ForceSharedGC();
+    SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
     snapshot->UpdateNodes();
 }
 
@@ -191,7 +201,7 @@ bool HeapProfiler::DoDump(DumpFormat dumpFormat, Stream *stream, Progress *progr
     return serializerResult;
 }
 
-static void WaitProcess(pid_t pid)
+[[maybe_unused]]static void WaitProcess(pid_t pid)
 {
     time_t startTime = time(nullptr);
     constexpr int DUMP_TIME_OUT = 300;
@@ -211,6 +221,54 @@ static void WaitProcess(pid_t pid)
     }
 }
 
+void HeapProfiler::FillIdMap()
+{
+    EntryIdMap* newEntryIdMap = GetChunk()->New<EntryIdMap>();
+    // Iterate SharedHeap Object
+    SharedHeap* sHeap = SharedHeap::GetInstance();
+    if (sHeap != nullptr) {
+        sHeap->IterateOverObjects([newEntryIdMap](TaggedObject *obj) {
+            JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
+            auto [idExist, sequenceId] = newEntryIdMap->FindId(addr);
+            if (!idExist) {
+                newEntryIdMap->InsertId(addr, sequenceId);
+            }
+        });
+    }
+
+    // Iterate LocalHeap Object
+    auto heap = vm_->GetHeap();
+    if (heap != nullptr) {
+        heap->IterateOverObjects([newEntryIdMap](TaggedObject *obj) {
+            JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
+            auto [idExist, sequenceId] = newEntryIdMap->FindId(addr);
+            if (!idExist) {
+                newEntryIdMap->InsertId(addr, sequenceId);
+            }
+        });
+    }
+
+    // copy entryIdMap
+    CUnorderedMap<JSTaggedType, uint32_t>* idMap = entryIdMap_->GetIdMap();
+    CUnorderedMap<JSTaggedType, uint32_t>* newIdMap = newEntryIdMap->GetIdMap();
+    if (entryIdMap_->GetIdCount() == 0) {
+        *idMap = *newIdMap;
+    } else {
+        CUnorderedMap<JSTaggedType, uint32_t> tempIdMap;
+        for (auto it : *newIdMap) {
+            auto addr = it.first;
+            auto newIt = idMap->find(addr);
+            if (newIt != idMap->end()) {
+                tempIdMap.emplace(addr, newIt->second);
+            }
+        }
+        idMap->clear();
+        *idMap = tempIdMap;
+    }
+
+    GetChunk()->Delete(newEntryIdMap);
+}
+
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
                                     bool isVmMode, bool isPrivate, bool captureNumericValue,
                                     bool isFullGC, bool isSimplify, bool isSync)
@@ -218,20 +276,26 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
     bool res = false;
     base::BlockHookScope blockScope;
     ThreadManagedScope managedScope(vm_->GetJSThread());
-    if (isFullGC) {
-        [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
-        ASSERT(heapClean);
-    }
-    // suspend All.
-    SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-    if (isFullGC) {
-        DISALLOW_GARBAGE_COLLECTION;
-        const_cast<Heap *>(vm_->GetHeap())->Prepare();
-    }
+
     pid_t pid = -1;
     {
+        if (isFullGC) {
+            [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
+            ASSERT(heapClean);
+        }
+        // suspend All.
+        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+        if (isFullGC) {
+            DISALLOW_GARBAGE_COLLECTION;
+            const_cast<Heap *>(vm_->GetHeap())->Prepare();
+        }
+        Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+            ASSERT(!thread->IsInRunningState());
+            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
+        });
+        FillIdMap();
         // fork
-        if ((pid = fork()) < 0) {
+        if ((pid = ForkBySyscall()) < 0) {
             LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
             return false;
         }
@@ -242,6 +306,7 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
             _exit(0);
         }
     }
+
     if (pid != 0) {
         if (isSync) {
             WaitProcess(pid);
@@ -251,6 +316,7 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
         }
         stream->EndOfStream();
     }
+    isProfiling_ = true;
     return res;
 }
 
@@ -258,6 +324,7 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
                                      bool traceAllocation, bool newThread)
 {
     vm_->CollectGarbage(TriggerGCType::OLD_GC);
+    ForceSharedGC();
     SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
     HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::REAL_TIME, isVmMode, false, false, traceAllocation);
     if (snapshot == nullptr) {
@@ -286,6 +353,7 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
 
     {
         vm_->CollectGarbage(TriggerGCType::OLD_GC);
+        ForceSharedGC();
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
         snapshot->RecordSampleTime();
         UpdateHeapObjects(snapshot);
@@ -319,7 +387,9 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
         progress->ReportProgress(0, heapCount);
     }
     {
+        ForceSharedGC();
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+        SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
         snapshot->FinishSnapshot();
     }
 
@@ -389,7 +459,7 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
 void HeapProfiler::ForceSharedGC()
 {
     SharedHeap *sHeap = SharedHeap::GetInstance();
-    sHeap->CollectGarbageImpl(TriggerGCType::SHARED_GC, GCReason::OTHER);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(vm_->GetAssociatedJSThread());
     sHeap->GetSweeper()->WaitAllTaskFinished();
 }
 

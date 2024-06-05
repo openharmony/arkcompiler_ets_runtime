@@ -11,24 +11,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: foo@ts_multi_inline_max_call caller function name: func_main_0@ts_multi_inline_max_call
-[trace] aot inline function name: foo1@ts_multi_inline_max_call caller function name: foo@ts_multi_inline_max_call
-[trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo1@ts_multi_inline_max_call
+[trace] aot inline function name: #*#foo@ts_multi_inline_max_call caller function name: func_main_0@ts_multi_inline_max_call
+[trace] aot inline function name: #*#foo1@ts_multi_inline_max_call caller function name: #*#foo@ts_multi_inline_max_call
+[trace] aot inline function name: #*#bar@ts_multi_inline_max_call caller function name: #*#foo1@ts_multi_inline_max_call
 bar
-[trace] aot inline function name: foo2@ts_multi_inline_max_call caller function name: foo@ts_multi_inline_max_call
-[trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo2@ts_multi_inline_max_call
+[trace] aot inline function name: #*#foo2@ts_multi_inline_max_call caller function name: #*#foo@ts_multi_inline_max_call
+[trace] aot inline function name: #*#bar@ts_multi_inline_max_call caller function name: #*#foo2@ts_multi_inline_max_call
 bar
-[trace] aot inline function name: foo3@ts_multi_inline_max_call caller function name: foo@ts_multi_inline_max_call
-[trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo3@ts_multi_inline_max_call
+[trace] aot inline function name: #*#foo3@ts_multi_inline_max_call caller function name: #*#foo@ts_multi_inline_max_call
+[trace] aot inline function name: #*#bar@ts_multi_inline_max_call caller function name: #*#foo3@ts_multi_inline_max_call
 bar
-[trace] aot inline function name: foo4@ts_multi_inline_max_call caller function name: foo@ts_multi_inline_max_call
-[trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo4@ts_multi_inline_max_call
+[trace] aot inline function name: #*#foo4@ts_multi_inline_max_call caller function name: #*#foo@ts_multi_inline_max_call
+[trace] aot inline function name: #*#bar@ts_multi_inline_max_call caller function name: #*#foo4@ts_multi_inline_max_call
 bar
-[trace] aot inline function name: foo5@ts_multi_inline_max_call caller function name: foo@ts_multi_inline_max_call
-[trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo5@ts_multi_inline_max_call
+[trace] aot inline function name: #*#foo5@ts_multi_inline_max_call caller function name: #*#foo@ts_multi_inline_max_call
+[trace] aot inline function name: #*#bar@ts_multi_inline_max_call caller function name: #*#foo5@ts_multi_inline_max_call
 bar
-[trace] aot inline function name: foo6@ts_multi_inline_max_call caller function name: foo@ts_multi_inline_max_call
-[trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo6@ts_multi_inline_max_call
+[trace] aot inline function name: #*#foo6@ts_multi_inline_max_call caller function name: #*#foo@ts_multi_inline_max_call
+[trace] aot inline function name: #*#bar@ts_multi_inline_max_call caller function name: #*#foo6@ts_multi_inline_max_call
 bar
-[trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo7@ts_multi_inline_max_call
+[trace] aot inline function name: #*#bar@ts_multi_inline_max_call caller function name: #*#foo7@ts_multi_inline_max_call
 bar

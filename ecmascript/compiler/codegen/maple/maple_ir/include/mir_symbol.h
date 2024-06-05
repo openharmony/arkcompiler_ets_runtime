@@ -25,7 +25,7 @@ constexpr int kScopeLocal = 2;   // the default scope level for function variabl
 constexpr int kScopeGlobal = 1;  // the scope level for global variables
 
 namespace maple {
-enum MIRSymKind { kStInvalid, kStVar, kStFunc, kStConst, kStJavaClass, kStJavaInterface, kStPreg };
+enum MIRSymKind { kStInvalid, kStVar, kStFunc, kStConst, kStPreg };
 
 enum MIRStorageClass : uint8 {
     kScInvalid,
@@ -270,8 +270,7 @@ public:
 
     bool IsFinal() const
     {
-        return ((typeAttrs.GetAttr(ATTR_final) || typeAttrs.GetAttr(ATTR_readonly)) &&
-                staticFinalBlackList.find(GetName()) == staticFinalBlackList.end()) ||
+        return (typeAttrs.GetAttr(ATTR_final) || typeAttrs.GetAttr(ATTR_readonly)) ||
                IsLiteral() || IsLiteralPtr();
     }
 
@@ -364,11 +363,6 @@ public:
     bool IsPreg() const
     {
         return sKind == kStPreg;
-    }
-
-    bool IsJavaClassInterface() const
-    {
-        return sKind == kStJavaClass || sKind == kStJavaInterface;
     }
 
     SymbolType GetValue() const
@@ -492,7 +486,6 @@ public:
     bool IsMuidRangeTab() const;
     bool IsArrayClassCache() const;
     bool IsArrayClassCacheName() const;
-    bool IsForcedGlobalFunc() const;
     bool IsForcedGlobalClassinfo() const;
     bool IsGctibSym() const;
     bool IsPrimordialObject() const;
@@ -634,7 +627,6 @@ private:
     SymbolType value = {nullptr};
     SrcPosition srcPosition;  // where the symbol is defined
     // following cannot be assumed final even though they are declared final
-    static const std::set<std::string> staticFinalBlackList;
     static GStrIdx reflectClassNameIdx;
     static GStrIdx reflectMethodNameIdx;
     static GStrIdx reflectFieldNameIdx;

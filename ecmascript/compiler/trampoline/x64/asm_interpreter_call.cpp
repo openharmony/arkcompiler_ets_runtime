@@ -330,7 +330,8 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
         __ Movq(callTargetRegister, tempRegister);
         __ Movq(Operand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), r12);  // pc: r12
         // Reload constpool and profileInfo to make sure gc map work normally
-        __ Movq(Operand(tempRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);       // profileTypeInfo: r14
+        __ Movq(Operand(tempRegister, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET), r14);
+        __ Movq(Operand(r14, ProfileTypeInfoCell::VALUE_OFFSET), r14);                 // profileTypeInfo: r14
         __ Movq(Operand(methodRegister, Method::CONSTANT_POOL_OFFSET), rbx);           // constantPool: rbx
 
         __ Movq(kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException, tempRegister);
@@ -762,7 +763,8 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     __ PushAlignBytes();
     __ Bind(&dispatchCall);
     // profileTypeInfo: r14
-    __ Movq(Operand(callTargetRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);
+    __ Movq(Operand(callTargetRegister, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET), r14);
+    __ Movq(Operand(r14, ProfileTypeInfoCell::VALUE_OFFSET), r14);
     // glue may rdi
     if (glueRegister != r13) {
         __ Movq(glueRegister, r13);
@@ -832,7 +834,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     Label pushThis;
     Label stackOverflow;
 
-    PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV);
+    bool isFrameComplete = PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV);
 
     __ Push(numArgs);
     __ Cmpq(0, numArgs);
@@ -846,7 +848,8 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     if (callNew) {
         if (hasNewTarget) {
             Register newTarget = r12;
-            __ Movq(Operand(rbp, DOUBLE_SLOT_SIZE), newTarget);
+            // 5: skip frame type, numArgs, func, newTarget and this
+            __ Movq(Operand(rsp, numArgs, Times8, 5 * FRAME_SLOT_SIZE), newTarget);
             __ Pushq(newTarget);
         } else {
             __ Pushq(func);
@@ -855,8 +858,10 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         __ Pushq(JSTaggedValue::Undefined().GetRawData());
     }
     __ Pushq(func);
-    // 5: 40 means skip frame type, numArgs, func, newTarget and this
-    __ Leaq(Operand(rsp, numArgs, Times8, 5 * FRAME_SLOT_SIZE), rbp);
+    if (!isFrameComplete) {
+        // 5: skip frame type, numArgs, func, newTarget and this
+        __ Leaq(Operand(rsp, numArgs, Times8, 5 * FRAME_SLOT_SIZE), rbp);
+    }
     __ Movq(rsp, stackArgs);
 
     // push argc
@@ -878,12 +883,25 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ Bind(&stackOverflow);
     {
         Label aligneThrow;
-        __ Movq(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME),
-            Operand(rsp, FRAME_SLOT_SIZE));
+        __ Movq(Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)), rsp);
+        __ Pushq(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME));  // frame type
         __ Pushq(0);  // argc
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // this
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // newTarget
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // callTarget
+        // 5: skip frame type, argc, this, newTarget and callTarget
+        // +----------------------------------------------------------------+ <---- rbp = rsp + 5 * frame_slot_size
+        // |     FrameType =  BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME |
+        // |----------------------------------------------------------------|
+        // |                               argc = 0                         |
+        // |----------------------------------------------------------------|
+        // |                           this = undefine                      |
+        // |----------------------------------------------------------------|
+        // |                        newTarget = undefined                   |
+        // |----------------------------------------------------------------|
+        // |                        callTarget = undefined                  |
+        // +----------------------------------------------------------------+  <---- rsp
+        __ Leaq(Operand(rsp, 5 * FRAME_SLOT_SIZE), rbp);
 
         __ Testq(0xf, rsp);  // 0xf: 0x1111
         __ Jz(&aligneThrow, Distance::Near);
@@ -977,13 +995,23 @@ void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assemb
     __ Ret();
 }
 
-void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler,
+bool AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler,
                                           Register glue, FrameType type)
 {
     __ Pushq(rbp);
     __ Movq(rsp, Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
     __ Pushq(static_cast<int32_t>(type));
-    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);  // 8: skip frame type
+    if (type != FrameType::BUILTIN_FRAME_WITH_ARGV) {
+        __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);  // 8: skip frame type
+        return true;
+    } else if (type == FrameType::BUILTIN_FRAME_WITH_ARGV) {
+        // this frame push stack args must before update rbp, otherwise cpu profiler maybe visit incomplete stack
+        // BuiltinWithArgvFrame layout please see frames.h
+        return false;
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
 }
 
 void AsmInterpreterCall::CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode)

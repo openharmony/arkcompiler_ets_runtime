@@ -37,7 +37,6 @@ constexpr uint32 kClassNeedDecouple = 0x1000;
 constexpr uint32 kClassLazyBindingClass = 0x2000;
 constexpr uint32 kClassLazyBoundClass = 0x4000;  // Only used in runtime, occupancy.
 constexpr uint32 kClassRuntimeVerify = 0x8000;   // True if need verifier in runtime (error or deferred check).
-constexpr char kJavaLangNoMethodStr[] = "Ljava_2Flang_2FNoSuchMethodException_3B";
 constexpr uint32 kClassReference =
     (kClassSoftreference | kClassWeakreference | kClassCleaner | kClassFinalizereference | kClassPhantomreference);
 
@@ -69,7 +68,6 @@ public:
         return structType->GetKind() == kTypeInterfaceIncomplete;
     }
 
-    // Return true if Klass represents a normal java class
     bool IsClass() const
     {
         return structType->GetKind() == kTypeClass;
@@ -298,8 +296,6 @@ public:
     }
 
     void DelMethod(const MIRFunction &func);
-    // Collect the virtual methods from parent class and interfaces
-    void CountVirtMethTopDown(const KlassHierarchy &kh);
     // Count the virtual methods for subclasses and merge with itself
     void CountVirtMethBottomUp();
     void Dump() const;
@@ -337,45 +333,6 @@ private:
     bool isPrivateInnerAndNoSubClassFlag = false;
     bool hasNativeMethods = false;
     bool needDecoupling = true;
-};
-
-// Some well known types like java.lang.Object. They may be commonly referenced.
-// j - java
-// jl - java lang
-// jlr - java lang reflect
-class WKTypes {
-public:
-    class Util {
-    public:
-        static bool MayRefString(const BaseNode &n, MIRType &type);
-        static bool MayRefMeta(const BaseNode &n, MIRType &type);
-        static bool MayNotRefCyclicly(const BaseNode &n, MIRType &type);
-        static MIRType *GetJavaLangObjectType()
-        {
-            return javaLangObject;
-        }
-
-    private:
-        static bool NotCyclicType(MIRType &type, std::set<MIRType *> &workList);
-    };
-    static void Init();
-
-private:
-    static MIRType *javaLangObject;
-    static MIRType *javaLangString;
-    static MIRType *javaLangObjectSerializable;
-    static MIRType *javaLangComparable;
-    static MIRType *javaLangCharSequence;
-    static MIRType *javaLangClass;
-    static MIRType *javaLangRefGenericDeclaration;
-    static MIRType *javaLangRefAnnotatedElement;
-    static MIRType *javaLangRefType;
-    static MIRType *javaLangRefMethod;
-    static MIRType *javaLangRefExecutable;
-    static MIRType *javaLangRefAccessibleObject;
-    static MIRType *javaLangRefMember;
-    static MIRType *javaLangRefField;
-    static MIRType *javaLangRefConstructor;
 };
 
 // data structure to represent class information defined in the module
@@ -427,9 +384,6 @@ public:
 private:
     // New all klass
     void AddKlasses();
-    // Add superklass/subclass edge and class methods for each class
-    void AddKlassRelationAndMethods();
-    void TagThrowableKlasses();
     // Connect all class<->interface edges based on Depth-First Search
     void UpdateImplementedInterfaces();
     // Get a vector of parent class and implementing interface
@@ -440,7 +394,6 @@ private:
     Klass *AddClassFlag(const std::string &name, uint32 flag);
     int GetFieldIDOffsetBetweenClasses(const Klass &super, const Klass &base) const;
     void TopologicalSortKlasses();
-    void MarkClassFlags();
     // Return the unique method if there is only one target virtual function.
     // Return 0 if there are multiple targets or the targets are unclear.
     GStrIdx GetUniqueMethod(GStrIdx) const;

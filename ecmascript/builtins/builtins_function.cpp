@@ -122,22 +122,30 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeApply(EcmaRuntimeCallInfo *argv
     BUILTINS_API_TRACE(thread, Function, PrototypeApply);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
+    JSHandle<JSTaggedValue> func = GetThis(argv);
+    JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> arrayObj = GetCallArg(argv, 1);
+    return FunctionPrototypeApplyInternal(thread, func, thisArg, arrayObj);
+}
+
+JSTaggedValue BuiltinsFunction::FunctionPrototypeApplyInternal(JSThread *thread, JSHandle<JSTaggedValue> func,
+                                                               JSHandle<JSTaggedValue> thisArg,
+                                                               JSHandle<JSTaggedValue> arrayObj)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. If IsCallable(func) is false, throw a TypeError exception.
-    if (!GetThis(argv)->IsCallable()) {
+    if (!func->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "apply target is not callable", JSTaggedValue::Exception());
     }
 
-    JSHandle<JSTaggedValue> func = GetThis(argv);
-    JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     // 2. If argArray is null or undefined, then
-    if (GetCallArg(argv, 1)->IsUndefined()) {  // null will also get undefined
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    if (arrayObj->IsUndefined()) {  // null will also get undefined
         // a. Return Call(func, thisArg).
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisArg, undefined, 0);
         return JSFunction::Call(info);
     }
     // 3. Let argList be CreateListFromArrayLike(argArray).
-    JSHandle<JSTaggedValue> arrayObj = GetCallArg(argv, 1);
     std::pair<TaggedArray*, size_t> argumentsList = BuildArgumentsListFast(thread, arrayObj);
     if (!argumentsList.first) {
         JSHandle<JSTaggedValue> num = JSObject::CreateListFromArrayLike(thread, arrayObj);
@@ -170,10 +178,6 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let Target be the this value.
     JSHandle<JSTaggedValue> target = GetThis(argv);
-    // 2. If IsCallable(Target) is false, throw a TypeError exception.
-    if (!target->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "bind target is not callable", JSTaggedValue::Exception());
-    }
 
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 0);
     uint32_t argsLength = 0;
@@ -187,6 +191,22 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
     for (uint32_t index = 0; index < argsLength; ++index) {
         argsArray->Set(thread, index, GetCallArg(argv, index + 1));
     }
+
+    return FunctionPrototypeBindInternal(thread, target, thisArg, argsArray);
+}
+
+JSTaggedValue BuiltinsFunction::FunctionPrototypeBindInternal(JSThread *thread, JSHandle<JSTaggedValue> target,
+                                                              JSHandle<JSTaggedValue> thisArg,
+                                                              JSHandle<TaggedArray> argsArray)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 2. If IsCallable(Target) is false, throw a TypeError exception.
+    if (!target->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "bind target is not callable", JSTaggedValue::Exception());
+    }
+
     // 4. Let F be BoundFunctionCreate(Target, thisArg, args).
     JSHandle<JSBoundFunction> boundFunction = factory->NewJSBoundFunction(target, thisArg, argsArray);
     // 5. ReturnIfAbrupt(F)
@@ -230,7 +250,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
                 // argv include thisArg
                 lengthValue =
                     std::max(0.0, JSTaggedValue::ToNumber(thread, targetLen).GetNumber() -
-                             static_cast<double>(argsLength));
+                             static_cast<double>(argsArray->GetLength()));
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
         }

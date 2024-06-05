@@ -37,31 +37,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 
 namespace panda::test {
-class JSObjectTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JSObjectTest : public BaseTestWithScope<false> {
 };
 
 static JSFunction *JSObjectTestCreate(JSThread *thread)
@@ -159,7 +135,7 @@ HWTEST_F_L0(JSObjectTest, DeletePropertyGlobal)
     EXPECT_NE(val3, JSTaggedValue::Undefined());
 }
 
-HWTEST_F_L0(JSObjectTest, GetPropertyInPrototypeChain)
+void GetPropertyHasOwnPeroperty(JSThread *thread, bool hasOwnProperty = false)
 {
     JSHandle<JSObject> nullHandle(thread, JSTaggedValue::Null());
     JSHandle<JSObject> grandfather = JSObject::ObjectCreate(thread, nullHandle);
@@ -169,20 +145,35 @@ HWTEST_F_L0(JSObjectTest, GetPropertyInPrototypeChain)
     JSHandle<JSTaggedValue> sonKey(thread->GetEcmaVM()->GetFactory()->NewFromASCII("key1"));
     JSHandle<JSTaggedValue> fatherKey(thread->GetEcmaVM()->GetFactory()->NewFromASCII("key2"));
     JSHandle<JSTaggedValue> grandfatherKey(thread->GetEcmaVM()->GetFactory()->NewFromASCII("key3"));
-    JSHandle<JSTaggedValue> sonValue(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> fatherValue(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> grandfatherValue(thread, JSTaggedValue(3));
+    JSHandle<JSTaggedValue> sonValue(thread, JSTaggedValue(1)); // 1 : value
+    JSHandle<JSTaggedValue> fatherValue(thread, JSTaggedValue(2)); // 2 : value
+    JSHandle<JSTaggedValue> grandfatherValue(thread, JSTaggedValue(3)); // 3 : value
 
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(son), sonKey, sonValue);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(father), fatherKey, fatherValue);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(grandfather), grandfatherKey, grandfatherValue);
 
-    EXPECT_EQ(sonValue.GetTaggedValue(),
-              JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), sonKey).GetValue().GetTaggedValue());
-    EXPECT_EQ(fatherValue.GetTaggedValue(),
-              JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), fatherKey).GetValue().GetTaggedValue());
-    EXPECT_EQ(grandfatherValue.GetTaggedValue(),
-              JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), grandfatherKey).GetValue().GetTaggedValue());
+    if (hasOwnProperty) {
+        bool flag = JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(son), sonKey);
+        EXPECT_TRUE(flag);
+        flag = JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(son), fatherKey);
+        EXPECT_FALSE(flag);
+        flag = JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(son), grandfatherKey);
+        EXPECT_FALSE(flag);
+    } else {
+        EXPECT_EQ(sonValue.GetTaggedValue(),
+                  JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), sonKey).GetValue().GetTaggedValue());
+        EXPECT_EQ(fatherValue.GetTaggedValue(),
+                  JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), fatherKey).GetValue().GetTaggedValue());
+        EXPECT_EQ(
+            grandfatherValue.GetTaggedValue(),
+            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(son), grandfatherKey).GetValue().GetTaggedValue());
+    }
+}
+
+HWTEST_F_L0(JSObjectTest, GetPropertyInPrototypeChain)
+{
+    GetPropertyHasOwnPeroperty(thread);
 }
 
 HWTEST_F_L0(JSObjectTest, PropertyAttribute)
@@ -385,28 +376,7 @@ HWTEST_F_L0(JSObjectTest, HasPropertyWithProtoType)
 
 HWTEST_F_L0(JSObjectTest, HasOwnProperty)
 {
-    JSHandle<JSObject> nullHandle(thread, JSTaggedValue::Null());
-    JSHandle<JSObject> grandfather = JSObject::ObjectCreate(thread, nullHandle);
-    JSHandle<JSObject> father = JSObject::ObjectCreate(thread, grandfather);
-    JSHandle<JSObject> son = JSObject::ObjectCreate(thread, father);
-
-    JSHandle<JSTaggedValue> sonKey(thread->GetEcmaVM()->GetFactory()->NewFromASCII("key1"));
-    JSHandle<JSTaggedValue> fatherKey(thread->GetEcmaVM()->GetFactory()->NewFromASCII("key2"));
-    JSHandle<JSTaggedValue> grandfatherKey(thread->GetEcmaVM()->GetFactory()->NewFromASCII("key3"));
-    JSHandle<JSTaggedValue> sonValue(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> fatherValue(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> grandfatherValue(thread, JSTaggedValue(3));
-
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(son), sonKey, sonValue);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(father), fatherKey, fatherValue);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(grandfather), grandfatherKey, grandfatherValue);
-
-    bool flag = JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(son), sonKey);
-    EXPECT_TRUE(flag);
-    flag = JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(son), fatherKey);
-    EXPECT_FALSE(flag);
-    flag = JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(son), grandfatherKey);
-    EXPECT_FALSE(flag);
+    GetPropertyHasOwnPeroperty(thread, true);
 }
 
 HWTEST_F_L0(JSObjectTest, GetOwnPropertyKeys)
@@ -747,18 +717,17 @@ JSTaggedValue TestUndefinedSetter([[maybe_unused]] EcmaRuntimeCallInfo *argv)
     return JSTaggedValue(10);
 }
 
-HWTEST_F_L0(JSObjectTest, GetterIsUndefined)
+JSHandle<JSObject> GetterOrSetterIsUndefined(JSThread *thread, JSHandle<JSTaggedValue>& key)
 {
     JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
-    JSHandle<JSTaggedValue> key(factory->NewFromASCII("property"));
+    
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> getter =
         thread->GetEcmaVM()->GetFactory()->NewJSFunction(env, reinterpret_cast<void *>(TestUndefinedGetter));
     JSHandle<JSFunction> setter =
         thread->GetEcmaVM()->GetFactory()->NewJSFunction(env, reinterpret_cast<void *>(TestUndefinedSetter));
-    JSHandle<JSTaggedValue> unGetter(thread, JSTaggedValue::Undefined());
 
     PropertyDescriptor desc1(thread);
     desc1.SetGetter(JSHandle<JSTaggedValue>::Cast(getter));
@@ -767,7 +736,15 @@ HWTEST_F_L0(JSObjectTest, GetterIsUndefined)
     desc1.SetEnumerable(true);
     bool success1 = JSObject::DefineOwnProperty(thread, obj, key, desc1);
     EXPECT_TRUE(success1);
+    return obj;
+}
 
+HWTEST_F_L0(JSObjectTest, GetterIsUndefined)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> unGetter(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("property"));
+    auto obj = GetterOrSetterIsUndefined(thread, key);
     PropertyDescriptor desc2(thread);
     desc2.SetGetter(unGetter);
     bool success2 = JSObject::DefineOwnProperty(thread, obj, key, desc2);
@@ -782,25 +759,10 @@ HWTEST_F_L0(JSObjectTest, GetterIsUndefined)
 
 HWTEST_F_L0(JSObjectTest, SetterIsUndefined)
 {
-    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
-    JSHandle<JSTaggedValue> key(factory->NewFromASCII("property"));
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> getter =
-        thread->GetEcmaVM()->GetFactory()->NewJSFunction(env, reinterpret_cast<void *>(TestUndefinedGetter));
-    JSHandle<JSFunction> setter =
-        thread->GetEcmaVM()->GetFactory()->NewJSFunction(env, reinterpret_cast<void *>(TestUndefinedSetter));
     JSHandle<JSTaggedValue> unSetter(thread, JSTaggedValue::Undefined());
-
-    PropertyDescriptor desc1(thread);
-    desc1.SetGetter(JSHandle<JSTaggedValue>::Cast(getter));
-    desc1.SetSetter(JSHandle<JSTaggedValue>::Cast(setter));
-    desc1.SetConfigurable(true);
-    desc1.SetEnumerable(true);
-    bool success1 = JSObject::DefineOwnProperty(thread, obj, key, desc1);
-    EXPECT_TRUE(success1);
-
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("property"));
+    auto obj = GetterOrSetterIsUndefined(thread, key);
     PropertyDescriptor desc2(thread);
     desc2.SetSetter(unSetter);
     bool success2 = JSObject::DefineOwnProperty(thread, obj, key, desc2);

@@ -136,7 +136,8 @@ void BaseDeserializer::DeserializeJSError(JSErrorInfo *info)
     JSTaggedValue errorMsg = info->errorMsg_;
     bool root = info->root_;
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(thread_, errorMsg));
+    JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(thread_, errorMsg),
+                                                      StackCheck::NO);
     ObjectSlot slot = info->GetSlot();
     slot.Update(errorTag.GetTaggedType());
     if (!root && !errorTag.GetTaggedValue().IsInvalidValue()) {
@@ -177,6 +178,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
             // defer initialize concurrent function
             concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
         }
+        func->SetRawProfileTypeInfo(thread_, thread_->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     }
     UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
     if (!isRoot) {
@@ -464,6 +466,8 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetSetPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_SHARED_SET:
             return env->GetSharedSetPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SENDABLE_ARRAY_BUFFER:
+            return env->GetSendableArrayBufferPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_REG_EXP:
             return env->GetRegExpPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_INT8_ARRAY:
@@ -585,6 +589,9 @@ Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, si
             LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
         }
         Region *region = space->AllocateDeserializeRegion(thread_);
+        if (region == nullptr) {
+            LOG_ECMA(FATAL) << "BaseDeserializer::AllocateMultiSharedRegion:region is nullptr";
+        }
         if (regionNum == 1) { // 1: Last allocate region
             size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
             region->SetHighWaterMark(region->GetEnd() - lastRegionRemainSize);

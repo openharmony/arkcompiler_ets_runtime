@@ -967,7 +967,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         GateRef receiver = acc_.GetValueIn(gate, 0);
         GateRef propertyLookupResult = acc_.GetValueIn(gate, 1); // 1: propertyLookupResult
         GateRef hclassIndex = acc_.GetValueIn(gate, 2); // 2: hclassIndex
-        GateRef constpool = acc_.GetValueIn(gate, 3); // 3: constpool
+        GateRef unsharedConstPool = acc_.GetValueIn(gate, 3); // 3: constpool
         PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
         GateRef result = Circuit::NullGate();
         ASSERT(plr.IsLocal() || plr.IsFunction());
@@ -975,8 +975,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
         auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
-        GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
-        auto holderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
+        auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstPool, acc_.GetConstantValue(hclassIndex));
         DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
         Label exit(&builder_);
         Label loopHead(&builder_);

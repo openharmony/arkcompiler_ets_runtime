@@ -114,7 +114,7 @@ class Assembler {
 public:
     explicit Assembler() = default;
     virtual ~Assembler() = default;
-    virtual void Run(const CompilerLog &log, bool fastCompileMode) = 0;
+    virtual void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) = 0;
 
     uintptr_t GetSectionAddr(ElfSecName sec) const
     {
@@ -151,7 +151,8 @@ public:
 
     virtual void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                               const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile,
-                              const std::string &methodName, bool enableOptInlining, bool enableBranchProfiling) = 0;
+                              const std::string &methodName, const FrameType frameType,
+                              bool enableOptInlining, bool enableBranchProfiling) = 0;
 };
 
 class CodeGenerator {
@@ -174,10 +175,10 @@ public:
     }
 
     void Run(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-             const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile,
+             const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile, const FrameType frameType,
              bool enableOptInlining, bool enableOptBranchProfiling)
     {
-        impl_->GenerateCode(circuit, graph, cfg, methodLiteral, jsPandaFile, methodName_,
+        impl_->GenerateCode(circuit, graph, cfg, methodLiteral, jsPandaFile, methodName_, frameType,
             enableOptInlining, enableOptBranchProfiling);
     }
 

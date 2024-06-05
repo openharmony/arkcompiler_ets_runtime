@@ -62,7 +62,6 @@ enum MIRSrcLang {
     kSrcLangC,
     kSrcLangJs,
     kSrcLangCPlusPlus,
-    kSrcLangJava,
     kSrcLangChar,
     // SrcLangSwift : when clang adds support for Swift.
 };
@@ -393,11 +392,6 @@ public:
         std::replace(profileDataFileName.begin(), profileDataFileName.end(), '/', '_');
         profileDataFileName = profileDataFileName + namemangler::kProfFileNameExt;
         return profileDataFileName;
-    }
-
-    bool IsJavaModule() const
-    {
-        return srcLang == kSrcLangJava;
     }
 
     bool IsCModule() const
@@ -893,7 +887,7 @@ private:
     std::string fileName;
     std::string fileText;
     bool needFile = true;
-    TyIdx throwableTyIdx {0};  // a special type that is the base of java exception type. only used for java
+    TyIdx throwableTyIdx {0};
     bool withProfileInfo = false;
 
     DebugInfo *dbgInfo = nullptr;

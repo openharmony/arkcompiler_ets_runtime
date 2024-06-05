@@ -43,6 +43,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 
     if (!thread->GetCurrentEcmaContext()->HasCachedConstpool(baseFile)) {
         LOG_ECMA(INFO) << "cold patch!";
+        vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile, patchFile);
         return PatchErrorCode::SUCCESS;
     }
 
@@ -272,7 +273,8 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
                 JSHandle<JSTaggedValue> moduleRecord =
                     thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[methodId]);
                 function->SetModule(thread, moduleRecord.GetTaggedValue());
-                function->SetProfileTypeInfo(thread, JSTaggedValue::Undefined());
+                function->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
+                                                SKIP_BARRIER);
             }
         }
     });
@@ -553,7 +555,11 @@ CString PatchLoader::GetRealName(const JSPandaFile *jsPandaFile, EntityId entity
     size_t poiIndex = methodName.find_last_of('#');
     ASSERT(methodName.size() > 0);
     if (poiIndex != std::string::npos && poiIndex < methodName.size() - 1 && className != "default") {
-        methodName = methodName.substr(poiIndex + 1);
+        methodName = methodName.substr(poiIndex + 1);  // #...#functionName
+        if (methodName.find('^') != std::string::npos) {
+            poiIndex = methodName.find_last_of('^');
+            methodName = methodName.substr(0, poiIndex);  // #...#functionName^1
+        }
     }
     return ConvertToString(methodName);
 }

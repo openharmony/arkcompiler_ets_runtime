@@ -47,7 +47,7 @@
 
  ADDTARGETPHASE("prepeephole1", CGOptions::DoPrePeephole());
  ADDTARGETPHASE("ebo1", CGOptions::DoEBO());
- ADDTARGETPHASE("prescheduling", !GetMIRModule()->IsJavaModule() && CGOptions::DoPreSchedule());
+ ADDTARGETPHASE("prescheduling", CGOptions::DoPreSchedule());
  ADDTARGETPHASE("raopt", CGOptions::DoPreLSRAOpt());
  ADDTARGETPHASE("cgsplitcriticaledge", GetMIRModule()->IsCModule());
  ADDTARGETPHASE("regalloc", true);
@@ -67,7 +67,7 @@
  ADDTARGETPHASE("cgpostpeephole", CGOptions::DoPeephole())
  ADDTARGETPHASE("peephole", CGOptions::DoPeephole())
  ADDTARGETPHASE("gencfi", !GetMIRModule()->IsCModule() || GetMIRModule()->IsWithDbgInfo());
- ADDTARGETPHASE("yieldpoint", GetMIRModule()->IsJavaModule() && CGOptions::IsInsertYieldPoint());
+ ADDTARGETPHASE("yieldpoint", false);
  ADDTARGETPHASE("localschedule", CGOptions::DoLocalSchedule());
  ADDTARGETPHASE("alignanalysis", GetMIRModule()->IsCModule() && CGOptions::DoAlignAnalysis());
  ADDTARGETPHASE("fixshortbranch", true);

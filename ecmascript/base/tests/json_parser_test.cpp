@@ -22,28 +22,9 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 
 namespace panda::test {
-class JsonParserTest : public testing::Test {
+class JsonParserTest : public BaseTestWithScope<false> {
 public:
     using TransformType = base::JsonHelper::TransformType;
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
 
     void CheckUnsupportedSendableJson(JSHandle<JSTaggedValue> &result) const
     {
@@ -117,10 +98,6 @@ public:
         }
         return true;
     }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
 };
 
 /**

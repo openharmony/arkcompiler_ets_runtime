@@ -39,31 +39,7 @@ using BuiltinsBase = panda::ecmascript::base::BuiltinsBase;
 namespace panda::test {
 using BuiltinsWeakRef = ecmascript::builtins::BuiltinsWeakRef;
 
-class BuiltinsWeakRefTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsWeakRefTest : public BaseTestWithScope<false> {
 };
 
 JSTaggedValue CreateWeakRefConstructor(JSThread *thread, JSTaggedValue target)

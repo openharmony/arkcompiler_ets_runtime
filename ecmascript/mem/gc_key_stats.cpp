@@ -51,7 +51,7 @@ bool GCKeyStats::CheckIfKeyPauseTime() const
 
 void GCKeyStats::AddGCStatsToKey()
 {
-    LOG_GC(INFO) << "GCKeyStats AddGCStatsToKey!";
+    LOG_GC(DEBUG) << "GCKeyStats AddGCStatsToKey!";
 
     recordCount_++;
 
@@ -110,7 +110,7 @@ void GCKeyStats::SendSysEvent() const
         "GC_HUGE_MEM_USED", GetRecordDataStats(RecordKeyData::GC_HUGE_MEM_USED),
         "GC_HUGE_MEM_COMMITTED", GetRecordDataStats(RecordKeyData::GC_HUGE_MEM_COMMITTED));
     if (ret != 0) {
-        LOG_GC(INFO) << "GCKeyStats HiSysEventWrite Failed! ret = " << ret;
+        LOG_GC(ERROR) << "GCKeyStats HiSysEventWrite Failed! ret = " << ret;
     }
 #endif
 }
@@ -128,7 +128,7 @@ void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size
         "ACTIVE_MEMORY", activeMemory,
         "TYPE", type);
     if (ret != 0) {
-        LOG_GC(INFO) << "GCKeyStats SendSysEventBeforeDump Failed! ret = " << ret;
+        LOG_GC(ERROR) << "GCKeyStats SendSysEventBeforeDump Failed! ret = " << ret;
     }
 #else
     LOG_GC(INFO) << "GCKeyStats type: " << type << ", limitSize: " << limitSize << ", activeMemory: " << activeMemory;

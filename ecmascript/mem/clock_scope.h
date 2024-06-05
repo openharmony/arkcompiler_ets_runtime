@@ -41,6 +41,11 @@ public:
         return (float) duration.count() / MILLION_TIME;
     }
 
+    int TotalSpentTimeInMicroseconds() const
+    {
+        return std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - start_).count();
+    }
+
     double GetCurTime() const
     {
         auto curTime_ = Duration(start_.time_since_epoch());

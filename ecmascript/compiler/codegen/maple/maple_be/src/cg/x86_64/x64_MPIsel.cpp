@@ -1599,7 +1599,7 @@ void X64MPIsel::SelectRetypeFloat(RegOperand &resOpnd, Operand &opnd0, PrimType 
     RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, fromType);
     MOperator mOp = x64::MOP_begin;
     if (fromSize == k32BitSize) {
-        mOp = IsPrimitiveFloat(fromType) ? x64::MOP_movd_fr_r : x64::MOP_begin;
+        mOp = IsPrimitiveFloat(fromType) ? x64::MOP_movd_fr_r : x64::MOP_movd_r_fr;
     } else if (fromSize == k64BitSize) {
         mOp = IsPrimitiveFloat(fromType) ? x64::MOP_movq_fr_r : x64::MOP_movq_r_fr;
     } else {

@@ -29,16 +29,18 @@ enum class RunningState : size_t {
     CINT,
     AINT,
     AOT,
+    AINT_D,
     BUILTIN,
     NAPI,
     ARKUI_ENGINE,
-    RUNTIME
+    RUNTIME,
+    JIT
 };
 
 struct MethodKey {
     void *methodIdentifier = nullptr;
     RunningState state = RunningState::OTHER;
-    kungfu::DeoptType deoptType = kungfu::DeoptType::NOTCHECK;
+    kungfu::DeoptType deoptType = kungfu::DeoptType::NONE;
     int lineNumber = 0;
     bool operator < (const MethodKey &methodKey) const
     {

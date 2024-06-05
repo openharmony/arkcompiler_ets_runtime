@@ -24,19 +24,35 @@
 namespace panda::ecmascript::kungfu {
 class TSHCROptPass : public PassVisitor {
 public:
-    TSHCROptPass(Circuit* circuit, RPOVisitor *visitor, Chunk* chunk,
-                 PassContext *ctx, bool enableLog, const std::string &name)
+    TSHCROptPass(Circuit* circuit,
+                 RPOVisitor *visitor,
+                 Chunk* chunk,
+                 PassContext *ctx,
+                 bool enableLog,
+                 const std::string &name)
         : PassVisitor(circuit, chunk, visitor),
           builder_(circuit, ctx->GetCompilerConfig()),
           compilationEnv_(ctx->GetCompilationEnv()),
           enableLog_(enableLog),
-          methodName_(name) {}
+          methodName_(name)
+    {
+        if (ctx->GetCompilerConfig() != nullptr) {
+            typedOpProfiling_ = ctx->GetCompilerConfig()->IsTypedOpProfiling();
+        }
+    }
 
     ~TSHCROptPass() = default;
 
     GateRef VisitGate(GateRef gate) override;
 
 private:
+    void AddProfiling(GateRef gate);
+
+    bool IsTypedOpProfiling() const
+    {
+        return typedOpProfiling_;
+    }
+
     bool IsLogEnabled() const
     {
         return enableLog_;
@@ -66,6 +82,7 @@ private:
     const CompilationEnv *compilationEnv_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
+    bool typedOpProfiling_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_HCR_OPT_PASS_H

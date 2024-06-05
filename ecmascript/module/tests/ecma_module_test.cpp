@@ -746,10 +746,10 @@ HWTEST_F_L0(EcmaModuleTest, ConcatUnifiedOhmUrl)
 
 HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurl)
 {
-    CString recordPath = "entry/ets/";
+    CString recordPath = "&entry/ets/";
     CString requestName = "test";
     CString outFileName = ModulePathHelper::ConcatImportFileNormalizedOhmurl(recordPath, requestName, "");
-    CString exceptOutFileName = "@normalized:N&&entry/ets/test&";
+    CString exceptOutFileName = "&entry/ets/test&";
     EXPECT_EQ(outFileName, exceptOutFileName);
 }
 
@@ -806,5 +806,16 @@ HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName)
     EXPECT_EQ(res[3], importPath);
     CString version = "1.0.0";
     EXPECT_EQ(res[4], version);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatPreviewTestUnifiedOhmUrl)
+{
+    CString bundleName = "";
+    CString pkgName = "entry";
+    CString path = "/.test/testability/pages/Index";
+    CString version = "";
+    CString exceptOutUrl = "&entry/.test/testability/pages/Index&";
+    CString res = ModulePathHelper::ConcatPreviewTestUnifiedOhmUrl(bundleName, pkgName, path, version);
+    EXPECT_EQ(res, exceptOutUrl);
 }
 }  // namespace panda::test

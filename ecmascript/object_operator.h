@@ -238,6 +238,16 @@ public:
         return index_;
     }
 
+    inline void SetElementOutOfBounds(bool val)
+    {
+        elementsOutOfBounds_ = val;
+    }
+
+    inline bool GetElementOutOfBounds() const
+    {
+        return elementsOutOfBounds_;
+    }
+
     inline bool HasHolder() const
     {
         return !holder_.IsEmpty();
@@ -360,6 +370,7 @@ private:
     uint32_t metaData_{0};
     int receiverHoleEntry_{-1};
     bool keyFromStringType_{false};
+    bool elementsOutOfBounds_{false};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_OBJECT_OPERATOR_H

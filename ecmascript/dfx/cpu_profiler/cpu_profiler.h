@@ -109,6 +109,8 @@ private:
     void SetProfileStart(uint64_t nowTimeStamp);
     void GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo);
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
+    bool RegisterGetStackSignal();
+
     bool isProfiling_ = false;
     bool outToFile_ = false;
     std::string fileName_ = "";

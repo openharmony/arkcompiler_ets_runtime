@@ -67,6 +67,8 @@ public:
     {
         Taskpool::Initialize(0, [](os::thread::native_handle_type thread) {
             os::thread::SetThreadName(thread, "OS_JIT_Thread");
+            constexpr int32_t priorityVal = 5; // 5: The priority can be set within range [-20, 19]
+            os::thread::SetPriority(os::thread::GetCurrentThreadId(), priorityVal);
             auto jitVm = JitVM::Create();
             JitTaskpool::GetCurrentTaskpool()->SetCompilerVm(jitVm);
         }, []([[maybe_unused]] os::thread::native_handle_type thread) {
@@ -91,7 +93,7 @@ class JitTask {
 public:
     JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit,
         JSHandle<JSFunction> &jsFunction, CompilerTier tier, CString &methodName, int32_t offset,
-        uint32_t taskThreadId, JitCompileMode mode);
+        uint32_t taskThreadId, JitCompileMode mode, JitDfx *jitDfx);
     // for ut
     JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, uint32_t taskThreadId, JitCompileMode mode);
     ~JitTask();
@@ -102,6 +104,9 @@ public:
     void SetHClassInfoForPGO(JSHandle<Method> &methodHandle);
     void InstallCode();
     void InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj);
+    void InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCode,
+        JSHandle<Method> &methodHandle, JSHandle<Method> &newMethodHandle);
+
     MachineCodeDesc &GetMachineCodeDesc()
     {
         return codeDesc_;
@@ -213,6 +218,16 @@ public:
         return jitCompileMode_ == JitCompileMode::ASYNC;
     }
 
+    void SetMainThreadCompilerTime(int time)
+    {
+        mainThreadCompileTime_ = time;
+    }
+
+    int GetMainThreadCompilerTime() const
+    {
+        return mainThreadCompileTime_;
+    }
+
     class AsyncTask : public Task {
     public:
         explicit AsyncTask(std::shared_ptr<JitTask>jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }
@@ -278,6 +293,8 @@ private:
     std::unique_ptr<SustainingJSHandle> sustainingJSHandle_;
     EcmaContext *ecmaContext_;
     JitCompileMode jitCompileMode_;
+    JitDfx *jitDfx_ { nullptr };
+    int mainThreadCompileTime_ {0};
 
     std::atomic<RunState> runState_;
     Mutex runStateMutex_;

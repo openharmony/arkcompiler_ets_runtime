@@ -63,9 +63,9 @@ public:
         return runner_->IsInThreadPool(id);
     }
 
-    void SetThreadPriority(bool isForeground)
+    void SetThreadPriority(PriorityMode mode)
     {
-        runner_->SetQosPriority(isForeground);
+        runner_->SetQosPriority(mode);
     }
 
     void ForEachTask(const std::function<void(Task*)> &f);

@@ -658,24 +658,20 @@ void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
                     MIRIntConst *intConst = safe_cast<MIRIntConst>(st->GetKonst());
                     uint32 value = static_cast<uint32>(intConst->GetValue().GetExtValue());
                     emitter->Emit("\t.long").Emit(value).Emit("\n");
-                    emitter->IncreaseJavaInsnCount();
                     break;
                 }
                 case PTY_f32: {
                     MIRFloatConst *floatConst = safe_cast<MIRFloatConst>(st->GetKonst());
                     uint32 value = static_cast<uint32>(floatConst->GetIntValue());
                     emitter->Emit("\t.word").Emit(value).Emit("\n");
-                    emitter->IncreaseJavaInsnCount();
                     break;
                 }
                 case PTY_f64: {
                     MIRDoubleConst *doubleConst = safe_cast<MIRDoubleConst>(st->GetKonst());
                     uint32 value = doubleConst->GetIntLow32();
                     emitter->Emit("\t.word").Emit(value).Emit("\n");
-                    emitter->IncreaseJavaInsnCount();
                     value = doubleConst->GetIntHigh32();
                     emitter->Emit("\t.word").Emit(value).Emit("\n");
-                    emitter->IncreaseJavaInsnCount();
                     break;
                 }
                 default:
@@ -1402,10 +1398,7 @@ void Emitter::InitRangeIdx2PerfixStr()
     rangeIdx2PrefixStr[RangeIdx::kGlobalRootlist] = kMuidGlobalRootlistPrefixStr;
     rangeIdx2PrefixStr[RangeIdx::kClassmetaData] = kMuidClassMetadataPrefixStr;
     rangeIdx2PrefixStr[RangeIdx::kClassBucket] = kMuidClassMetadataBucketPrefixStr;
-    rangeIdx2PrefixStr[RangeIdx::kJavatext] = kMuidJavatextPrefixStr;
     rangeIdx2PrefixStr[RangeIdx::kDataSection] = kMuidDataSectionStr;
-    rangeIdx2PrefixStr[RangeIdx::kJavajni] = kRegJNITabPrefixStr;
-    rangeIdx2PrefixStr[RangeIdx::kJavajniFunc] = kRegJNIFuncTabPrefixStr;
     rangeIdx2PrefixStr[RangeIdx::kDecoupleStaticKey] = kDecoupleStaticKeyStr;
     rangeIdx2PrefixStr[RangeIdx::kDecoupleStaticValue] = kDecoupleStaticValueStr;
     rangeIdx2PrefixStr[RangeIdx::kBssStart] = kBssSectionStr;
@@ -1570,22 +1563,6 @@ void Emitter::EmitIntConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst, ui
             Emit("\n");
         }
         return;
-    } else if (mirSymbol.IsRegJNIFuncTab()) {
-        std::string strTabName = kRegJNITabPrefixStr + cg->GetMIRModule()->GetFileNameAsPostfix();
-        EmitScalarConstant(*elemConst, false);
-#ifdef TARGARM32
-        (void)Emit("+" + strTabName).Emit("+").Emit(MByteRef::kPositiveOffsetBias).Emit("-.\n");
-#else
-        Emit("+" + strTabName + "\n");
-#endif
-    } else if (mirSymbol.IsReflectionMethodAddrData()) {
-#ifdef USE_32BIT_REF
-        Emit("\t.long\t");
-#else
-        EmitAsmLabel(kAsmQuad);
-#endif /* USE_32BIT_REF */
-        Emit(intConst->GetValue());
-        Emit("\n");
     } else if (mirSymbol.IsReflectionFieldOffsetData()) {
         /* Figure out instance field offset now. */
         size_t prefixStrLen = strlen(kFieldOffsetDataPrefixStr);
@@ -1805,7 +1782,6 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
             DEBUG_ASSERT(false, "should not run here");
         }
     }
-    CHECK_FATAL(static_cast<int64>(arrayType.GetSizeArrayItem(0)) + 1 > uNum, "must not be zero");
     int64 iNum = (arrayType.GetSizeArrayItem(0) > 0) ? (static_cast<int64>(arrayType.GetSizeArrayItem(0)) - uNum) : 0;
     if (iNum > 0) {
         if (!cg->GetMIRModule()->IsCModule()) {
@@ -2023,7 +1999,6 @@ void Emitter::EmitLiteral(const MIRSymbol &literal, const std::map<GStrIdx, MIRT
      * .data
      * .align 3
      * _C_STR_xxxx:
-     * .quad __cinf_Ljava_2Flang_2FString_3B
      * ....
      * .size _C_STR_xxxx, 40
      */
@@ -2162,14 +2137,14 @@ void Emitter::GetHotAndColdMetaSymbolInfo(const std::vector<MIRSymbol *> &mirSym
     for (auto mirSymbol : mirSymbolVec) {
         CHECK_FATAL(prefixStr.length() < mirSymbol->GetName().length(), "string length check");
         std::string name = mirSymbol->GetName().substr(prefixStr.length());
-        std::string klassJavaDescriptor;
-        namemangler::DecodeMapleNameToJavaDescriptor(name, klassJavaDescriptor);
+        std::string klassJDescriptor;
+        namemangler::DecodeMapleNameToJDescriptor(name, klassJDescriptor);
         if (prefixStr == kFieldsInfoPrefixStr) {
-            isHot = cg->GetMIRModule()->GetProfile().CheckFieldHot(klassJavaDescriptor);
+            isHot = cg->GetMIRModule()->GetProfile().CheckFieldHot(klassJDescriptor);
         } else if (prefixStr == kMethodsInfoPrefixStr) {
-            isHot = cg->GetMIRModule()->GetProfile().CheckMethodHot(klassJavaDescriptor);
+            isHot = cg->GetMIRModule()->GetProfile().CheckMethodHot(klassJDescriptor);
         } else {
-            isHot = cg->GetMIRModule()->GetProfile().CheckClassHot(klassJavaDescriptor);
+            isHot = cg->GetMIRModule()->GetProfile().CheckClassHot(klassJDescriptor);
         }
         if (isHot && !forceCold) {
             hotFieldInfoSymbolVec.emplace_back(mirSymbol);
@@ -2603,8 +2578,7 @@ void Emitter::EmitGlobalVariable()
             continue;
         }
         /* symbols we do not emit here. */
-        if (mirSymbol->GetSKind() == maple::MIRSymKind::kStFunc || mirSymbol->GetSKind() == kStJavaClass ||
-            mirSymbol->GetSKind() == kStJavaInterface) {
+        if (mirSymbol->GetSKind() == maple::MIRSymKind::kStFunc) {
             continue;
         }
         if (mirSymbol->GetStorageClass() == kScTypeInfo) {
@@ -2704,9 +2678,7 @@ void Emitter::EmitGlobalVariable()
                 Emit("\t.section\t." + secName + ",\"a\",%progbits\n");
             } else {
                 bool isThreadLocal = mirSymbol->IsThreadLocal();
-                if (cg->GetMIRModule()->IsJavaModule()) {
-                    (void)Emit("\t.section\t." + std::string(kMapleGlobalVariable) + ",\"aw\", @progbits\n");
-                } else if (mirSymbol->sectionAttr != UStrIdx(0)) {
+                if (mirSymbol->sectionAttr != UStrIdx(0)) {
                     auto &sectionName = GlobalTables::GetUStrTable().GetStringFromStrIdx(mirSymbol->sectionAttr);
                     auto sectionConstrains = isThreadLocal ? ",\"awT\"," : ",\"aw\",";
                     (void)Emit("\t.section\t" + sectionName + sectionConstrains + "@progbits\n");
@@ -2722,9 +2694,6 @@ void Emitter::EmitGlobalVariable()
                     EmitAsmLabel(*mirSymbol, kAsmWeak);
                 } else {
                     EmitAsmLabel(*mirSymbol, kAsmGlbl);
-                }
-                if (theMIRModule->IsJavaModule()) {
-                    EmitAsmLabel(*mirSymbol, kAsmHidden);
                 }
             } else if (mirSymbol->GetStorageClass() == kScFstatic) {
                 if (mirSymbol->sectionAttr == UStrIdx(0)) {
@@ -3214,8 +3183,6 @@ void Emitter::EmitDIHeader()
 {
     if (cg->GetMIRModule()->GetSrcLang() == kSrcLangC) {
         (void)Emit("\t.section ." + std::string("c_text") + ",\"ax\"\n");
-    } else {
-        (void)Emit("\t.section ." + std::string(namemangler::kMuidJavatextPrefixStr) + ",\"ax\"\n");
     }
     Emit(".L" XSTR(TEXT_BEGIN) ":\n");
 }
@@ -3224,8 +3191,6 @@ void Emitter::EmitDIFooter()
 {
     if (cg->GetMIRModule()->GetSrcLang() == kSrcLangC) {
         (void)Emit("\t.section ." + std::string("c_text") + ",\"ax\"\n");
-    } else {
-        (void)Emit("\t.section ." + std::string(namemangler::kMuidJavatextPrefixStr) + ",\"ax\"\n");
     }
     Emit(".L" XSTR(TEXT_END) ":\n");
 }
@@ -3823,23 +3788,22 @@ void Emitter::EmitAliasAndRef(const MIRSymbol &sym)
 void Emitter::EmitHugeSoRoutines(bool lastRoutine)
 {
     if (!lastRoutine &&
-        (javaInsnCount < (static_cast<uint64>(hugeSoSeqence) * static_cast<uint64>(kHugeSoInsnCountThreshold)))) {
+        (soInsnCount < (static_cast<uint64>(hugeSoSeqence) * static_cast<uint64>(kHugeSoInsnCountThreshold)))) {
         return;
     }
     for (auto &target : hugeSoTargets) {
-        (void)Emit("\t.section\t." + std::string(namemangler::kMuidJavatextPrefixStr) + ",\"ax\"\n");
-if (GetCG()->GetTargetMachine()->isX8664()) {
-        Emit("\t.align\t8\n");
-} else {
-        Emit("\t.align 3\n");
-}
+        if (GetCG()->GetTargetMachine()->isX8664()) {
+                Emit("\t.align\t8\n");
+        } else {
+                Emit("\t.align 3\n");
+        }
         std::string routineName = target + HugeSoPostFix();
         Emit("\t.type\t" + routineName + ", %function\n");
         Emit(routineName + ":\n");
         Emit("\tadrp\tx17, :got:" + target + "\n");
         Emit("\tldr\tx17, [x17, :got_lo12:" + target + "]\n");
         Emit("\tbr\tx17\n");
-        javaInsnCount += kSizeOfHugesoRoutine;
+        soInsnCount += kSizeOfHugesoRoutine;
     }
     hugeSoTargets.clear();
     ++hugeSoSeqence;

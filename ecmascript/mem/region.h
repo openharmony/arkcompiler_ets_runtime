@@ -39,21 +39,26 @@ enum RegionSpaceFlag {
     // If ZAP_MEM is enabled, the value of the lower 3 bits conflicts with the INVALID_VALUE.
 
     // Bits 3 to 7 are reserved to denote the space where the region is located.
-    IN_YOUNG_SPACE = 0x08,
-    IN_SNAPSHOT_SPACE = 0x09,
-    IN_HUGE_OBJECT_SPACE = 0x0A,
-    IN_OLD_SPACE = 0x0B,
-    IN_NON_MOVABLE_SPACE = 0x0C,
-    IN_MACHINE_CODE_SPACE = 0x0D,
-    IN_READ_ONLY_SPACE = 0x0E,
-    IN_APPSPAWN_SPACE = 0X0F,
-    IN_HUGE_MACHINE_CODE_SPACE = 0x10,
-    IN_SHARED_NON_MOVABLE = 0x11,
-    IN_SHARED_OLD_SPACE = 0x12,
-    IN_SHARED_HUGE_OBJECT_SPACE = 0x13,
-    IN_SHARED_READ_ONLY_SPACE = 0x14,
+    IN_EDEN_SPACE = 0x08,
+    IN_YOUNG_SPACE = 0x09,
+    IN_SNAPSHOT_SPACE = 0x0A,
+    IN_HUGE_OBJECT_SPACE = 0x0B,
+    IN_OLD_SPACE = 0x0C,
+    IN_NON_MOVABLE_SPACE = 0x0D,
+    IN_MACHINE_CODE_SPACE = 0x0E,
+    IN_READ_ONLY_SPACE = 0X0F,
+    IN_APPSPAWN_SPACE = 0x10,
+    IN_HUGE_MACHINE_CODE_SPACE = 0x11,
+    IN_SHARED_NON_MOVABLE = 0x12,
+    IN_SHARED_OLD_SPACE = 0x13,
+    IN_SHARED_HUGE_OBJECT_SPACE = 0x14,
+    IN_SHARED_READ_ONLY_SPACE = 0x15,
     VALID_SPACE_MASK = 0xFF,
 
+    GENERAL_YOUNG_BEGIN = IN_EDEN_SPACE,
+    GENERAL_YOUNG_END = IN_YOUNG_SPACE,
+    GENERAL_OLD_BEGIN = IN_SNAPSHOT_SPACE,
+    GENERAL_OLD_END = IN_HUGE_MACHINE_CODE_SPACE,
     SHARED_SPACE_BEGIN = IN_SHARED_NON_MOVABLE,
     SHARED_SPACE_END = IN_SHARED_READ_ONLY_SPACE,
     SHARED_SWEEPABLE_SPACE_BEGIN = IN_SHARED_NON_MOVABLE,
@@ -81,6 +86,8 @@ enum RegionGCFlags {
 static inline std::string ToSpaceTypeName(uint8_t space)
 {
     switch (space) {
+        case RegionSpaceFlag::IN_EDEN_SPACE:
+            return "eden space";
         case RegionSpaceFlag::IN_YOUNG_SPACE:
             return "young space";
         case RegionSpaceFlag::IN_SNAPSHOT_SPACE:
@@ -129,15 +136,37 @@ public:
           highWaterMark_(end),
           aliveObject_(0),
           wasted_(0),
-          snapshotData_(0)
-    {
-        lock_ = new Mutex();
-    }
+          snapshotData_(0) {}
 
+#ifdef ENABLE_JITFORT
+    // JitFort space is divided into regions (JitForRegion) to enable
+    // reusing free_object_list and free_object_set operations for
+    // JitFort space, and GC marking actually happens in corresponding
+    // MachineCode objects where JitFort space is allocated to. So no
+    // gc mark bits needed in JitFortRegions.
+    Region(NativeAreaAllocator *allocator, uintptr_t allocateBase, uintptr_t end,
+        RegionSpaceFlag spaceType)
+        : packedData_(allocateBase, spaceType), // no markGCBitset_ for JitFort
+          nativeAreaAllocator_(allocator),
+          allocateBase_(allocateBase),
+          end_(end),
+          highWaterMark_(end),
+          aliveObject_(0),
+          wasted_(0),
+          snapshotData_(0) {}
+#endif
     ~Region() = default;
 
     NO_COPY_SEMANTIC(Region);
     NO_MOVE_SEMANTIC(Region);
+
+    void Initialize()
+    {
+        lock_ = new Mutex();
+        if (InSparseSpace()) {
+            InitializeFreeObjectSets();
+        }
+    }
 
     void LinkNext(Region *next)
     {
@@ -211,6 +240,7 @@ public:
     void ClearMark(void *address);
     bool Test(void *addr) const;
     // ONLY used for heap verification.
+    bool TestNewToEden(uintptr_t addr);
     bool TestOldToNew(uintptr_t addr);
     bool TestLocalToShare(uintptr_t addr);
     template <typename Visitor>
@@ -220,10 +250,13 @@ public:
     bool HasLocalToShareRememberedSet() const;
     void InsertLocalToShareRSet(uintptr_t addr);
     void AtomicInsertLocalToShareRSet(uintptr_t addr);
+    void ClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
+    void AtomicClearSweepingLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     template <typename Visitor>
     void AtomicIterateAllLocalToShareBits(Visitor visitor);
     void DeleteLocalToShareRSet();
+    void DeleteSweepingLocalToShareRSet();
     // Cross region remembered set
     void InsertCrossRegionRSet(uintptr_t addr);
     void AtomicInsertCrossRegionRSet(uintptr_t addr);
@@ -233,18 +266,29 @@ public:
     void ClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteCrossRegionRSet();
+    // New to eden remembered set
+    void InsertNewToEdenRSet(uintptr_t addr);
+    void AtomicInsertNewToEdenRSet(uintptr_t addr);
+    void ClearNewToEdenRSet(uintptr_t addr);
     // Old to new remembered set
     void InsertOldToNewRSet(uintptr_t addr);
     void ClearOldToNewRSet(uintptr_t addr);
+
+    template <typename Visitor>
+    void IterateAllNewToEdenBits(Visitor visitor);
     template <typename Visitor>
     void IterateAllOldToNewBits(Visitor visitor);
+    RememberedSet* GetNewToEdenRSet();
+    void ClearNewToEdenRSet();
+    void ClearNewToEdenRSetInRange(uintptr_t start, uintptr_t end);
+    void DeleteNewToEdenRSet();
     void ClearOldToNewRSet();
     void ClearOldToNewRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteOldToNewRSet();
 
-    void AtomicClearSweepingRSetInRange(uintptr_t start, uintptr_t end);
-    void ClearSweepingRSetInRange(uintptr_t start, uintptr_t end);
-    void DeleteSweepingRSet();
+    void AtomicClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end);
+    void ClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end);
+    void DeleteSweepingOldToNewRSet();
     template <typename Visitor>
     void AtomicIterateAllSweepingRSetBits(Visitor visitor);
     template <typename Visitor>
@@ -281,6 +325,11 @@ public:
         packedData_.flags_.spaceFlag_ = RegionSpaceFlag::UNINITIALIZED;
     }
 
+    bool InEdenSpace() const
+    {
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_EDEN_SPACE;
+    }
+    
     bool InYoungSpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_YOUNG_SPACE;
@@ -293,7 +342,20 @@ public:
 
     bool InYoungOrOldSpace() const
     {
-        return InYoungSpace() || InOldSpace();
+        return InGeneralNewSpace() || InOldSpace();
+    }
+
+    bool InGeneralNewSpace() const
+    {
+        auto flag = packedData_.flags_.spaceFlag_;
+        return flag >= RegionSpaceFlag::GENERAL_YOUNG_BEGIN && flag <= RegionSpaceFlag::GENERAL_YOUNG_END;
+    }
+
+    bool InGeneralOldSpace() const
+    {
+        ASSERT(packedData_.flags_.spaceFlag_ != 0);
+        auto flag = packedData_.flags_.spaceFlag_;
+        return flag >= RegionSpaceFlag::GENERAL_OLD_BEGIN && flag <= RegionSpaceFlag::GENERAL_OLD_END;
     }
 
     bool InHugeObjectSpace() const
@@ -365,6 +427,22 @@ public:
         return flag >= RegionSpaceFlag::SHARED_SPACE_BEGIN && flag <= RegionSpaceFlag::SHARED_SPACE_END;
     }
 
+    bool InSparseSpace() const
+    {
+        auto flag = packedData_.flags_.spaceFlag_;
+        switch (flag) {
+            case RegionSpaceFlag::IN_OLD_SPACE:
+            case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:
+            case RegionSpaceFlag::IN_MACHINE_CODE_SPACE:
+            case RegionSpaceFlag::IN_APPSPAWN_SPACE:
+            case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
+            case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     bool InHeapSpace() const
     {
         uint8_t space = packedData_.flags_.spaceFlag_;
@@ -380,7 +458,8 @@ public:
                 space == RegionSpaceFlag::IN_SHARED_NON_MOVABLE ||
                 space == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
                 space == RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE ||
-                space == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE);
+                space == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE ||
+                space == RegionSpaceFlag::IN_EDEN_SPACE);
     }
 
     bool InCollectSet() const
@@ -388,9 +467,9 @@ public:
         return IsGCFlagSet(RegionGCFlags::IN_COLLECT_SET);
     }
 
-    bool InYoungSpaceOrCSet() const
+    bool InGeneralNewSpaceOrCSet() const
     {
-        return InYoungSpace() || InCollectSet();
+        return InGeneralNewSpace() || InCollectSet();
     }
 
     bool InNewToNewSet() const
@@ -482,23 +561,47 @@ public:
 
     void InitializeFreeObjectSets()
     {
-        freeObjectSets_ = Span<FreeObjectSet *>(new FreeObjectSet *[FreeObjectList::NumberOfSets()](),
-            FreeObjectList::NumberOfSets());
+#ifdef ENABLE_JITFORT
+        FreeObjectSet<FreeObject> **sets = new FreeObjectSet<FreeObject> *[FreeObjectList<FreeObject>::NumberOfSets()];
+        for (int i = 0; i < FreeObjectList<FreeObject>::NumberOfSets(); i++) {
+            sets[i] = new FreeObjectSet<FreeObject>(i);
+        }
+        freeObjectSets_ = Span<FreeObjectSet<FreeObject> *>(sets, FreeObjectList<FreeObject>::NumberOfSets());
+#else
+        FreeObjectSet **sets = new FreeObjectSet *[FreeObjectList::NumberOfSets()];
+        for (int i = 0; i < FreeObjectList::NumberOfSets(); i++) {
+            sets[i] = new FreeObjectSet(i);
+        }
+        freeObjectSets_ = Span<FreeObjectSet *>(sets, FreeObjectList::NumberOfSets());
+#endif
     }
 
     void DestroyFreeObjectSets()
     {
-        for (auto set : freeObjectSets_) {
-            delete set;
+#ifdef ENABLE_JITFORT
+        for (int i = 0; i < FreeObjectList<FreeObject>::NumberOfSets(); i++) {
+#else
+        for (int i = 0; i < FreeObjectList::NumberOfSets(); i++) {
+#endif
+            delete freeObjectSets_[i];
+            freeObjectSets_[i] = nullptr;
         }
         delete[] freeObjectSets_.data();
     }
 
+#ifdef ENABLE_JITFORT
+    FreeObjectSet<FreeObject> *GetFreeObjectSet(SetType type)
+#else
     FreeObjectSet *GetFreeObjectSet(SetType type)
+#endif
     {
         // Thread safe
         if (freeObjectSets_[type] == nullptr) {
+#ifdef ENABLE_JITFORT
+            freeObjectSets_[type] = new FreeObjectSet<FreeObject>(type);
+#else
             freeObjectSets_[type] = new FreeObjectSet(type);
+#endif
         }
         return freeObjectSets_[type];
     }
@@ -590,18 +693,25 @@ public:
         snapshotData_ = value;
     }
 
-    void SwapRSetForConcurrentSweeping()
+    void SwapOldToNewRSetForCS()
     {
-        sweepingRSet_ = packedData_.oldToNewSet_;
+        sweepingOldToNewRSet_ = packedData_.oldToNewSet_;
         packedData_.oldToNewSet_ = nullptr;
     }
 
+    void SwapLocalToShareRSetForCS()
+    {
+        sweepingLocalToShareRSet_ = packedData_.localToShareSet_;
+        packedData_.localToShareSet_ = nullptr;
+    }
+
     // should call in js-thread
-    void MergeRSetForConcurrentSweeping();
+    void MergeOldToNewRSetForCS();
+    void MergeLocalToShareRSetForCS();
 
     struct alignas(JSTaggedValue::TaggedTypeSize()) PackedPtr : public base::AlignedPointer {
         uint8_t spaceFlag_;
-        uint16_t  gcFlags_;
+        uint16_t gcFlags_;
     };
 
     struct PackedData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
@@ -640,6 +750,16 @@ public:
 #endif
         }
 
+#ifdef ENABLE_JITFORT
+        inline PackedData(uintptr_t begin, RegionSpaceFlag spaceType)
+        {
+            flags_.spaceFlag_ = spaceType;
+            flags_.gcFlags_ = 0;
+            // no markGCBitset
+            begin_ = begin;
+            markGCBitset_ = nullptr;
+        }
+#endif
         static size_t GetFlagOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::FlagIndex)>(isArch32);
@@ -648,6 +768,12 @@ public:
         static size_t GetGCBitsetOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::MarkGCBitSetIndex)>(isArch32);
+        }
+
+        static size_t GetNewToEdenSetOffset(bool isArch32)
+        {
+            // NewToEdenRSet is Union with OldToNewRSet
+            return GetOffset<static_cast<size_t>(Index::OldToNewSetIndex)>(isArch32);
         }
 
         static size_t GetOldToNewSetOffset(bool isArch32)
@@ -667,7 +793,11 @@ public:
 
         alignas(EAS) PackedPtr flags_;
         alignas(EAS) GCBitset *markGCBitset_ {nullptr};
-        alignas(EAS) RememberedSet *oldToNewSet_ {nullptr};
+        // OldToNewRSet only for general OldSpace, NewToEdenRSet only for YoungSpace. Their pointers can union
+        union {
+            alignas(EAS) RememberedSet *oldToNewSet_ {nullptr};
+            alignas(EAS) RememberedSet *newToEdenSet_;
+        };
         alignas(EAS) RememberedSet *localToShareSet_ {nullptr};
         alignas(EAS) uintptr_t begin_ {0};
         alignas(EAS) size_t bitsetSize_ {0};
@@ -682,6 +812,7 @@ private:
 
     RememberedSet *CreateRememberedSet();
     RememberedSet *GetOrCreateCrossRegionRememberedSet();
+    RememberedSet *GetOrCreateNewToEdenRememberedSet();
     RememberedSet *GetOrCreateOldToNewRememberedSet();
     RememberedSet *GetOrCreateLocalToShareRememberedSet();
 
@@ -697,8 +828,13 @@ private:
     Region *prev_ {nullptr};
 
     RememberedSet *crossRegionSet_ {nullptr};
-    RememberedSet *sweepingRSet_ {nullptr};
+    RememberedSet *sweepingOldToNewRSet_ {nullptr};
+    RememberedSet *sweepingLocalToShareRSet_ {nullptr};
+#ifdef ENABLE_JITFORT
+    Span<FreeObjectSet<FreeObject> *> freeObjectSets_;
+#else
     Span<FreeObjectSet *> freeObjectSets_;
+#endif
     Mutex *lock_ {nullptr};
     uint64_t wasted_;
     // snapshotdata_ is used to encode the region for snapshot. Its upper 32 bits are used to store the size of

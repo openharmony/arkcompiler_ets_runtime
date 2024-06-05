@@ -63,6 +63,7 @@ public:
     // 24.1.4.3 ArrayBuffer.prototype.slice()
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);
     // 24.1.1.2 IsDetachedBuffer(arrayBuffer)
+    static void IsDetachedBuffer(JSThread *thread, const JSHandle<JSTypedArray> &arrayBuffer);
     static bool IsDetachedBuffer(JSTaggedValue arrayBuffer);
     // 24.1.1.5 GetValueFromBuffer ( arrayBuffer, byteIndex, type, isLittleEndian )
     static JSTaggedValue GetValueFromBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteIndex,

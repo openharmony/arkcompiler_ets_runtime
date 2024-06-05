@@ -30,8 +30,6 @@ public:
         return new ClassInit(*this);
     }
 
-    void ProcessFunc(MIRFunction *func) override;
-
 private:
     void GenClassInitCheckProfile(MIRFunction &func, const MIRSymbol &classInfo, StmtNode *clinit) const;
     void GenPreClassInitCheck(MIRFunction &func, const MIRSymbol &classInfo, const StmtNode *clinit) const;

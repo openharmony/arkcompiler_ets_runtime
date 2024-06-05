@@ -48,7 +48,8 @@
     V("getElementsKind",                GetElementsKind,                1, INVALID)       \
     V("isAOTCompiled",                  IsAOTCompiled,                  1, INVALID)       \
     V("isAOTDeoptimized",               IsAOTDeoptimized,               1, INVALID)       \
-    V("printTypedOpProfilerAndReset",   PrintTypedOpProfilerAndReset,   1, INVALID)       \
+    V("printTypedOpProfiler",           PrintTypedOpProfiler,           1, INVALID)       \
+    V("clearTypedOpProfiler",           ClearTypedOpProfiler,           0, INVALID)       \
     V("isOnHeap",                       IsOnHeap,                       1, INVALID)       \
     V("checkDeoptStatus",               CheckDeoptStatus,               2, INVALID)       \
     V("checkCircularImport",            CheckCircularImport,            2, INVALID)       \
@@ -128,6 +129,13 @@
     V("jitCompileAsync",                           JitCompileAsync,                           1, INVALID)     \
     V("waitJitCompileFinish",                      WaitJitCompileFinish,                      1, INVALID)
 
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_SCOPE_LOCK_STATS(V)                                   \
+    V("startScopeLockStats",            StartScopeLockStats,            0, INVALID)       \
+    V("stopScopeLockStats",             StopScopeLockStats,             0, INVALID)
+#else
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_SCOPE_LOCK_STATS(V) // Nothing
+#endif
 
 #ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
@@ -141,6 +149,7 @@
     BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)               \
     BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)          \
     BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)              \
+    BUILTIN_ARK_TOOLS_FUNCTIONS_SCOPE_LOCK_STATS(V)     \
     BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)
 
 namespace panda::ecmascript::builtins {
@@ -208,7 +217,9 @@ public:
     // ArkTools.GetElementsKind(array)
     static JSTaggedValue GetElementsKind(EcmaRuntimeCallInfo *info);
 
-    static JSTaggedValue PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue PrintTypedOpProfiler(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ClearTypedOpProfiler(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
 
@@ -219,6 +230,12 @@ public:
     static JSTaggedValue IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue TimeInUs(EcmaRuntimeCallInfo *info);
+
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    static JSTaggedValue StartScopeLockStats(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue StopScopeLockStats(EcmaRuntimeCallInfo *info);
+#endif
 
     static JSTaggedValue PrepareFunctionForOptimization(EcmaRuntimeCallInfo *info);
 

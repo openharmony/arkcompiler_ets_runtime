@@ -30,31 +30,7 @@ const char NEG = '-';
 const char PLUS = '+';
 const int STR_LENGTH_OTHERS = 2;
 const int MINUTE_PER_HOUR = 60;
-class BuiltinsDateTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsDateTest : public BaseTestWithScope<false> {
 };
 
 JSHandle<JSDate> JSDateCreateTest(JSThread *thread)
@@ -68,18 +44,52 @@ JSHandle<JSDate> JSDateCreateTest(JSThread *thread)
     return dateObject;
 }
 
+enum class AlgorithmType {
+    ALGORITHM_TO_STRING,
+    ALGORITHM_TO_TIME_STRING,
+    ALGORITHM_TO_ISO_STRING,
+};
+
+static JSTaggedValue DateAlgorithm(JSThread *thread, const JSTaggedValue& thisTag, std::vector<JSTaggedValue>& vals,
+    uint32_t argLen = 8, AlgorithmType type = AlgorithmType::ALGORITHM_TO_STRING)
+{
+    auto ecmaRuntimeCallInfos = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), argLen);
+    ecmaRuntimeCallInfos->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfos->SetThis(thisTag);
+    for (size_t i = 0; i < vals.size(); i++) {
+        ecmaRuntimeCallInfos->SetCallArg(i, JSTaggedValue(vals[i]));
+    }
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfos);
+    JSTaggedValue result;
+    switch (type) {
+        case AlgorithmType::ALGORITHM_TO_STRING:
+            result = BuiltinsDate::ToString(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::ALGORITHM_TO_TIME_STRING:
+            result = BuiltinsDate::ToTimeString(ecmaRuntimeCallInfos);
+            break;
+        case AlgorithmType::ALGORITHM_TO_ISO_STRING:
+            result = BuiltinsDate::ToISOString(ecmaRuntimeCallInfos);
+            break;
+        default:
+            break;
+    }
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
+
+
 HWTEST_F_L0(BuiltinsDateTest, SetGetDate)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(2)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(2))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 6, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     [[maybe_unused]] JSTaggedValue result1 = BuiltinsDate::SetDate(ecmaRuntimeCallInfo);
     JSTaggedValue result2 = BuiltinsDate::GetDate(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(result2.GetRawData(), JSTaggedValue(static_cast<double>(2)).GetRawData());
 }
 
@@ -87,14 +97,13 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetUTCDate)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(2)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(2))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 6, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     [[maybe_unused]] JSTaggedValue result3 = BuiltinsDate::SetUTCDate(ecmaRuntimeCallInfo);
     JSTaggedValue result4 = BuiltinsDate::GetUTCDate(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(result4.GetRawData(), JSTaggedValue(static_cast<double>(2)).GetRawData());
 }
 
@@ -102,14 +111,13 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetMinusUTCDate)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-2)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(-2))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 6, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     [[maybe_unused]] JSTaggedValue result3 = BuiltinsDate::SetUTCDate(ecmaRuntimeCallInfo);
     JSTaggedValue result4 = BuiltinsDate::GetUTCDate(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(result4.GetRawData(), JSTaggedValue(static_cast<double>(29)).GetRawData());
 }
 
@@ -117,15 +125,9 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetFullYear)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    // 2018 : test case
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(2018)));
-    // 10 : test case
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(10)));
-    // 2, 6 : test case
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(6)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(2018)), JSTaggedValue(static_cast<double>(10)),
+                                    JSTaggedValue(static_cast<double>(6))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 10, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetFullYear(ecmaRuntimeCallInfo);
@@ -140,21 +142,16 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetFullYear)
     JSTaggedValue result3 = BuiltinsDate::GetDate(ecmaRuntimeCallInfo);
     // 6 : test case
     ASSERT_EQ(result3.GetRawData(), JSTaggedValue(static_cast<double>(6)).GetRawData());
+    TestHelper::TearDownFrame(thread, prev);
 }
 
 HWTEST_F_L0(BuiltinsDateTest, SetGetUTCFullYear)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    // 2018 : test case
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(2018)));
-    // 10 : test case
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(10)));
-    // 2, 6 : test case
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(6)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(2018)), JSTaggedValue(static_cast<double>(10)),
+                                    JSTaggedValue(static_cast<double>(6))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 10, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetUTCFullYear(ecmaRuntimeCallInfo);
@@ -169,17 +166,15 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetUTCFullYear)
     JSTaggedValue result6 = BuiltinsDate::GetUTCDate(ecmaRuntimeCallInfo);
     // 6 : test case
     ASSERT_EQ(result6.GetRawData(), JSTaggedValue(static_cast<double>(6)).GetRawData());
+    TestHelper::TearDownFrame(thread, prev);
 }
 
 HWTEST_F_L0(BuiltinsDateTest, SetGetMinusFullYear)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-2018)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(-10)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(-6)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(-2018)), JSTaggedValue(static_cast<double>(-10)),
+                                    JSTaggedValue(static_cast<double>(-6))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 10, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetFullYear(ecmaRuntimeCallInfo);
@@ -191,18 +186,16 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetMinusFullYear)
 
     JSTaggedValue result3 = BuiltinsDate::GetDate(ecmaRuntimeCallInfo);
     ASSERT_EQ(result3.GetRawData(), JSTaggedValue(static_cast<double>(22)).GetRawData());
+    TestHelper::TearDownFrame(thread, prev);
 }
 
 HWTEST_F_L0(BuiltinsDateTest, SetGetMinusUTCFullYear)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-2018)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(-10)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(-6)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(-2018)), JSTaggedValue(static_cast<double>(-10)),
+                                    JSTaggedValue(static_cast<double>(-6))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 10, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetUTCFullYear(ecmaRuntimeCallInfo);
@@ -220,13 +213,9 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetHours)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 12);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(18)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(10)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(6)));
-    ecmaRuntimeCallInfo->SetCallArg(3, JSTaggedValue(static_cast<double>(111)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(18)), JSTaggedValue(static_cast<double>(10)),
+                                    JSTaggedValue(static_cast<double>(6)), JSTaggedValue(static_cast<double>(111))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 12, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetHours(ecmaRuntimeCallInfo);
@@ -247,13 +236,9 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetUTCHours)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 12);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(18)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(10)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(6)));
-    ecmaRuntimeCallInfo->SetCallArg(3, JSTaggedValue(static_cast<double>(111)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(18)), JSTaggedValue(static_cast<double>(10)),
+                                    JSTaggedValue(static_cast<double>(6)), JSTaggedValue(static_cast<double>(111))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 12, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetUTCHours(ecmaRuntimeCallInfo);
@@ -274,13 +259,9 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetMinusHours)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 12);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-18)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(-10)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(-6)));
-    ecmaRuntimeCallInfo->SetCallArg(3, JSTaggedValue(static_cast<double>(-111)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(-18)), JSTaggedValue(static_cast<double>(-10)),
+                                    JSTaggedValue(static_cast<double>(-6)), JSTaggedValue(static_cast<double>(-111))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 12, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetHours(ecmaRuntimeCallInfo);
@@ -301,14 +282,9 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetMinusUTCHours)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 12);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-18)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(-10)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(-6)));
-    ecmaRuntimeCallInfo->SetCallArg(3, JSTaggedValue(static_cast<double>(-111)));
-
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(-18)), JSTaggedValue(static_cast<double>(-10)),
+                                    JSTaggedValue(static_cast<double>(-6)), JSTaggedValue(static_cast<double>(-111))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 12, jsDate.GetTaggedValue());
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetUTCHours(ecmaRuntimeCallInfo);
     JSTaggedValue result5 = BuiltinsDate::GetUTCHours(ecmaRuntimeCallInfo);
@@ -328,10 +304,8 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetMilliseconds)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(100)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(100))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 6, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result1 = BuiltinsDate::SetMilliseconds(ecmaRuntimeCallInfo);
@@ -345,10 +319,8 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetUTCMilliseconds)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(100)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(100))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 6, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result3 = BuiltinsDate::SetUTCMilliseconds(ecmaRuntimeCallInfo);
@@ -362,12 +334,9 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetMinutes)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(10)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(6)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(111)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(10)), JSTaggedValue(static_cast<double>(6)),
+                                                  JSTaggedValue(static_cast<double>(111))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 10, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetMinutes(ecmaRuntimeCallInfo);
@@ -385,12 +354,9 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetUTCMinutes)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(10)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(6)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(111)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(10)), JSTaggedValue(static_cast<double>(6)),
+                                                  JSTaggedValue(static_cast<double>(111))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 10, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetUTCMinutes(ecmaRuntimeCallInfo);
@@ -408,11 +374,8 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetMonth)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(8)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(3)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(8)), JSTaggedValue(static_cast<double>(3))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 8, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetMonth(ecmaRuntimeCallInfo);
@@ -426,12 +389,8 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetMonth)
 HWTEST_F_L0(BuiltinsDateTest, SetGetUTCMonth)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
-
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(8)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(3)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(8)), JSTaggedValue(static_cast<double>(3))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 8, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetUTCMonth(ecmaRuntimeCallInfo);
@@ -445,12 +404,8 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetUTCMonth)
 HWTEST_F_L0(BuiltinsDateTest, SetGetSeconds)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
-
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(59)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(123)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(59)), JSTaggedValue(static_cast<double>(123))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 8, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetSeconds(ecmaRuntimeCallInfo);
@@ -465,11 +420,8 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetUTCSeconds)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(59)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(123)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(59)), JSTaggedValue(static_cast<double>(123))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 8, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetUTCSeconds(ecmaRuntimeCallInfo);
@@ -484,10 +436,8 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetTime)
 {
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(2)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(2))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 6, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsDate::SetTime(ecmaRuntimeCallInfo);
@@ -498,11 +448,7 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetTime)
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(2)).GetRawData());
 
     // msg != IsDate
-    auto info1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    info1->SetFunction(JSTaggedValue::Undefined());
-    info1->SetThis(JSTaggedValue::Undefined());
-    info1->SetCallArg(0, JSTaggedValue(static_cast<double>(2)));
-
+    auto info1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 6);
     prev = TestHelper::SetupFrame(thread, info1);
     result = BuiltinsDate::SetTime(info1);
     TestHelper::TearDownFrame(thread, prev);
@@ -510,10 +456,7 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetTime)
     EXPECT_EQ(result, JSTaggedValue::Exception());
     thread->ClearException();
 
-    auto info2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    info2->SetFunction(JSTaggedValue::Undefined());
-    info2->SetThis(JSTaggedValue::Undefined());
-    info2->SetCallArg(0, JSTaggedValue(static_cast<double>(2)));
+    auto info2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 6);
     result = BuiltinsDate::GetTime(info2);
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_TRUE(thread->HasPendingException());
@@ -523,61 +466,42 @@ HWTEST_F_L0(BuiltinsDateTest, SetGetTime)
 
 HWTEST_F_L0(BuiltinsDateTest, UTC)
 {
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 12);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(2020.982));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(10.23));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(4.32));
-    ecmaRuntimeCallInfo->SetCallArg(3, JSTaggedValue(11.32));
+    JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
+    std::vector<JSTaggedValue> vals{JSTaggedValue(2020.982), JSTaggedValue(10.23), JSTaggedValue(4.32),
+                                    JSTaggedValue(11.32)};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 12, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result1 = BuiltinsDate::UTC(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(result1.GetRawData(), JSTaggedValue(static_cast<double>(1604487600000)).GetRawData());
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 18);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(2020.982));
-    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue(10.23));
-    ecmaRuntimeCallInfo1->SetCallArg(2, JSTaggedValue(4.32));
-    ecmaRuntimeCallInfo1->SetCallArg(3, JSTaggedValue(11.32));
-    ecmaRuntimeCallInfo1->SetCallArg(4, JSTaggedValue(45.1));
-    ecmaRuntimeCallInfo1->SetCallArg(5, JSTaggedValue(34.321));
-    ecmaRuntimeCallInfo1->SetCallArg(6, JSTaggedValue(static_cast<int32_t>(231)));
+    vals.push_back(JSTaggedValue(45.1));
+    vals.push_back(JSTaggedValue(34.321));
+    vals.push_back(JSTaggedValue(static_cast<int32_t>(231)));
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 18, jsDate.GetTaggedValue());
 
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     result1 = BuiltinsDate::UTC(ecmaRuntimeCallInfo1);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(result1.GetRawData(), JSTaggedValue(static_cast<double>(1604490334231)).GetRawData());
 
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue(10.23));
-    ecmaRuntimeCallInfo2->SetCallArg(1, JSTaggedValue(4.32));
-    ecmaRuntimeCallInfo2->SetCallArg(2, JSTaggedValue(11.32));
-
+    std::vector<JSTaggedValue> vals2{JSTaggedValue(10.23), JSTaggedValue(4.32), JSTaggedValue(11.32)};
+    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals2, 10, jsDate.GetTaggedValue());
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
     result1 = BuiltinsDate::UTC(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(result1.GetRawData(), JSTaggedValue(static_cast<double>(-1882224000000)).GetRawData());
 
-    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetCallArg(0, JSTaggedValue(1994.982));
-
+    std::vector<JSTaggedValue> vals3{JSTaggedValue(1994.982)};
+    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals3, 6, jsDate.GetTaggedValue());
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
     result1 = BuiltinsDate::UTC(ecmaRuntimeCallInfo3);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(result1.GetRawData(), JSTaggedValue(static_cast<double>(757382400000)).GetRawData());
 
-    auto ecmaRuntimeCallInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo4->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo4->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo4->SetCallArg(0, JSTaggedValue(19999944.982));
+    std::vector<JSTaggedValue> vals4{JSTaggedValue(19999944.982)};
+    auto ecmaRuntimeCallInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals4, 6, jsDate.GetTaggedValue());
 
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo4);
     result1 = BuiltinsDate::UTC(ecmaRuntimeCallInfo4);
@@ -587,31 +511,17 @@ HWTEST_F_L0(BuiltinsDateTest, UTC)
 
 void SetAllYearAndHours(JSThread *thread, const JSHandle<JSDate> &jsDate)
 {
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    // 2018 : test case
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(2018)));
-    // 10 : test case
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(10)));
-    // 2, 6 : test case
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(6)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(2018)), JSTaggedValue(static_cast<double>(10)),
+                                     JSTaggedValue(static_cast<double>(6))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 10, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetFullYear(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 12);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(jsDate.GetTaggedValue());
-    // 18 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<double>(18)));
-    // 10 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue(static_cast<double>(10)));
-    // 2, 6 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(2, JSTaggedValue(static_cast<double>(6)));
-    // 3, 111 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(3, JSTaggedValue(static_cast<double>(111)));
+    std::vector<JSTaggedValue> vals1{JSTaggedValue(static_cast<double>(18)), JSTaggedValue(static_cast<double>(10)),
+                                    JSTaggedValue(static_cast<double>(6)), JSTaggedValue(static_cast<double>(111))};
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals1, 12, jsDate.GetTaggedValue());
 
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     BuiltinsDate::SetHours(ecmaRuntimeCallInfo1);
@@ -620,31 +530,17 @@ void SetAllYearAndHours(JSThread *thread, const JSHandle<JSDate> &jsDate)
 
 void SetAll1(JSThread *thread, const JSHandle<JSDate> &jsDate)
 {
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    // 1900 : test case
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(1900)));
-    // 11 : test case
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(11)));
-    // 2, 31 : test case
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(31)));
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(1900)), JSTaggedValue(static_cast<double>(11)),
+                                    JSTaggedValue(static_cast<double>(31))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 10, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetFullYear(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 12);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(jsDate.GetTaggedValue());
-    // 23 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<double>(23)));
-    // 54 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue(static_cast<double>(54)));
-    // 2, 16 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(2, JSTaggedValue(static_cast<double>(16)));
-    // 3, 888 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(3, JSTaggedValue(static_cast<double>(888)));
+    std::vector<JSTaggedValue> vals1{JSTaggedValue(static_cast<double>(23)), JSTaggedValue(static_cast<double>(54)),
+                                     JSTaggedValue(static_cast<double>(16)), JSTaggedValue(static_cast<double>(888))};
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals1, 12, jsDate.GetTaggedValue());
 
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     BuiltinsDate::SetHours(ecmaRuntimeCallInfo1);
@@ -653,26 +549,17 @@ void SetAll1(JSThread *thread, const JSHandle<JSDate> &jsDate)
 
 void SetAll2(JSThread *thread, const JSHandle<JSDate> &jsDate)
 {
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(1901)));  // 1901 : test case
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<double>(0)));
-    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<double>(1)));  // 2 : test case
+    std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(1901)), JSTaggedValue(static_cast<double>(0)),
+                                     JSTaggedValue(static_cast<double>(1))};
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals, 10, jsDate.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsDate::SetFullYear(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
 
-    // 12 : test case
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 12);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(jsDate.GetTaggedValue());
-    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<double>(0)));
-    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue(static_cast<double>(3)));    // 3 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(2, JSTaggedValue(static_cast<double>(21)));   // 2, 21 : test case
-    ecmaRuntimeCallInfo1->SetCallArg(3, JSTaggedValue(static_cast<double>(129)));  // 3, 129 : test case
-
+    std::vector<JSTaggedValue> vals1{JSTaggedValue(static_cast<double>(0)), JSTaggedValue(static_cast<double>(3)),
+                                     JSTaggedValue(static_cast<double>(21)), JSTaggedValue(static_cast<double>(129))};
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals1, 12, jsDate.GetTaggedValue());
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     BuiltinsDate::SetHours(ecmaRuntimeCallInfo1);
     TestHelper::TearDownFrame(thread, prev);
@@ -775,13 +662,8 @@ HWTEST_F_L0(BuiltinsDateTest, ToISOString)
         thread->GetEcmaVM()->GetFactory()->NewFromASCII("2020-11-19T12:18:18.132Z");
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
     JSDate::Cast(jsDate.GetTaggedValue().GetTaggedObject())->SetTimeValue(thread, JSTaggedValue(1605788298132.0));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result1 = BuiltinsDate::ToISOString(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> args{};
+    auto result1 = DateAlgorithm(thread, jsDate.GetTaggedValue(), args, 4, AlgorithmType::ALGORITHM_TO_ISO_STRING);
     ASSERT_TRUE(result1.IsString());
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
         reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
@@ -794,13 +676,8 @@ HWTEST_F_L0(BuiltinsDateTest, ToISOStringMinus)
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
     JSDate::Cast(jsDate.GetTaggedValue().GetTaggedObject())->SetTimeValue(thread, JSTaggedValue(-4357419161618.0));
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result1 = BuiltinsDate::ToISOString(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
+    std::vector<JSTaggedValue> args{};
+    auto result1 = DateAlgorithm(thread, jsDate.GetTaggedValue(), args, 4, AlgorithmType::ALGORITHM_TO_ISO_STRING);
     ASSERT_TRUE(result1.IsString());
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
         reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
@@ -854,19 +731,10 @@ HWTEST_F_L0(BuiltinsDateTest, ToJSONMinus)
         reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
-HWTEST_F_L0(BuiltinsDateTest, ToString)
+CString GetLocalTime(JSHandle<JSDate>& jsDate)
 {
-    int localMin = 0;
     CString localTime;
-
-    JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-
-    SetAllYearAndHours(thread, jsDate);
+    int localMin = 0;
     localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*jsDate)->GetTimeValue().GetDouble()), true);
     if (localMin >= 0) {
         localTime += PLUS;
@@ -876,141 +744,56 @@ HWTEST_F_L0(BuiltinsDateTest, ToString)
     }
     localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
     localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    JSTaggedValue result1 = BuiltinsDate::ToString(ecmaRuntimeCallInfo);
+    return localTime;
+}
+
+void ToStringCommon(JSThread* thread, CString& str1, CString& str2, CString& str3, AlgorithmType type)
+{
+    JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
+    std::vector<JSTaggedValue> argTags{};
+    SetAllYearAndHours(thread, jsDate);
+    JSTaggedValue result1 = DateAlgorithm(thread, jsDate.GetTaggedValue(), argTags, 4, type);
+    
     ASSERT_TRUE(result1.IsString());
-    TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> result1_val(thread, reinterpret_cast<EcmaString *>(result1.GetRawData()));
-    CString str = "Tue Nov 06 2018 18:10:06 GMT" + localTime;
+    CString str = str1 + GetLocalTime(jsDate);
     JSHandle<EcmaString> str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result1_val, *str_handle));
 
     JSHandle<JSDate> js_date1 = JSDateCreateTest(thread);
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(js_date1.GetTaggedValue());
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-
     SetAll1(thread, js_date1);
-    localTime = "";
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*js_date1)->GetTimeValue().GetDouble()), true);
-    if (localMin >= 0) {
-        localTime += PLUS;
-    } else if (localMin < 0) {
-        localTime += NEG;
-        localMin = -localMin;
-    }
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    JSTaggedValue result2 = BuiltinsDate::ToString(ecmaRuntimeCallInfo1);
+
+    JSTaggedValue result2 = DateAlgorithm(thread, js_date1.GetTaggedValue(), argTags, 4, type);
     ASSERT_TRUE(result2.IsString());
-    TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> result2_val(thread, reinterpret_cast<EcmaString *>(result2.GetRawData()));
-    str = "Mon Dec 31 1900 23:54:16 GMT" + localTime;
+    str = str2 + GetLocalTime(js_date1);
     str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result2_val, *str_handle));
 
     JSHandle<JSDate> js_date2 = JSDateCreateTest(thread);
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(js_date2.GetTaggedValue());
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-
     SetAll2(thread, js_date2);
-    localTime = "";
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*js_date2)->GetTimeValue().GetDouble()), true);
-    if (localMin >= 0) {
-        localTime += PLUS;
-    } else if (localMin < 0) {
-        localTime += NEG;
-        localMin = -localMin;
-    }
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    JSTaggedValue result3 = BuiltinsDate::ToString(ecmaRuntimeCallInfo2);
+    JSTaggedValue result3 = DateAlgorithm(thread, js_date2.GetTaggedValue(), argTags, 4, type);
     ASSERT_TRUE(result3.IsString());
-    TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> result3_val(thread, reinterpret_cast<EcmaString *>(result3.GetRawData()));
-    str = "Tue Jan 01 1901 00:03:21 GMT" + localTime;
+    str = str3 + GetLocalTime(js_date2);
     str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result3_val, *str_handle));
 }
 
+HWTEST_F_L0(BuiltinsDateTest, ToString)
+{
+    CString str1 = "Tue Nov 06 2018 18:10:06 GMT";
+    CString str2 = "Mon Dec 31 1900 23:54:16 GMT";
+    CString str3 = "Tue Jan 01 1901 00:03:21 GMT";
+    ToStringCommon(thread, str1, str2, str3, AlgorithmType::ALGORITHM_TO_STRING);
+}
+
 HWTEST_F_L0(BuiltinsDateTest, ToTimeString)
 {
-    int localMin = 0;
-    CString localTime;
-
-    JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(jsDate.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-
-    SetAllYearAndHours(thread, jsDate);
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*jsDate)->GetTimeValue().GetDouble()), true);
-    if (localMin >= 0) {
-        localTime += PLUS;
-    } else if (localMin < 0) {
-        localTime += NEG;
-        localMin = -localMin;
-    }
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    JSTaggedValue result1 = BuiltinsDate::ToTimeString(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_TRUE(result1.IsString());
-    JSHandle<EcmaString> result1_val(thread, reinterpret_cast<EcmaString *>(result1.GetRawData()));
-    CString str = "18:10:06 GMT" + localTime;
-    JSHandle<EcmaString> str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result1_val, *str_handle));
-
-    JSHandle<JSDate> js_date1 = JSDateCreateTest(thread);
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(js_date1.GetTaggedValue());
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    SetAll1(thread, js_date1);
-    localTime = "";
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*js_date1)->GetTimeValue().GetDouble()), true);
-    if (localMin >= 0) {
-        localTime += PLUS;
-    } else if (localMin < 0) {
-        localTime += NEG;
-        localMin = -localMin;
-    }
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    JSTaggedValue result2 = BuiltinsDate::ToTimeString(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_TRUE(result2.IsString());
-    JSHandle<EcmaString> result2_val(thread, reinterpret_cast<EcmaString *>(result2.GetRawData()));
-    str = "23:54:16 GMT" + localTime;
-    str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result2_val, *str_handle));
-    JSHandle<JSDate> js_date2 = JSDateCreateTest(thread);
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(js_date2.GetTaggedValue());
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    SetAll2(thread, js_date2);
-    localTime = "";
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*js_date2)->GetTimeValue().GetDouble()), true);
-    if (localMin >= 0) {
-        localTime += PLUS;
-    } else if (localMin < 0) {
-        localTime += NEG;
-        localMin = -localMin;
-    }
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    localTime = localTime + JSDate::StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    JSTaggedValue result3 = BuiltinsDate::ToTimeString(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_TRUE(result3.IsString());
-    JSHandle<EcmaString> result3_val(thread, reinterpret_cast<EcmaString *>(result3.GetRawData()));
-    str = "00:03:21 GMT" + localTime;
-    str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result3_val, *str_handle));
+    CString str1 = "18:10:06 GMT";
+    CString str2 = "23:54:16 GMT";
+    CString str3 = "00:03:21 GMT";
+    ToStringCommon(thread, str1, str2, str3, AlgorithmType::ALGORITHM_TO_TIME_STRING);
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToUTCString)

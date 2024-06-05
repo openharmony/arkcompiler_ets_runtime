@@ -27,7 +27,7 @@ class LiteCGAssembler : public Assembler {
 public:
     explicit LiteCGAssembler(LMIRModule &module, const std::vector<std::string> &litecgOptions);
     virtual ~LiteCGAssembler() = default;
-    void Run(const CompilerLog &log, bool fastCompileMode) override;
+    void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) override;
     void CollectAnStackMap(CGStackMapInfo &stackMapInfo);
 
 private:
@@ -43,7 +43,7 @@ public:
                              const CompilationConfig *cfg) override;
     void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                       const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile, const std::string &methodName,
-                      bool enableOptInlining, bool enableBranchProfiling) override;
+                      const FrameType frameType, bool enableOptInlining, bool enableBranchProfiling) override;
 
     bool IsLogEnabled() const
     {

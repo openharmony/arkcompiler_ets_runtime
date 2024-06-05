@@ -166,6 +166,7 @@ void JSPandaFile::InitializeUnMergedPF()
     jsRecordInfo_.insert({JSPandaFile::ENTRY_FUNCTION_NAME, info});
     methodLiterals_ =
         static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
+    methodLiteralMap_.reserve(numMethods_);
 }
 
 void JSPandaFile::InitializeMergedPF()
@@ -183,6 +184,8 @@ void JSPandaFile::InitializeMergedPF()
         info.classId = index;
         bool hasCjsFiled = false;
         bool hasJsonFiled = false;
+        CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
+        CString recordName = ParseEntryPoint(desc);
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
             panda_file::File::StringData sd = GetStringData(fieldNameId);
@@ -207,15 +210,17 @@ void JSPandaFile::InitializeMergedPF()
             } else if (std::strlen(fieldName) > PACKAGE_NAME_LEN &&
                        std::strncmp(fieldName, PACKAGE_NAME, PACKAGE_NAME_LEN) == 0) {
                 info.npmPackageName = fieldName + PACKAGE_NAME_LEN;
+            } else {
+                npmEntries_.emplace(recordName, fieldName);
             }
         });
         if (hasCjsFiled || hasJsonFiled) {
-            CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-            jsRecordInfo_.insert({ParseEntryPoint(desc), info});
+            jsRecordInfo_.emplace(recordName, info);
         }
     }
     methodLiterals_ =
         static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
+    methodLiteralMap_.reserve(numMethods_);
 }
 
 MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
@@ -281,25 +286,10 @@ CString JSPandaFile::GetRecordName(const CString &entryPoint) const
 
 bool JSPandaFile::FindOhmUrlInPF(const CString &recordName, CString &entryPoint) const
 {
-    Span<const uint32_t> classIndexes = pf_->GetClasses();
-    for (const uint32_t index : classIndexes) {
-        panda_file::File::EntityId classId(index);
-        if (pf_->IsExternal(classId)) {
-            continue;
-        }
-        panda_file::ClassDataAccessor cda(*pf_, classId);
-        CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (recordName == ParseEntryPoint(desc)) {
-            cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
-                panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-                panda_file::File::StringData sd = GetStringData(fieldNameId);
-                CString fieldName = utf::Mutf8AsCString(sd.data);
-                entryPoint = fieldName;
-            });
-        }
-        if (!entryPoint.empty()) {
-            return true;
-        }
+    auto info = npmEntries_.find(recordName);
+    if (info != npmEntries_.end()) {
+        entryPoint = info->second;
+        return true;
     }
     return false;
 }

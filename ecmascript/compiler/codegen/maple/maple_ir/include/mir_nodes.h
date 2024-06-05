@@ -330,6 +330,7 @@ public:
     RetypeNode(PrimType typ, PrimType fromtyp, TyIdx idx, BaseNode *expr)
         : TypeCvtNode(OP_retype, typ, fromtyp, expr), tyIdx(idx)
     {
+        DEBUG_ASSERT(GetPrimTypeSize(fromtyp) == GetPrimTypeSize(typ), "retype bit widith doesn' match");
     }
 
     virtual ~RetypeNode() = default;
@@ -356,10 +357,9 @@ public:
 private:
     bool VerifyPrimTypesAndOpnd() const;
     bool CheckFromJarray(const MIRType &from, const MIRType &to, VerifyResult &verifyResult) const;
-    bool VerifyCompleteMIRType(const MIRType &from, const MIRType &to, bool isJavaRefType,
+    bool VerifyCompleteMIRType(const MIRType &from, const MIRType &to, bool isJRefType,
                                VerifyResult &verifyResult) const;
     bool VerifyJarrayDimention(const MIRJarrayType &from, const MIRJarrayType &to, VerifyResult &verifyResult) const;
-    bool IsJavaAssignable(const MIRType &from, const MIRType &to, VerifyResult &verifyResult) const;
 
     bool BothPointerOrJarray(const MIRType &from, const MIRType &to) const
     {
@@ -372,11 +372,6 @@ private:
     bool IsInterfaceOrClass(const MIRType &mirType) const
     {
         return mirType.IsMIRClassType() || mirType.IsMIRInterfaceType();
-    }
-
-    bool IsJavaRefType(const MIRType &mirType) const
-    {
-        return mirType.IsMIRJarrayType() || mirType.IsMIRClassType() || mirType.IsMIRInterfaceType();
     }
 
     TyIdx tyIdx = TyIdx(0);

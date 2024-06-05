@@ -23,30 +23,7 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JsArgumentsTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    EcmaVM *instance {nullptr};
-    JSThread *thread {nullptr};
+class JsArgumentsTest : public BaseTestWithScope<false> {
 };
 
 static JSFunction *JSObjectTestCreate(JSThread *thread)

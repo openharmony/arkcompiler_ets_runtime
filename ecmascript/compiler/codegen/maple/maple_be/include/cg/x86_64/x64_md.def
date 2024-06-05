@@ -57,6 +57,7 @@ DEFINE_MOP(MOP_movq_r_m, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE,kLtAlu,"
 /* floating point mov */
 DEFINE_MOP(MOP_movd_fr_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg32ID},ISSTORE,kLtAlu,"movd","0,1",1)
 DEFINE_MOP(MOP_movq_fr_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg64ID},ISSTORE,kLtAlu,"movq","0,1",1)
+DEFINE_MOP(MOP_movd_r_fr, {&OpndDesc::Reg32IS,&OpndDesc::Reg128FD},ISSTORE,kLtAlu,"movd","0,1",1)
 DEFINE_MOP(MOP_movq_r_fr, {&OpndDesc::Reg64IS,&OpndDesc::Reg128FD},ISSTORE,kLtAlu,"movq","0,1",1)
 DEFINE_MOP(MOP_movfs_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FD},ISLOAD,kLtAlu,"movss","0,1",1)
 DEFINE_MOP(MOP_movfd_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FD},ISLOAD,kLtAlu,"movsd","0,1",1)

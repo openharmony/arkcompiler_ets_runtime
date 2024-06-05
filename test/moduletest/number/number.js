@@ -134,3 +134,44 @@ testToPrecision(Number(-1.2345), (2));
 testToPrecision(Number(-12.345), (2));
 testToPrecision(Number(-1234.5), (2));
 testToPrecision(Number(-12345.67), (4));
+
+
+// toString, Only Test InttoString
+function testToString(a, b) {
+    print(a.toString(b));
+}
+print((-0).toString());
+print((1).toString());
+print((-9).toString());
+print((1234567).toString());
+print((-1234567).toString());
+print((10000).toString());
+print((67345).toString());
+
+testToString((0), (16));
+testToString((9), (16));
+testToString((90), (16));
+testToString((-0), (16));
+testToString((-90), (16));
+testToString((10000007), (36));
+testToString((123456789), (32));
+testToString((-123456789), (32));
+
+var result = "";
+var num_1 = { valueOf: function() { result += "first"; return 1; } };
+var num_2 = { valueOf: function() { result += "second"; return 2; } };
+// Compare the size of number 1 and number 2
+num_1 < num_2
+print("firstsecond" == result);
+
+result = "";
+num_1 = { valueOf: function() { result += "first"; return 1; } };
+// Compare the size of number 1 and 0
+num_1 > void(0);
+print("first" == result);
+
+result = "";
+num_2 = { valueOf: function() { result += "second"; return 2; } };
+// Compare the size of 0 and number 2
+void(0) > num_2;
+print("second" == result);

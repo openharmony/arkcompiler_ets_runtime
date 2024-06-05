@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ##################################fuzztest#####################################
-ohos_fuzztest("GetGeneratorReceiverFuzzTest") {
+ohos_fuzztest("PublicApiGeneratorObjectRefFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/publicapigeneratorobjectref_fuzzer"
@@ -42,5 +42,5 @@ ohos_fuzztest("GetGeneratorReceiverFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":GetGeneratorReceiverFuzzTest" ]
+  deps += [ ":PublicApiGeneratorObjectRefFuzzTest" ]
 }

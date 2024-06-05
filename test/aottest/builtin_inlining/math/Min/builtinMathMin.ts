@@ -124,22 +124,28 @@ print(Math.min(Infinity, NaN)); //: NaN
 
 // Check 0 and -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
-//aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMin
 printZero(Math.min(0, -0));  //: -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
-//aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMin
 printZero(Math.min(-0, 0));  //: -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
-//aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMin
 printZero(Math.min(0, 0));   //: 0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
-//aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMin
 printZero(Math.min(-0, -0)); //: -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
-//aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMin
 printZero(Math.min(5, -0)); //: -0
 //aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
-//aot: [trace] aot inline function name: printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline function name: #*#printZero@builtinMathMin caller function name: func_main_0@builtinMathMin
+//aot: [trace] aot inline builtin: Object.is, caller function name:#*#printZero@builtinMathMin
 printZero(Math.min(5, 0)); //: 0
 
 // Check with int and float param
@@ -177,19 +183,18 @@ print(Math.min(4, 0, -2, Infinity)); //: -2
 print(Math.min(-1, -2, -1.5, -2, -8)); //: -8
 
 // Replace standard builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let trueMin = Math.min
 Math.min = replace
 print(Math.min(-1.001, -90)); //: -1.001
 Math.min = trueMin
 
-//aot: [trace] aot inline builtin: Math.min, caller function name:printMin@builtinMathMin
+//aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin@builtinMathMin
 printMin(-12, 1); //: -12
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: Math.min, caller function name:printMin@builtinMathMin
+//aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin@builtinMathMin
 //aot: [trace] Check Type: NotNumber2
 printMin("abc", 1); //: NaN
-//aot: [trace] aot inline builtin: Math.min, caller function name:printMin@builtinMathMin
+//aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin@builtinMathMin
 //aot: [trace] Check Type: NotNumber2
 printMin("-12", 1); //: -12
 
@@ -207,34 +212,36 @@ Math.min = trueMin
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.min, caller function name:printMin@builtinMathMin
+    //aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin@builtinMathMin
     printMin(19, 12); //: 12
-    //aot: [trace] aot inline builtin: Math.min, caller function name:printMin@builtinMathMin
+    //aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin@builtinMathMin
     //aot: [trace] Check Type: NotNumber2
     printMin("abc", 5); //: NaN
 } catch (e) {
 }
 
-//aot: [trace] aot inline builtin: Math.min, caller function name:printMin1@builtinMathMin
+//aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin1@builtinMathMin
 //aot: [trace] Check Type: BuiltinInliningTypeGuard
 //: obj.valueOf
 printMin1(obj); //: -23
-//aot: [trace] aot inline builtin: Math.min, caller function name:printMin1@builtinMathMin
+//aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin1@builtinMathMin
 //aot: [trace] Check Type: BuiltinInliningTypeGuard
 printMin1(doubleObj); //: 2.7
-//aot: [trace] aot inline builtin: Math.min, caller function name:printMin@builtinMathMin
+//aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin@builtinMathMin
 //aot: [trace] Check Type: NotNumber2
 printMin(doubleObj, doubleObj); //: 2.7
-//aot: [trace] aot inline builtin: Math.min, caller function name:printMin@builtinMathMin
+//aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin@builtinMathMin
 //aot: [trace] Check Type: NotNumber2
 //: obj.valueOf
 printMin(nanObj, obj); //: NaN
-//aot: [trace] aot inline builtin: Math.min, caller function name:printMin@builtinMathMin
+//aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin@builtinMathMin
 //aot: [trace] Check Type: NotNumber2
 //: obj.valueOf
 printMin(24, obj); //: -23
 
 // call obj.valueOf twice
+//aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
+//aot: [trace] Check Type: NotNumber2
 //: obj.valueOf
 //: obj.valueOf
 print(Math.min(NaN, obj, obj)); //: NaN

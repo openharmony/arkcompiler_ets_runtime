@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: foo@ts_multi_inline_recursive caller function name: func_main_0@ts_multi_inline_recursive
+[trace] aot inline function name: #*#foo@ts_multi_inline_recursive caller function name: func_main_0@ts_multi_inline_recursive
 foo
-[trace] aot inline function name: bar@ts_multi_inline_recursive caller function name: foo@ts_multi_inline_recursive
+[trace] aot inline function name: #*#bar@ts_multi_inline_recursive caller function name: #*#foo@ts_multi_inline_recursive
 bar

@@ -64,6 +64,48 @@ void BuiltinLowering::LowerTypedFloor(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
+GateRef BuiltinLowering::TypedLocaleCompare(GateRef glue, GateRef gate, GateRef thisObj, GateRef thatObj)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+
+    Label slowPath(&builder_);
+    Label fastPath(&builder_);
+    Label localeCompareGC(&builder_);
+    Label exit(&builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+
+    GateRef thisIsString = builder_.TaggedIsString(thisObj);
+    GateRef thatIsString = builder_.TaggedIsString(thatObj);
+    GateRef isString = builder_.BoolAnd(thisIsString, thatIsString);
+    builder_.Branch(isString, &fastPath, &slowPath);
+    builder_.Bind(&fastPath);
+    {
+        result = builder_.CallNGCRuntime(glue, RTSTUB_ID(LocaleCompareNoGc), Gate::InvalidGateRef,
+            { glue, builder_.Undefined(), thisObj, thatObj }, gate);
+        GateRef status = builder_.TaggedIsUndefined(*result);
+        builder_.Branch(status, &localeCompareGC, &exit, BranchWeight::ONE_WEIGHT, BranchWeight::STRONG_WEIGHT,
+            "TypedLocaleCompare");
+        builder_.Bind(&localeCompareGC);
+        {
+            result = builder_.CallRuntime(glue, RTSTUB_ID(LocaleCompareWithGc), Gate::InvalidGateRef,
+                { builder_.Undefined(), thisObj, thatObj, builder_.Undefined() }, gate);
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&slowPath);
+    {
+        result = LowerCallRuntime(glue, gate, RTSTUB_ID(LocaleCompare),
+            { thisObj, thatObj, builder_.Undefined(), builder_.Undefined()});
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef BuiltinLowering::TypedFloor(GateRef gate)
 {
     auto env = builder_.GetCurrentEnvironment();
@@ -158,19 +200,33 @@ void BuiltinLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value, bool n
 void BuiltinLowering::LowerTypedLocaleCompare(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
-    uint32_t index = 0;
-    GateRef thisObj = acc_.GetValueIn(gate, index++);
-    GateRef a0 = acc_.GetValueIn(gate, index++);
-    GateRef a1 = acc_.GetValueIn(gate, index++);
-    GateRef a2 = acc_.GetValueIn(gate, index++);
 
-    std::vector<GateRef> args;
-    args.reserve(index);
-    args.emplace_back(thisObj);
-    args.emplace_back(a0);
-    args.emplace_back(a1);
-    args.emplace_back(a2);
-    GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(LocaleCompare), args);
+    size_t index = 0;
+    GateRef thisObj = acc_.GetValueIn(gate, index++);
+    GateRef thatObj = acc_.GetValueIn(gate, index++);
+
+    static constexpr size_t NUM_OF_ARGS = 4;
+    size_t argsIn = acc_.GetNumValueIn(gate) - 1;
+    GateRef result = Circuit::NullGate();
+    if (argsIn == 2) { // 2: string.localeCompare(string)
+        // If the number of args is two, it must satisfy conditions for cache optimization.
+        // The cache of icu collator if locale is undefined
+        result = TypedLocaleCompare(glue, gate, thisObj, thatObj);
+    } else {
+        // willdo: Implement cache fastpath
+        std::vector<GateRef> args = { thisObj, thatObj };
+        ASSERT(argsIn <= NUM_OF_ARGS);
+        args.reserve(NUM_OF_ARGS);
+        while (index < argsIn) {
+            GateRef arg = acc_.GetValueIn(gate, index++);
+            args.emplace_back(arg);
+        }
+        while (index < NUM_OF_ARGS) {
+            args.emplace_back(builder_.Undefined());
+            index++;
+        }
+        result = LowerCallRuntime(glue, gate, RTSTUB_ID(LocaleCompare), args);
+    }
     ReplaceHirWithValue(gate, result);
 }
 
@@ -339,7 +395,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
 void BuiltinLowering::LowerTypedStringify(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
-    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
     std::vector<GateRef> args;
     args.emplace_back(value);
     GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(FastStringify), args);

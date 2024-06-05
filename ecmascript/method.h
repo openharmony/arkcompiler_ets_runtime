@@ -177,6 +177,8 @@ public:
         return MethodLiteral::IsAotWithCallField(callField);
     }
 
+    bool IsDeoptimized() const;
+
     bool OnlyHaveThisWithCallField() const
     {
         uint64_t callField = GetCallField();
@@ -383,9 +385,11 @@ public:
     // add for AOT
     void SetCodeEntryAndMarkAOTWhenBinding(uintptr_t codeEntry);
 
-    void ClearAOTStatusWhenDeopt();
+    void ClearAOTStatusWhenDeopt(uintptr_t entry);
 
     void ClearAOTFlagsWhenInit();
+
+    void InitInterpreterStatusForCompiledMethod(const JSThread *thread);
 
     void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
 
@@ -411,6 +415,7 @@ public:
     const CString GetRecordNameStr() const;
 
     uint32_t FindCatchBlock(uint32_t pc) const;
+    bool HasCatchBlock() const;
 
     /* callfield */
     static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455

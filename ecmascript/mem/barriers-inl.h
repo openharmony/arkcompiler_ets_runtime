@@ -36,17 +36,23 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     }
 #endif
     uintptr_t slotAddr = ToUintPtr(obj) + offset;
-    if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
         // Should align with '8' in 64 and 32 bit platform
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
     } else if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        objectRegion->AtomicInsertLocalToShareRSet(slotAddr);
+        objectRegion->InsertLocalToShareRSet(slotAddr);
+    } else if (valueRegion->InEdenSpace() && objectRegion->InYoungSpace()) {
+        objectRegion->InsertNewToEdenRSet(slotAddr);
     }
     ASSERT(!objectRegion->InSharedHeap() || valueRegion->InSharedHeap());
-    if (thread->IsConcurrentMarkingOrFinished()) {
+    if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
                          valueRegion, writeType);
+    }
+    if (writeType != WriteBarrierType::DESERIALIZE &&
+        valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
+        Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
     }
 }
 

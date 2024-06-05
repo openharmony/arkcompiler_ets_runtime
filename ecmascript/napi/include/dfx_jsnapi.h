@@ -78,7 +78,6 @@ public:
     static void DumpHeapSnapshotWithVm(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
                                        bool captureNumericValue, bool isFullGC, uint32_t tid);
     static void TriggerGC(const EcmaVM *vm, uint32_t tid);
-    static bool ForceFullGC(const EcmaVM *vm);
     static void TriggerGCWithVm(const EcmaVM *vm);
     static void DestroyHeapProfiler(const EcmaVM *vm);
 
@@ -100,8 +99,11 @@ public:
     static size_t GetHeapObjectSize(const EcmaVM *vm);
     static size_t GetHeapLimitSize(const EcmaVM *vm);
     static size_t GetProcessHeapLimitSize();
-    static bool isOverLimit(const EcmaVM *vm);
-    static void SetOverLimit(EcmaVM *vm, bool state);
+    static size_t GetGCCount(const EcmaVM *vm);
+    static size_t GetGCDuration(const EcmaVM *vm);
+    static size_t GetAccumulatedAllocateSize(const EcmaVM *vm);
+    static size_t GetAccumulatedFreeSize(const EcmaVM *vm);
+    static size_t GetFullGCLongTimeCount(const EcmaVM *vm);
     static void GetHeapPrepare(const EcmaVM *vm);
     static void NotifyApplicationState(EcmaVM *vm, bool inBackground);
     static void NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback);
@@ -115,6 +117,8 @@ public:
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);
     static bool CpuProfilerSamplingAnyTime(const EcmaVM *vm);
+    static void CpuProfilerAnyTimeMainThread(const EcmaVM *vm);
+    static void SetJsDumpThresholds(EcmaVM *vm, size_t thresholds);
     static bool StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static void StopCpuProfilerForFile(const EcmaVM *vm);
@@ -151,6 +155,7 @@ public:
     static bool StartTracing(const EcmaVM *vm, std::string &categories);
     static std::unique_ptr<std::vector<TraceEvent>> StopTracing(const EcmaVM *vm);
     static void GetTracingBufferUseage(const EcmaVM *vm, double &percentFull, uint32_t &eventCount, double &value);
+    static void TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column);
 };
 }
 #endif

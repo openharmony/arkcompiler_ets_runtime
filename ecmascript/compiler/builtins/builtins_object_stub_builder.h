@@ -24,6 +24,8 @@ public:
         : BuiltinsStubBuilder(parent) {}
     BuiltinsObjectStubBuilder(BuiltinsStubBuilder *parent, GateRef glue, GateRef thisValue, GateRef numArgs)
         : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
+    BuiltinsObjectStubBuilder(Environment *env, GateRef glue)
+        : BuiltinsStubBuilder(env), glue_(glue) {}
     ~BuiltinsObjectStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsObjectStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsObjectStubBuilder);
@@ -36,10 +38,10 @@ BUILTINS_WITH_OBJECT_STUB_BUILDER(DECLARE_BUILTINS_OBJECT_STUB_BUILDER)
 
     GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
     GateRef CreateArrayFromList(GateRef glue, GateRef elements);
+    void HasOwnProperty(Variable *result, Label *exit, Label *slowPath, GateRef thisValue, GateRef prop,
+                        GateRef hir = Circuit::NullGate());
 
 private:
-    GateRef OrdinaryNewJSObjectCreate(GateRef proto);
-    GateRef TransProtoWithoutLayout(GateRef hClass, GateRef proto);
     GateRef GetNumKeysFromLayoutInfo(GateRef object, GateRef end, GateRef layoutInfo);
     GateRef IsUninitializedProperty(GateRef object, GateRef index, GateRef layoutInfo);
     GateRef GetNumKeysFromDictionary(GateRef array);
@@ -51,6 +53,7 @@ private:
     GateRef GetEnumElementEntries(GateRef glue, GateRef obj, Label *slowPath);
     GateRef GetEnumPropertyEntries(GateRef glue, GateRef obj, Label *slowPath);
     GateRef TestIntegrityLevel(GateRef glue, GateRef obj, GateRef level, Label *slowPath);
+    GateRef ObjectSetPrototype(GateRef glue, GateRef obj, GateRef proto);
     void LayoutInfoGetAllEnumKeys(GateRef end, GateRef offset, GateRef array, GateRef object, GateRef layoutInfo);
     void AssignEnumElementProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
     void LayoutInfoAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);

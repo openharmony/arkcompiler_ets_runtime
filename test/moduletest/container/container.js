@@ -19,5 +19,33 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-var string = "container test start"
-print(string)
+import {arraylistRes} from './container_arraylist'
+import {dequeRes} from './container_deque'
+import {hashmapRes} from './container_hashmap'
+import {hashsetRes} from './container_hashset'
+import {lightweightmapRes} from './container_lightweightmap'
+import {lightweightsetRes} from './container_lightweightset'
+import {linked_listRes} from './container_linked_list'
+import {listRes} from './container_list'
+import {plainarrayRes} from './container_plainarray'
+import {queueRes} from './container_queue'
+import {stackRes} from './container_stack'
+import {treemapRes} from './container_treemap'
+import {treesetRes} from './container_treeset'
+import {vectorRes} from './container_vector'
+print(arraylistRes);
+print(dequeRes);
+print(hashmapRes);
+print(hashsetRes);
+print(lightweightmapRes);
+print(lightweightsetRes);
+print(linked_listRes);
+print(listRes);
+print(plainarrayRes);
+print(queueRes);
+print(stackRes);
+print(treemapRes);
+print(treesetRes);
+print(vectorRes);
+var string = "container test end"
+print(string);

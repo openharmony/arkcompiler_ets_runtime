@@ -82,7 +82,7 @@ bool AotCompilerService::Init()
 
 void AotCompilerService::DelayUnloadTask()
 {
-    auto task = [this]() {
+    auto task = []() {
         sptr<ISystemAbilityManager> samgr =
             SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
         if (samgr == nullptr) {
@@ -110,8 +110,29 @@ int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, st
                                         std::vector<int16_t> &sigData)
 {
     HiviewDFX::HiLog::Debug(LABEL, "begin to call aot compiler");
+    unLoadHandler_->RemoveTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().EcmascriptAotCompiler(argsMap, sigData);
     HiviewDFX::HiLog::Debug(LABEL, "finish aot compiler");
+    DelayUnloadTask();
+    return ret;
+}
+
+int32_t AotCompilerService::GetAOTVersion(std::string& sigData)
+{
+    HiviewDFX::HiLog::Debug(LABEL, "begin to get AOT version");
+    unLoadHandler_->RemoveTask(TASK_ID);
+    int32_t ret = AotCompilerImpl::GetInstance().GetAOTVersion(sigData);
+    HiviewDFX::HiLog::Debug(LABEL, "finish get AOT Version");
+    DelayUnloadTask();
+    return ret;
+}
+
+int32_t AotCompilerService::NeedReCompile(const std::string& args, bool& sigData)
+{
+    HiviewDFX::HiLog::Debug(LABEL, "begin to check need to re-compile version");
+    unLoadHandler_->RemoveTask(TASK_ID);
+    int32_t ret = AotCompilerImpl::GetInstance().NeedReCompile(args, sigData);
+    HiviewDFX::HiLog::Debug(LABEL, "finish check need re-compile");
     DelayUnloadTask();
     return ret;
 }
@@ -119,6 +140,7 @@ int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, st
 int32_t AotCompilerService::StopAotCompiler()
 {
     HiviewDFX::HiLog::Debug(LABEL, "stop aot compiler service");
+    unLoadHandler_->RemoveTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().StopAotCompiler();
     DelayUnloadTask();
     return ret;
