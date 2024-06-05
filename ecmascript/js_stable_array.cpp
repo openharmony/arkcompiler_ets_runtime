@@ -345,24 +345,18 @@ void JSStableArray::SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, 
     }
 }
 
-JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
+JSTaggedValue JSStableArray::Join(JSThread *thread, JSHandle<JSArray> receiver,
+                                  JSHandle<EcmaString> sepStringHandle, int64_t length)
 {
-    JSThread *thread = argv->GetThread();
-    uint32_t length = receiver->GetArrayLength();
-    JSHandle<JSTaggedValue> sepHandle = base::BuiltinsBase::GetCallArg(argv, 0);
     int sep = ',';
     uint32_t sepLength = 1;
-    JSHandle<EcmaString> sepStringHandle;
     auto context = thread->GetCurrentEcmaContext();
     JSHandle<JSTaggedValue> receiverValue = JSHandle<JSTaggedValue>::Cast(receiver);
-    if (!sepHandle->IsUndefined()) {
-        if (sepHandle->IsString()) {
-            sepStringHandle = JSHandle<EcmaString>::Cast(sepHandle);
-        } else {
-            sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
-            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
-        }
-        SetSepValue(sepStringHandle, sep, sepLength);
+    SetSepValue(sepStringHandle, sep, sepLength);
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    bool noCircular = context->JoinStackPushFastPath(receiverValue);
+    if (!noCircular) {
+        return factory->GetEmptyString().GetTaggedValue();
     }
     if (length == 0) {
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -390,7 +384,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
             element = ElementAccessor::Get(obj, k);
             if (element.IsHole() && JSTaggedValue::HasProperty(thread, receiverValue, k)) {
                 element = JSArray::FastGetPropertyByValue(thread, receiverValue, k).GetTaggedValue();
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
             }
         }
         if (!element.IsUndefinedOrNull() && !element.IsHole()) {
