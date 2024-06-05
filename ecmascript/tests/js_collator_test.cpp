@@ -51,9 +51,9 @@ HWTEST_F_L0(JSCollatorTest, GetIcuCollatorAndCompare)
     JSCollator::SetIcuCollator(thread, collator, icuCollator, JSCollator::FreeIcuCollator);
     icu::Collator *icuCollator1 = collator->GetIcuCollator();
     EXPECT_TRUE(icuCollator1 == icuCollator);
-    JSTaggedValue result = JSCollator::CompareStrings(icuCollator1, string1, string2);
+    JSTaggedValue result = JSCollator::CompareStrings(thread, icuCollator1, string1, string2);
     EXPECT_EQ(result.GetInt(), 0);  // equivalent
-    result = JSCollator::CompareStrings(icuCollator1, string1, string3);
+    result = JSCollator::CompareStrings(thread, icuCollator1, string1, string3);
     EXPECT_EQ(result.GetInt(), -1); // less than
     // test Collator is zh-Hans-CN locale
     icu::Locale zhLocale("zh", "Hans", "CN");
@@ -62,7 +62,7 @@ HWTEST_F_L0(JSCollatorTest, GetIcuCollatorAndCompare)
     JSCollator::SetIcuCollator(thread, collator, icuCollator, JSCollator::FreeIcuCollator);
     icu::Collator *icuCollator2 = collator->GetIcuCollator();
     EXPECT_TRUE(icuCollator2 == icuCollator);
-    result = JSCollator::CompareStrings(icuCollator2, string1, string2);
+    result = JSCollator::CompareStrings(thread, icuCollator2, string1, string2);
     EXPECT_EQ(result.GetInt(), 0);  // equivalent
 }
 

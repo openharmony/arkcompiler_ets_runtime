@@ -211,19 +211,18 @@ JSHandle<EcmaString> LocaleHelper::CanonicalizeUnicodeLocaleId(JSThread *thread,
     return languageTag;
 }
 
-JSHandle<EcmaString> LocaleHelper::ToLanguageTag(JSThread *thread, const icu::Locale &locale)
+std::string LocaleHelper::ToStdStringLanguageTag(JSThread *thread, const icu::Locale &locale)
 {
     UErrorCode status = U_ZERO_ERROR;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto result = locale.toLanguageTag<std::string>(status);
     if (U_FAILURE(status) != 0) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
+        THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", "");
     }
     size_t findBeginning = result.find("-u-");
     std::string finalRes;
     std::string tempRes;
     if (findBeginning == std::string::npos) {
-        return factory->NewFromStdString(result);
+        return result;
     }
     size_t specialBeginning = findBeginning + INTL_INDEX_THREE;
     size_t specialCount = 0;
@@ -236,7 +235,7 @@ JSHandle<EcmaString> LocaleHelper::ToLanguageTag(JSThread *thread, const icu::Lo
         // It begin with "-u-xx" or with more elements.
         tempRes = result.substr(0, findBeginning + INTL_INDEX_THREE + specialCount);
         if (result.size() <= findBeginning + INTL_INDEX_THREE + specialCount) {
-            return factory->NewFromStdString(result);
+            return result;
         }
         std::string leftStr = result.substr(findBeginning + INTL_INDEX_THREE + specialCount + 1);
         std::istringstream temp(leftStr);
@@ -257,7 +256,13 @@ JSHandle<EcmaString> LocaleHelper::ToLanguageTag(JSThread *thread, const icu::Lo
         tempRes += finalRes;
     }
     result = tempRes;
-    return factory->NewFromStdString(result);
+    return result;
+}
+
+JSHandle<EcmaString> LocaleHelper::ToLanguageTag(JSThread *thread, const icu::Locale &locale)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewFromStdString(ToStdStringLanguageTag(thread, locale));
 }
 
 // 6.2.2 IsStructurallyValidLanguageTag( locale )
@@ -344,15 +349,26 @@ bool LocaleHelper::DealwithLanguageTag(const std::vector<std::string> &container
 // 6.2.4 DefaultLocale ()
 JSHandle<EcmaString> LocaleHelper::DefaultLocale(JSThread *thread)
 {
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewFromStdString(StdStringDefaultLocale(thread));
+}
+
+const std::string& LocaleHelper::StdStringDefaultLocale(JSThread *thread)
+{
+    auto context = thread->GetCurrentEcmaContext();
+    const std::string& cachedLocale = context->GetDefaultLocale();
+    if (!cachedLocale.empty()) {
+        return cachedLocale;
+    }
     icu::Locale defaultLocale;
-    auto globalConst = thread->GlobalConstants();
     if (strcmp(defaultLocale.getName(), "en_US_POSIX") == 0 || strcmp(defaultLocale.getName(), "c") == 0) {
-        return JSHandle<EcmaString>::Cast(globalConst->GetHandledEnUsString());
+        context->SetDefaultLocale("en-US");
+    } else if (defaultLocale.isBogus() != 0) {
+        context->SetDefaultLocale("und");
+    } else {
+        context->SetDefaultLocale(ToStdStringLanguageTag(thread, defaultLocale));
     }
-    if (defaultLocale.isBogus() != 0) {
-        return JSHandle<EcmaString>::Cast(globalConst->GetHandledUndString());
-    }
-    return ToLanguageTag(thread, defaultLocale);
+    return context->GetDefaultLocale();
 }
 
 void LocaleHelper::HandleLocaleExtension(size_t &start, size_t &extensionEnd, const std::string result, size_t len)

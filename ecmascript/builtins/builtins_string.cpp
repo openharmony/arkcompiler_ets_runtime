@@ -545,32 +545,26 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 1);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 2); // 2: the second argument
+    return DoLocaleCompare(thread, thisHandle, thatHandle, locales, options);
+}
+
+JSTaggedValue BuiltinsString::DoLocaleCompare(JSThread *thread,
+                                              const JSHandle<EcmaString> &thisHandle,
+                                              const JSHandle<EcmaString> &thatHandle,
+                                              const JSHandle<JSTaggedValue> &locales,
+                                              const JSHandle<JSTaggedValue> &options)
+{
     [[maybe_unused]] bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+    const CompareStringsOption csOption = JSCollator::CompareStringsOptionFor(thread, locales, options);
 #ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
         if (collator != nullptr) {
-            JSTaggedValue result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
+            JSTaggedValue result = JSCollator::CompareStrings(thread, collator, thisHandle, thatHandle, csOption);
             return result;
         }
     }
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSTaggedValue> ctor = ecmaVm->GetGlobalEnv()->GetCollatorFunction();
-    JSHandle<JSCollator> collator =
-        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor)));
-    JSHandle<JSCollator> initCollator =
-        JSCollator::InitializeCollator(thread, collator, locales, options, cacheable);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    icu::Collator *icuCollator = nullptr;
-    if (cacheable) {
-        icuCollator = JSCollator::GetCachedIcuCollator(thread, locales);
-        ASSERT(icuCollator != nullptr);
-    } else {
-        icuCollator = initCollator->GetIcuCollator();
-    }
-    JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
-    return result;
+    return LocaleCompareGC(thread, thisHandle, thatHandle, locales, options, csOption, cacheable);
 #else
 #ifdef ARK_NOT_SUPPORT_INTL_GLOBAL
     ARK_SUPPORT_INTL_RETURN_JSVALUE(thread, "LocaleCompare");
@@ -589,9 +583,13 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
 #endif
 }
 
-JSTaggedValue BuiltinsString::LocaleCompareGC(JSThread *thread, JSHandle<JSTaggedValue> locales,
-                                              JSHandle<EcmaString> thisHandle, JSHandle<EcmaString> thatHandle,
-                                              JSHandle<JSTaggedValue> options, bool cacheable)
+JSTaggedValue BuiltinsString::LocaleCompareGC(JSThread *thread,
+                                              const JSHandle<EcmaString> &thisHandle,
+                                              const JSHandle<EcmaString> &thatHandle,
+                                              const JSHandle<JSTaggedValue> &locales,
+                                              const JSHandle<JSTaggedValue> &options,
+                                              CompareStringsOption csOption,
+                                              bool cacheable)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -608,7 +606,7 @@ JSTaggedValue BuiltinsString::LocaleCompareGC(JSThread *thread, JSHandle<JSTagge
     } else {
         icuCollator = initCollator->GetIcuCollator();
     }
-    JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
+    JSTaggedValue result = JSCollator::CompareStrings(thread, icuCollator, thisHandle, thatHandle, csOption);
     return result;
 }
 

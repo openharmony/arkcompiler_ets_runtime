@@ -1236,6 +1236,19 @@ const uint8_t *EcmaString::GetUtf8DataFlat(const EcmaString *src, CVector<uint8_
     return string->GetDataUtf8();
 }
 
+const uint8_t *EcmaString::GetNonTreeUtf8Data(const EcmaString *src)
+{
+    ASSERT(src->IsUtf8());
+    ASSERT(!src->IsTreeString());
+    EcmaString *string = const_cast<EcmaString *>(src);
+    if (string->IsSlicedString()) {
+        SlicedString *str = SlicedString::Cast(string);
+        return EcmaString::Cast(str->GetParent())->GetDataUtf8() + str->GetStartIndex();
+    }
+    ASSERT(src->IsLineOrConstantString());
+    return string->GetDataUtf8();
+}
+
 const uint16_t *EcmaString::GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf)
 {
     ASSERT(src->IsUtf16());
@@ -1253,6 +1266,19 @@ const uint16_t *EcmaString::GetUtf16DataFlat(const EcmaString *src, CVector<uint
         SlicedString *str = SlicedString::Cast(string);
         return EcmaString::Cast(str->GetParent())->GetDataUtf16() + str->GetStartIndex();
     }
+    return string->GetDataUtf16();
+}
+
+const uint16_t *EcmaString::GetNonTreeUtf16Data(const EcmaString *src)
+{
+    ASSERT(src->IsUtf16());
+    ASSERT(!src->IsTreeString());
+    EcmaString *string = const_cast<EcmaString *>(src);
+    if (string->IsSlicedString()) {
+        SlicedString *str = SlicedString::Cast(string);
+        return EcmaString::Cast(str->GetParent())->GetDataUtf16() + str->GetStartIndex();
+    }
+    ASSERT(src->IsLineOrConstantString());
     return string->GetDataUtf16();
 }
 

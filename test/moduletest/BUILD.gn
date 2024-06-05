@@ -142,6 +142,7 @@ group("ark_js_moduletest") {
     "storeicbyvalue",
     "string",
     "stringfromcharcode",
+    "stringlocalecompare",
     "stringreplace",
     "stringsplit",
     "stubbuilder",

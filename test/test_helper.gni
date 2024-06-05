@@ -289,6 +289,9 @@ template("host_moduletest_action") {
       js_vm_options += " --enable-ark-tools=true"
       js_vm_options += " --enable-force-gc=false"
     }
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    js_vm_options += _icu_data_path_options_
     js_vm_options += common_options
     args = [
       "--script-file",
@@ -344,7 +347,9 @@ template("host_moduletest_action") {
     }
     js_vm_options += " --enable-context=true"
     js_vm_options += common_options
-
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    js_vm_options += _icu_data_path_options_
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
@@ -403,6 +408,9 @@ template("host_moduletest_action") {
     }
     _asm_run_options_ += " --enable-context=true"
     _asm_run_options_ += common_options
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _asm_run_options_ += _icu_data_path_options_
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
@@ -460,6 +468,9 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --enable-force-gc=false"
     }
     _asm_run_options_ += common_options
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _asm_run_options_ += _icu_data_path_options_
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
@@ -515,6 +526,9 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --enable-force-gc=false"
     }
     _asm_run_options_ += common_options
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _asm_run_options_ += _icu_data_path_options_
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
@@ -569,6 +583,9 @@ template("host_moduletest_action") {
     }
     _asm_run_options_ += " --enable-context=true"
     _asm_run_options_ += common_options
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _asm_run_options_ += _icu_data_path_options_
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",

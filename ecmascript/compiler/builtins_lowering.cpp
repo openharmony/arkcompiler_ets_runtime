@@ -82,8 +82,8 @@ GateRef BuiltinLowering::TypedLocaleCompare(GateRef glue, GateRef gate, GateRef 
     builder_.Branch(isString, &fastPath, &slowPath);
     builder_.Bind(&fastPath);
     {
-        result = builder_.CallNGCRuntime(glue, RTSTUB_ID(LocaleCompareNoGc), Gate::InvalidGateRef,
-            { glue, builder_.Undefined(), thisObj, thatObj }, gate);
+        result = builder_.CallRuntime(glue, RTSTUB_ID(LocaleCompareCacheable), Gate::InvalidGateRef,
+            { builder_.Undefined(), thisObj, thatObj }, gate);
         GateRef status = builder_.TaggedIsUndefined(*result);
         builder_.Branch(status, &localeCompareGC, &exit, BranchWeight::ONE_WEIGHT, BranchWeight::STRONG_WEIGHT,
             "TypedLocaleCompare");

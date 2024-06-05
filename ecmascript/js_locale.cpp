@@ -93,7 +93,7 @@ JSHandle<EcmaString> JSLocale::LookupMatcher(JSThread *thread, const JSHandle<Ta
     // 3. Let defLocale be DefaultLocale();
     // 4. Set result.[[locale]] to defLocale.
     // 5. Return result.
-    std::string defLocale = intl::LocaleHelper::ConvertToStdString(intl::LocaleHelper::DefaultLocale(thread));
+    auto defLocale = intl::LocaleHelper::StdStringDefaultLocale(thread);
     result.locale = defLocale;
     return factory->NewFromStdString(result.locale);
 }
@@ -101,7 +101,7 @@ JSHandle<EcmaString> JSLocale::LookupMatcher(JSThread *thread, const JSHandle<Ta
 icu::LocaleMatcher BuildLocaleMatcher(JSThread *thread, uint32_t *availableLength, UErrorCode *status,
                                       const JSHandle<TaggedArray> &availableLocales)
 {
-    std::string locale = intl::LocaleHelper::ConvertToStdString(intl::LocaleHelper::DefaultLocale(thread));
+    std::string locale = intl::LocaleHelper::StdStringDefaultLocale(thread);
     icu::Locale defaultLocale = icu::Locale::forLanguageTag(locale, *status);
     ASSERT_PRINT(U_SUCCESS(*status), "icu::Locale::forLanguageTag failed");
     icu::LocaleMatcher::Builder builder;
