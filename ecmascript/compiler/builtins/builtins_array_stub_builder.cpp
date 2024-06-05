@@ -1867,11 +1867,19 @@ void BuiltinsArrayStubBuilder::FastReverse(GateRef glue, GateRef thisValue, Gate
         BRANCH(Int64LessThan(*i, *j), &next, &loopExit);
         Bind(&next);
         {
-            GateRef lower = FastGetValueWithElementsKind(elements, *i, kind);
-            GateRef upper = FastGetValueWithElementsKind(elements, *j, kind);
-            FastSetValueWithElementsKind(glue, elements, upper, *i, kind);
-            FastSetValueWithElementsKind(glue, elements, lower, *j, kind);
-            Jump(&loopEnd);
+            if (kind == ElementsKind::INT || kind == ElementsKind::NUMBER) {
+                GateRef lower = GetValueFromMutantTaggedArray(elements, *i);
+                GateRef upper = GetValueFromMutantTaggedArray(elements, *j);
+                FastSetValueWithElementsKind(glue, elements, upper, *i, kind);
+                FastSetValueWithElementsKind(glue, elements, lower, *j, kind);
+                Jump(&loopEnd);
+            } else {
+                GateRef lower = GetValueFromTaggedArray(elements, *i);
+                GateRef upper = GetValueFromTaggedArray(elements, *j);
+                FastSetValueWithElementsKind(glue, elements, upper, *i, kind);
+                FastSetValueWithElementsKind(glue, elements, lower, *j, kind);
+                Jump(&loopEnd);
+            }
         }
     }
     Bind(&loopEnd);

@@ -10231,26 +10231,6 @@ GateRef StubBuilder::SetValueWithElementsKind(GateRef glue, GateRef receiver, Ga
     return ret;
 }
 
-GateRef StubBuilder::FastGetValueWithElementsKind(GateRef elements, GateRef index, ElementsKind kind)
-{
-    auto env = GetEnvironment();
-    Label entryPass(env);
-    env->SubCfgEntry(&entryPass);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Label exit(env);
-    if (kind == ElementsKind::INT || kind == ElementsKind::NUMBER) {
-        result = GetValueFromTaggedArray(elements, index);
-        Jump(&exit);
-    } else {
-        result = GetValueFromTaggedArray(elements, index);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 void StubBuilder::FastSetValueWithElementsKind(GateRef glue, GateRef elements, GateRef rawValue,
                                                GateRef index, ElementsKind kind)
 {

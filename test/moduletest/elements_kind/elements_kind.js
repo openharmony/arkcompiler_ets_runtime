@@ -1981,6 +1981,40 @@ function test147() {
     }
 }
 
+//fast Array.reverse
+function test148() {
+    let a = [];
+    let b = a.reverse();
+    let c = [8, 6, 4, 2];
+    let d = [2, 4, 6, 8].reverse();
+    let e = [1,2,,4];
+    let f = e.reverse();
+    if (a == b && c[1] == d[1] && f[0] == 4 &&
+        f[1] == undefined) {
+        print("test148 - success");
+    } else {
+        print("test148 - failed");
+    }
+}
+
+//fast Array.reverse
+function test149() {
+    let a = [0.4, 0.6, 0.8];
+    let b = a.reverse();
+    let c = ["str2", "str3", "str4"];
+    let d = c.reverse();
+    let proto = { 0: "foo", 19: "bar" };
+    let obj = { length: 20, 5: "foobar", __proto__: proto };
+    Array.prototype.reverse.call(obj);
+
+    if (b[0] == 0.8 && c[0] == "str4" && obj[0] == "bar" &&
+        obj[19] == "foo") {
+        print("test149 - success");
+    } else {
+        print("test149 - failed");
+    }
+}
+
 // Int
 test1();
 test2();
@@ -2213,6 +2247,9 @@ test145();
 test146();
 test147();
 
+test148();
+test149();
+
 // Test COW ElementsKind
 class Index {
     currentArrays = [
@@ -2269,3 +2306,4 @@ function testLength() {
 }
 
 testLength();
+
