@@ -91,6 +91,9 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              PromiseRejectionEvent operation,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
+#if defined(ANDROID_PLATFORM)
+using JsAotReaderCallback = std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)>;
+#endif
 class EcmaContext {
 public:
     static EcmaContext *CreateAndInitialize(JSThread *thread);
@@ -581,7 +584,12 @@ private:
         const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool executeFromJob);
     Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
         std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob);
+    bool LoadAOTFilesInternal(const std::string& aotFileName);
     bool LoadAOTFiles(const std::string &aotFileName);
+#if defined(ANDROID_PLATFORM)
+    bool LoadAOTFiles(const std::string &aotFileName,
+                      std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
+#endif
     void RelocateConstantString(const JSPandaFile *jsPandaFile);
     JSTaggedValue FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index);
 
