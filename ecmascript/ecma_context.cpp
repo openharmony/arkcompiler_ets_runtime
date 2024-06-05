@@ -1087,7 +1087,7 @@ void EcmaContext::LoadStubFile()
     aotFileManager_->LoadStubFile(stubFile);
 }
 
-bool EcmaContext::LoadAOTFiles(const std::string& aotFileName)
+bool EcmaContext::LoadAOTFilesInternal(const std::string& aotFileName)
 {
     std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
     if (!aotFileManager_->LoadAnFile(anFile)) {
@@ -1104,6 +1104,20 @@ bool EcmaContext::LoadAOTFiles(const std::string& aotFileName)
     }
     return true;
 }
+
+bool EcmaContext::LoadAOTFiles(const std::string& aotFileName)
+{
+    return LoadAOTFilesInternal(aotFileName);
+}
+
+#if defined(ANDROID_PLATFORM)
+bool EcmaContext::LoadAOTFiles(const std::string& aotFileName,
+                               std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
+{
+    aotFileManager_->SetJsAotReader(cb);
+    return LoadAOTFilesInternal(aotFileName);
+}
+#endif
 
 void EcmaContext::PrintOptStat()
 {

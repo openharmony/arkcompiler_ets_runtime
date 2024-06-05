@@ -4389,6 +4389,32 @@ void JSNApi::GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_
     }
 }
 
+void JSNApi::LoadAotFileInternal(EcmaVM *vm, const std::string &moduleName, std::string &aotFileName)
+{
+    if (vm->GetJSOptions().WasAOTOutputFileSet()) {
+        aotFileName = vm->GetJSOptions().GetAOTOutputFile();
+    }
+#if defined(ANDROID_PLATFORM)
+    else if (vm->GetJSOptions().GetEnableAOT())
+#else
+    else if (ecmascript::AnFileDataManager::GetInstance()->IsEnable())
+#endif
+    {
+        aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
+    } else {
+        aotFileName = GetPreloadAotFile(vm, moduleName);
+    }
+    if (aotFileName.empty()) {
+        LOG_ECMA(INFO) << "can not find aot file";
+        return;
+    }
+    if (ecmascript::pgo::PGOProfilerManager::GetInstance()->IsDisableAot()) {
+        LOG_ECMA(INFO) << "can't load disable aot file: " << aotFileName;
+        return;
+    }
+    LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     if (IsAotEscape()) {
@@ -4405,24 +4431,32 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
     ecmascript::ThreadManagedScope scope(thread);
 
     std::string aotFileName;
-    if (vm->GetJSOptions().WasAOTOutputFileSet()) {
-        aotFileName = vm->GetJSOptions().GetAOTOutputFile();
-    } else if (ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
-        aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
-    } else {
-        aotFileName = GetPreloadAotFile(vm, moduleName);
-    }
-    if (aotFileName.empty()) {
-        LOG_ECMA(INFO) << "can not find aot file";
-        return;
-    }
-    if (ecmascript::pgo::PGOProfilerManager::GetInstance()->IsDisableAot()) {
-        LOG_ECMA(INFO) << "can't load disable aot file: " << aotFileName;
-        return;
-    }
-    LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
+    LoadAotFileInternal(vm, moduleName, aotFileName);
     thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
 }
+
+#if defined(ANDROID_PLATFORM)
+void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleName, const std::string &moduleName,
+                         std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
+{
+    if (IsAotEscape()) {
+        LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
+        return;
+    }
+    if (!vm->GetJSOptions().WasAOTOutputFileSet() &&
+        !EnableAotListHelper::GetInstance()->IsEnableList(PGOProfilerManager::GetInstance()->GetBundleName())) {
+        LOG_ECMA(INFO) << "Stop load AOT because it's not in enable list";
+        return;
+    }
+
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope scope(thread);
+
+    std::string aotFileName;
+    LoadAotFileInternal(vm, moduleName, aotFileName);
+    thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName, cb);
+}
+#endif
 
 std::string JSNApi::GetPreloadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
