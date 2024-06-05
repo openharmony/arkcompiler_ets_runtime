@@ -1495,14 +1495,15 @@ void RuntimeStubs::RuntimeThrowPatternNonCoercible(JSThread *thread)
 {
     JSHandle<EcmaString> msg(thread->GlobalConstants()->GetHandledObjNotCoercibleString());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, false).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread,
+        factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, StackCheck::NO).GetTaggedValue());
 }
 
 void RuntimeStubs::RuntimeThrowDeleteSuperProperty(JSThread *thread)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> info = factory->NewFromASCII("Can not delete super property");
-    JSHandle<JSObject> errorObj = factory->NewJSError(base::ErrorType::REFERENCE_ERROR, info,  false);
+    JSHandle<JSObject> errorObj = factory->NewJSError(base::ErrorType::REFERENCE_ERROR, info,  StackCheck::NO);
     THROW_NEW_ERROR_AND_RETURN(thread, errorObj.GetTaggedValue());
 }
 
@@ -1512,8 +1513,8 @@ void RuntimeStubs::RuntimeThrowUndefinedIfHole(JSThread *thread, const JSHandle<
     JSHandle<EcmaString> info = factory->NewFromASCII(" is not initialized");
 
     JSHandle<EcmaString> msg = factory->ConcatFromString(obj, info);
-    THROW_NEW_ERROR_AND_RETURN(thread,
-                               factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, false).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::REFERENCE_ERROR,
+        msg, StackCheck::NO).GetTaggedValue());
 }
 
 void RuntimeStubs::RuntimeThrowIfNotObject(JSThread *thread)
@@ -1528,7 +1529,8 @@ void RuntimeStubs::RuntimeThrowConstAssignment(JSThread *thread, const JSHandle<
     JSHandle<EcmaString> info = factory->NewFromASCII("Assignment to const variable ");
 
     JSHandle<EcmaString> msg = factory->ConcatFromString(info, value);
-    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, false).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR,
+                                                           msg, StackCheck::NO).GetTaggedValue());
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdGlobalRecord(JSThread *thread, JSTaggedValue key)
@@ -1582,8 +1584,8 @@ JSTaggedValue RuntimeStubs::RuntimeThrowReferenceError(JSThread *thread, const J
     JSHandle<EcmaString> info = factory->NewFromUtf8(desc);
     JSHandle<EcmaString> msg = factory->ConcatFromString(propName, info);
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread,
-                                     factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, false).GetTaggedValue(),
-                                     JSTaggedValue::Exception());
+        factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, StackCheck::NO).GetTaggedValue(),
+        JSTaggedValue::Exception());
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdGlobalVarFromProto(JSThread *thread, const JSHandle<JSTaggedValue> &globalObj,

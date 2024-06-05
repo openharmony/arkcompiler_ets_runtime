@@ -1126,7 +1126,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_TERMINATION_ERROR);
 
     JSHandle<EcmaString> handleMsg = factory_->NewFromUtf8ReadOnly("Default oom error");
-    JSHandle<JSObject> oomError = factory_->NewJSError(ErrorType::OOM_ERROR, handleMsg, true);
+    JSHandle<JSObject> oomError = factory_->NewJSError(ErrorType::OOM_ERROR, handleMsg, StackCheck::YES);
     env->SetOOMErrorObject(thread_, oomError);
 }
 

@@ -75,7 +75,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResolve(JSThread *thread,
     JSHandle<JSTaggedValue> resolve(thread, capability->GetResolve());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1, false);
+        EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1, StackCheck::NO);
     info->SetCallArg(its.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
     if ((thread)->HasPendingException()) {
@@ -262,8 +262,8 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
     if (thread->HasPendingException()) {
         thread->ClearException();
         // a. Let badGeneratorError be a newly created TypeError object.
-        JSHandle<JSObject> resolutionError =
-            factory->GetJSError(ErrorType::TYPE_ERROR, "Resolve: The promise and resolution cannot be the same.");
+        JSHandle<JSObject> resolutionError = factory->GetJSError(ErrorType::TYPE_ERROR,
+            "Resolve: The promise and resolution cannot be the same.", StackCheck::NO);
         // b. Perform ! Call(promiseCapability.[[Reject]], undefined, « badGeneratorError »).
         const GlobalEnvConstants *constants = thread->GlobalConstants();
         JSHandle<JSTaggedValue> rstErr = JSHandle<JSTaggedValue>::Cast(resolutionError);

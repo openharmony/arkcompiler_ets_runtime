@@ -254,46 +254,46 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DEPRECATED_CALL_INITIALIZE()                                  \
-    do {                                                              \
-        SAVE_PC();                                                    \
-        thread->CheckSafepoint();                                     \
-        funcTagged = sp[startReg];                                    \
-        JSTaggedValue funcValue(funcTagged);                          \
-        if (!funcValue.IsCallable()) {                                \
-            {                                                         \
-                [[maybe_unused]] EcmaHandleScope handleScope(thread); \
-                JSHandle<JSObject> error = factory->GetJSError(       \
-                    ErrorType::TYPE_ERROR, "is not callable");        \
-                thread->SetException(error.GetTaggedValue());         \
-            }                                                         \
-            INTERPRETER_GOTO_EXCEPTION_HANDLER();                     \
-        }                                                             \
-        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());   \
-        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget())); \
-        newSp = sp - InterpretedFrame::NumOfMembers();                \
+#define DEPRECATED_CALL_INITIALIZE()                                            \
+    do {                                                                        \
+        SAVE_PC();                                                              \
+        thread->CheckSafepoint();                                               \
+        funcTagged = sp[startReg];                                              \
+        JSTaggedValue funcValue(funcTagged);                                    \
+        if (!funcValue.IsCallable()) {                                          \
+            {                                                                   \
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
+                JSHandle<JSObject> error = factory->GetJSError(                 \
+                    ErrorType::TYPE_ERROR, "is not callable", StackCheck::NO);  \
+                thread->SetException(error.GetTaggedValue());                   \
+            }                                                                   \
+            INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \
+        }                                                                       \
+        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());             \
+        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget()));        \
+        newSp = sp - InterpretedFrame::NumOfMembers();                          \
     } while (false)
 
-#define CALL_INITIALIZE()                                             \
-    do {                                                              \
-        SAVE_PC();                                                    \
-        SAVE_ACC();                                                   \
-        thread->CheckSafepoint();                                     \
-        RESTORE_ACC();                                                \
-        funcTagged = acc.GetRawData();                                \
-        JSTaggedValue funcValue = acc;                                \
-        if (!funcValue.IsCallable()) {                                \
-            {                                                         \
-                [[maybe_unused]] EcmaHandleScope handleScope(thread); \
-                JSHandle<JSObject> error = factory->GetJSError(       \
-                    ErrorType::TYPE_ERROR, "is not callable");        \
-                thread->SetException(error.GetTaggedValue());         \
-            }                                                         \
-            INTERPRETER_GOTO_EXCEPTION_HANDLER();                     \
-        }                                                             \
-        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());   \
-        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget())); \
-        newSp = sp - InterpretedFrame::NumOfMembers();                \
+#define CALL_INITIALIZE()                                                       \
+    do {                                                                        \
+        SAVE_PC();                                                              \
+        SAVE_ACC();                                                             \
+        thread->CheckSafepoint();                                               \
+        RESTORE_ACC();                                                          \
+        funcTagged = acc.GetRawData();                                          \
+        JSTaggedValue funcValue = acc;                                          \
+        if (!funcValue.IsCallable()) {                                          \
+            {                                                                   \
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
+                JSHandle<JSObject> error = factory->GetJSError(                 \
+                    ErrorType::TYPE_ERROR, "is not callable", StackCheck::NO);  \
+                thread->SetException(error.GetTaggedValue());                   \
+            }                                                                   \
+            INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \
+        }                                                                       \
+        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());             \
+        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget()));        \
+        newSp = sp - InterpretedFrame::NumOfMembers();                          \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

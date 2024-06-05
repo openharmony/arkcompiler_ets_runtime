@@ -249,7 +249,8 @@ JSHandle<JSTaggedValue> JSListFormat::StringListFromIterable(JSThread *thread, c
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             if (!nextValue->IsString()) {
                 ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-                JSHandle<JSObject> typeError = factory->GetJSError(ErrorType::TYPE_ERROR, "nextValue is not string");
+                JSHandle<JSObject> typeError =
+                    factory->GetJSError(ErrorType::TYPE_ERROR, "nextValue is not string", StackCheck::NO);
                 JSHandle<JSTaggedValue> error(
                     factory->NewCompletionRecord(CompletionRecordType::THROW, JSHandle<JSTaggedValue>(typeError)));
                 JSTaggedValue result = JSIterator::IteratorClose(thread, iteratorRecord, error).GetTaggedValue();

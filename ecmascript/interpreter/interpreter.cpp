@@ -38,11 +38,12 @@ namespace panda::ecmascript {
 //   +--------------------------+
 EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfoBase(
     JSThread *thread, JSTaggedType func, JSTaggedType thisObj, JSTaggedType newTarget,
-    uint32_t numArgs, bool needCheckStack)
+    uint32_t numArgs, StackCheck needCheckStack)
 {
     JSTaggedType *prevSp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
     JSTaggedType *newSp = GetInterpreterFrameEnd(thread, prevSp);
-    if (needCheckStack && UNLIKELY(thread->DoStackOverflowCheck(newSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
+    if (needCheckStack == StackCheck::YES &&
+        UNLIKELY(thread->DoStackOverflowCheck(newSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
         return nullptr;
     }
 
@@ -68,7 +69,7 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfoBase(
 
 EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
     JSThread *thread, JSTaggedValue func, JSTaggedValue thisObj, JSTaggedValue newTarget,
-    uint32_t numArgs, bool needCheckStack)
+    uint32_t numArgs, StackCheck needCheckStack)
 {
     return NewRuntimeCallInfoBase(thread, func.GetRawData(), thisObj.GetRawData(), newTarget.GetRawData(),
         numArgs, needCheckStack);
@@ -76,14 +77,14 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
 
 EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
     JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
-    JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack)
+    JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, StackCheck needCheckStack)
 {
     return NewRuntimeCallInfoBase(thread, func.GetTaggedType(), thisObj.GetTaggedType(), newTarget.GetTaggedType(),
         numArgs, needCheckStack);
 }
 
 EcmaRuntimeCallInfo* EcmaInterpreter::ReBuildRuntimeCallInfo(JSThread *thread, EcmaRuntimeCallInfo* info,
-    int numArgs, bool needCheckStack)
+    int numArgs, StackCheck needCheckStack)
 {
     JSTaggedValue func = info->GetFunctionValue();
     JSTaggedValue newTarget = info->GetNewTargetValue();
@@ -99,7 +100,8 @@ EcmaRuntimeCallInfo* EcmaInterpreter::ReBuildRuntimeCallInfo(JSThread *thread, E
         args[i] = info->GetCallArgValue(actualArgc - i - 1).GetRawData();
     }
     currentSp += (info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2); // 2: include thread_ and numArgs_
-    if (needCheckStack && UNLIKELY(thread->DoStackOverflowCheck(currentSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
+    if (needCheckStack == StackCheck::YES &&
+        UNLIKELY(thread->DoStackOverflowCheck(currentSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
         return nullptr;
     }
     ASSERT(numArgs != actualArgc);

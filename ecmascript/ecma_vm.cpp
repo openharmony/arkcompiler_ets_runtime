@@ -941,7 +941,7 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         auto status = promise->GetPromiseState();
         if (status == PromiseState::PENDING) {
             result = JSHandle<JSTaggedValue>::Cast(factory_->GetJSError(
-                ErrorType::ERROR, "Can't return Promise in pending state")).GetTaggedValue();
+                ErrorType::ERROR, "Can't return Promise in pending state", StackCheck::NO)).GetTaggedValue();
         } else {
             result = promise->GetPromiseResult();
         }

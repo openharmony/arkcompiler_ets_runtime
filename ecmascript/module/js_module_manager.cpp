@@ -701,7 +701,8 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
             msg += "' which exported by '" + ConvertToString(ecmaModule->GetEcmaModuleFilename()) + "'";
         }
         ObjectFactory *factory = vm->GetFactory();
-        JSTaggedValue error = factory->GetJSError(ErrorType::SYNTAX_ERROR, msg.c_str()).GetTaggedValue();
+        JSTaggedValue error = factory->GetJSError(ErrorType::SYNTAX_ERROR, msg.c_str(),
+                                                  StackCheck::NO).GetTaggedValue();
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, 0);
     }
     JSHandle<TaggedArray> localExportEntries(thread, ecmaModule->GetLocalExportEntries());

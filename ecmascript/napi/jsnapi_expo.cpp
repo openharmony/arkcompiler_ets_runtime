@@ -3314,16 +3314,17 @@ bool SendableArrayRef::SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint3
 
 // ---------------------------------- Error ---------------------------------------
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define EXCEPTION_ERROR_NEW(name, type)                                                     \
-    Local<JSValueRef> Exception::name(const EcmaVM *vm, Local<StringRef> message)           \
-    {                                                                                       \
-        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));        \
-        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());                     \
-        ObjectFactory *factory = vm->GetFactory();                                          \
-                                                                                            \
-        JSHandle<EcmaString> messageValue(JSNApiHelper::ToJSHandle(message));               \
-        JSHandle<JSTaggedValue> result(factory->NewJSError(ErrorType::type, messageValue)); \
-        return JSNApiHelper::ToLocal<JSValueRef>(result);                                   \
+#define EXCEPTION_ERROR_NEW(name, type)                                                                 \
+    Local<JSValueRef> Exception::name(const EcmaVM *vm, Local<StringRef> message)                       \
+    {                                                                                                   \
+        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));                    \
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());                                 \
+        ObjectFactory *factory = vm->GetFactory();                                                      \
+                                                                                                        \
+        JSHandle<EcmaString> messageValue(JSNApiHelper::ToJSHandle(message));                           \
+        JSHandle<JSTaggedValue> result(factory->NewJSError(ErrorType::type,                             \
+                                                           messageValue, ecmascript::StackCheck::NO));  \
+        return JSNApiHelper::ToLocal<JSValueRef>(result);                                               \
     }
 
 EXCEPTION_ERROR_ALL(EXCEPTION_ERROR_NEW)

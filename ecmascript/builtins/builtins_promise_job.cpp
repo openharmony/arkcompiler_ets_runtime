@@ -210,7 +210,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     if (!hasRecord) {
         CString normalizeStr = ModulePathHelper::ReformatPath(entryPoint);
         CString msg =  "Cannot find dynamic-import module '" + normalizeStr;
-        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR,
+            msg.c_str(), StackCheck::NO).GetTaggedValue();
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
     }
     if (jsPandaFile->IsJson(recordInfo)) {
@@ -223,7 +224,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     if (!moduleManager->IsModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
-            JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+            JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str(),
+                                                      StackCheck::NO).GetTaggedValue();
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
         }
     } else {

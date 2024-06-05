@@ -57,8 +57,8 @@ JSTaggedValue BuiltinsPromiseHandler::Resolve(EcmaRuntimeCallInfo *argv)
     //     b. Return RejectPromise(promise, selfResolutionError).
     JSHandle<JSTaggedValue> resolution = BuiltinsBase::GetCallArg(argv, 0);
     if (JSTaggedValue::SameValue(resolution.GetTaggedValue(), resolvePromise.GetTaggedValue())) {
-        JSHandle<JSObject> resolutionError =
-            factory->GetJSError(ErrorType::TYPE_ERROR, "Resolve: The promise and resolution cannot be the same.");
+        JSHandle<JSObject> resolutionError = factory->GetJSError(ErrorType::TYPE_ERROR,
+            "Resolve: The promise and resolution cannot be the same.", StackCheck::NO);
         JSPromise::RejectPromise(thread, resolvePromise, JSHandle<JSTaggedValue>::Cast(resolutionError));
         return JSTaggedValue::Undefined();
     }

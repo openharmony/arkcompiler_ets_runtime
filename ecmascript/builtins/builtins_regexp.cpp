@@ -2257,15 +2257,15 @@ uint32_t BuiltinsRegExp::UpdateExpressionFlags(JSThread *thread, const CString &
                 break;
             default: {
                 ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-                JSHandle<JSObject> syntaxError =
-                    factory->GetJSError(base::ErrorType::SYNTAX_ERROR, "invalid regular expression flags");
+                JSHandle<JSObject> syntaxError = factory->GetJSError(base::ErrorType::SYNTAX_ERROR,
+                    "invalid regular expression flags", StackCheck::NO);
                 THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), 0);
             }
         }
         if ((flagsBits & flagsBitsTemp) != 0) {
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             JSHandle<JSObject> syntaxError =
-                factory->GetJSError(base::ErrorType::SYNTAX_ERROR, "invalid regular expression flags");
+                factory->GetJSError(base::ErrorType::SYNTAX_ERROR, "invalid regular expression flags", StackCheck::NO);
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), 0);
         }
         flagsBits |= flagsBitsTemp;
@@ -2364,7 +2364,7 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
         parser.Parse();
         if (parser.IsError()) {
             JSHandle<JSObject> syntaxError =
-                factory->GetJSError(base::ErrorType::SYNTAX_ERROR, parser.GetErrorMsg().c_str());
+                factory->GetJSError(base::ErrorType::SYNTAX_ERROR, parser.GetErrorMsg().c_str(), StackCheck::NO);
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), JSTaggedValue::Exception());
         }
         groupName = parser.GetGroupNames();
