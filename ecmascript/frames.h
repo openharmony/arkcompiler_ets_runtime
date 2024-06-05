@@ -115,6 +115,8 @@ enum class FrameType: uintptr_t {
     OPTIMIZED_ENTRY_FRAME,
     OPTIMIZED_JS_FUNCTION_FRAME,
     OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME,
+    FASTJIT_FUNCTION_FRAME,
+    FASTJIT_FAST_CALL_FUNCTION_FRAME,
     ASM_BRIDGE_FRAME,
     LEAVE_FRAME,
     LEAVE_FRAME_WITH_ARGV,
@@ -134,8 +136,6 @@ enum class FrameType: uintptr_t {
     OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME,
     BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME,
     BASELINE_BUILTIN_FRAME,
-    FASTJIT_FUNCTION_FRAME,
-    FASTJIT_FAST_CALL_FUNCTION_FRAME,
 
     FRAME_TYPE_FIRST = OPTIMIZED_FRAME,
     FRAME_TYPE_LAST = OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME,
@@ -1836,6 +1836,11 @@ private:
     {
         return reinterpret_cast<FASTJITFunctionFrame *>(reinterpret_cast<uintptr_t>(sp) -
             MEMBER_OFFSET(FASTJITFunctionFrame, prevFp));
+    }
+
+    static uintptr_t GetFuncAddrFromSp(const JSTaggedType *sp)
+    {
+        return reinterpret_cast<uintptr_t>(sp) - MEMBER_OFFSET(FASTJITFunctionFrame, type);
     }
 
     // dynamic callee saveregisters for x86-64
