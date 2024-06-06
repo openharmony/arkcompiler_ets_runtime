@@ -70,7 +70,7 @@ ErrCode AotCompilerInterfaceProxy::AotCompiler(
     }
 
     int32_t sigDataSize = reply.ReadInt32();
-    if (sigDataSize > vectorMaxSize) {
+    if (static_cast<unsigned long>(sigDataSize) > vectorMaxSize) {
         HiLog::Error(LABEL, "The vector/array size exceeds the security limit!");
         return ERR_INVALID_DATA;
     }

@@ -2409,9 +2409,7 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
     switch (expr.GetOpCode()) {
         case OP_array: {
             ProcessArrayExpr(expr, blkNode);
-            if (!mirModule.IsCModule()) {
-                return LowerArray(static_cast<ArrayNode &>(expr), parent);
-            }
+            return LowerArray(static_cast<ArrayNode &>(expr), parent);
         }
 
         case OP_dread:
