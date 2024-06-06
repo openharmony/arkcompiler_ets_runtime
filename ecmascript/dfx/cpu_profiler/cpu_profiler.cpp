@@ -56,10 +56,27 @@ bool CpuProfiler::RegisterGetStackSignal()
         return false;
     }
     sa.sa_flags = SA_RESTART | SA_SIGINFO;
+#if defined(PANDA_TARGET_ARM64)
+    sa.sa_flags |= SA_ONSTACK;
+#endif
     if (sigaction(SIGPROF, &sa, nullptr) != 0) {
         LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigaction failed, errno = " << errno;
         return false;
     }
+#if defined(PANDA_TARGET_ARM64)
+    constexpr const size_t stackSize = 256_KB;
+    segvStack_.ss_sp = valloc(stackSize);
+    if (segvStack_.ss_sp == nullptr) {
+        LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, valloc failed, errno = " << errno;
+        return false;
+    }
+    segvStack_.ss_flags = 0;
+    segvStack_.ss_size = stackSize;
+    if (sigaltstack(&segvStack_, NULL) != 0) {
+        LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigaltstack failed, errno = " << errno;
+        return false;
+    }
+#endif
     return true;
 }
 
@@ -225,6 +242,11 @@ CpuProfiler::~CpuProfiler()
     if (params_ != nullptr) {
         delete params_;
         params_ = nullptr;
+    }
+    if (segvStack_.ss_sp != nullptr) {
+        free(segvStack_.ss_sp);
+        segvStack_.ss_sp = nullptr;
+        segvStack_.ss_size = 0;
     }
 }
 

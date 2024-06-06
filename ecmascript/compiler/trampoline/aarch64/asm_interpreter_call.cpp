@@ -136,14 +136,6 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
     __ Mov(fpRegister, Register(SP));
     __ Mov(currentSlotRegister, Register(SP));
 
-    {
-        // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
-        [[maybe_unused]] TempRegister1Scope scope(assembler);
-        Register tempRegister = __ TempRegister1();
-        __ Ldr(tempRegister, MemoryOperand(glueRegister, JSThread::GlueData::GetStackLimitOffset(false)));
-        __ Mov(Register(SP), tempRegister);
-    }
-
     Register declaredNumArgsRegister = __ AvailableRegister2();
     GetDeclaredNumArgsFromCallField(assembler, callFieldRegister, declaredNumArgsRegister);
 
@@ -503,9 +495,6 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     bool isFrameComplete = PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV, temp, argc);
 
     __ Mov(currentSlotRegister, spRegister);
-    // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
-    __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
-    __ Mov(Register(SP), temp);
 
     __ Mov(opArgc, argc);
     __ Mov(opArgv, argv);
@@ -1055,9 +1044,6 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     // save fp
     __ Mov(fpRegister, spRegister);
     __ Mov(currentSlotRegister, spRegister);
-    // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
-    __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
-    __ Mov(Register(SP), temp);
     // push context regs
     __ Ldr(nRegsRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_NREGS_OFFSET));
     __ Ldr(thisRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_THIS_OFFSET));
