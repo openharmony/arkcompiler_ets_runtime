@@ -25,7 +25,6 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_queue.h"
-#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript::job {
 uint32_t MicroJobQueue::GetPromiseQueueSize(JSThread *thread, JSHandle<MicroJobQueue> jobQueue)
@@ -47,37 +46,7 @@ void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueu
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<PendingJob> pendingJob(factory->NewPendingJob(job, argv));
     ENQUEUE_JOB_HITRACE(pendingJob, queueType);
-
-    [[maybe_unused]] uint64_t jobId = 0;
-#if defined(ENABLE_HITRACE)
-    jobId = thread->GetJobId();
-    pendingJob->SetJobId(jobId);
-#endif
-    std::string strTrace = "MicroJobQueue::EnqueueJob: jobId: " + std::to_string(jobId);
-    strTrace += ", threadId: " + std::to_string(thread->GetThreadId());
-    if (thread->GetEcmaVM()->GetJSOptions().EnableMicroJobTrace()) {
-        std::vector<JsFrameInfo> jsStackInfo = JsStackInfo::BuildJsStackInfo(thread, true);
-        if (!jsStackInfo.empty()) {
-            JsFrameInfo jsFrameInfo = jsStackInfo.front();
-            std::string fileName = jsFrameInfo.fileName;
-            int lineNumber;
-            int columnNumber;
-            size_t pos = jsFrameInfo.pos.find(':', 0);
-            if (pos != CString::npos) {
-                lineNumber = std::stoi(jsFrameInfo.pos.substr(0, pos));
-                columnNumber = std::stoi(jsFrameInfo.pos.substr(pos + 1));
-                auto sourceMapcb = thread->GetEcmaVM()->GetSourceMapTranslateCallback();
-                if (sourceMapcb != nullptr && !fileName.empty()) {
-                    sourceMapcb(fileName, lineNumber, columnNumber);
-                }
-                fileName += ":" + std::to_string(lineNumber) + ":" + std::to_string(columnNumber);
-            } else {
-                fileName += ":" + jsFrameInfo.pos;
-            }
-            strTrace += ", funcName: " + jsFrameInfo.functionName + ", url: " + fileName;
-        }
-    }
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, strTrace);
+    ENQUEUE_JOB_TRACE(thread, pendingJob);
 
     if (queueType == QueueType::QUEUE_PROMISE) {
         JSHandle<TaggedQueue> promiseQueue(thread, jobQueue->GetPromiseJobQueue());
@@ -93,9 +62,6 @@ void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueu
 
 void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueue)
 {
-    if (thread->GetEcmaVM()->GetJSOptions().EnableMicroJobTrace()) {
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "MicroJobQueue::ExecutePendingJob");
-    }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSMutableHandle<TaggedQueue> promiseQueue(thread, jobQueue->GetPromiseJobQueue());
     JSMutableHandle<PendingJob> pendingJob(thread, JSTaggedValue::Undefined());

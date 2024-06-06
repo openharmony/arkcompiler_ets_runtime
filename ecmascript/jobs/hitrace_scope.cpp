@@ -17,6 +17,7 @@
 
 #include "ecmascript/jobs/pending_job.h"
 #include "hitrace/trace.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript::job {
 EnqueueJobScope::EnqueueJobScope(const JSHandle<PendingJob> &pendingJob, QueueType queueType)
@@ -82,6 +83,64 @@ ExecuteJobScope::~ExecuteJobScope()
     }
     if (saveId_.IsValid()) {
         HiTraceChain::SetId(saveId_);
+    }
+}
+
+EnqueueJobTrace::EnqueueJobTrace(JSThread *thread, const JSHandle<PendingJob> &pendingJob)
+{
+    isMicroJobTraceEnable_ = thread->GetEcmaVM()->GetJSOptions().EnableMicroJobTrace();
+    if (!isMicroJobTraceEnable_) {
+        return;
+    }
+
+    uint64_t jobId = thread->GetJobId();
+    pendingJob->SetJobId(jobId);
+    std::string strTrace = "MicroJobQueue::EnqueueJob: jobId: " + std::to_string(jobId);
+    strTrace += ", threadId: " + std::to_string(thread->GetThreadId());
+
+    std::vector<JsFrameInfo> jsStackInfo = JsStackInfo::BuildJsStackInfo(thread, true);
+    if (jsStackInfo.empty()) {
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, strTrace);
+        return;
+    }
+
+    JsFrameInfo jsFrameInfo = jsStackInfo.front();
+    size_t pos = jsFrameInfo.pos.find(':', 0);
+    if (pos != CString::npos) {
+        int lineNumber = std::stoi(jsFrameInfo.pos.substr(0, pos));
+        int columnNumber = std::stoi(jsFrameInfo.pos.substr(pos + 1));
+        auto sourceMapcb = thread->GetEcmaVM()->GetSourceMapTranslateCallback();
+        if (sourceMapcb != nullptr && !jsFrameInfo.fileName.empty()) {
+            sourceMapcb(jsFrameInfo.fileName, lineNumber, columnNumber);
+        }
+    }
+
+    strTrace += ", funcName: " + jsFrameInfo.functionName + ", url: " + jsFrameInfo.fileName + ":" + jsFrameInfo.pos;
+    ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, strTrace);
+}
+
+EnqueueJobTrace::~EnqueueJobTrace()
+{
+    if (isMicroJobTraceEnable_) {
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+    }
+}
+
+ExecuteJobTrace::ExecuteJobTrace(JSThread *thread, const JSHandle<PendingJob> &pendingJob)
+{
+    isMicroJobTraceEnable_ = thread->GetEcmaVM()->GetJSOptions().EnableMicroJobTrace();
+    if (isMicroJobTraceEnable_) {
+        uint64_t jobId = pendingJob->GetJobId();
+        std::string strTrace = "PendingJob::ExecutePendingJob: jobId: " + std::to_string(jobId);
+        strTrace += ", threadId: " + std::to_string(thread->GetThreadId());
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, strTrace);
+    }
+}
+
+ExecuteJobTrace::~ExecuteJobTrace()
+{
+    if (isMicroJobTraceEnable_) {
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
     }
 }
 }  // namespace panda::ecmascript::job
