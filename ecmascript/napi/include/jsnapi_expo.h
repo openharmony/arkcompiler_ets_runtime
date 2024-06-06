@@ -1182,8 +1182,9 @@ public:
     ECMA_DISALLOW_MOVE(JsiFastNativeScope);
 
 private:
-    JSThread *thread_;
-    uint16_t oldThreadState_;
+    JSThread *thread_ {nullptr};
+    uint16_t oldThreadState_ {0};
+    bool hasSwitchState_ {false};
 };
 
 /**

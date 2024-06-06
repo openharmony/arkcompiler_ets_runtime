@@ -3390,13 +3390,20 @@ JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
         const_cast<EcmaVM*>(vm)->IncreaseUpdateThreadStateTransCount();
     }
 #endif
-    oldThreadState_ = static_cast<uint16_t>(thread_->GetState());
+    ecmascript::ThreadState oldState = thread_->GetState();
+    if (oldState == ecmascript::ThreadState::RUNNING) {
+        return;
+    }
+    oldThreadState_ = static_cast<uint16_t>(oldState);
+    hasSwitchState_ = true;
     thread_->UpdateState(ecmascript::ThreadState::RUNNING);
 }
 
 JsiFastNativeScope::~JsiFastNativeScope()
 {
-    thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+    if (hasSwitchState_) {
+        thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+    }
 }
 
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
