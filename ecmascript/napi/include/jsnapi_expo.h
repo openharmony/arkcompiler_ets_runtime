@@ -1475,7 +1475,7 @@ public:
                                 bool defaultTransfer = false,
                                 bool defaultCloneShared = true);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
-    static void DeleteSerializationData(void *data);
+    static void DeleteSerializationData(const EcmaVM *vm, void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetHostResolveBufferTracker(EcmaVM *vm,
         std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
