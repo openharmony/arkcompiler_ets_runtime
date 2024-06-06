@@ -39,13 +39,14 @@ public:
     static JSHandle<TaggedArray> CanonicalizeLocaleList(JSThread *thread, const JSHandle<JSTaggedValue> &locales);
     // 6.2.3 CanonicalizeUnicodeLocaleId ( locale )
     static JSHandle<EcmaString> CanonicalizeUnicodeLocaleId(JSThread *thread, const JSHandle<EcmaString> &locale);
+    static std::string ToStdStringLanguageTag(JSThread *thread, const icu::Locale &locale);
     static JSHandle<EcmaString> ToLanguageTag(JSThread *thread, const icu::Locale &locale);
     static std::vector<std::string> GetAvailableLocales(JSThread *thread, const char *key, const char *path);
     static bool IsStructurallyValidLanguageTag(const JSHandle<EcmaString> &tag);
     // 9.2.2 BestAvailableLocale ( availableLocales, locale )
     static std::string BestAvailableLocale(const std::vector<std::string> &availableLocales,
                                            const std::string &locale);
-
+    static const std::string& StdStringDefaultLocale(JSThread *thread);
     static JSHandle<EcmaString> DefaultLocale(JSThread *thread);
     static LocaleHelper::ParsedLocale HandleLocale(const JSHandle<EcmaString> &localeString);
     static void HandleLocaleExtension(size_t &start, size_t &extensionEnd, const std::string result, size_t len);

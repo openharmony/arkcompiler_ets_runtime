@@ -720,7 +720,11 @@ private:
 
     static const uint8_t *PUBLIC_API GetUtf8DataFlat(const EcmaString *src, CVector<uint8_t> &buf);
 
+    static const uint8_t *PUBLIC_API GetNonTreeUtf8Data(const EcmaString *src);
+
     static const uint16_t *PUBLIC_API GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf);
+
+    static const uint16_t *PUBLIC_API GetNonTreeUtf16Data(const EcmaString *src);
 
     // string must be not flat
     static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type);
@@ -1470,6 +1474,15 @@ public:
         return EcmaString::Trim(thread, src, mode);
     }
 
+    static bool IsASCIICharacter(uint16_t data)
+    {
+        if (data == 0) {
+            return false;
+        }
+        // \0 is not considered ASCII in Ecma-Modified-UTF8 [only modify '\u0000']
+        return data <= base::utf_helper::UTF8_1B_MAX;
+    }
+
     bool IsFlat() const
     {
         return string_->IsFlat();
@@ -1495,6 +1508,11 @@ public:
         return string_->IsLineOrConstantString();
     }
 
+    JSType GetStringType() const
+    {
+        return string_->GetStringType();
+    }
+
     bool IsTreeString() const
     {
         return string_->IsTreeString();
@@ -1505,6 +1523,7 @@ public:
         return string_->NotTreeString();
     }
 
+    // the returned string may be a linestring, constantstring, or slicestring!!
     PUBLIC_API static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
@@ -1533,9 +1552,19 @@ public:
         return EcmaString::GetUtf8DataFlat(src, buf);
     }
 
+    static const uint8_t *GetNonTreeUtf8Data(const EcmaString *src)
+    {
+        return EcmaString::GetNonTreeUtf8Data(src);
+    }
+
     static const uint16_t *GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf)
     {
         return EcmaString::GetUtf16DataFlat(src, buf);
+    }
+
+    static const uint16_t *GetNonTreeUtf16Data(const EcmaString *src)
+    {
+        return EcmaString::GetNonTreeUtf16Data(src);
     }
 
     static JSTaggedValue StringToList(JSThread *thread, JSHandle<JSTaggedValue> &str);

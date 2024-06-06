@@ -3558,48 +3558,7 @@ DEF_RUNTIME_STUBS(LocaleCompare)
     [[maybe_unused]] JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, thatTag);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
 
-    [[maybe_unused]] bool cacheable = options->IsUndefined() && (locales->IsUndefined() || locales->IsString());
-#ifdef ARK_SUPPORT_INTL
-    if (cacheable) {
-        auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
-        if (collator != nullptr) {
-            JSTaggedValue result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
-            return result.GetRawData();
-        }
-    }
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSTaggedValue> ctor = ecmaVm->GetGlobalEnv()->GetCollatorFunction();
-    JSHandle<JSCollator> collator =
-        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor)));
-    JSHandle<JSCollator> initCollator =
-        JSCollator::InitializeCollator(thread, collator, locales, options, cacheable, true);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
-    icu::Collator *icuCollator = nullptr;
-    if (cacheable) {
-        icuCollator = JSCollator::GetCachedIcuCollator(thread, locales);
-        ASSERT(icuCollator != nullptr);
-    } else {
-        icuCollator = initCollator->GetIcuCollator();
-    }
-    JSTaggedValue result = JSCollator::FastCompareStrings(thread, icuCollator, thisHandle, thatHandle);
-    return result.GetRawData();
-#else
-#ifdef ARK_NOT_SUPPORT_INTL_GLOBAL
-    ARK_SUPPORT_INTL_RETURN_JSVALUE(thread, "LocaleCompare");
-#else
-    intl::GlobalIntlHelper gh(thread, intl::GlobalFormatterType::Collator);
-    auto collator = gh.GetGlobalObject<intl::GlobalCollator>(thread,
-        locales, options, intl::GlobalFormatterType::Collator, cacheable);
-    if (collator == nullptr) {
-        LOG_ECMA(ERROR) << "BuiltinsString::LocaleCompare:collator is nullptr";
-    }
-    ASSERT(collator != nullptr);
-    auto result = collator->Compare(EcmaStringAccessor(thisHandle).ToStdString(),
-        EcmaStringAccessor(thatHandle).ToStdString());
-    return JSTaggedValue(result).GetRawData();
-#endif
-#endif
+    return builtins::BuiltinsString::DoLocaleCompare(thread, thisHandle, thatHandle, locales, options).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ArraySort)
@@ -3790,8 +3749,9 @@ DEF_RUNTIME_STUBS(LocaleCompareWithGc)
     JSHandle<EcmaString> thatHandle = GetHArg<EcmaString>(argv, argc, 2);    // 2: means the second parameter
     JSHandle<JSTaggedValue> options = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
     bool cacheable = options->IsUndefined() && (locales->IsUndefined() || locales->IsString());
-    return builtins::BuiltinsString::LocaleCompareGC(thread, locales, thisHandle, thatHandle,
-        options, cacheable).GetRawData();
+    const CompareStringsOption csOption = JSCollator::CompareStringsOptionFor(thread, locales, options);
+    return builtins::BuiltinsString::LocaleCompareGC(thread, thisHandle, thatHandle, locales,
+        options, csOption, cacheable).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ParseInt)
@@ -3819,17 +3779,20 @@ int RuntimeStubs::FastArraySort(JSTaggedType x, JSTaggedType y)
     return JSTaggedValue::IntLexicographicCompare(JSTaggedValue(x), JSTaggedValue(y));
 }
 
-JSTaggedValue RuntimeStubs::LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
-                                              EcmaString *thatHandle)
+DEF_RUNTIME_STUBS(LocaleCompareCacheable)
 {
-    DISALLOW_GARBAGE_COLLECTION;
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    auto collator = JSCollator::GetCachedIcuCollator(thread, JSTaggedValue(locales));
+    RUNTIME_STUBS_HEADER(LocaleCompareCacheable);
+    JSHandle<JSTaggedValue> locales = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<EcmaString> thisHandle = GetHArg<EcmaString>(argv, argc, 1);    // 1: means the first parameter
+    JSHandle<EcmaString> thatHandle = GetHArg<EcmaString>(argv, argc, 2);    // 2: means the second parameter
+    auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
     JSTaggedValue result = JSTaggedValue::Undefined();
     if (collator != nullptr) {
-        result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
+        [[maybe_unused]]const CompareStringsOption csOption = JSCollator::CompareStringsOptionFor(
+            thread, locales);
+        result = JSCollator::CompareStrings(thread, collator, thisHandle, thatHandle, csOption);
     }
-    return result;
+    return result.GetRawData();
 }
 
 JSTaggedValue RuntimeStubs::StringToNumber(JSTaggedType numberString, int32_t radix)

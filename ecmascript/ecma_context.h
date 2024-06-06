@@ -52,6 +52,7 @@ class GlobalIndexMap;
 class SustainingJSHandleList;
 class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
+enum class CompareStringsOption : uint8_t;
 
 template<typename T>
 class JSHandle;
@@ -304,6 +305,46 @@ public:
     TypedOpProfiler *GetTypdOpProfiler() const
     {
         return typedOpProfiler_;
+    }
+
+    void SetDefaultLocale(const std::string& locale)
+    {
+        defaultLocale_ = locale;
+    }
+
+    const std::string& GetDefaultLocale() const
+    {
+        return defaultLocale_;
+    }
+
+    void InitializeDefaultLocale()
+    {
+        defaultLocale_ = "";
+    }
+
+    void ClearDefaultLocale()
+    {
+        defaultLocale_.clear();
+    }
+
+    void SetDefaultCompareStringsOption(const CompareStringsOption csOption)
+    {
+        defaultComapreStringsOption_ = csOption;
+    }
+
+    const std::optional<CompareStringsOption> GetDefaultCompareStringsOption() const
+    {
+        return defaultComapreStringsOption_;
+    }
+
+    void InitializeDefaultCompareStringsOption()
+    {
+        defaultComapreStringsOption_ = std::nullopt;
+    }
+
+    void ClearDefaultComapreStringsOption()
+    {
+        defaultComapreStringsOption_ = std::nullopt;
     }
 
     // For icu objects cache
@@ -654,6 +695,9 @@ private:
 
     // opt code loop hoist
     TypedOpProfiler *typedOpProfiler_ {nullptr};
+
+    std::string defaultLocale_;
+    std::optional<CompareStringsOption> defaultComapreStringsOption_;
 
     // For icu objects cache
     struct IcuFormatter {

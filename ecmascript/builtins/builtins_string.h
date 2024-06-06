@@ -119,6 +119,10 @@
     /* String.prototype.valueOf ( ) */                                              \
     V("valueOf",           ValueOf,           0, INVALID)
 
+namespace panda::ecmascript {
+enum class CompareStringsOption : uint8_t;
+}
+
 namespace panda::ecmascript::builtins {
 constexpr int32_t ENCODE_MAX_UTF16 = 0X10FFFF;
 constexpr uint16_t ENCODE_LEAD_LOW = 0xD800;
@@ -163,9 +167,18 @@ public:
     static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
     // 21.1.3.10
     static JSTaggedValue LocaleCompare(EcmaRuntimeCallInfo *argv);
-    static JSTaggedValue LocaleCompareGC(JSThread *thread, JSHandle<JSTaggedValue> locales,
-                                         JSHandle<EcmaString> thisHandle, JSHandle<EcmaString> thatHandle,
-                                         JSHandle<JSTaggedValue> options, bool cacheable);
+    static JSTaggedValue DoLocaleCompare(JSThread *thread,
+                                         const JSHandle<EcmaString> &thisHandle,
+                                         const JSHandle<EcmaString> &thatHandle,
+                                         const JSHandle<JSTaggedValue> &locales,
+                                         const JSHandle<JSTaggedValue> &options);
+    static JSTaggedValue LocaleCompareGC(JSThread *thread,
+                                         const JSHandle<EcmaString> &thisHandle,
+                                         const JSHandle<EcmaString> &thatHandle,
+                                         const JSHandle<JSTaggedValue> &locales,
+                                         const JSHandle<JSTaggedValue> &options,
+                                         CompareStringsOption csOption,
+                                         bool cacheable);
     // 21.1.3.11
     static JSTaggedValue Match(EcmaRuntimeCallInfo *argv);
 

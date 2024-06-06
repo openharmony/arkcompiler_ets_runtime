@@ -24,6 +24,7 @@ namespace panda::ecmascript {
 enum class UsageOption : uint8_t { SORT = 0x01, SEARCH, EXCEPTION };
 enum class CaseFirstOption : uint8_t { UPPER = 0x01, LOWER, FALSE_OPTION, UNDEFINED, EXCEPTION };
 enum class SensitivityOption : uint8_t { BASE = 0x01, ACCENT, CASE, VARIANT, UNDEFINED, EXCEPTION };
+enum class CompareStringsOption : uint8_t { NONE = 0x01, TRY_FAST_PATH };
 
 class JSCollator : public JSObject {
 public:
@@ -95,14 +96,14 @@ public:
 
     static JSHandle<TaggedArray> GetAvailableLocales(JSThread *thread, bool enableLocaleCache = false);
 
-    static JSTaggedValue CompareStrings(const icu::Collator *icuCollator, const JSHandle<EcmaString> &string1,
-                                        const JSHandle<EcmaString> &string2);
+    static CompareStringsOption CompareStringsOptionFor(JSThread *thread, JSHandle<JSTaggedValue> locales);
 
-    static JSTaggedValue CompareStrings(const icu::Collator *icuCollator, EcmaString *string1, EcmaString *string2);
+    static CompareStringsOption CompareStringsOptionFor(JSThread *thread, JSHandle<JSTaggedValue> locales,
+                                                        JSHandle<JSTaggedValue> options);
 
-    static JSTaggedValue FastCompareStrings(JSThread *thread, const icu::Collator *icuCollator,
-                                            const JSHandle<EcmaString> &string1,
-                                            const JSHandle<EcmaString> &string2);
+    static JSTaggedValue CompareStrings(JSThread *thread, const icu::Collator *icuCollator,
+                                        const JSHandle<EcmaString> &string1, const JSHandle<EcmaString> &string2,
+                                        CompareStringsOption csOption = CompareStringsOption::NONE);
 
 private:
     static CaseFirstOption StringToCaseFirstOption(const std::string &str);

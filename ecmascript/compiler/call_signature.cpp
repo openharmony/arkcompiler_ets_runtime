@@ -1584,23 +1584,6 @@ DEF_CALL_SIGNATURE(FastArraySort)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(LocaleCompareNoGc)
-{
-    // 4 : 4 input parameters
-    CallSignature localeCompareNoGc("LocaleCompareNoGc", 0, 4,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = localeCompareNoGc;
-    std::array<VariableType, 4> params = { // 4 : 4 input parameters
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER(),
-        VariableType::JS_POINTER(),
-        VariableType::JS_POINTER(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(StringToNumber)
 {
     // 4 : 4 input parameters

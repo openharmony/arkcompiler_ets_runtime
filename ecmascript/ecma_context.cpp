@@ -114,6 +114,8 @@ bool EcmaContext::Initialize()
     thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
     builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
 
+    InitializeDefaultLocale();
+    InitializeDefaultCompareStringsOption();
     SetupRegExpResultCache();
     SetupRegExpGlobalResult();
     SetupNumberToStringResultCache();
@@ -220,6 +222,8 @@ EcmaContext::~EcmaContext()
             jsPandaFile->DeleteParsedConstpoolVM(vm_);
         }
     }
+    ClearDefaultLocale();
+    ClearDefaultComapreStringsOption();
     // clear icu cache
     ClearIcuCache(thread_);
 
