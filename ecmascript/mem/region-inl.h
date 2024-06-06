@@ -260,10 +260,10 @@ inline void Region::DeleteSweepingLocalToShareRSet()
 }
 
 template <typename Visitor>
-inline void Region::AtomicIterateAllLocalToShareBits(Visitor visitor)
+inline void Region::IterateAllLocalToShareBits(Visitor visitor)
 {
     if (packedData_.localToShareSet_ != nullptr) {
-        packedData_.localToShareSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
+        packedData_.localToShareSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
     }
 }
 

@@ -45,6 +45,7 @@ public:
 
     void SetToWeak(JSThread *thread, JSTaggedValue value)
     {
+        ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
         JSTaggedValue weakObj = JSTaggedValue(value.CreateAndGetWeakRef());
         ASSERT(weakObj.IsWeak());
         SetWeakObject(thread, weakObj);

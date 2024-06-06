@@ -18,16 +18,10 @@
 
 #include <optional>
 
-#include "libpandabase/macros.h"
+#include "ecmascript/common.h"
 #include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
-static thread_local size_t currentAssertData(~0);
-
-using AssertGarbageCollectBit = panda::BitField<bool, 0, 1>;
-using AssertHeapAllocBit = AssertGarbageCollectBit::NextFlag;
-using AssertHandleAllocBit = AssertHeapAllocBit::NextFlag;
-using AssertDeRefHandleBit = AssertHandleAllocBit::NextFlag;
 
 #ifndef NDEBUG
 constexpr bool IS_ALLOW_CHECK = true;
@@ -40,71 +34,24 @@ enum class AssertType : uint8_t {
     HEAP_ALLOC_ASSERT,
     HANDLE_ALLOC_ASSERT,
     DEREF_HANDLE_ASSERT,
+    LOCAL_TO_SHARE_WEAK_REF_ASSERT,
     LAST_ASSERT_TYPE
 };
 
 template<AssertType type, bool isAllow, bool IsDebug = IS_ALLOW_CHECK>
-class AssertScopeT {
+class PUBLIC_API AssertScopeT {
 public:
-    static bool IsAllowed()
-    {
-        return true;
-    }
+    static bool IsAllowed();
 };
 
 template<AssertType type, bool isAllow>
-class AssertScopeT<type, isAllow, true> {
+class PUBLIC_API AssertScopeT<type, isAllow, true> {
 public:
-    AssertScopeT() : oldData_(currentAssertData)
-    {
-        switch (type) {
-            case AssertType::GARBAGE_COLLECTION_ASSERT:
-                currentAssertData = AssertGarbageCollectBit::Update(oldData_.value(), isAllow);
-                break;
-            case AssertType::HEAP_ALLOC_ASSERT:
-                currentAssertData = AssertHeapAllocBit::Update(oldData_.value(), isAllow);
-                break;
-            case AssertType::HANDLE_ALLOC_ASSERT:
-                currentAssertData = AssertHandleAllocBit::Update(oldData_.value(), isAllow);
-                break;
-            case AssertType::DEREF_HANDLE_ASSERT:
-                currentAssertData = AssertDeRefHandleBit::Update(oldData_.value(), isAllow);
-                break;
-            default:
-                break;
-        }
-    }
+    AssertScopeT();
 
-    ~AssertScopeT()
-    {
-        if (!oldData_.has_value()) {
-            return;
-        }
+    ~AssertScopeT();
 
-        currentAssertData = oldData_.value();
-        oldData_.reset();
-    }
-
-    static bool IsAllowed()
-    {
-        switch (type) {
-            case AssertType::GARBAGE_COLLECTION_ASSERT:
-                return AssertGarbageCollectBit::Decode(currentAssertData);
-            case AssertType::HEAP_ALLOC_ASSERT:
-                return AssertHeapAllocBit::Decode(currentAssertData);
-            case AssertType::HANDLE_ALLOC_ASSERT:
-                return AssertHandleAllocBit::Decode(currentAssertData);
-                break;
-            case AssertType::DEREF_HANDLE_ASSERT:
-                return AssertDeRefHandleBit::Decode(currentAssertData);
-                break;
-            default:
-                return true;
-        }
-    }
-
-    NO_COPY_SEMANTIC(AssertScopeT);
-    DEFAULT_NOEXCEPT_MOVE_SEMANTIC(AssertScopeT);
+    static bool IsAllowed();
 
 private:
     std::optional<size_t> oldData_;
@@ -118,6 +65,10 @@ using DisAllowHandleAllocation = AssertScopeT<AssertType::HANDLE_ALLOC_ASSERT, f
 using AllowHandleAllocation = AssertScopeT<AssertType::HANDLE_ALLOC_ASSERT, true, IS_ALLOW_CHECK>;
 using DisAllowDeRefHandle = AssertScopeT<AssertType::DEREF_HANDLE_ASSERT, false, IS_ALLOW_CHECK>;
 using AllowDeRefHandle = AssertScopeT<AssertType::DEREF_HANDLE_ASSERT, true, IS_ALLOW_CHECK>;
+using DisAllowLocalToShareWeakRefHandle = AssertScopeT<AssertType::LOCAL_TO_SHARE_WEAK_REF_ASSERT,
+                                                       false, IS_ALLOW_CHECK>;
+using AllowLocalToShareWeakRefHandle = AssertScopeT<AssertType::LOCAL_TO_SHARE_WEAK_REF_ASSERT,
+                                                    true, IS_ALLOW_CHECK>;
 #if (!defined NDEBUG) || (defined RUN_TEST)
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DISALLOW_GARBAGE_COLLECTION [[maybe_unused]] DisallowGarbageCollection noGc
@@ -135,6 +86,12 @@ using AllowDeRefHandle = AssertScopeT<AssertType::DEREF_HANDLE_ASSERT, true, IS_
 #define DISALLOW_DEREF_HANDLE [[maybe_unused]] DisAllowDeRefHandle disAllowDeRefHandle
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ALLOW_DEREF_HANDLE [[maybe_unused]] AllowDeRefHandle allowDeRefHandle
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define DISALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE             \
+    [[maybe_unused]] DisAllowLocalToShareWeakRefHandle disAllowLocalToShareWeakRefHandle
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE                \
+    [[maybe_unused]] AllowLocalToShareWeakRefHandle allowLocalToShareRefHandle
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DISALLOW_HEAP_ACCESS \
     DISALLOW_HEAP_ALLOC;     \
@@ -156,10 +113,16 @@ using AllowDeRefHandle = AssertScopeT<AssertType::DEREF_HANDLE_ASSERT, true, IS_
 #define ALLOW_HEAP_ACCESS
 #define DISALLOW_DEREF_HANDLE
 #define ALLOW_DEREF_HANDLE
+#define DISALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE
+#define ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE
 #endif
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CHECK_NO_GC ASSERT_PRINT(AllowGarbageCollection::IsAllowed(), "disallow execute garbage collection.");
+// Some checks failed, need to check and fix
+#undef CHECK_NO_GC
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define CHECK_NO_GC static_cast<void>(0);
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CHECK_NO_HEAP_ALLOC ASSERT_PRINT(AllowHeapAlloc::IsAllowed(), "disallow execute heap alloc.");
@@ -169,6 +132,10 @@ using AllowDeRefHandle = AssertScopeT<AssertType::DEREF_HANDLE_ASSERT, true, IS_
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CHECK_NO_DEREF_HANDLE ASSERT_PRINT(AllowDeRefHandle::IsAllowed(), "disallow execute deref handle.");
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define CHECK_NO_LOCAL_TO_SHARE_WEAK_REF_HANDLE         \
+    ASSERT_PRINT(AllowLocalToShareWeakRefHandle::IsAllowed(), "disallow local to share weak ref handle.");
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_ASSERT_SCOPE_H

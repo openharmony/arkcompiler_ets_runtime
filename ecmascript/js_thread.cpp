@@ -1155,7 +1155,7 @@ void JSThread::WaitSuspension()
     ThreadState oldState = GetState();
     UpdateState(ThreadState::IS_SUSPENDED);
     {
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::WaitSuspension");
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::WaitSuspension");
         LockHolder lock(suspendLock_);
         while (suspendCount_ > 0) {
             suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
@@ -1250,6 +1250,7 @@ void JSThread::StoreRunningState(ThreadState newState)
             PassSuspendBarrier();
         } else if ((oldStateAndFlags.asStruct.flags & ThreadFlag::SUSPEND_REQUEST) != 0) {
             constexpr int TIMEOUT = 100;
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::StoreRunningState");
             LockHolder lock(suspendLock_);
             while (suspendCount_ > 0) {
                 suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);

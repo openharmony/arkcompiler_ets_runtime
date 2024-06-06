@@ -41,6 +41,11 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
     } else if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+#ifndef NDEBUG
+        if (UNLIKELY(JSTaggedValue(value).IsWeakForHeapObject())) {
+            CHECK_NO_LOCAL_TO_SHARE_WEAK_REF_HANDLE
+        }
+#endif
         objectRegion->InsertLocalToShareRSet(slotAddr);
     } else if (valueRegion->InEdenSpace() && objectRegion->InYoungSpace()) {
         objectRegion->InsertNewToEdenRSet(slotAddr);
@@ -50,9 +55,18 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         Barriers::Update(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
                          valueRegion, writeType);
     }
-    if (writeType != WriteBarrierType::DESERIALIZE &&
-        valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
-        Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
+    if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
+        if (writeType != WriteBarrierType::DESERIALIZE) {
+            Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
+        } else {
+            // In deserialize, will never add references from old object(not allocated by deserialing) to
+            // new object(allocated by deserializing), only two kinds of references(new->old, new->new) will
+            // be added, the old object is considered as serialize_root, and be marked and pushed in
+            // SharedGC::MarkRoots, so just mark all the new object is enough, do not need to push them to
+            // workmanager and recursively visit slots of that.
+            ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
+            valueRegion->AtomicMark(JSTaggedValue(value).GetHeapObject());
+        }
     }
 }
 

@@ -22,6 +22,7 @@
 namespace panda::ecmascript {
 void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
+    ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     if (!IsICSlotValid()) {
         return;
     }
@@ -45,6 +46,7 @@ void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHa
 
 void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
+    ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     if (!IsICSlotValid()) {
         return;
     }
@@ -100,6 +102,7 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, J
 void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
                                             JSHandle<JSTaggedValue> handler) const
 {
+    ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     if (!IsICSlotValid()) {
         return;
     }
@@ -162,6 +165,7 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
 
 void ProfileTypeAccessor::AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> handler) const
 {
+    ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     if (!IsICSlotValid()) {
         return;
     }

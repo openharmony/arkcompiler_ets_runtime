@@ -107,9 +107,8 @@ HWTEST_F_L0(TransitionsDictionaryTest, Shrink)
     int eleNum = 7;
     for (int index = 0; index < eleNum; index++) {
         std::string keyStr = "key" + std::to_string(index);
-        std::string valueStr = "value" + std::to_string(index);
         JSHandle<JSTaggedValue> key(factory->NewFromStdString(keyStr));
-        JSHandle<JSTaggedValue> value(factory->NewFromStdString(valueStr));
+        JSHandle<JSTaggedValue> value(factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
         TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
     }
     JSHandle<TransitionsDictionary> transDicAfterShink = TransitionsDictionary::Shrink(thread, transDic);
@@ -139,9 +138,8 @@ void TestCommon(JSThread *thread, int numberOfElements, TestCommonCB cb)
     
     for (int index = 0; index < numberOfElements; index++) {
         std::string keyStr = "key" + std::to_string(index);
-        std::string valueStr = "value" + std::to_string(index);
         JSHandle<JSTaggedValue> key(factory->NewFromStdString(keyStr));
-        JSHandle<JSTaggedValue> value(factory->NewFromStdString(valueStr));
+        JSHandle<JSTaggedValue> value(factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
         cb(thread, index, key, value);
     }
 }
@@ -205,9 +203,8 @@ HWTEST_F_L0(TransitionsDictionaryTest, PutIfAbsent)
     vm->SetEnableForceGC(false);
     for (int index = 0; index < numberOfElements; index++) {
         std::string keyStr = "key" + std::to_string(index);
-        std::string valueStr = "value" + std::to_string(index);
         JSHandle<JSTaggedValue> key(factory->NewFromStdString(keyStr));
-        JSHandle<JSTaggedValue> value(factory->NewFromStdString(valueStr));
+        JSHandle<JSTaggedValue> value(factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
         transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
         int foundEntry = transDic->FindEntry(key.GetTaggedValue(), metaData.GetTaggedValue());
         EXPECT_EQ(foundEntry, index + 3);
