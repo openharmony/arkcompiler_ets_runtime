@@ -1915,6 +1915,7 @@ LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJS
 
 LocalScope::~LocalScope()
 {
+    ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
     auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
 #ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     context->HandleScopeCountDec();
@@ -1922,21 +1923,15 @@ LocalScope::~LocalScope()
 #endif
     context->SetHandleScopeStorageNext(static_cast<JSTaggedType *>(prevNext_));
     context->SetPrimitiveScopeStorageNext(static_cast<JSTaggedType *>(prevPrimitiveNext_));
-    bool handleScopeNeedShrink = (context->GetHandleScopeStorageEnd() != prevEnd_);
-    bool primitiveScopeNeedShrink = (context->GetPrimitiveScopeStorageEnd() != prevPrimitiveEnd_);
-    if (LIKELY(!handleScopeNeedShrink && !primitiveScopeNeedShrink)) {
-        return;
+
+    if (context->GetHandleScopeStorageEnd() != prevEnd_) {
+        context->SetHandleScopeStorageEnd(static_cast<JSTaggedType *>(prevEnd_));
+        context->ShrinkHandleStorage(prevHandleStorageIndex_);
     }
-    {
-        ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
-        if (handleScopeNeedShrink) {
-            context->SetHandleScopeStorageEnd(static_cast<JSTaggedType *>(prevEnd_));
-            context->ShrinkHandleStorage(prevHandleStorageIndex_);
-        }
-        if (primitiveScopeNeedShrink) {
-            context->SetPrimitiveScopeStorageEnd(static_cast<JSTaggedType *>(prevPrimitiveEnd_));
-            context->ShrinkPrimitiveStorage(prevPrimitiveStorageIndex_);
-        }
+
+    if (context->GetPrimitiveScopeStorageEnd() != prevPrimitiveEnd_) {
+        context->SetPrimitiveScopeStorageEnd(static_cast<JSTaggedType *>(prevPrimitiveEnd_));
+        context->ShrinkPrimitiveStorage(prevPrimitiveStorageIndex_);
     }
 }
 
