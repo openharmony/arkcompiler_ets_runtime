@@ -260,17 +260,17 @@ void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
 std::unique_ptr<ParallelEvacuator::Workload> ParallelEvacuator::GetWorkloadSafe()
 {
     LockHolder holder(mutex_);
-    std::unique_ptr<Workload> unit;
+    std::unique_ptr<Workload> workload;
     if (!workloads_.empty()) {
-        unit = std::move(workloads_.back());
+        workload = std::move(workloads_.back());
         workloads_.pop_back();
     }
-    return unit;
+    return workload;
 }
 
-void ParallelEvacuator::AddWorkload(std::unique_ptr<Workload> region)
+void ParallelEvacuator::AddWorkload(std::unique_ptr<Workload> workload)
 {
-    workloads_.emplace_back(std::move(region));
+    workloads_.emplace_back(std::move(workload));
 }
 
 TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAddress)

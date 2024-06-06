@@ -25,29 +25,29 @@ namespace panda::ecmascript {
 SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *object) const
 {
     auto region = Region::ObjectAddressToRange(object);
-    if (region->InYoungOrOldSpace() || region->InAppSpawnSpace()) {
-        return SerializedObjectSpace::OLD_SPACE;
+    auto flag = region->GetRegionSpaceFlag();
+    switch (flag) {
+        case RegionSpaceFlag::IN_OLD_SPACE:
+        case RegionSpaceFlag::IN_YOUNG_SPACE:
+        case RegionSpaceFlag::IN_APPSPAWN_SPACE:
+            return SerializedObjectSpace::OLD_SPACE;
+        case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:
+        case RegionSpaceFlag::IN_READ_ONLY_SPACE:
+            return SerializedObjectSpace::NON_MOVABLE_SPACE;
+        case RegionSpaceFlag::IN_MACHINE_CODE_SPACE:
+            return SerializedObjectSpace::MACHINE_CODE_SPACE;
+        case RegionSpaceFlag::IN_HUGE_OBJECT_SPACE:
+            return SerializedObjectSpace::HUGE_SPACE;
+        case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
+            return SerializedObjectSpace::SHARED_OLD_SPACE;
+        case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
+            return SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE;
+        case RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE:
+            return SerializedObjectSpace::SHARED_HUGE_SPACE;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
-    if (region->InNonMovableSpace() || region->InReadOnlySpace()) {
-        return SerializedObjectSpace::NON_MOVABLE_SPACE;
-    }
-    if (region->InMachineCodeSpace()) {
-        return SerializedObjectSpace::MACHINE_CODE_SPACE;
-    }
-    if (region->InHugeObjectSpace()) {
-        return SerializedObjectSpace::HUGE_SPACE;
-    }
-    if (region->InSharedOldSpace()) {
-        return SerializedObjectSpace::SHARED_OLD_SPACE;
-    }
-    if (region->InSharedNonMovableSpace()) {
-        return SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE;
-    }
-    if (region->InSharedHugeObjectSpace()) {
-        return SerializedObjectSpace::SHARED_HUGE_SPACE;
-    }
-    LOG_ECMA(FATAL) << "this branch is unreachable";
-    UNREACHABLE();
 }
 
 void BaseSerializer::WriteMultiRawData(uintptr_t beginAddr, size_t fieldSize)

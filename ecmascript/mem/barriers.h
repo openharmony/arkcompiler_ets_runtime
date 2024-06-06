@@ -45,7 +45,7 @@ public:
         return oldValue;
     }
 
-    template<bool need_write_barrier = true>
+    template<bool needWriteBarrier = true>
     static void SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
 
     static void SynchronizedSetClass(const JSThread *thread, void *obj, JSTaggedType value);

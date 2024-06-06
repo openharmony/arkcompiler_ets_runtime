@@ -117,7 +117,7 @@ void STWYoungGC::Sweep()
             }
         }
     }
-    WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
+    WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         if (objectRegion->InGeneralOldSpace()) {
             return header;
@@ -128,7 +128,7 @@ void STWYoungGC::Sweep()
             TaggedObject *dst = markWord.ToForwardingAddress();
             return dst;
         }
-        return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+        return nullptr;
     };
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);

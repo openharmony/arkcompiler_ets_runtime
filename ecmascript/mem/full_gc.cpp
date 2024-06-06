@@ -153,25 +153,25 @@ void FullGC::Sweep()
         }
     }
 
-    WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
+    WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
-        if (!objectRegion) {
+        if (UNLIKELY(objectRegion == nullptr)) {
             LOG_GC(ERROR) << "FullGC updateWeakReference: region is nullptr, header is " << header;
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
         if (!HasEvacuated(objectRegion)) {
             // The weak object in shared heap is always alive during fullGC.
             if (objectRegion->InSharedHeap() || objectRegion->Test(header)) {
                 return header;
             }
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
 
         MarkWord markWord(header);
         if (markWord.IsForwardingAddress()) {
             return markWord.ToForwardingAddress();
         }
-        return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+        return nullptr;
     };
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);

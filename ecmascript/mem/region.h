@@ -63,6 +63,9 @@ enum RegionSpaceFlag {
     SHARED_SPACE_END = IN_SHARED_READ_ONLY_SPACE,
     SHARED_SWEEPABLE_SPACE_BEGIN = IN_SHARED_NON_MOVABLE,
     SHARED_SWEEPABLE_SPACE_END = IN_SHARED_HUGE_OBJECT_SPACE,
+
+    HEAP_SPACE_BEGIN = IN_EDEN_SPACE,
+    HEAP_SPACE_END = IN_SHARED_READ_ONLY_SPACE
 };
 
 enum RegionGCFlags {
@@ -325,11 +328,13 @@ public:
         packedData_.flags_.spaceFlag_ = RegionSpaceFlag::UNINITIALIZED;
     }
 
+    uint8_t GetRegionSpaceFlag();
+
     bool InEdenSpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_EDEN_SPACE;
     }
-    
+
     bool InYoungSpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_YOUNG_SPACE;
@@ -446,20 +451,7 @@ public:
     bool InHeapSpace() const
     {
         uint8_t space = packedData_.flags_.spaceFlag_;
-        return (space == RegionSpaceFlag::IN_YOUNG_SPACE ||
-                space == RegionSpaceFlag::IN_OLD_SPACE ||
-                space == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE ||
-                space == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
-                space == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE ||
-                space == RegionSpaceFlag::IN_NON_MOVABLE_SPACE ||
-                space == RegionSpaceFlag::IN_SNAPSHOT_SPACE ||
-                space == RegionSpaceFlag::IN_READ_ONLY_SPACE ||
-                space == RegionSpaceFlag::IN_APPSPAWN_SPACE ||
-                space == RegionSpaceFlag::IN_SHARED_NON_MOVABLE ||
-                space == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
-                space == RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE ||
-                space == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE ||
-                space == RegionSpaceFlag::IN_EDEN_SPACE);
+        return space >= RegionSpaceFlag::HEAP_SPACE_BEGIN && space <= RegionSpaceFlag::HEAP_SPACE_END;
     }
 
     bool InCollectSet() const
