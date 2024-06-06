@@ -537,12 +537,6 @@ void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *me
 {
     if (func->GetMachineCode().IsMachineCodeObject()) {
         Jit::GetInstance()->GetJitDfx()->SetJitDeoptCount();
-        // reset jit hotness cnt
-        JSTaggedValue profileTypeInfoVal = func->GetProfileTypeInfo();
-        if (!profileTypeInfoVal.IsUndefined()) {
-            ProfileTypeInfo *profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
-            profileTypeInfo->SetJitHotnessCnt(0);
-        }
     }
     if (method->IsAotWithCallField()) {
         bool isFastCall = method->IsFastCall();  // get this flag before clear it
