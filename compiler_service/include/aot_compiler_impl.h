@@ -43,7 +43,11 @@ public:
     void HandlePowerDisconnected();
 
 private:
-    void PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap);
+    inline int32_t FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
+                                        const std::string &keyName, int32_t &bundleID);
+    inline int32_t FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
+                                       const std::string &keyName, std::string &bundleArg);
+    int32_t PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap);
     void DropCapabilities(const int32_t &bundleUid, const int32_t &bundleGid) const;
     void ExecuteInChildProcess(const std::vector<std::string> &aotVector) const;
     void ExecuteInParentProcess(pid_t childPid, int32_t &ret);
