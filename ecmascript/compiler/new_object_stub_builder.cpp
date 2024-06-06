@@ -76,8 +76,8 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
     Label enabledElementsKind(env);
     Label notEmptyArray(env);
     Label initObj(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue_);
-    BRANCH(isElementsKindEnabled, &enabledElementsKind, &initObj);
+    GateRef isElementsKindEnabled = CallRuntime(glue_, RTSTUB_ID(IsElementsKindSwitchOn), {});
+    BRANCH(TaggedIsTrue(isElementsKindEnabled), &enabledElementsKind, &initObj);
     Bind(&enabledElementsKind);
     {
         // For new Array(Len), the elementsKind should be Hole
