@@ -403,6 +403,7 @@ public:
     Local<BigIntRef> ToBigInt(const EcmaVM *vm);
     Local<StringRef> ToString(const EcmaVM *vm);
     Local<ObjectRef> ToObject(const EcmaVM *vm);
+    Local<ObjectRef> ToEcmaObject(const EcmaVM *vm);
     Local<NativePointerRef> ToNativePointer(const EcmaVM *vm);
 
     bool IsUndefined();
@@ -686,6 +687,7 @@ public:
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
+    static uintptr_t NewObject(const EcmaVM *vm);
     static Local<ObjectRef> NewS(const EcmaVM *vm);
     static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
                                               const PropertyAttribute *attributes);
