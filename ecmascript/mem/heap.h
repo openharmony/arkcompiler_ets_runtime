@@ -1223,6 +1223,7 @@ public:
 
     void IncreaseNativeBindingSize(size_t size);
     void IncreaseNativeBindingSize(JSNativePointer *object);
+    void DecreaseNativeBindingSize(size_t size);
     void ResetNativeBindingSize()
     {
         nativeBindingSize_ = 0;

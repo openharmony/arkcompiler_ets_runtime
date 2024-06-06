@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -35,6 +35,7 @@
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/builtins/builtins_finalization_registry.h"
 #include "ecmascript/builtins/builtins_function.h"
+#include "ecmascript/builtins/builtins_gc.h"
 #include "ecmascript/builtins/builtins_generator.h"
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/builtins/builtins_iterator.h"
@@ -3671,7 +3672,19 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
         SetFunction(env, tools, entry.GetName(), entry.GetEntrypoint(),
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
+    JSHandle<JSTaggedValue> gcBuiltins(InitializeGcBuiltins(env));
+    SetConstantObject(tools, "GC", gcBuiltins);
     return tools;
+}
+
+JSHandle<JSObject> Builtins::InitializeGcBuiltins(const JSHandle<GlobalEnv> &env) const
+{
+    JSHandle<JSObject> builtins = factory_->NewEmptyJSObject();
+    for (const base::BuiltinFunctionEntry &entry: builtins::BuiltinsGc::GetGcFunctions()) {
+        SetFunction(env, builtins, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    return builtins;
 }
 
 void Builtins::InitializeGlobalRegExp(JSHandle<JSObject> &obj) const

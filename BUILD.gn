@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -589,6 +589,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_errors.cpp",
   "ecmascript/builtins/builtins_finalization_registry.cpp",
   "ecmascript/builtins/builtins_function.cpp",
+  "ecmascript/builtins/builtins_gc.cpp",
   "ecmascript/builtins/builtins_generator.cpp",
   "ecmascript/builtins/builtins_global.cpp",
   "ecmascript/builtins/builtins_iterator.cpp",
