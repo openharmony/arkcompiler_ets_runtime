@@ -840,7 +840,6 @@ public:
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
     inline GateRef GetSingleCharTable(GateRef glue);
-    inline GateRef IsEnableElementsKind(GateRef glue);
     inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef CallGetterHelper(
         GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback);

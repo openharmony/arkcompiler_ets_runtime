@@ -618,6 +618,15 @@ DEF_RUNTIME_STUBS(CopyAndUpdateObjLayout)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(IsElementsKindSwitchOn)
+{
+    RUNTIME_STUBS_HEADER(IsElementsKindSwitchOn);
+    if (thread->GetEcmaVM()->IsEnableElementsKind()) {
+        return JSTaggedValue::True().GetRawData();
+    }
+    return JSTaggedValue::False().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
 {
     RUNTIME_STUBS_HEADER(UpdateHClassForElementsKind);
