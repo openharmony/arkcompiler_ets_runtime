@@ -1766,9 +1766,10 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
                                                                 JSHandle<JSTaggedValue>>> &resolveVector)
 {
     auto globalConstants = thread->GlobalConstants();
-    JSMutableHandle<IndirectExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
-    JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
+    JSTaggedValue undefined = globalConstants->GetUndefined();
+    JSMutableHandle<IndirectExportEntry> ee(thread, undefined);
+    JSMutableHandle<JSTaggedValue> moduleRequest(thread, undefined);
+    JSMutableHandle<JSTaggedValue> importName(thread, undefined);
     JSHandle<TaggedArray> indirectExportEntries(exportEntry);
     size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
     for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
@@ -1778,7 +1779,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
             // i. Assert: module imports a specific binding for this export.
             // ii. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
             moduleRequest.Update(ee->GetModuleRequest());
-            JSMutableHandle<SourceTextModule> requestedModule(thread, thread->GlobalConstants()->GetUndefined());
+            JSMutableHandle<SourceTextModule> requestedModule(thread, undefined);
             JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
             if (moduleRecordName.IsUndefined()) {
                 requestedModule.Update(SourceTextModule::HostResolveImportedModule(thread, module, moduleRequest));

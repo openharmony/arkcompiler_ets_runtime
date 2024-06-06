@@ -1061,7 +1061,11 @@ private:
 // eg: EcmaString *str = ***; str->GetLength() ----->  EcmaStringAccessor(str).GetLength()
 class PUBLIC_API EcmaStringAccessor {
 public:
-    explicit EcmaStringAccessor(EcmaString *string);
+    explicit inline EcmaStringAccessor(EcmaString *string)
+    {
+        ASSERT(string != nullptr);
+        string_ = string;
+    }
 
     explicit EcmaStringAccessor(TaggedObject *obj);
 

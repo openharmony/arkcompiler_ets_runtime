@@ -357,15 +357,6 @@ public:
         }
         return res[NORMALIZED_IMPORT_PATH_INDEX];
     }
-
-    inline static bool IsShouldRemoveSuffix(const CString &suffix)
-    {
-        CSet<CString> suffixSet = {EXT_NAME_JS, EXT_NAME_TS, EXT_NAME_ETS, EXT_NAME_JSON, EXT_NAME_MJS};
-        if (suffixSet.find(suffix) != suffixSet.end()) {
-            return true;
-        }
-        return false;
-    }
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_MODULE_PATH_HELPER_H
