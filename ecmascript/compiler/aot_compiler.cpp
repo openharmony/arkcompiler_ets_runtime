@@ -28,6 +28,7 @@
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/platform/file.h"
@@ -118,9 +119,13 @@ int Main(const int argc, const char **argv)
         if (!cPreprocessor.HandleTargetCompilerMode(cOptions) || !cPreprocessor.HandlePandaFileNames(argc, argv)) {
             return ERR_HELP;
         }
-        if (IsExistsPkgInfo(cPreprocessor) && JSNApi::IsAotEscape(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
-            LOG_COMPILER(ERROR) << "Stop compile AOT because there are multiple crashes";
-            return ERR_FAIL;
+
+        if (IsExistsPkgInfo(cPreprocessor)) {
+            int32_t escapeRet;
+            if (ohos::AotCrashInfo::GetInstance().IsAotEscapeOrCompileOnce(
+                cPreprocessor.GetMainPkgArgs()->GetPgoDir(), escapeRet)) {
+                return escapeRet;
+            }
         }
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
             // no need to compile in partial mode without any ap files.
@@ -211,7 +216,7 @@ int Main(const int argc, const char **argv)
         }
         if (IsExistsPkgInfo(cPreprocessor)) {
             ohos::EnableAotJitListHelper::GetInstance()->AddEnableListCount(
-                cPreprocessor.GetMainPkgArgs()->GetPgoDir());
+                ret, cPreprocessor.GetMainPkgArgs()->GetPgoDir());
         }
     }
 

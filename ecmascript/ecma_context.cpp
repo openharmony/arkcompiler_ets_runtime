@@ -43,6 +43,7 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
@@ -1082,6 +1083,12 @@ void EcmaContext::LoadStubFile()
 
 bool EcmaContext::LoadAOTFilesInternal(const std::string& aotFileName)
 {
+#ifdef AOT_ESCAPE_ENABLE
+    std::string bundleName = pgo::PGOProfilerManager::GetInstance()->GetBundleName();
+    if (ohos::AotCrashInfo::GetInstance().IsAotEscapeOrNotInEnableList(vm_, bundleName)) {
+        return false;
+    }
+#endif
     std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
     if (!aotFileManager_->LoadAnFile(anFile)) {
         LOG_ECMA(WARN) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";

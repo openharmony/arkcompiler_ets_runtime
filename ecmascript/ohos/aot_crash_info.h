@@ -18,13 +18,14 @@
 
 #include "ohos_constants.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/ohos/aot_runtime_info.h"
+#include "ecmascript/ohos/enable_aot_list_helper.h"
 #ifdef AOT_ESCAPE_ENABLE
 #include "parameters.h"
 #endif
 
 namespace panda::ecmascript::ohos {
 class AotCrashInfo {
-    constexpr static const char *const CRASH_FILE_NAME = "aot_crash.log";
     constexpr static const char *const SPLIT_STR = "|";
     constexpr static const char *const AOT_ESCAPE_DISABLE = "ark.aot.escape.disable";
     constexpr static int AOT_CRASH_COUNT = 1;
@@ -37,6 +38,76 @@ public:
     explicit AotCrashInfo() = default;
     virtual ~AotCrashInfo() = default;
 
+    static AotCrashInfo &GetInstance()
+    {
+        static AotCrashInfo singleAotCrashInfo;
+        return singleAotCrashInfo;
+    }
+
+    bool IsAotEscapeOrNotInEnableList(EcmaVM *vm, const std::string &bundleName) const
+    {
+        if (!vm->GetJSOptions().WasAOTOutputFileSet() &&
+            !EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
+            LOG_ECMA(INFO) << "Stop load AOT because it's not in enable list";
+            return true;
+        }
+        if (IsAotEscape()) {
+            LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
+            return true;
+        }
+        return false;
+    }
+
+    bool IsAotEscapeOrCompileOnce(const std::string &pgoDir, int32_t &ret)
+    {
+        if (ohos::AotCrashInfo::IsAotEscape(pgoDir)) {
+            LOG_COMPILER(ERROR) << "Stop compile AOT because there are multiple crashes";
+            ret = -1;
+            return true;
+        }
+        if (ohos::EnableAotJitListHelper::GetInstance()->IsAotCompileSuccessOnce(pgoDir)) {
+            LOG_ECMA(ERROR) << "Aot has compile success once.";
+            ret = 0;
+            return true;
+        }
+        return false;
+    }
+
+    void SetOptionPGOProfiler(JSRuntimeOptions *options, const std::string &bundleName) const
+    {
+        if (EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
+            options->SetEnablePGOProfiler(true);
+        }
+        if (EnableAotJitListHelper::GetInstance()->IsAotCompileSuccessOnce()) {
+            options->SetEnablePGOProfiler(false);
+            LOG_ECMA(INFO) << "Aot has compile success once.";
+        }
+        if (IsAotEscape()) {
+            options->SetEnablePGOProfiler(false);
+            LOG_ECMA(INFO) << "Aot has escaped.";
+        }
+    }
+
+    static bool IsAotEscape(const std::string &pgoRealPath = "")
+    {
+        if (GetAotEscapeDisable()) {
+            return false;
+        }
+        auto escapeMap = AotRuntimeInfo::GetInstance().CollectCrashSum(pgoRealPath);
+        return escapeMap[RuntimeInfoType::AOT] >= GetAotCrashCount() ||
+            escapeMap[RuntimeInfoType::OTHERS] >= GetOthersCrashCount() ||
+            escapeMap[RuntimeInfoType::JS] >= GetJsCrashCount();
+    }
+
+    static bool IsJitEscape()
+    {
+        auto escapeMap = AotRuntimeInfo::GetInstance().CollectCrashSum();
+        return escapeMap[RuntimeInfoType::JIT] >= GetJitCrashCount() ||
+            escapeMap[RuntimeInfoType::AOT] >= GetAotCrashCount() ||
+            escapeMap[RuntimeInfoType::OTHERS] >= GetOthersCrashCount() ||
+            escapeMap[RuntimeInfoType::JS] >= GetJsCrashCount();
+    }
+
     static bool GetAotEscapeDisable()
     {
 #ifdef AOT_ESCAPE_ENABLE
@@ -48,11 +119,6 @@ public:
     static std::string GetSandBoxPath()
     {
         return OhosConstants::SANDBOX_ARK_PROFILE_PATH;
-    }
-
-    static std::string GetCrashFileName()
-    {
-        return CRASH_FILE_NAME;
     }
 
     static int GetAotCrashCount()

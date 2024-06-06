@@ -24,6 +24,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/aot_runtime_info.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
@@ -251,12 +252,12 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
 {
     if (JsStackInfo::loader == nullptr || JsStackInfo::options == nullptr) {
-        LOG_ECMA(ERROR) << "loader or options Initial error.";
+        LOG_ECMA(ERROR) << "Loader or options initialization error.";
         return;
     }
     if (!JsStackInfo::loader->IsEnableAOT() && !JsStackInfo::options->IsEnableJIT() &&
         !JsStackInfo::options->IsEnablePGOProfiler()) {
-        LOG_ECMA(INFO) << "Aot or jit not enable.";
+        LOG_ECMA(INFO) << "Neither AOT nor JIT is enabled.";
         return;
     }
     ohos::RuntimeInfoType type;
@@ -267,8 +268,7 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
     } else {
         type = ohos::RuntimeInfoType::OTHERS;
     }
-    ohos::AotRuntimeInfo aotRuntimeInfo;
-    aotRuntimeInfo.BuildCrashRuntimeInfo(ohos::AotRuntimeInfo::GetRuntimeInfoTypeStr(type));
+    ohos::AotRuntimeInfo::GetInstance().BuildCrashRuntimeInfo(ohos::AotRuntimeInfo::GetRuntimeInfoTypeStr(type));
     if (isJsCrash) {
         DumpJitCode(thread);
     }
