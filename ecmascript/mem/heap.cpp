@@ -429,7 +429,7 @@ void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
     if (auto workThreadNum = sWorkManager_->GetTotalThreadNum();
         workThreadNum != totalThreadNum + 1) {
         LOG_ECMA_MEM(ERROR) << "TheadNum mismatch, totalThreadNum(sWorkerManager): " << workThreadNum << ", "
-                            << "totalThreadNum(taskpool): " << totalThreadNum + 1;
+                            << "totalThreadNum(taskpool): " << (totalThreadNum + 1);
         delete sWorkManager_;
         sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
         UpdateWorkManager(sWorkManager_);

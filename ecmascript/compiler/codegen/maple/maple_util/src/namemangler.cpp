@@ -25,8 +25,8 @@ namespace namemangler {
 #define DEBUG_ASSERT(f) ((void)0)
 #endif
 
-const int kLocalCodebufSize = 1024;
-const int kMaxCodecbufSize = (1 << 16);
+const int KLOCAL_CODE_BUF_SIZE = 1024;
+const int KMAX_CODEC_BUF_SIZE = (1 << 16);
 
 #define GETHEXCHAR(n) static_cast<char>((n) < 10 ? (n) + '0' : (n)-10 + 'a')
 #define GETHEXCHARU(n) static_cast<char>((n) < 10 ? (n) + '0' : (n)-10 + 'A')
@@ -41,7 +41,8 @@ static inline char *AllocCodecBuf(size_t maxLen)
     }
     // each char may have 2 more char, so give out the max space buffer
     constexpr int multi = 3;
-    return reinterpret_cast<char *>(malloc((maxLen <= kLocalCodebufSize) ? multi * maxLen : multi * kMaxCodecbufSize));
+    return reinterpret_cast<char *>(
+        malloc((maxLen <= KLOCAL_CODE_BUF_SIZE) ? multi * maxLen : multi * KMAX_CODEC_BUF_SIZE));
 }
 
 static inline void FreeCodecBuf(char *buf)
@@ -53,7 +54,7 @@ std::string EncodeName(const std::string &name)
 {
     // name is guaranteed to be null-terminated
     size_t nameLen = name.length();
-    nameLen = nameLen > kMaxCodecbufSize ? kMaxCodecbufSize : nameLen;
+    nameLen = nameLen > KMAX_CODEC_BUF_SIZE ? KMAX_CODEC_BUF_SIZE : nameLen;
     char *buf = AllocCodecBuf(nameLen);
     if (buf == nullptr) {
         return std::string(name);
