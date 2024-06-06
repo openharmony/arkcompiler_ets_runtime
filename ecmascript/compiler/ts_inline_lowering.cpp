@@ -275,6 +275,7 @@ void TSInlineLowering::ReplaceCallInput(InlineTypeInfoAccessor &info, GateRef gl
     vec.emplace_back(glue); // glue
     if (!method->IsFastCall()) {
         vec.emplace_back(builder_.Int64(actualArgc)); // argc
+        vec.emplace_back(builder_.IntPtr(0)); // argv
     }
     vec.emplace_back(callTarget);
     if (!method->IsFastCall()) {
@@ -307,6 +308,7 @@ void TSInlineLowering::ReplaceAccessorInput(InlineTypeInfoAccessor &info, GateRe
     vec.emplace_back(glue); // glue
     if (!method->IsFastCall()) {
         vec.emplace_back(builder_.Int64(actualArgc)); // argc
+        vec.emplace_back(builder_.IntPtr(0)); // argv
     }
     vec.emplace_back(callTarget);
     if (!method->IsFastCall()) {

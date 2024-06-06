@@ -493,33 +493,33 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
                       OptimizedJSFunctionArgConfigFrame::SizeArch64);
 
 // * OptimizedJSFunctionFrame layout description as the following:
-//               +--------------------------+
-//               |        arg[N-1]          |
-//               +--------------------------+
-//               |       ...                |
-//               +--------------------------+
-//               |       arg[1]             |
-//               +--------------------------+
-//               |       arg[0]             |
-//               +--------------------------+
-//               |       this               |
-//               +--------------------------+
-//               |       new-target         |
-//               +--------------------------+
-//               |       call-target        |
-//               +--------------------------+
-//               |       argv               |
-//               |--------------------------|
-//               |       argc               |
-// callerSP ---> |--------------------------| ---------------
-//               |       returnAddr         |               ^
-//               |--------------------------|               |
-//               |       callsiteFp         |               |
-//       fp ---> |--------------------------|   OptimizedJSFunctionFrame
-//               |       frameType          |               |
-//               |--------------------------|               |
-//               |       call-target        |               v
-// calleeSP ---> +--------------------------+ ---------------
+//                 +----------------------------------------+
+//                 |     arg[N-1]                           |
+//                 +----------------------------------------+
+//                 |     ...                                |
+//                 +----------------------------------------+
+//                 |     arg[1]                             |
+//                 +----------------------------------------+
+//                 |     arg[0]                             |
+//                 +----------------------------------------+
+//                 |     this                               |
+//                 +----------------------------------------+
+//                 |     new-target [not exist in fastcall] |
+//                 +----------------------------------------+
+//                 |     call-target                        |
+//       argv ---> +----------------------------------------+
+//                 |     argv   [not exist in fastcall]     |
+//                 |----------------------------------------|
+//                 |     argc   [not exist in fastcall]     |
+//   callerSp ---> |----------------------------------------|----------------
+//                 |     returnAddr                         |               ^
+//                 |----------------------------------------|               |
+//                 |     callsiteFp                         |               |
+//         fp ---> |----------------------------------------|   OptimizedJSFunctionFrame
+//                 |     frameType                          |               |
+//                 |----------------------------------------|               |
+//                 |     call-target                        |               v
+//   calleeSP ---> +----------------------------------------+----------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
@@ -1427,7 +1427,7 @@ public:
 
     uintptr_t GetCallSiteSp() const
     {
-        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, argc);
+        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, thread);
     }
 
     inline JSTaggedType* GetPrevFrameFp() const

@@ -436,7 +436,7 @@ void OptimizedFastCall::JSFastCallWithArgVAndPushArgv(ExtendedAssembler *assembl
 
     __ Bind(&argc);
     {
-            TempRegister1Scope scope1(assembler);
+        TempRegister1Scope scope1(assembler);
         TempRegister2Scope scope2(assembler);
         Register tmp = __ TempRegister1();
         Register undefinedValue = __ TempRegister2();

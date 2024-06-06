@@ -177,7 +177,6 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
         case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
         case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
-        case EcmaOpcode::GETUNMAPPEDARGS:
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::NOP:
             flags |= BytecodeFlags::NO_THROW;
