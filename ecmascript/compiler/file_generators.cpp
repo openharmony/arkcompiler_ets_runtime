@@ -647,9 +647,11 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
 #ifdef CODE_SIGN_ENABLE
     machineCodeDesc.codeSigner = 0;
     JitSignCode *singleton = JitSignCode::GetInstance();
-    LOG_JIT(DEBUG) << "In GetMemoryCodeInfos, signer = " << singleton->GetJPtr();
-    LOG_JIT(DEBUG) << "     signTableSize = " << singleton->signTableSize;
-    machineCodeDesc.codeSigner = reinterpret_cast<uintptr_t>(singleton->GetJPtr());
+    if (singleton->GetJPtr() != 0) {
+        LOG_JIT(DEBUG) << "In GetMemoryCodeInfos, signer = " << singleton->GetJPtr();
+        LOG_JIT(DEBUG) << "     signTableSize = " << singleton->signTableSize;
+        machineCodeDesc.codeSigner = reinterpret_cast<uintptr_t>(singleton->GetJPtr());
+    }
 #endif
 
     uint64_t stackMapPtr = reinterpret_cast<uint64_t>(moduleSectionDes.GetArkStackMapSharePtr().get());

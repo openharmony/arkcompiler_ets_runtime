@@ -645,6 +645,16 @@ public:
         asmOpcodeDisableRange_ = std::move(value);
     }
 
+    void SetDisableCodeSign(bool value)
+    {
+        disableCodeSign_ = value;
+    }
+
+    bool GetDisableCodeSign() const
+    {
+        return disableCodeSign_;
+    }
+
     void ParseAsmInterOption()
     {
         asmInterParsedOption_.enableAsm = enableAsmInterpreter_;
@@ -1945,6 +1955,7 @@ private:
     bool checkPgoVersion_ {false};
     bool enableJitFastCompile_ {false};
     bool enableJitFrame_{false};
+    bool disableCodeSign_{false};
 };
 }  // namespace panda::ecmascript
 

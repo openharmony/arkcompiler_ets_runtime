@@ -79,18 +79,24 @@ void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
         pText += rodataSizeBeforeTextAlign;
     }
 #ifdef CODE_SIGN_ENABLE
-    LOG_JIT(DEBUG) << "In SetData copying";
-    LOG_JIT(DEBUG) << "     Call JitVerifyAndCopy: "
-                   << std::hex << (uintptr_t)pText << " <- "
-                   << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
-    LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
-    if (Jit::GetInstance()->JitVerifyAndCopy(reinterpret_cast<void*>(desc.codeSigner),
-        pText, reinterpret_cast<void*>(desc.codeAddr), desc.codeSize) != EOK) {
-        LOG_JIT(ERROR) << "     JitVerifyAndCopy failed";
+    if ((uintptr_t)desc.codeSigner == 0) {
+        if (memcpy_s(pText, codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+            LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
+            return;
+        }
     } else {
-        LOG_JIT(DEBUG) << "     JitVerifyAndCopy success!!";
+        LOG_JIT(DEBUG) << "Call JitVerifyAndCopy: "
+                       << std::hex << (uintptr_t)pText << " <- "
+                       << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
+        LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
+        if (Jit::GetInstance()->JitVerifyAndCopy(reinterpret_cast<void*>(desc.codeSigner),
+            pText, reinterpret_cast<void*>(desc.codeAddr), desc.codeSize) != EOK) {
+            LOG_JIT(ERROR) << "     JitVerifyAndCopy failed";
+        } else {
+            LOG_JIT(DEBUG) << "     JitVerifyAndCopy success!!";
+        }
+        delete reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
     }
-    delete reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
 #else
     if (memcpy_s(pText, codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
         LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";

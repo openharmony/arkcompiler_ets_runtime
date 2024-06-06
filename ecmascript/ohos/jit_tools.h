@@ -71,6 +71,14 @@ public:
     #endif
         return false;
     }
+
+    static bool GetCodeSignDisable()
+    {
+    #ifdef CODE_SIGN_ENABLE
+        return OHOS::system::GetBoolParameter("ark.jit.codesign.disable", false);
+    #endif
+        return false;
+    }
 };
 }
 #endif  // ECMASCRIPT_JIT_TOOLS_H
