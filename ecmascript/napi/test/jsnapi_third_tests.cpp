@@ -134,7 +134,7 @@ protected:
 
 void JSNApiTests::RegisterStringCacheTable()
 {
-    constexpr uint32_t STRING_CACHE_TABLE_SIZE = 1000;
+    constexpr uint32_t STRING_CACHE_TABLE_SIZE = 100;
     auto res = ExternalStringCache::RegisterStringCacheTable(vm_, STRING_CACHE_TABLE_SIZE);
     if (isStringCacheTableCreated_) {
         ASSERT_FALSE(res);
@@ -1245,14 +1245,14 @@ HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest001)
 
 HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest002)
 {
-    constexpr uint32_t STRING_CACHE_TABLE_SIZE = 3000;
+    constexpr uint32_t STRING_CACHE_TABLE_SIZE = 300;
     isStringCacheTableCreated_ = ExternalStringCache::RegisterStringCacheTable(vm_, STRING_CACHE_TABLE_SIZE);
     ASSERT_FALSE(isStringCacheTableCreated_);
 }
 
 HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest003)
 {
-    constexpr uint32_t STRING_CACHE_TABLE_SIZE = 1000;
+    constexpr uint32_t STRING_CACHE_TABLE_SIZE = 100;
     isStringCacheTableCreated_ = ExternalStringCache::RegisterStringCacheTable(vm_, STRING_CACHE_TABLE_SIZE);
     ASSERT_TRUE(isStringCacheTableCreated_);
 }
@@ -1260,7 +1260,7 @@ HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest003)
 HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest004)
 {
     RegisterStringCacheTable();
-    constexpr uint32_t PROPERTY_INDEX = 1001;
+    constexpr uint32_t PROPERTY_INDEX = 101;
     constexpr char property[] = "hello";
     auto res = ExternalStringCache::SetCachedString(vm_, property, PROPERTY_INDEX);
     ASSERT_FALSE(res);
