@@ -54,7 +54,6 @@ bool AnFileInfo::LoadInternal(const std::string &filename)
         LOG_ECMA(ERROR) << "File mmap failed";
         return false;
     }
-    PagePreRead(fileMapMem_.GetOriginAddr(), fileMapMem_.GetSize());
 
     moduleNum_ = 1;
     des_.resize(moduleNum_);

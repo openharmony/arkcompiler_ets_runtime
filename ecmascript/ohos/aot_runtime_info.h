@@ -206,7 +206,6 @@ public:
             LOG_ECMA(INFO) << "runtime info file mmap failed";
             return "";
         }
-        ecmascript::PagePreRead(fileMap.GetOriginAddr(), fileMap.GetSize());
         std::string buildId = ParseELFSectionsForBuildId(fileMap);
         ecmascript::FileUnMap(fileMap);
         fileMap.Reset();
