@@ -57,7 +57,7 @@ int32_t AotCompilerInterfaceStub::CommandAOTCompiler(MessageParcel &data,
 {
     std::unordered_map<std::string, std::string> argsMap;
     int32_t argsMapSize = data.ReadInt32();
-    if (argsMapSize > mapMaxSize) {
+    if (static_cast<unsigned long>(argsMapSize) > mapMaxSize) {
         HiLog::Error(LABEL, "The map size exceeds ths security limit!");
         return ERR_INVALID_DATA;
     }
