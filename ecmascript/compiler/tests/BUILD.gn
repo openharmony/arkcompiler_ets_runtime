@@ -155,6 +155,23 @@ host_unittest_action("InstructionCombineTest") {
   external_deps = [ "zlib:libz" ]
 }
 
+host_unittest_action("CreateEmptyFileTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "create_empty_file_test.cpp",
+  ]
+
+  deps = [
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    sdk_libc_secshared_dep,
+  ]
+  external_deps = [ "zlib:libz" ]
+}
+
 group("host_unittest") {
   testonly = true
 
@@ -162,6 +179,7 @@ group("host_unittest") {
   deps = [
     ":AssemblerTestAction",
     ":ConstantFoldingTestAction",
+    ":CreateEmptyFileTestAction",
     ":GlobalValueNumberingTestAction",
     ":InstructionCombineTestAction",
     ":LoopOptimizationTestAction",

@@ -185,8 +185,6 @@ public:
         return str;
     }
 
-    void CreateEmptyFile(const std::string& fileName);
-
 private:
     NO_COPY_SEMANTIC(AotCompilerPreprocessor);
     NO_MOVE_SEMANTIC(AotCompilerPreprocessor);
