@@ -81,7 +81,6 @@ bool StubFileInfo::MmapLoad(const std::string &fileName)
         LOG_ECMA(ERROR) << "File mmap failed";
         return false;
     }
-    PagePreRead(fileMapMem_.GetOriginAddr(), fileMapMem_.GetSize());
 
     ElfReader reader(fileMapMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
