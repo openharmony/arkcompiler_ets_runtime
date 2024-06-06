@@ -3153,7 +3153,7 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
             }
             Bind(&getByName);
             {
-                result = GetPropertyByName(glue, receiver, *key, callback, *isInternal, false, false, true);
+                result = GetPropertyByName(glue, receiver, *key, callback, *isInternal, true);
                 Jump(&exit);
             }
         }
@@ -3165,8 +3165,7 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
 }
 
 GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-                                       ProfileOperation callback, GateRef isInternal,
-                                       bool useOwn, bool judgeProxy, bool canUseIsInternal)
+                                       ProfileOperation callback, GateRef isInternal, bool canUseIsInternal)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3212,7 +3211,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             Label isString(env);
             Label notString(env);
             Label notJsPrimitiveRef(env);
-            BRANCH(BoolAnd(IsJSString(jsType), TaggedIsString(key)), &isString, &notString);
+            BRANCH(BoolAnd(TaggedIsString(*holder), TaggedIsString(key)), &isString, &notString);
             Bind(&isString);
             {
                 Label getStringLength(env);
@@ -3236,23 +3235,11 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 }
             }
             Bind(&notString);
-            BRANCH(IsPrimitiveRef(jsType), &notSIndexObj, &notJsPrimitiveRef);
+            BRANCH(IsJSPrimitiveRef(*holder), &notSIndexObj, &notJsPrimitiveRef);
             Bind(&notJsPrimitiveRef);  // not string prototype etc.
             {
-                Label isProxy(env);
-                Label notProxy(env);
-                if (judgeProxy) {
-                    BRANCH(IsProxy(jsType), &isProxy, &notProxy);
-                    Bind(&isProxy);
-                    result = GetJSProxyPropertyByName(glue, *holder, key, receiver);
-                    Jump(&exit);
-                    Bind(&notProxy);
-                    result = Hole();
-                    Jump(&exit);
-                } else {
-                    result = Hole();
-                    Jump(&exit);
-                }
+                result = Hole();
+                Jump(&exit);
             }
         }
         Bind(&notSIndexObj);
@@ -3339,12 +3326,8 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             }
             Bind(&loopExit);
             {
-                if (useOwn) {
-                    Jump(&afterLoop);
-                } else {
-                    holder = GetPrototypeFromHClass(LoadHClass(*holder));
-                    BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &afterLoop);
-                }
+                holder = GetPrototypeFromHClass(LoadHClass(*holder));
+                BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &afterLoop);
             }
         }
         Bind(&loopEnd);
@@ -4077,27 +4060,6 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         }
         Bind(&notSpecialContainer);
         {
-            Label isProxy(env);
-            Label notProxy(env);
-            BRANCH(IsProxy(jsType), &isProxy, &notProxy);
-            Bind(&isProxy);
-            {
-                Label hasPendingException(env);
-                Label noPendingException(env);
-                SetJSProxyPropertyByName(glue, *holder, key, value, receiver);
-                BRANCH(HasPendingException(glue), &hasPendingException, &noPendingException);
-                Bind(&hasPendingException);
-                {
-                    result = Exception();
-                    Jump(&exit);
-                }
-                Bind(&noPendingException);
-                {
-                    result = TaggedTrue();
-                    Jump(&exit);
-                }
-            }
-            Bind(&notProxy);
             result = Hole();
             Jump(&exit);
         }
@@ -4803,8 +4765,7 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef p
     return ret;
 }
 
-GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key,
-    ProfileOperation callback, bool judgeProxy)
+GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4818,41 +4779,12 @@ GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef ke
     BRANCH(TaggedIsHeapObject(obj), &fastpath, &slowpath);
     Bind(&fastpath);
     {
-        result = GetPropertyByName(glue, obj, key, callback, True(), false, judgeProxy);
+        result = GetPropertyByName(glue, obj, key, callback, True());
         BRANCH(TaggedIsHole(*result), &slowpath, &exit);
     }
     Bind(&slowpath);
     {
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName), { Undefined(), obj, key, IntToTaggedInt(Int32(0)) });
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef StubBuilder::FastGetOwnPropertyByName(GateRef glue, GateRef obj, GateRef key,
-    ProfileOperation callback, bool judgeProxy)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Label exit(env);
-    Label checkResult(env);
-    Label fastpath(env);
-    Label slowpath(env);
-
-    BRANCH(TaggedIsHeapObject(obj), &fastpath, &slowpath);
-    Bind(&fastpath);
-    {
-        result = GetPropertyByName(glue, obj, key, callback, True(), true, judgeProxy);
-        BRANCH(TaggedIsHole(*result), &slowpath, &exit);
-    }
-    Bind(&slowpath);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(GetOwnPropertyByname), { obj, key });
         Jump(&exit);
     }
     Bind(&exit);
@@ -9240,164 +9172,6 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
                 }
             }
         }
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef StubBuilder::GetJSProxyPropertyByName(GateRef glue, GateRef proxy, GateRef key, GateRef receiver)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
-    Label notNull(env);
-    Label slowPath(env);
-    GateRef handler = GetHandlerFromJSProxy(proxy);
-    BRANCH(TaggedIsNull(handler), &slowPath, &notNull);
-    Bind(&notNull);
-    {
-        Label callFunction(env);
-        Label callGet(env);
-        Label isHeap(env);
-        Label call(env);
-        Label checkResult(env);
-        Label checkFunction(env);
-        Label slowPath1(env);
-        GateRef target = GetTargetFromJSProxy(proxy);
-        GateRef name = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue, ConstantIndex::GET_STRING_INDEX);
-        GateRef func = FastGetPropertyByName(glue, handler, name, ProfileOperation());
-        BRANCH(HasPendingException(glue), &exit, &callFunction);
-        Bind(&callFunction);
-        BRANCH(TaggedIsNull(func), &slowPath, &checkFunction);
-        Bind(&checkFunction);
-        BRANCH(TaggedIsUndefined(func), &slowPath, &callGet);
-        Bind(&callGet);
-        {
-            BRANCH(TaggedIsHeapObject(func), &isHeap, &slowPath);
-            Bind(&isHeap);
-            BRANCH(IsCallable(func), &call, &slowPath);
-            Bind(&call);
-            GateRef trapResult = JSCallDispatch(glue, func, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { handler, target, key, receiver });
-            BRANCH(HasPendingException(glue), &exit, &checkResult);
-            Bind(&checkResult);
-            {
-                Label resultIsRight(env);
-                Label compareResult(env);
-                Label checkTargetResult(env);
-                GateRef targetResult = FastGetOwnPropertyByName(glue, target, key, ProfileOperation());
-                BRANCH(HasPendingException(glue), &exit, &checkTargetResult);
-                Bind(&checkTargetResult);
-                BRANCH(TaggedIsUndefined(targetResult), &slowPath1, &compareResult);
-                Bind(&compareResult);
-                BRANCH(IntPtrEqual(trapResult, targetResult), &resultIsRight, &slowPath1);
-                Bind(&resultIsRight);
-                result = targetResult;
-                Jump(&exit);
-            }
-            Bind(&slowPath1);
-            {
-                result = CallRuntime(glue, RTSTUB_ID(CheckProxyGetResult), { trapResult, target, key });
-                Jump(&exit);
-            }
-        }
-    }
-    Bind(&slowPath);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(GetJSPrxoyProperty), { proxy, key, receiver });
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef StubBuilder::SetJSProxyPropertyByName(GateRef glue, GateRef proxy, GateRef key,
-                                              GateRef value, GateRef receiver)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label notNull(env);
-    Label slowPath(env);
-    GateRef handler = GetHandlerFromJSProxy(proxy);
-    BRANCH(TaggedIsNull(handler), &slowPath, &notNull);
-    Bind(&notNull);
-    {
-        Label callFunction(env);
-        Label callGet(env);
-        Label isHeap(env);
-        Label call(env);
-        Label checkResult(env);
-        Label checkFunction(env);
-        Label slowPath1(env);
-        GateRef target = GetTargetFromJSProxy(proxy);
-        GateRef name = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue, ConstantIndex::SET_STRING_INDEX);
-        GateRef func = FastGetPropertyByName(glue, handler, name, ProfileOperation());
-        BRANCH(HasPendingException(glue), &exit, &callFunction);
-        Bind(&callFunction);
-        BRANCH(TaggedIsNull(func), &slowPath, &checkFunction);
-        Bind(&checkFunction);
-        BRANCH(TaggedIsUndefined(func), &slowPath, &callGet);
-        Bind(&callGet);
-        {
-            BRANCH(TaggedIsHeapObject(func), &isHeap, &slowPath);
-            Bind(&isHeap);
-            BRANCH(IsCallable(func), &call, &slowPath);
-            Bind(&call);
-            GateRef argsLength = Int32(4);
-            NewObjectStubBuilder newBuilder(this);
-            GateRef argList = newBuilder.NewTaggedArray(glue, argsLength);
-            // 0 : the first position
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(0), target);
-            // 1 : the second position
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(1), key);
-            // 2 : the third position
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(2), value);
-            // 3 : the fourth position
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(3), receiver);
-            GateRef argv = PtrAdd(argList, IntPtr(TaggedArray::DATA_OFFSET));
-            GateRef trapResult = JSCallDispatch(glue, func, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                Circuit::NullGate(), JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, argv, handler });
-            BRANCH(HasPendingException(glue), &exit, &checkResult);
-            Bind(&checkResult);
-            {
-                Label resultIsRight(env);
-                Label compareResult(env);
-                Label boolCheck(env);
-                Label nextCheck(env);
-                GateRef booleanTrapResult = FastToBoolean(trapResult, 1);
-                BRANCH(HasPendingException(glue), &exit, &boolCheck);
-                Bind(&boolCheck);
-                Branch(TaggedIsTrue(booleanTrapResult), &nextCheck, &slowPath);
-                Bind(&nextCheck);
-                GateRef targetResult = FastGetOwnPropertyByName(glue, target, key, ProfileOperation());
-                BRANCH(TaggedIsUndefined(targetResult), &slowPath1, &compareResult);
-                Bind(&compareResult);
-                BRANCH(IntPtrEqual(value, targetResult), &resultIsRight, &slowPath1);
-                Bind(&resultIsRight);
-                Jump(&exit);
-            }
-            Bind(&slowPath1);
-            {
-                CallRuntime(glue, RTSTUB_ID(CheckProxySetResult), { value, target, key });
-                Jump(&exit);
-            }
-        }
-    }
-    Bind(&slowPath);
-    {
-        CallRuntime(glue, RTSTUB_ID(SetJSProxyProperty), { proxy, key, value, receiver });
-        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *result;
