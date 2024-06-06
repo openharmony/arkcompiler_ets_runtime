@@ -64,7 +64,7 @@ group("ark_js_host_mac_tools_packages") {
   }
 }
 
-group("ark_js_host_linux_tools_packages") {
+ohos_static_library("ark_js_host_linux_tools_packages") {
   deps = []
 
   deps += [
@@ -79,6 +79,8 @@ group("ark_js_host_linux_tools_packages") {
       "ecmascript/pgo_profiler/prof_dump:profdump(${host_toolchain})",
     ]
   }
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 group("ark_js_unittest") {
@@ -149,7 +151,7 @@ group("ark_unittest") {
   }
 }
 
-group("ark_runtime_host_unittest") {
+ohos_static_library("ark_runtime_host_unittest") {
   testonly = true
   deps = []
 
@@ -188,6 +190,8 @@ group("ark_runtime_host_unittest") {
       deps -= [ "$js_root/test/moduletest:ark_asm_test" ]
     }
   }
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 config("ark_jsruntime_public_config") {
