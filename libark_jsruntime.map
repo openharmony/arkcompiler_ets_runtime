@@ -285,6 +285,7 @@
       panda::ecmascript::SubtypingOperator::FillTSInheritInfo*;
       panda::ecmascript::SubtypingOperator::MergeClassField*;
       panda::ecmascript::Unlink*;
+      panda::ecmascript::filesystem::CreateEmptyFile*;
       panda::ecmascript::base::ArrayHelper::GetLength*;
       panda::ecmascript::base::utf_helper::ConvertRegionUtf16ToUtf8*;
       panda::ecmascript::base::NumberHelper::DoubleInRangeInt32*;
