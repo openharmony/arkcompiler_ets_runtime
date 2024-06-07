@@ -319,7 +319,7 @@
       panda::ecmascript::ohos::DecrypRemoveKey*;
       panda::ecmascript::ohos::DecryptAssociateKey*;
       panda::ecmascript::ohos::DecryptSetKey*;
-      panda::ecmascript::ohos::EnableAotListHelper*;
+      panda::ecmascript::ohos::EnableAotJitListHelper*;
       panda::ecmascript::pgo::ApNameUtils::GetMergedApName*;
       panda::ecmascript::pgo::ApNameUtils::GetOhosPkgApName*;
       panda::ecmascript::pgo::ApNameUtils::GetRuntimeApName*;
