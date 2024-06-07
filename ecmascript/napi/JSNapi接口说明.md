@@ -1046,7 +1046,7 @@ static void JSNApi::DestroyJSVM(EcmaVM *ecmaVm);
 
 ### DeleteSerializationData
 
-void JSNApi::DeleteSerializationData(void *data);
+void JSNApi::DeleteSerializationData(const EcmaVM *vm, void *data);
 
 删除一个序列化数据对象。
 
@@ -1054,6 +1054,7 @@ void JSNApi::DeleteSerializationData(void *data);
 
 | 参数名 | 类型   | 必填 | 说明                 |
 | ------ | ------ | ---- | -------------------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
 | data   | void * | 是   | 要删除的序列化数据。 |
 
 **返回值：**
@@ -1063,7 +1064,7 @@ void JSNApi::DeleteSerializationData(void *data);
 **示例：**
 
 ```c++
-JSNApi::DeleteSerializationData(data);
+JSNApi::DeleteSerializationData(vm, data);
 ```
 
 ### DeserializeValue

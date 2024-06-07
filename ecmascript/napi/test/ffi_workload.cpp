@@ -3456,7 +3456,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_String)
     for (int i = 0; i < NUM_COUNT; i++) {
         void *data = JSNApi::SerializeValue(vm_, StringRef::NewFromUtf8(vm_, "abcdefbb"),
             StringRef::NewFromUtf8(vm_, "abcdefbb"), JSValueRef::Undefined(vm_));
-        JSNApi::DeleteSerializationData(data);
+        JSNApi::DeleteSerializationData(vm_, data);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSNApi_DeleteSerializationData_String);
@@ -3470,7 +3470,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Bool)
     for (int i = 0; i < NUM_COUNT; i++) {
         void *data = JSNApi::SerializeValue(vm_, BooleanRef::New(vm_, true), JSValueRef::Undefined(vm_),
             JSValueRef::Undefined(vm_));
-        JSNApi::DeleteSerializationData(data);
+        JSNApi::DeleteSerializationData(vm_, data);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSNApi_DeleteSerializationData_Bool);
@@ -3484,7 +3484,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Int)
     for (int i = 0; i < NUM_COUNT; i++) {
         void *data = JSNApi::SerializeValue(vm_, BooleanRef::New(vm_, true), JSValueRef::Undefined(vm_),
             JSValueRef::Undefined(vm_));
-        JSNApi::DeleteSerializationData(data);
+        JSNApi::DeleteSerializationData(vm_, data);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSNApi_DeleteSerializationData_Int);
@@ -3498,7 +3498,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Undefined)
     for (int i = 0; i < NUM_COUNT; i++) {
         void *data = JSNApi::SerializeValue(vm_, JSValueRef::Undefined(vm_), JSValueRef::Undefined(vm_),
             JSValueRef::Undefined(vm_));
-        JSNApi::DeleteSerializationData(data);
+        JSNApi::DeleteSerializationData(vm_, data);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSNApi_DeleteSerializationData_Undefined);
@@ -3512,7 +3512,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Null)
     for (int i = 0; i < NUM_COUNT; i++) {
         void *data =
             JSNApi::SerializeValue(vm_, JSValueRef::Null(vm_), JSValueRef::Undefined(vm_), JSValueRef::Undefined(vm_));
-        JSNApi::DeleteSerializationData(data);
+        JSNApi::DeleteSerializationData(vm_, data);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSNApi_DeleteSerializationData_Null);
