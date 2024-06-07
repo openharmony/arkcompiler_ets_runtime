@@ -92,7 +92,12 @@ public:
 private:
     static const std::vector<ElfSecName> &GetDumpSectionNames();
     using EntryKey = std::pair<uint32_t, uint32_t>;
+    bool LoadInternal(const std::string &filename);
     bool Load(const std::string &filename);
+#if defined(ANDROID_PLATFORM)
+    bool Load(const std::string &filename, [[maybe_unused]] std::function<bool
+        (std::string fileName, uint8_t **buff, size_t *buffSize)> ReadAOTCallBack);
+#endif
     void ParseFunctionEntrySection(ModuleSectionDes &moduleDes);
     void UpdateFuncEntries();
     void AddFuncEntrySec();

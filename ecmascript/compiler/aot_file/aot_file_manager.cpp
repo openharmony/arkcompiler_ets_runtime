@@ -51,6 +51,10 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 using BytecodeStubCSigns = kungfu::BytecodeStubCSigns;
 using SnapshotGlobalData = kungfu::SnapshotGlobalData;
 
+#if defined(ANDROID_PLATFORM)
+JsAotReaderCallback AOTFileManager::jsAotReader_ = nullptr;
+#endif
+
 void AOTFileManager::Iterate(const RootVisitor &v)
 {
     for (auto &iter : aiDatum_) {
@@ -63,6 +67,18 @@ void AOTFileManager::Iterate(const RootVisitor &v)
         }
     }
 }
+
+#if defined(ANDROID_PLATFORM)
+void AOTFileManager::SetJsAotReader(JsAotReaderCallback cb)
+{
+    jsAotReader_ = cb;
+}
+
+JsAotReaderCallback AOTFileManager::GetJsAotReader()
+{
+    return jsAotReader_;
+}
+#endif
 
 void AOTFileManager::DumpAOTInfo()
 {
@@ -84,14 +100,22 @@ void AOTFileManager::LoadStubFile(const std::string &fileName)
 bool AOTFileManager::LoadAnFile(const std::string &fileName)
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+#if defined(ANDROID_PLATFORM)
+    return anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT, GetJsAotReader());
+#else
     return anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT);
+#endif
 }
 
 bool AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
 {
     Snapshot snapshot(vm_);
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
-    return snapshot.Deserialize(SnapshotType::AI, filename.c_str());
+    #if defined(ANDROID_PLATFORM)
+        return snapshot.Deserialize(SnapshotType::AI, filename.c_str(), GetJsAotReader());
+    #else
+        return snapshot.Deserialize(SnapshotType::AI, filename.c_str());
+    #endif
 #else
     return true;
 #endif

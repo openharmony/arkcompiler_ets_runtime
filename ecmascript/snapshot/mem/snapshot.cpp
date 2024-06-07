@@ -140,20 +140,9 @@ void Snapshot::SerializeBuiltins(const CString &fileName)
     WriteToFile(write, nullptr, rootObjSize, processor);
 }
 
-bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins)
+bool Snapshot::DeserializeInternal(SnapshotType type, const CString &snapshotFile, SnapshotProcessor &processor,
+                                   MemMap &fileMap)
 {
-    std::string realPath;
-    if (!RealPath(std::string(snapshotFile), realPath, false)) {
-        LOG_FULL(FATAL) << "snapshot file path error";
-        UNREACHABLE();
-    }
-
-    SnapshotProcessor processor(vm_);
-    if (isBuiltins) {
-        processor.SetBuiltinsDeserializeStart();
-    }
-
-    MemMap fileMap = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READWRITE);
     if (fileMap.GetOriginAddr() == nullptr) {
         LOG_FULL(FATAL) << "file mmap failed";
         UNREACHABLE();
@@ -175,7 +164,9 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
     processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
                                              hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
 
+#if !defined(ANDROID_PLATFORM)
     FileUnMap(MemMap(fileMap.GetOriginAddr(), hdr.pandaFileBegin));
+#endif
     std::shared_ptr<JSPandaFile> jsPandaFile;
     if (static_cast<uint32_t>(fileMap.GetSize()) > hdr.pandaFileBegin) {
         uintptr_t pandaFileMem = readFile + hdr.pandaFileBegin;
@@ -189,6 +180,50 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
     LOG_COMPILER(INFO) << "loaded ai file: " << snapshotFile.c_str();
     return true;
 }
+
+bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins)
+{
+    std::string realPath;
+    if (!RealPath(std::string(snapshotFile), realPath, false)) {
+        LOG_FULL(FATAL) << "snapshot file path error";
+        UNREACHABLE();
+    }
+
+    SnapshotProcessor processor(vm_);
+    if (isBuiltins) {
+        processor.SetBuiltinsDeserializeStart();
+    }
+
+    MemMap fileMap = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READWRITE);
+    return DeserializeInternal(type, snapshotFile, processor, fileMap);
+}
+
+#if defined(ANDROID_PLATFORM)
+bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, [[maybe_unused]] std::function<bool
+    (std::string fileName, uint8_t **buff, size_t *buffSize)> ReadAOTCallBack, bool isBuiltins)
+{
+    SnapshotProcessor processor(vm_);
+    if (isBuiltins) {
+        processor.SetBuiltinsDeserializeStart();
+    }
+
+    std::string fileName = std::string(snapshotFile);
+    uint8_t *buff = nullptr;
+    size_t buffSize = 0;
+    MemMap fileMap = {};
+    size_t found = fileName.find_last_of("/");
+    if (found != std::string::npos) {
+        fileName = fileName.substr(found + 1);
+    }
+    
+    LOG_ECMA(INFO) << "Call JsAotReader to load: " << fileName;
+    if (ReadAOTCallBack(fileName, &buff, &buffSize)) {
+        fileMap = MemMap(buff, buffSize);
+    }
+
+    return DeserializeInternal(type, snapshotFile, processor, fileMap);
+}
+#endif
 
 size_t Snapshot::AlignUpPageSize(size_t spaceSize)
 {
