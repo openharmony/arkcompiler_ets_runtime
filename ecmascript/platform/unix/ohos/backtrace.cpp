@@ -60,7 +60,7 @@ bool GetPcs(size_t &size, uintptr_t* pcs)
     uintptr_t pc = regs[0];
     uintptr_t fp = regs[1];
     size = OHOS::HiviewDFX::FpUnwinder::GetPtr()->Unwind(pc, fp, pcs, MAX_STACK_SIZE);
-    if (unwSz <= 1) {
+    if (size <= 1) {
         size = OHOS::HiviewDFX::FpUnwinder::GetPtr()->UnwindSafe(pc, fp, pcs, MAX_STACK_SIZE);
     }
 #else
