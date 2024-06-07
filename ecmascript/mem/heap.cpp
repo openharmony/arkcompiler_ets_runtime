@@ -1773,6 +1773,12 @@ void Heap::IncreaseNativeBindingSize(size_t size)
     nativeBindingSize_ += size;
 }
 
+void Heap::DecreaseNativeBindingSize(size_t size)
+{
+    ASSERT(size <= nativeBindingSize_);
+    nativeBindingSize_ -= size;
+}
+
 void Heap::PrepareRecordRegionsForReclaim()
 {
     activeSemiSpace_->SetRecordRegion();

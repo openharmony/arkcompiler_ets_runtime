@@ -592,6 +592,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_errors.cpp",
   "ecmascript/builtins/builtins_finalization_registry.cpp",
   "ecmascript/builtins/builtins_function.cpp",
+  "ecmascript/builtins/builtins_gc.cpp",
   "ecmascript/builtins/builtins_generator.cpp",
   "ecmascript/builtins/builtins_global.cpp",
   "ecmascript/builtins/builtins_iterator.cpp",
