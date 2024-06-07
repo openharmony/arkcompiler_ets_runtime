@@ -361,8 +361,9 @@ public:
         pgoDir_ = pgoDir;
     }
 
-    void GetPgoPaths(std::string &pgoPaths, bool &needMerge) const
+    void GetPgoPaths(bool isEnableBaselinePgo, std::string &pgoPaths, bool &needMerge) const
     {
+        // 1. collect runtime ap and merged ap
         pgoPaths.clear();
         needMerge = false;
         pgoPaths = GetTargetApPaths();
@@ -371,9 +372,10 @@ public:
             return;
         }
 
-        // 2. do not baseline ap until new format supported
+        // 2. Use the baseline AP if the runtime AP or merge ap do not exist and when install or update the application
         auto baselineAp = pgoDir_ + '/' + pgo::ApNameUtils::GetOhosPkgApName(moduleName_);
-        if (FileExist(baselineAp.c_str())) {
+        if (isEnableBaselinePgo && FileExist(baselineAp.c_str())) {
+            pgoPaths = baselineAp;
             LOG_COMPILER(DEBUG) << "Do not support base line ap now, please waiting. baseline ap: " << baselineAp;
         }
     }
@@ -416,7 +418,7 @@ private:
             pkgArgs->SetPgoDir(ResolveDirPath(apFileNames.at(0)));
         }
         // reset profilerIn from pgo dir
-        pkgArgs->GetPgoPaths(cOptions.profilerIn_, cOptions.needMerge_);
+        pkgArgs->GetPgoPaths(cOptions.isEnableBaselinePgo_, cOptions.profilerIn_, cOptions.needMerge_);
         if (cOptions.profilerIn_.empty()) {
             LOG_COMPILER(WARN) << "No available ap files found in " << pkgArgs->GetPgoDir();
         }
