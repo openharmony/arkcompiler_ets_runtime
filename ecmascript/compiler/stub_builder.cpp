@@ -7816,10 +7816,14 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
     Label fastCallBridge(env);
     Label slowCall(env);
     Label slowCallBridge(env);
+    // Worker/Taskpool disable aot optimization
+    Label judgeAotAndFastCall(env);
     {
         GateRef newTarget = Undefined();
         GateRef thisValue = Undefined();
         GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
+        BRANCH(IsWorker(glue), &funcCheckBaselineCode, &judgeAotAndFastCall);
+        Bind(&judgeAotAndFastCall);
         BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
                &methodIsFastCall, &methodNotFastCall);
         Bind(&methodIsFastCall);
@@ -8541,10 +8545,14 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label fastCallBridge(env);
     Label slowCall(env);
     Label slowCallBridge(env);
+    // Worker/Taskpool disable aot optimization
+    Label judgeAotAndFastCall(env);
     {
         GateRef newTarget = Undefined();
         GateRef thisValue = Undefined();
         GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
+        BRANCH(IsWorker(glue), &funcCheckBaselineCode, &judgeAotAndFastCall);
+        Bind(&judgeAotAndFastCall);
         BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
             &methodIsFastCall, &methodNotFastCall);
         Bind(&methodIsFastCall);

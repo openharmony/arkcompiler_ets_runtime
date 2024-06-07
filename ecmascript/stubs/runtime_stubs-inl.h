@@ -2850,7 +2850,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     CVector<JSTaggedType> values;
     Method *method = ctor->GetCallTarget();
     bool isAotMethod = method->IsAotWithCallField();
-    if (isAotMethod && ctor->IsClassConstructor()) {
+    if (!thread->IsWorker() && isAotMethod && ctor->IsClassConstructor()) {
         if (method->IsFastCall()) {
             values.reserve(size + NUM_MANDATORY_JSFUNC_ARGS - 1);
             values.emplace_back(ctor.GetTaggedValue().GetRawData());
