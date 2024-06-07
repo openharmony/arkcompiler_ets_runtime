@@ -1080,13 +1080,15 @@ JSTaggedValue JSStableArray::Reverse(JSThread *thread, JSHandle<JSObject> thisOb
     }
     ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
     JSHandle<TaggedArray> elements(thread, thisObjHandle->GetElements());
-    if (kind == ElementsKind::INT || kind == ElementsKind::HOLE_INT) {
-        return FastReverse(thread, elements, lower, len, ElementsKind::INT);
-    } else if (kind == ElementsKind::NUMBER || kind == ElementsKind::HOLE_NUMBER) {
-        return FastReverse(thread, elements, lower, len, ElementsKind::NUMBER);
-    } else {
-        return FastReverse(thread, elements, lower, len, ElementsKind::TAGGED);
+    bool enableElementsKind = thread->GetEcmaVM()->IsEnableElementsKind();
+    if (enableElementsKind) {
+        if (kind == ElementsKind::INT || kind == ElementsKind::HOLE_INT) {
+            return FastReverse(thread, elements, lower, len, ElementsKind::INT);
+        } else if (kind == ElementsKind::NUMBER || kind == ElementsKind::HOLE_NUMBER) {
+            return FastReverse(thread, elements, lower, len, ElementsKind::NUMBER);
+        }
     }
+    return FastReverse(thread, elements, lower, len, ElementsKind::TAGGED);
 }
 
 JSTaggedValue JSStableArray::FastReverse(JSThread *thread, JSHandle<TaggedArray> elements,

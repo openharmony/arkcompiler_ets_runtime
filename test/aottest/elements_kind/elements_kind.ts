@@ -68,3 +68,12 @@ constraints.add(1);
 constraints.add(2);
 print(constraints.at(0));
 
+function testReverse() {
+  const v0 = [100, 65536]
+  v0.reverse();
+  v0[1] = v0;
+  v0.reverse();
+  print("success");
+}
+
+testReverse();
