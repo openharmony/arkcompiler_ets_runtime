@@ -25,7 +25,8 @@ class CompilerLog;
 
 class LiteCGAssembler : public Assembler {
 public:
-    explicit LiteCGAssembler(LMIRModule &module, const std::vector<std::string> &litecgOptions);
+    explicit LiteCGAssembler(LMIRModule &module, CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand,
+                             const std::vector<std::string> &litecgOptions);
     virtual ~LiteCGAssembler() = default;
     void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) override;
     void CollectAnStackMap(CGStackMapInfo &stackMapInfo);

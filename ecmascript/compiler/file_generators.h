@@ -229,6 +229,7 @@ private:
     // MethodID->EntryIndex
     std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
     const bool useLiteCG_;
+    CodeInfo::CodeSpaceOnDemand jitCodeSpace_ {};
 };
 
 enum class StubFileKind {
@@ -270,6 +271,7 @@ private:
     StubFileInfo stubInfo_;
     AssemblerModule asmModule_;
     CompilationConfig cfg_;
+    CodeInfo::CodeSpaceOnDemand jitCodeSpace_ {};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_FILE_GENERATORS_H

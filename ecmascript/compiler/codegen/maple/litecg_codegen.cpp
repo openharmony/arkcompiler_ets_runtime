@@ -47,14 +47,22 @@ class CompilerLog;
 
 using namespace panda::ecmascript;
 
-LiteCGAssembler::LiteCGAssembler(LMIRModule &module, const std::vector<std::string> &litecgOptions)
-    : lmirModule(module), litecgOptions(litecgOptions) {}
+LiteCGAssembler::LiteCGAssembler(LMIRModule &module, CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand,
+                                 const std::vector<std::string> &litecgOptions)
+    : Assembler(codeSpaceOnDemand), lmirModule(module), litecgOptions(litecgOptions) {}
 
 static uint8_t *AllocateCodeSection(void *object, uint32_t size, [[maybe_unused]] uint32_t alignment,
                                     const std::string &sectionName)
 {
     struct CodeInfo &state = *static_cast<struct CodeInfo *>(object);
     return state.AllocaCodeSection(size, sectionName.c_str());
+}
+
+static uint8_t *AllocateCodeSectionOnDemand(void *object, uint32_t size, [[maybe_unused]] uint32_t alignment,
+                                            const std::string &sectionName)
+{
+    struct CodeInfo &state = *static_cast<struct CodeInfo *>(object);
+    return state.AllocaCodeSectionOnDemand(size, sectionName.c_str());
 }
 
 static void SaveFunc2Addr(void *object, std::string funcName, uint32_t address)
@@ -94,8 +102,9 @@ void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastComp
         std::string irFileName = lmirModule.GetModule()->GetFileName() + ".mpl";
         liteCG.DumpIRToFile(irFileName);
     }
-    liteCG.SetupLiteCGEmitMemoryManager(&codeInfo_, AllocateCodeSection, SaveFunc2Addr, SaveFunc2FPtoPrevSPDelta,
-                                        SaveFunc2CalleeOffsetInfo, SavePC2DeoptInfo, SavePC2CallSiteInfo);
+    liteCG.SetupLiteCGEmitMemoryManager(&codeInfo_, isJit ? AllocateCodeSectionOnDemand : AllocateCodeSection,
+                                        SaveFunc2Addr, SaveFunc2FPtoPrevSPDelta, SaveFunc2CalleeOffsetInfo,
+                                        SavePC2DeoptInfo, SavePC2CallSiteInfo);
 #ifdef CODE_SIGN_ENABLE
     isJit &= IsSupportJitCodeSigner();
     if (isJit) {
