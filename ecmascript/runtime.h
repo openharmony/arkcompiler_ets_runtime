@@ -132,7 +132,7 @@ public:
 
     inline bool CreateStringCacheTable(uint32_t size)
     {
-        constexpr int32_t MAX_SIZE = 2000;
+        constexpr int32_t MAX_SIZE = 150;
         if ((size == 0) || (size > MAX_SIZE) || (externalRegisteredStringTable_ != nullptr)) {
             LOG_ECMA(ERROR) << "invalid size of the string cache table or the table has been registered.";
             LOG_ECMA(ERROR) << "Currently, maximum size of the table is " << MAX_SIZE;
