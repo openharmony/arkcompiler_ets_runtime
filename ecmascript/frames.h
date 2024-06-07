@@ -204,6 +204,7 @@ public:
     {
         return type;
     }
+
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -276,6 +277,12 @@ public:
     {
         return type;
     }
+
+    uintptr_t GetReturnAddr() const
+    {
+        return returnAddr;
+    }
+
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -293,10 +300,6 @@ private:
     inline JSTaggedType* GetPrevFrameFp()
     {
         return prevFp;
-    }
-    uintptr_t GetReturnAddr() const
-    {
-        return returnAddr;
     }
 
     alignas(EAS) FrameType type {0};

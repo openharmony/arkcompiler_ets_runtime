@@ -1076,6 +1076,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::COStubEntriesIndex)>(isArch32);
         }
 
+        static size_t GetBaselineStubEntriesOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::BaselineStubEntriesIndex)>(isArch32);
+        }
+
         static size_t GetBuiltinsStubEntriesOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::BuiltinsStubEntriesIndex)>(isArch32);

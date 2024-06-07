@@ -54,7 +54,6 @@ private:
     static constexpr x64::Register LOCAL_SCOPE_REGISTER = x64::r10;
     static constexpr x64::Register RETURN_REGISTER = x64::rax;
     void MovParameterIntoParamReg(MacroParameter param, x64::Register paramReg);
-    void MovParameterOnStack(MacroParameter param);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_X64_MACRO_ASSEMBLER_X64_H

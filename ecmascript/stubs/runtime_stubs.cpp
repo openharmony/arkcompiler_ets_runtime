@@ -1833,7 +1833,20 @@ DEF_RUNTIME_STUBS(UpFrame)
             return JSTaggedValue(static_cast<uint64_t>(0)).GetRawData();
         }
         auto method = frameHandler.GetMethod();
-        pcOffset = method->FindCatchBlock(frameHandler.GetBytecodeOffset());
+        uint32_t curBytecodePcOfst = INVALID_INDEX;
+        if (reinterpret_cast<uintptr_t>(frameHandler.GetPc()) == std::numeric_limits<uintptr_t>::max()) {
+            // For baselineJit
+            uintptr_t curNativePc = frameHandler.GetBaselineNativePc();
+            ASSERT(curNativePc != 0);
+            LOG_BASELINEJIT(DEBUG) << "current native pc in UpFrame: " << std::hex <<
+                reinterpret_cast<void*>(curNativePc);
+            JSHandle<JSTaggedValue> funcVal = JSHandle<JSTaggedValue>(thread, frameHandler.GetFunction());
+            JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(funcVal);
+            curBytecodePcOfst = RuntimeGetBytecodePcOfstForBaseline(func, curNativePc);
+        } else {
+            curBytecodePcOfst = frameHandler.GetBytecodeOffset();
+        }
+        pcOffset = method->FindCatchBlock(curBytecodePcOfst);
         if (pcOffset != INVALID_INDEX) {
             thread->SetCurrentFrame(frameHandler.GetSp());
             thread->SetLastFp(frameHandler.GetFp());

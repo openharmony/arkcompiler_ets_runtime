@@ -71,6 +71,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(PushCallThisRangeAndDispatch)          \
     V(ResumeRspAndDispatch)                  \
     V(ResumeRspAndReturn)                    \
+    V(ResumeRspAndReturnBaseline)            \
     V(ResumeCaughtFrameAndDispatch)          \
     V(ResumeUncaughtFrameAndReturn)          \
     V(ResumeRspAndRollback)                  \
@@ -115,7 +116,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallRangeAndCheckToBaselineFromBaseline)        \
     V(CallNewAndCheckToBaselineFromBaseline)          \
     V(SuperCallAndCheckToBaselineFromBaseline)        \
-    V(CallThisRangeAndCheckToBaselineFromBaseline)
+    V(CallThisRangeAndCheckToBaselineFromBaseline)    \
+    V(GetBaselineBuiltinFp)
 
 #define JS_CALL_TRAMPOLINE_LIST(V)           \
     V(CallRuntime)                           \
@@ -612,7 +614,7 @@ public:
     static void ClearJitCompiledCodeFlags(Method *method);
     static void CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray, int32_t srcStartPos,
                                      int32_t tarStartPos, int32_t count, int32_t elementSize);
-
+    static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);

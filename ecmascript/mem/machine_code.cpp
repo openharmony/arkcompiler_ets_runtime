@@ -55,16 +55,16 @@ void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
     size_t instrSize = rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign;
     SetInstructionsSize(instrSize);
 
-    size_t stackMapSizeAlign = AlignUp(desc.stackMapSize, MachineCode::DATA_ALIGN);
-    SetStackMapSize(stackMapSizeAlign);
+    size_t stackMapOrOffsetTableSizeAlign = AlignUp(desc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
+    SetStackMapOrOffsetTableSize(stackMapOrOffsetTableSizeAlign);
 
 #ifdef ENABLE_JITFORT
     ASSERT(desc.instructionsAddr != 0);
-    ASSERT(dataSize == (funcEntryDesSizeAlign + stackMapSizeAlign) ||
-           dataSize == (funcEntryDesSizeAlign + instrSize + stackMapSizeAlign));
+    ASSERT(dataSize == (funcEntryDesSizeAlign + stackMapOrOffsetTableSizeAlign) ||
+           dataSize == (funcEntryDesSizeAlign + instrSize + stackMapOrOffsetTableSizeAlign));
     SetInstructionsAddr(desc.instructionsAddr);
 #else
-    ASSERT(dataSize == (funcEntryDesSizeAlign + instrSize + stackMapSizeAlign));
+    ASSERT(dataSize == (funcEntryDesSizeAlign + instrSize + stackMapOrOffsetTableSizeAlign));
 #endif
     SetPayLoadSizeInBytes(dataSize);
 
@@ -105,9 +105,11 @@ void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
             return;
         }
     }
-    uint8_t *stackmapAddr = GetStackMapAddress();
-    if (memcpy_s(stackmapAddr, desc.stackMapSize, reinterpret_cast<uint8_t*>(desc.stackMapAddr),
-        desc.stackMapSize) != EOK) {
+
+    uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
+    if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize,
+                 reinterpret_cast<uint8_t*>(desc.stackMapOrOffsetTableAddr),
+                 desc.stackMapOrOffsetTableSize) != EOK) {
         LOG_JIT(ERROR) << "memcpy fail in copy fast jit stackmap";
         return;
     }
@@ -132,7 +134,8 @@ void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
     CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
     LOG_JIT(DEBUG) << "Fast JIT MachineCode :" << methodName << ", "  << " text addr:" <<
         reinterpret_cast<void*>(GetText()) << ", size:" << instrSize  <<
-        ", stackMap addr:" << reinterpret_cast<void*>(stackmapAddr) << ", size:" << stackMapSizeAlign <<
+        ", stackMap addr:" << reinterpret_cast<void*>(stackmapAddr) <<
+        ", size:" << stackMapOrOffsetTableSizeAlign <<
         ", funcEntry addr:" << reinterpret_cast<void*>(GetFuncEntryDesAddress()) << ", count:" << cnt;
 
 #ifndef ENABLE_JIT_FORT
@@ -155,9 +158,10 @@ void MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
     size_t instrSizeAlign = AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
     SetInstructionsSize(instrSizeAlign);
 
-    SetStackMapSize(0);
+    size_t stackMapOrOffsetTableSizeAlign = AlignUp(desc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
+    SetStackMapOrOffsetTableSize(stackMapOrOffsetTableSizeAlign);
 
-    ASSERT(dataSize == instrSizeAlign);
+    ASSERT(dataSize == (instrSizeAlign + stackMapOrOffsetTableSizeAlign));
     SetPayLoadSizeInBytes(dataSize);
 
     uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
@@ -165,6 +169,15 @@ void MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
     uint8_t *pText = textStart;
     if (memcpy_s(pText, instrSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
         LOG_BASELINEJIT(ERROR) << "memcpy fail in copy baseline jit code";
+        return;
+    }
+    pText += instrSizeAlign;
+
+    uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
+    if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize,
+                 reinterpret_cast<uint8_t*>(desc.stackMapOrOffsetTableAddr),
+                 desc.stackMapOrOffsetTableSize) != EOK) {
+        LOG_BASELINEJIT(ERROR) << "memcpy fail in copy fast baselineJIT offsetTable";
         return;
     }
 
@@ -210,7 +223,7 @@ uintptr_t MachineCode::GetFuncEntryDes() const
 std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> MachineCode::CalCallSiteInfo(uintptr_t retAddr) const
 {
     uintptr_t textStart = GetText();
-    uint8_t *stackmapAddr = GetStackMapAddress();
+    uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
     ASSERT(stackmapAddr != nullptr);
 
     uint32_t funcEntryCnt = GetFuncEntryDesSize() / sizeof(FuncEntryDes);

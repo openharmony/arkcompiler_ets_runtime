@@ -161,6 +161,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::CALL_OPTIMIZED, &LLVMIRBuilder::HandleCall},
         {OpCode::FAST_CALL_OPTIMIZED, &LLVMIRBuilder::HandleCall},
         {OpCode::CALL, &LLVMIRBuilder::HandleCall},
+        {OpCode::BASELINE_CALL, &LLVMIRBuilder::HandleCall},
         {OpCode::BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::DEBUGGER_BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::BUILTINS_CALL, &LLVMIRBuilder::HandleCall},
@@ -555,7 +556,8 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
     OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL ||
         callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV ||
-        callOp == OpCode::CALL_OPTIMIZED || callOp == OpCode::FAST_CALL_OPTIMIZED) {
+        callOp == OpCode::CALL_OPTIMIZED || callOp == OpCode::FAST_CALL_OPTIMIZED ||
+        callOp == OpCode::BASELINE_CALL) {
         VisitCall(gate, ins, callOp);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -807,6 +809,13 @@ LLVMValueRef LLVMIRBuilder::GetCoStubOffset(LLVMValueRef glue, int index)
         static_cast<size_t>(index * slotSize_), 0);
 }
 
+LLVMValueRef LLVMIRBuilder::GetBaselineStubOffset(LLVMValueRef glue, int index)
+{
+    LLVMTypeRef glueType = LLVMTypeOf(glue);
+    return LLVMConstInt(glueType, JSThread::GlueData::GetBaselineStubEntriesOffset(compCfg_->Is32Bit()) +
+                        static_cast<size_t>(index * slotSize_), 0);
+}
+
 LLVMValueRef LLVMIRBuilder::GetBCStubOffset(LLVMValueRef glue)
 {
     LLVMTypeRef glueType = LLVMTypeOf(glue);
@@ -964,6 +973,13 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
             kind = CallExceptionKind::NO_PC_OFFSET;
         }
         isNoGC = acc_.IsNoGC(gate);
+    } else if (op == OpCode::BASELINE_CALL) {
+        const size_t index = acc_.GetConstantValue(inList[targetIndex]);
+        calleeDescriptor = BaselineStubCSigns::Get(index);
+        rtoffset = GetBaselineStubOffset(glue, index);
+        rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
+        callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
+        kind = GetCallExceptionKind(index, op);
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         LLVMValueRef opcodeOffset = GetLValue(inList.at(targetIndex));

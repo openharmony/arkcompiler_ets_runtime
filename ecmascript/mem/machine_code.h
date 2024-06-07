@@ -41,8 +41,8 @@ struct MachineCodeDesc {
     size_t codeSize {0};
     uintptr_t funcEntryDesAddr {0};
     size_t funcEntryDesSize {0};
-    uintptr_t stackMapAddr {0};
-    size_t stackMapSize {0};
+    uintptr_t stackMapOrOffsetTableAddr {0};
+    size_t stackMapOrOffsetTableSize {0};
     MachineCodeType codeType {MachineCodeType::FAST_JIT_CODE};
 #ifdef CODE_SIGN_ENABLE
     uintptr_t codeSigner {0};
@@ -64,7 +64,7 @@ struct MachineCodeDesc {
 //                      +-----------------------------------+
 //                      |          instructions addr        | 8 bytes (if JitFort enabled)
 //                      +-----------------------------------+
-//                      |           stack map size(0)       | 4 bytes
+//                      |       nativePcOffsetTable size    | 4 bytes
 //                      +-----------------------------------+
 //                      |             func addr             | 8 bytes
 //    PAYLOAD_OFFSET/   +-----------------------------------+
@@ -72,6 +72,10 @@ struct MachineCodeDesc {
 //     INSTR_OFFSET     |                                   | if JitFort enabled, will be in JitFort space
 //   (16 byte align)    |     machine instructions(text)    | instead for non-huge sized machine code objects
 //                      |              ...                  | and pointed to by "instructions addr"
+//                      +-----------------------------------+
+//                      |                                   |
+//                      |         nativePcOffsetTable       |
+//                      |              ...                  |
 //                      +-----------------------------------+
 //==================================================================
 // JitCode object layout:
@@ -121,11 +125,12 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(FuncEntryDesSize, uint32_t, FUNCENTRYDESSIZE_OFFSET, INSTRSIZ_OFFSET);
 #ifdef ENABLE_JITFORT
     ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, INSTRADDR_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(InstructionsAddr, uint64_t, INSTRADDR_OFFSET, STACKMAPSIZE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(InstructionsAddr, uint64_t, INSTRADDR_OFFSET, STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET);
 #else
-    ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, STACKMAPSIZE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET);
 #endif
-    ACCESSORS_PRIMITIVE_FIELD(StackMapSize, uint32_t, STACKMAPSIZE_OFFSET, FUNCADDR_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(StackMapOrOffsetTableSize, uint32_t,
+        STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET, FUNCADDR_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(FuncAddr, uint64_t, FUNCADDR_OFFSET, PADDING_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(Padding, uint64_t, PADDING_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -154,7 +159,7 @@ public:
 #endif
     }
 
-    uint8_t *GetStackMapAddress() const
+    uint8_t *GetStackMapOrOffsetTableAddress() const
     {
 #ifdef ENABLE_JITFORT
         // stackmap immediately follows FuncEntryDesc area

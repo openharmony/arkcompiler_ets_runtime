@@ -147,7 +147,9 @@ static size_t ComputePayLoadSize(const MachineCodeDesc &codeDesc)
 #ifdef ENABLE_JITFORT
         return AlignUp(codeDesc.codeSize, MachineCode::TEXT_ALIGN);
 #else
-        return AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
+        size_t stackMapSizeAlign = AlignUp(codeDesc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
+        size_t codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
+        return stackMapSizeAlign + codeSizeAlign;
 #endif
     }
 
@@ -161,7 +163,7 @@ static size_t ComputePayLoadSize(const MachineCodeDesc &codeDesc)
     size_t rodataSizeAfterTextAlign = AlignUp(codeDesc.rodataSizeAfterText, MachineCode::DATA_ALIGN);
 #endif
 
-    size_t stackMapSizeAlign = AlignUp(codeDesc.stackMapSize, MachineCode::DATA_ALIGN);
+    size_t stackMapSizeAlign = AlignUp(codeDesc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
 #ifdef ENABLE_JITFORT
     if (!codeDesc.rodataSizeAfterText) {
         // ensure proper align because multiple instruction blocks can be installed in JitFort

@@ -406,6 +406,7 @@ private:
     LLVMValueRef GetLeaveFrameOffset(LLVMValueRef glue);
     LLVMValueRef GetRTStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetCoStubOffset(LLVMValueRef glue, int index);
+    LLVMValueRef GetBaselineStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetBCStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBCDebugStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);

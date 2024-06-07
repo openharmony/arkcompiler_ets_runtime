@@ -550,6 +550,7 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::CALL_OPTIMIZED, &LiteCGIRBuilder::HandleCall},
         {OpCode::FAST_CALL_OPTIMIZED, &LiteCGIRBuilder::HandleCall},
         {OpCode::CALL, &LiteCGIRBuilder::HandleCall},
+        {OpCode::BASELINE_CALL, &LiteCGIRBuilder::HandleCall},
         {OpCode::BUILTINS_CALL, &LiteCGIRBuilder::HandleCall},
         {OpCode::BUILTINS_CALL_WITH_ARGV, &LiteCGIRBuilder::HandleCall},
         {OpCode::ARG, &LiteCGIRBuilder::HandleParameter},
@@ -945,6 +946,14 @@ Expr LiteCGIRBuilder::GetCoStubOffset(Expr glue, int index) const
     return lmirBuilder_->ConstVal(constVal);
 }
 
+Expr LiteCGIRBuilder::GetBaselineStubOffset(Expr glue, int index) const
+{
+    int offset =
+        JSThread::GlueData::GetBaselineStubEntriesOffset(compCfg_->Is32Bit()) + static_cast<size_t>(index * slotSize_);
+    Const &constVal = lmirBuilder_->CreateIntConst(glue.GetType(), static_cast<int64_t>(offset));
+    return lmirBuilder_->ConstVal(constVal);
+}
+
 void LiteCGIRBuilder::HandleRuntimeCall(GateRef gate)
 {
     std::vector<GateRef> ins;
@@ -1203,7 +1212,7 @@ void LiteCGIRBuilder::HandleCall(GateRef gate)
     OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL || callOp == OpCode::BUILTINS_CALL ||
         callOp == OpCode::BUILTINS_CALL_WITH_ARGV || callOp == OpCode::CALL_OPTIMIZED ||
-        callOp == OpCode::FAST_CALL_OPTIMIZED) {
+        callOp == OpCode::FAST_CALL_OPTIMIZED || callOp == OpCode::BASELINE_CALL) {
         VisitCall(gate, ins, callOp);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -1251,6 +1260,13 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         } else {
             kind = CallExceptionKind::NO_PC_OFFSET;
         }
+    } else if (op == OpCode::BASELINE_CALL) {
+        const size_t index = acc_.GetConstantValue(inList[targetIndex]);
+        calleeDescriptor = BaselineStubCSigns::Get(index);
+        Expr rtoffset = GetBaselineStubOffset(glue, index);
+        Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
+        callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
+        kind = GetCallExceptionKind(index, op);
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         Expr opcodeOffset = GetExprFromGate(inList[targetIndex]);

@@ -166,6 +166,10 @@ public:
     static void BuildCrashInfo(bool isJsCrash, uintptr_t pc = 0);
     static std::unordered_map<EntityId, std::string> nameMap;
     static std::unordered_map<EntityId, std::vector<uint8>> machineCodeMap;
+
+private:
+    static void BuildJsStackTraceInfo(JSThread *thread, Method *method, std::string &data,
+                                      FrameIterator &it, uint32_t pcOffset);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H

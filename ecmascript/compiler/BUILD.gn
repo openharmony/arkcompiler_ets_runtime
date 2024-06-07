@@ -95,7 +95,6 @@ libark_jsoptimizer_sources = [
   "baseline/baseline_assembler.cpp",
   "baseline/baseline_call_signature.cpp",
   "baseline/baseline_compiler.cpp",
-  "baseline/baseline_stub_builder.cpp",
   "baseline/baseline_stubs.cpp",
   "bc_call_signature.cpp",
   "builtins/builtins_array_stub_builder.cpp",

@@ -156,7 +156,6 @@ public:
     GateRef FastCallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
     GateRef CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
     GateRef GetAotCodeAddr(GateRef jsFunc);
-    GateRef GetBaselineCodeAddr(GateRef baselineCode);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
     GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args);
@@ -752,8 +751,8 @@ public:
     GateRef FastAdd(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastSub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastToBoolean(GateRef value, bool flag = true);
-    GateRef FastToBooleanBaseline(GateRef value, bool flag = true);
     GateRef FastToBooleanWithProfile(GateRef value, ProfileOperation callback, bool flag = true);
+    GateRef FastToBooleanWithProfileBaseline(GateRef value, ProfileOperation callback, bool flag = true);
 
     // Add SpecialContainer
     GateRef GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType);
@@ -849,9 +848,15 @@ public:
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args,
                            ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
-    GateRef JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
-                                      GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
-                                      ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
+    // For BaselineJIT
+    void JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
+                                   Variable *result, GateRef hotnessCounter, JSCallMode mode,
+                                   std::initializer_list<GateRef> args, Label *exit,
+                                   ProfileOperation callback = ProfileOperation(),
+                                   Label *noNeedCheckException = nullptr, bool checkIsCallable = true);
+    GateRef FastToBooleanBaseline(GateRef value, bool flag = true);
+    GateRef GetBaselineCodeAddr(GateRef baselineCode);
+
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
@@ -930,6 +935,7 @@ private:
     bool IsCallModeSupportPGO(JSCallMode mode);
     bool IsCallModeSupportCallBuiltin(JSCallMode mode);
     GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
+    GateRef CalIteratorKey(GateRef glue);
 
     CallSignature *callSignature_ {nullptr};
     Environment *env_;

@@ -2739,13 +2739,18 @@ DECLARE_ASM_HANDLER(HandleReturn)
     METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
+    DEFVARIABLE(prevState, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
 
+    Label isBaselineBuiltinFrame(env);
+    Label notBaselineBuiltinFrame(env);
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
+    Label pcEqualBaseline(env);
+    Label pcNotEqualBaseline(env);
     Label updateHotness(env);
     Label isStable(env);
     Label tryContinue(env);
@@ -2783,8 +2788,19 @@ DECLARE_ASM_HANDLER(HandleReturn)
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
                  IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
-    GateRef prevState = GetFrame(*varSp);
-    varPc = GetPcFromFrame(prevState);
+
+    GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
+           &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
+    Bind(&isBaselineBuiltinFrame);
+    {
+        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        Jump(&notBaselineBuiltinFrame);
+    }
+    Bind(&notBaselineBuiltinFrame);
+    prevState = GetFrame(*varSp);
+    varPc = GetPcFromFrame(*prevState);
     BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
     Bind(&pcEqualNullptr);
     {
@@ -2792,13 +2808,21 @@ DECLARE_ASM_HANDLER(HandleReturn)
         Return();
     }
     Bind(&pcNotEqualNullptr);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    Bind(&pcEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
+        Return();
+    }
+    Bind(&pcNotEqualBaseline);
+    {
+        GateRef function = GetFunctionFromFrame(*prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
-        GateRef jumpSize = GetCallSizeFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
             { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
             *varAcc, *varHotnessCounter, jumpSize });
@@ -2812,13 +2836,18 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
+    DEFVARIABLE(prevState, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
 
+    Label isBaselineBuiltinFrame(env);
+    Label notBaselineBuiltinFrame(env);
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
+    Label pcEqualBaseline(env);
+    Label pcNotEqualBaseline(env);
     Label updateHotness(env);
     Label isStable(env);
     Label tryContinue(env);
@@ -2856,8 +2885,19 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
-    GateRef prevState = GetFrame(*varSp);
-    varPc = GetPcFromFrame(prevState);
+
+    GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
+           &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
+    Bind(&isBaselineBuiltinFrame);
+    {
+        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        Jump(&notBaselineBuiltinFrame);
+    }
+    Bind(&notBaselineBuiltinFrame);
+    prevState = GetFrame(*varSp);
+    varPc = GetPcFromFrame(*prevState);
     varAcc = Undefined();
     BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
     Bind(&pcEqualNullptr);
@@ -2866,13 +2906,21 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
         Return();
     }
     Bind(&pcNotEqualNullptr);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    Bind(&pcEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
+        Return();
+    }
+    Bind(&pcNotEqualBaseline);
+    {
+        GateRef function = GetFunctionFromFrame(*prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
-        GateRef jumpSize = GetCallSizeFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
             { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
             *varAcc, *varHotnessCounter, jumpSize });
@@ -2886,13 +2934,18 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
     METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
+    DEFVARIABLE(prevState, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
 
+    Label isBaselineBuiltinFrame(env);
+    Label notBaselineBuiltinFrame(env);
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
+    Label pcEqualBaseline(env);
+    Label pcNotEqualBaseline(env);
     Label updateHotness(env);
     Label isStable(env);
     Label tryContinue(env);
@@ -2939,8 +2992,19 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
-    GateRef prevState = GetFrame(*varSp);
-    varPc = GetPcFromFrame(prevState);
+
+    GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
+           &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
+    Bind(&isBaselineBuiltinFrame);
+    {
+        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        Jump(&notBaselineBuiltinFrame);
+    }
+    Bind(&notBaselineBuiltinFrame);
+    prevState = GetFrame(*varSp);
+    varPc = GetPcFromFrame(*prevState);
     BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
     Bind(&pcEqualNullptr);
     {
@@ -2948,13 +3012,21 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
         Return();
     }
     Bind(&pcNotEqualNullptr);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    Bind(&pcEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
+        Return();
+    }
+    Bind(&pcNotEqualBaseline);
+    {
+        GateRef function = GetFunctionFromFrame(*prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
-        GateRef jumpSize = GetCallSizeFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
             { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
             *varAcc, *varHotnessCounter, jumpSize });
@@ -2967,13 +3039,18 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
     auto env = GetEnvironment();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
+    DEFVARIABLE(prevState, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
 
+    Label isBaselineBuiltinFrame(env);
+    Label notBaselineBuiltinFrame(env);
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
+    Label pcEqualBaseline(env);
+    Label pcNotEqualBaseline(env);
     Label updateHotness(env);
     Label isStable(env);
     Label tryContinue(env);
@@ -3020,8 +3097,19 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
-    GateRef prevState = GetFrame(*varSp);
-    varPc = GetPcFromFrame(prevState);
+
+    GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
+           &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
+    Bind(&isBaselineBuiltinFrame);
+    {
+        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        Jump(&notBaselineBuiltinFrame);
+    }
+    Bind(&notBaselineBuiltinFrame);
+    prevState = GetFrame(*varSp);
+    varPc = GetPcFromFrame(*prevState);
     BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
     Bind(&pcEqualNullptr);
     {
@@ -3029,13 +3117,21 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
         Return();
     }
     Bind(&pcNotEqualNullptr);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    Bind(&pcEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
+        Return();
+    }
+    Bind(&pcNotEqualBaseline);
+    {
+        GateRef function = GetFunctionFromFrame(*prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
-        GateRef jumpSize = GetCallSizeFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
             { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
             *varAcc, *varHotnessCounter, jumpSize });
@@ -3322,13 +3418,18 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
+    DEFVARIABLE(prevState, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
     DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
+    Label isBaselineBuiltinFrame(env);
+    Label notBaselineBuiltinFrame(env);
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
+    Label pcEqualBaseline(env);
+    Label pcNotEqualBaseline(env);
     Label updateHotness(env);
     Label isStable(env);
     Label tryContinue(env);
@@ -3377,8 +3478,19 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
-    GateRef prevState = GetFrame(*varSp);
-    varPc = GetPcFromFrame(prevState);
+
+    GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
+           &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
+    Bind(&isBaselineBuiltinFrame);
+    {
+        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        Jump(&notBaselineBuiltinFrame);
+    }
+    Bind(&notBaselineBuiltinFrame);
+    prevState = GetFrame(*varSp);
+    varPc = GetPcFromFrame(*prevState);
     BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
     Bind(&pcEqualNullptr);
     {
@@ -3386,13 +3498,21 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
         Return();
     }
     Bind(&pcNotEqualNullptr);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    Bind(&pcEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
+        Return();
+    }
+    Bind(&pcNotEqualBaseline);
+    {
+        GateRef function = GetFunctionFromFrame(*prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
-        GateRef jumpSize = GetCallSizeFromFrame(prevState);
+        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
             { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
             *varAcc, *varHotnessCounter, jumpSize });
@@ -5154,8 +5274,12 @@ DECLARE_ASM_HANDLER(BCDebuggerEntry)
     Label isFrameDroppedFalse(env);
     Label isEntryFrameDroppedPending(env);
     Label isEntryFrameDroppedNotTrue(env);
+    Label isBaselineBuiltinFrame(env);
+    Label notBaselineBuiltinFrame(env);
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
+    Label pcEqualBaseline(env);
+    Label pcNotEqualBaseline(env);
     GateRef frame = GetFrame(sp);
     GateRef isEntryFrameDropped = Load(VariableType::INT8(), glue,
         IntPtr(JSThread::GlueData::GetEntryFrameDroppedStateOffset(env->Is32Bit())));
@@ -5183,6 +5307,7 @@ DECLARE_ASM_HANDLER(BCDebuggerEntry)
     {
         DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
         DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
+        DEFVARIABLE(prevState, VariableType::NATIVE_POINTER(), sp);
         DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
         DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
         DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
@@ -5198,8 +5323,18 @@ DECLARE_ASM_HANDLER(BCDebuggerEntry)
         BRANCH(Int8Equal(isEntryFrameDropped, Int8(JSThread::FrameDroppedState::StateTrue)),
             &pcEqualNullptr, &isEntryFrameDroppedNotTrue);
         Bind(&isEntryFrameDroppedNotTrue);
-        GateRef prevState = GetFrame(*varSp);
-        varPc = GetPcFromFrame(prevState);
+        GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
+        GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+        BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
+               &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
+        Bind(&isBaselineBuiltinFrame);
+        {
+            varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+            Jump(&notBaselineBuiltinFrame);
+        }
+        Bind(&notBaselineBuiltinFrame);
+        prevState = GetFrame(*varSp);
+        varPc = GetPcFromFrame(*prevState);
         BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
         Bind(&pcEqualNullptr);
         {
@@ -5207,8 +5342,16 @@ DECLARE_ASM_HANDLER(BCDebuggerEntry)
             Return();
         }
         Bind(&pcNotEqualNullptr);
+        BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())),
+               &pcEqualBaseline, &pcNotEqualBaseline);
+        Bind(&pcEqualBaseline);
         {
-            GateRef function = GetFunctionFromFrame(prevState);
+            CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturn), { *varAcc, *varSp, currentSp });
+            Return();
+        }
+        Bind(&pcNotEqualBaseline);
+        {
+            GateRef function = GetFunctionFromFrame(*prevState);
             GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
             varConstpool = GetConstpoolFromMethod(method);
             varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);

@@ -56,8 +56,9 @@ GateRef CircuitBuilder::ToLength(GateRef receiver)
 GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                                  const char* comment)
 {
-    const CallSignature *cs = CommonStubCSigns::Get(index);
-    ASSERT(cs->IsCommonStub());
+    const CallSignature *cs = env_->IsBaselineBuiltin() ? BaselineStubCSigns::Get(index) :
+                                                          CommonStubCSigns::Get(index);
+    ASSERT(cs->IsCommonStub() || cs->IsBaselineStub());
     GateRef target = IntPtr(index);
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
@@ -148,6 +149,8 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     } else if (cs->IsOptimizedFastCallStub()) {
         bool isNoGC = acc_.GetNoGCFlag(hirGate);
         meta = circuit_->FastCallOptimized(numValuesIn, isNoGC);
+    } else if (cs->IsBaselineStub()) {
+        meta = circuit_->BaselineCall(numValuesIn);
     } else {
         LOG_ECMA(FATAL) << "unknown call operator";
         UNREACHABLE();
