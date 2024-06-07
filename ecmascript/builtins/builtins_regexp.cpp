@@ -1153,7 +1153,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
         }
     }
     // 14. Let accumulatedResult be the empty String value.
-    bool isUtf8 = EcmaStringAccessor(srcString).IsUtf8();
+    bool isUtf8 = true;
     uint32_t resultStrLength = 0;
     uint32_t resultArrayLength = (static_cast<uint32_t>(resultsIndex) + 1) * 2;
     JSHandle<TaggedArray> resultArray = factory->NewTaggedArray(resultArrayLength);
@@ -1296,6 +1296,9 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
             // store position and length bits in resultLengthArray
             resultLengthArray[REPLACE_RESULT_VAL * i] = bits;
             resultStrLength += (position - nextSourcePosition);
+            auto subString = EcmaStringAccessor::FastSubString(
+                thread->GetEcmaVM(), srcString, nextSourcePosition, position - nextSourcePosition);
+            isUtf8 &= EcmaStringAccessor(subString).IsUtf8();
             // store replacement string in resultArray
             resultArray->Set(thread, REPLACE_RESULT_VAL * i + 1, replacementString.GetTaggedValue());
             uint32_t replacementLength = EcmaStringAccessor(replacementString).GetLength();
@@ -1315,6 +1318,9 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
         uint64_t bits = 0;
         bits |= ReplaceLengthField::Encode(length - nextSourcePosition);
         bits |= ReplacePositionField::Encode(nextSourcePosition);
+        auto subStringEnd = EcmaStringAccessor::FastSubString(
+            thread->GetEcmaVM(), srcString, nextSourcePosition, length - nextSourcePosition);
+        isUtf8 &= EcmaStringAccessor(subStringEnd).IsUtf8();
         // store position and length bits in resultLengthArray
         resultLengthArray[REPLACE_RESULT_VAL * resultsIndex] = bits;
         resultStrLength += (length - nextSourcePosition);
