@@ -34,3 +34,7 @@ function testFileInfo() {
 }
 
 print(testFileInfo().length)
+print(parseInt("0X4"))
+print(parseInt("0x4"))
+print(parseInt("0X123"))
+print(parseInt("0x123"))

@@ -27,3 +27,11 @@
 [trace] aot inline builtin: Number.parseInt, caller function name:#*#randomStrId@builtins_parseint
 [trace] aot inline builtin: Number.parseInt, caller function name:#*#randomStrId@builtins_parseint
 1
+[trace] aot inline builtin: Number.parseInt, caller function name:func_main_0@builtins_parseint
+4
+[trace] aot inline builtin: Number.parseInt, caller function name:func_main_0@builtins_parseint
+4
+[trace] aot inline builtin: Number.parseInt, caller function name:func_main_0@builtins_parseint
+291
+[trace] aot inline builtin: Number.parseInt, caller function name:func_main_0@builtins_parseint
+291
