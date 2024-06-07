@@ -1915,7 +1915,7 @@ void TypedNativeInlineLowering::LowerNumberParseInt(GateRef gate)
     Label radixIsSpecialInt(&builder_);
 
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    DEFVALUE(radix, (&builder_), VariableType::INT32(), builder_.Int32(base::DECIMAL));
+    DEFVALUE(radix, (&builder_), VariableType::INT32(), builder_.Int32(0));
     GateRef msg = acc_.GetValueIn(gate, 0);
     GateRef arg2 = acc_.GetValueIn(gate, 1);
 
