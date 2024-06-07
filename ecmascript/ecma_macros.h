@@ -31,16 +31,24 @@
 
 #if !defined(ENABLE_BYTRACE)
     #define ECMA_BYTRACE_NAME(tag, name)
+    #define ECMA_BYTRACE_START_TRACE(msg)
+    #define ECMA_BYTRACE_FINISH_TRACE
 #else
     #define ECMA_BYTRACE_NAME(tag, name) HITRACE_METER_NAME(tag, name)
+    #define ECMA_BYTRACE_START_TRACE(tag, msg) StartTrace(tag, msg)
+    #define ECMA_BYTRACE_FINISH_TRACE(tag) FinishTrace(tag)
 #endif
 
 #if defined(ENABLE_HITRACE)
     #define ENQUEUE_JOB_HITRACE(pendingJob, queueType) job::EnqueueJobScope hitraceScope(pendingJob, queueType)
     #define EXECUTE_JOB_HITRACE(pendingJob) job::ExecuteJobScope hitraceScope(pendingJob)
+    #define ENQUEUE_JOB_TRACE(thread, pendingJob) job::EnqueueJobTrace enqueueJobTrace(thread, pendingJob)
+    #define EXECUTE_JOB_TRACE(thread, pendingJob) job::ExecuteJobTrace executeJobTrace(thread, pendingJob)
 #else
     #define ENQUEUE_JOB_HITRACE(pendingJob, queueType)
     #define EXECUTE_JOB_HITRACE(pendingJob)
+    #define ENQUEUE_JOB_TRACE(thread, pendingJob)
+    #define EXECUTE_JOB_TRACE(thread, pendingJob)
 #endif
 
 /* Note: We can't statically decide the element type is a primitive or heap object, especially for */
