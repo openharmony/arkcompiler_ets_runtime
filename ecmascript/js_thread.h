@@ -949,7 +949,7 @@ public:
                                                  base::AlignedUint32,
                                                  base::AlignedBool> {
         enum class Index : size_t {
-            BCStubEntriesIndex = 0,
+            BcStubEntriesIndex = 0,
             ExceptionIndex,
             GlobalObjIndex,
             StableArrayElementsGuardiansIndex,
@@ -966,7 +966,7 @@ public:
             COStubEntriesIndex,
             BuiltinsStubEntriesIndex,
             BuiltinHClassEntriesIndex,
-            BCDebuggerStubEntriesIndex,
+            BcDebuggerStubEntriesIndex,
             BaselineStubEntriesIndex,
             StateBitFieldIndex,
             FrameBaseIndex,
@@ -984,9 +984,9 @@ public:
             CurrentContextIndex,
             BuiltinEntriesIndex,
             IsTracingIndex,
-            unsharedConstpoolsIndex,
+            UnsharedConstpoolsIndex,
             RandomStatePtrIndex,
-            stateAndFlagsIndex,
+            StateAndFlagsIndex,
             TaskInfoIndex,
             IsEnableElementsKindIndex,
             NumOfMembers
@@ -1065,7 +1065,7 @@ public:
 
         static size_t GetBCStubEntriesOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::BCStubEntriesIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::BcStubEntriesIndex)>(isArch32);
         }
 
         static size_t GetRTStubEntriesOffset(bool isArch32)
@@ -1116,7 +1116,7 @@ public:
 
         static size_t GetBCDebuggerStubEntriesOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::BCDebuggerStubEntriesIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::BcDebuggerStubEntriesIndex)>(isArch32);
         }
 
         static size_t GetFrameBaseOffset(bool isArch32)
@@ -1186,12 +1186,12 @@ public:
 
         static size_t GetUnSharedConstpoolsOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::unsharedConstpoolsIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::UnsharedConstpoolsIndex)>(isArch32);
         }
 
         static size_t GetStateAndFlagsOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::stateAndFlagsIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::StateAndFlagsIndex)>(isArch32);
         }
 
         static size_t GetRandomStatePtrOffset(bool isArch32)
