@@ -4445,11 +4445,6 @@ void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleN
         LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
         return;
     }
-    if (!vm->GetJSOptions().WasAOTOutputFileSet() &&
-        !EnableAotListHelper::GetInstance()->IsEnableList(PGOProfilerManager::GetInstance()->GetBundleName())) {
-        LOG_ECMA(INFO) << "Stop load AOT because it's not in enable list";
-        return;
-    }
 
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
