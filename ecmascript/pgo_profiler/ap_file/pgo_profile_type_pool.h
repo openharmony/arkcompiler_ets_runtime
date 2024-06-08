@@ -133,9 +133,9 @@ public:
         Clear();
     }
 
-    bool TryAdd(const ProfileType &profileType, ApEntityId &entryId)
+    void TryAdd(const ProfileType &profileType, ApEntityId &entryId)
     {
-        return pool_->TryAdd(profileType, entryId);
+        pool_->TryAdd(profileType, entryId);
     }
 
     bool GetEntryId(const ProfileType &profileType, ApEntityId &entryId) const
@@ -162,8 +162,12 @@ public:
 
     void Remap(PGOContext &context)
     {
+        auto valueToId_ = pool_->GetValueToId();
         for (auto &entry : pool_->GetPool()) {
+            auto value = entry.second.GetData();
             entry.second.Remap(context);
+            value = entry.second.GetData();
+            valueToId_.emplace(value, entry.first);
         }
     }
 
