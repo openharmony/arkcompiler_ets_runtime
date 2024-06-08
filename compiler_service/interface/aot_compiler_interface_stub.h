@@ -19,8 +19,7 @@
 #include <iremote_stub.h>
 #include "iaot_compiler_interface.h"
 
-namespace OHOS {
-namespace ArkCompiler {
+namespace OHOS::ArkCompiler {
 class AotCompilerInterfaceStub : public IRemoteStub<IAotCompilerInterface> {
 public:
     int32_t OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply,
@@ -35,7 +34,6 @@ private:
     static constexpr int32_t COMMAND_GET_AOT_VERSION = MIN_TRANSACTION_ID + 2;
     static constexpr int32_t COMMAND_NEED_RE_COMPILE = MIN_TRANSACTION_ID + 3;
 };
-} // namespace ArkCompiler
-} // namespace OHOS
+} // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOTCOMPILER_INTERFACE_STUB_H
 

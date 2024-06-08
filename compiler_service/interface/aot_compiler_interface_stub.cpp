@@ -14,13 +14,10 @@
  */
 
 #include "aot_compiler_interface_stub.h"
-#include "hilog/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "hitrace_meter.h"
 
-using OHOS::HiviewDFX::HiLog;
-
-namespace OHOS {
-namespace ArkCompiler {
+namespace OHOS::ArkCompiler {
 int32_t AotCompilerInterfaceStub::OnRemoteRequest(
     uint32_t code,
     MessageParcel& data,
@@ -58,7 +55,7 @@ int32_t AotCompilerInterfaceStub::CommandAOTCompiler(MessageParcel &data,
     std::unordered_map<std::string, std::string> argsMap;
     int32_t argsMapSize = data.ReadInt32();
     if (static_cast<unsigned long>(argsMapSize) > mapMaxSize) {
-        HiLog::Error(LABEL, "The map size exceeds ths security limit!");
+        LOG_SA(ERROR) << "The map size exceeds ths security limit!";
         return ERR_INVALID_DATA;
     }
     for (int32_t i = 0; i < argsMapSize; ++i) {
@@ -69,18 +66,18 @@ int32_t AotCompilerInterfaceStub::CommandAOTCompiler(MessageParcel &data,
     std::vector<int16_t> sigData;
     ErrCode errCode = AotCompiler(argsMap, sigData);
     if (!reply.WriteInt32(errCode)) {
-        HiLog::Error(LABEL, "Write Int32 failed!");
+        LOG_SA(ERROR) << "Write Int32 failed!";
         return ERR_INVALID_VALUE;
     }
     if (SUCCEEDED(errCode)) {
         if (sigData.size() > vectorMaxSize) {
-            HiLog::Error(LABEL, "The vector size exceeds the security limit!");
+            LOG_SA(ERROR) << "The vector size exceeds the security limit!";
             return ERR_INVALID_DATA;
         }
         reply.WriteInt32(sigData.size());
         for (auto it = sigData.begin(); it != sigData.end(); ++it) {
             if (!reply.WriteInt32(*it)) {
-                HiLog::Error(LABEL, "Write sigData array failed!");
+                LOG_SA(ERROR) << "Write sigData array failed!";
                 return ERR_INVALID_DATA;
             }
         }
@@ -92,7 +89,7 @@ int32_t AotCompilerInterfaceStub::CommandStopAOTCompiler(MessageParcel& reply)
 {
     ErrCode errCode = StopAotCompiler();
     if (!reply.WriteInt32(errCode)) {
-        HiLog::Error(LABEL, "Write Int32 failed!");
+        LOG_SA(ERROR) << "Write Int32 failed!";
         return ERR_INVALID_VALUE;
     }
     return ERR_NONE;
@@ -103,7 +100,7 @@ int32_t AotCompilerInterfaceStub::CommandGetAOTVersion(MessageParcel& reply)
     std::string sigData;
     ErrCode errCode = GetAOTVersion(sigData);
     if (!reply.WriteInt32(errCode)) {
-        HiLog::Error(LABEL, "Write Int32 failed!");
+        LOG_SA(ERROR) << "Write Int32 failed!";
         return ERR_INVALID_VALUE;
     }
     if (SUCCEEDED(errCode)) {
@@ -120,7 +117,7 @@ int32_t AotCompilerInterfaceStub::CommandNeedReCompile(MessageParcel& data,
     bool sigData;
     ErrCode errCode = NeedReCompile(regs, sigData);
     if (!reply.WriteInt32(errCode)) {
-        HiLog::Error(LABEL, "Write Int32 failed!");
+        LOG_SA(ERROR) << "Write Int32 failed!";
         return ERR_INVALID_VALUE;
     }
     if (SUCCEEDED(errCode)) {
@@ -129,5 +126,4 @@ int32_t AotCompilerInterfaceStub::CommandNeedReCompile(MessageParcel& data,
     return ERR_NONE;
 }
 
-} // namespace ArkCompiler
-} // namespace OHOS
+} // namespace OHOS::ArkCompiler
