@@ -3368,7 +3368,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_ISFALSE_PREF_IMM8)
 // ------- parse bytecodes about control flow  -------
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM8)
 {
-    uint8_t offset = READ_INST_8_0();
+    int8_t offset = static_cast<int8_t>(READ_INST_8_0());
     size_t pos = offset + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
@@ -3410,7 +3410,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM16)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM32)
 {
-    uint32_t offset = READ_INST_32_0();
+    int32_t offset = static_cast<int32_t>(READ_INST_32_0());
     size_t pos = offset + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
@@ -3477,7 +3477,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JNEZ_IMM16)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JNEZ_IMM32)
 {
-    uint32_t offset = READ_INST_32_0();
+    int32_t offset = static_cast<int32_t>(READ_INST_32_0());
     size_t pos = offset + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
@@ -3554,7 +3554,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JMP_IMM16)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JMP_IMM32)
 {
-    uint32_t offset = READ_INST_32_0();
+    int32_t offset = static_cast<int32_t>(READ_INST_32_0());
     size_t pos = offset + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
