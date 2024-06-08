@@ -56,7 +56,6 @@ void BuiltinsNumberStubBuilder::ParseInt(Variable *result, Label *exit, Label *s
     Label msgIsString(env);
     Label radixIsSpecial(env);
     Label radixIsSpecialInt(env);
-    DebugPrint(glue_, { Int32(222) });
 
     DEFVARIABLE(radix, VariableType::INT32(), Int32(0));
     GateRef msg = GetCallArg0(numArgs_);
