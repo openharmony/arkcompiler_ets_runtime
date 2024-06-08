@@ -123,22 +123,43 @@ std::string JsStackInfo::BuildInlinedMethodTrace(const JSPandaFile *pf, std::map
     return data;
 }
 
-void PrintJSCrashOffset(uintptr_t pc, JSFunction *func)
+void PrintJSCrashOffset(uintptr_t pcOffset, JSFunction *func)
 {
     if (func->GetMachineCode() == JSTaggedValue::Undefined()) {
         return;
     }
     MachineCode *machineCode = MachineCode::Cast(func->GetMachineCode().GetTaggedObject());
     uintptr_t funcAddr = machineCode->GetFuncAddr();
-    uintptr_t offsetAmount = pc - funcAddr;
+    uintptr_t pc = pcOffset + funcAddr;
     LOG_ECMA(ERROR) << "jit : Current pc is : " << pc << ". Current funcAddr is : " << funcAddr <<
-        ". Current crash offset is : " << offsetAmount;
+        ". Current crash offset is : " << pcOffset;
 }
 
-void DumpJitCode([[maybe_unused]] JSThread *thread)
+void JsStackInfo::DumpJitCode(JSThread *thread)
 {
+    JSTaggedType exception = thread->GetException().GetRawData();
+    auto &jitCodeMaps = thread->GetJitCodeMaps();
+    auto jitCode = jitCodeMaps.find(exception);
+    if (jitCode == jitCodeMaps.end()) {
+        return;
+    }
     JsJitDumpElf jitDumpElf;
     jitDumpElf.Init();
+    int64 idx = 0;
+    size_t offset = 0;
+    for (auto it = jitCode->second->begin(); it != jitCode->second->end(); it++) {
+        auto machineCode = it->first;
+        std::string methodName = it->second;
+        char *funcAddr = reinterpret_cast<char *>(machineCode->GetFuncAddr());
+        size_t len = machineCode->GetTextSize();
+        std::vector<uint8> vec(len);
+        if (memmove_s(vec.data(), len, funcAddr, len) != EOK) {
+            LOG_ECMA(ERROR) << "Fail to get machineCode on function addr: " << funcAddr;
+        }
+        jitDumpElf.AppendData(vec);
+        jitDumpElf.AppendSymbolToSymTab(idx++, offset, len, methodName);
+        offset += len;
+    }
     std::string fileName = "jitCode-" + std::to_string(getpid());
     std::string realOutPath;
     std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(ohos::AotCrashInfo::GetSandBoxPath());
@@ -151,7 +172,19 @@ void DumpJitCode([[maybe_unused]] JSThread *thread)
     close(fd);
 }
 
-std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
+void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, JSFunction *func, Method *method)
+{
+    ASSERT(!jsErrorObj.GetTaggedValue().IsUndefined());
+    JSTaggedValue machineCodeTagVal = func->GetMachineCode();
+    MachineCode *machineCode = MachineCode::Cast(machineCodeTagVal.GetTaggedObject());
+    std::string methodName = method->ParseFunctionName();
+    if (methodName.empty()) {
+        methodName = "anonymous";
+    }
+    thread->SetJitCodeMap(jsErrorObj.GetTaggedValue().GetRawData(), machineCode, methodName);
+}
+
+std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj)
 {
     std::string data;
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
@@ -180,7 +213,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
             } else {
                 pcOffset = it.GetBytecodeOffset();
             }
-            BuildJsStackTraceInfo(thread, method, data, it, pcOffset);
+            data += BuildJsStackTraceInfo(thread, method, it, pcOffset, jsErrorObj);
         } else if (needNative) {
             auto addr = method->GetNativePointer();
             std::stringstream strm;
@@ -198,24 +231,24 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
     return data;
 }
 
-void JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method, std::string &data,
-                                        FrameIterator &it, uint32_t pcOffset)
+std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method, FrameIterator &it,
+                                               uint32_t pcOffset, const JSHandle<JSObject> &jsErrorObj)
 {
     const JSPandaFile *pf = method->GetJSPandaFile();
     std::map<uint32_t, uint32_t> methodOffsets = it.GetInlinedMethodInfo();
     FrameType frameType = it.GetFrameType();
     if (IsFastJitFunctionFrame(frameType)) {
         JSFunction *func = static_cast<JSFunction*>(it.GetFunction().GetTaggedObject());
-        auto frame = it.GetFrame<FASTJITFunctionFrame>();
-        uintptr_t pc = frame->GetReturnAddr();
-        PrintJSCrashOffset(pc, func);
-        DumpJitCode(thread);
+        PrintJSCrashOffset(it.GetOptimizedReturnAddr(), func);
+        if (!jsErrorObj.GetTaggedValue().IsUndefined()) {
+            AssembleJitCodeMap(thread, jsErrorObj, func, method);
+        }
     }
-    data += BuildInlinedMethodTrace(pf, methodOffsets, frameType);
-    data += BuildMethodTrace(method, pcOffset, frameType, thread->GetEnableStackSourceFile());
+    return BuildInlinedMethodTrace(pf, methodOffsets, frameType) +
+           BuildMethodTrace(method, pcOffset, frameType, thread->GetEnableStackSourceFile());
 }
 
-void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc)
+void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
 {
     if (JsStackInfo::loader != nullptr && !JsStackInfo::loader->IsEnableAOT() &&
         JsStackInfo::options != nullptr && !JsStackInfo::options->IsEnableJIT()) {
@@ -231,6 +264,9 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc)
     }
     ohos::AotRuntimeInfo aotRuntimeInfo;
     aotRuntimeInfo.BuildCrashRuntimeInfo(ohos::AotRuntimeInfo::GetRuntimeInfoTypeStr(type));
+    if (isJsCrash) {
+        DumpJitCode(thread);
+    }
 }
 
 std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, bool currentStack)

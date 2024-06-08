@@ -134,6 +134,12 @@ public:
         vm->Iterate(visitor, rangeVisitor);
         vm->GetAssociatedJSThread()->Iterate(visitor, rangeVisitor, derivedVisitor);
     }
+
+    static inline void VisitJitCodeMap(EcmaVM *vm, const JitCodeMapVisitor &updater)
+    {
+        vm->GetJSThread()->IterateJitCodeMap(updater);
+    }
+
     template<VisitType visitType>
     static inline void VisitObjectBody(TaggedObject *object, JSHClass *klass, const EcmaObjectRangeVisitor &visitor)
     {

@@ -45,6 +45,8 @@ public:
     void ProcessOldToNew(uint32_t threadId, Region *region);  // for SemiGC
     void ProcessSnapshotRSet(uint32_t threadId);              // for SemiGC
     void ProcessSnapshotRSetNoMarkStack(uint32_t threadId);
+    void MarkJitCodeMap(uint32_t threadId);
+    void HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeMap *> &jitCodeMap);
 
     virtual void ProcessMarkStack([[maybe_unused]] uint32_t threadId)
     {

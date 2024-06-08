@@ -52,6 +52,11 @@ struct MachineCodeDesc {
     size_t instructionsSize {0};
 #endif
 };
+
+class MachineCode;
+using JitCodeMap = std::map<MachineCode*, std::string>;
+using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeMap*>&)>;
+
 // BaselineCode object layout:
 //                      +-----------------------------------+
 //                      |              MarkWord             | 8 bytes

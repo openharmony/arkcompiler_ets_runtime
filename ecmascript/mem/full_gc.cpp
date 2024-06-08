@@ -112,6 +112,8 @@ void FullGC::Mark()
     heap_->GetCompressGCMarker()->MarkRoots(MAIN_THREAD_INDEX);
     heap_->GetCompressGCMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningTaskFinished();
+    // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
+    heap_->GetCompressGCMarker()->MarkJitCodeMap(MAIN_THREAD_INDEX);
 }
 
 void FullGC::Sweep()
