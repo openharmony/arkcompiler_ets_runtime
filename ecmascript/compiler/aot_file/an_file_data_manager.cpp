@@ -66,7 +66,8 @@ void AnFileDataManager::SafeDestroyAnData(const std::string &fileName)
     info->Destroy();
 }
 
-bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type)
+bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type, [[maybe_unused]] std::function<bool
+    (std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
 {
     WriteLockHolder lock(lock_);
     if (type == Type::STUB) {
@@ -79,7 +80,11 @@ bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type)
         if (aotFileInfo != nullptr) {
             return true;
         }
+#if defined(ANDROID_PLATFORM)
+        return UnsafeLoadFromAOT(fileName, cb);
+#else
         return UnsafeLoadFromAOT(fileName);
+#endif
     }
 }
 
@@ -118,6 +123,14 @@ void AnFileDataManager::Dump() const
     }
 }
 
+bool AnFileDataManager::UnsafeLoadFromAOTInternal(const std::string &fileName, std::shared_ptr<AnFileInfo> &info)
+{
+    std::string anBasename = JSFilePath::GetBaseName(fileName);
+    anFileNameToIndexMap_.insert({anBasename, loadedAn_.size()});
+    loadedAn_.emplace_back(info);
+    return true;
+}
+
 bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName)
 {
     // note: This method is not thread-safe
@@ -126,11 +139,22 @@ bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName)
     if (!info->Load(fileName)) {
         return false;
     }
-    std::string anBasename = JSFilePath::GetBaseName(fileName);
-    anFileNameToIndexMap_.insert({anBasename, loadedAn_.size()});
-    loadedAn_.emplace_back(info);
-    return true;
+    return UnsafeLoadFromAOTInternal(fileName, info);
 }
+
+#if defined(ANDROID_PLATFORM)
+bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, std::function<bool
+    (std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
+{
+    // note: This method is not thread-safe
+    // need to ensure that the instance of AnFileDataManager has been locked before use
+    std::shared_ptr<AnFileInfo> info = std::make_shared<AnFileInfo>(AnFileInfo());
+    if (!info->Load(fileName, cb)) {
+        return false;
+    }
+    return UnsafeLoadFromAOTInternal(fileName, info);
+}
+#endif
 
 uint32_t AnFileDataManager::UnSafeGetFileInfoIndex(const std::string &fileName)
 {

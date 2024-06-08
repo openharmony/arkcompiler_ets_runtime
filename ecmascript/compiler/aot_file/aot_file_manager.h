@@ -191,6 +191,10 @@ public:
     static constexpr char FILE_EXTENSION_AI[] = ".ai";
     static constexpr uint32_t STUB_FILE_INDEX = 1;
 
+#if defined(ANDROID_PLATFORM)
+    static void SetJsAotReader(JsAotReaderCallback cb);
+    static JsAotReaderCallback GetJsAotReader();
+#endif
     void LoadStubFile(const std::string &fileName);
     static bool LoadAnFile(const std::string &fileName);
     static AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr);
@@ -241,6 +245,9 @@ private:
     ObjectFactory *factory_ {nullptr};
     AIDatum aiDatum_ {};
     kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
+#if defined(ANDROID_PLATFORM)
+    static JsAotReaderCallback jsAotReader_;
+#endif
 
     friend class AnFileInfo;
     friend class StubFileInfo;
