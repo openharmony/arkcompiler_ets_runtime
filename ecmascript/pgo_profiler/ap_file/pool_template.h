@@ -39,29 +39,31 @@ public:
     using GetSectionCb = std::function<SectionInfo *(PGOProfilerHeader const *header)>;
 
     PoolTemplate(std::string poolName, uint32_t reservedCount)
-        : poolName_(std::move(poolName)), RESERVED_COUNT(reservedCount) {};
+        : poolName_(std::move(poolName)), reservedCount_(reservedCount) {};
 
     ~PoolTemplate() override
     {
         Clear();
     }
 
-    bool TryAdd(const V &value, ApEntityId &entryId)
+    void TryAdd(const V &value, ApEntityId &entryId)
     {
-        for (auto &entry : pool_) {
-            if (entry.second.GetData() == value) {
-                entryId = entry.second.GetEntryId();
-                return true;
-            }
+        auto it = valueToId_.find(value);
+        if (it != valueToId_.end()) {
+            entryId = it->second;
+            return;
         }
 
-        entryId = ApEntityId(IsReserved(value) ? (++reservedUsed_, GetReservedId(value))
-                                               : RESERVED_COUNT + pool_.size() - reservedUsed_);
+        if (IsReserved(value)) {
+            entryId = ApEntityId((++reservedUsed_, GetReservedId(value)));
+        } else {
+            entryId = ApEntityId(reservedCount_ + valueToId_.size() - reservedUsed_);
+        }
 
         auto result = pool_.emplace(entryId, value);
         auto &entry = result.first->second;
         entry.SetEntryId(entryId);
-        return true;
+        valueToId_.emplace(value, entryId);
     }
 
     bool GetEntryId(const V &value, ApEntityId &entryId) const
@@ -98,6 +100,7 @@ public:
     void Clear()
     {
         pool_.clear();
+        valueToId_.clear();
         reservedUsed_ = 0;
     }
 
@@ -169,6 +172,7 @@ public:
             auto result = pool_.try_emplace(entryId);
             result.first->second.SetEntryId(entryId);
             result.first->second.ParseFromBinary(context, buffer, header);
+            valueToId_.emplace(result.first->second.GetData(), entryId);
         }
         return 1;
     }
@@ -198,6 +202,11 @@ public:
         return pool_;
     }
 
+    std::unordered_map<V, ApEntityId> &GetValueToId()
+    {
+        return valueToId_;
+    }
+
 private:
     NO_COPY_SEMANTIC(PoolTemplate);
     NO_MOVE_SEMANTIC(PoolTemplate);
@@ -223,7 +232,7 @@ private:
     }
 
     const std::string poolName_;
-    const uint32_t RESERVED_COUNT {};
+    const uint32_t reservedCount_ {0};
     uint32_t reservedUsed_ {0};
 
     IsReservedCb isReservedCb_;
@@ -231,6 +240,7 @@ private:
     SupportCb supportCb_;
     GetSectionCb getSectionCb_;
     std::unordered_map<ApEntityId, Entry> pool_;
+    std::unordered_map<V, ApEntityId> valueToId_;
 };
 }  // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_AP_FILE_POOL_TEMPLATE_H
