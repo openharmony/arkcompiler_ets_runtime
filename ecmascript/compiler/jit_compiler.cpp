@@ -69,7 +69,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
-    isEnableOptInlining_ = false;
+    isEnableOptInlining_ = runtimeOptions.IsEnableAPPJIT() ? false : runtimeOptions.IsEnableOptInlining();
     isEnableOptString_ = runtimeOptions.IsEnableOptString();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
     isEnableOptTrackField_ = runtimeOptions.IsEnableOptTrackField();

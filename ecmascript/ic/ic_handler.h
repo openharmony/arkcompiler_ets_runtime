@@ -413,6 +413,7 @@ public:
                     JSHandle<JSFunction> func(thread, getter);
                     uint32_t methodOffset = Method::Cast(func->GetMethod())->GetMethodId().GetOffset();
                     handler->SetAccessorMethodId(methodOffset);
+                    handler->SetAccessorJSFunction(thread, getter);
                 }
             }
         }
@@ -438,10 +439,11 @@ public:
             }
             AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());
             if (!accessor->IsInternal()) {
-                JSTaggedValue getter = accessor->GetSetter();
-                JSHandle<JSFunction> func(thread, getter);
+                JSTaggedValue setter = accessor->GetSetter();
+                JSHandle<JSFunction> func(thread, setter);
                 handler->SetAccessorMethodId(
                     Method::Cast(func->GetMethod())->GetMethodId().GetOffset());
+                handler->SetAccessorJSFunction(thread, setter);
             }
         }
         // ShareToLocal is prohibited
@@ -458,7 +460,8 @@ public:
 
     ACCESSORS(ProtoCell, PROTO_CELL_OFFSET, HOLDER_OFFSET)
 
-    ACCESSORS(Holder, HOLDER_OFFSET, ACCESSOR_METHOD_ID_OFFSET)
+    ACCESSORS(Holder, HOLDER_OFFSET, ACCESSOR_JSFUNCTION_OFFSET)
+    ACCESSORS(AccessorJSFunction, ACCESSOR_JSFUNCTION_OFFSET, ACCESSOR_METHOD_ID_OFFSET)
 
     ACCESSORS_PRIMITIVE_FIELD(AccessorMethodId, uint32_t, ACCESSOR_METHOD_ID_OFFSET, LAST_OFFSET)
 

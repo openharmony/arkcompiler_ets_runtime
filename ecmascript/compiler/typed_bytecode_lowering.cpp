@@ -1778,6 +1778,9 @@ const JSPandaFile* TypedBytecodeLowering::GetCalleePandaFile(GateRef gate)
     auto profileType = acc_.TryGetPGOType(gate).GetPGOSampleType();
     bool haveProfileType = profileType->IsProfileType() && !profileType->IsProfileTypeNone();
     if (haveProfileType) {
+        if (compilationEnv_->IsJitCompiler()) {
+            return compilationEnv_->GetJSPandaFile();
+        }
         auto abcId = profileType->GetProfileType().GetAbcId();
         CString fileDesc;
         if (!decoder_->GetAbcNameById(abcId, fileDesc)) {

@@ -258,8 +258,7 @@ void ProfilerStubBuilder::ProfileCall(
             {
                 Label change(env);
                 Label resetSlot(env);
-                GateRef method = env->GetBuilder()->GetMethodFromFunction(target);
-                BRANCH(Int64Equal(slotValue, method), &exit, &change);
+                BRANCH(Int64Equal(slotValue, target), &exit, &change);
                 Bind(&change);
                 {
                     BRANCH(Int64Equal(ChangeTaggedPointerToInt64(slotValue), Int64(0)), &exit, &resetSlot);
@@ -279,8 +278,7 @@ void ProfilerStubBuilder::ProfileCall(
             }
             Bind(&updateSlot);
             {
-                GateRef method = env->GetBuilder()->GetMethodFromFunction(target);
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, method);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, target);
                 TryPreDumpInner(glue, func, profileTypeInfo);
                 Jump(&exit);
             }

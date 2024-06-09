@@ -400,8 +400,9 @@ public:
         if (haveProfileType) {
             CString fileDesc = jsPandaFile_->GetNormalizedFileDesc();
             uint32_t methodId = profileType->GetProfileType().GetId();
-            return callMethodFlagMap_->IsAotCompile(fileDesc, methodId) &&
-                callMethodFlagMap_->IsFastCall(fileDesc, methodId);
+            return (callMethodFlagMap_->IsAotCompile(fileDesc, methodId) ||
+                    callMethodFlagMap_->IsJitCompile(fileDesc, methodId)) &&
+                   callMethodFlagMap_->IsFastCall(fileDesc, methodId);
         }
         return false;
     }

@@ -208,7 +208,7 @@ void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException
     }
     RemoveUnreachableRegion();
     if (IsLogEnabled()) {
-        PrintGraph("Update CFG");
+        PrintGraph(std::string("Update CFG [" + methodName_ + "]").c_str());
     }
     BuildCircuit();
 }
@@ -988,7 +988,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
         BuildSubCircuit();
     }
     if (IsLogEnabled()) {
-        PrintGraph("Bytecode2Gate");
+        PrintGraph(std::string("Bytecode2Gate [" + methodName_ + "]").c_str());
         LOG_COMPILER(INFO) << "\033[34m" << "============= "
                            << "After bytecode2circuit lowering ["
                            << methodName_ << "]"

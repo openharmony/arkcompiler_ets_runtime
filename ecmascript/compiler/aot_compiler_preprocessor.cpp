@@ -322,6 +322,19 @@ bool CallMethodFlagMap::IsAotCompile(CString fileDesc, uint32_t methodOffset) co
     return abcIdMethodIdToIsAotCompile_.at(std::pair<CString, uint32_t>(fileDesc, methodOffset));
 }
 
+void CallMethodFlagMap::SetIsJitCompile(CString fileDesc, uint32_t methodOffset, bool isAotCompile)
+{
+    abcIdMethodIdToIsJitCompile_[std::pair<CString, uint32_t>(fileDesc, methodOffset)] = isAotCompile;
+}
+
+bool CallMethodFlagMap::IsJitCompile(CString fileDesc, uint32_t methodOffset) const
+{
+    if (!abcIdMethodIdToIsJitCompile_.count(std::pair<CString, uint32_t>(fileDesc, methodOffset))) {
+        return false;
+    }
+    return abcIdMethodIdToIsJitCompile_.at(std::pair<CString, uint32_t>(fileDesc, methodOffset));
+}
+
 
 bool AotCompilerPreprocessor::FilterOption(const std::map<std::string, std::vector<std::string>> &optionMap,
     const std::string &recordName, const std::string &methodName) const

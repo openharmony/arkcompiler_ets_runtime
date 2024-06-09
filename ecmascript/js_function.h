@@ -241,7 +241,11 @@ public:
     JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;
     JSTaggedValue GetRecordName() const;
-    JSTaggedValue GetProfileTypeInfo() const;
+    JSTaggedValue GetProfileTypeInfo() const
+    {
+        JSTaggedValue raw = GetRawProfileTypeInfo();
+        return ProfileTypeInfoCell::Cast(raw.GetTaggedObject())->GetValue();
+    }
 
     void InitializeForConcurrentFunction(JSThread *thread);
 

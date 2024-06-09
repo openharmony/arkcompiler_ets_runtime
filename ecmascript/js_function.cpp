@@ -912,12 +912,6 @@ JSTaggedValue JSFunction::GetRecordName() const
     return JSTaggedValue::Hole();
 }
 
-JSTaggedValue JSFunction::GetProfileTypeInfo() const
-{
-    JSTaggedValue raw = GetRawProfileTypeInfo();
-    return ProfileTypeInfoCell::Cast(raw.GetTaggedObject())->GetValue();
-}
-
 // Those interface below is discarded
 void JSFunction::InitializeJSFunction(JSThread *thread, [[maybe_unused]] const JSHandle<GlobalEnv> &env,
                                       const JSHandle<JSFunction> &func, FunctionKind kind)

@@ -303,6 +303,19 @@ private:
     }
 };
 
+class ProfileTypeAccessorLockScope {
+public:
+    ProfileTypeAccessorLockScope(JSThread *thread)
+    {
+        if (thread->GetEcmaVM()->IsEnableFastJit() || thread->GetEcmaVM()->IsEnableBaselineJit()) {
+            lockHolder_.emplace(thread->GetProfileTypeAccessorLock());
+        }
+    }
+
+private:
+    std::optional<LockHolder> lockHolder_;
+};
+
 class ProfileTypeAccessor {
 public:
     static constexpr size_t CACHE_MAX_LEN = 8;
@@ -325,6 +338,8 @@ public:
     ICState GetICState() const;
     static std::string ICStateToString(ICState state);
     void AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
+    void AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler, uint32_t index,
+                           JSTaggedValue profileData) const;
     void AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
     void AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
                            JSHandle<JSTaggedValue> handler) const;

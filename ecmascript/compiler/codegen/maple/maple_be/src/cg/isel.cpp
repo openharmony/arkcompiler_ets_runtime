@@ -1129,9 +1129,15 @@ void MPISel::SelectCvtInt2Float(RegOperand &resOpnd, Operand &opnd0, PrimType to
         default:
             CHECK_FATAL(false, "NYI");
     }
-    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, fromType);
+    RegOperand *regOpnd0 = nullptr;
+    if (!isSigned && fromSize <= k32BitSize && toType == PTY_f64) {
+        regOpnd0 = &cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, kRegTyInt);
+        SelectIntCvt(*regOpnd0, opnd0, maple::PTY_i64, fromType);
+    } else {
+        regOpnd0 = &SelectCopy2Reg(opnd0, fromType);
+    }
     Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, InsnDesc::GetAbstractId(mOp));
-    (void)insn.AddOpndChain(resOpnd).AddOpndChain(regOpnd0);
+    (void)insn.AddOpndChain(resOpnd).AddOpndChain(*regOpnd0);
     cgFunc->GetCurBB()->AppendInsn(insn);
 }
 

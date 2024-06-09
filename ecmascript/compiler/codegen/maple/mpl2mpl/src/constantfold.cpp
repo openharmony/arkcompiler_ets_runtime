@@ -1178,7 +1178,8 @@ MIRConst *ConstantFold::FoldFloorMIRConst(const MIRConst &cst, PrimType fromType
             return nullptr;
         }
         doubleValue = CalIntValueFromFloatValue(doubleValue, resultType);
-        return GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(doubleValue), resultType);
+        // gcc/clang have bugs convert double to unsigned long, must convert to signed long first;
+        return GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<int64>(doubleValue), resultType);
     }
 }
 

@@ -385,9 +385,6 @@ public:
                        const panda_file::File::Header *header, ApEntityId abcId, const Callback &cb)
     {
         SetCurrentCompilationFile();
-        for (auto mi : bytecodeInfo_.GetMethodList()) {
-            bytecodeInfo_.AddSkippedMethod(mi.first);
-        }
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
 
         auto &methodList = bytecodeInfo_.GetMethodList();

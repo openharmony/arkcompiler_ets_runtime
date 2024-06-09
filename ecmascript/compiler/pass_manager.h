@@ -133,7 +133,7 @@ public:
     explicit PassManager(CompilationEnv *env, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions,
-        const CallMethodFlagMap *callMethodFlagMap, const CVector<AbcFileInfo> &fileInfos, std::string optBCRange)
+        CallMethodFlagMap *callMethodFlagMap, const CVector<AbcFileInfo> &fileInfos, std::string optBCRange)
         : compilationEnv_(env), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
           profilerDecoder_(profilerDecoder), passOptions_(passOptions),
@@ -158,7 +158,7 @@ protected:
     size_t maxMethodsInModule_ {0};
     PGOProfilerDecoder &profilerDecoder_;
     PassOptions *passOptions_ {nullptr};
-    const CallMethodFlagMap *callMethodFlagMap_ {nullptr};
+    CallMethodFlagMap *callMethodFlagMap_ {nullptr};
     const CVector<AbcFileInfo> &fileInfos_;
     std::string optBCRange_ {};
     bool enableJITLog_ {false};

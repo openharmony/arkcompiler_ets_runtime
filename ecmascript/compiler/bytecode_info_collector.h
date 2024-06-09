@@ -586,6 +586,7 @@ public:
         }
     }
 
+    void ProcessMethod(MethodLiteral *methodLiteral);
 private:
     inline size_t GetMethodInfoID()
     {
@@ -593,7 +594,7 @@ private:
     }
 
     void ProcessClasses();
-    void ProcessMethod();
+    void ProcessCurrMethod();
     void RearrangeInnerMethods();
     void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
         MethodLiteral *method, const CString &recordName, uint32_t methodOffset,
@@ -625,6 +626,7 @@ private:
     size_t methodInfoIndex_ {0};
     std::set<int32_t> classDefBCIndexes_ {};
     Bytecodes bytecodes_;
+    std::set<uint32_t> processedMethod_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H
