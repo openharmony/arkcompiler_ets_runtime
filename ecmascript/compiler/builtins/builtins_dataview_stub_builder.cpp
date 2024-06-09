@@ -52,7 +52,7 @@ void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
             BRANCH(TaggedIsNumber(value), &valueIsValid, slowPath);
             Bind(&valueIsValid);
             GateRef littleEndianHandle; // need to init
-            if (type == DataViewType::UINT8 || type == DataViewType::INT8) {
+            if constexpr (type == DataViewType::UINT8 || type == DataViewType::INT8) {
                 littleEndianHandle = TaggedTrue();
             } else {
                 littleEndianHandle = GetCallArg2(numArgs);
@@ -79,14 +79,14 @@ void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
                         BuiltinsTypedArrayStubBuilder builder(this);
                         GateRef pointer = builder.GetDataPointFromBuffer(buffer);
                         GateRef doubleValue = TaggedGetNumber(value);
-                        if (type == DataViewType::INT32 || type == DataViewType::UINT32) {
+                        if constexpr (type == DataViewType::INT32 || type == DataViewType::UINT32) {
                             SetValueInBufferForInt32(glue, pointer, bufferIndex,
                                                      DoubleToInt(glue, doubleValue), *isLittleEndian);
-                        } else if (type == DataViewType::FLOAT32) {
+                        } else if constexpr (type == DataViewType::FLOAT32) {
                             GateRef flaotValue = TruncDoubleToFloat32(doubleValue);
                             SetValueInBufferForInt32(glue, pointer, bufferIndex,
                                                      CastFloat32ToInt32(flaotValue), *isLittleEndian);
-                        } else if (type == DataViewType::FLOAT64) {
+                        } else if constexpr (type == DataViewType::FLOAT64) {
                             GateRef int64Value = CastDoubleToInt64(doubleValue);
                             SetValueInBufferForInt64(glue, pointer, bufferIndex,
                                                      int64Value, *isLittleEndian);

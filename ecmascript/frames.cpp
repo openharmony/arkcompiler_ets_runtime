@@ -381,7 +381,7 @@ void FrameIterator::Advance()
             break;
         }
         default: {
-            if (GCVisit == GCVisitedFlag::HYBRID_STACK) {
+            if constexpr (GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 current_ = nullptr;
                 break;
             }

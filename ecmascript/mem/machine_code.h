@@ -184,7 +184,7 @@ public:
     template <VisitType visitType>
     void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)
     {
-        if (visitType == VisitType::ALL_VISIT) {
+        if constexpr (visitType == VisitType::ALL_VISIT) {
             visitor(this, ObjectSlot(ToUintPtr(this)),
                 ObjectSlot(ToUintPtr(this) + GetMachineCodeObjectSize()), VisitObjectArea::RAW_DATA);
         }
