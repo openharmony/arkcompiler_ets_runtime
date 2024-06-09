@@ -378,6 +378,10 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
         }
     }
 }
+void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
+{
+    jitCodeMapVisitor(jitCodeMaps_);
+}
 
 void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
 {
@@ -481,6 +485,27 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKi
         globalStorage_->IterateWeakUsageGlobal(callBack);
     } else {
         globalDebugStorage_->IterateWeakUsageGlobal(callBack);
+    }
+}
+
+void JSThread::UpdateJitCodeMapReference(const WeakRootVisitor &visitor)
+{
+    auto it = jitCodeMaps_.begin();
+    while (it != jitCodeMaps_.end()) {
+        auto obj = reinterpret_cast<TaggedObject *>(it->first);
+        auto fwd = visitor(obj);
+        if (fwd == nullptr) {
+            // ForwardAddress should be null because death jsError objects in jitCodeMaps_ have been clear in markPhase.
+            // If concurrent copy feature is enabled in the future, jsError with null ForwardAddress should be treated
+            // as alive. (Because it should be add to map after mark finish.)
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        } else if (fwd != obj) {
+            jitCodeMaps_.emplace(JSTaggedValue(fwd).GetRawData(), it->second);
+            it = jitCodeMaps_.erase(it);
+        } else {
+            ++it;
+        }
     }
 }
 

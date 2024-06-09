@@ -2995,7 +2995,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     }
     JSTaggedValue result = JSFunction::Call(info);
     if (thread->HasPendingException()) {
-        ecmascript::JsStackInfo::BuildCrashInfo(true);
+        ecmascript::JsStackInfo::BuildCrashInfo(thread);
     }
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
@@ -4506,7 +4506,7 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
     EcmaContext::MountContext(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
@@ -4526,7 +4526,7 @@ bool JSNApi::ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileNam
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile(
         thread, fileName.c_str(), entry, needUpdate, executeFromJob)) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute absolute path ark file '" << fileName
@@ -4545,7 +4545,7 @@ bool JSNApi::Execute(const EcmaVM *vm, const std::string &fileName, const std::s
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(
         thread, fileName.c_str(), entry, needUpdate, executeFromJob)) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
@@ -4564,7 +4564,7 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str(), needUpdate)) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
@@ -4583,7 +4583,7 @@ int JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundl
         moduleName.c_str(), ohmurl.c_str(), isSingletonPattern);
     if (!result) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Execute with singleton-pattern flag failed with bundle name is'" << bundleName
@@ -4611,7 +4611,7 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, data, size, filename.c_str(), needUpdate)) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
@@ -4629,7 +4629,7 @@ bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::s
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBufferSecure(thread, data, size, entry, filename.c_str(),
                                                                   needUpdate)) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
@@ -4648,7 +4648,7 @@ bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, 
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, data, size, filename.c_str(),
                                                                     needUpdate)) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
@@ -4750,9 +4750,6 @@ void JSNApi::ExecutePendingJob(const EcmaVM *vm)
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     EcmaVM::ConstCast(vm)->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
-    if (thread->HasPendingException()) {
-        ecmascript::JsStackInfo::BuildCrashInfo(true);
-    }
 }
 
 uintptr_t JSNApi::GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
@@ -4993,7 +4990,7 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, ENTRY_POINTER, file.c_str())) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
         }
         std::cerr << "Cannot execute panda file from memory" << std::endl;
         return false;
@@ -5239,7 +5236,7 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
         // need get moduleName from stack
         std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(true);
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
             return JSValueRef::Undefined(vm);
         }

@@ -198,7 +198,7 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
     }
 
     std::string stack;
-    JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread, stack);
+    JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread, stack, nativeInstanceObj);
     JSHandle<JSTaggedValue> stackkey = globalConst->GetHandledStackString();
     PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStack), true, false, true);
     [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread, nativeInstanceObj, stackkey, stackDesc);
@@ -235,9 +235,10 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
     return thread->GlobalConstants()->GetHandledUndefined();
 }
 
-JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, std::string &stack)
+JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, std::string &stack,
+                                                      const JSHandle<JSObject> &jsErrorObj)
 {
-    std::string data = JsStackInfo::BuildJsStackTrace(thread, false);
+    std::string data = JsStackInfo::BuildJsStackTrace(thread, false, jsErrorObj);
     if (data.size() > MAX_ERROR_SIZE) {
         // find last line break from 0 to MAX_ERROR_SIZE
         size_t pos = data.rfind('\n', MAX_ERROR_SIZE);

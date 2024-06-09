@@ -82,6 +82,8 @@ void ConcurrentMarker::ReMark()
     nonMovableMarker->MarkRoots(MAIN_THREAD_INDEX);
     nonMovableMarker->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningTaskFinished();
+    // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
+    nonMovableMarker->MarkJitCodeMap(MAIN_THREAD_INDEX);
 }
 
 void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep

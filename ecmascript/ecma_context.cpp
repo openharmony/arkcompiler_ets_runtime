@@ -805,7 +805,7 @@ bool EcmaContext::ExecutePromisePendingJob()
         isProcessingPendingJob_ = true;
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
         if (thread_->HasPendingException()) {
-            JsStackInfo::BuildCrashInfo(true);
+            JsStackInfo::BuildCrashInfo(thread_);
         }
         isProcessingPendingJob_ = false;
         return true;
