@@ -236,7 +236,7 @@ void SharedModuleManager::InsertInSModuleManager(JSThread *thread, JSHandle<JSTa
 {
     RuntimeLockHolder locker(thread, mutex_);
     JSHandle<JSTaggedValue> module = JSHandle<JSTaggedValue>::Cast(moduleRecord);
-    CString recordName = ConvertToString(requireModule.GetTaggedValue());
+    CString recordName = ModulePathHelper::Utf8ConvertToString(requireModule.GetTaggedValue());
     if (!SearchInSModuleManagerUnsafe(thread, recordName)) {
         JSHandle<NameDictionary> handleDict(thread, resolvedSharedModules_);
         resolvedSharedModules_ =
@@ -266,7 +266,8 @@ void SharedModuleManager::TransferSModule(JSThread *thread)
 StateVisit &SharedModuleManager::findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module)
 {
     RuntimeLockHolder locker(thread, mutex_);
-    CString moduleName = ConvertToString(SourceTextModule::GetModuleName(module.GetTaggedValue()));
+    CString moduleName =
+        ModulePathHelper::Utf8ConvertToString(SourceTextModule::GetModuleName(module.GetTaggedValue()));
     auto it = sharedModuleMutex_.find(moduleName);
     if (it == sharedModuleMutex_.end()) {
         LOG_ECMA(FATAL) << " Get shared module mutex failed";

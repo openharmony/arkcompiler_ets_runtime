@@ -333,7 +333,8 @@ bool ModuleManager::IsLocalModuleLoaded(JSTaggedValue referencing)
 bool ModuleManager::IsSharedModuleLoaded(JSTaggedValue referencing)
 {
     SharedModuleManager* sharedModuleManager = SharedModuleManager::GetInstance();
-    return sharedModuleManager->SearchInSModuleManager(vm_->GetJSThread(), ConvertToString(referencing));
+    return sharedModuleManager->SearchInSModuleManager(vm_->GetJSThread(),
+        ModulePathHelper::Utf8ConvertToString(referencing));
 }
 
 bool ModuleManager::IsModuleLoaded(JSTaggedValue referencing)
@@ -342,7 +343,8 @@ bool ModuleManager::IsModuleLoaded(JSTaggedValue referencing)
         return true;
     }
     SharedModuleManager* sharedModuleManager = SharedModuleManager::GetInstance();
-    return sharedModuleManager->SearchInSModuleManager(vm_->GetJSThread(), ConvertToString(referencing));
+    return sharedModuleManager->SearchInSModuleManager(vm_->GetJSThread(),
+        ModulePathHelper::Utf8ConvertToString(referencing));
 }
 
 bool ModuleManager::IsEvaluatedModule(JSTaggedValue referencing)
@@ -362,12 +364,13 @@ bool ModuleManager::IsEvaluatedModule(JSTaggedValue referencing)
 }
 
 JSHandle<JSTaggedValue> ModuleManager::ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
-    const CString &recordName, bool executeFromJob)
+    const JSHandle<EcmaString> recordName, bool executeFromJob)
 {
     // In static parse Phase, due to lack of some parameters, we will create a empty SourceTextModule which will
     // be marked as INSTANTIATED to skip Dfs traversal of this import branch.
+    CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
     if (!vm_->EnableReportModuleResolvingFailure() && (jsPandaFile == nullptr ||
-        (jsPandaFile != nullptr && !jsPandaFile->HasRecord(recordName)))) {
+        (jsPandaFile != nullptr && !jsPandaFile->HasRecord(recordNameStr)))) {
         return CreateEmptyModule();
     } else {
         return ResolveModuleWithMerge(thread, jsPandaFile, recordName, executeFromJob);
@@ -383,22 +386,23 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const 
     if (entry != -1) {
         return JSHandle<JSTaggedValue>(vm_->GetJSThread(), dict->GetValue(entry));
     }
-    return CommonResolveImportedModuleWithMerge(moduleFileName, recordName, executeFromJob);
+    return CommonResolveImportedModuleWithMerge(moduleFileName, recordNameHandle, executeFromJob);
 }
 
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMergeForHotReload(const CString &moduleFileName,
     const CString &recordName, bool executeFromJob)
 {
-    return CommonResolveImportedModuleWithMerge(moduleFileName, recordName, executeFromJob);
+    JSHandle<EcmaString> recordNameHandle = vm_->GetFactory()->NewFromUtf8(recordName);
+    return CommonResolveImportedModuleWithMerge(moduleFileName, recordNameHandle, executeFromJob);
 }
 
 JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
-    const CString &recordName, bool executeFromJob)
+    const JSHandle<EcmaString> recordName, bool executeFromJob)
 {
     JSThread *thread = vm_->GetJSThread();
-
+    CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
     std::shared_ptr<JSPandaFile> jsPandaFile = ModulePathHelper::SkipDefaultBundleFile(thread, moduleFileName) ?
-        nullptr : JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
+        nullptr : JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordNameStr, false);
     if (jsPandaFile == nullptr) {
         // In Aot Module Instantiate, we miss some runtime parameters from framework like bundleName or moduleName
         // which may cause wrong recordName parsing and we also can't load files not in this app hap. But in static
@@ -411,8 +415,7 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
         jsPandaFile.get(), recordName, executeFromJob);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
-    JSHandle<EcmaString> recordNameHandle= vm_->GetFactory()->NewFromUtf8(recordName);
-    resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordNameHandle),
+    resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordName),
         moduleRecord, PropertyAttributes::Default()).GetTaggedValue();
 
     return moduleRecord;
@@ -511,46 +514,43 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
     return moduleRecord;
 }
 
-JSHandle<JSTaggedValue> ModuleManager::ResolveNativeModule(const CString &moduleRequestName,
+JSHandle<JSTaggedValue> ModuleManager::ResolveNativeModule(const JSHandle<JSTaggedValue> moduleRequest,
     const CString &baseFileName, ModuleTypes moduleType)
 {
-    ObjectFactory *factory = vm_->GetFactory();
     JSThread *thread = vm_->GetJSThread();
-
-    JSHandle<JSTaggedValue> referencingModule(factory->NewFromUtf8(moduleRequestName));
+    CString moduleRequestName = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
     JSHandle<JSTaggedValue> moduleRecord = ModuleDataExtractor::ParseNativeModule(thread,
         moduleRequestName, baseFileName, moduleType);
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
-    resolvedModules_ = NameDictionary::Put(thread, dict, referencingModule, moduleRecord,
+    resolvedModules_ = NameDictionary::Put(thread, dict, moduleRequest, moduleRecord,
         PropertyAttributes::Default()).GetTaggedValue();
     return moduleRecord;
 }
 
 JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
-    JSThread *thread, const JSPandaFile *jsPandaFile, const CString &recordName, bool executeFromJob)
+    JSThread *thread, const JSPandaFile *jsPandaFile, const JSHandle<EcmaString> recordName, bool executeFromJob)
 {
-    ObjectFactory *factory = vm_->GetFactory();
     CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
     JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
+    CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
     JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordNameStr, recordInfo);
     if (!hasRecord) {
         JSHandle<JSTaggedValue> exp(thread, JSTaggedValue::Exception());
-        THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, recordName, moduleFileName, exp);
+        THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, recordNameStr, moduleFileName, exp);
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordName, moduleFileName);
+        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordNameStr, moduleFileName);
     } else if (jsPandaFile->IsJson(recordInfo)) {
-        moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName, recordName);
+        moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName, recordNameStr);
     } else {
         ASSERT(jsPandaFile->IsCjs(recordInfo));
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     }
 
-    JSHandle<JSTaggedValue> recordNameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recordName));
-    JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordNameHandle);
+    JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordName);
     ModuleDeregister::InitForDeregisterModule(moduleRecord, executeFromJob);
     return moduleRecord;
 }
@@ -678,12 +678,13 @@ CString ModuleManager::GetRecordName(JSTaggedValue module)
 {
     CString entry = "";
     if (module.IsString()) {
-        entry = ConvertToString(module);
+        entry = ModulePathHelper::Utf8ConvertToString(module);
     }
     if (module.IsSourceTextModule()) {
         SourceTextModule *sourceTextModule = SourceTextModule::Cast(module.GetTaggedObject());
-        if (sourceTextModule->GetEcmaModuleRecordName().IsString()) {
-            entry = ConvertToString(sourceTextModule->GetEcmaModuleRecordName());
+        JSTaggedValue recordName = sourceTextModule->GetEcmaModuleRecordName();
+        if (recordName.IsString()) {
+            entry = ModulePathHelper::Utf8ConvertToString(recordName);
         }
     }
     return entry;
@@ -758,14 +759,14 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
         JSHandle<SourceTextModule> moduleRecord = HostGetImportedModule(record.GetTaggedValue());
         requiredModule.Update(moduleRecord);
     } else {
-        CString requestPath = ConvertToString(record.GetTaggedValue());
-        CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
-        auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
-        JSHandle<JSTaggedValue> nativeModuleHandle = ResolveNativeModule(requestPath, "", moduleType);
+        CString entryPoint = PathHelper::GetStrippedModuleName(recordName.c_str());
+        auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(recordName.c_str());
+        JSHandle<JSTaggedValue> nativeModuleHandle =
+            ResolveNativeModule(JSHandle<JSTaggedValue>::Cast(record), "", moduleType);
         JSHandle<SourceTextModule> nativeModule =
             JSHandle<SourceTextModule>::Cast(nativeModuleHandle);
         if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleType)) {
-            LOG_FULL(ERROR) << "loading native module " << requestPath << " failed";
+            LOG_FULL(ERROR) << "loading native module " << recordName << " failed";
         }
         nativeModule->SetStatus(ModuleStatus::EVALUATED);
         nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);

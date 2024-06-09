@@ -1043,4 +1043,10 @@ CString ModulePathHelper::GetBundleNameWithRecordName(EcmaVM *vm, const CString 
     }
     return bundleName;
 }
+
+// this function convert for ESModule name string(Utf8)
+CString ModulePathHelper::Utf8ConvertToString(JSTaggedValue str)
+{
+    return EcmaStringAccessor(str).Utf8ConvertToString();
+}
 }  // namespace panda::ecmascript
