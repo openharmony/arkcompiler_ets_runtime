@@ -29,16 +29,12 @@
 #include "aot_compiler_constants.h"
 #include "aot_compiler_error_utils.h"
 #include "aot_compiler_service.h"
-#include "hilog/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "hitrace_meter.h"
 #include "local_code_sign_kit.h"
 #include "system_ability_definition.h"
 
 namespace OHOS::ArkCompiler {
-namespace {
-constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD001800, "aot_compiler_service"};
-} // namespace
-
 AotCompilerImpl& AotCompilerImpl::GetInstance()
 {
     static AotCompilerImpl aotCompiler;
@@ -54,7 +50,7 @@ inline int32_t AotCompilerImpl::FindArgsIdxToInteger(const std::unordered_map<st
     size_t sz;
     bundleID = static_cast<int32_t>(std::stoi(argsMap.at(keyName), &sz));
     if (sz < static_cast<size_t>(argsMap.at(keyName).size())) {
-        HiviewDFX::HiLog::Error(LABEL, "trigger exception as converting string to integer");
+        LOG_SA(ERROR) << "trigger exception as converting string to integer";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
     return ERR_OK;
@@ -73,7 +69,7 @@ inline int32_t AotCompilerImpl::FindArgsIdxToString(const std::unordered_map<std
 int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap)
 {
     for (const auto &arg : argsMap) {
-        HiviewDFX::HiLog::Debug(LABEL, "%{public}s: %{public}s", arg.first.c_str(), arg.second.c_str());
+        LOG_SA(DEBUG) << arg.first << ": " << arg.second;
     }
     std::string abcPath;
     if ((FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_UID, hapArgs.bundleUid) != ERR_OK)   ||
@@ -81,6 +77,7 @@ int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::
         (FindArgsIdxToString(argsMap, ArgsIdx::AN_FILE_NAME, hapArgs.fileName) != ERR_OK)   ||
         (FindArgsIdxToString(argsMap, ArgsIdx::APP_SIGNATURE, hapArgs.signature) != ERR_OK) ||
         (FindArgsIdxToString(argsMap, ArgsIdx::ABC_PATH, abcPath) != ERR_OK)) {
+        LOG_SA(ERROR) << "aot compiler Args parsing error";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
     hapArgs.argVector.clear();
@@ -97,16 +94,16 @@ int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::
 void AotCompilerImpl::DropCapabilities(const int32_t &bundleUid, const int32_t &bundleGid) const
 {
     if (setuid(bundleUid)) {
-        HiviewDFX::HiLog::Error(LABEL, "dropCapabilities setuid failed : %{public}s", strerror(errno));
+        LOG_SA(ERROR) << "dropCapabilities setuid failed : " << strerror(errno);
         exit(-1);
     }
     if (setgid(bundleGid)) {
-        HiviewDFX::HiLog::Error(LABEL, "dropCapabilities setgid failed : %{public}s", strerror(errno));
+        LOG_SA(ERROR) << "dropCapabilities setgid failed : " << strerror(errno);
         exit(-1);
     }
     struct __user_cap_header_struct capHeader;
     if (memset_s(&capHeader, sizeof(capHeader), 0, sizeof(capHeader)) != EOK) {
-        HiviewDFX::HiLog::Error(LABEL, "memset_s capHeader failed : %{public}s", strerror(errno));
+        LOG_SA(ERROR) << "memset_s capHeader failed : " << strerror(errno);
         exit(-1);
     }
     capHeader.version = _LINUX_CAPABILITY_VERSION_3;
@@ -114,11 +111,11 @@ void AotCompilerImpl::DropCapabilities(const int32_t &bundleUid, const int32_t &
 
     struct __user_cap_data_struct capData[2];
     if (memset_s(&capData, sizeof(capData), 0, sizeof(capData)) != EOK) {
-        HiviewDFX::HiLog::Error(LABEL, "memset_s capData failed : %{public}s", strerror(errno));
+        LOG_SA(ERROR) << "memset_s capData failed : " << strerror(errno);
         exit(-1);
     }
     if (capset(&capHeader, capData) != 0) {
-        HiviewDFX::HiLog::Error(LABEL, "capset failed : %{public}s", strerror(errno));
+        LOG_SA(ERROR) << "capset failed : " << strerror(errno);
         exit(-1);
     }
 }
@@ -131,12 +128,12 @@ void AotCompilerImpl::ExecuteInChildProcess(const std::vector<std::string> &aotV
         argv.emplace_back(arg.c_str());
     }
     argv.emplace_back(nullptr);
-    HiviewDFX::HiLog::Debug(LABEL, "argv size : %{public}zu", argv.size());
+    LOG_SA(DEBUG) << "argv size : " << argv.size();
     for (const auto &arg : argv) {
-        HiviewDFX::HiLog::Debug(LABEL, "%{public}s", arg);
+        LOG_SA(DEBUG) << arg;
     }
     execv(argv[0], const_cast<char* const*>(argv.data()));
-    HiviewDFX::HiLog::Error(LABEL, "execv failed : %{public}s", strerror(errno));
+    LOG_SA(ERROR) << "execv failed : " << strerror(errno);
     exit(-1);
 }
 
@@ -149,11 +146,11 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
     int status;
     int waitRet = waitpid(childPid, &status, 0);
     if (waitRet == -1) {
-        HiviewDFX::HiLog::Error(LABEL, "waitpid failed");
+        LOG_SA(ERROR) << "waitpid failed";
         ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else if (WIFEXITED(status)) {
         int exit_status = WEXITSTATUS(status);
-        HiviewDFX::HiLog::Info(LABEL, "child process exited with status: %{public}d", exit_status);
+        LOG_SA(INFO) << "child process exited with status: %{public}d" << exit_status;
         switch (exit_status) {
             case static_cast<int>(ErrOfCompile::COMPILE_OK):
                 ret = ERR_OK; break;
@@ -164,17 +161,17 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
         }
     } else if (WIFSIGNALED(status)) {
         int signal_number = WTERMSIG(status);
-        HiviewDFX::HiLog::Warn(LABEL, "child process terminated by signal: %{public}d", signal_number);
+        LOG_SA(WARN) << "child process terminated by signal: " << signal_number;
         ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else if (WIFSTOPPED(status)) {
         int signal_number = WSTOPSIG(status);
-        HiviewDFX::HiLog::Warn(LABEL, "child process was stopped by signal: %{public}d", signal_number);
+        LOG_SA(WARN) << "child process was stopped by signal: " << signal_number;
         ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else if (WIFCONTINUED(status)) {
-        HiviewDFX::HiLog::Warn(LABEL, "child process was resumed");
+        LOG_SA(WARN) << "child process was resumed";
         ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else {
-        HiviewDFX::HiLog::Warn(LABEL, "unknown");
+        LOG_SA(WARN) << "unknown";
         ret = ERR_AOT_COMPILER_CALL_FAILED;
     }
     {
@@ -190,15 +187,15 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
     if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {
-        HiviewDFX::HiLog::Error(LABEL, "aot compiler arguments error");
+        LOG_SA(ERROR) << "aot compiler arguments error";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
     int32_t ret = ERR_OK;
     std::lock_guard<std::mutex> lock(mutex_);
-    HiviewDFX::HiLog::Debug(LABEL, "begin to fork");
+    LOG_SA(DEBUG) << "begin to fork";
     pid_t pid = fork();
     if (pid == -1) {
-        HiviewDFX::HiLog::Error(LABEL, "fork process failed : %{public}s", strerror(errno));
+        LOG_SA(ERROR) << "fork process failed : " << strerror(errno);
         return ERR_AOT_COMPILER_CALL_FAILED;
     } else if (pid == 0) {
         DropCapabilities(hapArgs.bundleUid, hapArgs.bundleGid);
@@ -214,7 +211,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
 
 int32_t AotCompilerImpl::GetAOTVersion(std::string& sigData)
 {
-    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::GetAOTVersion");
+    LOG_SA(INFO) << "AotCompilerImpl::GetAOTVersion";
     sigData = panda::ecmascript::AOTFileVersion::GetAOTVersion();
 
     return ERR_OK;
@@ -222,7 +219,7 @@ int32_t AotCompilerImpl::GetAOTVersion(std::string& sigData)
 
 int32_t AotCompilerImpl::NeedReCompile(const std::string& args, bool& sigData)
 {
-    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::NeedReCompile");
+    LOG_SA(INFO) << "AotCompilerImpl::NeedReCompile";
     sigData = panda::ecmascript::AOTFileVersion::CheckAOTVersion(args);
     return ERR_OK;
 }
@@ -233,10 +230,10 @@ int32_t AotCompilerImpl::AOTLocalCodeSign(const std::string &fileName, const std
     Security::CodeSign::ByteBuffer sig;
     if (Security::CodeSign::LocalCodeSignKit::SignLocalCode(appSignature, fileName, sig)
                         != CommonErrCode::CS_SUCCESS) {
-        HiviewDFX::HiLog::Error(LABEL, "failed to sign the aot file");
+        LOG_SA(ERROR) << "failed to sign the aot file";
         return ERR_AOT_COMPILER_SIGNATURE_FAILED;
     }
-    HiviewDFX::HiLog::Debug(LABEL, "aot file local sign success");
+    LOG_SA(DEBUG) << "aot file local sign success";
     uint8_t *dataPtr = sig.GetBuffer();
     for (uint32_t i = 0; i < sig.GetSize(); ++i) {
         sigData.emplace_back(static_cast<int16_t>(dataPtr[i]));
@@ -246,22 +243,22 @@ int32_t AotCompilerImpl::AOTLocalCodeSign(const std::string &fileName, const std
 
 int32_t AotCompilerImpl::StopAotCompiler()
 {
-    HiviewDFX::HiLog::Info(LABEL, "begin to stop AOT");
+    LOG_SA(INFO) << "begin to stop AOT";
     std::lock_guard<std::mutex> lock(stateMutex_);
     if (!state_.running) {
-        HiviewDFX::HiLog::Info(LABEL, "AOT not running, return directly");
+        LOG_SA(INFO) << "AOT not running, return directly";
         return ERR_AOT_COMPILER_STOP_FAILED;
     }
     if (state_.childPid <= 0) {
-        HiviewDFX::HiLog::Error(LABEL, "invalid child pid");
+        LOG_SA(ERROR) << "invalid child pid";
         return ERR_AOT_COMPILER_STOP_FAILED;
     }
-    HiviewDFX::HiLog::Info(LABEL, "begin to kill child process : %{public}d", state_.childPid);
+    LOG_SA(INFO) << "begin to kill child process : " << state_.childPid;
     auto result = kill(state_.childPid, SIGKILL);
     if (result != 0) {
-        HiviewDFX::HiLog::Info(LABEL, "kill child process failed: %{public}d", result);
+        LOG_SA(INFO) << "kill child process failed: " << result;
     } else {
-        HiviewDFX::HiLog::Info(LABEL, "kill child process success");
+        LOG_SA(INFO) << "kill child process success";
     }
     ResetState();
     return ERR_OK;
@@ -269,7 +266,7 @@ int32_t AotCompilerImpl::StopAotCompiler()
 
 void AotCompilerImpl::HandlePowerDisconnected()
 {
-    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::HandlePowerDisconnected");
+    LOG_SA(INFO) << "AotCompilerImpl::HandlePowerDisconnected";
     PauseAotCompiler();
     auto task = []() {
         AotCompilerImpl::GetInstance().StopAotCompiler();
@@ -281,13 +278,13 @@ void AotCompilerImpl::HandlePowerDisconnected()
 
 void AotCompilerImpl::PauseAotCompiler()
 {
-    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::PauseAotCompiler");
+    LOG_SA(INFO) << "AotCompilerImpl::PauseAotCompiler";
     allowAotCompiler_ = false;
 }
 
 void AotCompilerImpl::AllowAotCompiler()
 {
-    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::AllowAotCompiler");
+    LOG_SA(INFO) << "AotCompilerImpl::AllowAotCompiler";
     allowAotCompiler_ = true;
 }
 

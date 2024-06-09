@@ -19,8 +19,7 @@
 #include <iremote_proxy.h>
 #include "iaot_compiler_interface.h"
 
-namespace OHOS {
-namespace ArkCompiler {
+namespace OHOS::ArkCompiler {
 class AotCompilerInterfaceProxy : public IRemoteProxy<IAotCompilerInterface> {
 public:
     explicit AotCompilerInterfaceProxy(
@@ -49,7 +48,6 @@ private:
 
     static inline BrokerDelegator<AotCompilerInterfaceProxy> delegator_;
 };
-} // namespace ArkCompiler
-} // namespace OHOS
+} // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOTCOMPILER_INTERFACE_PROXY_H
 

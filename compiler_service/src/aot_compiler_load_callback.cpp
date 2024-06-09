@@ -15,39 +15,35 @@
 
 #include "aot_compiler_load_callback.h"
 #include "aot_compiler_client.h"
-#include "hilog/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "system_ability_definition.h"
 
 namespace OHOS::ArkCompiler {
-namespace {
-constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD001800, "aot_compiler_service"};
-} // namespace
-
 void AotCompilerLoadCallback::OnLoadSystemAbilitySuccess(int32_t systemAbilityId,
                                                          const sptr<IRemoteObject> &remoteObject)
 {
     if (systemAbilityId != AOT_COMPILER_SERVICE_ID) {
-        HiviewDFX::HiLog::Error(LABEL, "system ability id %{public}d mismatch", systemAbilityId);
+        LOG_SA(ERROR) << "system ability id " << systemAbilityId << " mismatch";
         return;
     }
 
     if (remoteObject == nullptr) {
-        HiviewDFX::HiLog::Error(LABEL, "remoteObject is nullptr");
+        LOG_SA(ERROR) << "remoteObject is nullptr";
         return;
     }
 
-    HiviewDFX::HiLog::Debug(LABEL, "load system ability %{public}d succeed", systemAbilityId);
+    LOG_SA(DEBUG) << "load system ability " << systemAbilityId << " succeed";
     AotCompilerClient::GetInstance().OnLoadSystemAbilitySuccess(remoteObject);
 }
 
 void AotCompilerLoadCallback::OnLoadSystemAbilityFail(int32_t systemAbilityId)
 {
     if (systemAbilityId != AOT_COMPILER_SERVICE_ID) {
-        HiviewDFX::HiLog::Error(LABEL, "system ability id %{public}d mismatch", systemAbilityId);
+        LOG_SA(ERROR) << "system ability id " << systemAbilityId << " mismatch";
         return;
     }
 
-    HiviewDFX::HiLog::Debug(LABEL, "load system ability %{public}d failed", systemAbilityId);
+    LOG_SA(DEBUG) << "load system ability " << systemAbilityId << " failed";
     AotCompilerClient::GetInstance().OnLoadSystemAbilityFail();
 }
 } // namespace OHOS::ArkCompiler

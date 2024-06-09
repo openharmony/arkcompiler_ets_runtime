@@ -14,18 +14,10 @@
  */
 
 #include "power_disconnected_listener.h"
-
 #include "aot_compiler_impl.h"
+#include "ecmascript/log_wrapper.h"
 
-#include "hilog/log.h"
-
-namespace OHOS {
-namespace ArkCompiler {
-
-namespace {
-    constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD001800, "aot_compiler_service"};
-}  // namespace
-
+namespace OHOS::ArkCompiler {
 PowerDisconnectedListener::PowerDisconnectedListener(const EventFwk::CommonEventSubscribeInfo &subscribeInfo)
     : EventFwk::CommonEventSubscriber(subscribeInfo)
 {
@@ -33,9 +25,7 @@ PowerDisconnectedListener::PowerDisconnectedListener(const EventFwk::CommonEvent
 
 void PowerDisconnectedListener::OnReceiveEvent(const EventFwk::CommonEventData &data)
 {
-    HiviewDFX::HiLog::Info(LABEL, "PowerDisconnectedListener::OnReceiveEvent");
+    LOG_SA(INFO) << "PowerDisconnectedListener::OnReceiveEvent";
     AotCompilerImpl::GetInstance().HandlePowerDisconnected();
 }
-    
-}  // namespace ArkCompiler
-}  // namespace OHOS
+}  // namespace OHOS::ArkCompiler
