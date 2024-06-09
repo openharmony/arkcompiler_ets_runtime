@@ -4315,6 +4315,11 @@ void JSNApi::NotifyLoadModule([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
+void JSNApi::NotifyUIIdle(const EcmaVM *vm, int idleTime)
+{
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerGCForIdle(idleTime);
+}
+
 void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb)
 {
     vm->SetDeviceDisconnectCallback(cb);

@@ -61,6 +61,7 @@ class ThreadLocalAllocationBuffer;
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
 using GCListenerId = std::vector<std::pair<FinishGCListener, void *>>::const_iterator;
+using Clock = std::chrono::high_resolution_clock;
 
 enum class IdleTaskType : uint8_t {
     NO_TASK,
@@ -260,6 +261,18 @@ public:
         return heapAliveSizeAfterGC_;
     }
 
+    bool ShouldCheckIdleGC() const
+    {
+        return lastIdleGCTimestamp_ == Clock::time_point::min() ||
+            std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - lastIdleGCTimestamp_).count() >=
+            IDLE_GC_MIN_INTERVAL;
+    }
+
+    void updateIdleGCTimePoint()
+    {
+        lastIdleGCTimestamp_ = Clock::now();
+    }
+
     // Whether should verify heap during gc.
     bool ShouldVerifyHeap() const
     {
@@ -322,6 +335,7 @@ protected:
     };
 
     static constexpr double TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE = 0.75;
+    static constexpr int IDLE_GC_MIN_INTERVAL = 100; // ms
 
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
@@ -349,6 +363,7 @@ protected:
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
+    Clock::time_point lastIdleGCTimestamp_;
     int32_t recursionDepth_ {0};
 };
 
@@ -947,6 +962,7 @@ public:
      */
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
     bool CheckAndTriggerOldGC(size_t size = 0);
+    void CheckAndTriggerGCForIdle(int idletime);
     bool CheckAndTriggerHintGC();
     TriggerGCType SelectGCType() const;
     /*
@@ -1244,6 +1260,12 @@ public:
         return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
     }
 
+    bool GlobalNativeSizeLargerThanLimitForIdle() const
+    {
+        return GetGlobalNativeSize() >= static_cast<size_t>(globalSpaceNativeLimit_ *
+            IDLE_SPACE_SIZE_LIMIT_RATE);
+    }
+
     void TryTriggerFullMarkByNativeSize();
 
     void TryTriggerFullMarkBySharedSize(size_t size);
@@ -1302,6 +1324,8 @@ private:
     static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
     // Threadshold that HintGC will actually trigger GC.
     static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
+    static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8;
+    static constexpr double IDLE_SHARED_SIZE_LIMIT_RATE = 1.2;
     static constexpr size_t NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT = DEFAULT_SHARED_HEAP_SIZE / 10; // 10 : ten times.
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
