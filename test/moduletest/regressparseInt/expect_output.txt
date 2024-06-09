@@ -15,3 +15,11 @@ true
 true
 true
 InvalidString
+4
+10
+10
+10
+NaN
+10
+123
+291
