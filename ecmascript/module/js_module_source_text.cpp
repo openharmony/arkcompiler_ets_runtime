@@ -1025,7 +1025,7 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
     // 8. Let result be Completion(InnerModuleEvaluation(module, stack, 0)).
     int result = SourceTextModule::InnerModuleEvaluation(thread, module, stack, 0, buffer, size, executeFromJob);
     HandleEvaluateResult(thread, module, capability, stack, result);
-    if (!thread->HasPendingException()) {
+    if (!thread->HasPendingException() && !executeFromJob) {
         job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     // Return capability.[[Promise]].

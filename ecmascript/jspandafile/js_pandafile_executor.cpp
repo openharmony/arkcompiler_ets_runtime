@@ -153,7 +153,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
 
 // The security interface needs to be modified accordingly.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *thread,
-    const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
+    const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate,
+    bool executeFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename;
     CString traceInfo = "JSPandaFileExecutor::ExecuteFromBuffer " + filename;
@@ -184,9 +185,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         bool isBundle = jsPandaFile->IsBundlePack();
-        return CommonExecuteBuffer(thread, isBundle, normalName, entry, buffer, size);
+        return CommonExecuteBuffer(thread, isBundle, normalName, entry, buffer, size, executeFromJob);
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry);
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry, executeFromJob);
 }
 
 // The security interface needs to be modified accordingly.
@@ -248,7 +249,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
 
 // The security interface needs to be modified accordingly.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread *thread,
-    bool isBundle, const CString &filename, const CString &entry, const void *buffer, size_t size)
+    bool isBundle, const CString &filename, const CString &entry, const void *buffer, size_t size, bool executeFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
@@ -257,17 +258,17 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     if (isBundle) {
         moduleRecord.Update(moduleManager->HostResolveImportedModule(buffer, size, filename));
     } else {
-        moduleRecord.Update(moduleManager->HostResolveImportedModuleWithMerge(filename, entry));
+        moduleRecord.Update(moduleManager->HostResolveImportedModuleWithMerge(filename, entry, executeFromJob));
     }
 
-    SourceTextModule::Instantiate(thread, moduleRecord);
+    SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
     if (thread->HasPendingException()) {
         return Unexpected(false);
     }
 
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
-    SourceTextModule::Evaluate(thread, module, buffer, size);
+    SourceTextModule::Evaluate(thread, module, buffer, size, executeFromJob);
     if (thread->HasPendingException()) {
         return Unexpected(false);
     }

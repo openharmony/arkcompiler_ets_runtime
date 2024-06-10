@@ -353,6 +353,12 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = EcmaInterpreter::Execute(info);
         }
+
+        if (!thread_->HasPendingException() && !executeFromJob) {
+            JSHandle<JSTaggedValue> handleResult(thread_, result);
+            job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+            result = handleResult.GetTaggedValue();
+        }
     }
     if (thread_->HasPendingException()) {
 #ifdef PANDA_TARGET_OHOS
@@ -360,11 +366,6 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
 #else
         return Unexpected(false);
 #endif
-    }
-    if (!executeFromJob) {
-        JSHandle<JSTaggedValue> handleResult(thread_, result);
-        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
-        result = handleResult.GetTaggedValue();
     }
     return result;
 }
@@ -466,10 +467,6 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
         EcmaRuntimeStatScope runtimeStatScope(vm_);
         EcmaInterpreter::Execute(info);
     }
-    if (!thread_->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread_, thread_->GetCurrentEcmaContext()->GetMicroJobQueue());
-    }
-
     if (!thread_->HasPendingException()) {
         // Collecting module.exports : exports ---> module.exports --->Module._cache
         RequireManager::CollectExecutedExp(thread_, cjsInfo);
