@@ -6241,7 +6241,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SetAssetPath)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    std::string str = "11";
+    std::string str = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         JSNApi::SetAssetPath(vm_, str);
@@ -6254,7 +6254,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_GetAssetPath)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    std::string str = "11";
+    std::string str = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
     gettimeofday(&g_beginTime, nullptr);
     JSNApi::SetAssetPath(vm_, str);
     for (int i = 0; i < NUM_COUNT; i++) {

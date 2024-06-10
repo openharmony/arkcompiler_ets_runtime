@@ -1709,7 +1709,7 @@ HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
 HWTEST_F_L0(JSNApiTests, JSNApi_SetAssetPath_GetAssetPath)
 {
     LocalScope scope(vm_);
-    std::string str = "11";
+    std::string str = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
     JSNApi::SetAssetPath(vm_, str);
     std::string res = JSNApi::GetAssetPath(vm_);
     ASSERT_EQ(str, res);

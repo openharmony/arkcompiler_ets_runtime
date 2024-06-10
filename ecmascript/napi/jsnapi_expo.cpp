@@ -3510,6 +3510,10 @@ void JSNApi::SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::
 void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
 {
     ecmascript::CString path = assetPath.c_str();
+    // check input assetPath
+    if (!ModulePathHelper::ValidateAbcPath(path)) {
+        LOG_FULL(FATAL) << "Invalid input assetPath: " << assetPath.c_str();
+    }
     vm->SetAssetPath(path);
 }
 
