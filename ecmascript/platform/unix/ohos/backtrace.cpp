@@ -26,7 +26,15 @@
 
 #include "ecmascript/mem/mem.h"
 #if defined(ENABLE_UNWINDER) && defined(__aarch64__)
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#endif
 #include "fp_unwinder.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 #endif
 
 namespace panda::ecmascript {
@@ -94,10 +102,11 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
     }
     stack << "=====================Backtrace========================";
 #if defined(ENABLE_UNWINDER) && defined(__aarch64__)
-    for (size_t i = 0; i < unwSz; i++) {
+    size_t i = 0;
 #else
-    for (size_t i = 1; i < unwSz; i++) {
+    size_t i = 1;
 #endif
+    for (; i < unwSz; i++) {
         Dl_info info;
         auto iter = stackInfoCache.find(reinterpret_cast<void *>(pcs[i]));
         if (enableCache && iter != stackInfoCache.end()) {
