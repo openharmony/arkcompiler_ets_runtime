@@ -324,19 +324,7 @@ bool JSTaggedValue::EqualNullOrUndefined(const JSHandle<JSTaggedValue> &x,
     return false;
 }
 
-uint32_t CountLeadingZeros(uint32_t value, uint32_t bits)
-{
-    if (bits == 1) {
-        return value ^ 1;
-    }
-    uint32_t upper_half = value >> (bits / 2); // 2 : half
-    uint32_t nextValue = upper_half != 0 ? upper_half : value;
-    uint32_t add = upper_half != 0 ? 0 : (bits / 2); // 2 : half
-    uint32_t nextBits = bits == 1 ? 1 : bits / 2; // 2 : half
-    return CountLeadingZeros(nextValue, nextBits) + add;
-}
-
-const uint32_t kPowersOf10[] = {
+static const uint32_t POWERS_OF_10[] = {
     1,
     10,
     100,
@@ -370,17 +358,16 @@ int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
         if (xValue > 0) {
             return 1;
         }
-        unsignedX = static_cast<uint32_t>(-xValue);
-        unsignedY = static_cast<uint32_t>(-yValue);
+        unsignedX = static_cast<uint32_t>(base::NegateWithWraparound(xValue));
+        unsignedY = static_cast<uint32_t>(base::NegateWithWraparound(yValue));
     }
-    uint32_t bits = sizeof(uint32_t) * 8; // 8 : bits
-    int xLog2 = 31 - CountLeadingZeros(unsignedX, bits); // 31 : Algorithm implementation
+    int xLog2 = 31 - __builtin_clz(unsignedX);
     int xDigit = ((xLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation
-    xDigit -= unsignedX < kPowersOf10[xDigit];
+    xDigit -= unsignedX < POWERS_OF_10[xDigit];
 
-    int yLog2 = 31 - CountLeadingZeros(unsignedY, bits); // 31 : Algorithm implementation
+    int yLog2 = 31 - __builtin_clz(unsignedY);
     int yDigit = ((yLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation
-    yDigit -= unsignedY < kPowersOf10[yDigit];
+    yDigit -= unsignedY < POWERS_OF_10[yDigit];
 
     int res = 0;
     if (xDigit > yDigit) {
@@ -390,12 +377,12 @@ int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
         // smallest power and scale down Y to drop one digit. It is OK to
         // drop one digit from the longer integer since the final digit is
         // past the length of the shorter integer.
-        unsignedY *= kPowersOf10[xDigit - yDigit - 1];
+        unsignedY *= POWERS_OF_10[xDigit - yDigit - 1];
         unsignedX /= 10; // 10 : Decimal
         res = 1;
     }
     if (yDigit > xDigit) {
-        unsignedX *= kPowersOf10[yDigit - xDigit - 1];
+        unsignedX *= POWERS_OF_10[yDigit - xDigit - 1];
         unsignedY /= 10; // 10 : Decimal
         res = -1;
     }
