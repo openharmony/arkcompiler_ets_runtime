@@ -762,15 +762,13 @@ void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, unsigned shif
 {
     unsigned imms = 0;
     if (rd.IsW()) {
-        // 31 : 31 32-bit variant Applies when sf == 0 && N == 0 && imms == 011111
+        imms = 31; // 31 : 31 32-bit variant Applies when sf == 0 && N == 0 && imms == 011111
         // LSR <Wd>, <Wn>, #<shift> is equivalent to UBFM <Wd>, <Wn>, #<shift>, #31
         // and is always the preferred disassembly
-        imms = 31;
     } else {
-        // 63 : 63 64-bit variant Applies when sf == 1 && N == 1 && imms == 111111
+        imms = 63; // 63 : 63 64-bit variant Applies when sf == 1 && N == 1 && imms == 111111
         // LSR <Xd>, <Xn>, #<shift> is equivalent to UBFM <Xd>, <Xn>, #<shift>, #63
         // and is always the preferred disassembly
-        imms = 63;
     }
     Ubfm(rd, rn, shift, imms);
 }

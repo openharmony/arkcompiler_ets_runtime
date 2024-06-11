@@ -432,8 +432,8 @@ public:
     {
         const char *localeCountry = locale.getCountry();
         const char *localeScript = locale.getScript();
+        std::string removeCountry;
         if (localeCountry[0] != '\0' && localeScript[0] != '\0') {
-            std::string removeCountry;
             removeCountry = locale.getLanguage();
             removeCountry.append("-");
             removeCountry.append(localeScript);
