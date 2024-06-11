@@ -23,3 +23,12 @@ let str = { toString: function() { result = "InvalidString"; throw null; } };
 let radix = { valueOf: function() { result = "InvalidRadix"; throw null; } };
 try { parseInt(str, radix); } catch (e) {}
 print(result);
+
+print(parseInt('4',16))
+print(parseInt('a',16))
+print(parseInt('a',26))
+print(parseInt('a',36))
+print(parseInt('a'))
+print(parseInt('0xa'))
+print(parseInt('123'))
+print(parseInt('0x123'))
