@@ -1204,7 +1204,9 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
                 done = true;
             }
             // vii. Set requiredModule.[[CycleRoot]] to module.
-            requiredModule->SetCycleRoot(thread, module);
+            if (!SourceTextModule::IsSharedModule(requiredModule)) {
+                requiredModule->SetCycleRoot(thread, module);
+            }
         }
     }
     return index;
