@@ -111,21 +111,14 @@ static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31
 
 void GetSignalHandler(int signal, siginfo_t *info, void *context)
 {
-    [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
-    [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
-    uintptr_t pc = 0;
-#if defined(PANDA_TARGET_AMD64)
-    pc = static_cast<uintptr_t>(mcontext.gregs[REG_RIP]);
-#elif defined(PANDA_TARGET_ARM64)
-    pc = static_cast<uintptr_t>(mcontext.pc);
+#if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
+    ucontext_t *ucontext = static_cast<ucontext_t*>(context);
+    uintptr_t fp = ucontext->uc_mcontext.regs[29];
+    FrameIterator frame(reinterpret_cast<JSTaggedType *>(fp));
+    ecmascript::JsStackInfo::BuildCrashInfo(false, frame.GetFrameType());
+#else
+    ecmascript::JsStackInfo::BuildCrashInfo(false);
 #endif
-    if (JsStackInfo::loader == nullptr) {
-        ecmascript::JsStackInfo::BuildCrashInfo(false);
-    } else if (!JsStackInfo::loader->InsideStub(pc) && !JsStackInfo::loader->InsideAOT(pc)) {
-        ecmascript::JsStackInfo::BuildCrashInfo(false);
-    } else {
-        ecmascript::JsStackInfo::BuildCrashInfo(false, pc);
-    }
     sigaction(signal, &s_oldSa[signal], nullptr);
     int rc = syscall(SYS_rt_tgsigqueueinfo, getpid(), syscall(SYS_gettid), info->si_signo, info);
     if (rc != 0) {

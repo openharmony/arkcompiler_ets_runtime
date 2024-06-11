@@ -57,7 +57,7 @@ void Marker::MarkJitCodeMap(uint32_t threadId)
     ProcessMarkStack(threadId);
 }
 
-void Marker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeMap *> &jitCodeMaps)
+void Marker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps)
 {
     if (!heap_->IsFullMark()) {
         return;
@@ -71,7 +71,7 @@ void Marker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, Jit
             continue;
         }
         for (auto jitCodeMap : *(it->second)) {
-            auto jitCode = jitCodeMap.first;
+            auto jitCode = std::get<0>(jitCodeMap);
             Region *jitCodeRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jitCode));
             if (!jitCodeRegion->Test(jitCode)) {
                 MarkObject(threadId, jitCode);

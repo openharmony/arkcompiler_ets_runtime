@@ -44,17 +44,13 @@ bool IsFastJitFunctionFrame(const FrameType frameType)
     return frameType == FrameType::FASTJIT_FUNCTION_FRAME || frameType == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
 }
 
-std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, const FrameType frameType,
-                                          bool enableStackSourceFile)
+std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
 {
     std::string data;
     data.append("    at ");
     std::string name = method->ParseFunctionName();
     if (name.empty()) {
         name = "anonymous";
-    }
-    if (IsFastJitFunctionFrame(frameType)) {
-        LOG_ECMA(ERROR) << "jit : js crash at method : " << name;
     }
     data += name;
     data.append(" (");
@@ -93,8 +89,7 @@ std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, con
     return data;
 }
 
-std::string JsStackInfo::BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets,
-                                                 const FrameType frameType)
+std::string JsStackInfo::BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets)
 {
     std::string data;
     std::map<uint32_t, uint32_t>::reverse_iterator it;
@@ -110,9 +105,6 @@ std::string JsStackInfo::BuildInlinedMethodTrace(const JSPandaFile *pf, std::map
             }
         }
         data.append("    at ");
-        if (IsFastJitFunctionFrame(frameType)) {
-            LOG_ECMA(ERROR) << "jit : js crash at method : " << name;
-        }
         data.append(name);
         data.append(" (maybe inlined).");
         data.append(" depth: ");
@@ -123,18 +115,6 @@ std::string JsStackInfo::BuildInlinedMethodTrace(const JSPandaFile *pf, std::map
     return data;
 }
 
-void PrintJSCrashOffset(uintptr_t pcOffset, JSFunction *func)
-{
-    if (func->GetMachineCode() == JSTaggedValue::Undefined()) {
-        return;
-    }
-    MachineCode *machineCode = MachineCode::Cast(func->GetMachineCode().GetTaggedObject());
-    uintptr_t funcAddr = machineCode->GetFuncAddr();
-    uintptr_t pc = pcOffset + funcAddr;
-    LOG_ECMA(ERROR) << "jit : Current pc is : " << pc << ". Current funcAddr is : " << funcAddr <<
-        ". Current crash offset is : " << pcOffset;
-}
-
 void JsStackInfo::DumpJitCode(JSThread *thread)
 {
     JSTaggedType exception = thread->GetException().GetRawData();
@@ -143,22 +123,30 @@ void JsStackInfo::DumpJitCode(JSThread *thread)
     if (jitCode == jitCodeMaps.end()) {
         return;
     }
+    std::set<MachineCode*> memos;
     JsJitDumpElf jitDumpElf;
     jitDumpElf.Init();
     int64 idx = 0;
     size_t offset = 0;
-    for (auto it = jitCode->second->begin(); it != jitCode->second->end(); it++) {
-        auto machineCode = it->first;
-        std::string methodName = it->second;
-        char *funcAddr = reinterpret_cast<char *>(machineCode->GetFuncAddr());
-        size_t len = machineCode->GetTextSize();
-        std::vector<uint8> vec(len);
-        if (memmove_s(vec.data(), len, funcAddr, len) != EOK) {
-            LOG_ECMA(ERROR) << "Fail to get machineCode on function addr: " << funcAddr;
+    auto jitCodeVec = jitCodeMaps[exception];
+    for (size_t i = 0; i < jitCodeVec->size(); i++) {
+        auto item = (*jitCodeVec)[i];
+        auto machineCode = std::get<0>(item);
+        std::string methodName = std::get<1>(item);
+        uintptr_t pcOffset = std::get<2>(item);
+        auto res = memos.insert(machineCode);
+        if (res.second) {
+            LOG_ECMA(ERROR) << "jit : js crash at method : " << methodName << ", offset :" << pcOffset;
+            char *funcAddr = reinterpret_cast<char *>(machineCode->GetFuncAddr());
+            size_t len = machineCode->GetTextSize();
+            std::vector<uint8> vec(len);
+            if (memmove_s(vec.data(), len, funcAddr, len) != EOK) {
+                LOG_ECMA(ERROR) << "Fail to get machineCode on function addr: " << funcAddr;
+            }
+            jitDumpElf.AppendData(vec);
+            jitDumpElf.AppendSymbolToSymTab(idx++, offset, len, methodName);
+            offset += len;
         }
-        jitDumpElf.AppendData(vec);
-        jitDumpElf.AppendSymbolToSymTab(idx++, offset, len, methodName);
-        offset += len;
     }
     std::string fileName = "jitCode-" + std::to_string(getpid());
     std::string realOutPath;
@@ -172,7 +160,8 @@ void JsStackInfo::DumpJitCode(JSThread *thread)
     close(fd);
 }
 
-void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, JSFunction *func, Method *method)
+void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, JSFunction *func, Method *method,
+                        uintptr_t offset)
 {
     ASSERT(!jsErrorObj.GetTaggedValue().IsUndefined());
     JSTaggedValue machineCodeTagVal = func->GetMachineCode();
@@ -181,7 +170,7 @@ void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, 
     if (methodName.empty()) {
         methodName = "anonymous";
     }
-    thread->SetJitCodeMap(jsErrorObj.GetTaggedValue().GetRawData(), machineCode, methodName);
+    thread->SetJitCodeMap(jsErrorObj.GetTaggedValue().GetRawData(), machineCode, methodName, offset);
 }
 
 std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj)
@@ -239,16 +228,15 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
     FrameType frameType = it.GetFrameType();
     if (IsFastJitFunctionFrame(frameType)) {
         JSFunction *func = static_cast<JSFunction*>(it.GetFunction().GetTaggedObject());
-        PrintJSCrashOffset(it.GetOptimizedReturnAddr(), func);
         if (!jsErrorObj.GetTaggedValue().IsUndefined()) {
-            AssembleJitCodeMap(thread, jsErrorObj, func, method);
+            AssembleJitCodeMap(thread, jsErrorObj, func, method, it.GetOptimizedReturnAddr());
         }
     }
-    return BuildInlinedMethodTrace(pf, methodOffsets, frameType) +
-           BuildMethodTrace(method, pcOffset, frameType, thread->GetEnableStackSourceFile());
+    return BuildInlinedMethodTrace(pf, methodOffsets) +
+           BuildMethodTrace(method, pcOffset, thread->GetEnableStackSourceFile());
 }
 
-void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
+void JsStackInfo::BuildCrashInfo(bool isJsCrash, FrameType frameType, JSThread *thread)
 {
     if (JsStackInfo::loader == nullptr || JsStackInfo::options == nullptr) {
         LOG_ECMA(ERROR) << "loader or options Initial error.";
@@ -262,8 +250,11 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
     ohos::RuntimeInfoType type;
     if (isJsCrash) {
         type = ohos::RuntimeInfoType::JS;
-    } else if (pc != 0 && JsStackInfo::loader != nullptr && JsStackInfo::loader->InsideAOT(pc)) {
+    } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+               frameType == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME) {
         type = ohos::RuntimeInfoType::AOT;
+    } else if (IsFastJitFunctionFrame(frameType)) {
+        type = ohos::RuntimeInfoType::JIT;
     } else {
         type = ohos::RuntimeInfoType::OTHERS;
     }
@@ -943,16 +934,20 @@ bool ArkWriteJitCode([[maybe_unused]] void *ctx, [[maybe_unused]] ReadMemFunc re
 {
     JsJitDumpElf jitDumpElf;
     jitDumpElf.Init();
+    std::set<uintptr_t> memos;
     int64 idx = 0;
     size_t offset = 0;
     for (size_t i = 0; i < jitSize; i++) {
         uintptr_t methodId = jitCodeArray[i];
-        std::vector<uint8> codeVec = JsStackInfo::machineCodeMap[EntityId(methodId)];
-        std::string name = JsStackInfo::nameMap[EntityId(methodId)];
-        size_t len = codeVec.size();
-        jitDumpElf.AppendData(codeVec);
-        jitDumpElf.AppendSymbolToSymTab(idx++, offset, len, name);
-        offset += len;
+        auto res = memos.insert(methodId);
+        if (res.second) {
+            std::vector<uint8> codeVec = JsStackInfo::machineCodeMap[EntityId(methodId)];
+            std::string name = JsStackInfo::nameMap[EntityId(methodId)];
+            size_t len = codeVec.size();
+            jitDumpElf.AppendData(codeVec);
+            jitDumpElf.AppendSymbolToSymTab(idx++, offset, len, name);
+            offset += len;
+        }
     }
     jitDumpElf.WriteJitElfFile(fd);
     JsStackInfo::nameMap.clear();

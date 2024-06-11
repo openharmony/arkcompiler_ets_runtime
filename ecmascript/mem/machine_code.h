@@ -54,8 +54,8 @@ struct MachineCodeDesc {
 };
 
 class MachineCode;
-using JitCodeMap = std::map<MachineCode*, std::string>;
-using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeMap*>&)>;
+using JitCodeVector = std::vector<std::tuple<MachineCode*, std::string, uintptr_t>>;
+using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVector*>&)>;
 
 // BaselineCode object layout:
 //                      +-----------------------------------+
