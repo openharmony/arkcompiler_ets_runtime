@@ -317,9 +317,6 @@ bool EcmaVM::IsEnablePGOProfiler() const
 
 bool EcmaVM::IsEnableElementsKind() const
 {
-    if (options_.IsWorker()) {
-        return false;
-    }
     return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();
 }
 

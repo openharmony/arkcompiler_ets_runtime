@@ -3165,6 +3165,12 @@ inline GateRef StubBuilder::GetSingleCharTable(GateRef glue)
         VariableType::JS_POINTER(), glue, ConstantIndex::SINGLE_CHAR_TABLE_INDEX);
 }
 
+inline GateRef StubBuilder::IsEnableElementsKind(GateRef glue)
+{
+    GateRef offset = IntPtr(JSThread::GlueData::GetIsEnableElementsKindOffset(env_->Is32Bit()));
+    return Load(VariableType::BOOL(), glue, offset);
+}
+
 inline GateRef StubBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t index)
 {
     auto valueIndex = IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);

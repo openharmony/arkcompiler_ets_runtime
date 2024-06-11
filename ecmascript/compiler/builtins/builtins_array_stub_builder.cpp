@@ -1822,8 +1822,8 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     GateRef elementsKindIntUB = Int32LessThanOrEqual(kind,
                                                      Int32(static_cast<int32_t>(ElementsKind::HOLE_INT)));
     GateRef checkIntKind = BoolAnd(elementsKindIntLB, elementsKindIntUB);
-    GateRef isElementsKindEnabled = CallRuntime(glue, RTSTUB_ID(IsElementsKindSwitchOn), {});
-    BRANCH(BoolAnd(checkIntKind, TaggedIsTrue(isElementsKindEnabled)), &isInt, &isNotInt);
+    GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
+    BRANCH(BoolAnd(checkIntKind, isElementsKindEnabled), &isInt, &isNotInt);
     Bind(&isInt);
     {
         FastReverse(glue, thisValue, thisArrLen, ElementsKind::INT, result, exit);
@@ -1837,7 +1837,7 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
         GateRef elementsKindNumberUB = Int32LessThanOrEqual(kind,
                                                             Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER)));
         GateRef checkNumberKind = BoolAnd(elementsKindNumberLB, elementsKindNumberUB);
-        BRANCH(BoolAnd(checkNumberKind, TaggedIsTrue(isElementsKindEnabled)), &isNumber, &isNotNumber);
+        BRANCH(BoolAnd(checkNumberKind, isElementsKindEnabled), &isNumber, &isNotNumber);
         Bind(&isNumber);
         {
             FastReverse(glue, thisValue, thisArrLen, ElementsKind::NUMBER, result, exit);

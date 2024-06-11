@@ -10191,8 +10191,8 @@ void StubBuilder::MigrateArrayWithKind(GateRef glue, GateRef object, GateRef old
     Label exit(env);
 
     Label elementsKindOn(env);
-    GateRef isElementsKindSwitchOn = CallRuntime(glue, RTSTUB_ID(IsElementsKindSwitchOn), {});
-    BRANCH(TaggedIsTrue(isElementsKindSwitchOn), &elementsKindOn, &exit);
+    GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
+    BRANCH(isElementsKindEnabled, &elementsKindOn, &exit);
     Bind(&elementsKindOn);
 
     DEFVARIABLE(newElements, VariableType::JS_ANY(), Undefined());
