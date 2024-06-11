@@ -1261,7 +1261,7 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit, GateRe
     {
         DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
         ret = CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), {
-            IntToTaggedInt(size_), hclass });
+            Int64ToTaggedInt(size_), hclass });
         result->WriteVariable(*ret);
         Jump(exit);
     }
@@ -1276,7 +1276,7 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *error, Label
     {
         DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
         ret = CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), {
-            IntToTaggedInt(size_), hclass });
+            Int64ToTaggedInt(size_), hclass });
         result->WriteVariable(*ret);
         BRANCH(TaggedIsException(*ret), error, noError);
     }
