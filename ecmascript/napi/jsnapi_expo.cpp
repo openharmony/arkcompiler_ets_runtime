@@ -4902,8 +4902,7 @@ Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void
 
 void JSNApi::DeleteSerializationData(const EcmaVM *vm, void *data)
 {
-    CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope scope(thread);
+    ecmascript::ThreadManagedScope scope(vm->GetJSThreadNoCheck());
 #if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
     ecmascript::SerializeData *value = reinterpret_cast<ecmascript::SerializeData *>(data);
     delete value;
