@@ -1671,7 +1671,7 @@ ProfileType PGOProfiler::GetProfileType(JSTaggedType root, JSTaggedType child)
     }
     auto generator = iter->second;
     auto result = generator->GetProfileType(child);
-    if (IsSkippableObjectType(result)) {
+    if (IsSkippableObjectTypeSafe(result)) {
         return ProfileType::PROFILE_TYPE_NONE;
     }
     return result;

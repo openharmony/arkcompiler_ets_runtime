@@ -95,8 +95,9 @@ public:
 
     JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);
 
-    void InsertSkipCtorMethodId(EntityId ctorMethodId)
+    void InsertSkipCtorMethodIdSafe(EntityId ctorMethodId)
     {
+        LockHolder lock(skipCtorMethodIdMutex_);
         skipCtorMethodId_.insert(ctorMethodId.GetOffset());
     }
 
@@ -473,10 +474,11 @@ private:
     ProfileType GetRecordProfileType(const std::shared_ptr<JSPandaFile> &pf, ApEntityId abcId,
                                      const CString &recordName);
 
-    bool IsSkippableObjectType(ProfileType type)
+    bool IsSkippableObjectTypeSafe(ProfileType type)
     {
         if (type.IsClassType() || type.IsConstructor() || type.IsPrototype()) {
             uint32_t ctorId = type.GetId();
+            LockHolder lock(skipCtorMethodIdMutex_);
             return skipCtorMethodId_.find(ctorId) != skipCtorMethodId_.end();
         }
         return false;
@@ -498,6 +500,7 @@ private:
     CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     CUnorderedSet<uint32_t> skipCtorMethodId_;
+    Mutex skipCtorMethodIdMutex_;
     JITProfiler *jitProfiler_ {nullptr};
     friend class PGOProfilerManager;
 };
