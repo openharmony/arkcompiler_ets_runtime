@@ -31,8 +31,8 @@
 
 #if !defined(ENABLE_BYTRACE)
     #define ECMA_BYTRACE_NAME(tag, name)
-    #define ECMA_BYTRACE_START_TRACE(msg)
-    #define ECMA_BYTRACE_FINISH_TRACE
+    #define ECMA_BYTRACE_START_TRACE(tag, msg)
+    #define ECMA_BYTRACE_FINISH_TRACE(tag)
 #else
     #define ECMA_BYTRACE_NAME(tag, name) HITRACE_METER_NAME(tag, name)
     #define ECMA_BYTRACE_START_TRACE(tag, msg) StartTrace(tag, msg)
