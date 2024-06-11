@@ -205,7 +205,7 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     auto heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
     heap->CollectGarbage(
         TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
-    SharedHeap::GetInstance()->CollectGarbage(info->GetThread(), TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER);
+    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER>(info->GetThread());
     heap->GetHeapPrepare();
     return JSTaggedValue::True();
 }
@@ -443,14 +443,14 @@ JSTaggedValue BuiltinsArkTools::CheckDeoptStatus(EcmaRuntimeCallInfo *info)
     // check status after deopt
     if (isAotCompiled ||
         method->IsFastCall() ||
-        method->GetDeoptType() != kungfu::DeoptType::NOTCHECK ||
+        method->GetDeoptType() != kungfu::DeoptType::NONE ||
         method->GetCodeEntryOrLiteral() == 0) {
         return JSTaggedValue(false);
     }
     return JSTaggedValue(true);
 }
 
-JSTaggedValue BuiltinsArkTools::PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo *info)
+JSTaggedValue BuiltinsArkTools::PrintTypedOpProfiler(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
@@ -460,7 +460,20 @@ JSTaggedValue BuiltinsArkTools::PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo
     std::string opStr = EcmaStringAccessor(opStrVal.GetTaggedValue()).ToStdString();
     TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
     if (profiler != nullptr) {
-        profiler->PrintAndReset(opStr);
+        profiler->Print(opStr);
+    }
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::ClearTypedOpProfiler(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
+    if (profiler != nullptr) {
+        profiler->Clear();
     }
     return JSTaggedValue::Undefined();
 }
@@ -541,6 +554,34 @@ JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *i
     ClockScope scope;
     return JSTaggedValue(scope.GetCurTime());
 }
+
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+JSTaggedValue BuiltinsArkTools::StartScopeLockStats(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    auto vm = thread->GetEcmaVM();
+    vm->StartCollectingScopeLockStats();
+    LOG_FULL(INFO) << "Start Collecting ArkCompiler Scope-Lock Stats";
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::StopScopeLockStats(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    auto vm = thread->GetEcmaVM();
+    LOG_FULL(INFO) << "Stop Collecting ArkCompiler Scope-Lock Stats: "
+                   << " ThreadStateTransition count: " << vm->GetUpdateThreadStateTransCount()
+                   << " , Entered Scope But NO State Transition count: " << (vm->GetEnterJsiNativeScopeCount() +
+                                                                     vm->GetEnterFastNativeScopeCount() +
+                                                                     vm->GetEnterThreadManagedScopeCount() -
+                                                                     vm->GetUpdateThreadStateTransCount())
+                   << " , String-Table Lock count: " << vm->GetStringTableLockCount();
+    vm->ResetScopeLockStats();
+    vm->StopCollectingScopeLockStats();
+    return JSTaggedValue::Undefined();
+}
+#endif
+
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {

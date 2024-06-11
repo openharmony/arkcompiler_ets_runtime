@@ -13,3 +13,13 @@
  * limitations under the License.
  */
 print(-0 == parseInt("-0"))
+
+print(isNaN(parseInt('0x  ')));
+
+print(isNaN(parseInt('0x  ', 16)));
+
+let result = null;
+let str = { toString: function() { result = "InvalidString"; throw null; } };
+let radix = { valueOf: function() { result = "InvalidRadix"; throw null; } };
+try { parseInt(str, radix); } catch (e) {}
+print(result);

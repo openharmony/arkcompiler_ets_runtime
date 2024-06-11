@@ -144,3 +144,98 @@ print(JSON.stringify(str1))
 print(JSON.stringify(str2))
 print(JSON.stringify(str3))
 print(JSON.stringify(str4))
+
+{
+  var actual = [];
+  var test_obj = {o: false};
+  var replaced = {o: false, replaced: true};
+
+  function replacer(key, value) {
+      actual.push({ holder: this, key, value });
+      if (actual.length === 1) return replaced;
+      if (key === "o") return true;
+      return value;
+  }
+  print(`{"o":true,"replaced":true}` == JSON.stringify(test_obj, replacer));
+  const expect = [
+      {
+        holder: { "": { o: false } },
+        key: "",
+        value: { o: false }
+      },
+      {
+        holder: { o: false, replaced: true },
+        key: "o",
+        value: false
+      },
+      {
+        holder: { o: false, replaced: true },
+        key: "replaced",
+        value: true
+      }
+    ];
+  print(JSON.stringify(expect) == JSON.stringify(actual));
+  print(actual[0].holder[""] == test_obj);
+};
+{
+  var actual = [];
+  var test_obj = {o: false, toJSON };
+  var nested = { toJSON: nestedToJSON };
+  var toJSON1 = {o: false, toJSON1: true }
+  var replaced = {o: false, replaced: true, nested };
+  var toJSON2 = { toJSON2: true };
+
+  function toJSON(key, value) {
+    return toJSON1;
+  }
+  function nestedToJSON(key, value) {
+    return toJSON2;
+  }
+  function replacer(key, value) {
+      actual.push({ holder: this, key, value });
+      if (actual.length === 1) return replaced;
+      if (key === "o") return true;
+      return value;
+  }
+  print(`{"o":true,"replaced":true,"nested":{"toJSON2":true}}` ==
+              JSON.stringify(test_obj, replacer));
+  const expect = [
+      {
+        holder: { "": { o: false, toJSON: toJSON } },
+        key: "",
+        value: { o: false, toJSON1: true }
+      },
+      {
+        holder: { o: false, replaced: true, nested: { toJSON: nestedToJSON } },
+        key: "o",
+        value: false
+      },
+      {
+        holder: { o: false, replaced: true, nested: { toJSON: nestedToJSON } },
+        key: "replaced",
+        value: true
+      },
+      {
+        holder: { o: false, replaced: true, nested: { toJSON: nestedToJSON } },
+        key: "nested",
+        value: { toJSON2: true }
+      },
+      {
+        holder: { toJSON2: true },
+        key: "toJSON2",
+        value: true
+      }
+  ];
+  print(JSON.stringify(expect) == JSON.stringify(actual));
+  print(actual[0].holder[""] == test_obj);
+};
+
+let obj1 = {
+    get a(){
+        this[102400] = 1;
+        return "a";
+    },
+    b:"b",
+}
+Object.keys(obj1);
+print(JSON.stringify(obj1));

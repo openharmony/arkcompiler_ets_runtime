@@ -95,14 +95,14 @@ class JitThread;
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
-using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
+using ResolveBufferCallback =
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
-using NativePointerCallback = void (*)(void *, void *, void *);
 
 class EcmaVM {
 public:
@@ -137,7 +137,6 @@ public:
     }
 
     void InitializePGOProfiler();
-    void InitializeEnableAotCrash();
     void ResetPGOProfiler();
 
     bool PUBLIC_API IsEnablePGOProfiler() const;
@@ -205,11 +204,31 @@ public:
         return thread_;
     }
 
+    bool CheckSingleThread() const
+    {
+        if (thread_ == nullptr) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+            return false;
+        }
+        if (thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                            << " thread:" << thread_->GetThreadId()
+                            << " currentThread:" << JSThread::GetCurrentThreadId();
+            return false;
+        }
+        return true;
+    }
+
     ARK_INLINE JSThread *GetJSThread() const
     {
         if (options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck()) {
             CheckThread();
         }
+        return thread_;
+    }
+
+    JSThread *GetJSThreadNoCheck() const
+    {
         return thread_;
     }
 
@@ -593,6 +612,8 @@ public:
         if (uncatchableErrorHandler_ != nullptr) {
             panda::TryCatch trycatch(this);
             uncatchableErrorHandler_(trycatch);
+        } else {
+            LOG_ECMA_MEM(FATAL) << "Out of Memory";
         }
     }
 
@@ -660,16 +681,6 @@ public:
         isEnableOsr_ = state;
     }
 
-    bool isOverLimit() const
-    {
-        return overLimit_;
-    }
-
-    void SetOverLimit(bool state)
-    {
-        overLimit_ = state;
-    }
-
     AOTFileManager *GetAOTFileManager() const
     {
         return aotFileManager_;
@@ -680,9 +691,14 @@ public:
         return thread_->GetThreadId();
     }
 
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetNativePointerCallbacks()
+    std::vector<NativePointerCallbackData> &GetConcurrentNativePointerCallbacks()
     {
-        return nativePointerCallbacks_;
+        return concurrentNativeCallbacks_;
+    }
+
+    std::vector<NativePointerCallbackData> &GetAsyncNativePointerCallbacks()
+    {
+        return asyncNativeCallbacks_;
     }
 
     void SetIsJitCompileVM(bool isJitCompileVM)
@@ -693,16 +709,6 @@ public:
     bool IsJitCompileVM() const
     {
         return isJitCompileVM_;
-    }
-
-    void SetEnableAotCrashEscapeVM(bool enableAotCrashEscape)
-    {
-        enableAotCrashEscape_ = enableAotCrashEscape;
-    }
-
-    bool IsEnableAotCrashEscapeVM() const
-    {
-        return enableAotCrashEscape_;
     }
 
     static void SetMultiThreadCheck(bool multiThreadCheck)
@@ -721,6 +727,82 @@ public:
     {
         return sharedNativePointerCallbacks_;
     }
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    void ResetScopeLockStats()
+    {
+        enterThreadManagedScopeCount_ = 0;
+        enterJsiNativeScopeCount_ = 0;
+        enterFastNativeScopeCount_ = 0;
+        updateThreadStateTransCount_ = 0;
+        stringTableLockCount_ = 0;
+    }
+
+    bool IsCollectingScopeLockStats() const
+    {
+        return isCollectingScopeLockStats_;
+    }
+
+    void StartCollectingScopeLockStats()
+    {
+        isCollectingScopeLockStats_ = true;
+    }
+    
+    void StopCollectingScopeLockStats()
+    {
+        isCollectingScopeLockStats_ = false;
+    }
+    
+    int GetEnterThreadManagedScopeCount() const
+    {
+        return enterThreadManagedScopeCount_;
+    }
+
+    void IncreaseEnterThreadManagedScopeCount()
+    {
+        enterThreadManagedScopeCount_++;
+    }
+
+    int GetEnterFastNativeScopeCount() const
+    {
+        return enterFastNativeScopeCount_;
+    }
+
+    void IncreaseEnterFastNativeScopeCount()
+    {
+        enterFastNativeScopeCount_++;
+    }
+
+    int GetEnterJsiNativeScopeCount() const
+    {
+        return enterJsiNativeScopeCount_;
+    }
+
+    void IncreaseEnterJsiNativeScopeCount()
+    {
+        enterJsiNativeScopeCount_++;
+    }
+
+    int GetUpdateThreadStateTransCount() const
+    {
+        return updateThreadStateTransCount_;
+    }
+
+    void IncreaseUpdateThreadStateTransCount()
+    {
+        updateThreadStateTransCount_++;
+    }
+
+    int GetStringTableLockCount() const
+    {
+        return stringTableLockCount_;
+    }
+
+    void IncreaseStringTableLockCount()
+    {
+        stringTableLockCount_++;
+    }
+#endif
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -731,6 +813,7 @@ private:
 
     // For Internal Native MethodLiteral.
     void GenerateInternalNativeMethods();
+    void CacheToGlobalConstants(JSTaggedValue value, ConstantIndex constant);
 
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
@@ -752,7 +835,8 @@ private:
     ObjectFactory *factory_ {nullptr};
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    std::vector<NativePointerCallbackData> concurrentNativeCallbacks_ {};
+    std::vector<NativePointerCallbackData> asyncNativeCallbacks_ {};
     CList<JSNativePointer *> sharedNativePointerList_;
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
@@ -840,8 +924,16 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
-    bool enableAotCrashEscape_ {true};
-    bool overLimit_ {false};
+
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    // Stats for Thread-State-Transition and String-Table Locks
+    bool isCollectingScopeLockStats_ = false;
+    int enterThreadManagedScopeCount_ = 0;
+    int enterFastNativeScopeCount_ = 0;
+    int enterJsiNativeScopeCount_ = 0;
+    int updateThreadStateTransCount_ = 0;
+    int stringTableLockCount_ = 0;
+#endif
 };
 }  // namespace ecmascript
 }  // namespace panda

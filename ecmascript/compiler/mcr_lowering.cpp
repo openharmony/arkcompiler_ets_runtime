@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/share_opcodes.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass.h"
@@ -30,9 +31,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
 {
     auto op = acc_.GetOpCode(gate);
     switch (op) {
-        case OpCode::GET_UNSHARED_CONSTPOOL:
-            LowerGetUnsharedConstpool(gate);
-            break;
         case OpCode::STATE_SPLIT:
             DeleteStateSplit(gate);
             break;
@@ -55,7 +53,7 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             LowerLoadConstOffset(gate);
             break;
         case OpCode::LOAD_HCLASS_FROM_CONSTPOOL:
-            LowerLoadHClassFromUnsharedConstpool(gate);
+            LowerLoadHClassFromConstpool(gate);
             break;
         case OpCode::STORE_CONST_OFFSET:
             LowerStoreConstOffset(gate);
@@ -177,16 +175,21 @@ void MCRLowering::LowerLoadConstOffset(GateRef gate)
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
-void MCRLowering::LowerLoadHClassFromUnsharedConstpool(GateRef gate)
+void MCRLowering::LowerLoadHClassFromConstpool(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef constpool = acc_.GetValueIn(gate, 0);
     uint32_t index = acc_.GetIndex(gate);
-    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constpool);
-    GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(ConstantPool::AOT_HCLASS_INFO_INDEX));
-    GateRef valVec = builder_.GetValueFromTaggedArray(constpool, valVecIndex);
-    GateRef hclass = builder_.GetValueFromTaggedArray(valVec, builder_.Int32(index));
-    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), hclass);
+    if (!env_->IsJitCompiler()) {
+        GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constpool);
+        GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(ConstantPool::AOT_HCLASS_INFO_INDEX));
+        GateRef valVec = builder_.GetValueFromTaggedArray(constpool, valVecIndex);
+        GateRef hclass = builder_.GetValueFromTaggedArray(valVec, builder_.Int32(index));
+        acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), hclass);
+    } else {
+        JSTaggedValue hclass = env_->GetPTManager()->QueryHClassByIndexForJIT(index);
+        acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), builder_.TaggedValueConstant(hclass));
+    }
 }
 
 void MCRLowering::LowerStoreConstOffset(GateRef gate)
@@ -216,11 +219,20 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
 void MCRLowering::LowerEcmaObjectCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    DEFVALUE(condition, (&builder_), VariableType::BOOL(), builder_.False());
+    Label heapObject(&builder_);
+    Label exit(&builder_);
+
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef condition = builder_.BoolAnd(builder_.TaggedIsHeapObject(value),
-                                         builder_.TaggedObjectIsEcmaObject(value));
-    builder_.DeoptCheck(condition, frameState, DeoptType::NOTECMAOBJECT1);
+    BRANCH_CIR(builder_.TaggedIsHeapObject(value), &heapObject, &exit);
+    builder_.Bind(&heapObject);
+    {
+        condition = builder_.TaggedObjectIsEcmaObject(value);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    builder_.DeoptCheck(*condition, frameState, DeoptType::NOTECMAOBJECT1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -277,18 +289,6 @@ void MCRLowering::LowerIsSpecificObjectType(GateRef gate)
         }
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-}
-
-void MCRLowering::LowerGetUnsharedConstpool(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef constpool = acc_.GetValueIn(gate, 0); // 0: this object
-    GateRef newGate = builder_.GetUnsharedConstpoolFromGlue(glue_, constpool);
-
-    acc_.UpdateAllUses(gate, newGate);
-
-    // delete old gate
-    acc_.DeleteGate(gate);
 }
 
 void MCRLowering::DeleteStateSplit(GateRef gate)

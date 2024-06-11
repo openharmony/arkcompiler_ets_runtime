@@ -30,7 +30,6 @@ constexpr char kAssignableChecksContainer[] =
     "Lcom_2Fhuawei_2Fark_2Fannotation_2Fverify_2FVerfAnnoDeferredAssignableChecks_3B";
 }  // namespace verifyanno
 
-// Convert from Ljava_2Flang_2FStringBuilder_3B to Ljava_2Flang_2FStringBuilder;
 inline std::string SimplifyClassName(const std::string &name)
 {
     const std::string postFix = "_3B";
@@ -83,16 +82,6 @@ MIRPragma *NewPragmaRTAnnotation(MIRModule &md, const MIRStructType &clsType, co
 MIRPragma *NewPragmaRTClassAnnotation(MIRModule &md, const MIRStructType &clsType, const std::string &aTypeName)
 {
     MIRStructType *aType = GetOrCreateStructType(aTypeName, md);
-    if (aType->GetPragmaVec().empty()) {
-        // not enough to set kVisRuntime,
-        // do annotate with Retention(RUNTIME) (see ReflectionAnalysis::RtRetentionPolicyCheck)
-        // kJavaLangAnnotationRetentionStr is the same to the one in RtRetentionPolicyCheck in reflection_analysis.cpp
-        const std::string kJavaLangAnnotationRetentionStr = "Ljava_2Flang_2Fannotation_2FRetention_3B";
-        MIRStructType *retentionType = GetOrCreateStructType(kJavaLangAnnotationRetentionStr, md);
-        MIRPragma *pragmaRetention = NewPragmaRTAnnotation(md, *aType, *retentionType, kPragmaClass);
-        pragmaRetention->PushElementVector(NewAnnotationStringElement(md, "value", "RUNTIME"));
-        aType->PushbackPragma(pragmaRetention);
-    }
     return NewPragmaRTAnnotation(md, clsType, *aType, kPragmaClass);
 }
 

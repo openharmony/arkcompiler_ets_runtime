@@ -19,6 +19,8 @@
  * @tc.type: FUNC
  * @tc.require: 
  */
+import {testdProxyArray1}  from "./utility";
+
 var Stack = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     Stack = ArkPrivate.Load(ArkPrivate.Stack);
@@ -31,7 +33,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     // test isEmpty true
     map.set("test proxy isEmpty ture:", proxy.isEmpty() == true)
 
-    for(let i = 0; i < 10; i++) {
+    for (let i = 0; i < 10; i++) {
         proxy.push(i)
         testArray.push(i)
     }
@@ -40,7 +42,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test proxy isEmpty false:", proxy.isEmpty() == false)
 
     res = true
-    for(let i = 0; i < testArray.length; i++) {
+    for (let i = 0; i < testArray.length; i++) {
         if (proxy[i] !== testArray[i]) {
             res = false
         }
@@ -59,30 +61,17 @@ if (globalThis["ArkPrivate"] != undefined) {
     res = true
     let j = 0
     for (const data of proxy) {
-      if (data !== testArray[j]) {
-        res = false
-      }
-      j++;
+        if (data !== testArray[j]) {
+            res = false
+        }
+        j++;
     }
-    map.set("test stack for of:", res)
-
-    let itr = proxy[Symbol.iterator]();
-    let tmp = undefined;
-    let testArray1 = []
-    do {
-      tmp = itr.next().value;
-      testArray1.push(tmp);
-    } while (tmp != undefined);
-
-    for (let k = 0; k < proxy.length; k++) {
-      if (testArray1[k] !== testArray[k]) {
-        res = false
-      }
-    }
+    map.set("test stack for of:", res);    
+    testdProxyArray1(proxy, res, testArray);
     map.set("test stack Symbol.iterator:", res)
 
-    map.set("test stack peek:",  proxy.peek() === 9)
-    map.set("test stack locate:",  proxy.locate(5) === 5)
+    map.set("test stack peek:", proxy.peek() === 9)
+    map.set("test stack locate:", proxy.locate(5) === 5)
 
     // test proxy pop
     let popStack = new Stack();
@@ -95,6 +84,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
 
     let flag = undefined;
+
     function elements(value, key, map) {
         if (!value) {
             if (!flag) {
@@ -103,12 +93,13 @@ if (globalThis["ArkPrivate"] != undefined) {
             flag.push(key);
         }
     }
+
     map.forEach(elements);
 
     let de = new Stack();
     try {
         de.forEach(123);
-    } catch(err) {
+    } catch (err) {
         if (err.name != "BusinessError") {
             print("Stack forEach throw error fail");
         }
@@ -130,3 +121,4 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test Stack fail: " + flag);
     }
 }
+export let stackRes = "Test Stack done";

@@ -206,6 +206,8 @@ private:
     void SpeculateStrings(const BinOpTypeInfoAccessor& tacc);
     template<TypedBinOp Op>
     void SpeculateNumbers(const BinOpTypeInfoAccessor& tacc);
+    template<TypedBinOp Op>
+    void SpeculateNumbersOrString(const BinOpTypeInfoAccessor& tacc);
     template<TypedUnOp Op>
     void SpeculateNumber(const UnOpTypeInfoAccessor& tacc);
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);
@@ -215,6 +217,7 @@ private:
     bool TryLowerNewBuiltinConstructor(GateRef gate);
     bool TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate);
     bool CheckIsInOptBCIgnoreRange(int32_t index, EcmaOpcode ecmaOpcode);
+    bool IsTrueOrFalseHasProfileType(GateRef gate) const;
     int32_t GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode);
     void ParseOptBytecodeRange();
 

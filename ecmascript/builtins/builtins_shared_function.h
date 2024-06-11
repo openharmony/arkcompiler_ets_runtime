@@ -23,6 +23,7 @@ namespace panda::ecmascript::builtins {
 class BuiltinsSharedFunction : public base::BuiltinsBase {
 public:
     static JSTaggedValue SharedFunctionConstructor(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue SharedFunctionPrototypeBind(EcmaRuntimeCallInfo *argv);
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_SHARED_FUNCTION_H

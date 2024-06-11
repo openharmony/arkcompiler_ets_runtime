@@ -170,10 +170,10 @@ void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end
             case EcmaOpcode::JEQZ_IMM16:
             case EcmaOpcode::JNEZ_IMM16:
             case EcmaOpcode::JMP_IMM16: {
-                int16_t jumpOffset = *(start + 2); // 2: get two bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 1);        // 1: get one byte in bytecodes
-                size_t jumpTo = offset + jumpOffset;
+                int16_t jumpOffset = *(start + 2);                              // 2: get two bytes in bytecodes
+                uint16_t tmpValue = static_cast<uint16_t>(jumpOffset) << 8;    // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 1));                 // 1: get one byte in bytecodes
+                size_t jumpTo = offset + static_cast<int16_t>(tmpValue);
                 jumpToOffsets.insert(jumpTo);
                 break;
             }
@@ -181,13 +181,13 @@ void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end
             case EcmaOpcode::JNEZ_IMM32:
             case EcmaOpcode::JMP_IMM32: {
                 int32_t jumpOffset = *(start + 4); // 4: get four bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 3);        // 3: get three bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 2);        // 2: get two bytes in bytecodes
-                jumpOffset <<= 8;                  // 8: left shift 8 bits
-                jumpOffset += *(start + 1);        // 1: get one byte in bytecodes
-                size_t jumpTo = offset + jumpOffset;
+                uint32_t tmpValue = static_cast<uint32_t>(jumpOffset) << 8;    // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 3));                 // 3: get three bytes in bytecodes
+                tmpValue <<= 8;                                                 // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 2));                 // 2: get two bytes in bytecodes
+                tmpValue <<= 8;                                                 // 8: left shift 8 bits
+                tmpValue += static_cast<uint8_t>(*(start + 1));                 // 1: get one byte in bytecodes
+                size_t jumpTo = offset + static_cast<int32_t>(tmpValue);
                 jumpToOffsets.insert(jumpTo);
                 break;
             }
@@ -1171,7 +1171,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDA_STR_ID16)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(FLDAI_IMM64)
 {
-    int64_t imm = READ_INST_64_0();
+    int64_t imm = static_cast<int64_t>(READ_INST_64_0());
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -3166,6 +3166,21 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ISTRUE)
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_ISTRUE_PREF_IMM8)
+{
+    (void)bytecodeArray;
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallRuntimeIstruePrefImm8);
+    LOG_INST() << "    BaselineCallRuntimeIstruePrefImm8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(ISFALSE)
 {
     (void)bytecodeArray;
@@ -3180,12 +3195,28 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ISFALSE)
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_ISFALSE_PREF_IMM8)
+{
+    (void)bytecodeArray;
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallRuntimeIsfalsePrefImm8);
+    LOG_INST() << "    BaselineCallRuntimeIsfalsePrefImm8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
 // ------- End parse bytecodes about comparison  -------
 
 // ------- parse bytecodes about control flow  -------
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM8)
 {
-    int8_t offset = READ_INST_8_0();
+    uint8_t offset = READ_INST_8_0();
     size_t pos = offset + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
@@ -3227,7 +3258,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM16)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM32)
 {
-    int32_t offset = READ_INST_32_0();
+    uint32_t offset = READ_INST_32_0();
     size_t pos = offset + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
@@ -3294,7 +3325,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JNEZ_IMM16)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JNEZ_IMM32)
 {
-    int32_t offset = READ_INST_32_0();
+    uint32_t offset = READ_INST_32_0();
     size_t pos = offset + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
@@ -3371,7 +3402,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JMP_IMM16)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JMP_IMM32)
 {
-    int32_t offset = READ_INST_32_0();
+    uint32_t offset = READ_INST_32_0();
     size_t pos = offset + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
@@ -3516,7 +3547,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEBUGGER)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_STOBJBYINDEX_PREF_V8_IMM32)
 {
     int8_t v0 = READ_INST_8_1();
-    int32_t index = READ_INST_32_2();
+    int32_t index = static_cast<int32_t>(READ_INST_32_2());
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
         thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineWideStobjbyindexPrefV8Imm32);
@@ -3535,7 +3566,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_STOBJBYINDEX_PREF_V8_IMM32)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_STOWNBYINDEX_PREF_V8_IMM32)
 {
     int8_t v0 = READ_INST_8_1();
-    int32_t index = READ_INST_32_2();
+    int32_t index = static_cast<int32_t>(READ_INST_32_2());
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
         thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineWideStownbyindexPrefV8Imm32);
@@ -3708,7 +3739,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_STPATCHVAR_PREF_IMM16)
 // GLUE, ACC, INDEX
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_LDOBJBYINDEX_PREF_IMM32)
 {
-    int32_t index = READ_INST_32_1();
+    int32_t index = static_cast<int32_t>(READ_INST_32_1());
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
         thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineWideLdobjbyindexPrefImm32);
@@ -4846,7 +4877,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDSUPERBYVALUE_PREF_V8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32)
 {
     int8_t v0 = READ_INST_8_1();
-    int32_t index = READ_INST_32_2();
+    int32_t index = static_cast<int32_t>(READ_INST_32_2());
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
         thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDeprecatedLdobjbyindexPrefV8Imm32);
@@ -4965,7 +4996,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STLEXVAR_PREF_IMM16_IMM16_V8)
 // GLUE, ACC, STRING_ID, SP
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_GETMODULENAMESPACE_PREF_ID32)
 {
-    int32_t stringId = READ_INST_32_1();
+    int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
         thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDeprecatedGetmodulenamespacePrefId32);
@@ -4982,7 +5013,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_GETMODULENAMESPACE_PREF_ID32)
 // GLUE, ACC, STRING_ID, SP
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STMODULEVAR_PREF_ID32)
 {
-    int32_t stringId = READ_INST_32_1();
+    int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
         thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDeprecatedStmodulevarPrefId32);
@@ -4999,7 +5030,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STMODULEVAR_PREF_ID32)
 // GLUE, SP, ACC, V0, STRING_ID
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDOBJBYNAME_PREF_ID32_V8)
 {
-    int32_t stringId = READ_INST_32_1();
+    int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
     int8_t v0 = READ_INST_8_5();
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -5019,7 +5050,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDOBJBYNAME_PREF_ID32_V8)
 // GLUE, SP, ACC, STRING_ID, V0
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDSUPERBYNAME_PREF_ID32_V8)
 {
-    int32_t stringId = READ_INST_32_1();
+    int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
     int8_t v0 = READ_INST_8_5();
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -5038,7 +5069,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDSUPERBYNAME_PREF_ID32_V8)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8)
 {
-    int32_t stringId = READ_INST_32_1();
+    int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
     int8_t flagI8 = READ_INST_8_5();
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
@@ -5057,7 +5088,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32)
 {
-    int32_t stringId = READ_INST_32_1();
+    int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
         thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDeprecatedStconsttoglobalrecordPrefId32);
@@ -5075,7 +5106,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32)
 // GLUE, ACC, STRING_ID, SP
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32)
 {
-    int32_t stringId = READ_INST_32_1();
+    int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
         thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDeprecatedStlettoglobalrecordPrefId32);
@@ -5093,7 +5124,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32)
 // GLUE, ACC, STRING_ID, SP
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32)
 {
-    int32_t stringId = READ_INST_32_1();
+    int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
         thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDeprecatedStclasstoglobalrecordPrefId32);
@@ -5181,6 +5212,28 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINEFIELDBYNAME_IMM8_ID16_V8)
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
+// GLUE, SP, ACC, PROFILE_TYPE_INFO, SLOT_ID_I8, STRING_ID, V0
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINEPROPERTYBYNAME_IMM8_ID16_V8)
+{
+    uint8_t slotIdI8 = READ_INST_8_0();
+    int16_t stringId = READ_INST_16_1();
+    uint8_t v0 = READ_INST_8_3();
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineDefinePropertyByNameImm8Id16V8);
+    LOG_INST() << "    BaselineDefinePropertyByNameImm8Id16V8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(slotIdI8);
+    parameters.emplace_back(stringId);
+    parameters.emplace_back(v0);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE)
 {
     (void)bytecodeArray;
@@ -5218,7 +5271,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_
 // GLUE, SP, ACC, INDEX, V0
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8)
 {
-    int32_t index = READ_INST_32_2();
+    int32_t index = static_cast<int32_t>(READ_INST_32_2());
     int8_t v0 = READ_INST_8_6();
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =

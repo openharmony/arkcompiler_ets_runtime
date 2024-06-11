@@ -44,8 +44,6 @@ int main(int argc, char **argv)
         } else if (strncmp(argv[i], "-dumpfunc=", k10BitSize) == 0 && strlen(argv[i]) > k10BitSize) {
             std::string funcName(&argv[i][k10BitSize]);
             dumpFuncSet.insert(funcName);
-        } else if (strcmp(argv[i], "-srclang=java") == 0) {
-            srcLang = kSrcLangJava;
         } else if (strcmp(argv[i], "-srclang=c") == 0) {
             srcLang = kSrcLangC;
         } else if (strcmp(argv[i], "-srclang=c++") == 0) {
@@ -72,18 +70,9 @@ int main(int argc, char **argv)
         // input the file
         if (ismpl || istmpl) {
             maple::MIRParser theparser(*themodule[i]);
-            if (!theparser.ParseMIR()) {
-                theparser.EmitError(themodule[i]->GetFileName().c_str());
-                return 1;
-            }
         } else {
             BinaryMplImport binMplt(*themodule[i]);
             binMplt.SetImported(false);
-            std::string modid = themodule[i]->GetFileName();
-            if (!binMplt.Import(modid, true)) {
-                ERR(kLncErr, "mpldbg: cannot open .mplt or .bpl file: %s", modid.c_str());
-                return 1;
-            }
         }
 
         themodule[i]->GetDbgInfo()->BuildDebugInfo();

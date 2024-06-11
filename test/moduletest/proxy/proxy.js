@@ -121,3 +121,161 @@ class C4 extends v4 {
 }
 new C4();
 print("test proxy constructor success!")
+
+var proxyHandler = {};
+var object = new Proxy({}, proxyHandler);
+print(Object.prototype.isPrototypeOf.call(object, object));
+
+var target3 = {
+    get attr() {
+        return this;
+    },
+    name:"kkk"
+};
+var p = new Proxy(target3, {
+    get: null
+});
+print(p.attr.name);
+
+var target4 = {
+    name:"kkk"
+};
+var p1 = new Proxy(target4, {
+    get(target, property) {
+        return 1;
+    }
+});
+Object.defineProperty(target4, "age", {
+    writable:false,
+    value : 33,
+    configurable:false
+});
+try{
+    p1.age;
+} catch (e) {
+    print(e);
+}
+
+var p2 = new Proxy(target4, {});
+print(p2.name);
+
+var target5 = {
+    name:"kkk",
+};
+Object.defineProperty(target5, "age", {
+    configurable:false,
+    set : function (val) {
+        return 4;
+    }
+});
+var p3 = new Proxy(target5, {
+    get(target, property) {
+        return 4;
+    }
+});
+try {
+    print(p3.age);
+} catch(e) {
+    print(e);
+}
+
+var target6 = {
+    name:"kkk",
+};
+Object.defineProperty(target6, "age", {
+    configurable:false,
+    get : function (val) {
+        return 4;
+    }
+});
+var p4 = new Proxy(target6, {
+    get(target, property) {
+        return 4;
+    },
+    set(target, property, value) {
+        return 6;
+    }
+});
+try {
+    p4.age = 9;
+} catch(e) {
+    print(e);
+}
+
+var target7 = {
+    name:"kkk",
+};
+Object.defineProperty(target7, "age", {
+    writable:false,
+    value : 33,
+    configurable:false
+});
+var p5 = new Proxy(target7, {
+    get(target, property) {
+        return 4;
+    },
+    set(target, property, value) {
+        return 4;
+    }
+});
+try {
+    p5.age = 9;
+} catch(e) {
+    print(e);
+}
+
+var target8 = {
+    name:"kkk",
+};
+
+var p6 = new Proxy(target8, {
+    get(target, property) {
+        return 4;
+    },
+    set(target, property, value) {
+        return false;
+    }
+});
+try {
+    p6.name = 9;
+} catch(e) {
+    print(e);
+}
+
+var target9 = {
+    name:"kkk",
+};
+
+var p7 = new Proxy(target9, {
+    get(target, property) {
+        return target[property];
+    },
+    set(target, property, value) {
+        target[property] = value;
+        return true;
+    }
+});
+
+
+var obj1 = {};
+obj1.__proto__ = p7;
+print(obj1.name);
+
+try {
+    obj1.name = "wode";
+    print(obj1.name);
+} catch(e) {
+    print(e);
+}
+
+try {
+    new Proxy(undefined, undefined);
+} catch(e) {
+    print(e);
+}
+
+try {
+    new Proxy({}, undefined);
+} catch(e) {
+    print(e);
+}

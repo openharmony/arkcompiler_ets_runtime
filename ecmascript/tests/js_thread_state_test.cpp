@@ -28,33 +28,13 @@ using namespace panda::ecmascript;
 
 namespace panda::test {
 
-class StateTransitioningTest : public testing::Test {
+class StateTransitioningTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
     void InitializeLogger()
     {
         panda::ecmascript::JSRuntimeOptions runtimeOptions;
         runtimeOptions.SetLogLevel("error");
         ecmascript::Log::Initialize(runtimeOptions);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
 
     static void NewVMThreadEntry(EcmaVM *newVm,
@@ -105,7 +85,10 @@ public:
             while (activeThreadCount == oldCount) {
             }
         });
-        t1.join();
+        {
+            ThreadSuspensionScope suspensionScope(thread);
+            t1.join();
+        }
     }
 
     void ChangeAllThreadsToRunning()
@@ -157,41 +140,38 @@ public:
     std::atomic<size_t> activeThreadCount {0};
     std::atomic<bool> isTestEnded {false};
     std::atomic<bool> changeToRunning {false};
-    JSThread *thread {nullptr};
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
 };
 
 HWTEST_F_L0(StateTransitioningTest, ThreadStateTransitionScopeTest)
 {
     ThreadState mainState = thread->GetState();
     {
-        ThreadStateTransitionScope scope(thread, ThreadState::CREATED);
+        ThreadStateTransitionScope<JSThread, ThreadState::CREATED> scope(thread);
         EXPECT_TRUE(thread->GetState() == ThreadState::CREATED);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope scope(thread, ThreadState::RUNNING);
+        ThreadStateTransitionScope<JSThread, ThreadState::RUNNING> scope(thread);
         EXPECT_TRUE(thread->GetState() == ThreadState::RUNNING);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope scope(thread, ThreadState::NATIVE);
+        ThreadStateTransitionScope<JSThread, ThreadState::NATIVE> scope(thread);
         EXPECT_TRUE(thread->GetState() == ThreadState::NATIVE);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope scope(thread, ThreadState::WAIT);
+        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> scope(thread);
         EXPECT_TRUE(thread->GetState() == ThreadState::WAIT);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope scope(thread, ThreadState::IS_SUSPENDED);
+        ThreadStateTransitionScope<JSThread, ThreadState::IS_SUSPENDED> scope(thread);
         EXPECT_TRUE(thread->GetState() == ThreadState::IS_SUSPENDED);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope scope(thread, ThreadState::TERMINATED);
+        ThreadStateTransitionScope<JSThread, ThreadState::TERMINATED> scope(thread);
         EXPECT_TRUE(thread->GetState() == ThreadState::TERMINATED);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
@@ -205,7 +185,7 @@ HWTEST_F_L0(StateTransitioningTest, ThreadManagedScopeTest)
         EXPECT_TRUE(thread->GetState() == ThreadState::RUNNING);
     }
     if (mainState == ThreadState::RUNNING) {
-        ThreadStateTransitionScope tempScope(thread, ThreadState::WAIT);
+        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> tempScope(thread);
         {
             ThreadManagedScope scope(thread);
             EXPECT_TRUE(thread->GetState() == ThreadState::RUNNING);
@@ -223,7 +203,7 @@ HWTEST_F_L0(StateTransitioningTest, ThreadNativeScopeTest)
         EXPECT_TRUE(thread->GetState() == ThreadState::NATIVE);
     }
     if (mainState == ThreadState::NATIVE) {
-        ThreadStateTransitionScope tempScope(thread, ThreadState::WAIT);
+        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> tempScope(thread);
         {
             ThreadNativeScope scope(thread);
             EXPECT_TRUE(thread->GetState() == ThreadState::NATIVE);
@@ -241,7 +221,7 @@ HWTEST_F_L0(StateTransitioningTest, ThreadSuspensionScopeTest)
         EXPECT_TRUE(thread->GetState() == ThreadState::IS_SUSPENDED);
     }
     if (mainState == ThreadState::IS_SUSPENDED) {
-        ThreadStateTransitionScope tempScope(thread, ThreadState::WAIT);
+        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> tempScope(thread);
         {
             ThreadSuspensionScope scope(thread);
             EXPECT_TRUE(thread->GetState() == ThreadState::IS_SUSPENDED);

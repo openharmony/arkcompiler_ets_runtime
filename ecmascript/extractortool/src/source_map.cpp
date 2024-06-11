@@ -31,7 +31,6 @@ namespace {
 static constexpr char DELIMITER_COMMA = ',';
 static constexpr char DELIMITER_SEMICOLON = ';';
 static constexpr char DOUBLE_SLASH = '\\';
-static constexpr char WEBPACK[] = "webpack:///";
 
 static constexpr int32_t INDEX_ONE = 1;
 static constexpr int32_t INDEX_TWO = 2;
@@ -39,7 +38,6 @@ static constexpr int32_t INDEX_THREE = 3;
 static constexpr int32_t INDEX_FOUR = 4;
 static constexpr int32_t ANS_MAP_SIZE = 5;
 static constexpr int32_t DIGIT_NUM = 64;
-[[maybe_unused]] static constexpr int32_t MILLION_TIME = 1000;
 
 const std::string MEGER_SOURCE_MAP_PATH = "ets/sourceMaps.map";
 static const CString FLAG_SOURCES = "    \"sources\":";
@@ -104,8 +102,8 @@ void SourceMap::Init(const std::string& hapPath)
         SplitSourceMap(sourceMapData);
     }
     auto end = Clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    LOG_ECMA(DEBUG) << "Init sourcemap time: " << (float) (duration.count() / MILLION_TIME) << "ms";
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    LOG_ECMA(DEBUG) << "Init sourcemap time: " << duration.count() << "ms";
 }
 #endif
 
@@ -199,8 +197,12 @@ void SourceMap::ExtractSourceMapData(const std::string& allmappings, std::shared
 
 MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targetMap)
 {
-    if (row < 1 || col < 1 || targetMap.afterPos_.empty()) {
-        return MappingInfo {0, 0, ""};
+    if (row < 1 || col < 1) {
+        LOG_ECMA(ERROR) << "SourceMap find failed, line: " << row << ", column: " << col;
+        return MappingInfo { 0, 0 };
+    } else if (targetMap.afterPos_.empty()) {
+        LOG_ECMA(ERROR) << "Target map can't find after pos.";
+        return MappingInfo { 0, 0 };
     }
     row--;
     col--;
@@ -209,7 +211,7 @@ MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targe
     int32_t right = static_cast<int32_t>(targetMap.afterPos_.size()) - 1;
     int32_t res = 0;
     if (row > targetMap.afterPos_[targetMap.afterPos_.size() - 1].afterRow) {
-        return MappingInfo { row + 1, col + 1, targetMap.files_[0] };
+        return MappingInfo { row + 1, col + 1};
     }
     while (right - left >= 0) {
         int32_t mid = (right + left) / 2;
@@ -221,17 +223,7 @@ MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targe
             left = mid + 1;
         }
     }
-    std::string sources = targetMap.url_;
-    auto pos = sources.find(WEBPACK);
-    if (pos != std::string::npos) {
-        sources.replace(pos, sizeof(WEBPACK) - 1, "");
-    }
-
-    MappingInfo mappingInfo;
-    mappingInfo.row = targetMap.afterPos_[res].beforeRow + 1;
-    mappingInfo.col = targetMap.afterPos_[res].beforeColumn + 1;
-    mappingInfo.sources = sources;
-    return mappingInfo;
+    return MappingInfo { targetMap.afterPos_[res].beforeRow + 1, targetMap.afterPos_[res].beforeColumn + 1 };
 }
 
 void SourceMap::ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo)

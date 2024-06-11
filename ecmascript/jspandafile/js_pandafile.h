@@ -473,6 +473,7 @@ private:
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
+    CUnorderedMap<CString, CString> npmEntries_;
     bool isRecordWithBundleName_ {true};
     static bool loadedFirstPandaFile;
     bool isFirstPandafile_{false};

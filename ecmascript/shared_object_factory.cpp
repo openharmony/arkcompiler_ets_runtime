@@ -41,12 +41,17 @@ void ObjectFactory::NewSObjectHook() const
 #ifndef NDEBUG
     static std::atomic<uint32_t> count = 0;
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
+    static constexpr uint32_t CONCURRENT_MARK_FREQUENCY_FACTOR = 2;
     if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !vm_->IsInitialized() ||
         !thread_->IsAllContextsInitialized()) {
         return;
     }
     if (count++ % frequency == 0) {
-        sHeap_->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::OTHER);
+        if (count % (CONCURRENT_MARK_FREQUENCY_FACTOR * frequency) == 0) {
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+        } else {
+            sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+        }
     }
 #endif
 }
@@ -187,7 +192,7 @@ JSHandle<Method> ObjectFactory::NewSMethod(const JSPandaFile *jsPandaFile, Metho
         auto aotFileManager = thread_->GetEcmaVM()->GetAOTFileManager();
         aotFileManager->SetAOTFuncEntry(jsPandaFile, nullptr, *method, entryIndex, canFastCall);
     } else {
-        method->ClearAOTFlagsWhenInit();
+        method->InitInterpreterStatusForCompiledMethod(thread_);
     }
     return method;
 }
@@ -268,6 +273,9 @@ TaggedObject *ObjectFactory::NewSharedOldSpaceObject(const JSHandle<JSHClass> &h
 {
     NewSObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, *hclass);
+    if (header == nullptr) {
+        LOG_ECMA(FATAL) << "ObjectFactory::NewSharedOldSpaceObject:header is nullptr";
+    }
     uint32_t inobjPropCount = hclass->GetInlinedProperties();
     if (inobjPropCount > 0) {
         InitializeExtraProperties(hclass, header, inobjPropCount);
@@ -427,6 +435,17 @@ JSHandle<TaggedArray> ObjectFactory::NewSDictionaryArray(uint32_t length)
     return array;
 }
 
+JSHandle<ProfileTypeInfoCell> ObjectFactory::NewSEmptyProfileTypeInfoCell()
+{
+    NewSObjectHook();
+    auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
+    JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
+    profileTypeInfoCell->SetValue(thread_, JSTaggedValue::Undefined());
+    profileTypeInfoCell->SetMachineCode(thread_, JSTaggedValue::Hole());
+    return profileTypeInfoCell;
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewSEmptyArray()
 {
     NewSObjectHook();
@@ -458,7 +477,9 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
 {
     NewSObjectHook();
     TaggedObject *header;
-    auto jsNativePointerClass = JSHClass::Cast(thread_->GlobalConstants()->GetJSNativePointerClass().GetTaggedObject());
+    auto jsNativePointerClass =
+        JSHClass::Cast(thread_->GlobalConstants()->GetSJSNativePointerClass().GetTaggedObject());
+    jsNativePointerClass->SetIsJSShared(true);
     if (nonMovable) {
         header = sHeap_->AllocateNonMovableOrHugeObject(thread_, jsNativePointerClass);
     } else {

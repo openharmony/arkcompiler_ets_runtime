@@ -73,7 +73,7 @@ static constexpr size_t INT32_HEX_DIGITS = INT32_BITS / 4;
 static constexpr size_t INT16_HEX_DIGITS = INT16_BITS / 4;
 static constexpr size_t INT8_HEX_DIGITS = INT8_BITS / 4;
 
-static constexpr int EXPONENTBIAS  = DOUBLE_EXPONENT_BIAS + DOUBLE_SIGNIFICAND_SIZE;
+static constexpr int EXPONENTBIAS = DOUBLE_EXPONENT_BIAS + DOUBLE_SIGNIFICAND_SIZE;
 static constexpr int kDENORMAL = -EXPONENTBIAS + 1;
 static constexpr uint64_t kINFINITY = 0x7FF0'0000'0000'0000;
 
@@ -134,7 +134,7 @@ public:
 
     static int inline Exponent(double x)
     {
-        uint64_t value =  base::bit_cast<uint64_t>(x);
+        uint64_t value = base::bit_cast<uint64_t>(x);
         if (IsDenormal(value)) {
             return kDENORMAL;
         }
@@ -144,7 +144,7 @@ public:
 
     static uint64_t inline Significand(double x)
     {
-        uint64_t value =  base::bit_cast<uint64_t>(x);
+        uint64_t value = base::bit_cast<uint64_t>(x);
         uint64_t significand = value & DOUBLE_SIGNIFICAND_MASK;
         if (!IsDenormal(value)) {
             return significand + DOUBLE_HIDDEN_BIT;
@@ -169,6 +169,7 @@ public:
     static double StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix, uint32_t flags = NO_FLAGS);
     static int32_t DoubleToInt(double d, size_t bits);
     static int32_t PUBLIC_API DoubleInRangeInt32(double d);
+    static JSTaggedValue StringToNumber(EcmaString *string, int32_t radix);
     static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative);
     static CString IntToString(int number);
     static CString IntegerToString(double number, int radix);
@@ -193,6 +194,7 @@ private:
     static void GetBaseForRoundingMode(double valueNumber, int digitNumber, int *decimalPoint, std::string& buf,
                 std::string& buf1, int buf1Size, int roundingMode, int *sign);
     static void CustomEcvtIsFixed(double &valueNumber, int &digits, int *decimalPoint, std::string& buf, int *sign);
+    static bool IsValidHexadecimalString(const int size, const int radix, const bool strip);
 };
 
 // This class is used to generate 0~1 uniform distribution pseudo-random numbers.

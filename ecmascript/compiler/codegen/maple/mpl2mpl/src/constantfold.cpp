@@ -1135,9 +1135,9 @@ T ConstantFold::CalIntValueFromFloatValue(T value, const MIRType &resultType) co
     DEBUG_ASSERT(kByteSizeOfBit64 >= resultType.GetSize(), "unsupported type");
     size_t shiftNum = (kByteSizeOfBit64 - resultType.GetSize()) * kBitSizePerByte;
     bool isSigned = IsSignedInteger(resultType.GetPrimType());
-    int64 max = std::numeric_limits<int64>::max() >> shiftNum;
+    int64 max = (IntVal(std::numeric_limits<int64>::max(), PTY_i64) >> shiftNum).GetExtValue();
     uint64 umax = std::numeric_limits<uint64>::max() >> shiftNum;
-    int64 min = isSigned ? (std::numeric_limits<int64>::min() >> shiftNum) : 0;
+    int64 min = isSigned ? (IntVal(std::numeric_limits<int64>::min(), PTY_i64) >> shiftNum).GetExtValue() : 0;
     if (isSigned && (value > max)) {
         return static_cast<T>(max);
     } else if (!isSigned && (value > umax)) {
@@ -2596,18 +2596,8 @@ StmtNode *ConstantFold::SimplifyIf(IfStmtNode *node)
     returnValue = Fold(node->Opnd());
     if (returnValue != nullptr) {
         node->SetOpnd(returnValue, 0);
-        ConstvalNode *cst = safe_cast<ConstvalNode>(node->Opnd());
         // do not delete c/c++ dead if-body here
-        if (cst == nullptr || (!mirModule->IsJavaModule())) {
-            return node;
-        }
-        MIRIntConst *intConst = safe_cast<MIRIntConst>(cst->GetConstVal());
-        ASSERT_NOT_NULL(intConst);
-        if (intConst->GetValue() == 0) {
-            return node->GetElsePart();
-        } else {
-            return node->GetThenPart();
-        }
+        return node;
     }
     return node;
 }
@@ -2625,18 +2615,8 @@ StmtNode *ConstantFold::SimplifyWhile(WhileStmtNode *node)
     returnValue = Fold(node->Opnd(0));
     if (returnValue != nullptr) {
         node->SetOpnd(returnValue, 0);
-        ConstvalNode *cst = safe_cast<ConstvalNode>(node->Opnd(0));
         // do not delete c/c++ dead while-body here
-        if (cst == nullptr || (!mirModule->IsJavaModule())) {
-            return node;
-        }
-        if (cst->GetConstVal()->IsZero()) {
-            if (node->GetOpCode() == OP_while) {
-                return nullptr;
-            } else {
-                return node->GetBody();
-            }
-        }
+        return node;
     }
     return node;
 }

@@ -349,6 +349,10 @@ bool AotCompilerPreprocessor::IsSkipMethod(const JSPandaFile *jsPandaFile, const
         return true;
     }
 
+    if (OutCompiledMethodsRange()) {
+        return true;
+    }
+
     if (!cOptions.optionSelectMethods_.empty()) {
         return !FilterOption(cOptions.optionSelectMethods_, ConvertToStdString(recordName), methodName);
     } else if (!cOptions.optionSkipMethods_.empty()) {
@@ -392,5 +396,21 @@ void AotCompilerPreprocessor::GenerateMethodMap(CompilationOptions &cOptions)
 std::string AotCompilerPreprocessor::GetMainPkgArgsAppSignature() const
 {
     return GetMainPkgArgs() == nullptr ? "" : GetMainPkgArgs()->GetAppSignature();
+}
+
+void AotCompilerPreprocessor::CreateEmptyFile(const std::string& fileName)
+{
+    std::string realPath;
+    if (!RealPath(fileName, realPath, false)) {
+        LOG_COMPILER(ERROR) << "failed to create empty file: " << fileName;
+        return;
+    }
+    const char* filePath = realPath.c_str();
+    if (FileExist(filePath)) {
+        LOG_COMPILER(DEBUG) << fileName << " file already exist, skip creating empty file";
+        return;
+    }
+    std::ofstream file(filePath);
+    file.close();
 }
 } // namespace panda::ecmascript::kungfu

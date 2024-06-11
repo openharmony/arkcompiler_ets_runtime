@@ -23,6 +23,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/method.h"
 #include "ecmascript/require/js_cjs_module.h"
+#include "ecmascript/object_factory.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript {
@@ -31,7 +32,7 @@ class ECMAObject;
 class GeneratorContext;
 
 using EcmaOpcode = BytecodeInstruction::Opcode;
-const uint8_t EXCEPTION_OPCODE = static_cast<uint8_t>(EcmaOpcode::NOP) + 7;
+const uint8_t EXCEPTION_OPCODE = static_cast<uint8_t>(EcmaOpcode::NOP) + 8;
 
 class EcmaInterpreter {
 public:
@@ -44,12 +45,12 @@ public:
     static JSTaggedValue ExecuteNative(EcmaRuntimeCallInfo *info);
     static EcmaRuntimeCallInfo* NewRuntimeCallInfo(
         JSThread *thread, JSTaggedValue func, JSTaggedValue thisObj, JSTaggedValue newTarget,
-        uint32_t numArgs, bool needCheckStack = true);
+        uint32_t numArgs, StackCheck needCheckStack = StackCheck::YES);
     static EcmaRuntimeCallInfo* NewRuntimeCallInfo(
         JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
-        JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack = true);
+        JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, StackCheck needCheckStack = StackCheck::YES);
     static EcmaRuntimeCallInfo* ReBuildRuntimeCallInfo(
-        JSThread *thread, EcmaRuntimeCallInfo* info, uint32_t numArgs, bool needCheckStack = true);
+        JSThread *thread, EcmaRuntimeCallInfo* info, int numArgs, StackCheck needCheckStack = StackCheck::YES);
     static JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
 #ifndef EXCLUDE_C_INTERPRETER
@@ -78,11 +79,13 @@ public:
     static bool IsFastNewFrameExit(JSTaggedType *sp);
     static int16_t GetHotnessCounter(uint32_t codeSize, bool cancelThreshold);
     static JSTaggedType *GetInterpreterFrameEnd(JSThread *thread, JSTaggedType *sp);
+    static void UpdateProfileTypeInfoCellToFunction(JSThread *thread, JSHandle<JSFunction> &function,
+                                                    JSTaggedValue profileTypeInfo, uint16_t slotId);
 private:
     static void InitStackFrameForSP(JSTaggedType *prevSp);
     static EcmaRuntimeCallInfo* NewRuntimeCallInfoBase(
         JSThread *thread, JSTaggedType func, JSTaggedType thisObj, JSTaggedType newTarget,
-        uint32_t numArgs, bool needCheckStack = true);
+        uint32_t numArgs, StackCheck needCheckStack = StackCheck::YES);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_INTERPRETER_H

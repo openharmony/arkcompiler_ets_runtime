@@ -34,12 +34,6 @@ public:
         binExport.Export(suffix, dumpFuncSet);
     }
 
-    bool Import(const std::string &modID, bool readCG = false, bool readSE = false)
-    {
-        importFileName = modID;
-        return binImport.Import(modID, readCG, readSE);
-    }
-
     const MIRModule &GetMod() const
     {
         return mirModule;

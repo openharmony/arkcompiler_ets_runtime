@@ -188,11 +188,6 @@ public:
             GetLiteralType() == AOTLiteralInfo::METHOD_LITERAL_TYPE);
     }
 
-    static bool HasNoFuncEntryValue(JSHandle<AOTLiteralInfo> literalInfo)
-    {
-        return literalInfo->GetObjectFromCache(0).GetInt() == static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE);
-    }
-
     static bool IsAotSymbolInfoExist(JSHandle<TaggedArray> symbolInfo, JSTaggedValue symbol)
     {
         return symbolInfo->GetLength() > 0 && !symbol.IsHole();
@@ -215,9 +210,6 @@ public:
                 sconstpool->SetObjectToCache(thread, i, val);
             } else if (IsAotMethodLiteralInfo(val)) {
                 JSHandle<AOTLiteralInfo> valHandle(thread, val);
-                if (HasNoFuncEntryValue(valHandle)) {
-                    continue;
-                }
                 JSHandle<AOTLiteralInfo> methodLiteral = CopySharedMethodAOTLiteralInfo(vm, valHandle);
                 sconstpool->SetObjectToCache(thread, i, methodLiteral.GetTaggedValue());
             }
@@ -236,15 +228,17 @@ public:
     }
 
     static JSHandle<AOTLiteralInfo> CopySharedMethodAOTLiteralInfo(EcmaVM *vm,
-                                                                   JSHandle<AOTLiteralInfo> methodLiteralInfo)
+                                                                   JSHandle<AOTLiteralInfo> src)
     {
         ObjectFactory *factory = vm->GetFactory();
-        JSHandle<AOTLiteralInfo> SAOTLiteralInfo = factory->NewSAOTLiteralInfo(1);
-        for (uint32_t i = 0; i < methodLiteralInfo->GetCacheLength(); i++) {
-            SAOTLiteralInfo->SetObjectToCache(vm->GetJSThread(), i, methodLiteralInfo->GetObjectFromCache(i));
+        JSHandle<AOTLiteralInfo> dst = factory->NewSAOTLiteralInfo(1);
+        for (uint32_t i = 0; i < src->GetCacheLength(); i++) {
+            JSTaggedValue val = src->GetObjectFromCache(i);
+            ASSERT(!val.IsHeapObject() || val.IsJSShared());
+            dst->SetObjectToCache(vm->GetJSThread(), i, val);
         }
-        SAOTLiteralInfo->SetLiteralType(JSTaggedValue(methodLiteralInfo->GetLiteralType()));
-        return SAOTLiteralInfo;
+        dst->SetLiteralType(JSTaggedValue(src->GetLiteralType()));
+        return dst;
     }
 
     static bool CheckUnsharedConstpool(JSTaggedValue constpool)

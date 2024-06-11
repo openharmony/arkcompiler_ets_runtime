@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ####################################fuzztest##################################
-ohos_fuzztest("GetFormatFunctionFuzzerTest") {
+ohos_fuzztest("GetFormatFunctionFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/getformatfunction_fuzzer"
@@ -40,5 +40,5 @@ ohos_fuzztest("GetFormatFunctionFuzzerTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":GetFormatFunctionFuzzerTest" ]
+  deps += [ ":GetFormatFunctionFuzzTest" ]
 }

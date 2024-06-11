@@ -257,7 +257,6 @@ static constexpr size_t kPageSize = 4096;
 static constexpr size_t kCacheLine = 64;
 
 // according to kSpaceAnchor and kFireBreak defined in bp_allocator.cpp
-// the address of this readable page is set as kProtectedMemoryStart for java class
 static constexpr uintptr_t kClInitStateAddrBase = 0xc0000000 - (1u << 20) * 2;
 
 // In Kirin 980, 2 mmap memory address with odd number of page distances may have unreasonable L1&L2 cache conflict.
@@ -295,7 +294,7 @@ enum SEGVAddr {
 
 struct ClassMetadata {
     // object common fields
-    MetaRef shadow;  // point to classinfo of java/lang/Class
+    MetaRef shadow;
     int32_t monitor;
 
     // other fields

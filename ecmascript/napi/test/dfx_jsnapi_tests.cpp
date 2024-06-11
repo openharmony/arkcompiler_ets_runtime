@@ -296,6 +296,54 @@ HWTEST_F_L0(DFXJSNApiTests, GetArrayBufferSize_GetHeapTotalSize_GetHeapUsedSize)
     EXPECT_LE(processHeapLimitSize, MAX_MEM_POOL_CAPACITY);
 }
 
+HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
+{
+    size_t oldGCCount = DFXJSNApi::GetGCCount(vm_);
+    size_t expectGCCount = vm_->GetEcmaGCStats()->GetGCCount() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCCount();
+    EXPECT_EQ(oldGCCount, expectGCCount);
+
+    size_t oldGCDuration = DFXJSNApi::GetGCDuration(vm_);
+    size_t expectGCDuration = vm_->GetEcmaGCStats()->GetGCDuration() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCDuration();
+    EXPECT_EQ(oldGCDuration, expectGCDuration);
+    
+    size_t oldAllocateSize = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
+    size_t expectAllocateSize = vm_->GetEcmaGCStats()->GetAccumulatedAllocateSize() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetAccumulatedAllocateSize();
+    EXPECT_EQ(oldAllocateSize, expectAllocateSize);
+    
+    size_t oldFreeSize = DFXJSNApi::GetAccumulatedFreeSize(vm_);
+    size_t expectFreeSize = vm_->GetEcmaGCStats()->GetAccumulatedFreeSize() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetAccumulatedFreeSize();
+    EXPECT_EQ(oldFreeSize, expectFreeSize);
+    
+    size_t oldLongTimeCount = DFXJSNApi::GetFullGCLongTimeCount(vm_);
+    size_t expectLongTimeCount = vm_->GetEcmaGCStats()->GetFullGCLongTimeCount() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetFullGCLongTimeCount();
+    EXPECT_EQ(oldLongTimeCount, expectLongTimeCount);
+
+    ObjectFactory *factory = vm_->GetFactory();
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread_);
+        for (int i = 0; i < 10240; i++) {
+            factory->NewTaggedArray(512, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        }
+        size_t newAllocateSize = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
+        EXPECT_TRUE(oldAllocateSize < newAllocateSize);
+    }
+    ecmascript::SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    size_t newFreeSize = DFXJSNApi::GetAccumulatedFreeSize(vm_);
+    EXPECT_TRUE(oldFreeSize < newFreeSize);
+    size_t newGCCount = DFXJSNApi::GetGCCount(vm_);
+    EXPECT_TRUE(oldGCCount < newGCCount);
+    size_t newGCDuration = DFXJSNApi::GetGCDuration(vm_);
+    EXPECT_TRUE(oldGCDuration < newGCDuration);
+}
+
 HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
 {
     auto heap = vm_->GetHeap();
@@ -361,5 +409,33 @@ HWTEST_F_L0(DFXJSNApiTests, GetAllocationProfile)
     DFXJSNApi::StartSampling(vm_, samplingInterval);
     result = DFXJSNApi::GetAllocationProfile(vm_);
     EXPECT_TRUE(result != nullptr);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, NotifyIdleStatusControl)
+{
+    bool receivedValue = false;
+    std::function<void(bool)> cb = [&](bool value) {
+        receivedValue = value;
+    };
+    DFXJSNApi::NotifyIdleStatusControl(vm_, cb);
+    const_cast<ecmascript::Heap *>(vm_->GetHeap())->DisableNotifyIdle();
+    EXPECT_TRUE(receivedValue);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, NotifyIdleTime)
+{
+    auto heap = const_cast<ecmascript::Heap *>(vm_->GetHeap());
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    DFXJSNApi::NotifyIdleTime(vm_, 10);
+    EXPECT_EQ(vm_->GetEcmaGCStats()->GetGCReason(), GCReason::IDLE);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, NotifyHighSensitive)
+{
+    auto heap = const_cast<ecmascript::Heap *>(vm_->GetHeap());
+    DFXJSNApi::NotifyHighSensitive(vm_, true);
+    EXPECT_TRUE(heap->GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    DFXJSNApi::NotifyHighSensitive(vm_, false);
+    EXPECT_TRUE(heap->GetSensitiveStatus() == AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
 }
 } // namespace panda::test

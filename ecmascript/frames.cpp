@@ -89,6 +89,11 @@ JSTaggedValue FrameIterator::GetFunction() const
             auto *frame = OptimizedBuiltinLeaveFrame::GetFrameFromSp(GetSp());
             return JSTaggedValue(*(frame->GetArgv()));
         }
+        case FrameType::FASTJIT_FUNCTION_FRAME:
+        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+            auto frame = GetFrame<FASTJITFunctionFrame>();
+            return frame->GetFunction();
+        }
         case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME :
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::OPTIMIZED_ENTRY_FRAME:
@@ -121,12 +126,25 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
         if (!func.IsHeapObject()) {
             return {};
         }
-        MarkWord markWord(func.GetTaggedObject());
-        TaggedObject *f = markWord.IsForwardingAddress() ? markWord.ToForwardingAddress() : func.GetTaggedObject();
-        if (!f->GetClass()->IsJSFunction()) {
+        // cast to jsfunction directly. JSFunction::Cast may fail,
+        // as jsfunction class may set forwardingAddress in Evacuate, but forwarding obj not init.
+        JSFunction *jsfunc = reinterpret_cast<JSFunction*>(func.GetTaggedObject());
+        // machineCode non move
+        JSTaggedValue machineCode = jsfunc->GetMachineCode();
+        if (machineCode.IsMachineCodeObject() &&
+            MachineCode::Cast(machineCode.GetTaggedObject())->IsInText(retAddr)) {
+            return MachineCode::Cast(machineCode.GetTaggedObject())->CalCallSiteInfo(retAddr);
+        }
+    } else if (type == FrameType::FASTJIT_FUNCTION_FRAME ||
+        type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME) {
+        auto frame = GetFrame<FASTJITFunctionFrame>();
+        JSTaggedValue func = frame->GetFunction();
+        if (!func.IsHeapObject()) {
             return {};
         }
-        JSFunction *jsfunc = JSFunction::Cast(f);
+        // cast to jsfunction directly. JSFunction::Cast may fail,
+        // as jsfunction class may set forwardingAddress in Evacuate, but forwarding obj not init.
+        JSFunction *jsfunc = reinterpret_cast<JSFunction*>(func.GetTaggedObject());
         // machineCode non move
         JSTaggedValue machineCode = jsfunc->GetMachineCode();
         if (machineCode.IsMachineCodeObject() &&
@@ -351,6 +369,17 @@ void FrameIterator::Advance()
             current_ = frame->GetPrevFrameFp();
             break;
         }
+        case FrameType::FASTJIT_FUNCTION_FRAME:
+        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+            auto frame = GetFrame<FASTJITFunctionFrame>();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
         default: {
             if (GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 current_ = nullptr;
@@ -411,7 +440,9 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::BASELINE_BUILTIN_FRAME:
         case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
-        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME:
+        case FrameType::FASTJIT_FUNCTION_FRAME:
+        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
             ASSERT(thread_ != nullptr);
             auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + fpDeltaPrevFrameSp_;
             return callSiteSp;
@@ -456,6 +487,11 @@ std::map<uint32_t, uint32_t> FrameIterator::GetInlinedMethodInfo()
             CollectMethodOffsetInfo(inlineMethodInfos);
             break;
         }
+        case FrameType::FASTJIT_FUNCTION_FRAME:
+        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+            CollectMethodOffsetInfo(inlineMethodInfos);
+            break;
+        }
         default: {
             break;
         }
@@ -484,6 +520,16 @@ uint32_t FrameIterator::GetBytecodeOffset() const
         case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             auto frame = this->GetFrame<OptimizedJSFunctionFrame>();
+            ConstInfo constInfo;
+            frame->CollectPcOffsetInfo(*this, constInfo);
+            if (!constInfo.empty()) {
+                return constInfo[0];
+            }
+            [[fallthrough]];
+        }
+        case FrameType::FASTJIT_FUNCTION_FRAME:
+        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+            auto frame = this->GetFrame<FASTJITFunctionFrame>();
             ConstInfo constInfo;
             frame->CollectPcOffsetInfo(*this, constInfo);
             if (!constInfo.empty()) {
@@ -550,10 +596,10 @@ ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
     }
 }
 
-ARK_INLINE void BaselineBuiltinFrame::GCIterate([[maybe_unused]]const FrameIterator &it,
-    [[maybe_unused]]const RootVisitor &visitor,
+ARK_INLINE void BaselineBuiltinFrame::GCIterate([[maybe_unused]] const FrameIterator &it,
+    [[maybe_unused]] const RootVisitor &visitor,
     [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
-    [[maybe_unused]]const RootBaseAndDerivedVisitor &derivedVisitor) const
+    [[maybe_unused]] const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {
@@ -592,7 +638,6 @@ ARK_INLINE uintptr_t* OptimizedJSFunctionFrame::ComputePrevFrameSp(const FrameIt
     uintptr_t *preFrameSp = reinterpret_cast<uintptr_t *>(const_cast<JSTaggedType *>(sp)) + delta / sizeof(uintptr_t);
     return preFrameSp;
 }
-
 
 void OptimizedJSFunctionFrame::CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const
 {
@@ -633,6 +678,65 @@ void OptimizedJSFunctionFrame::GetDeoptBundleInfo(const FrameIterator &it, std::
 }
 
 void OptimizedJSFunctionFrame::GetFuncCalleeRegAndOffset(
+    const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const
+{
+    it.GetCalleeRegAndOffsetVec(ret);
+}
+
+ARK_INLINE JSTaggedType* FASTJITFunctionFrame::GetArgv(const FrameIterator &it) const
+{
+    uintptr_t *preFrameSp = ComputePrevFrameSp(it);
+    return GetArgv(preFrameSp);
+}
+
+ARK_INLINE uintptr_t* FASTJITFunctionFrame::ComputePrevFrameSp(const FrameIterator &it) const
+{
+    const JSTaggedType *sp = it.GetSp();
+    int delta = it.ComputeDelta();
+    ASSERT((delta > 0) && (delta % sizeof(uintptr_t) == 0));
+    uintptr_t *preFrameSp = reinterpret_cast<uintptr_t *>(const_cast<JSTaggedType *>(sp)) + delta / sizeof(uintptr_t);
+    return preFrameSp;
+}
+
+void FASTJITFunctionFrame::CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const
+{
+    it.CollectPcOffsetInfo(info);
+}
+
+ARK_INLINE void FASTJITFunctionFrame::GCIterate(const FrameIterator &it,
+    const RootVisitor &visitor,
+    [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
+    const RootBaseAndDerivedVisitor &derivedVisitor, FrameType frameType) const
+{
+    FASTJITFunctionFrame *frame = FASTJITFunctionFrame::GetFrameFromSp(it.GetSp());
+    uintptr_t *jsFuncPtr = reinterpret_cast<uintptr_t *>(frame);
+    uintptr_t jsFuncSlot = ToUintPtr(jsFuncPtr);
+    visitor(Root::ROOT_FRAME, ObjectSlot(jsFuncSlot));
+    if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
+        uintptr_t *preFrameSp = frame->ComputePrevFrameSp(it);
+        auto argc = frame->GetArgc(preFrameSp);
+        JSTaggedType *argv = frame->GetArgv(reinterpret_cast<uintptr_t *>(preFrameSp));
+        if (argc > 0) {
+            uintptr_t start = ToUintPtr(argv); // argv
+            uintptr_t end = ToUintPtr(argv + argc);
+            rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+        }
+    }
+
+    bool ret = it.IteratorStackMap(visitor, derivedVisitor);
+    if (!ret) {
+#ifndef NDEBUG
+        LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
+#endif
+    }
+}
+
+void FASTJITFunctionFrame::GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const
+{
+    it.CollectArkDeopt(deopts);
+}
+
+void FASTJITFunctionFrame::GetFuncCalleeRegAndOffset(
     const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const
 {
     it.GetCalleeRegAndOffsetVec(ret);

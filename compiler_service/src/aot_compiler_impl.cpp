@@ -125,9 +125,9 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
         int exit_status = WEXITSTATUS(status);
         HiviewDFX::HiLog::Info(LABEL, "child process exited with status: %{public}d", exit_status);
         switch (exit_status) {
-            case ErrOfCompile::COMPILE_OK:
+            case static_cast<int>(ErrOfCompile::COMPILE_OK):
                 ret = ERR_OK; break;
-            case ErrOfCompile::COMPILE_NO_AP:
+            case static_cast<int>(ErrOfCompile::COMPILE_NO_AP):
                 ret = ERR_OK_NO_AOT_FILE; break;
             default:
                 ret = ERR_AOT_COMPILER_CALL_FAILED; break;
@@ -183,6 +183,21 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     return ret ? ERR_AOT_COMPILER_CALL_FAILED : AOTLocalCodeSign(hapArgs.fileName, hapArgs.signature, sigData);
 }
 
+int32_t AotCompilerImpl::GetAOTVersion(std::string& sigData)
+{
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::GetAOTVersion");
+    sigData = panda::ecmascript::AOTFileVersion::GetAOTVersion();
+
+    return ERR_OK;
+}
+
+int32_t AotCompilerImpl::NeedReCompile(const std::string& args, bool& sigData)
+{
+    HiviewDFX::HiLog::Info(LABEL, "AotCompilerImpl::NeedReCompile");
+    sigData = panda::ecmascript::AOTFileVersion::CheckAOTVersion(args);
+    return ERR_OK;
+}
+
 int32_t AotCompilerImpl::AOTLocalCodeSign(const std::string &fileName, const std::string &appSignature,
                                           std::vector<int16_t> &sigData)
 {
@@ -190,7 +205,7 @@ int32_t AotCompilerImpl::AOTLocalCodeSign(const std::string &fileName, const std
     if (Security::CodeSign::LocalCodeSignKit::SignLocalCode(appSignature, fileName, sig)
                         != CommonErrCode::CS_SUCCESS) {
         HiviewDFX::HiLog::Error(LABEL, "failed to sign the aot file");
-        return ERR_AOT_COMPILER_CALL_FAILED;
+        return ERR_AOT_COMPILER_SIGNATURE_FAILED;
     }
     HiviewDFX::HiLog::Debug(LABEL, "aot file local sign success");
     uint8_t *dataPtr = sig.GetBuffer();
@@ -258,4 +273,6 @@ void AotCompilerImpl::ResetState()
     state_.running = false;
     state_.childPid = -1;
 }
+
+
 } // namespace ArkCompiler::OHOS

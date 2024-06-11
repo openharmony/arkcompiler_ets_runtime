@@ -114,6 +114,50 @@ void CommonCall::PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, R
     __ Cbnz(argc.W(), &loopBeginning);
 }
 
+void CommonCall::PushArgsWithArgvInPair(ExtendedAssembler *assembler, Register argc,
+    Register argv, Register padding, Register op1, Register op2, Label *next)
+{
+    Register sp(SP);
+    if (next != nullptr) {
+        __ Cmp(argc.W(), Immediate(0));
+        __ B(Condition::LS, next);
+    }
+
+    Label copyArgs;
+    __ Tbnz(argc, 0, &copyArgs);
+    {
+        __ Add(argv, argv, Operand(argc.W(), UXTW, 3)); // 3: argc * 8
+        __ Ldr(op1, MemoryOperand(argv, -FRAME_SLOT_SIZE, PREINDEX));
+        __ Stp(op1, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Sub(argc.W(), argc.W(), Immediate(1)); // 1: push the top arg already
+        __ Sub(argv, argv, Operand(argc.W(), UXTW, 3)); // 3: argc * 8
+        __ B(&copyArgs);
+    }
+    __ Bind(&copyArgs);
+    {
+        Label loopBeginning;
+        Label pushPadding;
+        __ Add(argv, argv, Operand(argc.W(), UXTW, 3));  // 3: argc * 8
+
+        __ Cmp(argc.W(), Immediate(1));  // 1: argc is odd number in copyArgs
+        __ B(Condition::LS, &pushPadding);
+
+        __ Bind(&loopBeginning);
+        __ Ldp(op1, op2, MemoryOperand(argv, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ Stp(op1, op2, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Sub(argc.W(), argc.W(), Immediate(2));  // 2: pair
+        __ Cmp(argc.W(), Immediate(1));  // 1: argc is odd number in copyArgs
+        __ B(Condition::HI, &loopBeginning);
+
+        __ Bind(&pushPadding);
+        __ Ldr(op2, MemoryOperand(argv, -FRAME_SLOT_SIZE, PREINDEX));
+        __ Stp(padding, op2, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        if (next != nullptr) {
+            __ B(next);
+        }
+    }
+}
+
 void CommonCall::PushUndefinedWithArgc(ExtendedAssembler *assembler, Register glue, Register argc, Register temp,
     Register currentSlot, Label *next, Label *stackOverflow)
 {

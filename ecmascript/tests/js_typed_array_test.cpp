@@ -21,31 +21,8 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 
 namespace panda::test {
-class JSTypedArrayTest : public testing::Test {
+class JSTypedArrayTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
     const CVector<JSType> cVecJSType {
         JSType::JS_INT8_ARRAY, JSType::JS_UINT8_ARRAY, JSType::JS_UINT8_CLAMPED_ARRAY,
         JSType::JS_INT16_ARRAY, JSType::JS_UINT16_ARRAY,
@@ -1180,6 +1157,21 @@ HWTEST_F_L0(JSTypedArrayTest, FastElementGet_TypedArray)
     }
 }
 
+JSHandle<JSTaggedValue> PropertyTypedArrayCommon(JSThread *thread, JSType type, int numElementsTypedArray)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTypedArray> handleTypedArray = CreateNumberTypedArray(thread, type);
+    JSHandle<JSTaggedValue> handleTagValTypedArray = JSHandle<JSTaggedValue>::Cast(handleTypedArray);
+
+    int32_t sizeElement = ecmascript::base::TypedArrayHelper::GetElementSize(handleTypedArray);
+    int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypedArray;
+    JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
+    handleTypedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
+    handleTypedArray->SetArrayLength(numElementsTypedArray);
+    return handleTagValTypedArray;
+}
+
 /*
  * Feature: JSTypedArray
  * Function: DefineOwnProperty
@@ -1193,21 +1185,11 @@ HWTEST_F_L0(JSTypedArrayTest, FastElementGet_TypedArray)
  */
 HWTEST_F_L0(JSTypedArrayTest, DefineOwnProperty_TypedArray)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     for (size_t j = 0; j < cVecJSType.size(); j++) {
         int numElementsTypedArray = 10;
         JSHandle<JSTaggedValue> handleTagValValueDef(thread, cVecHandleTagValValueForTypedArray.at(j));
         PropertyDescriptor descFrom1(thread, handleTagValValueDef, true, true, true);
-        JSHandle<JSTypedArray> handleTypedArray = CreateNumberTypedArray(thread, cVecJSType.at(j));
-        JSHandle<JSTaggedValue> handleTagValTypedArray = JSHandle<JSTaggedValue>::Cast(handleTypedArray);
-
-        int32_t sizeElement = ecmascript::base::TypedArrayHelper::GetElementSize(handleTypedArray);
-        int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypedArray;
-        JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
-            JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
-        handleTypedArray->SetArrayLength(numElementsTypedArray);
+        auto handleTagValTypedArray = PropertyTypedArrayCommon(thread, cVecJSType.at(j), numElementsTypedArray);
 
         for (int i = 0; i < numElementsTypedArray; i++) {
             JSHandle<JSTaggedValue> handleTagValKey(thread, JSTaggedValue(i));
@@ -1240,20 +1222,10 @@ HWTEST_F_L0(JSTypedArrayTest, DefineOwnProperty_TypedArray)
  */
 HWTEST_F_L0(JSTypedArrayTest, SetProperty_TypedArray)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     for (size_t j = 0; j < cVecJSType.size(); j++) {
         int numElementsTypedArray = 10;
         JSHandle<JSTaggedValue> handleTagValValueSet(thread, cVecHandleTagValValueForTypedArray.at(j));
-        JSHandle<JSTypedArray> handleTypedArray = CreateNumberTypedArray(thread, cVecJSType.at(j));
-        JSHandle<JSTaggedValue> handleTagValTypedArray = JSHandle<JSTaggedValue>::Cast(handleTypedArray);
-
-        int32_t sizeElement = ecmascript::base::TypedArrayHelper::GetElementSize(handleTypedArray);
-        int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypedArray;
-        JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
-            JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
-        handleTypedArray->SetArrayLength(numElementsTypedArray);
+        auto handleTagValTypedArray = PropertyTypedArrayCommon(thread, cVecJSType.at(j), numElementsTypedArray);
 
         for (int i = 0; i < numElementsTypedArray; i++) {
             JSHandle<JSTaggedValue> handleTagValKey(thread, JSTaggedValue(i));
@@ -1318,19 +1290,9 @@ HWTEST_F_L0(JSTypedArrayTest, FastCopyElementToArray_TypedArray)
 HWTEST_F_L0(JSTypedArrayTest, FastGetPropertyByIndex)
 {
     uint32_t numElementsTypeArray = 100;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     for (size_t j = 0; j < cVecJSType.size(); j++) {
         JSType jsType = cVecJSType.at(j);
-        JSHandle<JSTypedArray> handleTypeArray = CreateNumberTypedArray(thread, jsType);
-        JSHandle<JSTaggedValue> handleTagValTypeArray = JSHandle<JSTaggedValue>::Cast(handleTypeArray);
-
-        int32_t sizeElement = ecmascript::base::TypedArrayHelper::GetElementSize(handleTypeArray);
-        int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypeArray;
-        JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
-            JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypeArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
-        handleTypeArray->SetArrayLength(numElementsTypeArray);
-
+        auto handleTagValTypeArray = PropertyTypedArrayCommon(thread, jsType, numElementsTypeArray);
         CVector<JSTaggedValue> vec = {};
         for (uint32_t i = 0; i < numElementsTypeArray; i++) {
             EXPECT_TRUE(JSTypedArray::IntegerIndexedElementSet(thread, handleTagValTypeArray, JSTaggedValue(i),
@@ -1356,18 +1318,9 @@ HWTEST_F_L0(JSTypedArrayTest, FastGetPropertyByIndex)
 HWTEST_F_L0(JSTypedArrayTest, FastSetPropertyByIndex)
 {
     uint32_t numElementsTypeArray = 100;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     for (size_t j = 0; j < cVecJSType.size(); j++) {
         JSType jsType = cVecJSType.at(j);
-        JSHandle<JSTypedArray> handleTypeArray = CreateNumberTypedArray(thread, jsType);
-        JSHandle<JSTaggedValue> handleTagValTypeArray = JSHandle<JSTaggedValue>::Cast(handleTypeArray);
-
-        int32_t sizeElement = ecmascript::base::TypedArrayHelper::GetElementSize(handleTypeArray);
-        int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypeArray;
-        JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
-            JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypeArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
-        handleTypeArray->SetArrayLength(numElementsTypeArray);
+        auto handleTagValTypeArray = PropertyTypedArrayCommon(thread, jsType, numElementsTypeArray);
 
         CVector<OperationResult> vec = {};
         for (uint32_t i = 0; i < numElementsTypeArray; i++) {
@@ -1393,18 +1346,9 @@ HWTEST_F_L0(JSTypedArrayTest, FastSetPropertyByIndex)
 HWTEST_F_L0(JSTypedArrayTest, FastSetAndGetPropertyByIndex)
 {
     uint32_t numElementsTypeArray = 50;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     for (size_t j = 0; j < cVecJSType.size(); j++) {
         JSType jsType = cVecJSType.at(j);
-        JSHandle<JSTypedArray> handleTypeArray = CreateNumberTypedArray(thread, jsType);
-        JSHandle<JSTaggedValue> handleTagValTypeArray = JSHandle<JSTaggedValue>::Cast(handleTypeArray);
-
-        int32_t sizeElement = ecmascript::base::TypedArrayHelper::GetElementSize(handleTypeArray);
-        int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypeArray;
-        JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
-            JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypeArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
-        handleTypeArray->SetArrayLength(numElementsTypeArray);
+        auto handleTagValTypeArray = PropertyTypedArrayCommon(thread, jsType, numElementsTypeArray);
 
         CVector<JSTaggedValue> vec = {};
         for (uint32_t i = 0; i < numElementsTypeArray; i++) {
@@ -1419,18 +1363,10 @@ HWTEST_F_L0(JSTypedArrayTest, FastSetAndGetPropertyByIndex)
         }
         vec.clear();
     }
-
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     for (size_t j = 0; j < cVecJSType.size(); j++) {
         JSType jsType = cVecJSType.at(j);
-        JSHandle<JSTypedArray> handleTypeArray = CreateNumberTypedArray(thread, jsType);
-        JSHandle<JSTaggedValue> handleTagValTypeArray = JSHandle<JSTaggedValue>::Cast(handleTypeArray);
-
-        int32_t sizeElement = ecmascript::base::TypedArrayHelper::GetElementSize(handleTypeArray);
-        int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypeArray;
-        JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
-            JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypeArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
-        handleTypeArray->SetArrayLength(numElementsTypeArray);
+        auto handleTagValTypeArray = PropertyTypedArrayCommon(thread, jsType, numElementsTypeArray);
 
         for (uint32_t i = 0; i < numElementsTypeArray; i++) {
             std::string ivalue = std::to_string(i);

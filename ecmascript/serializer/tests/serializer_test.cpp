@@ -19,7 +19,6 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
@@ -1054,8 +1053,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeLineString)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::LineStringTest, jsDeserializerTest, data.release());
-    ThreadSuspensionScope scope(thread);
-    t1.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        t1.join();
+    }
     delete serializer;
 };
 
@@ -1075,8 +1076,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeTreeString)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TreeStringTest, jsDeserializerTest, data.release());
-    ThreadSuspensionScope scope(thread);
-    t1.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        t1.join();
+    }
     delete serializer;
 };
 
@@ -1096,8 +1099,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeSlicedString)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SlicedStringTest, jsDeserializerTest, data.release());
-    ThreadSuspensionScope scope(thread);
-    t1.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        t1.join();
+    }
     delete serializer;
 };
 
@@ -1257,7 +1262,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSError1)
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
     JSHandle<JSTaggedValue> errorTag =
-        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg));
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg, StackCheck::NO));
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     serializer->WriteValue(thread, errorTag, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
@@ -1278,7 +1283,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSError2)
     JSHandle<EcmaString> key2(factory->NewFromASCII("error2"));
     JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
     JSHandle<JSTaggedValue> errorTag =
-        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg));
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg, StackCheck::NO));
 
 
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key1), errorTag);

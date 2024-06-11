@@ -86,7 +86,6 @@ void AArch64MoveRegArgs::MoveRegisterArgs() const
         /* lmbc uses vreg act as SP when alloca is present due to usage of FP for - offset */
         aarFunc->GetFirstBB()->InsertAtEnd(*aarFunc->GetDummyBB());
     } else {
-        /* Java requires insertion at begining as it has fast unwind and other features */
         aarFunc->GetFirstBB()->InsertAtBeginning(*aarFunc->GetDummyBB());
     }
 }
@@ -242,7 +241,6 @@ void AArch64MoveRegArgs::MoveVRegisterArgs()
         /* lmbc uses vreg act as SP when alloca is present due to usage of FP for - offset */
         aarFunc->GetFirstBB()->InsertAtEnd(*aarFunc->GetDummyBB());
     } else {
-        /* Java requires insertion at begining as it has fast unwind and other features */
         aarFunc->GetFirstBB()->InsertAtBeginning(*aarFunc->GetDummyBB());
     }
 }

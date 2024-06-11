@@ -481,6 +481,7 @@ public:
     bool IsByteArray() const;
     bool IsConstantPool() const;
     bool IsAOTLiteralInfo() const;
+    bool IsProfileTypeInfoCell() const;
     bool IsVTable() const;
     bool IsLinkedNode() const;
     bool IsRBTreeNode() const;
@@ -631,6 +632,8 @@ public:
     bool IsJSAPITreeSetIterator() const;
     bool IsJSAPIVector() const;
     bool IsJSAPIVectorIterator() const;
+    bool IsJSAPIBitVector() const;
+    bool IsJSAPIBitVectorIterator() const;
     bool IsJSAPIQueue() const;
     bool IsJSAPIQueueIterator() const;
     bool IsJSAPIPlainArray() const;
@@ -675,6 +678,7 @@ public:
     bool IsResolvedRecordIndexBinding() const;
     bool IsResolvedRecordBinding() const;
     bool IsModuleNamespace() const;
+    bool IsNativeModuleError() const;
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;
@@ -729,7 +733,18 @@ private:
                                  const JSHandle<JSTaggedValue> &key,
                                  const JSHandle<JSTaggedValue> &value);
     static JSHandle<EcmaString> NativePointerToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
-
+    static bool EqualNumber(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                            const JSHandle<JSTaggedValue> &y);
+    static bool EqualString(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                            const JSHandle<JSTaggedValue> &y);
+    static bool EqualSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                            const JSHandle<JSTaggedValue> &y);
+    static bool EqualBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                            const JSHandle<JSTaggedValue> &y);
+    static bool EqualHeapObject(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y);
+    static bool EqualNullOrUndefined(const JSHandle<JSTaggedValue> &x,
+                                     const JSHandle<JSTaggedValue> &y);
     static ARK_INLINE JSTaggedValue WrapUint64(uint64_t v)
     {
         return JSTaggedValue(static_cast<JSTaggedType>(v) | TAG_INT);

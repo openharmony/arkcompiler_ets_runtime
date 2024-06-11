@@ -22,31 +22,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSBigintTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class JSBigintTest : public BaseTestWithScope<false> {
 };
 
 /**
@@ -605,7 +581,7 @@ HWTEST_F_L0(JSBigintTest, CreateBigWords)
 }
 
 /**
- * @tc.name: GetUint64MaxBigint GetInt64MaxBigint
+ * @tc.name: GetUint64MaxBigInt GetInt64MaxBigInt
  * @tc.desc:
  * @tc.type: FUNC
  * @tc.require:
@@ -616,10 +592,10 @@ HWTEST_F_L0(JSBigintTest, GetUint64MaxBigint_GetInt64MaxBigint)
     JSHandle<BigInt> exponentone = BigInt::Int32ToBigInt(thread, 63); // 63 : bits
     JSHandle<BigInt> base = BigInt::Int32ToBigInt(thread, 2); // 2 : base value
     JSHandle<BigInt> uint64MaxBigint1 = BigInt::Exponentiate(thread, base, exponent);
-    JSHandle<BigInt> uint64MaxBigint2 = BigInt::GetUint64MaxBigint(thread);
+    JSHandle<BigInt> uint64MaxBigint2 = BigInt::GetUint64MaxBigInt(thread);
     EXPECT_TRUE(BigInt::Equal(uint64MaxBigint1.GetTaggedValue(), uint64MaxBigint2.GetTaggedValue()));
     JSHandle<BigInt> int64MaxBigint1 = BigInt::Exponentiate(thread, base, exponentone);
-    JSHandle<BigInt> int64MaxBigint2 = BigInt::GetInt64MaxBigint(thread);
+    JSHandle<BigInt> int64MaxBigint2 = BigInt::GetInt64MaxBigInt(thread);
     EXPECT_TRUE(BigInt::Equal(int64MaxBigint1.GetTaggedValue(), int64MaxBigint2.GetTaggedValue()));
 }
 

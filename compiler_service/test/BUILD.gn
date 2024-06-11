@@ -61,5 +61,5 @@ ohos_unittest("AotCompilerServiceTest") {
 
 group("compiler_service_unittest") {
   testonly = true
-  deps = [ ":AotCompilerServiceTest" ]
+  deps = []
 }

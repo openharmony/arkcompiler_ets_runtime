@@ -47,9 +47,7 @@ public:
     void ComputeLoopAlign() override;
     void ComputeJumpAlign() override;
     void ComputeCondBranchAlign() override;
-    bool MarkCondBranchAlign();
     bool MarkShortBranchSplit();
-    void AddNopAfterMark();
     void UpdateInsnId();
     uint32 GetAlignRange(uint32 alignedVal, uint32 addr) const;
 

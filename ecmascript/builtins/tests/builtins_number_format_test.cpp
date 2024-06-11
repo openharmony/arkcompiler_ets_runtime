@@ -24,42 +24,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
-class BuiltinsNumberFormatTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-#if PANDA_TARGET_LINUX
-        // for consistency requirement, use ohos_icu4j/data as icu-data-path
-        options.SetIcuDataPath(ICU_PATH);
-#endif
-        options.SetEnableForceGC(true);
-        instance = JSNApi::CreateEcmaVM(options);
-        instance->SetEnableForceGC(true);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsNumberFormatTest : public BaseTestWithScope<true> {
 };
 
 // new DateTimeFormat(newTarget is undefined)
@@ -87,7 +52,6 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, NumberFormatConstructor)
 static JSTaggedValue BuiltinsFormatTest(JSThread *thread, JSHandle<JSObject> &options,
                                         JSHandle<JSTaggedValue> &number, JSHandle<JSTaggedValue> &locale)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> newTarget(env->GetNumberFormatFunction());
 
@@ -110,20 +74,13 @@ static JSTaggedValue BuiltinsFormatTest(JSThread *thread, JSHandle<JSObject> &op
     JSTaggedValue resultFunc = BuiltinsNumberFormat::Format(ecmaRuntimeCallInfo2);
     JSHandle<JSFunction> jsFunction(thread, resultFunc);
     TestHelper::TearDownFrame(thread, prev);
-    JSArray *jsArray =
-        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
-    JSHandle<JSObject> jsObject(thread, jsArray);
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(jsFunction), true, true, true);
-    JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
-    JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
-
     auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(jsObject.GetTaggedValue());
+    ecmaRuntimeCallInfo3->SetFunction(jsFunction.GetTaggedValue());
+    ecmaRuntimeCallInfo3->SetThis(jsFunction.GetTaggedValue());
     ecmaRuntimeCallInfo3->SetCallArg(0, number.GetTaggedValue());
 
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
-    JSTaggedValue result = BuiltinsArray::ToString(ecmaRuntimeCallInfo3);
+    JSTaggedValue result = JSFunction::Call(ecmaRuntimeCallInfo3);
     TestHelper::TearDownFrame(thread, prev);
     return result;
 }

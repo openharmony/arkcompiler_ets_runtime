@@ -101,7 +101,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetBaselineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
@@ -201,6 +201,24 @@ void JSFunction::SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, co
     }
 }
 
+EcmaString* JSFunction::GetFunctionNameString(JSThread *thread, JSHandle<EcmaString> concatString,
+                                              ObjectFactory *factory, JSHandle<JSTaggedValue> target)
+{
+    JSTaggedValue method = JSHandle<JSFunction>::Cast(target)->GetMethod();
+    JSHandle<EcmaString> newString = factory->ConcatFromString(concatString, factory->GetEmptyString());
+    if (!method.IsUndefined()) {
+        Method *targetObj = Method::Cast(method.GetTaggedObject());
+        std::string funcName = targetObj->ParseFunctionName();
+        if (!funcName.empty()) {
+            JSHandle<JSTaggedValue> methodName(thread,
+                                               factory->NewFromStdString(funcName).GetTaggedValue());
+            JSHandle<EcmaString> functionName = JSHandle<EcmaString>::Cast(methodName);
+            newString = factory->ConcatFromString(concatString, functionName);
+        }
+    }
+    return *newString;
+}
+
 JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> &self)
 {
     if (self->IsBoundFunction()) {
@@ -220,8 +238,7 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
 
         EcmaString *newString;
         if (!targetName->IsString()) {
-            JSHandle<EcmaString> emptyString = factory->GetEmptyString();
-            newString = *factory->ConcatFromString(concatString, emptyString);
+            newString = GetFunctionNameString(thread, concatString, factory, target);
         } else {
             JSHandle<EcmaString> functionName = JSHandle<EcmaString>::Cast(targetName);
             newString = *factory->ConcatFromString(concatString, functionName);
@@ -348,11 +365,11 @@ bool JSFunction::OrdinaryHasInstance(JSThread *thread, const JSHandle<JSTaggedVa
     //    d.If SameValue(P, O) is true, return true.
     JSMutableHandle<JSTaggedValue> object(thread, obj.GetTaggedValue());
     while (!object->IsNull()) {
+        object.Update(JSTaggedValue::GetPrototype(thread, object));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (JSTaggedValue::SameValue(object, constructorPrototype)) {
             return true;
         }
-        object.Update(JSTaggedValue::GetPrototype(thread, object));
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
     return false;
 }
@@ -469,8 +486,8 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     if (mainFunc->IsClassConstructor()) {
         {
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            JSHandle<JSObject> error =
-                factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'");
+            JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
+                "class constructor cannot called without 'new'", StackCheck::NO);
             thread->SetException(error.GetTaggedValue());
         }
         return thread->GetException();
@@ -540,14 +557,14 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     ASSERT(thread->IsInManagedState());
     Method *method = func->GetCallTarget();
     JSTaggedValue resultValue;
-    uint32_t numArgs = method->GetNumArgsWithCallField();
-    bool needPushUndefined = numArgs > info->GetArgsNumber();
+    size_t numArgs = method->GetNumArgsWithCallField();
+    bool needPushArgv = numArgs != info->GetArgsNumber();
     const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
 #endif
     if (method->IsFastCall()) {
-        if (needPushUndefined) {
+        if (needPushArgv) {
             info = EcmaInterpreter::ReBuildRuntimeCallInfo(thread, info, numArgs);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
@@ -556,7 +573,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         resultValue = thread->GetEcmaVM()->FastCallAot(info->GetArgsNumber(), stackArgs + 1, prevFp);
     } else {
         resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(info->GetArgsNumber(),
-            info->GetArgs(), prevFp, needPushUndefined);
+            info->GetArgs(), prevFp, needPushArgv);
     }
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), func.GetTaggedType());
@@ -668,6 +685,16 @@ bool JSFunctionBase::SetFunctionName(JSThread *thread, const JSHandle<JSFunction
         newString = *functionName;
     }
     JSHandle<JSTaggedValue> nameHandle(thread, newString);
+    // String.prototype.trimLeft.name shoud be trimStart
+    if (!nameHandle.IsEmpty()
+        && nameHandle.GetTaggedValue() == globalConst->GetHandledTrimLeftString().GetTaggedValue()) {
+        nameHandle = globalConst->GetHandledTrimStartString();
+    }
+    // String.prototype.trimRight.name shoud be trimEnd
+    if (!nameHandle.IsEmpty()
+        && nameHandle.GetTaggedValue() == globalConst->GetHandledTrimRightString().GetTaggedValue()) {
+        nameHandle = globalConst->GetHandledTrimEndString();
+    }
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
     PropertyDescriptor nameDesc(thread, nameHandle, false, false, true);
     JSHandle<JSTaggedValue> funcHandle(func);
@@ -885,6 +912,12 @@ JSTaggedValue JSFunction::GetRecordName() const
     return JSTaggedValue::Hole();
 }
 
+JSTaggedValue JSFunction::GetProfileTypeInfo() const
+{
+    JSTaggedValue raw = GetRawProfileTypeInfo();
+    return ProfileTypeInfoCell::Cast(raw.GetTaggedObject())->GetValue();
+}
+
 // Those interface below is discarded
 void JSFunction::InitializeJSFunction(JSThread *thread, [[maybe_unused]] const JSHandle<GlobalEnv> &env,
                                       const JSHandle<JSFunction> &func, FunctionKind kind)
@@ -989,6 +1022,26 @@ void JSFunction::SetSFunctionExtraInfo(
     }
 }
 
+void JSFunction::SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
+                                    const JSHandle<JSTaggedValue> &value, BarrierMode mode)
+{
+    JSHandle<ProfileTypeInfoCell> handleRaw(thread, func->GetRawProfileTypeInfo());
+    if (handleRaw->IsEmptyProfileTypeInfoCell(thread)) {
+        JSHandle<ProfileTypeInfoCell> handleProfileTypeInfoCell =
+            thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(value);
+        func->SetRawProfileTypeInfo(thread, handleProfileTypeInfoCell, WRITE_BARRIER);
+        return;
+    }
+    handleRaw->SetValue(thread, value, mode);
+}
+
+void JSFunction::SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode)
+{
+    JSHandle<ProfileTypeInfoCell> handleRaw(thread, GetRawProfileTypeInfo());
+    ASSERT(!handleRaw->IsEmptyProfileTypeInfoCell(thread));
+    handleRaw->SetMachineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef(), WRITE_BARRIER);
+}
+
 JSTaggedValue JSFunction::GetFunctionExtraInfo() const
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
@@ -1068,6 +1121,15 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     } else {
         this->SetModule(thread, moduleRecord);
     }
+}
+
+bool JSFunction::IsSendableFunction() const
+{
+    if (this->GetClass()->IsJSSharedFunction() ||
+        this->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        return true;
+    }
+    return false;
 }
 
 void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)

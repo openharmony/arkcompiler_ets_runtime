@@ -379,6 +379,17 @@ inline GateRef CircuitBuilder::IsBase(GateRef ctor)
     return Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
 }
 
+inline GateRef CircuitBuilder::IsDerived(GateRef ctor)
+{
+    GateRef method = GetMethodFromFunction(ctor);
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), method, extraLiteralInfoOffset);
+
+    GateRef kind = Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
+                            Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1));
+    return Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::DERIVED_CONSTRUCTOR)));
+}
+
 inline GateRef CircuitBuilder::GetMethodId(GateRef func)
 {
     GateRef method = GetMethodFromFunction(func);

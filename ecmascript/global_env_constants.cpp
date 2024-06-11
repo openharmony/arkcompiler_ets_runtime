@@ -30,6 +30,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
 #include "ecmascript/js_api/js_api_lightweightset_iterator.h"
@@ -143,6 +144,12 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::PROFILE_TYPE_INFO));
     SetConstant(ConstantIndex::AOT_LITERAL_INFO_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
+    SetConstant(ConstantIndex::PROFILE_TYPE_INFO_CELL_0_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ProfileTypeInfoCell::SIZE, JSType::PROFILE_TYPE_INFO_CELL_0));
+    SetConstant(ConstantIndex::PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ProfileTypeInfoCell::SIZE, JSType::PROFILE_TYPE_INFO_CELL_1));
+    SetConstant(ConstantIndex::PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ProfileTypeInfoCell::SIZE, JSType::PROFILE_TYPE_INFO_CELL_N));
     SetConstant(ConstantIndex::VTABLE_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::VTABLE));
     SetConstant(ConstantIndex::COW_MUTANT_TAGGED_ARRAY_CLASS_INDEX,
@@ -155,7 +162,7 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
     SetConstant(ConstantIndex::BIGINT_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, BigInt::SIZE, JSType::BIGINT));
-    SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
+    SetConstant(ConstantIndex::SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
     SetConstant(ConstantIndex::ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LEXICAL_ENV));
@@ -268,6 +275,7 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     // Specials
     SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
     SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
+    SetConstant(ConstantIndex::HOLE_INDEX, JSTaggedValue::Hole());
     SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
     SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
     // Emptys
@@ -277,6 +285,9 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewSEmptyArray());
     SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewSEmptyMutantArray());
     SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->CreateSLayoutInfo(0));
+    SetConstant(ConstantIndex::UINT64_MAX_BIGINT_INDEX, BigInt::CreateUint64MaxBigInt(thread));
+    SetConstant(ConstantIndex::INT64_MAX_BIGINT_INDEX, BigInt::CreateInt64MaxBigInt(thread));
+    SetConstant(ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, factory->NewSEmptyProfileTypeInfoCell());
 }
 
 void GlobalEnvConstants::InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory *factory)
@@ -308,6 +319,9 @@ void GlobalEnvConstants::InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory
                 factory->CreateDefaultClassConstructorHClass(hClass));
     SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
+    // napi_wrap need set NativePointer to object, so only mark the shared bit in shared JSNativePointer hclass.
+    SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
+        factory->NewEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
 }
 
 void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory)
@@ -340,6 +354,8 @@ void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory
     SetConstant(ConstantIndex::JS_API_LIGHTWEIGHTSET_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPILightWeightSetIterator::SIZE,
                 JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_BITVECTOR_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIBitVectorIterator::SIZE, JSType::JS_API_BITVECTOR_ITERATOR));
 }
 
 void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)

@@ -28,7 +28,7 @@
 namespace panda::ecmascript {
 using arg_list_t = std::vector<std::string>;
 enum ArkProperties {
-    DEFAULT = -1,  // default value 1000001011100 -> 0x105c
+    DEFAULT = -1,  // default value 000'0000'0001'0000'0101'1100 -> 0x105c
     OPTIONAL_LOG = 1,
     GC_STATS_PRINT = 1 << 1,
     PARALLEL_GC = 1 << 2,  // default enable
@@ -50,7 +50,12 @@ enum ArkProperties {
     CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
     ENABLE_HEAP_VERIFY = 1 << 19,
     ENABLE_MICROJOB_TRACE = 1 << 20,
-    ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21
+    ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21,
+    // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
+    DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
+    ENABLE_NATIVE_MODULE_ERROR = 1 << 23,
+    ENABLE_ESM_TRACE = 1 << 24,
+    ENABLE_MODULE_LOG = 1 << 25
 };
 
 // asm interpreter control parsed option
@@ -131,6 +136,7 @@ enum CommandValues {
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_PRINT_EXECUTE_TIME,
     OPTION_SPLIT_ONE,
+    OPTION_ENABLE_EDEN_GC,
     OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
@@ -167,6 +173,7 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_JIT,
     OPTION_COMPILER_ENABLE_JIT_PGO,
     OPTION_COMPILER_ENABLE_AOT_PGO,
+    OPTION_COMPILER_ENABLE_FRAMEWORK_AOT,
     OPTION_COMPILER_ENABLE_PROPFILE_DUMP,
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
@@ -186,6 +193,7 @@ enum CommandValues {
     OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
+    OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -339,6 +347,16 @@ public:
         enableForceGc_ = value;
     }
 
+    bool EnableEdenGC() const
+    {
+        return enableEdenGC_;
+    }
+
+    void SetEnableEdenGC(bool value)
+    {
+        enableEdenGC_ = value;
+    }
+
     bool ForceFullGC() const
     {
         return forceFullGc_;
@@ -452,6 +470,17 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
     }
 
+    bool EnableNativeModuleError() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_NATIVE_MODULE_ERROR) != 0;
+    }
+
+    bool EnableSharedConcurrentMark() const
+    {
+        // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::DISABLE_SHARED_CONCURRENT_MARK) == 0;
+    }
+
     bool EnableExceptionBacktrace() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::EXCEPTION_BACKTRACE) != 0;
@@ -551,9 +580,19 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MICROJOB_TRACE) != 0;
     }
 
+    bool EnableESMTrace() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_ESM_TRACE) != 0;
+    }
+
     bool EnableInitOldSocketSession() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_INIT_OLD_SOCKET_SESSION) != 0;
+    }
+
+    bool EnableModuleLog() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_LOG) != 0;
     }
 
     void DisableReportModuleResolvingFailure()
@@ -993,16 +1032,6 @@ public:
         return enablePGOProfiler_;
     }
 
-    void SetEnableAotCrashEscape(bool value)
-    {
-        enableAotCrashEscape_ = value;
-    }
-
-    bool IsEnableAotCrashEscape() const
-    {
-        return enableAotCrashEscape_;
-    }
-
     uint32_t GetPGOHotnessThreshold() const
     {
         return pgoHotnessThreshold_;
@@ -1117,6 +1146,26 @@ public:
     bool IsEnableAPPJIT() const
     {
         return enableAPPJIT_;
+    }
+
+    void SetEnableJitFrame(bool value)
+    {
+        enableJitFrame_ = value;
+    }
+
+    bool IsEnableJitFrame() const
+    {
+        return enableJitFrame_;
+    }
+
+    bool IsEnableJitDfxDump() const
+    {
+        return isEnableJitDfxDump_;
+    }
+
+    void SetEnableJitDfxDump(bool value)
+    {
+        isEnableJitDfxDump_ = value;
     }
 
     void SetEnableOSR(bool value)
@@ -1717,6 +1766,26 @@ public:
         return enableAOTPGO_;
     }
 
+    void SetEnableJitFastCompile(bool value)
+    {
+        enableJitFastCompile_ = value;
+    }
+
+    bool IsEnableJitFastCompile() const
+    {
+        return enableJitFastCompile_;
+    }
+    
+    void SetEnableFrameworkAOT(bool value)
+    {
+        enableFrameworkAOT_ = value;
+    }
+
+    bool IsEnableFrameworkAOT() const
+    {
+        return enableFrameworkAOT_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1754,6 +1823,7 @@ private:
     std::string compilerExternalPkgInfo_ {};
     bool compilerEnableExternalPkg_ {true};
     bool enableForceGc_ {true};
+    bool enableEdenGC_ {false};
     bool forceFullGc_ {true};
     uint32_t forceSharedGc_ {1};
     int arkProperties_ = GetDefaultProperties();
@@ -1808,6 +1878,7 @@ private:
     bool enableOptPGOType_ {true};
     bool enableFastJIT_{false};
     bool enableAPPJIT_{false};
+    bool isEnableJitDfxDump_ {false};
     bool enableOSR_{false};
     uint16_t jitHotnessThreshold_ {2};
     uint8_t jitCallThreshold_ {0};
@@ -1823,10 +1894,10 @@ private:
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
-    bool enableAotCrashEscape_ {true};
     bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};
+    bool enableFrameworkAOT_ {true};
     bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
@@ -1872,6 +1943,8 @@ private:
     bool traceInductionVariableAnalysis_ {false};
     bool enableMemoryAnalysis_ {true};
     bool checkPgoVersion_ {false};
+    bool enableJitFastCompile_ {false};
+    bool enableJitFrame_{false};
 };
 }  // namespace panda::ecmascript
 

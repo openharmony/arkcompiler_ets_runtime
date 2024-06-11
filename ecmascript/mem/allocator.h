@@ -79,6 +79,9 @@ private:
     uintptr_t end_ {0};
 };
 
+#ifdef ENABLE_JITFORT
+template <typename T>
+#endif
 class FreeListAllocator : public Allocator {
 public:
     FreeListAllocator() = delete;
@@ -130,10 +133,14 @@ public:
     }
 
 private:
+#ifdef ENABLE_JITFORT
+    inline uintptr_t Allocate(T *object, size_t size);
+    std::unique_ptr<FreeObjectList<T>> freeList_ {nullptr};
+#else
     inline uintptr_t Allocate(FreeObject *object, size_t size);
-
-    BumpPointerAllocator bpAllocator_;
     std::unique_ptr<FreeObjectList> freeList_ {nullptr};
+#endif
+    BumpPointerAllocator bpAllocator_;
     BaseHeap *heap_{nullptr};
     size_t allocationSizeAccumulator_ {0};
 };

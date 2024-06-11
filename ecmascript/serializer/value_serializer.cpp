@@ -65,6 +65,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
             return true;
         case JSType::JS_SHARED_SET:
         case JSType::JS_SHARED_MAP:
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
         case JSType::JS_SHARED_ARRAY:
         case JSType::JS_SHARED_INT8_ARRAY:
         case JSType::JS_SHARED_UINT8_ARRAY:

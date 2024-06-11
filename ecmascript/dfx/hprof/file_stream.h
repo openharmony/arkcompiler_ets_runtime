@@ -45,7 +45,8 @@ public:
     void UpdateHeapStats([[maybe_unused]] HeapStat* data, [[maybe_unused]] int32_t count) override
     {
     }
-    void UpdateLastSeenObjectId([[maybe_unused]]int32_t lastSeenObjectId, [[maybe_unused]]int64_t timeStampUs) override
+    void UpdateLastSeenObjectId([[maybe_unused]] int32_t lastSeenObjectId,
+                                [[maybe_unused]] int64_t timeStampUs) override
     {
     }
 
@@ -76,7 +77,8 @@ public:
     void UpdateHeapStats([[maybe_unused]] HeapStat* data, [[maybe_unused]] int32_t count) override
     {
     }
-    void UpdateLastSeenObjectId([[maybe_unused]]int32_t lastSeenObjectId, [[maybe_unused]]int64_t timeStampUs) override
+    void UpdateLastSeenObjectId([[maybe_unused]] int32_t lastSeenObjectId,
+                                [[maybe_unused]] int64_t timeStampUs) override
     {
     }
 

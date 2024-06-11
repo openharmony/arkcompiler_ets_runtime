@@ -98,7 +98,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModule(JSThread *thr
 }
 
 JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModule(JSThread *thread,
-    const CString &referencingModule, const JSPandaFile *jsPandaFile, [[maybe_unused]]JSRecordInfo recordInfo)
+    const CString &referencingModule, const JSPandaFile *jsPandaFile, [[maybe_unused]] JSRecordInfo recordInfo)
 {
     if (SearchInSModuleManager(thread, referencingModule)) {
         return JSHandle<JSTaggedValue>(GetSModule(thread, referencingModule));
@@ -161,7 +161,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModuleWithMerge(JSTh
 
 JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModuleWithMerge(JSThread *thread,
     const CString &fileName, const CString &recordName, const JSPandaFile *jsPandaFile,
-    [[maybe_unused]]JSRecordInfo recordInfo)
+    [[maybe_unused]] JSRecordInfo recordInfo)
 {
     if (SearchInSModuleManager(thread, recordName)) {
         return JSHandle<JSTaggedValue>(GetSModule(thread, recordName));

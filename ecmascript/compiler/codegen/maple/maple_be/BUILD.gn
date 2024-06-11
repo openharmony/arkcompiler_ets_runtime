@@ -30,6 +30,13 @@ include_directories = [
   "${MAPLEALL_ROOT}/maple_ipa/include/old",
   "${MAPLEALL_ROOT}/maple_phase/include",
 ]
+if (enable_jit_code_sign) {
+  include_directories += [
+    "$code_sign_root/common/include",
+    "$code_sign_root/jit_code_sign/include",
+    "$js_root/ecmascript/compiler",
+  ]
+}
 
 deps_libcg = [
   ":libmplbe",
@@ -317,7 +324,17 @@ ohos_source_set("libcgaarch64") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgaarch64
   include_dirs = include_directories
+  defines = []
+  if (enable_jit_code_sign) {
+    defines += [ "CODE_SIGN_ENABLE" ]
+    if (disable_fort_switch) {
+      defines += [ "JIT_FORT_DISABLE" ]
+    }
+  }
   external_deps = [ "bounds_checking_function:libsec_static" ]
+  if (enable_jit_code_sign) {
+    external_deps += [ "code_signature:libjit_code_sign" ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -379,6 +396,7 @@ ohos_static_library("libcg") {
   include_dirs = include_directories
   deps = deps_libcg
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+  defines = []
   external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"

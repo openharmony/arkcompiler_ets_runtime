@@ -41,9 +41,6 @@ AnalysisResult *DoVerification::Run(MIRModule *module, ModuleResultMgr *mgr)
     }
 
     CheckExtendFinalClass(*verifyResult);
-    if (IsLazyBindingOrDecouple(*klassHierarchy)) {
-        DeferredCheckFinalClassAndMethod(*verifyResult);
-    }
 
     auto *result = memPool->New<VerificationPhaseResult>(*memPool, *verifyResult);
     mgr->AddResult(GetPhaseID(), *module, *result);
@@ -81,16 +78,6 @@ void DoVerification::CheckExtendFinalClass(VerifyResult &result) const
             }
         }
     }
-}
-
-bool DoVerification::IsLazyBindingOrDecouple(const KlassHierarchy &klassHierarchy) const
-{
-    if (Options::buildApp != 0) {
-        return true;
-    }
-    const Klass *objectKlass = klassHierarchy.GetKlassFromLiteral(namemangler::kJavaLangObjectStr);
-    bool isLibCore = ((objectKlass != nullptr) && (objectKlass->GetMIRStructType()->IsLocal()));
-    return !isLibCore;
 }
 
 bool DoVerification::NeedRuntimeFinalCheck(const KlassHierarchy &klassHierarchy, const std::string &className) const

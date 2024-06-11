@@ -34,6 +34,7 @@ public:
     JSTaggedValue Get(uint32_t idx) const;
 
     uint32_t GetIdx(const JSTaggedValue &value) const;
+    JSTaggedValue GetBit(uint32_t idx, uint32_t bitOffset) const;
 
     template<typename T>
     void Set(const JSThread *thread, uint32_t idx, const JSHandle<T> &value);
@@ -42,6 +43,7 @@ public:
 
     template <bool needBarrier = true>
     void Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
+    void SetBit(const JSThread* thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue& value);
 
     static inline JSHandle<TaggedArray> Append(const JSThread *thread, const JSHandle<TaggedArray> &first,
                                                const JSHandle<TaggedArray> &second);
@@ -64,7 +66,7 @@ public:
 
     bool HasDuplicateEntry() const;
 
-    inline bool IsYoungAndNotMarking(const JSThread *thread);
+    inline bool IsGeneralNewAndNotMarking(const JSThread *thread);
 
     static JSHandle<TaggedArray> SetCapacity(const JSThread *thread, const JSHandle<TaggedArray> &array,
                                              uint32_t capa);

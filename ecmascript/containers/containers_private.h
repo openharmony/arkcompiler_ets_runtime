@@ -36,6 +36,7 @@ enum ContainerTag : uint8_t {
     LightWeightMap,
     LightWeightSet,
     PlainArray,
+    BitVector,
     END
 };
 
@@ -88,6 +89,9 @@ private:
     static void InitializePlainArrayIterator(JSThread *thread);
     static JSHandle<JSTaggedValue> InitializeVector(JSThread *thread);
     static void InitializeVectorIterator(JSThread *thread, const JSHandle<GlobalEnv> &env,
+                                         GlobalEnvConstants *globalConst);
+    static JSHandle<JSTaggedValue> InitializeBitVector(JSThread *thread);
+    static void InitializeBitVectorIterator(JSThread *thread, const JSHandle<GlobalEnv> &env,
                                          GlobalEnvConstants *globalConst);
     static JSHandle<JSTaggedValue> InitializeQueue(JSThread *thread);
     static void InitializeQueueIterator(JSThread *thread, const JSHandle<GlobalEnv> &env,

@@ -118,6 +118,15 @@ public:
         return true;
     }
 
+    WorkNode *Top()
+    {
+        return top_;
+    }
+
+    void ResetTop()
+    {
+        top_ = nullptr;
+    }
 private:
     WorkNode *top_ {nullptr};
     Mutex mtx_;
@@ -126,6 +135,7 @@ private:
 struct WorkNodeHolder {
     WorkNode *inNode_ {nullptr};
     WorkNode *outNode_ {nullptr};
+    WorkNode *pendingNode_ {nullptr};
     ProcessQueue *weakQueue_ {nullptr};
     std::vector<SlotNeedUpdate> pendingUpdateSlots_;
     TlabAllocator *allocator_ {nullptr};
@@ -182,9 +192,14 @@ public:
     void Finish(size_t &aliveSize, size_t &promotedSize);
 
     bool Push(uint32_t threadId, TaggedObject *object);
-    bool Push(uint32_t threadId, TaggedObject *object, Region *region);
+    bool PushPendingObject(uint32_t threadId, TaggedObject *object);
+    void PushPendingNodeToGlobal(uint32_t threadId);
+    bool PopPendingObject(uint32_t threadId, TaggedObject **object);
     bool Pop(uint32_t threadId, TaggedObject **object);
-
+    void SetPostGCTaskType(ParallelGCTaskPhase phase)
+    {
+        parallelGCTaskPhase_ = phase;
+    }
     bool PopWorkNodeFromGlobal(uint32_t threadId);
     void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
 
@@ -248,6 +263,7 @@ private:
     std::array<WorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
     std::array<ContinuousStack<JSTaggedType> *, MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
     GlobalWorkStack workStack_;
+    GlobalWorkStack pendingStack_;
     ParallelGCTaskPhase parallelGCTaskPhase_;
     std::atomic<bool> initialized_ {false};
 };
@@ -267,10 +283,12 @@ public:
     void Finish();
 
     bool Push(uint32_t threadId, TaggedObject *object);
+    bool PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object);
     bool Pop(uint32_t threadId, TaggedObject **object);
 
     bool PopWorkNodeFromGlobal(uint32_t threadId);
     void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
+    void PushLocalBufferToGlobal(WorkNode *&node, bool postTask = true);
 
     inline void PushWeakReference(uint32_t threadId, JSTaggedType *weak)
     {

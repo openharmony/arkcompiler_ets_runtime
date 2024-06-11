@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ####################################fuzztest##################################
-ohos_fuzztest("JSNApiUnloadPatchTest") {
+ohos_fuzztest("JSNApiUnloadPatchFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/jsnapiunloadpatch_fuzzer"
@@ -40,5 +40,5 @@ ohos_fuzztest("JSNApiUnloadPatchTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":JSNApiUnloadPatchTest" ]
+  deps += [ ":JSNApiUnloadPatchFuzzTest" ]
 }

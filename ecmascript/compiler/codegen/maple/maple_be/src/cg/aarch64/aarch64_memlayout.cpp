@@ -623,33 +623,6 @@ void AArch64MemLayout::AssignSpillLocationsToPseudoRegisters()
         segLocals.SetSize(segLocals.GetSize() + static_cast<uint32>(mirTy->GetSize()));
         spillLocTable[i] = symLoc;
     }
-
-    if (!cgFunc->GetMirModule().IsJavaModule()) {
-        return;
-    }
-
-    /*
-     * Allocate additional stack space for "thrownval".
-     * segLocals need 8 bit align
-     */
-    if (CGOptions::IsArm64ilp32()) {
-        segLocals.SetSize(static_cast<uint32>(RoundUp(segLocals.GetSize(), k8ByteSize)));
-    } else {
-        segLocals.SetSize(static_cast<uint32>(RoundUp(segLocals.GetSize(), GetPointerSize())));
-    }
-    AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
-    RegOperand &baseOpnd = aarchCGFunc->GetOrCreateStackBaseRegOperand();
-    int32 offset = static_cast<int32>(segLocals.GetSize());
-
-    OfstOperand *offsetOpnd = &aarchCGFunc->CreateOfstOpnd(offset + k16BitSize, k64BitSize);
-    MemOperand *throwMem = aarchCGFunc->CreateMemOperand(MemOperand::kAddrModeBOi, k64BitSize, baseOpnd,
-                                                         static_cast<RegOperand *>(nullptr), offsetOpnd, nullptr);
-    aarchCGFunc->SetCatchOpnd(*throwMem);
-    if (CGOptions::IsArm64ilp32()) {
-        segLocals.SetSize(segLocals.GetSize() + k8ByteSize);
-    } else {
-        segLocals.SetSize(segLocals.GetSize() + GetPointerSize());
-    }
 }
 
 uint64 AArch64MemLayout::StackFrameSize() const

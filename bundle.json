@@ -14,7 +14,10 @@
         "name": "ets_runtime",
         "subsystem": "arkcompiler",
         "syscap": [],
-        "features": [],
+        "features": [
+          "ets_runtime_feature_enable_pgo",
+          "ets_runtime_feature_pgo_path"
+        ],
         "adapted_system_type": [
             "standard"
         ],
@@ -56,6 +59,7 @@
                 "//arkcompiler/ets_runtime:app_aot_disable_list",
                 "//arkcompiler/ets_runtime:app_jit_enable_list",
                 "//arkcompiler/ets_runtime:ark_js_packages",
+                "//arkcompiler/ets_runtime:ark_js_host_linux_tools_packages",
                 "//arkcompiler/ets_runtime/etc:arkcompiler.para.dac",
                 "//arkcompiler/ets_runtime/compiler_service:compiler_service"
             ],

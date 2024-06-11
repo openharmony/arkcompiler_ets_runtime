@@ -29,8 +29,14 @@
 
 namespace panda::ecmascript {
 static constexpr uint32_t MIN_TASKPOOL_THREAD_NUM = 3;
-static constexpr uint32_t MAX_TASKPOOL_THREAD_NUM = 7;
+static constexpr uint32_t MAX_TASKPOOL_THREAD_NUM = 5;
 static constexpr uint32_t DEFAULT_TASKPOOL_THREAD_NUM = 0;
+
+enum class PriorityMode {
+    STW,
+    FOREGROUND,
+    BACKGROUND
+};
 
 class Runner {
 public:
@@ -49,7 +55,7 @@ public:
 
     void PUBLIC_API TerminateThread();
     void TerminateTask(int32_t id, TaskType type);
-    void SetQosPriority(bool isForeground);
+    void SetQosPriority(PriorityMode mode);
     void RecordThreadId();
 
     uint32_t GetTotalThreadNum() const

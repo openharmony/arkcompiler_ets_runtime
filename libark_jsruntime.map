@@ -51,6 +51,7 @@
       panda::PromiseRejectInfo::*;
       panda::RegExpRef::*;
       panda::SetIteratorRef::*;
+      panda::ExternalStringCache::*;
       panda::SetRef::*;
       panda::SendableTypedArrayRef::*;
       panda::SharedInt8ArrayRef::*;
@@ -116,6 +117,8 @@
       panda::Logger::logger*;
       panda::ecmascript::AnFileInfo::GenerateMethodToEntryIndexMap*;
       panda::ecmascript::AnFileInfo::Save*;
+      panda::ecmascript::AOTFileVersion::GetAOTVersion*;
+      panda::ecmascript::AOTFileVersion::CheckAOTVersion*;
       panda::ecmascript::Barriers::Update*;
       panda::ecmascript::BigInt::SameValue*;
       panda::ecmascript::BindSmallCpuCore*;
@@ -177,6 +180,7 @@
       panda::ecmascript::JSAPIQueue::Set*;
       panda::ecmascript::JSAPIStack::Set*;
       panda::ecmascript::JSAPIVector::Set*;
+      panda::ecmascript::JSAPIBitVector::Set*;
       panda::ecmascript::JSArray::ArrayCreate*;
       panda::ecmascript::JSArray::CheckAndCopyArray*;
       panda::ecmascript::JSFunction::GetOrCreateInitialJSHClass*;
@@ -268,6 +272,7 @@
       panda::ecmascript::PageSize*;
       panda::ecmascript::PageUnmap*;
       panda::ecmascript::PageSize*;
+      panda::ecmascript::PagePreRead*;
       panda::ecmascript::pgo::PGOProfiler::GetMethodAbcId*;
       panda::ecmascript::RealPath*;
       panda::ecmascript::SetDirModeAsDefault*;
@@ -344,6 +349,8 @@
       ark_destory_local;
       ark_parse_js_file_info;
       ark_parse_js_frame_info_local;
+      step_ark_with_record_jit;
+      ark_write_jit_code;
     };
   local:
     *;

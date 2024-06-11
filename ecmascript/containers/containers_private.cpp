@@ -16,6 +16,7 @@
 #include "ecmascript/containers/containers_private.h"
 
 #include "containers_arraylist.h"
+#include "containers_bitvector.h"
 #include "containers_deque.h"
 #include "containers_hashmap.h"
 #include "containers_hashset.h"
@@ -33,6 +34,8 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
@@ -123,6 +126,10 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
         }
         case ContainerTag::Vector: {
             res = InitializeContainer(thread, thisValue, InitializeVector, "VectorConstructor");
+            break;
+        }
+        case ContainerTag::BitVector: {
+            res = InitializeContainer(thread, thisValue, InitializeBitVector, "BitVectorConstructor");
             break;
         }
         case ContainerTag::List: {
@@ -851,6 +858,72 @@ void ContainersPrivate::InitializeVectorIterator(JSThread *thread, const JSHandl
     SetFrozenFunction(thread, vectorIteratorPrototype, "next", JSAPIVectorIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, vectorIteratorPrototype, "Vector Iterator");
     globalConst->SetConstant(ConstantIndex::VECTOR_ITERATOR_PROTOTYPE_INDEX, vectorIteratorPrototype.GetTaggedValue());
+}
+
+JSHandle<JSTaggedValue> ContainersPrivate::InitializeBitVector(JSThread* thread)
+{
+    auto globalConst = const_cast<GlobalEnvConstants*>(thread->GlobalConstants());
+    ObjectFactory* factory = thread->GetEcmaVM()->GetFactory();
+    // BitVector.prototype
+    JSHandle<JSObject> prototype = factory->NewEmptyJSObject();
+    JSHandle<JSTaggedValue> bitVectorFuncPrototypeValue(prototype);
+    // BitVector.prototype_or_hclass
+    JSHandle<JSHClass> bitVectorInstanceClass =
+        factory->NewEcmaHClass(JSAPIBitVector::SIZE, JSType::JS_API_BITVECTOR, bitVectorFuncPrototypeValue);
+    // BitVector() = new Function()
+    JSHandle<JSTaggedValue> bitVectorFunction(NewContainerConstructor(
+        thread, prototype, ContainersBitVector::BitVectorConstructor, "BitVector", FuncLength::ONE));
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(
+        thread, JSHandle<JSFunction>::Cast(bitVectorFunction), bitVectorInstanceClass.GetTaggedValue());
+
+    // "constructor" property on the prototype
+    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(prototype), constructorKey, bitVectorFunction);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+
+    // BitVector.prototype
+    SetFrozenFunction(thread, prototype, "push", ContainersBitVector::Push, FuncLength::ONE);
+    SetFrozenFunction(thread, prototype, "pop", ContainersBitVector::Pop, FuncLength::ZERO);
+    SetFrozenFunction(thread, prototype, "has", ContainersBitVector::Has, FuncLength::THREE);
+    SetFrozenFunction(thread, prototype, "setBitsByRange", ContainersBitVector::SetBitsByRange, FuncLength::THREE);
+    SetFrozenFunction(thread, prototype, "getBitsByRange", ContainersBitVector::GetBitsByRange, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "setAllBits", ContainersBitVector::SetAllBits, FuncLength::ONE);
+    SetFrozenFunction(thread, prototype, "resize", ContainersBitVector::Resize, FuncLength::ONE);
+    SetFrozenFunction(
+        thread, prototype, "getBitCountByRange", ContainersBitVector::GetBitCountByRange, FuncLength::THREE);
+    SetFrozenFunction(thread, prototype, "getIndexOf", ContainersBitVector::GetIndexOf, FuncLength::THREE);
+    SetFrozenFunction(thread, prototype, "getLastIndexOf", ContainersBitVector::GetLastIndexOf, FuncLength::THREE);
+    SetFrozenFunction(thread, prototype, "flipBitByIndex", ContainersBitVector::FlipBitByIndex, FuncLength::ONE);
+    SetFrozenFunction(thread, prototype, "flipBitsByRange", ContainersBitVector::FlipBitsByRange, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "values", ContainersBitVector::GetIteratorObj, FuncLength::ZERO);
+
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    SetStringTagSymbol(thread, env, prototype, "BitVector");
+
+    JSHandle<JSTaggedValue> lengthGetter =
+        CreateGetter(thread, ContainersBitVector::GetSize, "length", FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
+    SetGetter(thread, prototype, lengthKey, lengthGetter);
+
+    ContainersPrivate::InitializeBitVectorIterator(thread, env, globalConst);
+
+    globalConst->SetConstant(ConstantIndex::BITVECTOR_FUNCTION_INDEX, bitVectorFunction.GetTaggedValue());
+    return bitVectorFunction;
+}
+
+void ContainersPrivate::InitializeBitVectorIterator(
+    JSThread* thread, const JSHandle<GlobalEnv>& env, GlobalEnvConstants* globalConst)
+{
+    ObjectFactory* factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSHClass> iteratorFuncHClass =
+        JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
+    // BitVectorIterator.prototype
+    JSHandle<JSObject> bitVectorIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
+    // Iterator.prototype.next()
+    SetFrozenFunction(thread, bitVectorIteratorPrototype, "next", JSAPIBitVectorIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(thread, env, bitVectorIteratorPrototype, "BitVector Iterator");
+    globalConst->SetConstant(
+        ConstantIndex::BITVECTOR_ITERATOR_PROTOTYPE_INDEX, bitVectorIteratorPrototype.GetTaggedValue());
 }
 
 JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)

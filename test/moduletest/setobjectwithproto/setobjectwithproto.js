@@ -39,3 +39,78 @@ print(C32.__proto__ == Array);
 Float64Array.__proto__ = Float32Array
 new Float64Array();
 print("test new Float64Array Suc")
+
+var normalValues = [
+    1,
+    true,
+    'string',
+    Symbol()
+];
+
+function getObjects() {
+    function func() {}
+    return [
+      func,
+      new func(),
+      {x: 5},
+      /regexp/,
+      ['array'],
+      new Date(),
+      new Number(1),
+      new Boolean(true),
+      new String('str'),
+      Object(Symbol())
+    ];
+}
+
+function TestSetPrototypeOf1() {
+    var object = {};
+    var oldProto = {
+      x: 'old x',
+      y: 'old y'
+    };
+    Object.setPrototypeOf(object, oldProto);
+    print(object.x);
+    print(object.y);
+    var newProto = {
+      x: 'new x'
+    };
+    Object.setPrototypeOf(object, newProto);
+    print(object.x);
+}
+TestSetPrototypeOf1();
+
+function TestSetPrototypeOf2() {
+    for (var i = 0; i < normalValues.length; i++) {
+      var value = normalValues[i];
+      var proto = Object.getPrototypeOf(value);
+      if (Object.setPrototypeOf(value, {}) != value) {
+        return false;
+      }
+      if (proto != Object.getPrototypeOf(value)) {
+        return false;
+      }
+    }
+    return true;
+}
+
+print(TestSetPrototypeOf2());
+
+function TestSetPrototypeOf(object, proto) {
+    return (Object.setPrototypeOf(object, proto) === object) &&
+           (Object.getPrototypeOf(object) === proto);
+}
+
+function TestSetPrototypeOf3() {
+    var objects1 = getObjects();
+    var objects2 = getObjects();
+    for (var i = 0; i < objects1.length; i++) {
+        for (var j = 0; j < objects2.length; j++) {
+        if (!TestSetPrototypeOf(objects1[i], objects2[j])) {
+            return false;
+        }
+        }
+    }
+    return true;
+}
+print(TestSetPrototypeOf3());

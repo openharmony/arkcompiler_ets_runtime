@@ -145,7 +145,7 @@ private:
     int32 byteOffset = 0;
     uint32 memSize = 0;
     PrimType primType = PTY_unknown;
-    bool isRefField = false;  // for java
+    bool isRefField = false;
 
     void GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mirFunc);
     void GetTrueMirInfo(const BECommon &beCommon);

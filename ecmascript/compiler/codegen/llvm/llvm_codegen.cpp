@@ -284,10 +284,10 @@ void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlo
 void LLVMIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                                        const panda::ecmascript::MethodLiteral *methodLiteral,
                                        const JSPandaFile *jsPandaFile, const std::string &methodName,
-                                       bool enableOptInlining, bool enableOptBranchProfiling)
+                                       const FrameType frameType, bool enableOptInlining, bool enableOptBranchProfiling)
 {
     auto function = module_->AddFunc(methodLiteral, jsPandaFile);
-    circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    circuit->SetFrameType(frameType);
     CallSignature::CallConv conv;
     if (methodLiteral->IsFastCall()) {
         conv = CallSignature::CallConv::CCallConv;
@@ -427,7 +427,7 @@ LLVMAssembler::~LLVMAssembler()
     error_ = nullptr;
 }
 
-void LLVMAssembler::Run(const CompilerLog &log, bool fastCompileMode)
+void LLVMAssembler::Run(const CompilerLog &log, bool fastCompileMode, [[maybe_unused]] bool isJit)
 {
     char *error = nullptr;
     std::string originName = llvm::unwrap(module_)->getModuleIdentifier() + ".ll";

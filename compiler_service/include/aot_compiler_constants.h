@@ -136,6 +136,7 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-force-jit-compile-main",
     "compiler-enable-jit-pgo",
     "compiler-enable-aot-pgo",
+    "compiler-enable-framework-aot",
     "compiler-enable-profile-dump",
     "compiler-typed-op-profiler",
     "compiler-opt-branch-profiling",
@@ -153,7 +154,7 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-force-baselinejit-compile-main",
 };
 
-enum ErrOfCompile {
+enum class ErrOfCompile {
     COMPILE_OK = (0),
     ERR_COMPILE_FAIL = (-1),
     ERR_COMPILE_HELP = (1),

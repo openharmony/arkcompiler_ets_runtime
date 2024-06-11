@@ -66,6 +66,7 @@ void TypeTable::ReleaseTypes()
         delete typeTable[index];
         typeTable[index] = nullptr;
     }
+    voidPtrType = nullptr;
 }
 
 void TypeTable::SetTypeWithTyIdx(const TyIdx &tyIdx, MIRType &type)

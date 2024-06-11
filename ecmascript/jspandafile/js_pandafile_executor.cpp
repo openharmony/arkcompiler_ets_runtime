@@ -63,21 +63,10 @@ std::pair<CString, CString> JSPandaFileExecutor::ParseAbcEntryPoint(JSThread *th
     return std::make_pair(name, entry);
 }
 
-Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *thread, const CString &filename,
-    std::string_view entryPoint, bool needUpdate, bool executeFromJob)
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thread, const CString &name,
+    CString entry, bool needUpdate, bool executeFromJob)
 {
-    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename;
-    CString traceInfo = "JSPandaFileExecutor::ExecuteFromFile " + filename;
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
-    CString entry;
-    CString name;
     EcmaVM *vm = thread->GetEcmaVM();
-    if (!vm->IsBundlePack() && !executeFromJob) {
-        std::tie(name, entry) = ParseAbcEntryPoint(thread, filename, entryPoint);
-    } else {
-        name = filename;
-        entry = entryPoint.data();
-    }
 
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, needUpdate);
@@ -89,8 +78,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
 #endif
     }
-    // realEntry is used to record the original record, which is easy to throw when there are exceptions
-    const CString realEntry = entry;
     // If it is an old record, delete the bundleName and moduleName
     if (!jsPandaFile->IsBundlePack() && !vm->IsNormalizedOhmUrlPack() && !executeFromJob &&
         !vm->GetBundleName().empty()) {
@@ -103,12 +90,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
-        CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         ThreadManagedScope managedScope(thread);
-        [[maybe_unused]] EcmaHandleScope scope(thread);
         SharedModuleManager* sharedModuleManager = SharedModuleManager::GetInstance();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
         if (jsPandaFile->IsBundlePack()) {
@@ -116,7 +102,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
         } else {
             moduleRecord = sharedModuleManager->ResolveImportedModuleWithMerge(thread, name, entry, executeFromJob);
         }
-        
+
         SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
         if (thread->HasPendingException()) {
             return Unexpected(false);
@@ -132,6 +118,37 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     }
     BindPandaFilesForAot(vm, jsPandaFile.get());
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry.c_str(), executeFromJob);
+}
+
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile(JSThread *thread,
+    const CString &filename, std::string_view entryPoint, bool needUpdate, bool executeFromJob)
+{
+    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile filename " << filename;
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    CString entry = entryPoint.data();
+    CString name = filename;
+
+    return ExecuteFromFile(thread, name, entry, needUpdate, executeFromJob);
+}
+
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *thread, const CString &filename,
+    std::string_view entryPoint, bool needUpdate, bool executeFromJob)
+{
+    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromAbcFile filename " << filename;
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromAbcFile " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    CString entry;
+    CString name;
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (!vm->IsBundlePack() && !executeFromJob) {
+        std::tie(name, entry) = ParseAbcEntryPoint(thread, filename, entryPoint);
+    } else {
+        name = filename;
+        entry = entryPoint.data();
+    }
+
+    return ExecuteFromFile(thread, name, entry, needUpdate, executeFromJob);
 }
 
 // The security interface needs to be modified accordingly.
@@ -157,7 +174,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, normalName, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, normalName, entry);
     }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
@@ -210,7 +227,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, name, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
     } else if (!isBundle) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
@@ -261,6 +278,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
                                                            std::string_view entryPoint, bool executeFromJob)
 {
     ThreadManagedScope managedScope(thread);
+    if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+        CString traceInfo = "FileExecute: " + CString(entryPoint);
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    }
     // For Ark application startup
     EcmaContext *context = thread->GetCurrentEcmaContext();
 
@@ -277,7 +298,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     return result;
 }
 
-void JSPandaFileExecutor::BindPandaFilesForAot(EcmaVM *vm, [[maybe_unused]]JSPandaFile *jsPandaFile)
+void JSPandaFileExecutor::BindPandaFilesForAot(EcmaVM *vm, [[maybe_unused]] JSPandaFile *jsPandaFile)
 {
     if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
         std::string aotFileBaseName(vm->GetModuleName());
@@ -312,7 +333,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, normalName, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, normalName, entry);
     }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
@@ -388,7 +409,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, name, entry);
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
     } else if (!jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {

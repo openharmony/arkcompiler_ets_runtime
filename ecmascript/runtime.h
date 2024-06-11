@@ -130,6 +130,67 @@ public:
 
     void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
 
+    inline bool CreateStringCacheTable(uint32_t size)
+    {
+        constexpr int32_t MAX_SIZE = 2000;
+        if ((size == 0) || (size > MAX_SIZE) || (externalRegisteredStringTable_ != nullptr)) {
+            LOG_ECMA(ERROR) << "invalid size of the string cache table or the table has been registered.";
+            LOG_ECMA(ERROR) << "Currently, maximum size of the table is " << MAX_SIZE;
+            return false;
+        }
+
+        externalRegisteredStringTable_ = new JSTaggedValue[size];
+        if (externalRegisteredStringTable_ == nullptr) {
+            LOG_ECMA(ERROR) << "create string cache table failed";
+            return false;
+        }
+        registeredStringTableSize_ = size;
+        return true;
+    }
+
+    inline bool SetCachedString(JSHandle<EcmaString> str, uint32_t propertyIndex)
+    {
+        if (propertyIndex >= registeredStringTableSize_ || (externalRegisteredStringTable_ == nullptr)) {
+            LOG_ECMA(ERROR) << "invalid size of the string cache table or the table has never been registered.";
+            return false;
+        }
+        externalRegisteredStringTable_[propertyIndex] = str.GetTaggedValue();
+        return true;
+    }
+
+    inline JSHandle<EcmaString> GetCachedString(JSThread *thread, uint32_t propertyIndex)
+    {
+        if ((externalRegisteredStringTable_ == nullptr) || (propertyIndex >= registeredStringTableSize_)) {
+            LOG_ECMA(ERROR) << "invalid size of the string cache table or the table has never been registered.";
+            return JSHandle<EcmaString>(thread->GlobalConstants()->GetHandledEmptyString());
+        }
+        return JSHandle<EcmaString>(reinterpret_cast<uintptr_t>(&externalRegisteredStringTable_[propertyIndex]));
+    }
+
+    inline bool HasCachedString(uint32_t propertyIndex)
+    {
+        if ((externalRegisteredStringTable_ == nullptr) || propertyIndex >= registeredStringTableSize_) {
+            LOG_ECMA(ERROR) << "invalid size of the string cache table or the table has never been registered.";
+            return false;
+        }
+
+        if (externalRegisteredStringTable_[propertyIndex].GetRawData() != JSTaggedValue::NULL_POINTER) {
+            return true;
+        }
+        return false;
+    }
+
+    void IterateCachedStringRoot(const RootRangeVisitor &v)
+    {
+        if ((externalRegisteredStringTable_ == nullptr) || (registeredStringTableSize_ <= 0)) {
+            return;
+        }
+        auto begin = ObjectSlot(reinterpret_cast<uintptr_t>(externalRegisteredStringTable_));
+        auto end = ObjectSlot(reinterpret_cast<uintptr_t>(externalRegisteredStringTable_ +
+            registeredStringTableSize_));
+        v(Root::ROOT_VM, begin, end);
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -194,8 +255,13 @@ private:
     static Mutex *vmCreationLock_;
     static Runtime *instance_;
 
+    // for string cache
+    JSTaggedValue *externalRegisteredStringTable_ {nullptr};
+    uint32_t registeredStringTableSize_ = 0;
+
     friend class EcmaVM;
     friend class JSThread;
+    friend class SharedHeap;
 
     NO_COPY_SEMANTIC(Runtime);
     NO_MOVE_SEMANTIC(Runtime);

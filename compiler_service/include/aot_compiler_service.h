@@ -34,13 +34,15 @@ enum class ServiceRunningState {
     STATE_RUNNING
 };
 class AotCompilerService : public SystemAbility, public AotCompilerInterfaceStub {
-    DECLARE_SYSTEM_ABILITY(AotCompilerService);
-    DECLARE_DELAYED_SINGLETON(AotCompilerService);
+    DECLARE_SYSTEM_ABILITY(AotCompilerService)
+    DECLARE_DELAYED_SINGLETON(AotCompilerService)
 public:
     AotCompilerService(int32_t systemAbilityId, bool runOnCreate);
     int32_t AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                         std::vector<int16_t> &sigData) override;
     int32_t StopAotCompiler() override;
+    int32_t GetAOTVersion(std::string& sigData) override;
+    int32_t NeedReCompile(const std::string& args, bool& sigData) override;
     void DelayUnloadTask();
 protected:
     void OnStart() override;

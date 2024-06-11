@@ -71,7 +71,7 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
                 stackInfoCache.emplace(buffer[i], info);
             }
         }
-        const char *file =  info.dli_fname ? info.dli_fname : "";
+        const char *file = info.dli_fname ? info.dli_fname : "";
         uint64_t offset = info.dli_fbase ? ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase) : 0;
         char buf[LOG_BUF_LEN] = {0};
         char frameFormatWithMapName[] = "#%02zu pc %016" PRIx64 " %s";

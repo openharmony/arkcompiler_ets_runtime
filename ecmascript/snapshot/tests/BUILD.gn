@@ -35,6 +35,7 @@ host_unittest_action("SnapshotTest") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 

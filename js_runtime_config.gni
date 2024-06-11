@@ -25,13 +25,23 @@ declare_args() {
   enable_fuzz_option = false
 
   # Enable pgo for building.
-  js_runtime_feature_enable_pgo = false
+  ets_runtime_feature_enable_pgo = false
 
   # Set pgo profdata path.
-  js_runtime_feature_pgo_path = ""
+  ets_runtime_feature_pgo_path = ""
+
+  # Defaults for fort
+  enable_jit_fort = false
+  enable_jit_code_sign = false
+  disable_fort_switch = false
+  enable_fort_global = false
 
   TARGET = "x86_64"
   HOST_ARCH = 64
+
+  # If true app_aot_disable_list, app_aot_disable_list, app_jit_enable_list will be placed in /etc/ark
+  # Default false.
+  js_runtime_feature_enable_list = false
 }
 
 if (target_cpu == "arm64") {
@@ -53,6 +63,7 @@ js_root = "//arkcompiler/ets_runtime"
 global_root = "//base/global/i18n"
 hilog_root = "//base/hiviewdfx/hilog/interfaces/native/innerkits"
 qos_root = "//foundation/resourceschedule/qos_manager"
+code_sign_root = "//base/security/code_signature/interfaces/innerkits"
 compile_llvm_online = false
 run_with_asan = false
 if (enable_fuzz_option) {
@@ -141,6 +152,13 @@ enable_local_code_sign = false
 if (have_local_code_sign && enable_target_compilation) {
   enable_local_code_sign = true
 }
+if (!ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
+    enable_fort_global && is_standard_system && target_cpu == "arm64" &&
+    !is_emulator && defined(global_parts_info) &&
+    defined(global_parts_info.security_code_signature)) {
+  enable_jit_code_sign = true
+  enable_jit_fort = true
+}
 
 ets_runtime_output_path = "ets_runtime/ets_runtime"
 
@@ -201,7 +219,7 @@ template("libark_jsruntime_common_set") {
     }
 
     if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
-        is_standard_system && !is_arkui_x && target_cpu == "arm64") {
+        is_standard_system && !is_arkui_x) {
       defines += [ "ENABLE_FFRT_INTERFACES" ]
       external_deps += [
         "ffrt:libffrt",
@@ -228,11 +246,25 @@ template("libark_jsruntime_common_set") {
       defines += [
         "GET_PARAMETER_FOR_JIT",
         "JIT_ESCAPE_ENABLE",
+        "AOT_ESCAPE_ENABLE",
+        "OHOS_GET_PARAMETER",
       ]
     }
 
     if (ark_standalone_build) {
       defines += [ "STANDALONE_MODE" ]
+    }
+
+    include_dirs = []
+    if (enable_jit_code_sign) {
+      defines += [ "CODE_SIGN_ENABLE" ]
+      if (disable_fort_switch) {
+        defines += [ "JIT_FORT_DISABLE" ]
+      }
+      include_dirs += [
+        "$code_sign_root/common/include",
+        "$code_sign_root/jit_code_sign/include",
+      ]
     }
 
     if (enable_target_compilation) {

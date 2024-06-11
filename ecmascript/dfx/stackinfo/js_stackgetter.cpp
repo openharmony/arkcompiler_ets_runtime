@@ -74,13 +74,20 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
             while (functionName[index] != '#') {
                 index--;
             }
-            functionName += (index + 1);
+            functionName += (index + 1);  // #...#functionName
         }
         if (strlen(functionName) == 0) {
             functionName = "anonymous";
         }
         if (!CheckAndCopy(codeEntry.functionName, sizeof(codeEntry.functionName), functionName)) {
             return false;
+        }
+        uint8_t specialIndex = strlen(codeEntry.functionName) - 1;
+        while (specialIndex > 0 && codeEntry.functionName[specialIndex] != '^') {
+            specialIndex--;
+        }
+        if (codeEntry.functionName[specialIndex] == '^') {
+            codeEntry.functionName[specialIndex] = '\0';  // #...#functionName^1
         }
         // record name
         const char *recordName = MethodLiteral::GetRecordNameWithSymbol(jsPandaFile, methodId);
@@ -182,15 +189,22 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
             return RunningState::NAPI;
         }
         if (isNative) {
-            if (function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer()) {
-                return RunningState::ARKUI_ENGINE;
-            }
-            return RunningState::BUILTIN;
+            return function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer() ? RunningState::ARKUI_ENGINE :
+                                                                                     RunningState::BUILTIN;
+        }
+        if (it.IsFastJitFunctionFrame()) {
+            return RunningState::JIT;
         }
         if (it.IsOptimizedJSFunctionFrame()) {
             return RunningState::AOT;
         }
         if (thread->IsAsmInterpreter()) {
+            // For Methods that is compiled in AOT but deoptimized at runtime, we mark it as AINT-D
+            JSHandle<Method> method = JSHandle<Method>(thread, function->GetMethod());
+            MethodLiteral *methodLiteral = method->GetMethodLiteral();
+            if (methodLiteral != nullptr && MethodLiteral::IsAotWithCallField(methodLiteral->GetCallField())) {
+                return RunningState::AINT_D;
+            }
             return RunningState::AINT;
         }
         return RunningState::CINT;
@@ -209,10 +223,8 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
         return RunningState::NAPI;
     }
     if (isNative) {
-        if (function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer()) {
-            return RunningState::ARKUI_ENGINE;
-        }
-        return RunningState::BUILTIN;
+        return function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer() ? RunningState::ARKUI_ENGINE :
+                                                                                 RunningState::BUILTIN;
     }
 
     return RunningState::OTHER;

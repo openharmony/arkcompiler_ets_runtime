@@ -164,9 +164,9 @@ public:
 
 #define DECLARE_GATE_META_FOR_NEW(NAME, OP, R, S, D, V)                        \
     const GateMetaData* NAME(uint64_t value, uint64_t pcOffset,                \
-                             bool isFastCall)                                  \
+                             bool needPushArgv)                                \
     {                                                                          \
-        return metaBuilder_.NAME(value, pcOffset, isFastCall);                 \
+        return metaBuilder_.NAME(value, pcOffset, needPushArgv);               \
     }
     GATE_META_DATA_LIST_FOR_NEW(DECLARE_GATE_META_FOR_NEW)
 #undef DECLARE_GATE_META_FOR_NEW
@@ -207,10 +207,21 @@ public:
         return static_cast<size_t>(gateCount_ - 1);
     }
 
+    bool IsOptimizedOrFastJit() const
+    {
+        return  IsOptimizedJSFunctionFrame() || IsFastJitFunctionFrame();
+    }
+
     bool IsOptimizedJSFunctionFrame() const
     {
         return frameType_ == FrameType::OPTIMIZED_JS_FUNCTION_FRAME
             || frameType_ == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
+    }
+
+    bool IsFastJitFunctionFrame() const
+    {
+        return frameType_ == FrameType::FASTJIT_FUNCTION_FRAME
+            || frameType_ == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
     }
 
     bool GetDebugInfo(GateRef g, size_t &index) const;

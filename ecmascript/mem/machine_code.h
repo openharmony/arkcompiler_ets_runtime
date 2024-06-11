@@ -44,6 +44,13 @@ struct MachineCodeDesc {
     uintptr_t stackMapAddr {0};
     size_t stackMapSize {0};
     MachineCodeType codeType {MachineCodeType::FAST_JIT_CODE};
+#ifdef CODE_SIGN_ENABLE
+    uintptr_t codeSigner {0};
+#endif
+#ifdef ENABLE_JITFORT
+    uintptr_t instructionsAddr {0};
+    size_t instructionsSize {0};
+#endif
 };
 // BaselineCode object layout:
 //                      +-----------------------------------+
@@ -55,13 +62,16 @@ struct MachineCodeDesc {
 //                      +-----------------------------------+
 //                      |          instructions size        | 4 bytes
 //                      +-----------------------------------+
+//                      |          instructions addr        | 8 bytes (if JitFort enabled)
+//                      +-----------------------------------+
 //                      |           stack map size(0)       | 4 bytes
 //                      +-----------------------------------+
 //                      |             func addr             | 8 bytes
 //    PAYLOAD_OFFSET/   +-----------------------------------+
-//     INSTR_OFFSET     |                                   |
-//   (16 byte align)    |     machine instructions(text)    |
 //                      |              ...                  |
+//     INSTR_OFFSET     |                                   | if JitFort enabled, will be in JitFort space
+//   (16 byte align)    |     machine instructions(text)    | instead for non-huge sized machine code objects
+//                      |              ...                  | and pointed to by "instructions addr"
 //                      +-----------------------------------+
 //==================================================================
 // JitCode object layout:
@@ -78,6 +88,8 @@ struct MachineCodeDesc {
 //                      +-----------------------------------+
 //                      |          instructions size        | 4 bytes
 //                      +-----------------------------------+
+//                      |          instructions addr        | 8 bytes (if JitFort enabled)
+//                      +-----------------------------------+
 //                      |           stack map size          | 4 bytes
 //                      +-----------------------------------+
 //                      |             func addr             | 8 bytes
@@ -85,9 +97,9 @@ struct MachineCodeDesc {
 //       (8 byte align) |           FuncEntryDesc           |
 //                      |              ...                  |
 //       INSTR_OFFSET   +-----------------------------------+
-//       (16 byte align)|     machine instructions(text)    |
-//                      |              ...                  |
-//      STACKMAP_OFFSET +-----------------------------------+
+//       (16 byte align)|     machine instructions(text)    | if JitFort enabled, will be in JitFort space
+//                      |              ...                  | instead for non-huge sized machine code objects
+//      STACKMAP_OFFSET +-----------------------------------+ and pointed to by "instuctions addr"
 //                      |            ArkStackMap            |
 //                      |              ...                  |
 //                      +-----------------------------------+
@@ -107,7 +119,12 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(OsrMask, uint32_t, OSRMASK_OFFSET, PAYLOADSIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(PayLoadSizeInBytes, uint32_t, PAYLOADSIZE_OFFSET, FUNCENTRYDESSIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(FuncEntryDesSize, uint32_t, FUNCENTRYDESSIZE_OFFSET, INSTRSIZ_OFFSET);
+#ifdef ENABLE_JITFORT
+    ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, INSTRADDR_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(InstructionsAddr, uint64_t, INSTRADDR_OFFSET, STACKMAPSIZE_OFFSET);
+#else
     ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, STACKMAPSIZE_OFFSET);
+#endif
     ACCESSORS_PRIMITIVE_FIELD(StackMapSize, uint32_t, STACKMAPSIZE_OFFSET, FUNCADDR_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(FuncAddr, uint64_t, FUNCADDR_OFFSET, PADDING_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(Padding, uint64_t, PADDING_OFFSET, LAST_OFFSET);
@@ -130,12 +147,21 @@ public:
 
     uintptr_t GetText() const
     {
+#ifdef ENABLE_JITFORT
+        return GetInstructionsAddr();
+#else
         return GetFuncEntryDesAddress() + GetFuncEntryDesSize();
+#endif
     }
 
     uint8_t *GetStackMapAddress() const
     {
+#ifdef ENABLE_JITFORT
+        // stackmap immediately follows FuncEntryDesc area
+        return reinterpret_cast<uint8_t*>(GetFuncEntryDesAddress() + GetFuncEntryDesSize());
+#else
         return reinterpret_cast<uint8_t*>(GetText() + GetInstructionsSize());
+#endif
     }
 
     size_t GetTextSize() const

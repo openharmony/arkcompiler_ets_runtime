@@ -1448,7 +1448,8 @@ JSTaggedValue BuiltinsSharedTypedArray::Slice(EcmaRuntimeCallInfo *argv)
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
-        while (srcBuffer == targetBuffer && count--) {
+        while (srcBuffer == targetBuffer && count > 0) {
+            count--;
             if (memcpy_s(targetBuf, elementSize, srcBuf, elementSize) != EOK) {
                 LOG_FULL(FATAL) << "memcpy_s failed";
                 UNREACHABLE();

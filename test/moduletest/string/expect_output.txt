@@ -105,6 +105,7 @@ TypeError: The NewTarget is undefined.
 true
 false
 true
+TypeError: cannot Callspread
 Hello World!          
 foo     
 bar
@@ -135,3 +136,18 @@ abc
 abc
 abc
 abc
+0,0,0,0,0
+
+abc
+abc
+abc
+bc
+c
+true
+true
+true
+true
+true
+true
+true
+true

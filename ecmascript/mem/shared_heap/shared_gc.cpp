@@ -15,17 +15,21 @@
 
 #include "ecmascript/mem/shared_heap/shared_gc.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/barriers-inl.h"
+#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem.h"
-#include "ecmascript/mem/parallel_marker-inl.h"
+#include "ecmascript/mem/object_xray.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
+#include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/space-inl.h"
+#include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/visitor.h"
-#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
@@ -33,9 +37,20 @@ void SharedGC::RunPhases()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::RunPhases");
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, sHeap_->GetEcmaGCStats());
+    markingInProgress_ = sHeap_->CheckOngoingConcurrentMarking();
     Initialize();
     Mark();
+    if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
+        // verify mark
+        LOG_ECMA(DEBUG) << "start verify mark";
+        SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_MARK).VerifyMark(markingInProgress_);
+    }
     Sweep();
+    if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
+        // verify mark
+        LOG_ECMA(DEBUG) << "start verify mark";
+        SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_SWEEP).VerifySweep(markingInProgress_);
+    }
     Finish();
 }
 
@@ -43,28 +58,25 @@ void SharedGC::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Initialize");
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, sHeap_->GetEcmaGCStats());
-    sHeap_->EnumerateOldSpaceRegions([](Region *current) {
-        ASSERT(current->InSharedSweepableSpace());
-        current->ResetAliveObject();
-    });
-    sWorkManager_->Initialize();
+    if (!markingInProgress_) {
+        sHeap_->Prepare(true);
+        sHeap_->EnumerateOldSpaceRegions([](Region *current) {
+            ASSERT(current->InSharedSweepableSpace());
+            current->ResetAliveObject();
+        });
+        sWorkManager_->Initialize();
+    }
 }
-
 void SharedGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, sHeap_->GetEcmaGCStats());
-    sHeap_->GetSharedGCMarker()->MarkSerializeRoots(MAIN_THREAD_INDEX);
-    sHeap_->GetSharedGCMarker()->MarkSharedModule(MAIN_THREAD_INDEX);
-    Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
-        auto vm = thread->GetEcmaVM();
-        auto heap = const_cast<Heap*>(vm->GetHeap());
-        heap->GetSweeper()->EnsureAllTaskFinished();
-        heap->WaitClearTaskFinished();
-        sHeap_->GetSharedGCMarker()->MarkRoots(MAIN_THREAD_INDEX, vm);
-        sHeap_->GetSharedGCMarker()->ProcessLocalToShare(MAIN_THREAD_INDEX, heap);
-    });
+    if (markingInProgress_) {
+        sHeap_->GetConcurrentMarker()->ReMark();
+        return;
+    }
+    sHeap_->GetSharedGCMarker()->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::NOT_CONCURRENT_MARK);
+    sHeap_->GetSharedGCMarker()->ProcessMarkStack(DAEMON_THREAD_INDEX);
     sHeap_->WaitRunningTaskFinished();
 }
 
@@ -103,7 +115,11 @@ void SharedGC::Finish()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Finish");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, sHeap_->GetEcmaGCStats());
     sHeap_->Reclaim();
-    sWorkManager_->Finish();
+    if (markingInProgress_) {
+        sHeap_->GetConcurrentMarker()->Reset(false);
+    } else {
+        sWorkManager_->Finish();
+    }
     sHeap_->GetSweeper()->TryFillSweptRegion();
 }
 
@@ -131,8 +147,8 @@ void SharedGC::UpdateRecordWeakReference()
     }
 }
 
-void SharedGC::ResetWorkManager(SharedGCWorkManager *workManager)
+void SharedGC::ResetWorkManager(SharedGCWorkManager *sWorkManager)
 {
-    sWorkManager_ = workManager;
+    sWorkManager_ = sWorkManager;
 }
 }  // namespace panda::ecmascript

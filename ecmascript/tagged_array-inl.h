@@ -51,6 +51,13 @@ inline uint32_t TaggedArray::GetIdx(const JSTaggedValue &value) const
     return TaggedArray::MAX_ARRAY_INDEX;
 }
 
+inline JSTaggedValue TaggedArray::GetBit(uint32_t idx, uint32_t bitOffset) const
+{
+    ASSERT(idx < GetLength());
+    JSTaggedType element = Get(idx).GetRawData();
+    return JSTaggedValue(int((element >> bitOffset) & 1ULL));
+}
+
 template<typename T>
 inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSHandle<T> &value)
 {
@@ -63,6 +70,18 @@ inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSHandl
     } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
         Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetTaggedValue().GetRawData());
     }
+}
+
+inline void TaggedArray::SetBit(const JSThread *thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue &value)
+{
+    ASSERT(idx < GetLength());
+    JSTaggedType element = Get(idx).GetRawData();
+    if (value.IsZero()) {
+        element &= ~(1ULL << bitOffset);
+    } else {
+        element |= (1ULL << bitOffset);
+    }
+    Set<false>(thread, idx, JSTaggedValue(element));
 }
 
 template <bool needBarrier>
@@ -225,10 +244,10 @@ inline bool TaggedArray::IsDictionaryMode() const
     return GetClass()->IsDictionary();
 }
 
-inline bool TaggedArray::IsYoungAndNotMarking(const JSThread *thread)
+inline bool TaggedArray::IsGeneralNewAndNotMarking(const JSThread *thread)
 {
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(this));
-    return region->InYoungSpace() && !thread->IsConcurrentMarkingOrFinished();
+    return region->InGeneralNewSpace() && !thread->IsConcurrentMarkingOrFinished();
 }
 
 void TaggedArray::Trim(const JSThread *thread, uint32_t newLength)

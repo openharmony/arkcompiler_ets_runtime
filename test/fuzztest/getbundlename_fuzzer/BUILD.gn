@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ####################################fuzztest##################################
-ohos_fuzztest("GetBundleNameFuzzerTest") {
+ohos_fuzztest("GetBundleNameFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/getbundlename_fuzzer"
@@ -40,5 +40,5 @@ ohos_fuzztest("GetBundleNameFuzzerTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":GetBundleNameFuzzerTest" ]
+  deps += [ ":GetBundleNameFuzzTest" ]
 }

@@ -11,15 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: foo@pgo_call_js caller function name: callFoo1@pgo_call_js
-[trace] aot inline function name: foo@pgo_call_js caller function name: callFoo1@pgo_call_js
-[trace] aot inline function name: callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
-[trace] aot inline function name: callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
-[trace] aot inline function name: callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
-[trace] aot inline function name: callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
-[trace] aot inline function name: callFoo3@pgo_call_js caller function name: func_main_0@pgo_call_js
-[trace] aot inline function name: callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
-[trace] aot inline function name: callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
-[trace] aot inline function name: callFoo1@pgo_call_js caller function name: func_main_0@pgo_call_js
-[trace] aot inline function name: foo@pgo_call_js caller function name: callFoo1@pgo_call_js
+[trace] aot inline function name: #*#foo@pgo_call_js caller function name: #*#callFoo1@pgo_call_js
+[trace] aot inline function name: #*#foo@pgo_call_js caller function name: #*#callFoo1@pgo_call_js
+[trace] aot inline function name: #*#callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
+[trace] aot inline function name: #*#callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
+[trace] aot inline function name: #*#callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
+[trace] aot inline function name: #*#callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
+[trace] aot inline function name: #*#callFoo3@pgo_call_js caller function name: func_main_0@pgo_call_js
+[trace] aot inline function name: #*#callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
+[trace] aot inline function name: #*#callFoo2@pgo_call_js caller function name: func_main_0@pgo_call_js
+[trace] aot inline function name: #*#callFoo1@pgo_call_js caller function name: func_main_0@pgo_call_js
+[trace] aot inline function name: #*#foo@pgo_call_js caller function name: #*#callFoo1@pgo_call_js
 a

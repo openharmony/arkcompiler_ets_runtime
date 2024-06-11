@@ -86,7 +86,8 @@ void SuspendBarrier::Wait()
             sched_yield();
 #endif
         } else {
-            curCount = passBarrierCount_.load(std::memory_order_relaxed);
+            // Use seq_cst to synchronize memory.
+            curCount = passBarrierCount_.load(std::memory_order_seq_cst);
             ASSERT(curCount == 0);
             break;
         }

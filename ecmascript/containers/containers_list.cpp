@@ -101,6 +101,9 @@ JSTaggedValue ContainersList::Insert(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
     JSAPIList::Insert(thread, jSAPIList, value, index->GetInt());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -288,6 +291,9 @@ JSTaggedValue ContainersList::Set(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSTaggedValue oldValue = JSAPIList::Set(thread, jsAPIList, index->GetInt(), element);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -392,6 +398,9 @@ JSTaggedValue ContainersList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSTaggedValue result = JSAPIList::RemoveByIndex(thread, jsAPIList, index->GetInt());
@@ -574,6 +583,13 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
+    if (fromIndex->IsDouble()) {
+        fromIndex = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(fromIndex->GetDouble()));
+    }
+
+    if (toIndex->IsDouble()) {
+        toIndex = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(toIndex->GetDouble()));
+    }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSTaggedValue newList = JSAPIList::GetSubList(thread, jsAPIList, fromIndex->GetInt(), toIndex->GetInt());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

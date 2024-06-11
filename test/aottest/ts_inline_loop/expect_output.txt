@@ -11,5 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: loop@ts_inline_loop caller function name: func_main_0@ts_inline_loop
+[trace] aot inline function name: #*#loop@ts_inline_loop caller function name: func_main_0@ts_inline_loop
 128

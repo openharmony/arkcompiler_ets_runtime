@@ -46,9 +46,6 @@ enum RangeIdx {
     kGlobalRootlist = 10,
     kClassmetaData = 11,
     kClassBucket = 12,
-    kJavatext = 13,
-    kJavajni = 14,
-    kJavajniFunc = 15,
     kOldMaxNum = 16,  // Old num
     kDataSection = 17,
     kDecoupleStaticKey = 18,

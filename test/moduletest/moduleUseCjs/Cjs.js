@@ -19,5 +19,7 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-var cjs = "module use cjsModule"
-module.exports = cjs
+
+module.exports = {
+  foo: "module use cjsModule"
+}

@@ -38,7 +38,7 @@ public:
         // 3. Return undefined.
         JSHandle<JSTaggedValue> target(thread, weakRef->GetFromWeak());
         if (!target->IsUndefined()) {
-            thread->GetEcmaVM()->GetHeap()->AddToKeptObjects(target);
+            thread->GetCurrentEcmaContext()->AddToKeptObjects(target);
         }
         return target.GetTaggedValue();
     }

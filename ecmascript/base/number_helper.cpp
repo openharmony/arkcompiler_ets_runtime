@@ -557,6 +557,28 @@ void NumberHelper::ToASCIIWithNegative(std::string& tmpbuf, int digitNumber, int
     tmpbuf += std::to_string(p);
 }
 
+JSTaggedValue NumberHelper::StringToNumber(EcmaString *string, int32_t radix)
+{
+    bool negative = false;
+    if ((radix == base::DECIMAL || radix == 0)) {
+        int32_t elementIndex = 0;
+        if (EcmaStringAccessor(string).ToInt(&elementIndex, &negative)) {
+            if (elementIndex == 0 && negative == true) {
+                return JSTaggedValue(-0.0);
+            }
+            return JSTaggedValue(elementIndex);
+        }
+    }
+    CVector<uint8_t> buf;
+    Span<const uint8_t> str = EcmaStringAccessor(string).ToUtf8Span(buf);
+
+    JSTaggedValue result = NumberHelper::StringToDoubleWithRadix(str.begin(), str.end(), radix, &negative);
+    if (result.GetNumber() == 0 && negative == true) {
+        return JSTaggedValue(-0.0);
+    }
+    return JSTaggedValue::TryCastDoubleToInt32(result.GetNumber());
+}
+
 JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative)
 {
     auto p = const_cast<uint8_t *>(start);
@@ -627,7 +649,7 @@ JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const 
         }
     } while (p != end);
 
-    if (size == 0) {
+    if (size == 0 || !IsValidHexadecimalString(size, radix, stripPrefix)) {
         return nanResult;
     }
 
@@ -635,6 +657,15 @@ JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const 
         result = -result;
     }
     return BuiltinsBase::GetTaggedDouble(result);
+}
+
+bool NumberHelper::IsValidHexadecimalString(const int size, const int radix, const bool strip)
+{
+    // if the input string `0x  `, size is 1 (strip prefix is true).
+    if (strip && size == 1 && radix == HEXADECIMAL) {
+        return false;
+    }
+    return true;
 }
 
 char NumberHelper::Carry(char current, int radix)
@@ -730,7 +761,8 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
     ASSERT(number.IsNumber());
     JSHandle<NumberToStringResultCache> cacheTable(
         thread->GetCurrentEcmaContext()->GetNumberToStringResultCache());
-    JSTaggedValue cacheResult = cacheTable->FindCachedResult(number);
+    int entry = cacheTable->GetNumberHash(number);
+    JSTaggedValue cacheResult = cacheTable->FindCachedResult(entry, number);
     if (cacheResult != JSTaggedValue::Undefined()) {
         return JSHandle<EcmaString>::Cast(JSHandle<JSTaggedValue>(thread, cacheResult));
     }
@@ -746,8 +778,8 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
     } else {
         resultJSHandle = DoubleToEcmaString(thread, number.GetDouble());
     }
-    
-    cacheTable->SetCachedResult(thread, number, resultJSHandle);
+
+    cacheTable->SetCachedResult(thread, entry, number, resultJSHandle);
     return resultJSHandle;
 }
 

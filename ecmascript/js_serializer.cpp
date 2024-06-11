@@ -1335,6 +1335,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
     if (jsPandaFile == nullptr) {
         return JSHandle<JSTaggedValue>();
     }
+    // ai file not include method
     JSHandle<ConstantPool> constPool =
         thread_->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile.get(), method->GetMethodId());
     method->SetConstantPool(thread_, constPool.GetTaggedValue());
@@ -1437,7 +1438,8 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
     }
     JSHandle<JSTaggedValue> msg = DeserializeJSTaggedValue();
     JSHandle<EcmaString> handleMsg(msg);
-    JSHandle<JSTaggedValue> errorTag = JSHandle<JSTaggedValue>::Cast(factory_->NewJSError(errorType, handleMsg));
+    JSHandle<JSTaggedValue> errorTag = JSHandle<JSTaggedValue>::Cast(
+        factory_->NewJSError(errorType, handleMsg, StackCheck::NO));
     referenceMap_.emplace(objectId_++, errorTag);
     return errorTag;
 }
@@ -1655,62 +1657,16 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSRegExp()
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
 {
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> target;
-    JSHandle<JSObject> obj;
-    JSHandle<JSTaggedValue> objTag;
-    switch (uid) {
-        case SerializationUID::JS_INT8_ARRAY: {
-            target = env->GetInt8ArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_UINT8_ARRAY: {
-            target = env->GetUint8ArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_UINT8_CLAMPED_ARRAY: {
-            target = env->GetUint8ClampedArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_INT16_ARRAY: {
-            target = env->GetInt16ArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_UINT16_ARRAY: {
-            target = env->GetUint16ArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_INT32_ARRAY: {
-            target = env->GetInt32ArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_UINT32_ARRAY: {
-            target = env->GetUint32ArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_FLOAT32_ARRAY: {
-            target = env->GetFloat32ArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_FLOAT64_ARRAY: {
-            target = env->GetFloat64ArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_BIGINT64_ARRAY: {
-            target = env->GetBigInt64ArrayFunction();
-            break;
-        }
-        case SerializationUID::JS_BIGUINT64_ARRAY: {
-            target = env->GetBigUint64ArrayFunction();
-            break;
-        }
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
+    JSHandle<JSTaggedValue> target = GetTypedArrayFunction(env, uid);
+    if (target.IsEmpty()) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
     }
+
     JSHandle<JSTypedArray> typedArray =
         JSHandle<JSTypedArray>::Cast(factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(target)));
-    obj = JSHandle<JSObject>::Cast(typedArray);
-    objTag = JSHandle<JSTaggedValue>::Cast(obj);
+    JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(typedArray);
+    JSHandle<JSTaggedValue> objTag = JSHandle<JSTaggedValue>::Cast(obj);
     referenceMap_.emplace(objectId_++, objTag);
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(objTag)) {
         return JSHandle<JSTaggedValue>();
@@ -1720,6 +1676,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
     if (!ReadBoolean(&isViewedArrayBuffer)) {
         return JSHandle<JSTaggedValue>();
     }
+
     JSHandle<JSTaggedValue> viewedArrayBufferOrByteArray;
     if (isViewedArrayBuffer) {
         viewedArrayBufferOrByteArray = DeserializeJSTaggedValue();
@@ -1740,30 +1697,71 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
     }
     typedArray->SetTypedArrayName(thread_, typedArrayName);
 
+    if (!SetTypedArrayProperties(typedArray)) {
+        return JSHandle<JSTaggedValue>();
+    }
+
+    return objTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::GetTypedArrayFunction(JSHandle<GlobalEnv> &env,
+                                                              SerializationUID &uid)
+{
+    switch (uid) {
+        case SerializationUID::JS_INT8_ARRAY:
+            return env->GetInt8ArrayFunction();
+        case SerializationUID::JS_UINT8_ARRAY:
+            return env->GetUint8ArrayFunction();
+        case SerializationUID::JS_UINT8_CLAMPED_ARRAY:
+            return env->GetUint8ClampedArrayFunction();
+        case SerializationUID::JS_INT16_ARRAY:
+            return env->GetInt16ArrayFunction();
+        case SerializationUID::JS_UINT16_ARRAY:
+            return env->GetUint16ArrayFunction();
+        case SerializationUID::JS_INT32_ARRAY:
+            return env->GetInt32ArrayFunction();
+        case SerializationUID::JS_UINT32_ARRAY:
+            return env->GetUint32ArrayFunction();
+        case SerializationUID::JS_FLOAT32_ARRAY:
+            return env->GetFloat32ArrayFunction();
+        case SerializationUID::JS_FLOAT64_ARRAY:
+            return env->GetFloat64ArrayFunction();
+        case SerializationUID::JS_BIGINT64_ARRAY:
+            return env->GetBigInt64ArrayFunction();
+        case SerializationUID::JS_BIGUINT64_ARRAY:
+            return env->GetBigUint64ArrayFunction();
+        default:
+            return JSHandle<JSTaggedValue>();
+    }
+}
+
+bool JSDeserializer::SetTypedArrayProperties(JSHandle<JSTypedArray> &typedArray)
+{
     JSTaggedValue byteLength;
     if (!ReadJSTaggedValue(&byteLength) || !byteLength.IsNumber()) {
-        return JSHandle<JSTaggedValue>();
+        return false;
     }
     typedArray->SetByteLength(byteLength.GetNumber());
 
     JSTaggedValue byteOffset;
     if (!ReadJSTaggedValue(&byteOffset) || !byteOffset.IsNumber()) {
-        return JSHandle<JSTaggedValue>();
+        return false;
     }
     typedArray->SetByteOffset(byteOffset.GetNumber());
 
     JSTaggedValue arrayLength;
-    if (!ReadJSTaggedValue(&arrayLength) || !byteOffset.IsNumber()) {
-        return JSHandle<JSTaggedValue>();
+    if (!ReadJSTaggedValue(&arrayLength) || !arrayLength.IsNumber()) {
+        return false;
     }
     typedArray->SetArrayLength(arrayLength.GetNumber());
 
     ContentType *contentType = reinterpret_cast<ContentType*>(GetBuffer(sizeof(ContentType)));
     if (contentType == nullptr) {
-        return JSHandle<JSTaggedValue>();
+        return false;
     }
     typedArray->SetContentType(*contentType);
-    return objTag;
+
+    return true;
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSNativePointer()

@@ -16,64 +16,27 @@
 #include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class JSAPIQueueTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
-
+class JSAPIQueueTest : public BaseTestWithScope<false> {
 protected:
     JSHandle<JSAPIQueue> CreateQueue(int capacaty = JSAPIQueue::DEFAULT_CAPACITY_LENGTH)
     {
+        return EcmaContainerCommon::CreateQueue(thread, capacaty);
+    }
+
+    JSHandle<JSAPIQueue> TestCommon(JSMutableHandle<JSTaggedValue>& value, std::string& queueValue, uint32_t len)
+    {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(value.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::Queue)));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result = containers::ContainersPrivate::Load(ecmaRuntimeCallInfo);
-        TestHelper::TearDownFrame(thread, prev);
-
-        JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPIQueue> jsQueue(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSHandle<TaggedArray> newElements = factory->NewTaggedArray(capacaty);
-        jsQueue->SetElements(thread, newElements);
-        jsQueue->SetLength(thread, JSTaggedValue(0));
-        jsQueue->SetFront(0);
-        jsQueue->SetTail(0);
+        JSHandle<JSAPIQueue> jsQueue = CreateQueue();
+        for (uint32_t i = 0; i < len; i++) {
+            std::string ivalue = queueValue + std::to_string(i);
+            value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+            JSAPIQueue::Add(thread, jsQueue, value);
+        }
         return jsQueue;
     }
 };
@@ -87,19 +50,13 @@ HWTEST_F_L0(JSAPIQueueTest, queueCreate)
 HWTEST_F_L0(JSAPIQueueTest, AddAndHasAndSetAndGet)
 {
     constexpr uint32_t DEFAULT_LENGTH = 8;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    JSHandle<JSAPIQueue> jsQueue = CreateQueue();
-
     std::string queueValue("queuevalue");
-    for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ivalue = queueValue + std::to_string(i);
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIQueue::Add(thread, jsQueue, value);
-    }
+    JSHandle<JSAPIQueue> jsQueue = TestCommon(value, queueValue, DEFAULT_LENGTH);
     EXPECT_EQ(jsQueue->GetSize(), DEFAULT_LENGTH);
     EXPECT_EQ(JSAPIQueue::GetArrayLength(thread, jsQueue), DEFAULT_LENGTH);
 
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // test Set, Has and Get
     std::string ivalue = queueValue + std::to_string(10);
     value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
@@ -151,16 +108,11 @@ HWTEST_F_L0(JSAPIQueueTest, PopFirstAndGetFirst)
 HWTEST_F_L0(JSAPIQueueTest, OwnKeys)
 {
     constexpr uint32_t DEFAULT_LENGTH = 8;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    JSHandle<JSAPIQueue> jsQueue = CreateQueue();
 
     std::string queueValue("queuevalue");
-    for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ivalue = queueValue + std::to_string(i);
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIQueue::Add(thread, jsQueue, value);
-    }
+    JSHandle<JSAPIQueue> jsQueue = TestCommon(value, queueValue, DEFAULT_LENGTH);
+
     JSHandle<TaggedArray> arrayKey = JSAPIQueue::OwnKeys(thread, jsQueue);
     EXPECT_EQ(arrayKey->GetLength(), DEFAULT_LENGTH);
     for (int32_t i = 0; i < static_cast<int32_t>(DEFAULT_LENGTH); i++) {
@@ -174,14 +126,8 @@ HWTEST_F_L0(JSAPIQueueTest, GetNextPosition)
     constexpr uint32_t DEFAULT_LENGTH = 8;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    JSHandle<JSAPIQueue> jsQueue = CreateQueue();
-
     std::string queueValue("queuevalue");
-    for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ivalue = queueValue + std::to_string(i);
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIQueue::Add(thread, jsQueue, value);
-    }
+    JSHandle<JSAPIQueue> jsQueue = TestCommon(value, queueValue, DEFAULT_LENGTH);
     // test GetNextPosition
     EXPECT_EQ(jsQueue->GetSize(), DEFAULT_LENGTH);
     for (uint32_t i = 0; i < DEFAULT_LENGTH;) {
@@ -195,16 +141,9 @@ HWTEST_F_L0(JSAPIQueueTest, GetNextPosition)
 HWTEST_F_L0(JSAPIQueueTest, GetOwnProperty)
 {
     constexpr uint32_t DEFAULT_LENGTH = 8;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    JSHandle<JSAPIQueue> jsQueue = CreateQueue();
-
     std::string queueValue("queuevalue");
-    for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ivalue = queueValue + std::to_string(i);
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIQueue::Add(thread, jsQueue, value);
-    }
+    JSHandle<JSAPIQueue> jsQueue = TestCommon(value, queueValue, DEFAULT_LENGTH);
     // test GetOwnProperty
     int testInt = 1;
     JSHandle<JSTaggedValue> queueKey1(thread, JSTaggedValue(testInt));

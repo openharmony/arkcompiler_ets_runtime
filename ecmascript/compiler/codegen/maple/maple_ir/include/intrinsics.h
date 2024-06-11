@@ -24,9 +24,6 @@ enum IntrinProperty {
     kIntrnIsJs,
     kIntrnIsJsUnary,
     kIntrnIsJsBinary,
-    kIntrnIsJava,
-    kIntrnIsJavaUnary,
-    kIntrnIsJavaBinary,
     kIntrnIsReturnStruct,
     kIntrnNoSideEffect,
     kIntrnIsLoadMem,
@@ -100,7 +97,6 @@ enum IntrinArgType {
 constexpr uint32 INTRNISJS = 1U << kIntrnIsJs;
 constexpr uint32 INTRNISJSUNARY = 1U << kIntrnIsJsUnary;
 constexpr uint32 INTRNISJSBINARY = 1U << kIntrnIsJsBinary;
-constexpr uint32 INTRNISJAVA = 1U << kIntrnIsJava;
 constexpr uint32 INTRNNOSIDEEFFECT = 1U << kIntrnNoSideEffect;
 constexpr uint32 INTRNRETURNSTRUCT = 1U << kIntrnIsReturnStruct;
 constexpr uint32 INTRNLOADMEM = 1U << kIntrnIsLoadMem;
@@ -120,11 +116,6 @@ struct IntrinDesc {
     bool IsJS() const
     {
         return static_cast<bool>(properties & INTRNISJS);
-    }
-
-    bool IsJava() const
-    {
-        return static_cast<bool>(properties & INTRNISJAVA);
     }
 
     bool IsJsUnary() const

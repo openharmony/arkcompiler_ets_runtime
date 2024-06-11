@@ -19,7 +19,7 @@
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
-JitThread::JitThread(JitVM *jitVM) : JSThread(jitVM, true) {};
+JitThread::JitThread(JitVM *jitVM) : JSThread(jitVM, ThreadType::JIT_THREAD) {};
 
 JSThread *JitThread::GetHostThread() const
 {

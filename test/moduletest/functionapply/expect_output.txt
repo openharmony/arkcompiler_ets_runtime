@@ -16,3 +16,17 @@
 0
 ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
 undefined undefined
+undefined
+undefined
+Function
+1
+
+0
+TypeError: Cannot assign to read only property
+TypeError: Cannot assign to read only property
+TypeError: Cannot assign to read only property
+TypeError: Cannot assign to read only property
+TypeError: Cannot assign to read only property
+TypeError: Under strict mode, 'caller' and 'arguments' properties must not be accessed.
+TypeError: Under strict mode, 'caller' and 'arguments' properties must not be accessed.
+TypeError: Cannot assign to read only property

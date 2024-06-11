@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "ecmascript/compiler/aot_file/aot_version.h"
 
 namespace OHOS::ArkCompiler {
 class AotCompilerImpl {
@@ -34,6 +35,10 @@ public:
     int32_t EcmascriptAotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                                   std::vector<int16_t> &sigData);
     int32_t StopAotCompiler();
+
+    int32_t GetAOTVersion(std::string& sigData);
+
+    int32_t NeedReCompile(const std::string& args, bool& sigData);
 
     void HandlePowerDisconnected();
 

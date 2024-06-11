@@ -39,6 +39,7 @@ host_unittest_action("IC_001_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
@@ -65,6 +66,7 @@ host_unittest_action("IC_002_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 

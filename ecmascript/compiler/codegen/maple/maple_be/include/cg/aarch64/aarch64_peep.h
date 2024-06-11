@@ -2165,12 +2165,6 @@ private:
     bool isStrInsn = false;
 };
 
-/*
- *  add     x0, x1, #:lo12:Ljava_2Futil_2FLocale_241_3B_7C_24SwitchMap_24java_24util_24Locale_24Category
- *  ldr     x2, [x0]
- *  ==>
- *  ldr     x2, [x1, #:lo12:Ljava_2Futil_2FLocale_241_3B_7C_24SwitchMap_24java_24util_24Locale_24Category]
- */
 class ComplexMemOperandAArch64 : public PeepPattern {
 public:
     explicit ComplexMemOperandAArch64(CGFunc &cgFunc) : PeepPattern(cgFunc) {}

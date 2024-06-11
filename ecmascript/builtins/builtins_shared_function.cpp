@@ -25,4 +25,13 @@ JSTaggedValue BuiltinsSharedFunction::SharedFunctionConstructor(EcmaRuntimeCallI
     THROW_TYPE_ERROR_AND_RETURN(thread, "Not support eval. Forbidden using new SharedFuction()/SharedFuction().",
                                 JSTaggedValue::Exception());
 }
+
+JSTaggedValue BuiltinsSharedFunction::SharedFunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
+{
+    // not support
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Function, PrototypeBind);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    THROW_TYPE_ERROR_AND_RETURN(thread, "Sendable function not support bind.", JSTaggedValue::Exception());
+}
 }  // namespace panda::ecmascript::builtins

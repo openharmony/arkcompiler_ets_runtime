@@ -17,12 +17,15 @@
 #include "ecmascript/compiler/aot_file/aot_version.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
+#include "ecmascript/compiler/aot_file/gdb_jit.h"
 #include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/platform/file.h"
 
+#ifndef PANDA_TARGET_OHOS
 extern const uint8_t _binary_stub_an_start[];
 extern const uint32_t _binary_stub_an_length;
+#endif
 
 namespace panda::ecmascript {
 void StubFileInfo::Save(const std::string &filename, Triple triple)
@@ -60,12 +63,7 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
 
 bool StubFileInfo::MmapLoad(const std::string &fileName)
 {
-    std::string filename = "";
-    if (fileName.empty()) {
-        filename = STUB_AN_FILE;
-    } else {
-        filename = fileName;
-    }
+    std::string filename = fileName.empty() ? STUB_AN_FILE : fileName;
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
         LOG_COMPILER(ERROR) << "Can not load stub file from path [ " << filename << " ], "
@@ -119,7 +117,7 @@ bool StubFileInfo::MmapLoad(const std::string &fileName)
     LOG_COMPILER(INFO) << "loaded stub file successfully";
     return true;
 }
-
+#ifndef PANDA_TARGET_OHOS
 bool StubFileInfo::Load()
 {
     if (_binary_stub_an_length <= 1) {
@@ -163,7 +161,7 @@ bool StubFileInfo::Load()
     }
     return true;
 }
-
+#endif
 const std::vector<ElfSecName> &StubFileInfo::GetDumpSectionNames()
 {
     static const std::vector<ElfSecName> secNames = {

@@ -125,9 +125,9 @@ public:
     int BitAt(int position)
     {
         if (position >= SHIFT_64BIT) {
-            return static_cast<int>(high_bits_ >> (position - SHIFT_64BIT)) & 1;
+            return static_cast<int>((high_bits_ >> (position - SHIFT_64BIT)) & 1);
         } else {
-            return static_cast<int>(low_bits_ >> position) & 1;
+            return static_cast<int>((low_bits_ >> position) & 1);
         }
     }
 

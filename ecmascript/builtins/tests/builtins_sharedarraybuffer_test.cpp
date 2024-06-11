@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "builtin_test_util.h"
 #include "ecmascript/builtins/builtins_sharedarraybuffer.h"
 
 #include "ecmascript/ecma_runtime_call_info.h"
@@ -29,49 +30,8 @@ using namespace panda::ecmascript::builtins;
 using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
 
 namespace panda::test {
-class BuiltinsSharedArrayBufferTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
-
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+class BuiltinsSharedArrayBufferTest : public BaseTestWithScope<false> {
 };
-
-JSTaggedValue CreateBuiltinsSharedArrayBuffer(JSThread *thread, int32_t length)
-{
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> sharedArrayBuffer(thread, env->GetSharedArrayBufferFunction().GetTaggedValue());
-    JSHandle<JSObject> globalObject(thread, env->GetGlobalObject());
-    // 6 : test case
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, sharedArrayBuffer.GetTaggedValue(), 6);
-    ecmaRuntimeCallInfo->SetFunction(sharedArrayBuffer.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(globalObject.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(length));
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsSharedArrayBuffer::SharedArrayBufferConstructor(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-    return result;
-}
 
 JSArrayBuffer *CreateJSArrayBuffer(JSThread *thread)
 {
@@ -102,7 +62,7 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, Constructor1)
 // (new ArrayBuffer(18)).byteLength
 HWTEST_F_L0(BuiltinsSharedArrayBufferTest, byteLength1)
 {
-    JSTaggedValue tagged = CreateBuiltinsSharedArrayBuffer(thread, 18);
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsSharedArrayBuffer(thread, 18);
     JSHandle<JSArrayBuffer> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
@@ -116,7 +76,7 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, byteLength1)
 // (new ArrayBuffer(10)).slice(1, 5).bytelength
 HWTEST_F_L0(BuiltinsSharedArrayBufferTest, slice1)
 {
-    JSTaggedValue tagged = CreateBuiltinsSharedArrayBuffer(thread, 10);
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsSharedArrayBuffer(thread, 10);
     JSHandle<JSArrayBuffer> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
@@ -138,7 +98,7 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, slice1)
     ASSERT_EQ(result2.GetRawData(), JSTaggedValue(4).GetRawData());
 
     // IsShared false
-    JSTaggedValue tagged1 = CreateBuiltinsSharedArrayBuffer(thread, 10);
+    JSTaggedValue tagged1 = BuiltTestUtil::CreateBuiltinsSharedArrayBuffer(thread, 10);
     JSHandle<JSArrayBuffer> arrBuf2(thread, JSArrayBuffer::Cast(
                                     reinterpret_cast<TaggedObject *>(tagged1.GetRawData())));
     arrBuf2->SetShared(false);
@@ -158,7 +118,7 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, slice1)
 
 HWTEST_F_L0(BuiltinsSharedArrayBufferTest, IsSharedArrayBuffer)
 {
-    JSTaggedValue tagged = CreateBuiltinsSharedArrayBuffer(thread, 10);
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsSharedArrayBuffer(thread, 10);
     JSHandle<JSArrayBuffer> arrBuf(thread,
                                    JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -193,7 +153,7 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, IsSharedArrayBuffer)
     ASSERT_EQ(result, JSTaggedValue::False());
 
     // sharedbuffer IsNull
-    JSTaggedValue tagged1 = CreateBuiltinsSharedArrayBuffer(thread, 0);
+    JSTaggedValue tagged1 = BuiltTestUtil::CreateBuiltinsSharedArrayBuffer(thread, 0);
     JSHandle<JSArrayBuffer> arrBuf1(thread,
                                     JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged1.GetRawData())));
     arrBuf1->SetArrayBufferData(thread, JSTaggedValue::Null());
@@ -208,7 +168,7 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, IsSharedArrayBuffer)
     ASSERT_EQ(result, JSTaggedValue::False());
 
     //  ArrayBuffer is not shared
-    JSTaggedValue tagged2 = CreateBuiltinsSharedArrayBuffer(thread, 0);
+    JSTaggedValue tagged2 = BuiltTestUtil::CreateBuiltinsSharedArrayBuffer(thread, 0);
     JSHandle<JSArrayBuffer> arrBuf2(thread,
                                     JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged2.GetRawData())));
     arrBuf2->SetShared(false);
@@ -230,7 +190,7 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, IsShared)
     bool result = BuiltinsSharedArrayBuffer::IsShared(jsArrayBuffer.GetTaggedValue());
     ASSERT_EQ(result, false);
     // no BufferData
-    JSTaggedValue tagged1 = CreateBuiltinsSharedArrayBuffer(thread, 0);
+    JSTaggedValue tagged1 = BuiltTestUtil::CreateBuiltinsSharedArrayBuffer(thread, 0);
     JSHandle<JSArrayBuffer> arrBuf1(thread,
                                     JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged1.GetRawData())));
     arrBuf1->SetArrayBufferData(thread, JSTaggedValue::Null());

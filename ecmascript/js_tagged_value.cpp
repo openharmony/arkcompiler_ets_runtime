@@ -21,6 +21,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/js_api/js_api_lightweightmap.h"
@@ -153,57 +154,11 @@ bool JSTaggedValue::IsZero() const
 bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y)
 {
     if (x->IsNumber()) {
-        if (y->IsNumber()) {
-            return StrictNumberEquals(x->ExtractNumber(), y->ExtractNumber());
-        }
-        if (y->IsString()) {
-            JSTaggedNumber yNumber = ToNumber(thread, y);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return StrictNumberEquals(x->ExtractNumber(), yNumber.GetNumber());
-        }
-        if (y->IsBoolean()) {
-            JSTaggedNumber yNumber = ToNumber(thread, y);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return StrictNumberEquals(x->ExtractNumber(), yNumber.GetNumber());
-        }
-        if (y->IsBigInt()) {
-            return Equal(thread, y, x);
-        }
-        if (y->IsHeapObject() && !y->IsSymbol()) {
-            JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x, yPrimitive);
-        }
-        return false;
+        return EqualNumber(thread, x, y);
     }
 
     if (x->IsString()) {
-        if (y->IsString()) {
-            return EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(),
-                                                       JSHandle<EcmaString>(x),
-                                                       JSHandle<EcmaString>(y));
-        }
-        if (y->IsNumber()) {
-            JSTaggedNumber xNumber = ToNumber(thread, x);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return StrictNumberEquals(xNumber.GetNumber(), y->ExtractNumber());
-        }
-        if (y->IsBoolean()) {
-            JSTaggedNumber xNumber = ToNumber(thread, x);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            JSTaggedNumber yNumber = ToNumber(thread, y);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return StrictNumberEquals(xNumber.GetNumber(), yNumber.GetNumber());
-        }
-        if (y->IsBigInt()) {
-            return Equal(thread, y, x);
-        }
-        if (y->IsHeapObject() && !y->IsSymbol()) {
-            JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x, yPrimitive);
-        }
-        return false;
+        return EqualString(thread, x, y);
     }
 
     if (x->IsBoolean()) {
@@ -213,81 +168,159 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
     }
 
     if (x->IsSymbol()) {
-        if (y->IsSymbol()) {
-            return x.GetTaggedValue() == y.GetTaggedValue();
-        }
-        if (y->IsBigInt() || y->IsString()) {
-            return false;
-        }
-        if (y->IsHeapObject()) {
-            JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x, yPrimitive);
-        }
-        return false;
+        return EqualSymbol(thread, x, y);
     }
 
     if (x->IsBigInt()) {
-        if (y->IsBigInt()) {
-            return BigInt::Equal(x.GetTaggedValue(), y.GetTaggedValue());
-        }
-        if (y->IsString()) {
-            JSHandle<JSTaggedValue> yNumber(thread, base::NumberHelper::StringToBigInt(thread, y));
-            if (!yNumber->IsBigInt()) {
-                return false;
-            }
-            return BigInt::Equal(x.GetTaggedValue(), yNumber.GetTaggedValue());
-        }
-        if (y->IsBoolean()) {
-            JSHandle<JSTaggedValue> yNumber(thread, ToBigInt(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return BigInt::Equal(x.GetTaggedValue(), yNumber.GetTaggedValue());
-        }
-        if (y->IsNumber()) {
-            JSHandle<BigInt> bigint = JSHandle<BigInt>::Cast(x);
-            return BigInt::CompareWithNumber(bigint, y) == ComparisonResult::EQUAL;
-        }
-        if (y->IsHeapObject() && !y->IsSymbol()) {
-            JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x, yPrimitive);
-        }
-        return false;
+        return EqualBigInt(thread, x, y);
     }
 
     if (x->IsHeapObject()) {
-        if (y->IsHeapObject()) {
-            // if same type, must call Type::StrictEqual()
-            JSType xType = x.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType();
-            JSType yType = y.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType();
-            if (xType == yType) {
-                return StrictEqual(thread, x, y);
-            }
-        }
-        if (y->IsNumber() || y->IsStringOrSymbol() || y->IsBoolean() || y->IsBigInt()) {
-            JSHandle<JSTaggedValue> xPrimitive(thread, ToPrimitive(thread, x));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, xPrimitive, y);
-        }
-        return false;
+        return EqualHeapObject(thread, x, y);
     }
 
+    return EqualNullOrUndefined(x, y);
+}
+
+bool JSTaggedValue::EqualNumber(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y)
+{
+    if (y->IsNumber()) {
+        return StrictNumberEquals(x->ExtractNumber(), y->ExtractNumber());
+    }
+    if (y->IsString()) {
+            JSTaggedNumber yNumber = ToNumber(thread, y);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+            return StrictNumberEquals(x->ExtractNumber(), yNumber.GetNumber());
+    }
+    if (y->IsBoolean()) {
+        JSTaggedNumber yNumber = ToNumber(thread, y);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return StrictNumberEquals(x->ExtractNumber(), yNumber.GetNumber());
+    }
+    if (y->IsBigInt()) {
+        return Equal(thread, y, x);
+    }
+    if (y->IsHeapObject() && !y->IsSymbol()) {
+        JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, x, yPrimitive);
+    }
+    return false;
+}
+
+bool JSTaggedValue::EqualString(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y)
+{
+    if (y->IsString()) {
+        return EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(),
+                                                   JSHandle<EcmaString>(x),
+                                                   JSHandle<EcmaString>(y));
+    }
+    if (y->IsNumber()) {
+        JSTaggedNumber xNumber = ToNumber(thread, x);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return StrictNumberEquals(xNumber.GetNumber(), y->ExtractNumber());
+    }
+    if (y->IsBoolean()) {
+        JSTaggedNumber xNumber = ToNumber(thread, x);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        JSTaggedNumber yNumber = ToNumber(thread, y);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return StrictNumberEquals(xNumber.GetNumber(), yNumber.GetNumber());
+    }
+    if (y->IsBigInt()) {
+        return Equal(thread, y, x);
+    }
+    if (y->IsHeapObject() && !y->IsSymbol()) {
+        JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, x, yPrimitive);
+    }
+    return false;
+}
+
+bool JSTaggedValue::EqualSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y)
+{
+    if (y->IsSymbol()) {
+        return x.GetTaggedValue() == y.GetTaggedValue();
+    }
+    if (y->IsBigInt() || y->IsString()) {
+        return false;
+    }
+    if (y->IsHeapObject()) {
+        JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, x, yPrimitive);
+    }
+    return false;
+}
+
+bool JSTaggedValue::EqualBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y)
+{
+    if (y->IsBigInt()) {
+        return BigInt::Equal(x.GetTaggedValue(), y.GetTaggedValue());
+    }
+    if (y->IsString()) {
+        JSHandle<JSTaggedValue> yNumber(thread, base::NumberHelper::StringToBigInt(thread, y));
+        if (!yNumber->IsBigInt()) {
+            return false;
+        }
+        return BigInt::Equal(x.GetTaggedValue(), yNumber.GetTaggedValue());
+    }
+    if (y->IsBoolean()) {
+        JSHandle<JSTaggedValue> yNumber(thread, ToBigInt(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return BigInt::Equal(x.GetTaggedValue(), yNumber.GetTaggedValue());
+    }
+    if (y->IsNumber()) {
+        JSHandle<BigInt> bigint = JSHandle<BigInt>::Cast(x);
+        return BigInt::CompareWithNumber(bigint, y) == ComparisonResult::EQUAL;
+    }
+    if (y->IsHeapObject() && !y->IsSymbol()) {
+        JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, x, yPrimitive);
+    }
+    return false;
+}
+
+bool JSTaggedValue::EqualHeapObject(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                    const JSHandle<JSTaggedValue> &y)
+{
+    if (y->IsHeapObject()) {
+        // if same type, must call Type::StrictEqual()
+        JSType xType = x.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType();
+        JSType yType = y.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType();
+        if (xType == yType) {
+            return StrictEqual(thread, x, y);
+        }
+    }
+    if (y->IsNumber() || y->IsStringOrSymbol() || y->IsBoolean() || y->IsBigInt()) {
+        JSHandle<JSTaggedValue> xPrimitive(thread, ToPrimitive(thread, x));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, xPrimitive, y);
+    }
+    return false;
+}
+
+bool JSTaggedValue::EqualNullOrUndefined(const JSHandle<JSTaggedValue> &x,
+                                         const JSHandle<JSTaggedValue> &y)
+{
     if (x->IsNull() && y->IsNull()) {
         return true;
     }
-
     if (x->IsUndefined() && y->IsUndefined()) {
         return true;
     }
-
     if (x->IsNull() && y->IsUndefined()) {
         return true;
     }
-
     if (x->IsUndefined() && y->IsNull()) {
         return true;
     }
-
     return false;
 }
 
@@ -426,11 +459,23 @@ ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTagge
         }
         return res;
     }
-    JSTaggedNumber xNumber = ToNumber(thread, x);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-    JSTaggedNumber yNumber = ToNumber(thread, y);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-    return StrictNumberCompare(xNumber.GetNumber(), yNumber.GetNumber());
+    double resultX = 0;
+    double resultY = 0;
+    if (primX->IsNumber()) {
+        resultX = primX->GetNumber();
+    } else {
+        JSTaggedNumber xNumber = ToNumber(thread, x);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+        resultX = xNumber.GetNumber();
+    }
+    if (primY->IsNumber()) {
+        resultY = primY->GetNumber();
+    } else {
+        JSTaggedNumber yNumber = ToNumber(thread, y);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+        resultY = yNumber.GetNumber();
+    }
+    return StrictNumberCompare(resultX, resultY);
 }
 
 bool JSTaggedValue::IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y)
@@ -1206,6 +1251,9 @@ bool JSTaggedValue::HasContainerProperty(JSThread *thread, const JSHandle<JSTagg
         case JSType::JS_API_VECTOR: {
             return JSHandle<JSAPIVector>::Cast(obj)->Has(key.GetTaggedValue());
         }
+        case JSType::JS_API_BITVECTOR: {
+            return JSHandle<JSAPIBitVector>::Cast(obj)->Has(key.GetTaggedValue());
+        }
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -1251,6 +1299,9 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerPropertyKeys(JSThread *threa
         case JSType::JS_API_VECTOR: {
             return JSAPIVector::OwnKeys(thread, JSHandle<JSAPIVector>::Cast(obj));
         }
+        case JSType::JS_API_BITVECTOR: {
+            return JSAPIBitVector::OwnKeys(thread, JSHandle<JSAPIBitVector>::Cast(obj));
+        }
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -1278,6 +1329,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerEnumPropertyKeys(JSThread *t
             return JSAPILinkedList::OwnKeys(thread, JSHandle<JSAPILinkedList>::Cast(obj));
         }
         case JSType::JS_API_VECTOR:
+        case JSType::JS_API_BITVECTOR:
         case JSType::JS_API_STACK:
         case JSType::JS_API_ARRAY_LIST:
         case JSType::JS_API_PLAIN_ARRAY:
@@ -1326,6 +1378,9 @@ bool JSTaggedValue::GetContainerProperty(JSThread *thread, const JSHandle<JSTagg
             }
             case JSType::JS_API_VECTOR: {
                 return JSAPIVector::GetOwnProperty(thread, JSHandle<JSAPIVector>::Cast(obj), key);
+            }
+            case JSType::JS_API_BITVECTOR: {
+                return JSAPIBitVector::GetOwnProperty(thread, JSHandle<JSAPIBitVector>::Cast(obj), key);
             }
             default: {
                 return JSObject::GetOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
@@ -1413,6 +1468,9 @@ OperationResult JSTaggedValue::GetJSAPIProperty(JSThread *thread, const JSHandle
             case JSType::JS_API_VECTOR: {
                 return JSAPIVector::GetProperty(thread, JSHandle<JSAPIVector>::Cast(obj), key);
             }
+            case JSType::JS_API_BITVECTOR: {
+                return JSAPIBitVector::GetProperty(thread, JSHandle<JSAPIBitVector>::Cast(obj), key);
+            }
             default: {
                 return JSObject::GetProperty(thread, JSHandle<JSObject>(obj), key);
             }
@@ -1454,6 +1512,9 @@ bool JSTaggedValue::SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedVa
             }
             case JSType::JS_API_VECTOR: {
                 return JSAPIVector::SetProperty(thread, JSHandle<JSAPIVector>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_BITVECTOR: {
+                return JSAPIBitVector::SetProperty(thread, JSHandle<JSAPIBitVector>::Cast(obj), key, value);
             }
             default: {
                 return JSObject::SetProperty(thread, JSHandle<JSObject>::Cast(obj), key, value);

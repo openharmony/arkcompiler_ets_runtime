@@ -980,14 +980,6 @@ DEFINE_MOP(MOP_vusubw2vvv,{&OpndDesc::Reg128VD,&OpndDesc::Reg128VS,&OpndDesc::Re
 DEFINE_MOP(MOP_vzip1vvv,{&OpndDesc::Reg64VD,&OpndDesc::Reg64VS,&OpndDesc::Reg64VS},ISVECTOR,kLtFpalu,"zip1","0,1,2",1)
 DEFINE_MOP(MOP_vzip2vvv,{&OpndDesc::Reg64VD,&OpndDesc::Reg64VS,&OpndDesc::Reg64VS},ISVECTOR,kLtFpalu,"zip2","0,1,2",1)
 
-/*
- * MOP_clinit
- * will be emit to four instructions in a row:
- * adrp  xd, :got:__classinfo__Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B
- * ldr xd, [xd,#:got_lo12:__classinfo__Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B]
- * ldr xd, [xd,#112]
- * ldr wzr, [xd]
- */
 DEFINE_MOP(MOP_clinit, {&OpndDesc::Reg64ID,&OpndDesc::LiteralSrc},ISATOMIC|CANTHROW|ISINTRINSIC,kLtClinit,"intrinsic_clinit","0,1",4)
 
 /*
@@ -1018,11 +1010,6 @@ DEFINE_MOP(MOP_lazy_ldr_static, {&OpndDesc::Reg64ID,&OpndDesc::LiteralSrc},ISATO
 /* A pseudo instruction followed MOP_lazy_ldr, to make sure xs and xd be allocated to different physical registers. */
 DEFINE_MOP(MOP_lazy_tail, {&OpndDesc::Reg32IS,&OpndDesc::Reg64IS},0,kLtUndef,"pseudo_lazy_tail","",0)
 
-/* will be emit to two instructions in a row:
- * adrp    xd, _PTR__cinf_Ljava_2Flang_2FSystem_3B
- * ldr     xd, [xd, #:lo12:_PTR__cinf_Ljava_2Flang_2FSystem_3B]
- * MOP_adrp_ldr
- */
 DEFINE_MOP(MOP_adrp_ldr, {&OpndDesc::Reg64ID, &OpndDesc::LiteralSrc},ISATOMIC|CANTHROW|ISINTRINSIC,kLtAdrpLdr,"intrinsic_adrpldr","0,1",2)
 
 /* will be emit to two instructions in a row:
@@ -1119,7 +1106,6 @@ DEFINE_MOP(MOP_compare_and_swapI, {&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDe
 DEFINE_MOP(MOP_compare_and_swapL, {&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::AddressName,&OpndDesc::AddressName},HASLOOP|CANTHROW|SPINTRINSIC,kLtBranch,"intrinsic_compare_swap_long","0,1,2,3,4,5,6",7)
 
 /*
- * intrinsic String.indexOf(Ljava/lang/String;)I
  * intrinsic_string_indexof w0, x1, w2, x3, w4, x5, x6, x7, x8, x9, w10, Label.FIRST_LOOP, Label.STR2_NEXT, Label.STR1_LOOP, Label.STR1_NEXT, Label.LAST_WORD, Label.NOMATCH, Label.RET
  * cmp       w4, w2
  * b.gt      .Label.NOMATCH

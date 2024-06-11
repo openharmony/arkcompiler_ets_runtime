@@ -40,7 +40,7 @@ void FullGC::RunPhases()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::RunPhases;Reason"
         + std::to_string(static_cast<int>(gcStats->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
-        + ";Startup" + std::to_string(heap_->onStartUpEvent())
+        + ";Startup" + std::to_string(heap_->OnStartupEvent())
         + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
         + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
         + ";huge" + std::to_string(heap_->GetHugeObjectSpace()->GetCommittedSize())

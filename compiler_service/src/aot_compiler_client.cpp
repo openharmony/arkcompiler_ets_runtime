@@ -26,7 +26,15 @@ namespace {
     const int LOAD_SA_TIMEOUT_MS = 6 * 1000;
     constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD001800, "aot_compiler_service"};
 } // namespace
-    
+
+AotCompilerClient::AotCompilerClient()
+{
+    aotCompilerDiedRecipient_ = new (std::nothrow) AotCompilerDiedRecipient();
+    if (aotCompilerDiedRecipient_ == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "create aot compiler died recipient failed");
+    }
+}
+
 AotCompilerClient &AotCompilerClient::GetInstance()
 {
     static AotCompilerClient singleAotCompilerClient;
@@ -58,12 +66,47 @@ int32_t AotCompilerClient::StopAotCompiler()
     return aotCompilerProxy->StopAotCompiler();
 }
 
+int32_t AotCompilerClient::GetAOTVersion(std::string& sigData)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    HiviewDFX::HiLog::Debug(LABEL, "aot compiler get AOT version called");
+    auto aotCompilerProxy = GetAotCompilerProxy();
+    if (aotCompilerProxy == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "get aot compiler service failed");
+        return ERR_AOT_COMPILER_CONNECT_FAILED;
+    }
+
+    return aotCompilerProxy->GetAOTVersion(sigData);
+}
+
+int32_t AotCompilerClient::NeedReCompile(const std::string& oldVersion, bool& sigData)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    HiviewDFX::HiLog::Debug(LABEL, "aot compiler check need re-compile called");
+    auto aotCompilerProxy = GetAotCompilerProxy();
+    if (aotCompilerProxy == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "get aot compiler service failed");
+        return ERR_AOT_COMPILER_CONNECT_FAILED;
+    }
+    return aotCompilerProxy->NeedReCompile(oldVersion, sigData);
+}
+
 sptr<IAotCompilerInterface> AotCompilerClient::GetAotCompilerProxy()
 {
     HiviewDFX::HiLog::Debug(LABEL, "get aot compiler proxy function called");
     auto aotCompilerProxy = GetAotCompiler();
     if (aotCompilerProxy != nullptr) {
         HiviewDFX::HiLog::Debug(LABEL, "aot compiler service proxy has been started");
+        return aotCompilerProxy;
+    }
+    auto systemAbilityMgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (systemAbilityMgr == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "failed to get system ability manager");
+        return nullptr;
+    }
+    auto remoteObject = systemAbilityMgr->CheckSystemAbility(AOT_COMPILER_SERVICE_ID);
+    if (remoteObject != nullptr) {
+        aotCompilerProxy = iface_cast<IAotCompilerInterface>(remoteObject);
         return aotCompilerProxy;
     }
     if (!LoadAotCompilerService()) {
@@ -129,6 +172,14 @@ sptr<IAotCompilerInterface> AotCompilerClient::GetAotCompiler()
 
 void AotCompilerClient::OnLoadSystemAbilitySuccess(const sptr<IRemoteObject> &remoteObject)
 {
+    if (aotCompilerDiedRecipient_ == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "register aot compiler died recipient failed");
+        return;
+    }
+    if (!remoteObject->AddDeathRecipient(aotCompilerDiedRecipient_)) {
+        HiviewDFX::HiLog::Error(LABEL, "add aot compiler died recipient failed");
+        return;
+    }
     SetAotCompiler(remoteObject);
     std::unique_lock<std::mutex> lock(loadSaMutex_);
     loadSaFinished_ = true;
@@ -141,5 +192,35 @@ void AotCompilerClient::OnLoadSystemAbilityFail()
     std::unique_lock<std::mutex> lock(loadSaMutex_);
     loadSaFinished_ = true;
     loadSaCondition_.notify_one();
+}
+
+void AotCompilerClient::AotCompilerDiedRecipient::OnRemoteDied(const wptr<IRemoteObject> &remoteObject)
+{
+    if (remoteObject == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "remote object of aot compiler died recipient is nullptr");
+        return;
+    }
+    AotCompilerClient::GetInstance().AotCompilerOnRemoteDied(remoteObject);
+}
+
+void AotCompilerClient::AotCompilerOnRemoteDied(const wptr<IRemoteObject> &remoteObject)
+{
+    HiviewDFX::HiLog::Info(LABEL, "remote object of aot compiler died recipient is died");
+    auto aotCompilerProxy = GetAotCompiler();
+    if (aotCompilerProxy == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "aot compiler proxy is nullptr");
+        return;
+    }
+    sptr<IRemoteObject> remotePromote = remoteObject.promote();
+    if (remotePromote == nullptr) {
+        HiviewDFX::HiLog::Error(LABEL, "remote object of aot compiler promote fail");
+        return;
+    }
+    if (aotCompilerProxy->AsObject() != remotePromote) {
+        HiviewDFX::HiLog::Error(LABEL, "aot compiler died recipient not find remote object");
+        return;
+    }
+    remotePromote->RemoveDeathRecipient(aotCompilerDiedRecipient_);
+    SetAotCompiler(nullptr);
 }
 } // namespace OHOS::ArkCompiler

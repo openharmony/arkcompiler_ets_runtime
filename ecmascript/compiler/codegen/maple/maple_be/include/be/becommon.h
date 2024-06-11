@@ -35,7 +35,7 @@ inline uint32 GetPointerBitSize()
     return GetPointerSize() * kBitsPerByte;
 }
 
-class JClassFieldInfo { /* common java class field info */
+class JClassFieldInfo {
 public:
     /* constructors */
     JClassFieldInfo() : isRef(false), isUnowned(false), isWeak(false), offset(0) {}
@@ -71,24 +71,16 @@ private:
     bool isRef;     /* used to generate object-map */
     bool isUnowned; /* used to mark unowned fields for RC */
     bool isWeak;    /* used to mark weak fields for RC */
-    uint32 offset;  /* offset from the start of the java object */
+    uint32 offset;
 };
 
-using JClassLayout = MapleVector<JClassFieldInfo>; /* java class layout info */
+using JClassLayout = MapleVector<JClassFieldInfo>;
 
 class BECommon {
 public:
     explicit BECommon(MIRModule &mod);
 
     ~BECommon() = default;
-
-    void LowerTypeAttribute(MIRType &ty);
-
-    void LowerJavaTypeAttribute(MIRType &ty);
-
-    void LowerJavaVolatileInClassType(MIRClassType &ty);
-
-    void LowerJavaVolatileForSymbol(MIRSymbol &sym) const;
 
     void ComputeTypeSizesAligns(MIRType &type, uint8 align = 0);
 
@@ -271,7 +263,6 @@ private:
     MapleVector<FieldID> structFieldCountTable;
     /*
      * a lookup table for class layout. the vector is indexed by field-id
-     * Note: currently only for java class types.
      */
     MapleUnorderedMap<MIRClassType *, JClassLayout *> jClassLayoutTable;
     MapleUnorderedMap<MIRFunction *, TyIdx> funcReturnType;

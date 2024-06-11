@@ -93,7 +93,7 @@ bool MIRSymbol::IsReflectionStrTab() const
 
 bool MIRSymbol::IsRegJNITab() const
 {
-    return StringUtils::StartsWith(GetName(), kRegJNITabPrefixStr);
+    return false;
 }
 
 bool MIRSymbol::IsRegJNIFuncTab() const
@@ -200,21 +200,10 @@ bool MIRSymbol::IsArrayClassCacheName() const
     return StringUtils::StartsWith(GetName(), kArrayClassCacheNameTable);
 }
 
-bool MIRSymbol::IsForcedGlobalFunc() const
-{
-    return StringUtils::StartsWith(GetName(), kJavaLangClassStr) ||
-           StringUtils::StartsWith(GetName(), kReflectionClassesPrefixStr) ||
-           StringUtils::StartsWith(GetName(), "Ljava_2Fnio_2FDirectByteBuffer_3B_7C_3Cinit_3E_7C_28JI_29V");
-}
-
 // mrt/maplert/include/mrt_classinfo.h
 bool MIRSymbol::IsForcedGlobalClassinfo() const
 {
-    std::unordered_set<std::string> mrtUse {
-#include "mrt_direct_classinfo_list.def"
-    };
-    return std::find(mrtUse.begin(), mrtUse.end(), GetName()) != mrtUse.end() ||
-           StringUtils::StartsWith(GetName(), "__cinf_Llibcore_2Freflect_2FGenericSignatureParser_3B");
+    return StringUtils::StartsWith(GetName(), "__cinf_Llibcore_2Freflect_2FGenericSignatureParser_3B");
 }
 
 bool MIRSymbol::IsClassInitBridge() const
@@ -352,14 +341,8 @@ bool MIRSymbol::IgnoreRC() const
     if ((type->GetKind() == kTypeScalar) && (name != "__mapleRC__")) {
         return true;
     }
-    // ignore ptr to types Ljava_2Flang_2FClass_3B,
-    // Ljava_2Flang_2Freflect_2FMethod_3B
     const auto *pType = static_cast<MIRPtrType *>(type);
     GStrIdx strIdx = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pType->GetPointedTyIdx())->GetNameStrIdx();
-    if (reflectClassNameIdx == 0u) {
-        reflectClassNameIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(
-            namemangler::GetInternalNameLiteral("Ljava_2Flang_2FClass_3B"));
-    }
     return strIdx == reflectClassNameIdx;
 }
 
@@ -386,11 +369,7 @@ void MIRSymbol::Dump(bool isLocal, int32 indent, bool suppressInit, const MIRSym
     }
     const char *ids = isLocal ? "%" : "$";
     PrintIndentation(indent);
-    if (sKind == kStJavaClass) {
-        LogInfo::MapleLogger() << "javaclass ";
-    } else if (sKind == kStJavaInterface) {
-        LogInfo::MapleLogger() << "javainterface ";
-    } else if (isTmp) {
+    if (isTmp) {
         LogInfo::MapleLogger() << "tempvar ";
     } else {
         LogInfo::MapleLogger() << "var ";
@@ -417,8 +396,8 @@ void MIRSymbol::Dump(bool isLocal, int32 indent, bool suppressInit, const MIRSym
         LogInfo::MapleLogger() << " )";
     }
     typeAttrs.DumpAttributes();
-    if (sKind == kStJavaClass || sKind == kStJavaInterface || GetStorageClass() == kScTypeInfoName ||
-        GetStorageClass() == kScTypeInfo || GetStorageClass() == kScTypeCxxAbi) {
+    if (GetStorageClass() == kScTypeInfoName || GetStorageClass() == kScTypeInfo ||
+        GetStorageClass() == kScTypeCxxAbi) {
         LogInfo::MapleLogger() << '\n';
         return;
     }
@@ -435,12 +414,6 @@ void MIRSymbol::DumpAsLiteralVar() const
         LogInfo::MapleLogger() << GetName();
     }
 }
-
-const std::set<std::string> MIRSymbol::staticFinalBlackList {
-    "Ljava_2Flang_2FSystem_3B_7Cout",
-    "Ljava_2Flang_2FSystem_3B_7Cerr",
-    "Ljava_2Flang_2FSystem_3B_7Cin",
-};
 
 void MIRSymbolTable::Dump(bool isLocal, int32 indent, bool printDeleted, MIRFlavor flavor) const
 {

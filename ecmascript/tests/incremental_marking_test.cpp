@@ -25,18 +25,8 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class IncrementalMarkingTest : public testing::Test {
+class IncrementalMarkingTest : public BaseTestWithScope<false> {
 public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
-
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
-
     void SetUp() override
     {
         JSRuntimeOptions options;
@@ -48,20 +38,11 @@ public:
         instance->SetEnableForceGC(false);
     }
 
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
-
     JSHandle<TaggedArray> CreateTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType)
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         return factory->NewTaggedArray(length, initVal, spaceType);
     }
-
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
 };
 
 HWTEST_F_L0(IncrementalMarkingTest, PerformanceWithIncrementalMarking)

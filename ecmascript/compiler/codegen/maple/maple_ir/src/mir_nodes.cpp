@@ -60,11 +60,6 @@ bool BaseNode::MayThrowException()
         if (arry->GetBoundsCheck()) {
             return true;
         }
-    } else if (GetOpCode() == OP_intrinsicop) {
-        auto *inNode = static_cast<IntrinsicopNode *>(this);
-        if (inNode->GetIntrinsic() == INTRN_JAVA_ARRAY_LENGTH) {
-            return true;
-        }
     }
     for (size_t i = 0; i < NumOpnds(); ++i) {
         if (Opnd(i)->MayThrowException()) {
@@ -2026,84 +2021,18 @@ bool RetypeNode::VerifyPrimTypesAndOpnd() const
 bool RetypeNode::CheckFromJarray(const MIRType &from, const MIRType &to, VerifyResult &verifyResult) const
 {
     // Array types are subtypes of Object.
-    // The intent is also that array types are subtypes of Cloneable and java.io.Serializable.
-    if (IsInterfaceOrClass(to)) {
-        Klass &toKlass = utils::ToRef(verifyResult.GetKlassHierarchy().GetKlassFromStrIdx(to.GetNameStrIdx()));
-        const std::string &toKlassName = toKlass.GetKlassName();
-        const std::string &javaLangObject = namemangler::kJavaLangObjectStr;
-        const std::string javaLangCloneable = "Ljava_2Flang_2FCloneable_3B";
-        const std::string javaIoSerializable = "Ljava_2Fio_2FSerializable_3B";
-        if (toKlassName == javaLangObject || toKlassName == javaIoSerializable || toKlassName == javaLangCloneable) {
-            return true;
-        }
-    }
-
-    AddRuntimeVerifyError("Java array " + from.GetName() + " is not assignable to " + to.GetName(), verifyResult);
+    AddRuntimeVerifyError("J array " + from.GetName() + " is not assignable to " + to.GetName(), verifyResult);
     return false;
 }
 
-bool RetypeNode::IsJavaAssignable(const MIRType &from, const MIRType &to, VerifyResult &verifyResult) const
-{
-    // isJavaAssignable(arrayOf(X), arrayOf(Y)) :- compound(X), compound(Y), isJavaAssignable(X, Y).
-    // arrayOf(X), arrayOf(Y) should already be X, Y here
-    if (from.IsMIRJarrayType()) {
-        return CheckFromJarray(from, to, verifyResult);
-    }
-    // isJavaAssignable(arrayOf(X), arrayOf(Y)) :- atom(X), atom(Y), X = Y.
-    // This rule is not applicable to Maple IR
-    if (from.IsScalarType() && to.IsScalarType()) {
-        return true;
-    }
-
-    if (IsInterfaceOrClass(from) && IsInterfaceOrClass(to)) {
-        const KlassHierarchy &klassHierarchy = verifyResult.GetKlassHierarchy();
-        const std::string javaLangObject = namemangler::kJavaLangObjectStr;
-        Klass &fromKlass = utils::ToRef(klassHierarchy.GetKlassFromStrIdx(from.GetNameStrIdx()));
-        Klass &toKlass = utils::ToRef(klassHierarchy.GetKlassFromStrIdx(to.GetNameStrIdx()));
-        // We can cast everything to java.lang.Object, but interface isn't subclass of that, so we need this branch
-        if (toKlass.GetKlassName() == javaLangObject) {
-            return true;
-        }
-        // isJavaAssignable(class(_, _), class(To, L)) :- loadedClass(To, L, ToClass), classIsInterface(ToClass).
-        // isJavaAssignable(From, To) :- isJavaSubclassOf(From, To).
-        bool isAssignableKlass = klassHierarchy.IsSuperKlass(&toKlass, &fromKlass) ||
-                                 klassHierarchy.IsSuperKlassForInterface(&toKlass, &fromKlass) ||
-                                 klassHierarchy.IsInterfaceImplemented(&toKlass, &fromKlass);
-        if (isAssignableKlass) {
-            return true;
-        }
-        AddRuntimeVerifyError(
-            "Java type " + fromKlass.GetKlassName() + " is NOT assignable to " + toKlass.GetKlassName(), verifyResult);
-        return false;
-    }
-    AddRuntimeVerifyError(from.GetName() + " is NOT assignable to " + to.GetName(), verifyResult);
-    return false;
-}
-
-bool RetypeNode::VerifyCompleteMIRType(const MIRType &from, const MIRType &to, bool isJavaRefType,
+bool RetypeNode::VerifyCompleteMIRType(const MIRType &from, const MIRType &to, bool isJRefType,
                                        VerifyResult &verifyResult) const
 {
-    if (from.IsScalarType() && to.IsScalarType() && !isJavaRefType) {
+    if (from.IsScalarType() && to.IsScalarType() && !isJRefType) {
         if (GetPTYGroup(from.GetPrimType()) == GetPTYGroup(to.GetPrimType())) {
             return true;
         }
         LogInfo::MapleLogger() << "\n#Error: retype scalar type failed\n";
-        return false;
-    }
-    if (!verifyResult.GetMIRModule().IsJavaModule()) {
-        return true;
-    }
-    isJavaRefType |= IsJavaRefType(from) && IsJavaRefType(to);
-    if (isJavaRefType) {
-        return IsJavaAssignable(from, to, verifyResult);
-    }
-
-    if (from.GetKind() != to.GetKind()) {
-        if (from.GetPrimType() == PTY_void || to.GetPrimType() == PTY_void) {
-            return true;
-        }
-        LogInfo::MapleLogger() << "\n#Error: Retype different kind: from " << from.GetKind() << " to " << to.GetKind()
-                               << "\n";
         return false;
     }
     return true;
@@ -2141,12 +2070,12 @@ bool RetypeNode::Verify(VerifyResult &verifyResult) const
         LogInfo::MapleLogger() << "\n#Error: Verify PrimTypes and Opnd failed in retype node\n";
         return false;
     }
-    bool isJavaRefType = false;
+    bool isJRefType = false;
     const MIRType *fromMIRType = verifyResult.GetCurrentFunction()->GetNodeType(*Opnd(0));
     const MIRType *toMIRType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
     while (fromMIRType != nullptr && toMIRType != nullptr && BothPointerOrJarray(*fromMIRType, *toMIRType)) {
         if (fromMIRType->IsMIRJarrayType()) {
-            isJavaRefType = true;
+            isJRefType = true;
             if (!VerifyJarrayDimention(static_cast<const MIRJarrayType &>(*fromMIRType),
                                        static_cast<const MIRJarrayType &>(*toMIRType), verifyResult)) {
                 return false;
@@ -2174,7 +2103,7 @@ bool RetypeNode::Verify(VerifyResult &verifyResult) const
         return true;
     }
 
-    if (VerifyCompleteMIRType(*fromMIRType, *toMIRType, isJavaRefType, verifyResult)) {
+    if (VerifyCompleteMIRType(*fromMIRType, *toMIRType, isJRefType, verifyResult)) {
         return true;
     }
     Dump(0);
@@ -2200,14 +2129,11 @@ bool UnaryStmtNode::VerifyThrowable(VerifyResult &verifyResult) const
         if (mirType->IsIncomplete()) {
             // Add Deferred Check
             const std::string &currentClassName = verifyResult.GetCurrentClassName();
-            std::string throwableName = "Ljava_2Flang_2FThrowable_3B";
+            std::string throwableName = "Lj_2Flang_2FThrowable_3B";
             LogInfo::MapleLogger(kLlDbg) << "Add AssignableCheck from " << mirType->GetName() << " to " << throwableName
                                          << " in class " << currentClassName << '\n';
             verifyResult.AddPragmaAssignableCheck(currentClassName, mirType->GetName(), std::move(throwableName));
             // Deferred Assignable Check returns true because we should collect all the deferred checks for runtime
-            return true;
-        }
-        if (mirType->IsMIRClassType() && static_cast<const MIRClassType *>(mirType)->IsExceptionType()) {
             return true;
         }
     }
@@ -2220,9 +2146,6 @@ bool UnaryStmtNode::VerifyThrowable(VerifyResult &verifyResult) const
 
 bool IntrinsicopNode::Verify(VerifyResult &verifyResult) const
 {
-    if (GetIntrinsic() == INTRN_JAVA_ARRAY_LENGTH && !VerifyJArrayLength(verifyResult)) {
-        return false;
-    }
     return VerifyOpnds();
 }
 

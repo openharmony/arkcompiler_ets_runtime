@@ -11,9 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: PreCall@ts_multi_inline_deopt caller function name: func_main_0@ts_multi_inline_deopt
-[trace] aot inline function name: GenerateArray@ts_multi_inline_deopt caller function name: PreCall@ts_multi_inline_deopt
-[trace] aot inline function name: RunNormalCall@ts_multi_inline_deopt caller function name: PreCall@ts_multi_inline_deopt
+[trace] aot inline function name: #*#PreCall@ts_multi_inline_deopt caller function name: func_main_0@ts_multi_inline_deopt
+[trace] aot inline function name: #*#GenerateArray@ts_multi_inline_deopt caller function name: #*#PreCall@ts_multi_inline_deopt
+[trace] aot inline function name: #*#RunNormalCall@ts_multi_inline_deopt caller function name: #*#PreCall@ts_multi_inline_deopt
 0
 1
 2

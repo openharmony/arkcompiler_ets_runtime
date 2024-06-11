@@ -12,7 +12,9 @@
 # limitations under the License.
 
 execute cjsWithoutExports.js success!
+{"foo":"module use cjsModule"}
 "module use cjsModule"
+function
 "moduleJson"
 jscall 1
 true

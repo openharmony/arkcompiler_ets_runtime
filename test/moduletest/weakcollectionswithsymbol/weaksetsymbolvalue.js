@@ -38,7 +38,7 @@ print("ws.has(sym1) " + ws.has(sym1));
 print("ws.has(sym2) " + ws.has(sym2));
 print("ws.delete(sym2) " + ws.delete(sym2));
 
-[
+const symbolFuncsValue = [
     Symbol.asyncIterator,
     Symbol.hasInstance,
     Symbol.isConcatSpreadable,
@@ -52,7 +52,9 @@ print("ws.delete(sym2) " + ws.delete(sym2));
     Symbol.toPrimitive,
     Symbol.toStringTag,
     Symbol.unscopables
-].forEach(function (ctor, i) {
+];
+
+symbolFuncsValue.forEach(function (ctor, i) {
     ws.add(ctor, i);
 });
 

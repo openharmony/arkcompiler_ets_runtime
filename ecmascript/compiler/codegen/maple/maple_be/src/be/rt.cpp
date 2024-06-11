@@ -18,5 +18,4 @@
 namespace maplebe {
 const std::string RTSupport::kObjectMapSectionName = ".maple.objectmap";
 const std::string RTSupport::kGctibLabelArrayOfObject = "MCC_GCTIB___ArrayOfObject";
-const std::string RTSupport::kGctibLabelJavaObject = "MCC_GCTIB__Ljava_2Flang_2FObject_3B";
 } /* namespace maplebe */

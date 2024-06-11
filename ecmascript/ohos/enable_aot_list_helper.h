@@ -22,11 +22,19 @@
 #include <string>
 #include <vector>
 
+#include "ohos_constants.h"
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/ohos/aot_runtime_info.h"
 #include "macros.h"
+
+#ifdef AOT_ESCAPE_ENABLE
+#include "parameters.h"
+#endif
 namespace panda::ecmascript::ohos {
 class EnableAotListHelper {
+constexpr static const char *const AOT_BUILD_COUNT_DISABLE = "ark.aot.build.count.disable";
 public:
     static std::shared_ptr<EnableAotListHelper> GetInstance()
     {
@@ -102,9 +110,38 @@ public:
         jitEnableList_.clear();
     }
 
+    static bool GetAotBuildCountDisable()
+    {
+#ifdef AOT_ESCAPE_ENABLE
+        return OHOS::system::GetBoolParameter(AOT_BUILD_COUNT_DISABLE, false);
+#endif
+        return false;
+    }
+
+    void AddEnableListCount(const std::string &pgoPath = "") const
+    {
+        ohos::AotRuntimeInfo aotRuntimeInfo;
+        aotRuntimeInfo.BuildCompileRuntimeInfo(
+            ohos::AotRuntimeInfo::GetRuntimeInfoTypeStr(ohos::RuntimeInfoType::AOT_BUILD), pgoPath);
+    }
+
+    bool IsAotCompileSuccessOnce() const
+    {
+        if (GetAotBuildCountDisable()) {
+            return false;
+        }
+        ohos::AotRuntimeInfo aotRuntimeInfo;
+        int count = aotRuntimeInfo.GetCompileCountByType(ohos::RuntimeInfoType::AOT_BUILD);
+        if (count > 0) {
+            return true;
+        }
+        return false;
+    }
+
 private:
     NO_COPY_SEMANTIC(EnableAotListHelper);
     NO_MOVE_SEMANTIC(EnableAotListHelper);
+
     static void Trim(std::string &data)
     {
         if (data.empty()) {
@@ -117,7 +154,7 @@ private:
     void ReadEnableAotList(const std::string &aotListName)
     {
         if (!panda::ecmascript::FileExist(aotListName.c_str())) {
-            LOG_ECMA(INFO) << "bundle enable list not exist and will pass by all. file: " << aotListName;
+            LOG_ECMA(DEBUG) << "bundle enable list not exist and will pass by all. file: " << aotListName;
             return;
         }
 

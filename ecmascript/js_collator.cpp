@@ -506,12 +506,26 @@ JSTaggedValue JSCollator::CompareStrings(const icu::Collator *icuCollator, EcmaS
     {
         EcmaStringAccessor string1Acc(string1);
         EcmaStringAccessor string2Acc(string2);
-        if (string1Acc.IsUtf8() && string1Acc.IsLineOrConstantString() &&
-            string2Acc.IsUtf8() && string2Acc.IsLineOrConstantString()) {
-            icu::StringPiece stringPiece1(reinterpret_cast<const char*>(string1Acc.GetDataUtf8()),
-                                          string1Acc.GetLength());
-            icu::StringPiece stringPiece2(reinterpret_cast<const char*>(string2Acc.GetDataUtf8()),
-                                          string2Acc.GetLength());
+        if (string1Acc.IsUtf8() && string2Acc.IsUtf8()) {
+            icu::StringPiece stringPiece1;
+            icu::StringPiece stringPiece2;
+            CVector<uint8_t> buf1;
+            CVector<uint8_t> buf2;
+            if (string1Acc.IsLineOrConstantString()) {
+                stringPiece1 = icu::StringPiece(reinterpret_cast<const char*>(string1Acc.GetDataUtf8()),
+                                                string1Acc.GetLength());
+            } else {
+                Span<const uint8_t> span = string1Acc.ToUtf8Span(buf1);
+                stringPiece1 = icu::StringPiece(reinterpret_cast<const char*>(span.begin()), span.size());
+            }
+
+            if (string2Acc.IsLineOrConstantString()) {
+                stringPiece2 = icu::StringPiece(reinterpret_cast<const char*>(string2Acc.GetDataUtf8()),
+                                                string2Acc.GetLength());
+            } else {
+                Span<const uint8_t> span = string2Acc.ToUtf8Span(buf2);
+                stringPiece2 = icu::StringPiece(reinterpret_cast<const char*>(span.begin()), span.size());
+            }
             result = icuCollator->compareUTF8(stringPiece1, stringPiece2, status);
             return JSTaggedValue(result);
         }

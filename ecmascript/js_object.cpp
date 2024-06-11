@@ -170,7 +170,7 @@ bool JSObject::IsRegExp(JSThread *thread, const JSHandle<JSTaggedValue> &argumen
         return false;
     }
     JSHandle<JSTaggedValue> matchSymbol = thread->GetEcmaVM()->GetGlobalEnv()->GetMatchSymbol();
-    JSTaggedValue isRegexp =  ObjectFastOperator::FastGetPropertyByValue(
+    JSTaggedValue isRegexp = ObjectFastOperator::FastGetPropertyByValue(
         thread, argument.GetTaggedValue(), matchSymbol.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!isRegexp.IsUndefined()) {
@@ -1503,13 +1503,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
         }
     }
     // map transition
-    JSHandle<JSHClass> hclass(thread, obj->GetJSHClass());
-    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
-    JSHClass::NotifyHclassChanged(thread, hclass, newClass);
-    obj->SynchronizedSetClass(thread, *newClass);
-    JSHClass::TryRestoreElementsKind(thread, newClass, obj);
-    thread->NotifyStableArrayElementsGuardians(obj, StableArrayChangeKind::PROTO);
-    ObjectOperator::UpdateDetectorOnSetPrototype(thread, obj.GetTaggedValue());
+    JSHClass::SetPrototypeTransition(thread, obj, proto);
     return true;
 }
 

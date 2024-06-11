@@ -66,8 +66,6 @@ void OutputConstAddrofFunc(const MIRConst &constVal, BinaryMplExport &mplExport)
 {
     mplExport.WriteNum(kBinKindConstAddrofFunc);
     mplExport.OutputConstBase(constVal);
-    const auto &newConst = static_cast<const MIRAddroffuncConst &>(constVal);
-    mplExport.OutputFunction(newConst.GetValue());
 }
 
 void OutputConstLbl(const MIRConst &constVal, BinaryMplExport &mplExport)
@@ -705,9 +703,6 @@ void BinaryMplExport::OutputSymbol(MIRSymbol *sym)
             sym->GetKonst()->SetType(*sym->GetType());
         }
         OutputConst(sym->GetKonst());
-    } else if (sym->GetSKind() == kStFunc) {
-        OutputFunction(sym->GetFunction()->GetPuidx());
-    } else if (sym->GetSKind() == kStJavaClass || sym->GetSKind() == kStJavaInterface) {
     } else {
         CHECK_FATAL(false, "should not used");
     }
@@ -715,79 +710,6 @@ void BinaryMplExport::OutputSymbol(MIRSymbol *sym)
         OutputSrcPos(sym->GetSrcPosition());
     }
     OutputType(sym->GetTyIdx());
-}
-
-void BinaryMplExport::OutputFunction(PUIdx puIdx)
-{
-    if (puIdx == 0) {
-        WriteNum(0);
-        mod.SetCurFunction(nullptr);
-        return;
-    }
-    MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
-    CHECK_FATAL(func != nullptr, "Cannot get MIRFunction.");
-    auto it = funcMark.find(func);
-    if (it != funcMark.end()) {
-        WriteNum(-it->second);
-        mod.SetCurFunction(func);
-        return;
-    }
-    size_t mark = funcMark.size();
-    funcMark[func] = static_cast<int64>(mark);
-    MIRFunction *savedFunc = mod.CurFunction();
-    mod.SetCurFunction(func);
-
-    WriteNum(kBinFunction);
-    MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
-    CHECK_FATAL(funcSt != nullptr, "Pointer funcSt is nullptr, cannot get symbol! Check it!");
-    OutputSymbol(funcSt);
-    OutputType(func->GetMIRFuncType()->GetTypeIndex());
-    WriteNum(func->GetFuncAttrs().GetAttrFlag());
-
-    auto &attributes = func->GetFuncAttrs();
-    if (attributes.GetAttr(FUNCATTR_constructor_priority)) {
-        WriteNum(attributes.GetConstructorPriority());
-    }
-
-    if (attributes.GetAttr(FUNCATTR_destructor_priority)) {
-        WriteNum(attributes.GetDestructorPriority());
-    }
-
-    WriteNum(func->GetFlag());
-    OutputType(func->GetClassTyIdx());
-    // output formal parameter information
-    WriteNum(static_cast<int64>(func->GetFormalDefVec().size()));
-    for (FormalDef formalDef : func->GetFormalDefVec()) {
-        OutputStr(formalDef.formalStrIdx);
-        OutputType(formalDef.formalTyIdx);
-        WriteNum(static_cast<int64>(formalDef.formalAttrs.GetAttrFlag()));
-    }
-    //  store Side Effect for each func
-    if (func2SEMap) {
-        uint32 isSee = func->IsIpaSeen() == true ? 1 : 0;
-        uint32 isPure = func->IsPure() == true ? 1 : 0;
-        uint32 noDefArg = func->IsNoDefArgEffect() == true ? 1 : 0;
-        uint32 noDef = func->IsNoDefEffect() == true ? 1 : 0;
-        uint32 noRetGlobal = func->IsNoRetGlobal() == true ? 1 : 0;
-        uint32 noThr = func->IsNoThrowException() == true ? 1 : 0;
-        uint32 noRetArg = func->IsNoRetArg() == true ? 1 : 0;
-        uint32 noPriDef = func->IsNoPrivateDefEffect() == true ? 1 : 0;
-        uint32 i = 0;
-        uint8 se = noThr << i++;
-        se |= noRetGlobal << i++;
-        se |= noDef << i++;
-        se |= noDefArg << i++;
-        se |= isPure << i++;
-        se |= isSee << i++;
-        se |= noRetArg << i++;
-        se |= noPriDef << i;
-        if ((*func2SEMap).find(func->GetNameStrIdx()) == (*func2SEMap).end()) {
-            (*func2SEMap)[func->GetNameStrIdx()] = se;
-        } else if ((*func2SEMap)[func->GetNameStrIdx()] != se) {
-            FATAL(kLncFatal, "It is a bug.");
-        }
-    }
-    mod.SetCurFunction(savedFunc);
 }
 
 void BinaryMplExport::WriteStrField(uint64 contentIdx)
@@ -1243,31 +1165,6 @@ void BinaryMplExport::WriteContentField4nonmplt(int fieldNum, uint64 *fieldStart
     fieldStartP[kFirstField] = buf.size();
     ExpandFourBuffSize();
 
-    WriteNum(kBinSymStart);
-    fieldStartP[kSecondField] = buf.size();
-    ExpandFourBuffSize();
-
-    WriteNum(kBinFunctionBodyStart);
-    fieldStartP[kThirdField] = buf.size();
-    ExpandFourBuffSize();
-
-    Fixup(totalSizeIdx, buf.size() - totalSizeIdx);
-    WriteNum(~kBinContentStart);
-}
-
-void BinaryMplExport::WriteContentField4nonJava(int fieldNum, uint64 *fieldStartP)
-{
-    CHECK_FATAL(fieldStartP != nullptr, "fieldStartP is null.");
-    WriteNum(kBinContentStart);
-    size_t totalSizeIdx = buf.size();
-    ExpandFourBuffSize();  // total size of this field to ~BIN_SYM_START
-
-    WriteInt(fieldNum);  // size of Content item
-
-    WriteNum(kBinHeaderStart);
-    fieldStartP[kFirstField] = buf.size();
-    ExpandFourBuffSize();
-
     WriteNum(kBinStrStart);
     fieldStartP[kSecondField] = buf.size();
     ExpandFourBuffSize();
@@ -1300,17 +1197,9 @@ void BinaryMplExport::Export(const std::string &fname, std::unordered_set<std::s
         importFileName = fname;
     } else {
         WriteInt(kMpltMagicNumber + 0x10);
-        if (mod.IsJavaModule()) {
-            WriteContentField4nonmplt(kFourthFieldInt, fieldStartPoint);
-            WriteHeaderField(fieldStartPoint[kFirstField]);
-            WriteSymField(fieldStartPoint[kSecondField]);
-            WriteFunctionBodyField(fieldStartPoint[kThirdField], dumpFuncSet);
-        } else {
-            WriteContentField4nonJava(kSixthFieldInt, fieldStartPoint);
-            WriteHeaderField(fieldStartPoint[kFirstField]);
-            WriteSymField(fieldStartPoint[kFourthField]);
-            WriteFunctionBodyField(fieldStartPoint[kFifthField], dumpFuncSet);
-        }
+        WriteContentField4nonmplt(kSixthFieldInt, fieldStartPoint);
+        WriteHeaderField(fieldStartPoint[kFirstField]);
+        WriteSymField(fieldStartPoint[kFourthField]);
     }
     WriteNum(kBinFinish);
     DumpBuf(fname);

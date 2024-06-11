@@ -51,7 +51,6 @@ len = Math.asin(10);
 print(len); //: NaN
 
 // Replace standart builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_asin = Math.asin
 Math.asin = replace
 len = Math.asin(111);
@@ -60,4 +59,6 @@ print(len); //: 111
 // Call standart builtin with non-number param
 Math.asin = true_asin
 len = Math.asin("NaN"); // deopt
+//aot: [trace] aot inline builtin: Math.asin, caller function name:func_main_0@builtinMathAsin
+//aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

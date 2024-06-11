@@ -251,46 +251,46 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DEPRECATED_CALL_INITIALIZE()                                  \
-    do {                                                              \
-        SAVE_PC();                                                    \
-        thread->CheckSafepoint();                                     \
-        funcTagged = sp[startReg];                                    \
-        JSTaggedValue funcValue(funcTagged);                          \
-        if (!funcValue.IsCallable()) {                                \
-            {                                                         \
-                [[maybe_unused]] EcmaHandleScope handleScope(thread); \
-                JSHandle<JSObject> error = factory->GetJSError(       \
-                    ErrorType::TYPE_ERROR, "is not callable");        \
-                thread->SetException(error.GetTaggedValue());         \
-            }                                                         \
-            INTERPRETER_GOTO_EXCEPTION_HANDLER();                     \
-        }                                                             \
-        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());   \
-        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget())); \
-        newSp = sp - InterpretedFrame::NumOfMembers();                \
+#define DEPRECATED_CALL_INITIALIZE()                                            \
+    do {                                                                        \
+        SAVE_PC();                                                              \
+        thread->CheckSafepoint();                                               \
+        funcTagged = sp[startReg];                                              \
+        JSTaggedValue funcValue(funcTagged);                                    \
+        if (!funcValue.IsCallable()) {                                          \
+            {                                                                   \
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
+                JSHandle<JSObject> error = factory->GetJSError(                 \
+                    ErrorType::TYPE_ERROR, "is not callable", StackCheck::NO);  \
+                thread->SetException(error.GetTaggedValue());                   \
+            }                                                                   \
+            INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \
+        }                                                                       \
+        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());             \
+        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget()));        \
+        newSp = sp - InterpretedFrame::NumOfMembers();                          \
     } while (false)
 
-#define CALL_INITIALIZE()                                             \
-    do {                                                              \
-        SAVE_PC();                                                    \
-        SAVE_ACC();                                                   \
-        thread->CheckSafepoint();                                     \
-        RESTORE_ACC();                                                \
-        funcTagged = acc.GetRawData();                                \
-        JSTaggedValue funcValue = acc;                                \
-        if (!funcValue.IsCallable()) {                                \
-            {                                                         \
-                [[maybe_unused]] EcmaHandleScope handleScope(thread); \
-                JSHandle<JSObject> error = factory->GetJSError(       \
-                    ErrorType::TYPE_ERROR, "is not callable");        \
-                thread->SetException(error.GetTaggedValue());         \
-            }                                                         \
-            INTERPRETER_GOTO_EXCEPTION_HANDLER();                     \
-        }                                                             \
-        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());   \
-        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget())); \
-        newSp = sp - InterpretedFrame::NumOfMembers();                \
+#define CALL_INITIALIZE()                                                       \
+    do {                                                                        \
+        SAVE_PC();                                                              \
+        SAVE_ACC();                                                             \
+        thread->CheckSafepoint();                                               \
+        RESTORE_ACC();                                                          \
+        funcTagged = acc.GetRawData();                                          \
+        JSTaggedValue funcValue = acc;                                          \
+        if (!funcValue.IsCallable()) {                                          \
+            {                                                                   \
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
+                JSHandle<JSObject> error = factory->GetJSError(                 \
+                    ErrorType::TYPE_ERROR, "is not callable", StackCheck::NO);  \
+                thread->SetException(error.GetTaggedValue());                   \
+            }                                                                   \
+            INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \
+        }                                                                       \
+        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());             \
+        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget()));        \
+        newSp = sp - InterpretedFrame::NumOfMembers();                          \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -854,8 +854,9 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
         {
             EcmaVM *ecmaVm = thread->GetEcmaVM();
             ObjectFactory *factory = ecmaVm->GetFactory();
-            JSHandle<JSObject> error =
-                factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'");
+            JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
+                                                           "class constructor cannot called without 'new'",
+                                                           StackCheck::NO);
             thread->SetException(error.GetTaggedValue());
         }
         return thread->GetException();
@@ -1003,6 +1004,25 @@ std::pair<JSTaggedValue, JSTaggedValue> EcmaInterpreter::GetCurrentEntryPoint(JS
         JSTaggedValue::Undefined()));
 }
 
+void EcmaInterpreter::UpdateProfileTypeInfoCellToFunction(JSThread *thread, JSHandle<JSFunction> &function,
+                                                          JSTaggedValue profileTypeInfo, uint16_t slotId)
+{
+    if (!profileTypeInfo.IsUndefined()) {
+        JSHandle<ProfileTypeInfo> profileTypeArray(thread, profileTypeInfo);
+        JSTaggedValue slotValue = profileTypeArray->Get(slotId);
+        if (slotValue.IsUndefined()) {
+            JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
+            JSHandle<ProfileTypeInfoCell> newProfileTypeInfoCell =
+                thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(handleUndefined);
+            profileTypeArray->Set(thread, slotId, newProfileTypeInfoCell);
+            function->SetRawProfileTypeInfo(thread, newProfileTypeInfoCell);
+        } else {
+            ProfileTypeInfoCell::Cast(slotValue.GetTaggedObject())->UpdateProfileTypeInfoCellType(thread);
+            function->SetRawProfileTypeInfo(thread, slotValue);
+        }
+    }
+}
+
 #ifndef EXCLUDE_C_INTERPRETER
 // NOLINTNEXTLINE(readability-function-size)
 NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp)
@@ -1019,7 +1039,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 19;
+    constexpr size_t numCallRuntimeOps = 21;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -1414,8 +1434,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             if (func->IsClassConstructor()) {
                 {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-                    JSHandle<JSObject> error =
-                        factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'");
+                    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
+                        "class constructor cannot called without 'new'", StackCheck::NO);
                     thread->SetException(error.GetTaggedValue());
                 }
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
@@ -1537,7 +1557,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                        "Derived constructor must return object or undefined");
+                        "Derived constructor must return object or undefined", StackCheck::NO);
                     thread->SetException(error.GetTaggedValue());
                 }
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
@@ -1582,7 +1602,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                        "Derived constructor must return object or undefined");
+                        "Derived constructor must return object or undefined", StackCheck::NO);
                     thread->SetException(error.GetTaggedValue());
                 }
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
@@ -3817,6 +3837,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
         DISPATCH(ISTRUE);
     }
+    HANDLE_OPCODE(CALLRUNTIME_ISTRUE_PREF_IMM8) {
+        LOG_INST() << "intrinsics::callruntime.istrue";
+        if (GET_ACC().ToBoolean()) {
+            SET_ACC(JSTaggedValue::True());
+        } else {
+            SET_ACC(JSTaggedValue::False());
+        }
+        DISPATCH(CALLRUNTIME_ISTRUE_PREF_IMM8);
+    }
     HANDLE_OPCODE(ISFALSE) {
         LOG_INST() << "intrinsics::isfalse";
         if (!GET_ACC().ToBoolean()) {
@@ -3825,6 +3854,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SET_ACC(JSTaggedValue::False());
         }
         DISPATCH(ISFALSE);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_ISFALSE_PREF_IMM8) {
+        LOG_INST() << "intrinsics::callruntime.isfalse";
+        if (!GET_ACC().ToBoolean()) {
+            SET_ACC(JSTaggedValue::True());
+        } else {
+            SET_ACC(JSTaggedValue::False());
+        }
+        DISPATCH(CALLRUNTIME_ISFALSE_PREF_IMM8);
     }
     NOPRINT_HANDLE_OPCODE(EXCEPTION) {
         FrameHandler frameHandler(thread);
@@ -4985,9 +5023,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, currentFunc->GetModule(),
             length, envHandle, currentFunc->GetHomeObject());
-        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
-
-        SET_ACC(JSTaggedValue(jsFunc));
+        JSHandle<JSFunction> jsFunc(thread, res);
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        uint16_t slotId = READ_INST_8_0();
+        UpdateProfileTypeInfoCellToFunction(thread, jsFunc, profileTypeInfo, slotId);
+#endif
+        SET_ACC(jsFunc.GetTaggedValue());
         DISPATCH(DEFINEFUNC_IMM8_ID16_IMM8);
     }
     HANDLE_OPCODE(DEFINEFUNC_IMM16_ID16_IMM8) {
@@ -5002,9 +5044,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, currentFunc->GetModule(),
             length, envHandle, currentFunc->GetHomeObject());
-        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
-
-        SET_ACC(JSTaggedValue(jsFunc));
+        JSHandle<JSFunction> jsFunc(thread, res);
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        uint16_t slotId = READ_INST_16_0();
+        UpdateProfileTypeInfoCellToFunction(thread, jsFunc, profileTypeInfo, slotId);
+#endif
+        SET_ACC(jsFunc.GetTaggedValue());
         DISPATCH(DEFINEFUNC_IMM16_ID16_IMM8);
     }
     HANDLE_OPCODE(DEFINEMETHOD_IMM8_ID16_IMM8) {
@@ -7474,6 +7520,26 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(res);
         RESTORE_ACC();
         DISPATCH(DEFINEFIELDBYNAME_IMM8_ID16_V8);
+    }
+    HANDLE_OPCODE(DEFINEPROPERTYBYNAME_IMM8_ID16_V8) {
+        uint16_t stringId = READ_INST_16_1();
+        uint32_t v0 = READ_INST_8_3();
+
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
+        JSTaggedValue value = GET_ACC();
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
+        LOG_INST() << "intrinsics::callruntime.definepropertybyname "
+                   << "v" << v0 << " stringId:" << stringId << ", "
+                   << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData()
+                   << ", value:" << value.GetRawData();
+
+        JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+        DISPATCH(DEFINEPROPERTYBYNAME_IMM8_ID16_V8);
     }
     HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8) {
         uint32_t v0 = READ_INST_8_2();
