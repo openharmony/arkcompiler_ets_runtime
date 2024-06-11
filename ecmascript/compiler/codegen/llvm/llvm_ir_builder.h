@@ -292,6 +292,7 @@ private:
     LLVMValueRef GetCurrentSP();
     LLVMValueRef ReadRegister(LLVMModuleRef &module, LLVMBuilderRef &builder, LLVMMetadataRef meta);
     void GenPrologue();
+    void AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType);
     LLVMBasicBlockRef EnsureLBB(BasicBlock *bb) const;
     BasicBlockImpl *EnsureBBImpl(BasicBlock *bb) const;
     void SetToCfg(BasicBlock *bb) const;

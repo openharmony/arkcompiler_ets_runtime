@@ -294,6 +294,35 @@ void LiteCGIRBuilder::Build()
     lmirBuilder_->AppendBB(lmirBuilder_->GetLastPosBB());
 }
 
+void LiteCGIRBuilder::AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType,
+                                        maple::litecg::Function &function)
+{
+    lmirBuilder_->SetFuncFrameResverdSlot(reservedSlotsSize);
+    if (circuit_->IsOsr()) {
+        SaveFrameTypeOnFrame(methodLiteral_->IsFastCall() ? FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME :
+            frameType);
+        return;
+    }
+    auto ArgList = circuit_->GetArgRoot();
+    auto uses = acc_.Uses(ArgList);
+    for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+        int argth = static_cast<int>(acc_.TryGetValue(*useIt));
+        Var &value = lmirBuilder_->GetParam(function, argth);
+        int funcIndex = 0;
+        if (methodLiteral_->IsFastCall()) {
+            frameType = FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
+            funcIndex = static_cast<int>(FastCallArgIdx::FUNC);
+        } else {
+            funcIndex = static_cast<int>(CommonArgIdx::FUNC);
+        }
+        if (argth == funcIndex) {
+            SaveByteCodePcOnOptJSFuncFrame(value);
+            SaveJSFuncOnOptJSFuncFrame(value);
+            SaveFrameTypeOnFrame(frameType);
+        }
+    }
+}
+
 void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
 {
     auto frameType = circuit_->GetFrameType();
@@ -333,30 +362,7 @@ void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
         }
     } else if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
         reservedSlotsSize = FASTJITFunctionFrame::ComputeReservedPcOffset(slotSize_);
-        lmirBuilder_->SetFuncFrameResverdSlot(reservedSlotsSize);
-        if (circuit_->IsOsr()) {
-            SaveFrameTypeOnFrame(methodLiteral_->IsFastCall() ? FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME :
-                frameType);
-            return;
-        }
-        auto ArgList = circuit_->GetArgRoot();
-        auto uses = acc_.Uses(ArgList);
-        for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
-            int argth = static_cast<int>(acc_.TryGetValue(*useIt));
-            Var &value = lmirBuilder_->GetParam(function, argth);
-            int funcIndex = 0;
-            if (methodLiteral_->IsFastCall()) {
-                frameType = FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
-                funcIndex = static_cast<int>(FastCallArgIdx::FUNC);
-            } else {
-                funcIndex = static_cast<int>(CommonArgIdx::FUNC);
-            }
-            if (argth == funcIndex) {
-                SaveByteCodePcOnOptJSFuncFrame(value);
-                SaveJSFuncOnOptJSFuncFrame(value);
-                SaveFrameTypeOnFrame(frameType);
-            }
-        }
+        AssistGenPrologue(reservedSlotsSize, frameType, function);
     } else {
         LOG_COMPILER(FATAL) << "frameType interpret type error !";
         ASSERT_PRINT(static_cast<uintptr_t>(frameType), "is not support !");

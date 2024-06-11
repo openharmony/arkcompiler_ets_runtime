@@ -233,8 +233,7 @@ void EcmaVM::PostFork()
     }
     ResetPGOProfiler();
 
-    bool enableJitFrame = ohos::JitTools::GetJitFrameEnable();
-    options_.SetEnableJitFrame(enableJitFrame);
+    options_.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());
 
     bool jitEscapeDisable = ohos::JitTools::GetJitEscapeDisable();
     if (jitEscapeDisable || !JSNApi::IsJitEscape()) {

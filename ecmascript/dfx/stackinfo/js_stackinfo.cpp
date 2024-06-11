@@ -951,6 +951,7 @@ bool ArkWriteJitCode([[maybe_unused]] void *ctx, [[maybe_unused]] ReadMemFunc re
     }
     jitDumpElf.WriteJitElfFile(fd);
     JsStackInfo::nameMap.clear();
+    JsStackInfo::machineCodeMap.clear();
     return true;
 }
 
