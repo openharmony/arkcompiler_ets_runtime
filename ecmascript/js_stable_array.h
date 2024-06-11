@@ -34,6 +34,9 @@ public:
     static JSTaggedValue Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv, uint32_t start,
                                 uint32_t insertCount, uint32_t actualDeleteCount,
                                 JSHandle<JSObject> newArrayHandle, uint32_t len);
+    static JSTaggedValue Splice(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv, uint32_t start,
+                                uint32_t insertCount, uint32_t actualDeleteCount,
+                                JSHandle<JSObject> newArrayHandle, uint32_t len);
     static JSTaggedValue Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Shift(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);

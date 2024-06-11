@@ -1777,6 +1777,218 @@ JSTaggedValue BuiltinsSharedArray::Sort(EcmaRuntimeCallInfo *argv)
     return thisObjHandle.GetTaggedValue();
 }
 
+// 22.1.3.25 Array.prototype.splice (start, deleteCount , ...items )
+// NOLINTNEXTLINE(readability-function-size)
+JSTaggedValue BuiltinsSharedArray::Splice(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Splice);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    uint32_t argc = argv->GetArgsNumber();
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsJSSharedArray()) {
+        auto error = ContainerError::BindError(thread, "The splice method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(
+        thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    // 2. ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    // 3. Let len be ToLength(Get(O, "length")).
+    int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
+    // 4. ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 5. Let relativeStart be ToInteger(start).
+    int64_t start = 0;
+    int64_t insertCount = 0;
+    int64_t actualDeleteCount = 0;
+    int64_t end = len;
+    double argStart = 0;
+    if (argc > 0) {
+        JSHandle<JSTaggedValue> msg0 = GetCallArg(argv, 0);
+        JSTaggedNumber argStartTemp = JSTaggedValue::ToInteger(thread, msg0);
+        // 6. ReturnIfAbrupt(relativeStart).
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        argStart = argStartTemp.GetNumber();
+        // 7. If relativeStart < 0, let actualStart be max((len + relativeStart),0); else let actualStart be
+        // min(relativeStart, len).
+        if (argStart < 0) {
+            double tempStart = argStart + len;
+            start = tempStart > 0 ? tempStart : 0;
+        } else {
+            start = argStart < end ? argStart : end;
+        }
+        actualDeleteCount = len - start;
+    }
+    // 8. If the number of actual arguments is 0, then
+    //   a. Let insertCount be 0.
+    //   b. Let actualDeleteCount be 0.
+    // 9. Else if the number of actual arguments is 1, then
+    //   a. Let insertCount be 0.
+    //   b. Let actualDeleteCount be len – actualStart.
+    // 10. Else,
+    //   a. Let insertCount be the number of actual arguments minus 2.
+    //   b. Let dc be ToInteger(deleteCount).
+    //   c. ReturnIfAbrupt(dc).
+    //   d. Let actualDeleteCount be min(max(dc,0), len – actualStart).
+    if (argc > 1) {
+        insertCount = argc - 2;  // 2:2 means there are two arguments before the insert items.
+        JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 1);
+        JSTaggedNumber argDeleteCount = JSTaggedValue::ToInteger(thread, msg1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        double deleteCount = argDeleteCount.GetNumber();
+        deleteCount = deleteCount > 0 ? deleteCount : 0;
+        actualDeleteCount = deleteCount < (len - start) ? deleteCount : len - start;
+    }
+    // 11. If len+insertCount−actualDeleteCount > 253-1, throw a TypeError exception.
+    if (len + insertCount - actualDeleteCount > base::MAX_SAFE_INTEGER) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
+    }
+    // 12. Let A be ArraySpeciesCreate(O, actualDeleteCount).
+    JSTaggedValue newArray = JSSharedArray::ArraySpeciesCreate(
+        thread, thisObjHandle, JSTaggedNumber(static_cast<double>(actualDeleteCount)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
+    if (thisHandle->IsStableJSArray(thread)) {
+        return JSStableArray::Splice(JSHandle<JSSharedArray>::Cast(thisHandle), argv, start, insertCount,
+            actualDeleteCount, newArrayHandle, len);
+    }
+    // 14. Let k be 0.
+    // 15. Repeat, while k < actualDeleteCount
+    //   a. Let from be ToString(actualStart+k).
+    //   b. Let fromPresent be HasProperty(O, from).
+    //   d. If fromPresent is true, then
+    //     i. Let fromValue be Get(O, from).
+    //     iii. Let status be CreateDataPropertyOrThrow(A, ToString(k), fromValue).
+    //   e. Increase k by 1.
+    JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
+    int64_t k = 0;
+    while (k < actualDeleteCount) {
+        int64_t from = start + k;
+        fromKey.Update(JSTaggedValue(from));
+        bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, fromKey);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (exists) {
+            JSHandle<JSTaggedValue> fromValue = JSSharedArray::FastGetPropertyByValue(thread, thisObjVal, fromKey);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            toKey.Update(JSTaggedValue(k));
+            if (newArrayHandle->IsJSProxy()) {
+                toKey.Update(JSTaggedValue::ToString(thread, toKey).GetTaggedValue());
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            }
+            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValue);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+        k++;
+    }
+    // 16. Let setStatus be Set(A, "length", actualDeleteCount, true).
+    JSHandle<JSTaggedValue> deleteCountHandle(thread, JSTaggedValue(actualDeleteCount));
+    JSSharedArray::LengthSetter(thread, newArrayHandle, deleteCountHandle, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 19. Let itemCount be the number of elements in items.
+    // 20. If itemCount < actualDeleteCount, then
+    //   a. Let k be actualStart.
+    //   b. Repeat, while k < (len – actualDeleteCount)
+    //     i. Let from be ToString(k+actualDeleteCount).
+    //     ii. Let to be ToString(k+itemCount).
+    //     iii. Let fromPresent be HasProperty(O, from).
+    //     v. If fromPresent is true, then
+    //       1. Let fromValue be Get(O, from).
+    //       3. Let setStatus be Set(O, to, fromValue, true).
+    //     vi. Else fromPresent is false,
+    //       1. Let deleteStatus be DeletePropertyOrThrow(O, to).
+    //     vii. Increase k by 1.
+    //   c. Let k be len.
+    //   d. Repeat, while k > (len – actualDeleteCount + itemCount)
+    //     i. Let deleteStatus be DeletePropertyOrThrow(O, ToString(k–1)).
+    //     iii. Decrease k by 1.
+    if (insertCount < actualDeleteCount) {
+        k = start;
+        while (k < len - actualDeleteCount) {
+            fromKey.Update(JSTaggedValue(k + actualDeleteCount));
+            toKey.Update(JSTaggedValue(k + insertCount));
+            bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, fromKey);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (exists) {
+                JSHandle<JSTaggedValue> fromValue = JSSharedArray::FastGetPropertyByValue(thread, thisObjVal, fromKey);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                JSSharedArray::FastSetPropertyByValue(thread, thisObjVal, toKey, fromValue);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            } else {
+                JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, toKey);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            }
+            k++;
+        }
+        k = len;
+        JSMutableHandle<JSTaggedValue> deleteKey(thread, JSTaggedValue::Undefined());
+        while (k > len - actualDeleteCount + insertCount) {
+            deleteKey.Update(JSTaggedValue(k - 1));
+            JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, deleteKey);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            k--;
+        }
+    } else if (insertCount > actualDeleteCount) {
+        // 21. Else if itemCount > actualDeleteCount, then
+        //   a. Let k be (len – actualDeleteCount).
+        //   b. Repeat, while k > actualStart
+        //     i. Let from be ToString(k + actualDeleteCount – 1).
+        //     ii. Let to be ToString(k + itemCount – 1)
+        //     iii. Let fromPresent be HasProperty(O, from).
+        //     iv. ReturnIfAbrupt(fromPresent).
+        //     v. If fromPresent is true, then
+        //       1. Let fromValue be Get(O, from).
+        //       2. ReturnIfAbrupt(fromValue).
+        //       3. Let setStatus be Set(O, to, fromValue, true).
+        //       4. ReturnIfAbrupt(setStatus).
+        //     vi. Else fromPresent is false,
+        //       1. Let deleteStatus be DeletePropertyOrThrow(O, to).
+        //       2. ReturnIfAbrupt(deleteStatus).
+        //     vii. Decrease k by 1.
+        k = len - actualDeleteCount;
+        while (k > start) {
+            fromKey.Update(JSTaggedValue(k + actualDeleteCount - 1));
+            toKey.Update(JSTaggedValue(k + insertCount - 1));
+            bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, fromKey);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (exists) {
+                JSHandle<JSTaggedValue> fromValue = JSSharedArray::FastGetPropertyByValue(thread, thisObjVal, fromKey);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                JSSharedArray::FastSetPropertyByValue(thread, thisObjVal, toKey, fromValue);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            } else {
+                JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, toKey);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            }
+            k--;
+        }
+    }
+    // 22. Let k be actualStart.
+    k = start;
+    // 23. Repeat, while items is not empty
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 2; i < argc; i++) {
+        JSHandle<JSTaggedValue> itemValue = GetCallArg(argv, i);
+        key.Update(JSTaggedValue(k));
+        JSSharedArray::FastSetPropertyByValue(thread, thisObjVal, key, itemValue);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        k++;
+    }
+    // 24. Let setStatus be Set(O, "length", len – actualDeleteCount + itemCount, true).
+    int64_t newLen = len - actualDeleteCount + insertCount;
+    JSHandle<JSTaggedValue> newLenHandle(thread, JSTaggedValue(newLen));
+    JSSharedArray::LengthSetter(thread, thisObjHandle, newLenHandle, true);
+    // 25. ReturnIfAbrupt(setStatus).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 26. Return A.
+    return newArrayHandle.GetTaggedValue();
+}
+
 // 22.1.3.27 Array.prototype.toString ( )
 JSTaggedValue BuiltinsSharedArray::ToString(EcmaRuntimeCallInfo *argv)
 {

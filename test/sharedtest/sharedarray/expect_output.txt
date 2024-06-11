@@ -102,6 +102,12 @@ Start Test reduce
 10
 20
 10 1 2 3 4
+Start Test splice
+Jan,Feb,Oct,March,April,June
+Jan,Feb,Oct,March,May
+April,June
+Jan,Feb
+Oct,March,May
 Start Test staticCreate
 5,5,5,5,5,5,5,5,5,5
 Create with without initialValue failed. err: BusinessError: Parameter error.Not enough parameters., code: 401

@@ -254,6 +254,110 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
     return newArrayHandle.GetTaggedValue();
 }
 
+JSTaggedValue JSStableArray::Splice(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv,
+                                    uint32_t start, uint32_t insertCount, uint32_t actualDeleteCount,
+                                    JSHandle<JSObject> newArrayHandle, uint32_t len)
+{
+    JSThread *thread = argv->GetThread();
+    uint32_t argc = argv->GetArgsNumber();
+
+    JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
+    JSHandle<JSObject> thisObjHandle(receiver);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSSharedArray::CheckAndCopyArray(thread, receiver);
+    JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+    TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    JSMutableHandle<TaggedArray> srcElementsHandle(thread, srcElements);
+    bool needTransition = true;
+    if (newArrayHandle.GetTaggedValue().IsStableJSArray(thread)) {
+        TaggedArray *destElements = TaggedArray::Cast(newArrayHandle->GetElements().GetTaggedObject());
+        if (actualDeleteCount > ElementAccessor::GetElementsLength(newArrayHandle)) {
+            destElements = *JSObject::GrowElementsCapacity(thread, newArrayHandle, actualDeleteCount);
+        }
+
+        for (uint32_t idx = 0; idx < actualDeleteCount; idx++) {
+            if ((start + idx) >= ElementAccessor::GetElementsLength(thisObjHandle)) {
+                ElementAccessor::Set(thread, newArrayHandle, idx, holeHandle, needTransition);
+            } else {
+                JSHandle<JSTaggedValue> valueHandle(thread, ElementAccessor::Get(thisObjHandle, start + idx));
+                ElementAccessor::Set(thread, newArrayHandle, idx, valueHandle, needTransition);
+            }
+        }
+        JSHandle<JSSharedArray>::Cast(newArrayHandle)->SetArrayLength(thread, actualDeleteCount);
+    } else {
+        JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
+        JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
+        uint32_t k = 0;
+        while (k < actualDeleteCount) {
+            uint32_t from = start + k;
+            fromKey.Update(JSTaggedValue(from));
+            bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, fromKey);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (exists) {
+                JSHandle<JSTaggedValue> fromValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, fromKey);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                toKey.Update(JSTaggedValue(k));
+                if (newArrayHandle->IsJSProxy()) {
+                    toKey.Update(JSTaggedValue::ToString(thread, toKey).GetTaggedValue());
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                }
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValue);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            }
+            k++;
+        }
+
+        JSHandle<JSTaggedValue> deleteCount(thread, JSTaggedValue(actualDeleteCount));
+        JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(newArrayHandle), lengthKey, deleteCount,
+                                   true);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    uint32_t oldCapacity = ElementAccessor::GetElementsLength(thisObjHandle);
+    ASSERT(len + insertCount >= actualDeleteCount);
+    uint32_t newCapacity = len - actualDeleteCount + insertCount;
+    if (newCapacity > oldCapacity) {
+        srcElementsHandle.Update(JSObject::GrowElementsCapacity(thread, thisObjHandle, newCapacity));
+    }
+    if (insertCount < actualDeleteCount) {
+        JSSharedArray::CheckAndCopyArray(thread, receiver);
+        srcElementsHandle.Update(receiver->GetElements());
+        for (uint32_t idx = start; idx < len - actualDeleteCount; idx++) {
+            JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Hole());
+            if ((idx + actualDeleteCount) < ElementAccessor::GetElementsLength(thisObjHandle)) {
+                element.Update(ElementAccessor::Get(thisObjHandle, idx + actualDeleteCount));
+            }
+            if ((idx + insertCount) < ElementAccessor::GetElementsLength(thisObjHandle)) {
+                ElementAccessor::Set(thread, thisObjHandle, idx + insertCount, element, needTransition);
+            }
+        }
+
+        if ((oldCapacity > newCapacity) && TaggedArray::ShouldTrim(oldCapacity, newCapacity)) {
+            srcElementsHandle->Trim(thread, newCapacity);
+        } else {
+            for (uint32_t idx = newCapacity; idx < len; idx++) {
+                if (idx < ElementAccessor::GetElementsLength(thisObjHandle)) {
+                    ElementAccessor::Set(thread, thisObjHandle, idx, holeHandle, needTransition);
+                }
+            }
+        }
+    } else {
+        ASSERT(len >= actualDeleteCount);
+        for (uint32_t idx = len - actualDeleteCount; idx > start; idx--) {
+            JSHandle<JSTaggedValue> element(thread, ElementAccessor::Get(thisObjHandle, idx + actualDeleteCount - 1));
+            ElementAccessor::Set(thread, thisObjHandle, idx + insertCount - 1, element, needTransition);
+        }
+    }
+
+    for (uint32_t i = 2, idx = start; i < argc; i++, idx++) {
+        ElementAccessor::Set(thread, thisObjHandle, idx, argv->GetCallArg(i), needTransition);
+    }
+
+    JSHandle<JSTaggedValue> newLenHandle(thread, JSTaggedValue(newCapacity));
+    JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, newLenHandle, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return newArrayHandle.GetTaggedValue();
+}
+
 JSTaggedValue JSStableArray::Shift(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
