@@ -54,7 +54,8 @@ public:
         MegaStateKinds,
         TotalKinds,
         UnknowId,
-        GlobalsId
+        GlobalsId,
+        JITClassId,
     };
 
     static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
@@ -180,6 +181,13 @@ public:
         return type;
     }
 
+    static ProfileType CreateJITType()
+    {
+        ProfileType type;
+        type.UpdateKind(Kind::JITClassId);
+        return type;
+    }
+
     static ProfileType CreateBuiltinsArray(ApEntityId abcId, JSType type, ElementsKind kind,
                                            ElementsKind transitionKind, bool everOutOfBounds)
     {
@@ -242,6 +250,11 @@ public:
     bool IsClassType() const
     {
         return GetKind() == Kind::ClassId;
+    }
+
+    bool IsJITClassType() const
+    {
+        return GetKind() == Kind::JITClassId;
     }
 
     bool IsMethodId() const

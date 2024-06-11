@@ -30,10 +30,10 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_type_generator.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 namespace panda::ecmascript {
 using namespace pgo;
 class ProfileTypeInfo;
@@ -65,14 +65,10 @@ public:
     {
         return bcOffsetPGODefOpTypeMap_;
     }
-    void InsertProfileType(JSTaggedType root, JSTaggedType child, ProfileType rootType, ProfileType childType,
-                           bool update = false);
     void InitJITProfiler()
     {
         ptManager_ = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
     }
-    void ProcessReferences(const WeakRootVisitor &visitor);
-    void UpdateRootProfileType(JSHClass *oldHClass, JSHClass *newHClass);
     void SetCompilationEnv(CompilationEnv *env)
     {
         compilationEnv_ = env;
@@ -139,11 +135,8 @@ private:
                          JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,
                          bool everOutOfBounds = false);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalsId);
-    void AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver);
-    void AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold);
-    void UpdateLayout(JSHClass *hclass);
-    void UpdateTranstionLayout(JSHClass *parent, JSHClass *child);
-    void UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info);
+    bool AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver);
+    bool AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold);
 
     JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);
     bool IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
@@ -163,19 +156,7 @@ private:
         }
     }
 
-    ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);
-    ProfileType GetProfileTypeSafe(JSTaggedType root, JSTaggedType child);
-    ProfileType GetOrInsertProfileType(JSTaggedType root, JSTaggedType child);
-    ProfileType GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedType child);
-    void Clear()
-    {
-        bcOffsetPGOOpTypeMap_.clear();
-        bcOffsetPGODefOpTypeMap_.clear();
-        bcOffsetPGORwTypeMap_.clear();
-        abcId_ = 0;
-        profileTypeInfo_ = nullptr;
-        methodId_ = (EntityId)0;
-    }
+    void Clear();
 
     EcmaVM *vm_ { nullptr };
     kungfu::PGOTypeManager *ptManager_ { nullptr };
@@ -185,7 +166,6 @@ private:
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_{};
-    CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_ {};
     RecursiveMutex mutex_;
     CompilationEnv *compilationEnv_ {nullptr};
 };

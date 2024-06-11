@@ -34,7 +34,6 @@
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_type_generator.h"
@@ -52,7 +51,7 @@ JITProfiler::JITProfiler(EcmaVM *vm) : vm_(vm)
 void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeInfo> &profileTypeInfo,
                                   ProfileTypeInfo *rawProfileTypeInfo,
                                   EntityId methodId, ApEntityId abcId, const uint8_t *pcStart, uint32_t codeSize,
-                                  const panda_file::File::Header *header, bool useRawProfileTypeInfo)
+                                  [[maybe_unused]]const panda_file::File::Header *header, bool useRawProfileTypeInfo)
 {
     Clear();
     if (useRawProfileTypeInfo) {
@@ -378,17 +377,34 @@ void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
 {
     JSTaggedValue slotValue = profileTypeInfo_->Get(slotId);
     int ctorMethodId = 0;
+    JSHClass* hclass = nullptr;
     if (slotValue.IsInt()) {
         ctorMethodId = slotValue.GetInt();
+        // JIT cannot optimize this scenario because it doesn't know the hclass
+        if (ctorMethodId > 0) {
+            return;
+        }
     } else if (slotValue.IsJSFunction()) {
         JSFunction *callee = JSFunction::Cast(slotValue);
         Method *calleeMethod = Method::Cast(callee->GetMethod());
         ctorMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
+        JSTaggedValue protoOrHClass = callee->GetProtoOrHClass();
+        if (protoOrHClass.IsJSHClass()) {
+            hclass = JSHClass::Cast(protoOrHClass.GetTaggedObject());
+        } else {
+            return;
+        }
     } else {
         return;
     }
     if (ctorMethodId > 0) {
-        auto type = new PGOSampleType(ProfileType(abcId_, ctorMethodId, ProfileType::Kind::ClassId, true));
+        ptManager_->RecordAndGetHclassIndexForJIT(hclass);
+        auto pt = ProfileType(abcId_, std::abs(ctorMethodId), ProfileType::Kind::JITClassId, true);
+        PGODefineOpType* type = new PGODefineOpType(pt, hclass);
+        UpdatePGOType(bcOffset, type);
+    } else {
+        auto kind = ProfileType::Kind::BuiltinFunctionId;
+        auto type = new PGOSampleType(ProfileType(abcId_, std::abs(ctorMethodId), kind));
         UpdatePGOType(bcOffset, type);
     }
 }
@@ -409,7 +425,7 @@ void JITProfiler::ConvertGetIterator(uint32_t slotId, long bcOffset)
     UpdatePGOType(bcOffset, type);
 }
 
-void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, int32_t traceId)
+void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, [[maybe_unused]]int32_t traceId)
 {
     JSTaggedValue slotValue = profileTypeInfo_->Get(slotId);
     if (!slotValue.IsHeapObject()) {
@@ -419,21 +435,15 @@ void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, int32_t tr
         auto object = slotValue.GetWeakReferentUnChecked();
         if (object->GetClass()->IsHClass()) {
             auto newHClass = JSHClass::Cast(object);
-            auto rootHClass = JSHClass::FindRootHClass(newHClass);
-            ASSERT(rootHClass->IsJSObject());
-            auto profileType = GetProfileType(JSTaggedType(rootHClass), JSTaggedType(rootHClass));
-            if (profileType.IsNone()) {
-                return;
-            }
-            ASSERT(profileType.GetKind() == ProfileType::Kind::ObjectLiteralId);
-            PGODefineOpType* objDefType = new PGODefineOpType(profileType);
+            PGODefineOpType* objDefType = new PGODefineOpType(ProfileType::CreateJITType(), newHClass);
+            ptManager_->RecordAndGetHclassIndexForJIT(newHClass);
             UpdatePGOType(bcOffset, objDefType);
         }
     } else if (slotValue.IsTrackInfoObject()) {
-        auto currentType = PGOSampleType::CreateProfileType(abcId_, traceId, ProfileType::Kind::ArrayLiteralId, true);
-        auto profileType = currentType.GetProfileType();
-        PGODefineOpType* objDefType = new PGODefineOpType(profileType);
         TrackInfo *trackInfo = TrackInfo::Cast(slotValue.GetTaggedObject());
+        auto hclass = JSHClass::Cast(trackInfo->GetCachedHClass().GetTaggedObject());
+        PGODefineOpType* objDefType = new PGODefineOpType(ProfileType::CreateJITType(), hclass);
+        ptManager_->RecordAndGetHclassIndexForJIT(hclass);
         auto elementsKind = trackInfo->GetElementsKind();
         objDefType->SetElementsKind(elementsKind);
         objDefType->SetElementsLength(trackInfo->GetArrayLength());
@@ -494,10 +504,12 @@ void JITProfiler::HandleLoadTypeInt(ApEntityId &abcId, int32_t &bcOffset,
     if (HandlerBase::IsNonExist(handlerInfo)) {
         return;
     }
+    if (AddBuiltinsInfoByNameInInstance(abcId, bcOffset, hclass)) {
+        return;
+    }
     if (HandlerBase::IsField(handlerInfo) || HandlerBase::IsAccessor(handlerInfo)) {
         AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass);
     }
-    AddBuiltinsInfoByNameInInstance(abcId, bcOffset, hclass);
 }
 
 void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
@@ -532,9 +544,10 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
         static_cast<JitCompilationEnv *>(compilationEnv_)
             ->UpdateFuncSlotIdMap(accessorMethodId, methodId_.GetOffset(), slotId);
     }
-    if (!AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId)) {
-        return AddBuiltinsInfoByNameInProt(abcId, bcOffset, hclass, holderHClass);
+    if (AddBuiltinsInfoByNameInProt(abcId, bcOffset, hclass, holderHClass)) {
+        return ;
     }
+    AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId);
 }
 
 void JITProfiler::HandleOtherTypes(ApEntityId &abcId, int32_t &bcOffset,
@@ -879,76 +892,6 @@ JSTaggedValue JITProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSH
     return JSTaggedValue::Undefined();
 }
 
-void JITProfiler::InsertProfileType(JSTaggedType root, JSTaggedType child, ProfileType rootType, ProfileType childType,
-                                    bool update)
-{
-    ptManager_->RecordHClass(rootType, childType, child, update);
-    LockHolder lock(mutex_);
-    auto iter = tracedProfiles_.find(root);
-    if (iter != tracedProfiles_.end()) {
-        auto generator = iter->second;
-        generator->InsertProfileType(child, childType);
-    } else {
-        auto generator = vm_->GetNativeAreaAllocator()->New<PGOTypeGenerator>();
-        generator->InsertProfileType(child, childType);
-        tracedProfiles_.emplace(root, generator);
-    }
-}
-
-ProfileType JITProfiler::GetProfileType(JSTaggedType root, JSTaggedType child)
-{
-    PGOTypeGenerator *generator = nullptr;
-    {
-        LockHolder lock(mutex_);
-        auto iter = tracedProfiles_.find(root);
-        if (iter == tracedProfiles_.end()) {
-            return ProfileType::PROFILE_TYPE_NONE;
-        }
-        generator = iter->second;
-    }
-    return generator->GetProfileType(child);
-}
-
-ProfileType JITProfiler::GetOrInsertProfileType(JSTaggedType root, JSTaggedType child)
-{
-    PGOTypeGenerator *generator = nullptr;
-    {
-        LockHolder lock(mutex_);
-        auto iter = tracedProfiles_.find(root);
-        if (iter == tracedProfiles_.end()) {
-            return ProfileType::PROFILE_TYPE_NONE;
-        }
-        generator = iter->second;
-    }
-    auto rootType = generator->GetProfileType(root);
-    if (rootType.IsNone()) {
-        return ProfileType::PROFILE_TYPE_NONE;
-    }
-    bool generateNewType = false;
-    auto type = generator->GenerateProfileType(rootType, child, generateNewType);
-    if (generateNewType) {
-        ptManager_->RecordHClass(rootType, type, child, true);
-    }
-    return type;
-}
-
-void JITProfiler::UpdateRootProfileType(JSHClass *oldHClass, JSHClass *newHClass)
-{
-    LockHolder lock(mutex_);
-    auto oldRootHClass = JSHClass::FindRootHClass(oldHClass);
-    auto iter = tracedProfiles_.find(JSTaggedType(oldRootHClass));
-    if (iter == tracedProfiles_.end()) {
-        return;
-    }
-    auto generator = iter->second;
-    auto rootProfileType = generator->GetProfileType(JSTaggedType(oldRootHClass));
-    {
-        vm_->GetNativeAreaAllocator()->Delete(iter->second);
-        tracedProfiles_.erase(iter);
-    }
-    InsertProfileType(JSTaggedType(newHClass), JSTaggedType(newHClass), rootProfileType, rootProfileType, true);
-}
-
 void JITProfiler::AddObjectInfoWithMega(int32_t bcOffset)
 {
     auto megaType = ProfileType::CreateMegaType();
@@ -974,46 +917,24 @@ bool JITProfiler::AddObjectInfo(ApEntityId abcId, int32_t bcOffset,
                                 JSHClass *receiver, JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId)
 {
     PGOSampleType accessor = PGOSampleType::CreateProfileType(abcId, accessorMethodId, ProfileType::Kind::MethodId);
+    // case: r.toFixed() => HeapObjectCheck Deopt
+    if (receiver->IsJsPrimitiveRef() || hold->IsJsPrimitiveRef()) {
+        return false;
+    }
+    // case: obj = Object.create(null) => LowerProtoChangeMarkerCheck Crash
+    if (receiver->GetPrototype().IsNull()) {
+        return false;
+    }
     return AddTranstionObjectInfo(bcOffset, receiver, hold, holdTra, accessor);
 }
 
 bool JITProfiler::AddTranstionObjectInfo(
     int32_t bcOffset, JSHClass *receiver, JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod)
 {
-    auto receiverRootHClass = JSTaggedType(JSHClass::FindRootHClass(receiver));
-    auto receiverRootType = GetProfileType(receiverRootHClass, receiverRootHClass);
-    if (receiverRootType.IsNone()) {
-        return false;
-    }
-    auto receiverType = GetOrInsertProfileType(receiverRootHClass, JSTaggedType(receiver));
-
-    auto holdRootHClass = JSTaggedType(JSHClass::FindRootHClass(hold));
-    auto holdRootType = GetProfileType(holdRootHClass, holdRootHClass);
-    if (holdRootType.IsNone()) {
-        return true;
-    }
-    auto holdType = GetOrInsertProfileType(holdRootHClass, JSTaggedType(hold));
-
-    auto holdTraRootHClass = JSTaggedType(JSHClass::FindRootHClass(holdTra));
-    auto holdTraRootType = GetProfileType(holdTraRootHClass, holdTraRootHClass);
-    if (holdTraRootType.IsNone()) {
-        return true;
-    }
-    auto holdTraType = GetOrInsertProfileType(holdTraRootHClass, JSTaggedType(holdTra));
-
-    if (receiver != hold) {
-        UpdateLayout(receiver);
-    }
-
-    if (holdType == holdTraType) {
-        UpdateLayout(hold);
-    } else {
-        UpdateTranstionLayout(hold, holdTra);
-    }
-
-    PGOObjectInfo info(receiverRootType, receiverType, holdRootType, holdType, holdTraRootType, holdTraType,
-                       accessorMethod);
-    UpdatePrototypeChainInfo(receiver, hold, info);
+    ptManager_->RecordAndGetHclassIndexForJIT(receiver);
+    ptManager_->RecordAndGetHclassIndexForJIT(hold);
+    ptManager_->RecordAndGetHclassIndexForJIT(holdTra);
+    PGOObjectInfo info(ProfileType::CreateJITType(), receiver, hold, holdTra, accessorMethod);
     AddObjectInfoImplement(bcOffset, info);
     return true;
 }
@@ -1047,7 +968,7 @@ void JITProfiler::AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, Glob
     AddObjectInfoImplement(bcOffset, info);
 }
 
-void JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver)
+bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver)
 {
     auto thread = vm_->GetJSThread();
     auto type = receiver->GetObjectType();
@@ -1055,12 +976,12 @@ void JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
     auto entry = ctorEntries.find(receiver);
     if (entry != ctorEntries.end()) {
         AddBuiltinsGlobalInfo(abcId, bcOffset, entry->second);
-        return ;
+        return true;
     }
-
+ 
     auto builtinsId = ToBuiltinsTypeId(type);
     if (!builtinsId.has_value()) {
-        return;
+        return false;
     }
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
@@ -1080,19 +1001,22 @@ void JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
                 GlobalIndex globalsId;
                 globalsId.UpdateGlobalConstId(static_cast<size_t>(ConstantIndex::ITERATOR_RESULT_CLASS));
                 AddBuiltinsGlobalInfo(abcId, bcOffset, globalsId);
+                return true;
             }
+            return false;
         }
-        return ;
+        return true;
     }
     AddBuiltinsInfo(abcId, bcOffset, receiver, receiver);
+    return true;
 }
 
-void JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold)
+bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold)
 {
     auto type = receiver->GetObjectType();
     auto builtinsId = ToBuiltinsTypeId(type);
     if (!builtinsId.has_value()) {
-        return;
+        return false;
     }
     auto thread = vm_->GetJSThread();
     JSHClass *exceptRecvHClass = nullptr;
@@ -1111,7 +1035,7 @@ void JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset
     if (builtinsId == BuiltinTypeId::ARRAY_ITERATOR) {
         if ((exceptRecvHClass != receiver) ||
             (exceptHoldHClass != hold && exceptPrototypeOfPrototypeHClass != hold)) {
-            return;
+            return true;
         }
     } else if (IsTypedArrayType(builtinsId.value())) {
         auto exceptRecvHClassOnHeap = thread->GetBuiltinExtraHClass(builtinsId.value());
@@ -1119,12 +1043,17 @@ void JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset
                      "must be on heap");
         if (JITProfiler::IsJSHClassNotEqual(receiver, hold, exceptRecvHClass, exceptRecvHClassOnHeap, exceptHoldHClass,
                                             exceptPrototypeOfPrototypeHClass)) {
-            return;
+            return true;
         }
     } else if (exceptRecvHClass != receiver || exceptHoldHClass != hold) {
-        return;
+        if (builtinsId == BuiltinTypeId::OBJECT) {
+            return false;
+        } else {
+            return true;
+        }
     }
     AddBuiltinsInfo(abcId, bcOffset, receiver, receiver);
+    return true;
 }
 
 bool JITProfiler::IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
@@ -1137,130 +1066,18 @@ bool JITProfiler::IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClas
             (exceptHoldHClass != hold && exceptPrototypeOfPrototypeHClass != hold));
 }
 
-void JITProfiler::UpdateLayout(JSHClass *hclass)
+void JITProfiler::Clear()
 {
-    auto parentHClass = hclass->GetParent();
-    if (parentHClass.IsJSHClass()) {
-        UpdateTranstionLayout(JSHClass::Cast(parentHClass.GetTaggedObject()), hclass);
-    } else {
-        auto rootHClass = JSHClass::FindRootHClass(hclass);
-        auto rootHClassVal = JSTaggedType(rootHClass);
-        auto rootType = GetProfileType(rootHClassVal, rootHClassVal);
-        if (rootType.IsNone()) {
-            return;
-        }
-
-        auto prototypeHClass = JSHClass::FindProtoRootHClass(rootHClass);
-        if (prototypeHClass.IsJSHClass()) {
-            auto prototypeValue = prototypeHClass.GetRawData();
-            auto prototypeType = GetProfileType(prototypeValue, prototypeValue);
-            if (!prototypeType.IsNone()) {
-                UpdateLayout(JSHClass::Cast(prototypeHClass.GetTaggedObject()));
-            }
-        }
-
-        auto curType = GetOrInsertProfileType(rootHClassVal, JSTaggedType(hclass));
-        (void) curType;
-    }
+    bcOffsetPGOOpTypeMap_.clear();
+    bcOffsetPGODefOpTypeMap_.clear();
+    bcOffsetPGORwTypeMap_.clear();
+    abcId_ = 0;
+    profileTypeInfo_ = nullptr;
+    methodId_ = (EntityId)0;
 }
 
-void JITProfiler::UpdateTranstionLayout(JSHClass *parent, JSHClass *child)
-{
-    auto rootHClass = JSHClass::FindRootHClass(parent);
-    auto rootHClassVal = JSTaggedType(rootHClass);
-    auto rootType = GetProfileType(rootHClassVal, rootHClassVal);
-    if (rootType.IsNone()) {
-        return;
-    }
-    auto curHClass = JSTaggedType(child);
-    auto curType = GetOrInsertProfileType(rootHClassVal, curHClass);
-    CVector<JSTaggedType> hclassVec;
-    CVector<ProfileType> typeVec;
-    hclassVec.push_back(curHClass);
-    typeVec.push_back(curType);
-
-    auto parentHClass = JSTaggedValue(parent);
-    auto parentHCValue = JSTaggedType(parent);
-    auto parentType = GetOrInsertProfileType(rootHClassVal, parentHCValue);
-    while (parentHClass.IsJSHClass()) {
-        parentHClass = JSHClass::Cast(parentHClass.GetTaggedObject())->GetParent();
-        if (!parentHClass.IsJSHClass()) {
-            break;
-        }
-        hclassVec.push_back(parentHCValue);
-        typeVec.push_back(parentType);
-        parentHCValue = JSTaggedType(parentHClass.GetTaggedObject());
-        parentType = GetOrInsertProfileType(rootHClassVal, parentHCValue);
-    }
-
-    auto prototypeHClass = JSHClass::FindProtoRootHClass(rootHClass);
-    if (prototypeHClass.IsJSHClass()) {
-        auto prototypeValue = prototypeHClass.GetRawData();
-        auto prototypeType = GetProfileType(prototypeValue, prototypeValue);
-        if (!prototypeType.IsNone()) {
-            UpdateLayout(JSHClass::Cast(prototypeHClass.GetTaggedObject()));
-        }
-    }
-
-    int32_t size = static_cast<int32_t>(hclassVec.size());
-    for (int32_t i = size - 1; i >= 0; i--) {
-        curHClass = hclassVec[i];
-        curType = typeVec[i];
-        parentHCValue = curHClass;
-        parentType = curType;
-    }
-}
-
-void JITProfiler::UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info)
-{
-    if (receiver == holder) {
-        return;
-    }
-
-    std::vector<std::pair<ProfileType, ProfileType>> protoChain;
-    JSTaggedValue proto = JSHClass::FindProtoHClass(receiver);
-    while (proto.IsJSHClass()) {
-        auto protoHClass = JSHClass::Cast(proto.GetTaggedObject());
-        if (protoHClass == holder) {
-            break;
-        }
-        auto protoRootHClass = JSTaggedType(JSHClass::FindRootHClass(protoHClass));
-        auto protoRootType = GetProfileType(protoRootHClass, protoRootHClass);
-        if (protoRootType.IsNone()) {
-            break;
-        }
-        auto protoType = GetOrInsertProfileType(protoRootHClass, JSTaggedType(protoHClass));
-        protoChain.emplace_back(protoRootType, protoType);
-        proto = JSHClass::FindProtoHClass(protoHClass);
-    }
-    if (!protoChain.empty()) {
-        info.AddPrototypePt(protoChain);
-    }
-}
-
-void JITProfiler::ProcessReferences(const WeakRootVisitor &visitor)
-{
-    for (auto iter = tracedProfiles_.begin(); iter != tracedProfiles_.end();) {
-        JSTaggedType object = iter->first;
-        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
-        if (fwd == nullptr) {
-            vm_->GetNativeAreaAllocator()->Delete(iter->second);
-            iter = tracedProfiles_.erase(iter);
-            continue;
-        }
-        if (fwd != reinterpret_cast<TaggedObject *>(object)) {
-            UNREACHABLE();
-        }
-        auto generator = iter->second;
-        generator->ProcessReferences(visitor);
-        ++iter;
-    }
-}
 
 JITProfiler::~JITProfiler()
 {
-    for (auto iter : tracedProfiles_) {
-        vm_->GetNativeAreaAllocator()->Delete(iter.second);
-    }
 }
 }

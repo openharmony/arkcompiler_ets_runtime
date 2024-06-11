@@ -22,6 +22,7 @@
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/global_index.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/mem/chunk.h"
 #include "libpandafile/index_accessor.h"
 
 namespace panda::ecmascript::kungfu {
@@ -36,6 +37,7 @@ public:
         pgoType_ = acc_.TryGetPGOType(gate);
         // NOTICE-PGO: wx delete in part3
         ptManager_ = compilationEnv_->GetPTManager();
+        isAot_ = compilationEnv_->IsAotCompiler();
     }
 
     inline GateRef GetGate() const
@@ -56,6 +58,11 @@ public:
         return IsTrustedBooleanType(acc, gate) || IsTrustedNumberType(acc, gate) ||
                IsTrustedStringType(env, circuit, chunk, acc, gate);
     }
+    
+    inline bool IsAot() const
+    {
+        return isAot_;
+    }
 
     static bool IsTrustedNotSameType(const CompilationEnv *env, Circuit *circuit, Chunk *chunk,
                                      GateAccessor acc, GateRef left, GateRef right);
@@ -75,6 +82,7 @@ protected:
     PGOTypeRef pgoType_;
     // NOTICE-PGO: wx delete in part3
     PGOTypeManager *ptManager_ {nullptr};
+    bool isAot_;
 };
 
 class BinOpTypeInfoAccessor final : public TypeInfoAccessor {
@@ -200,25 +208,91 @@ public:
 
 class NewObjRangeTypeInfoAccessor final : public UnOpTypeInfoAccessor {
 public:
-    NewObjRangeTypeInfoAccessor(const CompilationEnv *env,
-                                Circuit *circuit,
-                                GateRef gate)
-        : UnOpTypeInfoAccessor(env, circuit, gate), hclassIndex_(-1) {}
+    class AccessorStrategy {
+    public:
+        virtual ~AccessorStrategy() = default;
+        virtual bool IsValidCallMethodId() const = 0;
+        virtual uint32_t GetCallMethodId() const = 0;
+        virtual bool FindHClass() const = 0;
+        virtual JSTaggedValue GetHClass() const = 0;
+    };
+
+    class AotAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit AotAccessorStrategy(NewObjRangeTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        bool IsValidCallMethodId() const override
+        {
+            return parent_.pgoType_.IsValidCallMethodId();
+        }
+
+        uint32_t GetCallMethodId() const override
+        {
+            ASSERT(IsValidCallMethodId());
+            return parent_.pgoType_.GetCallMethodId();
+        }
+        bool FindHClass() const override;
+        JSTaggedValue GetHClass() const override;
+
+    private:
+        NewObjRangeTypeInfoAccessor &parent_;
+    };
+
+    class JitAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit JitAccessorStrategy(NewObjRangeTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        bool IsValidCallMethodId() const override
+        {
+            return parent_.pgoType_.IsDefOpValidCallMethodId();
+        }
+
+        uint32_t GetCallMethodId() const override
+        {
+            ASSERT(IsValidCallMethodId());
+            return parent_.pgoType_.GetDefOpCallMethodId();
+        }
+        bool FindHClass() const override;
+        JSTaggedValue GetHClass() const override;
+
+    private:
+        NewObjRangeTypeInfoAccessor &parent_;
+    };
+
+    NewObjRangeTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate, Chunk* chunk)
+        : UnOpTypeInfoAccessor(env, circuit, gate), hclassIndex_(-1)
+    {
+        if (IsAot()) {
+            strategy_ = chunk->New<AotAccessorStrategy>(*this);
+        } else {
+            strategy_ = chunk->New<JitAccessorStrategy>(*this);
+        }
+    }
     NO_COPY_SEMANTIC(NewObjRangeTypeInfoAccessor);
     NO_MOVE_SEMANTIC(NewObjRangeTypeInfoAccessor);
 
-    bool FindHClass();
-    JSTaggedValue GetHClass();
+    bool FindHClass()
+    {
+        return strategy_->FindHClass();
+    }
+    JSTaggedValue GetHClass()
+    {
+        return strategy_->GetHClass();
+    }
 
     bool IsValidCallMethodId() const
     {
-        return pgoType_.IsValidCallMethodId();
+        return strategy_->IsValidCallMethodId();
     }
 
     uint32_t GetCallMethodId() const
     {
         ASSERT(IsValidCallMethodId());
-        return pgoType_.GetCallMethodId();
+        return strategy_->GetCallMethodId();
     }
 
     int GetHClassIndex() const
@@ -228,6 +302,10 @@ public:
 
 private:
     int hclassIndex_;
+    AccessorStrategy* strategy_;
+
+    friend class AotAccessorStrategy;
+    friend class JitAccessorStrategy;
 };
 
 class NewBuiltinCtorTypeInfoAccessor final : public UnOpTypeInfoAccessor {
@@ -241,7 +319,11 @@ public:
 
     bool IsBuiltinId(BuiltinsStubCSigns::ID id)
     {
-        return TryGetPGOBuiltinMethodId() == id;
+        if (pgoType_.IsPGOSampleType()) {
+            return TryGetPGOBuiltinMethodId() == id;
+        } else {
+            return false;
+        }
     }
 
 private:
@@ -737,6 +819,7 @@ public:
 
 private:
     PropertyLookupResult GetAccessorPlr() const;
+    PropertyLookupResult GetAccessorPlrInJIT() const;
 
     GateRef receiver_;
     CallKind kind_ {CallKind::INVALID};
@@ -748,11 +831,17 @@ public:
     class ObjectAccessInfo final {
     public:
         explicit ObjectAccessInfo(int hclassIndex = -1, PropertyLookupResult plr = PropertyLookupResult())
-            : hclassIndex_(hclassIndex), plr_(plr) {}
+            : hclassIndex_(hclassIndex), plr_(plr), hclass_(nullptr) {}
 
         void Set(int hclassIndex, PropertyLookupResult plr)
         {
             hclassIndex_ = hclassIndex;
+            plr_ = plr;
+        }
+
+        void Set(JSHClass* hclass, PropertyLookupResult plr)
+        {
+            hclass_ = hclass;
             plr_ = plr;
         }
 
@@ -769,6 +858,7 @@ public:
     private:
         int hclassIndex_;
         PropertyLookupResult plr_;
+        JSHClass* hclass_;
     };
 
     enum AccessMode : uint8_t {
@@ -844,6 +934,7 @@ public:
 
 protected:
     bool GeneratePlr(ProfileTyper type, ObjectAccessInfo &info, JSTaggedValue key) const;
+    bool GeneratePlrInJIT(JSHClass* hclass, ObjectAccessInfo &info, JSTaggedValue key) const;
 
     bool hasIllegalType_;
     ChunkVector<ObjectAccessInfo> accessInfos_;
@@ -852,27 +943,87 @@ protected:
 
 class LoadPrivatePropertyTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
-    LoadPrivatePropertyTypeInfoAccessor(const CompilationEnv *env, Circuit* circuit, GateRef gate, Chunk* chunk)
-        : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_)
+    class AccessorStrategy {
+    public:
+        virtual ~AccessorStrategy() = default;
+        virtual bool TypesIsEmpty() const = 0;
+        virtual bool IsMono() const = 0;
+        virtual void FetchPGORWTypesDual() = 0;
+        virtual bool GenerateObjectAccessInfo() = 0;
+    };
+
+    class AotAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit AotAccessorStrategy(LoadPrivatePropertyTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.types_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.types_.size() == 1;
+        }
+
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+
+    private:
+        LoadPrivatePropertyTypeInfoAccessor &parent_;
+    };
+
+    class JitAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit JitAccessorStrategy(LoadPrivatePropertyTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.jitTypes_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.jitTypes_.size() == 1;
+        }
+
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+
+    private:
+        LoadPrivatePropertyTypeInfoAccessor &parent_;
+    };
+
+    LoadPrivatePropertyTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate, Chunk *chunk)
+        : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_), jitTypes_(chunk_)
     {
         levelIndex_ = acc_.GetValueIn(gate, 1); // 1: levelIndex
-        slotIndex_ = acc_.GetValueIn(gate, 2); // 2: slotIndex
+        slotIndex_ = acc_.GetValueIn(gate, 2);  // 2: slotIndex
         lexicalEnv_ = acc_.GetValueIn(gate, 3); // 3: lexicalEnv
-        receiver_ = acc_.GetValueIn(gate, 4); // 4: acc as receiver
-        FetchPGORWTypesDual();
-        hasIllegalType_ = !GenerateObjectAccessInfo();
+        receiver_ = acc_.GetValueIn(gate, 4);   // 4: acc as receiver
+        if (IsAot()) {
+            strategy_ = chunk_->New<AotAccessorStrategy>(*this);
+        } else {
+            strategy_ = chunk_->New<JitAccessorStrategy>(*this);
+        }
+        strategy_->FetchPGORWTypesDual();
+        hasIllegalType_ = !strategy_->GenerateObjectAccessInfo();
     }
     NO_COPY_SEMANTIC(LoadPrivatePropertyTypeInfoAccessor);
     NO_MOVE_SEMANTIC(LoadPrivatePropertyTypeInfoAccessor);
 
     bool IsMono() const
     {
-        return types_.size() == 1;
+        return strategy_->IsMono();
     }
 
     bool TypesIsEmpty() const
     {
-        return types_.size() == 0;
+        return strategy_->TypesIsEmpty();
     }
 
     GateRef GetLevelIndex() const
@@ -898,39 +1049,106 @@ public:
 private:
     void FetchPGORWTypesDual();
     bool GenerateObjectAccessInfo();
+
+    void FetchPGORWTypesDualInJIT();
+    bool GenerateObjectAccessInfoInJIT();
     JSTaggedValue GetKeyTaggedValue() const;
 
     ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types_;
+    ChunkVector<pgo::PGOObjectInfo> jitTypes_;
     GateRef levelIndex_;
     GateRef slotIndex_;
     GateRef lexicalEnv_;
-    bool isAccessor_ {false};
+    bool isAccessor_{false};
+    AccessorStrategy* strategy_;
+    friend class AotAccessorStrategy;
+    friend class JitAccessorStrategy;
 };
 
 class StorePrivatePropertyTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
-    StorePrivatePropertyTypeInfoAccessor(const CompilationEnv *env, Circuit* circuit, GateRef gate, Chunk* chunk)
-        : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_)
+    class AccessorStrategy {
+    public:
+        virtual ~AccessorStrategy() = default;
+        virtual bool TypesIsEmpty() const = 0;
+        virtual bool IsMono() const = 0;
+        virtual void FetchPGORWTypesDual() = 0;
+        virtual bool GenerateObjectAccessInfo() = 0;
+    };
+
+    class AotAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit AotAccessorStrategy(StorePrivatePropertyTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.types_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.types_.size() == 1;
+        }
+
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+
+    private:
+        StorePrivatePropertyTypeInfoAccessor &parent_;
+    };
+
+    class JitAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit JitAccessorStrategy(StorePrivatePropertyTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.jitTypes_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.jitTypes_.size() == 1;
+        }
+
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+
+    private:
+        StorePrivatePropertyTypeInfoAccessor &parent_;
+    };
+
+    StorePrivatePropertyTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate, Chunk *chunk)
+        : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_), jitTypes_(chunk)
     {
         levelIndex_ = acc_.GetValueIn(gate, 1); // 1: levelIndex
-        slotIndex_ = acc_.GetValueIn(gate, 2); // 2: slotIndex
-        receiver_ = acc_.GetValueIn(gate, 3); // 3: receiver
+        slotIndex_ = acc_.GetValueIn(gate, 2);  // 2: slotIndex
+        receiver_ = acc_.GetValueIn(gate, 3);   // 3: receiver
         lexicalEnv_ = acc_.GetValueIn(gate, 4); // 4: lexicalEnv
-        value_ = acc_.GetValueIn(gate, 5); // 5: acc as value
-        FetchPGORWTypesDual();
-        hasIllegalType_ = !GenerateObjectAccessInfo();
+        value_ = acc_.GetValueIn(gate, 5);      // 5: acc as value
+        if (IsAot()) {
+            strategy_ = chunk_->New<AotAccessorStrategy>(*this);
+        } else {
+            strategy_ = chunk_->New<JitAccessorStrategy>(*this);
+        }
+        strategy_->FetchPGORWTypesDual();
+        hasIllegalType_ = !strategy_->GenerateObjectAccessInfo();
     }
     NO_COPY_SEMANTIC(StorePrivatePropertyTypeInfoAccessor);
     NO_MOVE_SEMANTIC(StorePrivatePropertyTypeInfoAccessor);
 
     bool IsMono() const
     {
-        return types_.size() == 1;
+        return strategy_->IsMono();
     }
 
     bool TypesIsEmpty() const
     {
-        return types_.size() == 0;
+        return strategy_->TypesIsEmpty();
     }
 
     GateRef GetValue() const
@@ -959,93 +1177,266 @@ public:
     }
 
 private:
-    void FetchPGORWTypesDual();
-    bool GenerateObjectAccessInfo();
     JSTaggedValue GetKeyTaggedValue() const;
 
     ChunkVector<std::tuple<ProfileTyper, ProfileTyper, ProfileTyper>> types_;
+    ChunkVector<pgo::PGOObjectInfo> jitTypes_;
     GateRef value_;
     GateRef levelIndex_;
     GateRef slotIndex_;
     GateRef lexicalEnv_;
-    bool isAccessor_ {false};
+    bool isAccessor_{false};
+    AccessorStrategy* strategy_;
+    friend class AotAccessorStrategy;
+    friend class JitAccessorStrategy;
 };
 
 class LoadObjByNameTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
-    LoadObjByNameTypeInfoAccessor(const CompilationEnv *env,
-                                  Circuit *circuit,
-                                  GateRef gate,
-                                  Chunk *chunk);
+    class AccessorStrategy {
+    public:
+        virtual ~AccessorStrategy() = default;
+        virtual size_t GetTypeCount() const = 0;
+        virtual bool TypesIsEmpty() const = 0;
+        virtual bool IsMono() const = 0;
+        virtual bool IsReceiverEqHolder(size_t index) const = 0;
+        virtual void FetchPGORWTypesDual() = 0;
+        virtual bool GenerateObjectAccessInfo() = 0;
+    };
+
+    class AotAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit AotAccessorStrategy(LoadObjByNameTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        size_t GetTypeCount() const override
+        {
+            return parent_.types_.size();
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.types_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.types_.size() == 1;
+        }
+
+        bool IsReceiverEqHolder(size_t index) const override
+        {
+            ASSERT(index < parent_.types_.size());
+            return parent_.types_[index].first == parent_.types_[index].second;
+        }
+
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+
+    private:
+        LoadObjByNameTypeInfoAccessor &parent_;
+    };
+
+    class JitAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit JitAccessorStrategy(LoadObjByNameTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        size_t GetTypeCount() const override
+        {
+            return parent_.jitTypes_.size();
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.jitTypes_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.jitTypes_.size() == 1;
+        }
+
+        bool IsReceiverEqHolder(size_t index) const override
+        {
+            return parent_.jitTypes_[index].GetReceiverHclass() == parent_.jitTypes_[index].GetHolderHclass();
+        }
+
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+
+    private:
+        LoadObjByNameTypeInfoAccessor &parent_;
+    };
+    LoadObjByNameTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate, Chunk *chunk);
     NO_COPY_SEMANTIC(LoadObjByNameTypeInfoAccessor);
     NO_MOVE_SEMANTIC(LoadObjByNameTypeInfoAccessor);
 
     size_t GetTypeCount()
     {
-        return types_.size();
+        return strategy_->GetTypeCount();
     }
 
     bool TypesIsEmpty()
     {
-        return types_.size() == 0;
+        return strategy_->TypesIsEmpty();
     }
 
     bool IsMono()
     {
-        return types_.size() == 1;
+        return strategy_->IsMono();
     }
 
     bool IsReceiverEqHolder(size_t index)
     {
-        ASSERT(index < types_.size());
-        return types_[index].first == types_[index].second;
+        return strategy_->IsReceiverEqHolder(index);
     }
 
 private:
-    void FetchPGORWTypesDual();
-
-    bool GenerateObjectAccessInfo();
-
     ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types_;
+    ChunkVector<pgo::PGOObjectInfo> jitTypes_;
+
+    AccessorStrategy* strategy_;
+    friend class AotAccessorStrategy;
+    friend class JitAccessorStrategy;
 };
 
 class StoreObjByNameTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
-    StoreObjByNameTypeInfoAccessor(const CompilationEnv *env,
-                                   Circuit *circuit,
-                                   GateRef gate,
-                                   Chunk *chunk);
+    class AccessorStrategy {
+    public:
+        virtual ~AccessorStrategy() = default;
+        virtual size_t GetTypeCount() const = 0;
+        virtual bool TypesIsEmpty() const = 0;
+        virtual bool IsMono() const = 0;
+        virtual bool IsReceiverEqHolder(size_t index) const = 0;
+        virtual bool IsReceiverNoEqNewHolder(size_t index) const = 0;
+        virtual bool IsHolderEqNewHolder(size_t index) const = 0;
+        virtual void FetchPGORWTypesDual() = 0;
+        virtual bool GenerateObjectAccessInfo() = 0;
+    };
+
+    class AotAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit AotAccessorStrategy(StoreObjByNameTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        size_t GetTypeCount() const override
+        {
+            return parent_.types_.size();
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.types_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.types_.size() == 1;
+        }
+
+        bool IsReceiverEqHolder(size_t index) const override
+        {
+            return std::get<HclassIndex::Reciver>(parent_.types_[index]) ==
+                   std::get<HclassIndex::Holder>(parent_.types_[index]);
+        }
+
+        bool IsReceiverNoEqNewHolder(size_t index) const override
+        {
+            return std::get<HclassIndex::Reciver>(parent_.types_[index]) !=
+                   std::get<HclassIndex::HolderTra>(parent_.types_[index]);
+        }
+
+        bool IsHolderEqNewHolder(size_t index) const override
+        {
+            return std::get<HclassIndex::Holder>(parent_.types_[index]) ==
+                   std::get<HclassIndex::HolderTra>(parent_.types_[index]);
+        }
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+
+    private:
+        StoreObjByNameTypeInfoAccessor &parent_;
+    };
+
+    class JitAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit JitAccessorStrategy(StoreObjByNameTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        size_t GetTypeCount() const override
+        {
+            return parent_.jitTypes_.size();
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.jitTypes_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.jitTypes_.size() == 1;
+        }
+
+        bool IsReceiverEqHolder(size_t index) const override
+        {
+            return parent_.jitTypes_[index].GetReceiverHclass() == parent_.jitTypes_[index].GetHolderHclass();
+        }
+
+        bool IsReceiverNoEqNewHolder(size_t index) const override
+        {
+            return parent_.jitTypes_[index].GetReceiverHclass() != parent_.jitTypes_[index].GetHolderTraHclass();
+        }
+
+        bool IsHolderEqNewHolder(size_t index) const override
+        {
+            return parent_.jitTypes_[index].GetHolderHclass() == parent_.jitTypes_[index].GetHolderTraHclass();
+        }
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+
+    private:
+        StoreObjByNameTypeInfoAccessor &parent_;
+    };
+
+    StoreObjByNameTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate, Chunk *chunk);
     NO_COPY_SEMANTIC(StoreObjByNameTypeInfoAccessor);
     NO_MOVE_SEMANTIC(StoreObjByNameTypeInfoAccessor);
 
     size_t GetTypeCount()
     {
-        return types_.size();
+        return strategy_->GetTypeCount();
     }
 
     bool TypesIsEmpty()
     {
-        return types_.size() == 0;
+        return strategy_->TypesIsEmpty();
     }
 
     bool IsMono()
     {
-        return types_.size() == 1;
+        return strategy_->IsMono();
     }
 
     bool IsReceiverEqHolder(size_t index) const
     {
-        return std::get<0>(types_[index]) == std::get<1>(types_[index]);
+        return strategy_->IsReceiverEqHolder(index);
     }
 
     bool IsReceiverNoEqNewHolder(size_t index) const
     {
-        return std::get<0>(types_[index]) != std::get<2>(types_[index]);    // 2 means 3rd object
+        return strategy_->IsReceiverNoEqNewHolder(index);
     }
 
     bool IsHolderEqNewHolder(size_t index) const
     {
-        return std::get<1>(types_[index]) == std::get<2>(types_[index]);    // 2 means 3rd object
+        return strategy_->IsHolderEqNewHolder(index);
     }
 
     GateRef GetValue() const
@@ -1054,36 +1445,117 @@ public:
     }
 
 private:
-    void FetchPGORWTypesDual();
-
-    bool GenerateObjectAccessInfo();
-
+    enum HclassIndex {
+        Reciver = 0,
+        Holder,
+        HolderTra
+    };
     ChunkVector<std::tuple<ProfileTyper, ProfileTyper, ProfileTyper>> types_;
+    ChunkVector<pgo::PGOObjectInfo> jitTypes_;
     GateRef value_;
+    AccessorStrategy* strategy_;
+    friend class AotAccessorStrategy;
+    friend class JitAccessorStrategy;
 };
 
 class InstanceOfTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
-    InstanceOfTypeInfoAccessor(const CompilationEnv *env,
-                                  Circuit *circuit,
-                                  GateRef gate,
-                                  Chunk *chunk);
+    class AccessorStrategy {
+    public:
+        virtual ~AccessorStrategy() = default;
+        virtual size_t GetTypeCount() const = 0;
+        virtual bool TypesIsEmpty() const = 0;
+        virtual bool IsMono() const = 0;
+        virtual void FetchPGORWTypesDual() = 0;
+        virtual bool GenerateObjectAccessInfo() = 0;
+        virtual bool ClassInstanceIsCallable(ProfileTyper type) const = 0;
+        virtual bool ClassInstanceIsCallable(JSHClass *hclass) const = 0;
+    };
+
+    class AotAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit AotAccessorStrategy(InstanceOfTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        size_t GetTypeCount() const override
+        {
+            return parent_.types_.size();
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.types_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.types_.size() == 1;
+        }
+
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+        bool ClassInstanceIsCallable(ProfileTyper type) const override;
+        bool ClassInstanceIsCallable([[maybe_unused]] JSHClass *hclass) const override
+        {
+            ASSERT(0);
+            return false;
+        }
+
+    private:
+        InstanceOfTypeInfoAccessor &parent_;
+    };
+
+    class JitAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit JitAccessorStrategy(InstanceOfTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        size_t GetTypeCount() const override
+        {
+            return parent_.jitTypes_.size();
+        }
+
+        bool TypesIsEmpty() const override
+        {
+            return parent_.jitTypes_.empty();
+        }
+
+        bool IsMono() const override
+        {
+            return parent_.jitTypes_.size() == 1;
+        }
+        void FetchPGORWTypesDual() override;
+        bool GenerateObjectAccessInfo() override;
+        bool ClassInstanceIsCallable(JSHClass *hclass) const override;
+        bool ClassInstanceIsCallable([[maybe_unused]] ProfileTyper type) const override
+        {
+            ASSERT(0);
+            return false;
+        }
+
+    private:
+        InstanceOfTypeInfoAccessor &parent_;
+    };
+
+    InstanceOfTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate, Chunk *chunk);
     NO_COPY_SEMANTIC(InstanceOfTypeInfoAccessor);
     NO_MOVE_SEMANTIC(InstanceOfTypeInfoAccessor);
 
     size_t GetTypeCount()
     {
-        return types_.size();
+        return strategy_->GetTypeCount();
     }
 
     bool TypesIsEmpty()
     {
-        return types_.size() == 0;
+        return strategy_->TypesIsEmpty();
     }
 
     bool IsMono()
     {
-        return types_.size() == 1;
+        return strategy_->IsMono();
     }
 
     JSTaggedValue GetKeyTaggedValue() const;
@@ -1094,14 +1566,13 @@ public:
     }
 
 private:
-    void FetchPGORWTypesDual();
-
-    bool ClassInstanceIsCallable(ProfileTyper type) const;
-
-    bool GenerateObjectAccessInfo();
-
     ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types_;
+    ChunkVector<pgo::PGOObjectInfo> jitTypes_;
     GateRef target_;
+    AccessorStrategy* strategy_;
+
+    friend class AotAccessorStrategy;
+    friend class JitAccessorStrategy;
 };
 
 class AccBuiltinObjTypeInfoAccessor : public ObjectAccessTypeInfoAccessor {
@@ -1311,12 +1782,46 @@ public:
     CreateObjWithBufferTypeInfoAccessor(const CompilationEnv *env,
                                         Circuit *circuit,
                                         GateRef gate,
-                                        const CString &recordName);
+                                        const CString &recordName,
+                                        Chunk* chunk);
 
     NO_COPY_SEMANTIC(CreateObjWithBufferTypeInfoAccessor);
     NO_MOVE_SEMANTIC(CreateObjWithBufferTypeInfoAccessor);
 
-    JSTaggedValue GetHClass() const;
+    class AccessorStrategy {
+    public:
+        virtual ~AccessorStrategy() = default;
+        virtual JSTaggedValue GetHClass() const = 0;
+    };
+
+    class AotAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit AotAccessorStrategy(CreateObjWithBufferTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        JSTaggedValue GetHClass() const override;
+
+    private:
+        CreateObjWithBufferTypeInfoAccessor &parent_;
+    };
+
+    class JitAccessorStrategy : public AccessorStrategy {
+    public:
+        explicit JitAccessorStrategy(CreateObjWithBufferTypeInfoAccessor &parent) : parent_(parent)
+        {
+        }
+
+        JSTaggedValue GetHClass() const override;
+
+    private:
+        CreateObjWithBufferTypeInfoAccessor &parent_;
+    };
+
+    JSTaggedValue GetHClass() const
+    {
+        return strategy_->GetHClass();
+    }
 
     JSTaggedValue GetObject() const;
 
@@ -1342,6 +1847,10 @@ private:
 
     const CString &recordName_;
     GateRef index_;
+    AccessorStrategy* strategy_;
+
+    friend class AotAccessorStrategy;
+    friend class JitAccessorStrategy;
 };
 }   // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFO_ACCESSORS_H
