@@ -22,6 +22,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "file.h"
 #include "jsnapi.h"
@@ -81,6 +82,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         }
         std::string hspPath = ModulePathHelper::ParseHapPath(filename);
         if (hspPath.empty()) {
+            LOG_FULL(ERROR) << ModuleMessageHelper::VmModuleInfoMessage(thread);
             LOG_FULL(FATAL) << "Invalid input hsp path: " << filename;
             return nullptr;
         }

@@ -293,7 +293,7 @@ CString ModulePathHelper::ParseUrl(EcmaVM *vm, const CString &recordName)
 
 /*
  * Before: moduleRequestName: @bundle:bundleName/moduleName@namespace/ets/xxx
- * After:  baseFileName: 1./data/storage/el1/bundle/bundleName/ets/modules.abc
+ * After:  baseFileName: 1./data/storage/el1/bundle/moduleName/ets/modules.abc
  *                       2./data/storage/el1/bundle/bundleName/moduleName/moduleName/ets/modules.abc
  *         entryPoint:   bundleName/moduleName@namespace/ets/xxx
  */

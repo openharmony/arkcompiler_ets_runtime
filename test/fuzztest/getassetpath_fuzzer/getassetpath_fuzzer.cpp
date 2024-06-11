@@ -31,7 +31,8 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        JSNApi::SetAssetPath(vm, (char*)data);
+        std::string str = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
+        JSNApi::SetAssetPath(vm, str);
         [[maybe_unused]]std::string res = JSNApi::GetAssetPath(vm);
         JSNApi::DestroyJSVM(vm);
     }
