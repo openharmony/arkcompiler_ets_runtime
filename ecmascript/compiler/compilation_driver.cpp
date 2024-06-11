@@ -60,10 +60,10 @@ bool CompilationDriver::IsCurModuleFull() const
     return (compiledMethodCnt_ % maxMethodsInModule_ == 0);
 }
 
-void CompilationDriver::CompileModuleThenDestroyIfNeeded(bool isJit)
+void CompilationDriver::CompileModuleThenDestroyIfNeeded(bool isJitAndCodeSign)
 {
     if (IsCurModuleFull()) {
-        fileGenerator_->CompileLatestModuleThenDestroy(isJit);
+        fileGenerator_->CompileLatestModuleThenDestroy(isJitAndCodeSign);
     }
 }
 
@@ -203,7 +203,8 @@ void CompilationDriver::StoreConstantPoolInfo() const
 bool JitCompilationDriver::RunCg()
 {
     IncCompiledMethod();
-    CompileModuleThenDestroyIfNeeded(true);
+    bool enableCodeSign = !compilationEnv_->GetJSOptions().GetDisableCodeSign();
+    CompileModuleThenDestroyIfNeeded(enableCodeSign);  // isJit AND !DisabelCodeSign
     return true;
 }
 

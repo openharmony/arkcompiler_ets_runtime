@@ -365,6 +365,10 @@ void EcmaVM::EnableJit()
     options_.SetJitHotnessThreshold(jitHotnessThreshold);
     LOG_JIT(INFO) << "jit enable litecg:" << jitEnableLitecg << ", call threshold:" <<
         static_cast<int>(jitCallThreshold) << ", hotness threshold:" << jitHotnessThreshold;
+
+    bool jitDisableCodeSign = ohos::JitTools::GetCodeSignDisable();
+    options_.SetDisableCodeSign(jitDisableCodeSign);
+    LOG_JIT(INFO) << "jit disable codesigner:" << jitDisableCodeSign;
 }
 
 Jit *EcmaVM::GetJit() const
