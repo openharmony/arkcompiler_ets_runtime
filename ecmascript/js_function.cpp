@@ -182,7 +182,7 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
     // in order to avoid subsequent Deopt, PGO gives up collecting this type.
     if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
         EntityId ctorMethodId = Method::Cast(func->GetMethod())->GetMethodId();
-        thread->GetEcmaVM()->GetPGOProfiler()->InsertSkipCtorMethodId(ctorMethodId);
+        thread->GetEcmaVM()->GetPGOProfiler()->InsertSkipCtorMethodIdSafe(ctorMethodId);
     }
     return true;
 }
