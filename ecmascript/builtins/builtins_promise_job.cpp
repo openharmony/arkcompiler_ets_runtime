@@ -156,9 +156,10 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString fileNameStr = ModulePathHelper::Utf8ConvertToString(dirPath.GetTaggedValue());
     CString requestPath = ModulePathHelper::Utf8ConvertToString(specifierString.GetTaggedValue());
     LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
-    if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
+    if (enableESMTrace) {
         CString traceInfo = "DynamicImportJob: " + requestPath;
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
     }
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     CString recordNameStr;
@@ -255,6 +256,9 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
     info->SetCallArg(moduleNamespace.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (enableESMTrace) {
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+    }
     return JSFunction::Call(info);
 }
 

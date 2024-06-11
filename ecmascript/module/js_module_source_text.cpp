@@ -415,9 +415,10 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
 
     CString moduleRequestName =
         ModulePathHelper::Utf8ConvertToString(requiredModule->GetEcmaModuleRecordName());
-    if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
+    if (enableESMTrace) {
         CString traceInfo = "LoadNativeModule: " + moduleRequestName;
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
     }
     CString soName = PathHelper::GetStrippedModuleName(moduleRequestName);
 
@@ -457,6 +458,9 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
         return false;
     }
     requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
+    if (enableESMTrace) {
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+    }
     return true;
 }
 

@@ -278,9 +278,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
                                                            std::string_view entryPoint, bool executeFromJob)
 {
     ThreadManagedScope managedScope(thread);
-    if (thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
+    if (enableESMTrace) {
         CString traceInfo = "FileExecute: " + CString(entryPoint);
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
     }
     // For Ark application startup
     EcmaContext *context = thread->GetCurrentEcmaContext();
@@ -294,6 +295,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
         quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
 
         result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, executeFromJob);
+    }
+    if (enableESMTrace) {
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
     }
     return result;
 }
