@@ -80,7 +80,7 @@ void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method, JS
     const JSPandaFile* methodJsPandaFile = method->GetJSPandaFile();
     panda_file::File::EntityId methodId = method->GetMethodId();
     PushMethodInfo(std::make_tuple(const_cast<JSPandaFile *>(methodJsPandaFile), methodId));
-    if (envHandle.GetTaggedValue().IsUndefinedOrNull()) {
+    if (!envHandle->IsLexicalEnv()) {
         return;
     }
     uint32_t codeSize = method->GetCodeSize();
@@ -109,7 +109,7 @@ void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method, JS
                     break;
                 }
                 JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
-                if (taggedParentEnv.IsUndefined()) {
+                if (!taggedParentEnv.IsLexicalEnv()) {
                     break;
                 }
                 env = taggedParentEnv;
