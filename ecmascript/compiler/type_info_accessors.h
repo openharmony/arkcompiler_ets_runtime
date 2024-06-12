@@ -60,6 +60,8 @@ public:
     static bool IsTrustedNotSameType(const CompilationEnv *env, Circuit *circuit, Chunk *chunk,
                                      GateAccessor acc, GateRef left, GateRef right);
 
+    static constexpr uint32_t INVALID_LEN = std::numeric_limits<uint32_t>::max();
+
 protected:
     ParamType PGOSampleTypeToParamType() const;
     static ParamType PGOBuiltinTypeToParamType(ProfileType pgoType);
@@ -338,7 +340,7 @@ public:
     uint32_t GetFunctionTypeLength() const
     {
         if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
-            return false;
+            return INVALID_LEN;
         }
         auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
         bool haveProfileType = !profileType->IsNone();
@@ -347,7 +349,7 @@ public:
             MethodLiteral *targetMethodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
             return targetMethodLiteral->GetNumArgsWithCallField();
         }
-        return 0;
+        return INVALID_LEN;
     }
 
     bool IsNoGC() const
@@ -368,7 +370,7 @@ public:
     int GetMethodIndex() const
     {
         if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
-            return false;
+            return -1;
         }
         auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
         bool haveProfileType = !profileType->IsNone();
@@ -381,7 +383,7 @@ public:
                 ConstantPool::Cast(compilationEnv_->FindConstpool(jsPandaFile_, cpId).GetTaggedObject());
             return constpoolHandle->GetMethodIndexByEntityId(panda_file::File::EntityId(methodId));
         }
-        return 0;
+        return -1;
     }
 
     bool MethodOffsetIsVaild() const
