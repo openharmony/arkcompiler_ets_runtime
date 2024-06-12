@@ -2808,7 +2808,7 @@ DECLARE_ASM_HANDLER(HandleReturn)
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
@@ -2906,7 +2906,7 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
@@ -3012,7 +3012,7 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
@@ -3117,7 +3117,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
@@ -3498,7 +3498,7 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
@@ -5342,8 +5342,7 @@ DECLARE_ASM_HANDLER(BCDebuggerEntry)
             Return();
         }
         Bind(&pcNotEqualNullptr);
-        BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())),
-               &pcEqualBaseline, &pcNotEqualBaseline);
+        BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
         Bind(&pcEqualBaseline);
         {
             CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturn), { *varAcc, *varSp, currentSp });

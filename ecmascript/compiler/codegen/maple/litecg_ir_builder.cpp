@@ -946,7 +946,7 @@ Expr LiteCGIRBuilder::GetRTStubOffset(Expr glue, int index)
 
 Expr LiteCGIRBuilder::GetCoStubOffset(Expr glue, int index) const
 {
-    int offset =
+    size_t offset =
         JSThread::GlueData::GetCOStubEntriesOffset(compCfg_->Is32Bit()) + static_cast<size_t>(index * slotSize_);
     Const &constVal = lmirBuilder_->CreateIntConst(glue.GetType(), static_cast<int64_t>(offset));
     return lmirBuilder_->ConstVal(constVal);
@@ -954,7 +954,7 @@ Expr LiteCGIRBuilder::GetCoStubOffset(Expr glue, int index) const
 
 Expr LiteCGIRBuilder::GetBaselineStubOffset(Expr glue, int index) const
 {
-    int offset =
+    size_t offset =
         JSThread::GlueData::GetBaselineStubEntriesOffset(compCfg_->Is32Bit()) + static_cast<size_t>(index * slotSize_);
     Const &constVal = lmirBuilder_->CreateIntConst(glue.GetType(), static_cast<int64_t>(offset));
     return lmirBuilder_->ConstVal(constVal);

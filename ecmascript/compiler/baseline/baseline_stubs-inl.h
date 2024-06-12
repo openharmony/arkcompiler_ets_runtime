@@ -279,7 +279,7 @@ GateRef BaselineStubBuilder::GetStartIdxAndNumArgs(GateRef sp, GateRef restIdx)
            &actualNotEqualDeclared, &actualEqualDeclared);
     Bind(&actualNotEqualDeclared);
     {
-        numArgs = GetInt32OfTInt(Load(VariableType::JS_ANY(), fp, IntPtr(-sizeof(JSTaggedType))));
+        numArgs = GetInt32OfTInt(Load(VariableType::JS_ANY(), fp, IntPtr(static_cast<int64_t>(-sizeof(JSTaggedType)))));
         Jump(&actualEqualDeclared);
     }
     Bind(&actualEqualDeclared);

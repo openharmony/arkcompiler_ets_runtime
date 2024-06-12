@@ -31,6 +31,8 @@ namespace kungfu {
     class ArkStackMapParser;
 };
 
+static constexpr int64_t BASELINEJIT_PC_FLAG = static_cast<int64_t>(std::numeric_limits<uint64_t>::max());
+
 // Here list all scenarios of calling between Runtime/CInterpreter/ASMInterpreter/AOTCompiler/CBuiltin/ASMBuitlin.
 // Please note that the "[]" means a must frame while "<>" means an optional frame. Each case is from top to down.
 //

@@ -1248,7 +1248,8 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
     __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndReturnBaseline));
     Register currentSp = r12;
     Register fpRegister = r10;
-    intptr_t fpOffset = AsmInterpretedFrame::GetFpOffset(false) - AsmInterpretedFrame::GetSize(false);
+    intptr_t fpOffset =
+        static_cast<intptr_t>(AsmInterpretedFrame::GetFpOffset(false) - AsmInterpretedFrame::GetSize(false));
     __ Movq(Operand(currentSp, static_cast<int32_t>(fpOffset)), fpRegister);
     __ Movq(fpRegister, rsp);
 
@@ -1269,7 +1270,8 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
 
         // acc is undefined
         __ Bind(&getThis);
-        intptr_t thisOffset = AsmInterpretedFrame::GetThisOffset(false) - AsmInterpretedFrame::GetSize(false);
+        intptr_t thisOffset =
+            static_cast<intptr_t>(AsmInterpretedFrame::GetThisOffset(false) - AsmInterpretedFrame::GetSize(false));
         __ Movq(Operand(currentSp, static_cast<int32_t>(thisOffset)), ret);
         __ Jmp(&normalReturn);
 
@@ -1295,8 +1297,8 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
             __ Bind(&notEcmaObject);
             {
                 // load constructor
-                intptr_t funcOffset =
-                    AsmInterpretedFrame::GetFunctionOffset(false) - AsmInterpretedFrame::GetSize(false);
+                intptr_t funcOffset = static_cast<intptr_t>(
+                    AsmInterpretedFrame::GetFunctionOffset(false) - AsmInterpretedFrame::GetSize(false));
                 __ Movq(Operand(currentSp, static_cast<int32_t>(funcOffset)), temp);
                 __ Movq(Operand(temp, JSFunctionBase::METHOD_OFFSET), temp);
                 __ Movq(Operand(temp, Method::EXTRA_LITERAL_INFO_OFFSET), temp);
