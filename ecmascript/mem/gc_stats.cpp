@@ -54,7 +54,7 @@ void GCStats::PrintGCStatistic()
                         << GetConcurrrentMarkDuration()
                         << ")ms, " << GCReasonToString();
         LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground() << "; "
-            << "SensitiveStatus: " << heap_->GetSensitiveStatus() << "; "
+            << "SensitiveStatus: " << static_cast<int>(heap_->GetSensitiveStatus()) << "; "
             << "OnStartupEvent: " << heap_->OnStartupEvent() << "; "
             << "BundleName: " << heap_->GetEcmaVM()->GetBundleName() << ";";
         // print verbose gc statsistics
