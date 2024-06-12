@@ -259,6 +259,19 @@ Local<ObjectRef> JSValueRef::ToObject(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(obj);
 }
 
+Local<ObjectRef> JSValueRef::ToEcmaObject(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
+    if (obj->IsECMAObject()) {
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        return JSNApiHelper::ToLocal<ObjectRef>(obj);
+    }
+
+    return Undefined(vm);
+}
+
 Local<StringRef> JSValueRef::ToString(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
@@ -1981,6 +1994,18 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
     JSHandle<JSTaggedValue> object(factory->NewJSObjectByConstructor(constructor));
     return JSNApiHelper::ToLocal<ObjectRef>(object);
+}
+
+uintptr_t ObjectRef::NewObject(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm,
+        (vm->GetJSThread()->GlobalConstants()->GetHandledUndefined()).GetAddress());
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
+    JSHandle<JSTaggedValue> object(factory->NewJSObjectByConstructor(constructor));
+    return object.GetAddress();
 }
 
 Local<ObjectRef> ObjectRef::NewS(const EcmaVM *vm)
