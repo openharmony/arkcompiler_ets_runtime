@@ -521,18 +521,11 @@ JSHandle<AccessorData> ObjectFactory::NewSInternalAccessor(void *setter, void *g
     NewSObjectHook();
     TaggedObject *header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetInternalAccessorClass().GetTaggedObject()));
-    JSHandle<AccessorData> obj(thread_, AccessorData::Cast(header));
-    obj->SetGetter(thread_, JSTaggedValue::Undefined());
-    obj->SetSetter(thread_, JSTaggedValue::Undefined());
-    if (setter != nullptr) {
-        JSHandle<JSNativePointer> setFunc = NewSReadOnlyJSNativePointer(setter);
-        obj->SetSetter(thread_, setFunc.GetTaggedValue());
-    }
-    if (getter != nullptr) {
-        JSHandle<JSNativePointer> getFunc = NewSReadOnlyJSNativePointer(getter);
-        obj->SetGetter(thread_, getFunc);
-    }
-    return obj;
+    JSHandle<InternalAccessor> obj(thread_, InternalAccessor::Cast(header));
+
+    obj->SetSetter(reinterpret_cast<InternalAccessor::InternalSetFunc>(setter));
+    obj->SetGetter(reinterpret_cast<InternalAccessor::InternalGetFunc>(getter));
+    return JSHandle<AccessorData>::Cast(obj);
 }
 
 JSHandle<ConstantPool> ObjectFactory::NewSConstantPool(uint32_t capacity)
