@@ -133,6 +133,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModuleWithMerge(JSTh
 {
     std::shared_ptr<JSPandaFile> jsPandaFile = ModulePathHelper::SkipDefaultBundleFile(thread, fileName) ? nullptr :
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, recordName, false);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     if (jsPandaFile == nullptr) {
         // In Aot Module Instantiate, we miss some runtime parameters from framework like bundleName or moduleName
         // which may cause wrong recordName parsing and we also can't load files not in this app hap. But in static

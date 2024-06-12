@@ -83,6 +83,10 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         std::string hspPath = ModulePathHelper::ParseHapPath(filename);
         if (hspPath.empty()) {
             LOG_FULL(ERROR) << ModuleMessageHelper::VmModuleInfoMessage(thread);
+            if (!thread->IsMainThread()) {
+                CString msg = "Invalid input hsp path: " + filename;
+                THROW_TYPE_ERROR_AND_RETURN(thread, msg.c_str(), nullptr);
+            }
             LOG_FULL(FATAL) << "Invalid input hsp path: " << filename;
             return nullptr;
         }
