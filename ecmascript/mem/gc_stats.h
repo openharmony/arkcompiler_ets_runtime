@@ -289,7 +289,7 @@ protected:
     }
 
     const Heap *heap_ {nullptr};
-    float gcDuration_ = 0;
+    float gcDuration_ = 0.0f;
     size_t longPauseTime_ = 0;
     size_t fullGCLongTimeCount_ = 0;
     size_t accumulatedFreeSize_ = 0;
