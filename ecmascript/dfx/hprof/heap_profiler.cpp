@@ -253,6 +253,7 @@ void HeapProfiler::FillIdMap()
     CUnorderedMap<JSTaggedType, uint32_t>* newIdMap = newEntryIdMap->GetIdMap();
     if (entryIdMap_->GetIdCount() == 0) {
         *idMap = *newIdMap;
+        entryIdMap_->SetId(newEntryIdMap->GetId());
     } else {
         CUnorderedMap<JSTaggedType, uint32_t> tempIdMap;
         for (auto it : *newIdMap) {
