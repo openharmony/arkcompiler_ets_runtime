@@ -55,7 +55,7 @@ static inline ARK_INLINE void GetPcFpRegs([[maybe_unused]] void *regs)
 bool GetPcs(size_t &size, uintptr_t* pcs)
 {
 #if defined(ENABLE_UNWINDER) && defined(__aarch64__)
-    uintptr_t regs[2]; // 2: pc and fp reg
+    uintptr_t regs[2] = {0}; // 2: pc and fp reg
     GetPcFpRegs(regs);
     uintptr_t pc = regs[0];
     uintptr_t fp = regs[1];

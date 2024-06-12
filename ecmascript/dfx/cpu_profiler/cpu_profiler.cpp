@@ -55,9 +55,10 @@ bool CpuProfiler::RegisterGetStackSignal()
         LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigemptyset failed, errno = " << errno;
         return false;
     }
-    sa.sa_flags = SA_RESTART | SA_SIGINFO;
 #if defined(PANDA_TARGET_ARM64)
-    sa.sa_flags |= SA_ONSTACK;
+    sa.sa_flags = SA_RESTART | SA_SIGINFO | SA_ONSTACK;
+#else
+    sa.sa_flags = SA_RESTART | SA_SIGINFO;
 #endif
     if (sigaction(SIGPROF, &sa, nullptr) != 0) {
         LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigaction failed, errno = " << errno;
