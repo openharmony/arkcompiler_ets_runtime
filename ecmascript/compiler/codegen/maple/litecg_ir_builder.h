@@ -206,6 +206,7 @@ private:
     void CollectExraCallSiteInfo(std::unordered_map<int, maple::litecg::LiteCGValue> &deoptBundleInfo,
                                  maple::litecg::Expr pcOffset, GateRef frameArgs);
     void GenPrologue(maple::litecg::Function &function);
+    void AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType, maple::litecg::Function &function);
     void SaveByteCodePcOnOptJSFuncFrame(maple::litecg::Var &value);
     void SaveJSFuncOnOptJSFuncFrame(maple::litecg::Var &value);
     void SaveFrameTypeOnFrame(FrameType frameType);

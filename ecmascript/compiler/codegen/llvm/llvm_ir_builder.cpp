@@ -355,6 +355,30 @@ BasicBlockImpl *LLVMIRBuilder::EnsureBBImpl(BasicBlock *bb) const
     return bb->GetImpl<BasicBlockImpl>();
 }
 
+void LLVMIRBuilder::AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType)
+{
+    LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
+                                       std::to_string(reservedSlotsSize).c_str());
+    auto ArgList = circuit_->GetArgRoot();
+    auto uses = acc_.Uses(ArgList);
+    for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+        int argth = static_cast<int>(acc_.TryGetValue(*useIt));
+        LLVMValueRef value = LLVMGetParam(function_, argth);
+        int funcIndex = 0;
+        if (isFastCallAot_) {
+            frameType = FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
+            funcIndex = static_cast<int>(FastCallArgIdx::FUNC);
+        } else {
+            funcIndex = static_cast<int>(CommonArgIdx::FUNC);
+        }
+        if (argth == funcIndex) {
+            SaveByteCodePcOnOptJSFuncFrame(value);
+            SaveJSFuncOnOptJSFuncFrame(value);
+            SaveFrameTypeOnFrame(frameType, builder_);
+        }
+    }
+}
+
 void LLVMIRBuilder::GenPrologue()
 {
     auto frameType = circuit_->GetFrameType();
@@ -397,26 +421,7 @@ void LLVMIRBuilder::GenPrologue()
         }
     } else if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
         reservedSlotsSize = FASTJITFunctionFrame::ComputeReservedPcOffset(slotSize_);
-        LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
-                                           std::to_string(reservedSlotsSize).c_str());
-        auto ArgList = circuit_->GetArgRoot();
-        auto uses = acc_.Uses(ArgList);
-        for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
-            int argth = static_cast<int>(acc_.TryGetValue(*useIt));
-            LLVMValueRef value = LLVMGetParam(function_, argth);
-            int funcIndex = 0;
-            if (isFastCallAot_) {
-                frameType = FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
-                funcIndex = static_cast<int>(FastCallArgIdx::FUNC);
-            } else {
-                funcIndex = static_cast<int>(CommonArgIdx::FUNC);
-            }
-            if (argth == funcIndex) {
-                SaveByteCodePcOnOptJSFuncFrame(value);
-                SaveJSFuncOnOptJSFuncFrame(value);
-                SaveFrameTypeOnFrame(frameType, builder_);
-            }
-        }
+        AssistGenPrologue(reservedSlotsSize, frameType);
     } else {
         LOG_COMPILER(FATAL) << "frameType interpret type error !";
         ASSERT_PRINT(static_cast<uintptr_t>(frameType), "is not support !");

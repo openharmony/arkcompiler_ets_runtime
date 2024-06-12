@@ -1711,7 +1711,7 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
 //               |       call-target        |
 //               |--------------------------|
 //               |       argc               |
-//      sp ----> |--------------------------| ---------------
+// callerSp ---> |--------------------------| ---------------
 //               |       returnAddr         |               ^
 //               |--------------------------|               |
 //               |       callsiteFp         |               |
@@ -1721,7 +1721,7 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
 //               |       call-target        |               |
 //               |--------------------------|               |
 //               |       pc(bytecode pc)    |               v
-//               +--------------------------+ ---------------
+// calleeSP ---> +--------------------------+ ---------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct FASTJITFunctionFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
