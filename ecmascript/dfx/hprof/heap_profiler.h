@@ -60,6 +60,14 @@ public:
     {
         return &idMap_;
     }
+    uint32_t GetId()
+    {
+        return nextId_;
+    }
+    void SetId(uint32_t id)
+    {
+        nextId_ = id;
+    }
 
 private:
     uint32_t nextId_ {3U};  // 1 Reversed for SyntheticRoot
