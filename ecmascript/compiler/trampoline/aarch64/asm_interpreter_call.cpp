@@ -319,6 +319,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         case JSCallMode::CALL_THIS_ARG1:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
         case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::SUPER_CALL_WITH_ARGV:
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
@@ -1039,6 +1040,21 @@ void AsmInterpreterCall::CallSetter(ExtendedAssembler *assembler)
     __ Bind(&target);
     {
         JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER, FrameTransitionType::OTHER_TO_OTHER);
+    }
+}
+
+void AsmInterpreterCall::CallContainersArgs2(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs2));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_OTHER);
     }
 }
 

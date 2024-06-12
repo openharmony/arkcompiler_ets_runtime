@@ -578,6 +578,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         }
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
             return __ CppJSCallAvailableRegister2();
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN: {
             return __ CppJSCallAvailableRegister1();
         }
@@ -1180,6 +1181,22 @@ void AsmInterpreterCall::CallReturnWithArgv(ExtendedAssembler *assembler)
     __ Bind(&target);
     {
         JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_OTHER);
+    }
+}
+
+void AsmInterpreterCall::CallContainersArgs2(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs2));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    GetArgvAtStack(assembler);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2_WITH_RETURN,
                           FrameTransitionType::OTHER_TO_OTHER);
     }
 }
