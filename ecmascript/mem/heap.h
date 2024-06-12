@@ -693,6 +693,8 @@ private:
 
     void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
 
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread);
+
     struct SharedHeapSmartGCStats {
         /**
          * For SmartGC.
