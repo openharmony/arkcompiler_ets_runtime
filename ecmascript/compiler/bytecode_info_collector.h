@@ -34,81 +34,6 @@ struct MethodPcInfo {
     uint32_t methodsSize {0};
 };
 
-// importRecord : ldExternalModuleVar {importIndex} --> {exportRecordName} : stmoduleVar {exportIndex}
-class ImportRecordInfo {
-public:
-    ImportRecordInfo() = default;
-    ~ImportRecordInfo() = default;
-
-    void AddImportIdAndRecord(uint32_t importId, uint32_t bindingId, const CString &importRecord)
-    {
-        records_.insert(importRecord);
-        if (idToRecord_.find(importId) == idToRecord_.end()) {
-            idToRecord_.emplace(importId, std::make_pair(importRecord, bindingId));
-        }
-    }
-
-    const std::set<CString> &GetImportRecords() const
-    {
-        return records_;
-    }
-
-    uint32_t GetImportRecordSize() const
-    {
-        return records_.size();
-    }
-
-    const std::unordered_map<uint32_t, std::pair<CString, uint32_t>> &GetImportIdToExportRecord() const
-    {
-        return idToRecord_;
-    }
-
-private:
-    std::set<CString> records_ {};
-    std::unordered_map<uint32_t, std::pair<CString, uint32_t>> idToRecord_ {};
-};
-
-// exportIndex_ {exportIndex1...}: collect bytecode export index whose type has not been recorded.
-// starExportRecord_ {recordName A...}: collect recordName when there is Forwarding syntax in this record,
-// like "export * from record A, export * from record B"
-class ExportRecordInfo {
-public:
-    ExportRecordInfo() = default;
-    explicit ExportRecordInfo(uint32_t index) : exportIndex_({index}) {}
-    explicit ExportRecordInfo(const CString &starRecord) : starExportRecord_({starRecord}) {}
-
-    ~ExportRecordInfo() = default;
-
-    bool HasExportIndex(uint32_t index) const
-    {
-        return exportIndex_.find(index) != exportIndex_.end();
-    }
-
-    bool HasStarExport() const
-    {
-        return !starExportRecord_.empty();
-    }
-
-    void AddExportIndex(uint32_t index)
-    {
-        exportIndex_.insert(index);
-    }
-
-    void AddStarExport(const CString &starExportRecord)
-    {
-        starExportRecord_.insert(starExportRecord);
-    }
-
-    const std::unordered_set<CString> &GetstarExportRecord() const
-    {
-        return starExportRecord_;
-    }
-
-private:
-    std::unordered_set<uint32_t> exportIndex_ {};
-    std::unordered_set<CString> starExportRecord_ {};
-};
-
 class MethodInfo {
 public:
     MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx = MethodInfo::DEFAULT_ROOT,
@@ -192,21 +117,6 @@ public:
         return innerMethods_;
     }
 
-    inline void AddImportIndex(uint32_t index)
-    {
-        importIndex_.insert(index);
-    }
-
-    inline const std::set<uint32_t> &GetImportIndexes() const
-    {
-        return importIndex_;
-    }
-
-    inline void CopyImportIndex(const std::set<uint32_t> &indexSet)
-    {
-        importIndex_ = indexSet;
-    }
-
     bool IsPGO() const
     {
         return CompileStateBit::PGOBit::Decode(compileState_.value_);
@@ -275,7 +185,6 @@ private:
     std::unordered_map<int32_t, uint32_t> bcToFuncTypeId_ {};
     uint32_t outerMethodId_ { MethodInfo::DEFAULT_ROOT };
     uint32_t outerMethodOffset_ { MethodInfo::DEFAULT_OUTMETHOD_OFFSET };
-    std::set<uint32_t> importIndex_ {};
     CompileStateBit compileState_ { 0 };
 };
 
@@ -400,68 +309,6 @@ public:
             functionTypeIdToMethodOffset_.emplace(functionTypeId, methodOffset);
         }
     }
-    bool HasExportIndexToRecord(const CString &recordName, uint32_t index) const
-    {
-        auto iter = recordNameToExportInfo_.find(recordName);
-        if (iter != recordNameToExportInfo_.end()) {
-            return iter->second.HasExportIndex(index);
-        }
-        return false;
-    }
-
-    bool HasStarExportToRecord(const CString &recordName) const
-    {
-        auto iter = recordNameToExportInfo_.find(recordName);
-        if (iter != recordNameToExportInfo_.end()) {
-            return iter->second.HasStarExport();
-        }
-        return false;
-    }
-
-    void AddExportIndexToRecord(const CString &recordName, uint32_t index)
-    {
-        auto iter = recordNameToExportInfo_.find(recordName);
-        if (iter != recordNameToExportInfo_.end()) {
-            iter->second.AddExportIndex(index);
-        } else {
-            ExportRecordInfo info(index);
-            recordNameToExportInfo_.emplace(recordName, std::move(info));
-        }
-    }
-
-    void AddStarExportToRecord(const CString &recordName, const CString &starRecord)
-    {
-        auto iter = recordNameToExportInfo_.find(recordName);
-        if (iter != recordNameToExportInfo_.end()) {
-            iter->second.AddStarExport(starRecord);
-        } else {
-            ExportRecordInfo info(starRecord);
-            recordNameToExportInfo_.emplace(recordName, std::move(info));
-        }
-    }
-
-    const std::unordered_set<CString> &GetstarExportToRecord(const CString &recordName) const
-    {
-        return recordNameToExportInfo_.at(recordName).GetstarExportRecord();
-    }
-
-    void AddImportRecordInfoToRecord(const CString &recordName, const CString &importRecord,
-                                     uint32_t importIndex, uint32_t bindingIndex)
-    {
-        auto iter = recordToImportRecordsInfo_.find(recordName);
-        if (iter == recordToImportRecordsInfo_.end()) {
-            ImportRecordInfo info;
-            info.AddImportIdAndRecord(importIndex, bindingIndex, importRecord);
-            recordToImportRecordsInfo_.emplace(recordName, std::move(info));
-        } else {
-            iter->second.AddImportIdAndRecord(importIndex, bindingIndex, importRecord);
-        }
-    }
-
-    const std::unordered_map<CString, ImportRecordInfo> &GetImportRecordsInfos() const
-    {
-        return recordToImportRecordsInfo_;
-    }
 
     FastCallInfo IterateMethodOffsetToFastCallInfo(uint32_t methodOffset, bool *isValid)
     {
@@ -503,8 +350,6 @@ private:
     size_t maxMethodSize_;
     std::unordered_map<uint32_t, uint32_t> classTypeLOffsetToDefMethod_ {};
     std::unordered_map<uint32_t, uint32_t> functionTypeIdToMethodOffset_ {};
-    std::unordered_map<CString, ExportRecordInfo> recordNameToExportInfo_ {};
-    std::unordered_map<CString, ImportRecordInfo> recordToImportRecordsInfo_ {};
     std::unordered_map<uint32_t, FastCallInfo> methodOffsetToFastCallInfos_ {};
 };
 
@@ -605,16 +450,9 @@ private:
     void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
     void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method, int32_t bcIndex,
                                  std::vector<panda_file::File::EntityId> &classConstructIndexes, bool *canFastCall);
-    void CollectModuleInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
-                                 const CString &recordName);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
-    void CollectImportIndexs(uint32_t methodOffset, uint32_t index);
-    void CollectExportIndexs(const CString &recordName, uint32_t index);
-    void CollectRecordReferenceREL();
-    void CollectRecordImportInfo(const CString &recordName);
-    void CollectRecordExportInfo(const CString &recordName);
 
     CompilationEnv *compilationEnv_ {nullptr};
     JSPandaFile *jsPandaFile_ {nullptr};
