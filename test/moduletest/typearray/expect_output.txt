@@ -204,3 +204,12 @@ Class extends Uint32Array test success!
 Class extends Uint16Array test success!
 Class extends Uint8Array test success!
 Class extends Uint8ClampedArray test success!
+Test New Float64Array with Bad_Obj Success!
+Test New Float32Array with Bad_Obj Success!
+Test New Int32Array with Bad_Obj Success!
+Test New Int16Array with Bad_Obj Success!
+Test New Int8Array with Bad_Obj Success!
+Test New Uint32Array with Bad_Obj Success!
+Test New Uint16Array with Bad_Obj Success!
+Test New Uint8Array with Bad_Obj Success!
+Test New Uint8ClampedArray with Bad_Obj Success!

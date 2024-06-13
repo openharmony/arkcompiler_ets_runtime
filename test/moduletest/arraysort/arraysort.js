@@ -322,3 +322,18 @@ const students = [
 // stable
 students.sort((firstItem, secondItem) => firstItem.grade - secondItem.grade);
 print(JSON.stringify(students));
+const v2 =[];
+class C3{};
+v2.__proto__ = C3;
+let arr = new Array(518);
+for(let i=0;i<518;i++){
+    arr[i]=""+i;
+}
+arr[512]="valueOf";
+arr[513]="p0";
+arr[514]="p1";
+arr[515]="p2";
+arr[516]="p3";
+arr[517]="p4";
+arr.sort();
+print("sort Test Success!")

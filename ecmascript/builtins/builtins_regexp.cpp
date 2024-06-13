@@ -898,8 +898,9 @@ JSTaggedValue BuiltinsRegExp::GetLastIndex(JSThread *thread, JSHandle<JSTaggedVa
             lastIndex = static_cast<uint32_t>(thisIndex.GetInt());
         } else {
             JSHandle<JSTaggedValue> thisIndexHandle(thread, thisIndex);
-            lastIndex = JSTaggedValue::ToLength(thread, thisIndexHandle).GetNumber();
+            auto lengthValue = JSTaggedValue::ToLength(thread, thisIndexHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            lastIndex = lengthValue.GetNumber();
         }
     }
     return JSTaggedValue::Undefined();

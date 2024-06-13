@@ -351,7 +351,7 @@ void TimSort::MergeLo(int base1, int len1, int base2, int len2)
         this->CopyArray(tmpArray, cursor1, workArray, dest, len1);
         return;
     }
-    if (len1 == 0) {
+    if (len1 == 1) {
         this->CopyArray(workArray, cursor2, workArray, dest, len2);
         tmpElement.Update(tmpArray->Get(cursor1));
         workArray->Set(thread_, dest + len2, tmpElement);
