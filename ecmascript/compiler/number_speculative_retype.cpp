@@ -318,6 +318,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::FUNCTION_PROTOTYPE_BIND:
         case OpCode::FUNCTION_PROTOTYPE_CALL:
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
+        case OpCode::HEAP_OBJECT_CHECK:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
