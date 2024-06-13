@@ -191,6 +191,10 @@ private:
     static inline JSTaggedValue RuntimeOptSuperCallSpread(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                           const JSHandle<JSTaggedValue> &newTarget,
                                                           const JSHandle<JSTaggedValue> &taggedArray);
+    static inline JSTaggedValue RuntimeSuperCallForwardAllArgs(JSThread *thread, JSTaggedType *sp,
+                                                               const JSHandle<JSTaggedValue> &superFunc,
+                                                               const JSHandle<JSTaggedValue> &newTarget,
+                                                               uint32_t restNumArgs, uint32_t startIdx);
     static inline JSTaggedValue RuntimeDelObjProp(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                   const JSHandle<JSTaggedValue> &prop);
     static inline JSTaggedValue RuntimeNewObjApply(JSThread *thread, const JSHandle<JSTaggedValue> &func,

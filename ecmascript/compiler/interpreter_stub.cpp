@@ -6019,6 +6019,33 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdLazySendableModuleVarPrefImm16)
     }
 }
 
+DECLARE_ASM_HANDLER(HandleCallRuntimeSuperCallForwardAllArgsV8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+
+    auto env = GetEnvironment();
+    Label resIsException(env);
+    Label isException(env);
+    Label dispatch(env);
+
+    GateRef thisFunc = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
+    res = CallRuntime(glue, RTSTUB_ID(SuperCallForwardAllArgs), { thisFunc });
+
+    BRANCH(TaggedIsException(*res), &resIsException, &dispatch);
+    Bind(&resIsException);
+    BRANCH(HasPendingException(glue), &isException, &dispatch);
+    Bind(&isException);
+    {
+        DISPATCH_LAST();
+    }
+    Bind(&dispatch);
+    {
+        varAcc = *res;
+        DISPATCH_WITH_ACC(CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8);
+    }
+}
+
 ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)

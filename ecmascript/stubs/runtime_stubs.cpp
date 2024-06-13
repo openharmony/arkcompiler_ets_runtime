@@ -1124,6 +1124,31 @@ DEF_RUNTIME_STUBS(OptSuperCallSpread)
     return RuntimeOptSuperCallSpread(thread, func, newTarget, taggedArray).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SuperCallForwardAllArgs)
+{
+    RUNTIME_STUBS_HEADER(SuperCallForwardAllArgs);
+    auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: index of child constructor
+    JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
+    auto newTarget = JSHandle<JSTaggedValue>(thread, InterpreterAssembly::GetNewTarget(sp));
+    uint32_t startIdx = 0;
+    uint32_t restNumArgs = InterpreterAssembly::GetNumArgs(sp, 0, startIdx);  // 0: rest args start idx
+    return RuntimeSuperCallForwardAllArgs(thread, sp, superFunc, newTarget, restNumArgs, startIdx).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(OptSuperCallForwardAllArgs)
+{
+    RUNTIME_STUBS_HEADER(OptSuperCallForwardAllArgs);
+    JSTaggedType *sp = reinterpret_cast<JSTaggedType *>(GetActualArgv(thread));
+    JSHandle<JSTaggedValue> superFunc = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: index of super constructor
+    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: index of newTarget
+    uint32_t actualArgc = GetArg(argv, argc, 2).GetInt();                       // 2: index of actual argc
+    ASSERT(actualArgc >= NUM_MANDATORY_JSFUNC_ARGS);
+    uint32_t restNumArgs = actualArgc - NUM_MANDATORY_JSFUNC_ARGS;
+    uint32_t startIdx = NUM_MANDATORY_JSFUNC_ARGS;
+    return RuntimeSuperCallForwardAllArgs(thread, sp, superFunc, newTarget, restNumArgs, startIdx).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(GetCallSpreadArgs)
 {
     RUNTIME_STUBS_HEADER(GetCallSpreadArgs);

@@ -294,6 +294,31 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuperCallSpread(JSThread *thread, const JS
     return result;
 }
 
+JSTaggedValue RuntimeStubs::RuntimeSuperCallForwardAllArgs(JSThread *thread, JSTaggedType *sp,
+                                                           const JSHandle<JSTaggedValue> &superFunc,
+                                                           const JSHandle<JSTaggedValue> &newTarget,
+                                                           uint32_t restNumArgs, uint32_t startIdx)
+{
+    if (!superFunc->IsConstructor()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Super constructor is not a constructor", JSTaggedValue::Exception());
+    }
+
+    // prepare callinfo
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        EcmaInterpreter::NewRuntimeCallInfo(thread, superFunc, undefined, newTarget, restNumArgs);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // set args for callinfo
+    for (uint32_t i = 0; i < restNumArgs; ++i) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        info->SetCallArg(i, JSTaggedValue(sp[startIdx + i]));
+    }
+    // execute super ctor with call info
+    JSTaggedValue res = JSFunction::Construct(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return res;
+}
+
 JSTaggedValue RuntimeStubs::RuntimeDelObjProp(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                               const JSHandle<JSTaggedValue> &prop)
 {
@@ -1163,9 +1188,6 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
 {
     // max ic slot index is 0xffff, the size of ic slot could extend more
     ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + MethodLiteral::EXTEND_SLOT_SIZE);
-    if (icSlotSize == 0) {
-        return JSTaggedValue::Undefined();
-    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<ProfileTypeInfo> profileTypeInfo;
     if (function->IsSharedFunction()) {

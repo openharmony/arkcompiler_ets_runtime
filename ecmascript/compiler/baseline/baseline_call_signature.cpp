@@ -1040,6 +1040,21 @@ DEF_CALL_SIGNATURE(BaselineSupercallspreadImm8V8)
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
 }
 
+DEF_CALL_SIGNATURE(BaselineCallRuntimeSupercallforwardallargsPrefV8)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("BaselineCallRuntimeSupercallforwardallargsPrefV8", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32(),
+    };
+    BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
+}
+
 DEF_CALL_SIGNATURE(BaselineApplyImm8V8V8)
 {
     // 5 : 5 input parameters

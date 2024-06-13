@@ -1630,6 +1630,19 @@ void BaselineCallarg0Imm8StubBuilder::GenerateCircuit()
     Return(*result);
 }
 
+void BaselineCallRuntimeSupercallforwardallargsPrefV8StubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineCallRuntimeSupercallforwardallargsPrefV8, GLUE));
+    GateRef sp = PtrArgument(PARAM_INDEX(BaselineCallRuntimeSupercallforwardallargsPrefV8, SP));
+    GateRef v0 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeSupercallforwardallargsPrefV8, V0));
+    GateRef thisFunc = GetVregValue(sp, ZExtInt32ToPtr(v0));
+
+    GateRef frame = GetFrame(sp);
+    GateRef acc = GetAccFromFrame(frame);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCallForwardAllArgs), { thisFunc });
+    CHECK_PENDING_EXCEPTION(res);  // CheckPendingException(glue, sp, res, acc)
+}
+
 void BaselineSupercallspreadImm8V8StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineSupercallspreadImm8V8, GLUE));

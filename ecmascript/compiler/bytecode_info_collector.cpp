@@ -342,6 +342,7 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                 *canFastCall = false;
                 break;
             }
+            case EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
             case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
             case EcmaOpcode::GETUNMAPPEDARGS:
             case EcmaOpcode::COPYRESTARGS_IMM8:

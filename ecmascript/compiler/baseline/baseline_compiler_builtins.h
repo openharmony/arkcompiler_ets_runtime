@@ -95,6 +95,7 @@ namespace panda::ecmascript::kungfu {
     V(BaselineDefinemethodImm16Id16Imm8)                                   \
     V(BaselineCallarg0Imm8)                                                \
     V(BaselineSupercallspreadImm8V8)                                       \
+    V(BaselineCallRuntimeSupercallforwardallargsPrefV8)                    \
     V(BaselineApplyImm8V8V8)                                               \
     V(BaselineCallargs2Imm8V8V8)                                           \
     V(BaselineCallargs3Imm8V8V8V8)                                         \

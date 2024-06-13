@@ -1027,7 +1027,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 25;
+    constexpr size_t numCallRuntimeOps = 26;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -3785,6 +3785,23 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(SUPERCALLSPREAD_IMM8_V8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8) {
+        uint16_t v0 = READ_INST_8_1();
+        LOG_INST() << "intrinsic::callruntime.supercallforwardallargs"
+                   << "thisFunc: v" << v0;
+        JSTaggedValue thisFunc = GET_VREG_VALUE(v0);
+        JSTaggedValue newTarget = GetNewTarget(sp);
+        uint32_t restIdx = 0;
+        uint32_t startIdx = 0;
+        uint32_t restNumArgs = GetNumArgs(sp, restIdx, startIdx);
+
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::SuperCallForwardAllArgs(thread, sp, thisFunc, newTarget, restNumArgs,
+                                                                     startIdx);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8);
     }
     HANDLE_OPCODE(DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16) {
         uint16_t imm = READ_INST_16_1();

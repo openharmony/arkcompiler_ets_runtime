@@ -3274,7 +3274,6 @@ JSHandle<ProtoChangeDetails> ObjectFactory::NewProtoChangeDetails()
 JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t icSlotSize)
 {
     NewObjectHook();
-    ASSERT(icSlotSize > 0);
     size_t size = ProfileTypeInfo::ComputeSize(icSlotSize);
     auto header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoClass().GetTaggedObject()), size);

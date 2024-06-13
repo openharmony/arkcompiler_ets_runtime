@@ -492,6 +492,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
+        case EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
             flags |= BytecodeFlags::READ_NEWTARGET;
             break;
         case EcmaOpcode::GETUNMAPPEDARGS:
@@ -1741,6 +1742,11 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
             break;

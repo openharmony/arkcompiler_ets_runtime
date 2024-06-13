@@ -2421,6 +2421,24 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(SUPERCALLARROWRANGE_IMM8_IMM8_V8)
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8)
+{
+    uint8_t v0 = READ_INST_8_1();
+    auto *thread = vm->GetAssociatedJSThread();
+
+    Address builtinAddress =
+        thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallRuntimeSupercallforwardallargsPrefV8);
+    LOG_INST() << "    BaselineCallRuntimeSupercallforwardallargsPrefV8 Address: " << std::hex << builtinAddress;
+    LOG_INST() << "      v0: " << static_cast<int16_t>(v0);
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(v0);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(SUPERCALLSPREAD_IMM8_V8)
 {
     int8_t argList = READ_INST_8_1();
