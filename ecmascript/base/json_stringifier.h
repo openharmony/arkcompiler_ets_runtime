@@ -66,7 +66,7 @@ private:
     bool SerializeElements(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     bool SerializeKeys(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     JSHandle<JSTaggedValue> SerializeHolder(const JSHandle<JSTaggedValue> &object,
-                                            const JSHandle<JSTaggedValue> &value);                                         
+                                            const JSHandle<JSTaggedValue> &value);                                    
     CString gap_;
     CString result_;
     CString indent_;
