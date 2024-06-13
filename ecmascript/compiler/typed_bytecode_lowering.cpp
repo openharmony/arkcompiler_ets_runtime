@@ -1677,6 +1677,24 @@ void TypedBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(const Type
 }
 
 template<class TypeAccessor>
+bool TypedBytecodeLowering::InSameConstPool(const TypeAccessor &tacc) const
+{
+    auto pandaFile = ctx_->GetJSPandaFile();
+    auto targetPandaFile = tacc.GetPandaFile();
+    if (pandaFile != targetPandaFile) {
+        return false;
+    }
+    auto targetMethodId = tacc.GetMethodId();
+    panda_file::IndexAccessor indexAccessor(*(targetPandaFile->GetPandaFile()),
+                                            panda_file::File::EntityId(targetMethodId));
+    auto targetCpId = static_cast<uint32_t>(indexAccessor.GetHeaderIndex());
+    if (constPoolId_ != targetCpId) {
+        return false;
+    }
+    return true;
+}
+
+template<class TypeAccessor>
 void TypedBytecodeLowering::CheckCallTargetAndLowerCall(const TypeAccessor &tacc,
     const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall)
 {
@@ -1693,6 +1711,9 @@ void TypedBytecodeLowering::CheckCallTargetAndLowerCall(const TypeAccessor &tacc
         }
         int methodIndex = tacc.GetMethodIndex();
         if (!tacc.MethodOffsetIsVaild() || methodIndex == -1) {
+            return;
+        }
+        if (!InSameConstPool(tacc)) {
             return;
         }
 
@@ -1790,6 +1811,7 @@ const JSPandaFile* TypedBytecodeLowering::GetCalleePandaFile(GateRef gate)
         if (!decoder_->GetAbcNameById(abcId, fileDesc)) {
             UNREACHABLE();
         }
+        fileDesc = JSPandaFile::GetNormalizedFileDesc(fileDesc);
         return JSPandaFileManager::GetInstance()->FindJSPandaFileByNormalizedName(fileDesc).get();
     }
     // nullptr if no pgo info

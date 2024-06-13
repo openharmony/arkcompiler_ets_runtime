@@ -40,7 +40,8 @@ public:
                          const CString& recordName,
                          const CallMethodFlagMap* callMethodFlagMap,
                          PGOProfilerDecoder *decoder,
-                         const std::string optBCRange)
+                         const std::string optBCRange,
+                         const MethodLiteral *currentMethod)
         : circuit_(circuit),
           acc_(circuit),
           ctx_(ctx),
@@ -62,8 +63,13 @@ public:
           recordName_(recordName),
           callMethodFlagMap_(callMethodFlagMap),
           decoder_(decoder),
-          optBCRange_(optBCRange)
+          optBCRange_(optBCRange),
+          currentMethod_(currentMethod)
     {
+        auto currentMethodId = currentMethod_->GetMethodId();
+        panda_file::IndexAccessor indexAccessor(*(ctx_->GetJSPandaFile()->GetPandaFile()),
+                                                panda_file::File::EntityId(currentMethodId));
+        constPoolId_ = static_cast<uint32_t>(indexAccessor.GetHeaderIndex());
     }
 
     ~TypedBytecodeLowering() = default;
@@ -163,6 +169,9 @@ private:
     void LowerTypedCallInit(GateRef gate);
 
     template<class TypeAccessor>
+    bool InSameConstPool(const TypeAccessor &tacc) const;
+
+    template<class TypeAccessor>
     void CheckFastCallThisCallTarget(const TypeAccessor &tacc);
 
     template<class TypeAccessor>
@@ -259,6 +268,8 @@ private:
     PGOProfilerDecoder *decoder_ {nullptr};
     std::string optBCRange_;
     std::vector<std::vector<int32_t>> optBCRangeList_;
+    const MethodLiteral *currentMethod_ {nullptr};
+    uint32_t constPoolId_ {0};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPED_BYTECODE_LOWERING_H

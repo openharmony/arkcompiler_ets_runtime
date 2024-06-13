@@ -386,6 +386,23 @@ public:
         return -1;
     }
 
+    const JSPandaFile *GetPandaFile() const
+    {
+        return jsPandaFile_;
+    }
+
+    uint32_t GetMethodId() const
+    {
+        if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
+            return 0;
+        }
+        auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+        if (!profileType->IsNone()) {
+            return profileType->GetProfileType().GetId();
+        }
+        return 0;
+    }
+
     bool MethodOffsetIsVaild() const
     {
         auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
