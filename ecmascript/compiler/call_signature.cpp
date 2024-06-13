@@ -869,6 +869,21 @@ DEF_CALL_SIGNATURE(GetUnmappedArgs)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(GetCallSpreadArgs)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("GetCallSpreadArgs", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // array
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(GetTaggedArrayPtrTest)
 {
     // 2 : 2 input parameters

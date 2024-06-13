@@ -243,8 +243,6 @@ private:
     void LowerSuperCall(GateRef gate);
     void LowerSuperCallArrow(GateRef gate);
     void LowerSuperCallSpread(GateRef gate);
-    void LowerSuperCallSpreadSlowPath(GateRef gate, GateRef func, GateRef array);
-    void LowerSuperCallSpreadFastPath(GateRef gate, GateRef func, GateRef array);
     GateRef IsSuperFuncValid(GateRef superFunc);
     GateRef IsAotOrFastCall(GateRef method, CircuitBuilder::JudgeMethodType type);
     void GenerateSuperCall(const std::vector<GateRef> &args, Variable *result, Label *exit);

@@ -214,6 +214,11 @@ GateRef CircuitBuilder::GetLengthOfJSTypedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
 }
 
+GateRef CircuitBuilder::GetDataOfTaggedArray(GateRef array)
+{
+    return PtrAdd(array, Int64(TaggedArray::DATA_OFFSET));
+}
+
 GateRef CircuitBuilder::IsTypedArray(GateRef array)
 {
     GateRef hclass = LoadHClass(array);

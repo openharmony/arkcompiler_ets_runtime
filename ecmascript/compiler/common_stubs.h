@@ -80,6 +80,7 @@ namespace panda::ecmascript::kungfu {
     V(NewLexicalEnv)                  \
     V(CopyRestArgs)                   \
     V(GetUnmappedArgs)                \
+    V(GetCallSpreadArgs)              \
     V(NewThisObjectChecked)           \
     V(ConstructorCheck)               \
     V(CreateEmptyArray)               \

@@ -265,6 +265,30 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCallSpread(JSThread *thread, const JSHan
     return result;
 }
 
+JSTaggedValue RuntimeStubs::RuntimeOptSuperCallSpread(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+                                                      const JSHandle<JSTaggedValue> &newTarget,
+                                                      const JSHandle<JSTaggedValue> &taggedArray)
+{
+    JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (!superFunc->IsJSFunction()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Super constructor is not JSFunction", JSTaggedValue::Exception());
+    }
+
+    JSHandle<TaggedArray> argv(thread, taggedArray.GetTaggedValue());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    const uint32_t argsLength = argv->GetLength();
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        EcmaInterpreter::NewRuntimeCallInfo(thread, superFunc, undefined, newTarget, argsLength);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    info->SetCallArg(argsLength, argv);
+    JSTaggedValue result = JSFunction::Construct(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    return result;
+}
+
 JSTaggedValue RuntimeStubs::RuntimeDelObjProp(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                               const JSHandle<JSTaggedValue> &prop)
 {
