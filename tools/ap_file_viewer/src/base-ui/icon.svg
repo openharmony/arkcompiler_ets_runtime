@@ -1,0 +1,90 @@
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true"
+     xmlns="http://www.w3.org/2000/svg">
+    <symbol id="icon-minus-square" viewBox="0 0 16 16">
+        <g id="play_expand" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <rect id="rectangle" stroke="currentColor" opacity="0.899323091" x="2" y="2" width="12"
+                  height="12"></rect>
+            <rect id="rectangle" fill="currentColor" opacity="0.802454776" x="4.00073886"
+                  y="7.50196767" width="8" height="1"></rect>
+        </g>
+    </symbol>
+    <symbol id="icon-plus-square" viewBox="0 0 16 16">
+        <g id="play_retract" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <rect id="rectangle" stroke="currentColor" opacity="0.899323091" x="2" y="2" width="12"
+                  height="12"></rect>
+            <path
+                    d="M8.50073886,4.00196767 L8.50073886,7.50196767 L12.0007389,7.50196767 L12.0007389,8.50196767 L8.50073886,8.50196767 L8.50073886,12.0019677 L7.50073886,12.0019677 L7.49973886,8.50196767 L4.00073886,8.50196767 L4.00073886,7.50196767 L7.50073886,7.50196767 L7.50073886,4.00196767 L8.50073886,4.00196767 Z"
+                    id="shapecombine" fill="currentColor" opacity="0.899323091"></path>
+        </g>
+    </symbol>
+    <symbol id="icon-folder" viewBox="0 0 16 16">
+        <g id="toolWindowProject" stroke="none" stroke-width="1" fill="currentColor"
+           fill-rule="evenodd" opacity="0.600880941">
+            <g transform="translate(2.498604, 3.499928)" fill="currentColor" id="path">
+                <polygon points="5.75640322 2 11 2 11 9 0 9 0 2 0 0 4.60006714 0"></polygon>
+            </g>
+        </g>
+    </symbol>
+    <symbol id="icon-select" viewBox="0 0 16 16">
+        <g id="export" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" opacity="1">
+            <g transform="translate(2.000000, 2.000000)" fill="#7FA1E7">
+                <path d="M2,2 L2,10 L10,10 L10,12 L0,12 L0,2 L2,2 Z" id="shapecombine"></path>
+                <g id="marshalling"
+                   transform="translate(7.897997, 4.105003) rotate(180.000000) translate(-7.897997, -4.105003) translate(3.795994, -0.000000)">
+                    <path
+                            d="M6.78979195,1.95399252e-13 L8.20400551,1.41421356 L3.704,5.914 L6,8.21000551 L0,8.21000551 L0,2.21000551 L2.289,4.499 L6.78979195,1.95399252e-13 Z"
+                            id="shapecombine"></path>
+                </g>
+            </g>
+        </g>
+    </symbol>
+    <symbol id="icon-down" viewBox="0 0 16 16">
+        <g id="ic_down" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" opacity="1">
+            <g id="play_back" transform="translate(3.087500, 4.912500)" fill="currentColor">
+                <polygon id="path"
+                         transform="translate(5.000000, 3.087500) rotate(-270.000000) translate(-5.000000, -3.087500) "
+                         points="1.9125 -0.7375 5.7375 3.0875 1.9125 6.9125 3.0875 8.0875 8.0875 3.0875 3.0875 -1.9125"></polygon>
+            </g>
+        </g>
+    </symbol>
+    <symbol id="icon-up" viewBox="0 0 16 16">
+        <g id="ic_up" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" opacity="1">
+            <g id="play_back" transform="translate(3.087500, 4.912500)" fill="currentColor">
+                <polygon id="path"
+                         transform="translate(5.000000, 3.087500) rotate(-90.000000) translate(-5.000000, -3.087500) "
+                         points="1.9125 -0.7375 5.7375 3.0875 1.9125 6.9125 3.0875 8.0875 8.0875 3.0875 3.0875 -1.9125"></polygon>
+            </g>
+        </g>
+    </symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24">
+        <g id="seach" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <circle id="oval" stroke="#afafaf" stroke-width="1.2" cx="10.7192096" cy="10.5553598"
+                    r="5"></circle>
+            <line x1="15.4514426" y1="15.7875928" x2="18.9869765" y2="19.3231267" id="line-9"
+                  stroke="#afafaf" stroke-width="1.2" stroke-linecap="round"></line>
+        </g>
+    </symbol>
+    <symbol id="icon-menu" viewBox="0 0 16 16">
+        <g id="ic_list" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <g id="marshalling-2">
+                <rect id="rectangle" x="0" y="0" width="16" height="16"></rect>
+                <rect id="rectangle" fill="currentColor" opacity="0.600880941" x="1" y="2"
+                      width="14" height="2"></rect>
+                <rect id="rectangle" fill="currentColor" opacity="0.600880941" x="1" y="7"
+                      width="14" height="2"></rect>
+                <rect id="rectangle-2" fill="currentColor" opacity="0.600880941" x="1" y="12"
+                      width="14" height="2"></rect>
+            </g>
+        </g>
+    </symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24">
+        <g id="close" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <rect id="rectangle" fill="#000000"
+                  transform="translate(12.002785, 12.003027) rotate(-315.000000) translate(-12.002785, -12.003027) "
+                  x="4.50278502" y="11.4030272" width="15" height="1.2" rx="0.6"></rect>
+            <rect id="rectangle" fill="#000000"
+                  transform="translate(12.001725, 12.001590) rotate(-315.000000) translate(-12.001725, -12.001590) "
+                  x="11.4017247" y="4.50158952" width="1.2" height="15" rx="0.6"></rect>
+        </g>
+    </symbol>
+</svg>
