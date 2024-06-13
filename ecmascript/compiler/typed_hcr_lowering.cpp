@@ -2666,6 +2666,22 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
     DEFVALUE(object, (&builder_), VariableType::JS_ANY(), obj);
     Label exit(&builder_);
 
+    Label targetIsBoundFunction(&builder_);
+    Label targetNotBoundFunction(&builder_);
+    // 2. If C has a [[BoundTargetFunction]] internal slot, then
+    //    a. Let BC be the value of C's [[BoundTargetFunction]] internal slot.
+    //    b. Return InstanceofOperator(O,BC)  (see 12.9.4).
+    BRANCH_CIR(builder_.TaggedIsBoundFunction(target), &targetIsBoundFunction, &targetNotBoundFunction);
+    builder_.Bind(&targetIsBoundFunction);
+    {
+        GateRef boundTarget = builder_.LoadConstOffset(VariableType::JS_ANY(), target,
+                                                       JSBoundFunction::BOUND_TARGET_OFFSET);
+        result = builder_.CallRuntime(glue, RTSTUB_ID(InstanceOf), Gate::InvalidGateRef,
+                                      { obj, boundTarget }, gate);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&targetNotBoundFunction);
+
     // 3. If Type(O) is not Object, return false
     Label objIsHeapObject(&builder_);
     Label objIsEcmaObject(&builder_);

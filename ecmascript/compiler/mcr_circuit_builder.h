@@ -304,6 +304,12 @@ GateRef CircuitBuilder::TaggedObjectIsJSArray(GateRef obj)
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
 }
 
+GateRef CircuitBuilder::TaggedIsBoundFunction(GateRef obj)
+{
+    GateRef objType = GetObjectType(LoadHClass(obj));
+    return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION)));
+}
+
 inline GateRef CircuitBuilder::JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodType type)
 {
     GateRef method = GetMethodFromFunction(jsFunc);

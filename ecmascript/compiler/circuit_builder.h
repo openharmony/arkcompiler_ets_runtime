@@ -722,6 +722,7 @@ public:
     inline GateRef TaggedObjectIsJSDate(GateRef obj);
     inline GateRef TaggedObjectIsTypedArray(GateRef obj);
     inline GateRef TaggedObjectIsJSArray(GateRef obj);
+    inline GateRef TaggedIsBoundFunction(GateRef obj);
     inline GateRef TaggedGetInt(GateRef x);
     inline GateRef TaggedObjectIsString(GateRef obj);
     inline GateRef TaggedObjectIsShared(GateRef obj);
