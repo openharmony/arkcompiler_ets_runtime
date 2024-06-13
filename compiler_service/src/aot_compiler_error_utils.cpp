@@ -24,6 +24,7 @@ const std::map<int32_t, std::string> ERR_MSG_MAP = {
     { ERR_AOT_COMPILER_CONNECT_FAILED,    "connect failed" },
     { ERR_AOT_COMPILER_CALL_FAILED,       "call failed" },
     { ERR_AOT_COMPILER_SIGNATURE_FAILED,  "local code sign failed" },
+    { ERR_AOT_COMPILER_SIGNATURE_DISABLE, "local code sign disable" },
     { ERR_OK_NO_AOT_FILE,                 "no aot file save" },
     { ERR_AOT_COMPILER_STOP_FAILED,       "aot compiler stop error" }
 };
