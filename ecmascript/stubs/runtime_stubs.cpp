@@ -159,7 +159,7 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
 {
     RUNTIME_STUBS_HEADER(AllocateInYoung);
     JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    auto size = static_cast<size_t>(allocateSize.GetInt());
+    auto size = static_cast<size_t>(allocateSize.GetLargeUInt());
     auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
     auto result = heap->AllocateYoungOrHugeObject(size);
     ASSERT(result != nullptr);

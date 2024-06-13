@@ -212,6 +212,12 @@ public:
         return static_cast<int>(value_ & (~TAG_MARK));
     }
 
+    ARK_INLINE uint64_t GetLargeUInt() const
+    {
+        ASSERT_PRINT(IsInt(), "can not convert JSTaggedValue to Int :" << std::hex << value_);
+        return (value_ & (~TAG_MARK));
+    }
+
     ARK_INLINE JSTaggedType GetRawData() const
     {
         return value_;
