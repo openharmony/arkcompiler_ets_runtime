@@ -46,38 +46,9 @@ public:
         return pfDecoder_.IsLoaded();
     }
 
-    void UpdateCompileQueue(const CString &recordName, EntityId resolvedMethod)
-    {
-        const auto &methodList = bytecodeInfo_.GetMethodList();
-        auto &resolvedMethodInfo = methodList.at(resolvedMethod.GetOffset());
-        if (pfDecoder_.Match(jsPandaFile_, recordName, resolvedMethod) && !resolvedMethodInfo.IsTypeInferAbort()) {
-            return;
-        }
-        // update profile and update compile queue
-        std::unordered_set<EntityId> fullResolvedMethodSet;
-        auto dfs = [this, &fullResolvedMethodSet, resolvedMethod] (const CString &recordName,
-            [[maybe_unused]] const std::unordered_set<EntityId> &oldIds) -> std::unordered_set<EntityId> & {
-                fullResolvedMethodSet.clear();
-                std::unordered_set<EntityId> currentResolvedMethodSet {resolvedMethod};
-                uint32_t mainMethodOffset = jsPandaFile_->GetMainMethodIndex(recordName);
-                SearchForCompilation(recordName, currentResolvedMethodSet,
-                                     fullResolvedMethodSet, mainMethodOffset, true);
-                return fullResolvedMethodSet;
-            };
-
-        pfDecoder_.Update(jsPandaFile_, recordName, dfs);
-
-        if (fullResolvedMethodSet.size() > 0) {
-            bytecodeInfo_.AddRecordName(recordName);
-        }
-        for (auto &newMethod : fullResolvedMethodSet) {
-            bytecodeInfo_.EraseSkippedMethod(newMethod.GetOffset());
-        }
-    }
-
     template <class Callback>
     void CompileMethod(const Callback &cb,
-                       uint32_t index,
+                       const CString &recordName,
                        const std::string &methodName,
                        MethodLiteral *methodLiteral,
                        uint32_t methodOffset,
@@ -85,7 +56,7 @@ public:
                        MethodInfo &methodInfo)
     {
         Module *module = GetModule();
-        cb(bytecodeInfo_.GetRecordName(index), methodName, methodLiteral, methodOffset,
+        cb(recordName, methodName, methodLiteral, methodOffset,
             methodPcInfo, methodInfo, module);
         if (methodInfo.IsTypeInferAbort()) {
             return;
@@ -97,35 +68,34 @@ public:
     template <class Callback>
     void Run(const CallMethodFlagMap &callMethonFlagMap, const Callback &cb)
     {
-        UpdatePGO();
-        InitializeCompileQueue();
         SetCurrentCompilationFile();
-        uint32_t index = 0;
         auto &methodList = bytecodeInfo_.GetMethodList();
         const auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
-        while (!compileQueue_.empty()) {
+        for (auto &recordName : bytecodeInfo_.GetRecordNames()) {
+            auto mainMethodIndex = jsPandaFile_->GetMainMethodIndex(recordName);
             std::queue<uint32_t> methodCompiledOrder;
-            methodCompiledOrder.push(compileQueue_.front());
-            compileQueue_.pop_front();
+            methodCompiledOrder.push(mainMethodIndex);
             while (!methodCompiledOrder.empty()) {
                 auto compilingMethod = methodCompiledOrder.front();
                 methodCompiledOrder.pop();
-                bytecodeInfo_.AddMethodOffsetToRecordName(compilingMethod, bytecodeInfo_.GetRecordName(index));
+                bytecodeInfo_.AddMethodOffsetToRecordName(compilingMethod, recordName);
                 auto &methodInfo = methodList.at(compilingMethod);
                 auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
                 auto methodLiteral = jsPandaFile_->FindMethodLiteral(compilingMethod);
                 const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile_, methodLiteral->GetMethodId()));
-                if (!callMethonFlagMap.IsAotCompile(
-                    jsPandaFile_->GetNormalizedFileDesc(), methodLiteral->GetMethodId().GetOffset())) {
+                if (!callMethonFlagMap.IsAotCompile(jsPandaFile_->GetNormalizedFileDesc(),
+                                                    methodLiteral->GetMethodId().GetOffset())) {
                     bytecodeInfo_.AddSkippedMethod(compilingMethod);
                 } else {
                     if (!methodInfo.IsCompiled()) {
                         methodInfo.SetIsCompiled(true);
-                        CompileMethod(cb, index, methodName, methodLiteral, compilingMethod, methodPcInfo, methodInfo);
+                        CompileMethod(cb, recordName, methodName, methodLiteral,
+                            compilingMethod, methodPcInfo, methodInfo);
                     } else if (NeedSecondaryCompile(methodInfo)) {
                         // if a method used to be not full compiled but now it's a deopt resolved method
                         // it should be full compiled again
-                        CompileMethod(cb, index, methodName, methodLiteral, compilingMethod, methodPcInfo, methodInfo);
+                        CompileMethod(cb, recordName, methodName, methodLiteral,
+                            compilingMethod, methodPcInfo, methodInfo);
                     }
                 }
                 auto &innerMethods = methodInfo.GetInnerMethods();
@@ -133,26 +103,12 @@ public:
                     methodCompiledOrder.push(it);
                 }
             }
-            index++;
         }
         CompileLastModuleThenDestroyIfNeeded();
         StoreConstantPoolInfo();
     }
 
     void FetchPGOMismatchResult();
-
-    void AddResolvedMethod(const CString &recordName, uint32_t classLiteralOffset)
-    {
-        if (!IsPGOLoaded() || !bytecodeInfo_.HasClassDefMethod(classLiteralOffset)) {
-            return;
-        }
-        uint32_t resolvedMethod = bytecodeInfo_.GetDefineMethod(classLiteralOffset);
-        auto &methodList = bytecodeInfo_.GetMethodList();
-        auto &methodInfo = methodList.at(resolvedMethod);
-        methodInfo.SetResolvedMethod(true);
-        panda_file::File::EntityId resolvedMethodId(resolvedMethod);
-        UpdateCompileQueue(recordName, resolvedMethodId);
-    }
 
     uint32_t GetCompilerMethodCount() const
     {
@@ -172,171 +128,9 @@ protected:
 
     void CompileLastModuleThenDestroyIfNeeded();
 
-    void TopologicalSortForRecords();
-
-    void UpdatePGO();
-
-    void InitializeCompileQueue();
-
     bool NeedSecondaryCompile(const MethodInfo &methodInfo) const
     {
         return methodInfo.IsTypeInferAbort() && methodInfo.IsResolvedMethod();
-    }
-
-    void AddDependList(const CString &recordName, uint32_t methodOffset,
-                       std::deque<CString> &dependList)
-    {
-        auto &methodList = bytecodeInfo_.GetMethodList();
-        const auto &importRecordInfos = bytecodeInfo_.GetImportRecordsInfos();
-        auto iter = importRecordInfos.find(recordName);
-        // if the resolved method don't have import records need-inferred, just return.
-        if (iter == importRecordInfos.end()) {
-            return;
-        }
-        auto &methodInfo = methodList.at(methodOffset);
-        // Get the import indexs collected in methodInfo.
-        auto &importIndexs = methodInfo.GetImportIndexes();
-        // idInRecord is a map like "importIndex: (exportRecord: exportIndex)".
-        const auto &idInRecord = iter->second.GetImportIdToExportRecord();
-        for (auto index : importIndexs) {
-            auto it = idInRecord.find(index);
-            if (it != idInRecord.end()) {
-                dependList.emplace_back(it->second.first);
-            }
-        }
-    }
-
-    bool VerifyAndMarkCurMethod(uint32_t methodOffset, std::unordered_set<EntityId> &newMethodSet)
-    {
-        // if current method is at the boundary state， we should stop the define chain search.
-        if (methodOffset == MethodInfo::DEFAULT_OUTMETHOD_OFFSET) {
-            return false;
-        }
-        // if pgo profile is not matched with current abc file, methodOffset will be different.
-        auto &methodList = bytecodeInfo_.GetMethodList();
-        auto iter = methodList.find(methodOffset);
-        if (iter == methodList.end()) {
-            LOG_COMPILER(ERROR) << "The correct aot profile has not been used";
-            return false;
-        }
-        auto &methodInfo = iter->second;
-        // if current method has already been marked as PGO, stop searching upper layer of the define chain.
-        if (methodInfo.IsPGO() && !methodInfo.IsTypeInferAbort()) {
-            return false;
-        }
-        // we need to collect these new-marked PGO methods to update PGO profile
-        panda_file::File::EntityId methodId(methodOffset);
-        newMethodSet.insert(std::move(methodId));
-        methodInfo.SetIsPGO(true);
-        return true;
-    }
-
-    void UpdateResolveDepends(std::vector<CString> &dependNames, bool needUpdate)
-    {
-        if (needUpdate && !dependNames.empty()) {
-            // depend methods should keep the topological sorting rule
-            std::sort(dependNames.begin(), dependNames.end(), [this](auto first, auto second) {
-                return sortedRecords_.at(first) < sortedRecords_.at(second);
-            });
-            auto resolvedMethod = compileQueue_.back();
-            compileQueue_.pop_back();
-            // it should be like "depended main method1, depended main method2, resolved method" in compileQueue.
-            for (const auto &ele : dependNames) {
-                bytecodeInfo_.AddRecordName(ele);
-                auto eleOffset = jsPandaFile_->GetMainMethodIndex(ele);
-                // these methods will be added to compile queue
-                bytecodeInfo_.EraseSkippedMethod(eleOffset);
-                compileQueue_.push_back(eleOffset);
-            }
-            compileQueue_.push_back(resolvedMethod);
-        }
-    }
-
-    void SearchForCompilation(const CString &recordName, const std::unordered_set<EntityId> &methodSet,
-                              std::unordered_set<EntityId> &newMethodSet,
-                              uint32_t mainMethodOffset, bool needUpdateCompile)
-    {
-        auto &methodList = bytecodeInfo_.GetMethodList();
-        std::unordered_set<EntityId> mainMethodSet;
-        auto getMainMethodSet = [this, &mainMethodSet](const CString &importRecord,
-            [[maybe_unused]] const std::unordered_set<EntityId> &oldIds) -> std::unordered_set<EntityId>& {
-            mainMethodSet.clear();
-            auto mainMethodOffset = jsPandaFile_->GetMainMethodIndex(importRecord);
-            panda_file::File::EntityId mainMethodId(mainMethodOffset);
-            mainMethodSet.insert(mainMethodId);
-            return mainMethodSet;
-        };
-
-        std::vector<CString> importNames{};
-        std::function<void(EntityId)> importBfs =
-            [this, &methodList, &recordName, &importNames, &getMainMethodSet]
-            (EntityId methodId) -> void {
-            uint32_t methodOffset = methodId.GetOffset();
-            std::deque<CString> importList{};
-            AddDependList(recordName, methodOffset, importList);
-            while (!importList.empty()) {
-                auto importRecord = importList.front();
-                importList.pop_front();
-                // export syntax only exists in main method, so just judge and collect the main method.
-                auto mainMethodOffset = jsPandaFile_->GetMainMethodIndex(importRecord);
-                auto &mainMethodInfo = methodList.at(mainMethodOffset);
-                // mark the main method in other record as PGO.
-                if (mainMethodInfo.IsPGO()) {
-                    continue;
-                }
-                importNames.emplace_back(importRecord);
-                mainMethodInfo.SetIsPGO(true);
-                pfDecoder_.Update(jsPandaFile_, importRecord, getMainMethodSet);
-                AddDependList(importRecord, mainMethodOffset, importList);
-            }
-        };
-
-        std::function<void(EntityId, bool)> dfs =
-            [this, &newMethodSet, &mainMethodOffset, &dfs, &methodList, &importBfs]
-            (EntityId methodId, bool needUpdateCompile) -> void {
-            uint32_t methodOffset = methodId.GetOffset();
-            // verify whether we should stop the search for pgo methods or resolve methods.
-            if (!VerifyAndMarkCurMethod(methodOffset, newMethodSet)) {
-                return;
-            }
-            auto &methodInfo = methodList.at(methodOffset);
-            auto outMethodOffset = methodInfo.GetOutMethodOffset();
-            // for pgo method, collect its import depends method
-            importBfs(methodId);
-            if (needUpdateCompile) {
-                // in deopt, we need to push the first un-marked method which is
-                // in upper layer of the deopt method's define chain (or maybe the deopt method itself)
-                // into the sharedCompiledQueue to trigger the compilation of the deopt method.
-                if (methodOffset != mainMethodOffset) {
-                    // few methods which have the same bytecodes as other method can't find its outter method
-                    if (outMethodOffset == MethodInfo::DEFAULT_OUTMETHOD_OFFSET) {
-                        compileQueue_.push_back(methodOffset);
-                        return;
-                    }
-                    // currentMethod whose outtermethod has been marked as pgo need to push into queue
-                    auto outMethodInfo = methodList.at(outMethodOffset);
-                    if (outMethodInfo.IsPGO()) {
-                        compileQueue_.push_back(methodOffset);
-                        return;
-                    }
-                } else {
-                    // if current searched method is an un-marked main method, just push it to compile queue
-                    compileQueue_.push_back(methodOffset);
-                }
-            }
-            if (methodOffset == mainMethodOffset) {
-                return;
-            }
-            EntityId outMethod(outMethodOffset);
-            dfs(outMethod, needUpdateCompile);
-        };
-
-        // search as link list, a one-way define chain
-        for (auto pgoMethod = methodSet.begin(); pgoMethod != methodSet.end(); pgoMethod++) {
-            dfs(*pgoMethod, needUpdateCompile);
-        }
-        // update compile queue only for resolve method when it depends on other record
-        UpdateResolveDepends(importNames, needUpdateCompile);
     }
 
     std::vector<std::string> SplitString(const std::string &str, const char ch) const;
@@ -350,8 +144,6 @@ protected:
     PGOProfilerDecoder &pfDecoder_;
     BytecodeInfoCollector* collector_;
     BCInfo &bytecodeInfo_;
-    std::deque<uint32_t> compileQueue_ {};
-    std::map<CString, uint32_t> sortedRecords_ {};
     uint32_t compiledMethodCnt_ {0};
     AOTFileGenerator *fileGenerator_ {nullptr};
     std::string fileName_ {};

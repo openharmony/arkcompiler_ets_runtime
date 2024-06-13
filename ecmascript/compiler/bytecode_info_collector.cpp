@@ -124,8 +124,6 @@ void BytecodeInfoCollector::ProcessClasses()
             method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
         }
     }
-    // Collect import(infer-needed) and export relationship among all records.
-    CollectRecordReferenceREL();
     RearrangeInnerMethods();
     LOG_COMPILER(INFO) << "Total number of methods in file: "
                        << jsPandaFile_->GetJSPandaFileDesc()
@@ -188,9 +186,6 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
         if (!fastCallFlag) {
             canFastCall = false;
         }
-        if (compilationEnv_->IsAotCompiler()) {
-            CollectModuleInfoFromBC(bcIns, method, recordName);
-        }
         if (snapshotCPData_ != nullptr) {
             snapshotCPData_->Record(bcIns, bcIndex, recordName, method);
         }
@@ -217,29 +212,16 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
                                                  const std::pair<size_t, uint32_t> &processedMethodInfo)
 {
     auto processedMethodPcInfoIndex = processedMethodInfo.first;
-    auto processedMethodOffset = processedMethodInfo.second;
     auto &methodList = bytecodeInfo_.GetMethodList();
-    std::set<uint32_t> indexSet{};
-    // Methods with the same instructions in abc files have the same static information. Since
-    // information from bytecodes is collected only once, methods other than the processed method
-    // will obtain static information from the processed method.
-    auto processedIter = methodList.find(processedMethodOffset);
-    if (processedIter != methodList.end()) {
-        const MethodInfo &processedMethod = processedIter->second;
-        indexSet = processedMethod.GetImportIndexes();
-    }
 
     auto iter = methodList.find(methodOffset);
     if (iter != methodList.end()) {
         MethodInfo &methodInfo = iter->second;
         methodInfo.SetMethodPcInfoIndex(processedMethodPcInfoIndex);
-        // if these methods have the same bytecode, their import indexs must be the same.
-        methodInfo.CopyImportIndex(indexSet);
         return;
     }
     MethodInfo info(GetMethodInfoID(), processedMethodPcInfoIndex,
         MethodInfo::DEFAULT_OUTMETHOD_OFFSET);
-    info.CopyImportIndex(indexSet);
     methodList.emplace(methodOffset, info);
 }
 
@@ -381,178 +363,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             }
             default:
                 break;
-        }
-    }
-}
-
-void BytecodeInfoCollector::CollectModuleInfoFromBC(const BytecodeInstruction &bcIns,
-                                                    const MethodLiteral *method,
-                                                    const CString &recordName)
-{
-    auto methodOffset = method->GetMethodId().GetOffset();
-    // For records without tsType, we don't need to collect its export info.
-    if (jsPandaFile_->HasTSTypes(recordName) && !(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
-        BytecodeInstruction::HasId(BytecodeInstruction::GetFormat(bcIns.GetOpcode()), 0))) {
-        BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
-        switch (opcode) {
-            case BytecodeInstruction::Opcode::STMODULEVAR_IMM8: {
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::IMM8>();
-                // The export syntax only exists in main function.
-                if (jsPandaFile_->GetMainMethodIndex(recordName) == methodOffset) {
-                    CollectExportIndexs(recordName, imm);
-                }
-                break;
-            }
-            case BytecodeInstruction::Opcode::WIDE_STMODULEVAR_PREF_IMM16: {
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
-                if (jsPandaFile_->GetMainMethodIndex(recordName) == methodOffset) {
-                    CollectExportIndexs(recordName, imm);
-                }
-                break;
-            }
-            case BytecodeInstruction::Opcode::LDEXTERNALMODULEVAR_IMM8:{
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::IMM8>();
-                CollectImportIndexs(methodOffset, imm);
-                break;
-            }
-            case BytecodeInstruction::Opcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:{
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
-                CollectImportIndexs(methodOffset, imm);
-                break;
-            }
-            default:
-                break;
-        }
-    }
-}
-
-void BytecodeInfoCollector::CollectImportIndexs(uint32_t methodOffset, uint32_t index)
-{
-    auto &methodList = bytecodeInfo_.GetMethodList();
-    auto iter = methodList.find(methodOffset);
-    if (iter != methodList.end()) {
-        MethodInfo &methodInfo = iter->second;
-        // Collect import indexs of each method in its MethodInfo to do accurate Pgo compilation analysis.
-        methodInfo.AddImportIndex(index);
-        return;
-    }
-    MethodInfo info(GetMethodInfoID(), 0);
-    info.AddImportIndex(index);
-    methodList.emplace(methodOffset, info);
-}
-
-void BytecodeInfoCollector::CollectExportIndexs(const CString &recordName, uint32_t index)
-{
-    ASSERT(compilationEnv_->IsAotCompiler());
-    JSThread *thread = compilationEnv_->GetJSThread();
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    CString exportLocalName = "*default*";
-    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
-    [[maybe_unused]] EcmaHandleScope scope(thread);
-    JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
-    if (currentModule->GetLocalExportEntries().IsUndefined()) {
-        return;
-    }
-    // localExportEntries contain all local element info exported in this record.
-    JSHandle<TaggedArray> localExportArray(thread, currentModule->GetLocalExportEntries());
-    ASSERT(index < localExportArray->GetLength());
-    JSHandle<LocalExportEntry> currentExportEntry(thread, localExportArray->Get(index));
-    JSHandle<JSTaggedValue> exportName(thread, currentExportEntry->GetExportName());
-    JSHandle<JSTaggedValue> localName(thread, currentExportEntry->GetLocalName());
-
-    JSHandle<JSTaggedValue> exportLocalNameHandle =
-        JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportLocalName));
-    JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
-    /* if current exportName is "default", but localName not "*default*" like "export default class A{},
-     * localName is A, exportName is default in exportEntry". this will be recorded as "A:classType" in
-     * exportTable in typeSystem. At this situation, we will use localName to judge whether it has a actual
-     * Type record. Otherwise, we will use exportName.
-     */
-    if (JSTaggedValue::SameValue(exportName, defaultName) &&
-        !JSTaggedValue::SameValue(localName, exportLocalNameHandle)) {
-        exportName = localName;
-    }
-
-    bytecodeInfo_.AddExportIndexToRecord(recordName, index);
-}
-
-void BytecodeInfoCollector::CollectRecordReferenceREL()
-{
-    auto &recordNames = bytecodeInfo_.GetRecordNames();
-    for (auto &record : recordNames) {
-        JSRecordInfo info = jsPandaFile_->FindRecordInfo(record);
-        if (jsPandaFile_->HasTSTypes(info) && jsPandaFile_->IsModule(info)) {
-            CollectRecordImportInfo(record);
-            CollectRecordExportInfo(record);
-        }
-    }
-}
-
-/* Each import index is corresponded to a ResolvedIndexBinding in the Environment of its module.
- * Through ResolvedIndexBinding, we can get the export module and its export index. Only when the
- * export index is in the non-type-record set which we have collected in CollectExportIndexs function,
- * this export element can be infer-needed. We will collect the map as (key: import index , value: (exportRecord,
- * exportIndex)) for using in pgo analysis and type infer.
- */
-void BytecodeInfoCollector::CollectRecordImportInfo(const CString &recordName)
-{
-    ASSERT(compilationEnv_->IsAotCompiler());
-    auto thread = compilationEnv_->GetJSThread();
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    [[maybe_unused]] EcmaHandleScope scope(thread);
-    JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
-    // Collect Import Info
-    JSTaggedValue moduleEnvironment = currentModule->GetEnvironment();
-    if (moduleEnvironment.IsUndefined()) {
-        return;
-    }
-    ASSERT(moduleEnvironment.IsTaggedArray());
-    JSHandle<TaggedArray> moduleArray(thread, moduleEnvironment);
-    auto length = moduleArray->GetLength();
-    for (size_t index = 0; index < length; index++) {
-        JSTaggedValue resolvedBinding = moduleArray->Get(index);
-        // if resolvedBinding.IsHole(), means that importname is * or it belongs to empty Aot module.
-        if (!resolvedBinding.IsResolvedIndexBinding()) {
-            continue;
-        }
-        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-        CString resolvedRecord = ModuleManager::GetRecordName(binding->GetModule());
-        auto bindingIndex = binding->GetIndex();
-        if (bytecodeInfo_.HasExportIndexToRecord(resolvedRecord, bindingIndex)) {
-            bytecodeInfo_.AddImportRecordInfoToRecord(recordName, resolvedRecord, index, bindingIndex);
-        }
-    }
-}
-
-// For type infer under retranmission (export * from "xxx"), we collect the star export records in this function.
-void BytecodeInfoCollector::CollectRecordExportInfo(const CString &recordName)
-{
-    ASSERT(compilationEnv_->IsAotCompiler());
-    auto thread = compilationEnv_->GetJSThread();
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    [[maybe_unused]] EcmaHandleScope scope(thread);
-    JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
-    // Collect Star Export Info
-    JSTaggedValue starEntries = currentModule->GetStarExportEntries();
-    if (starEntries.IsUndefined()) {
-        return;
-    }
-    ASSERT(starEntries.IsTaggedArray());
-    JSHandle<TaggedArray> starEntriesArray(thread, starEntries);
-    auto starLength = starEntriesArray->GetLength();
-    JSMutableHandle<StarExportEntry> starExportEntry(thread, JSTaggedValue::Undefined());
-    for (size_t index = 0; index < starLength; index++) {
-        starExportEntry.Update(starEntriesArray->Get(index));
-        JSTaggedValue moduleRequest = starExportEntry->GetModuleRequest();
-        CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest.GetTaggedObject()));
-        if (ModulePathHelper::IsNativeModuleRequest(moduleRequestName)) {
-            return;
-        }
-        CString baseFileName = jsPandaFile_->GetJSPandaFileDesc();
-        CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile_,
-            baseFileName, recordName, moduleRequestName);
-        if (jsPandaFile_->HasTypeSummaryOffset(entryPoint)) {
-            bytecodeInfo_.AddStarExportToRecord(recordName, entryPoint);
         }
     }
 }
