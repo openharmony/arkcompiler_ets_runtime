@@ -229,13 +229,3 @@ print(JSON.stringify(str4))
   print(JSON.stringify(expect) == JSON.stringify(actual));
   print(actual[0].holder[""] == test_obj);
 };
-
-let obj1 = {
-    get a(){
-        this[102400] = 1;
-        return "a";
-    },
-    b:"b",
-}
-Object.keys(obj1);
-print(JSON.stringify(obj1));

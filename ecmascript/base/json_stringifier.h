@@ -66,12 +66,7 @@ private:
     bool SerializeElements(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     bool SerializeKeys(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     JSHandle<JSTaggedValue> SerializeHolder(const JSHandle<JSTaggedValue> &object,
-                                            const JSHandle<JSTaggedValue> &value);
-    bool OnlyOwnKeysProc(JSTaggedValue enumCache, JSHandle<JSHClass> jsHclass, const JSHandle<JSObject> &obj,
-                         JSHandle<TaggedArray> propertiesArr, const JSHandle<JSTaggedValue> &replacer, bool hasContent);                                            
-    bool OnlyOwnKeysProcWithDictMode(const JSHandle<JSObject> &obj, const JSHandle<TaggedArray> &cache,
-                                           const JSHandle<JSTaggedValue> &replacer, uint32_t startIndex,
-                                           uint32_t length, bool hasContent);                                            
+                                            const JSHandle<JSTaggedValue> &value);                                         
     CString gap_;
     CString result_;
     CString indent_;
