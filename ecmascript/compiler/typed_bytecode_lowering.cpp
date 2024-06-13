@@ -628,7 +628,7 @@ void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
         builder_.Jump(&exit);
     } else {
         builder_.DeoptCheck(builder_.TaggedIsSymbol(key), frameState, DeoptType::NOTSYMBOL);
-        builder_.ObjectTypeCheck(true, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
+        builder_.ObjectTypeCheck(false, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
         builder_.Jump(&exit);
     }
@@ -665,7 +665,7 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
         builder_.Jump(&exit);
     } else {
         builder_.DeoptCheck(builder_.TaggedIsSymbol(key), frameState, DeoptType::NOTSYMBOL);
-        builder_.ObjectTypeCheck(true, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
+        builder_.ObjectTypeCheck(false, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         BuildNamedPropertyAccess(
             gate, receiver, receiver, value, tacc.GetAccessInfo(0).Plr(), tacc.GetExpectedHClassIndex(0));
         builder_.Jump(&exit);
@@ -712,7 +712,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
     }
     if (tacc.IsMono()) {
         GateRef receiver = tacc.GetReceiver();
-        builder_.ObjectTypeCheck(true, receiver,
+        builder_.ObjectTypeCheck(false, receiver,
                                  builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         if (tacc.IsReceiverNoEqNewHolder(0)) {
             builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
@@ -739,6 +739,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
         DeleteConstDataIfNoUser(tacc.GetKey());
         return;
     }
+    builder_.HeapObjectCheck(tacc.GetReceiver(), frameState);
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), tacc.GetReceiver(),
                                                TaggedObject::HCLASS_OFFSET);
     for (size_t i = 0; i < typeCount; ++i) {
@@ -2124,7 +2125,7 @@ void TypedBytecodeLowering::LowerInstanceOf(GateRef gate)
     GateRef obj = tacc.GetReceiver();
     GateRef target = tacc.GetTarget();
 
-    builder_.ObjectTypeCheck(true, target, expectedHCIndexes[0]);
+    builder_.ObjectTypeCheck(false, target, expectedHCIndexes[0]);
     builder_.ProtoChangeMarkerCheck(target);
 
     result = builder_.OrdinaryHasInstance(obj, target);
