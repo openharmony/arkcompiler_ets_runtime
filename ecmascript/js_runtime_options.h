@@ -194,6 +194,7 @@ enum CommandValues {
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
+    OPTION_COMPILER_BASELINE_PGO,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -1065,6 +1066,16 @@ public:
     std::string GetPGOProfilerPath() const
     {
         return pgoProfilerPath_;
+    }
+
+    void SetEnableBaselinePgo(bool value)
+    {
+        enableBaselinePgo_ = value;
+    }
+
+    bool IsEnableBaselinePgo() const
+    {
+        return enableBaselinePgo_;
     }
 
     void SetPGOProfilerPath(const std::string& value)
@@ -1956,6 +1967,7 @@ private:
     bool enableJitFastCompile_ {false};
     bool enableJitFrame_{false};
     bool disableCodeSign_{false};
+    bool enableBaselinePgo_{false};
 };
 }  // namespace panda::ecmascript
 
