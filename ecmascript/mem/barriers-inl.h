@@ -43,7 +43,7 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     } else if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
 #ifndef NDEBUG
         if (UNLIKELY(JSTaggedValue(value).IsWeakForHeapObject())) {
-            CHECK_NO_LOCAL_TO_SHARE_WEAK_REF_HANDLE
+            CHECK_NO_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
         }
 #endif
         objectRegion->InsertLocalToShareRSet(slotAddr);

@@ -118,24 +118,24 @@ using AllowLocalToShareWeakRefHandle = AssertScopeT<AssertType::LOCAL_TO_SHARE_W
 #endif
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CHECK_NO_GC ASSERT_PRINT(AllowGarbageCollection::IsAllowed(), "disallow execute garbage collection.");
+#define CHECK_NO_GC ASSERT_PRINT(AllowGarbageCollection::IsAllowed(), "disallow execute garbage collection.")
 // Some checks failed, need to check and fix
 #undef CHECK_NO_GC
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CHECK_NO_GC static_cast<void>(0);
+#define CHECK_NO_GC static_cast<void>(0)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CHECK_NO_HEAP_ALLOC ASSERT_PRINT(AllowHeapAlloc::IsAllowed(), "disallow execute heap alloc.");
+#define CHECK_NO_HEAP_ALLOC ASSERT_PRINT(AllowHeapAlloc::IsAllowed(), "disallow execute heap alloc.")
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CHECK_NO_HANDLE_ALLOC ASSERT_PRINT(AllowHandleAllocation::IsAllowed(), "disallow execute handle alloc.");
+#define CHECK_NO_HANDLE_ALLOC ASSERT_PRINT(AllowHandleAllocation::IsAllowed(), "disallow execute handle alloc.")
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CHECK_NO_DEREF_HANDLE ASSERT_PRINT(AllowDeRefHandle::IsAllowed(), "disallow execute deref handle.");
+#define CHECK_NO_DEREF_HANDLE ASSERT_PRINT(AllowDeRefHandle::IsAllowed(), "disallow execute deref handle.")
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CHECK_NO_LOCAL_TO_SHARE_WEAK_REF_HANDLE         \
-    ASSERT_PRINT(AllowLocalToShareWeakRefHandle::IsAllowed(), "disallow local to share weak ref handle.");
+    ASSERT_PRINT(AllowLocalToShareWeakRefHandle::IsAllowed(), "disallow local to share weak ref handle.")
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_ASSERT_SCOPE_H

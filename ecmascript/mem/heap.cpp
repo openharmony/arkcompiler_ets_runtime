@@ -879,7 +879,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
         [[maybe_unused]] GcStateScope scope(thread_);
 #endif
-        CHECK_NO_GC
+        CHECK_NO_GC;
         if (UNLIKELY(ShouldVerifyHeap())) {
             // pre gc heap verify
             LOG_ECMA(DEBUG) << "pre gc heap verify";
