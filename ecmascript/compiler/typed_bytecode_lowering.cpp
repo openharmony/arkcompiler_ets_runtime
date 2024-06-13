@@ -1753,6 +1753,9 @@ void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
             UNREACHABLE();
     }
     uint32_t len = tacc.GetFunctionTypeLength();
+    if (len == tacc.INVALID_LEN) {
+        return;
+    }
     GateRef func = tacc.GetFunc();
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
@@ -1795,6 +1798,9 @@ const JSPandaFile* TypedBytecodeLowering::GetCalleePandaFile(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallArg0(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallArg0TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.IsValidCallMethodId()) {
         return;
@@ -1804,6 +1810,9 @@ void TypedBytecodeLowering::LowerTypedCallArg0(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallArg1(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallArg1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     GateRef func = tacc.GetFunc();
     GateRef a0Value = tacc.GetValue();
@@ -1821,6 +1830,9 @@ void TypedBytecodeLowering::LowerTypedCallArg1(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallArg2(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallArg2TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.IsValidCallMethodId()) {
         return;
@@ -1830,6 +1842,9 @@ void TypedBytecodeLowering::LowerTypedCallArg2(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallArg3(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallArg3TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.IsValidCallMethodId()) {
         return;
@@ -1839,6 +1854,9 @@ void TypedBytecodeLowering::LowerTypedCallArg3(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallrange(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.IsValidCallMethodId()) {
         return;
@@ -1896,6 +1914,9 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
     }
 
     uint32_t len = tacc.GetFunctionTypeLength();
+    if (len == tacc.INVALID_LEN) {
+        return;
+    }
     GateRef func = tacc.GetFunc();
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = tacc.GetThisObj();
@@ -1916,6 +1937,9 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
 
 void TypedBytecodeLowering::LowerTypedCallthis0(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallThis0TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
@@ -1931,6 +1955,9 @@ void TypedBytecodeLowering::LowerTypedCallthis0(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS1(pgoFuncId)) {
@@ -1946,6 +1973,9 @@ void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallthis2(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallThis2TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.CanOptimizeAsFastCall()) {
         return;
@@ -1955,6 +1985,9 @@ void TypedBytecodeLowering::LowerTypedCallthis2(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallthis3(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallThis3TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS3(pgoFuncId)) {
@@ -1970,6 +2003,9 @@ void TypedBytecodeLowering::LowerTypedCallthis3(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallthisrange(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     CallThisRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.CanOptimizeAsFastCall()) {
         return;
@@ -2075,6 +2111,9 @@ void TypedBytecodeLowering::LowerTypedTypeOf(GateRef gate)
 
 void TypedBytecodeLowering::LowerGetIterator(GateRef gate)
 {
+    if (GetCalleePandaFile(gate) == nullptr) {
+        return;
+    }
     GetIteratorTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinMethodId();
     if (IS_INVALID_ID(id) && id == BuiltinsStubCSigns::ID::NONE) {
