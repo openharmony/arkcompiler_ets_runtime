@@ -366,6 +366,12 @@ enum class EnumCacheKind : uint8_t {
 
 }  // namespace EnumCache
 
+struct TransitionResult {
+    bool isTagged;
+    bool isTransition;
+    JSTaggedValue value;
+};
+
 class JSHClass : public TaggedObject {
 public:
     static constexpr int TYPE_BITFIELD_NUM = 8;
@@ -455,7 +461,7 @@ public:
     static bool PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
                                                  const JSHandle<JSTaggedValue> &value,
                                                  ElementsKind kind = ElementsKind::NONE);
-    static std::tuple<bool, bool, JSTaggedValue> PUBLIC_API ConvertOrTransitionWithRep(const JSThread *thread,
+    static TransitionResult PUBLIC_API ConvertOrTransitionWithRep(const JSThread *thread,
         const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes &attr);
 

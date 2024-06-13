@@ -20,3 +20,4 @@ undefined
 undefined
 5
 undefined
+set obj by name test success!
