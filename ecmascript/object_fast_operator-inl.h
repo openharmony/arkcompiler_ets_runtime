@@ -847,12 +847,10 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         attr.SetIsInlinedProps(true);
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
-        if (std::get<0>(actualValue)) {
-            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex,
-                std::get<2>(actualValue)); // 2 : Gets the third value
+        if (actualValue.isTagged) {
+            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex, valueHandle.GetTaggedValue());
         } else {
-            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex,
-                std::get<2>(actualValue)); // 2 : Gets the third value
+            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex, actualValue.value);
         }
         return attr;
     }
@@ -894,10 +892,10 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         attr.SetOffset(nonInlinedProps + objHandle->GetJSHClass()->GetInlinedProperties());
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
-        if (std::get<0>(actualValue)) {
-            array->Set<true>(thread, nonInlinedProps, std::get<2>(actualValue));
+        if (actualValue.isTagged) {
+            array->Set<true>(thread, nonInlinedProps, valueHandle.GetTaggedValue());
         } else {
-            array->Set<false>(thread, nonInlinedProps, std::get<2>(actualValue));
+            array->Set<false>(thread, nonInlinedProps, actualValue.value);
         }
     } else {
         JSHandle<NameDictionary> dictHandle(array);
