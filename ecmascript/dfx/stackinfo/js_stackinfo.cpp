@@ -251,7 +251,8 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
 {
     if (JsStackInfo::loader != nullptr && !JsStackInfo::loader->IsEnableAOT() &&
-        JsStackInfo::options != nullptr && !JsStackInfo::options->IsEnableJIT()) {
+        JsStackInfo::options != nullptr && !JsStackInfo::options->IsEnableJIT() &&
+        !JsStackInfo::options->IsEnablePGOProfiler()) {
         return;
     }
     ohos::RuntimeInfoType type;
