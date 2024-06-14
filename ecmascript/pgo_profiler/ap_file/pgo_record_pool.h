@@ -89,9 +89,9 @@ public:
         Clear();
     }
 
-    void TryAdd(const CString &value, ApEntityId &entryId)
+    bool TryAdd(const CString &value, ApEntityId &entryId)
     {
-        pool_->TryAdd(value, entryId);
+        return pool_->TryAdd(value, entryId);
     }
 
     bool GetEntryId(const CString &value, ApEntityId &entryId) const
