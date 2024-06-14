@@ -4805,6 +4805,12 @@ uintptr_t JSNApi::GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
     return thread->NewGlobalHandle(value);
 }
 
+int JSNApi::GetStartRealTime(const EcmaVM *vm)
+{
+    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
+    return vm->GetProcessStartRealtime();
+}
+
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
 {
     if (localAddress == 0) {

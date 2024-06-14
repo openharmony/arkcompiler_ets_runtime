@@ -1557,6 +1557,7 @@ public:
 
     static bool IsJitEscape();
     static bool IsAotEscape(const std::string &pgoRealPath = "");
+    static int GetStartRealTime(const EcmaVM *vm);
 private:
     static int vmCount_;
     static bool initialize_;

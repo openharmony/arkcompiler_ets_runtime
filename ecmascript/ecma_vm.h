@@ -666,6 +666,11 @@ public:
         return workerList_;
     }
 
+    int GetProcessStartRealtime() const
+    {
+        return processStartRealtime_;
+    }
+
     Jit *GetJit() const;
     bool PUBLIC_API IsEnableFastJit() const;
     bool PUBLIC_API IsEnableBaselineJit() const;
@@ -722,6 +727,8 @@ public:
     }
 
     static void InitializeIcuData(const JSRuntimeOptions &options);
+
+    static int InitializeStartRealTime();
 
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
     {
@@ -924,6 +931,9 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
+
+    // process StartRealTime
+    int processStartRealtime_ = 0;
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks
