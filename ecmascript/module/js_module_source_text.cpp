@@ -92,7 +92,8 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest, bool executeFromJob)
 {
     CString moduleRequestName = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
-    JSHandle<JSTaggedValue> moduleRequestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
+    JSHandle<JSTaggedValue> requestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
+    CString moduleRequestStr = ModulePathHelper::Utf8ConvertToString(requestStr.GetTaggedValue());
 
     CString baseFilename;
     if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
@@ -103,12 +104,12 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     }
 
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
+    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestStr);
     if (isNative) {
-        if (moduleManager->IsLocalModuleLoaded(moduleRequestStr.GetTaggedValue())) {
-            return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequestStr.GetTaggedValue()));
+        if (moduleManager->IsLocalModuleLoaded(requestStr.GetTaggedValue())) {
+            return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(requestStr.GetTaggedValue()));
         }
-        return moduleManager->ResolveNativeModule(moduleRequest, baseFilename, moduleType);
+        return moduleManager->ResolveNativeModule(requestStr, baseFilename, moduleType);
     }
     ASSERT(module->GetEcmaModuleRecordName().IsHeapObject());
     CString recordName = ModulePathHelper::Utf8ConvertToString(module->GetEcmaModuleRecordName());
@@ -120,7 +121,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
 
     CString outFileName = baseFilename;
     CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(
-        thread, jsPandaFile.get(), outFileName, recordName, moduleRequestName);
+        thread, jsPandaFile.get(), outFileName, recordName, moduleRequestStr);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
