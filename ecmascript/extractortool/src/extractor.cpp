@@ -20,6 +20,7 @@
 #include "constants.h"
 #include "file_path_utils.h"
 #include "securec.h"
+#include "ecmascript/platform/file.h"
 
 namespace panda {
 namespace ecmascript {
@@ -110,6 +111,9 @@ bool Extractor::ExtractByName(const std::string &fileName, std::ostream &dest) c
 
 bool Extractor::ExtractFile(const std::string &fileName, const std::string &targetPath) const
 {
+    if (!panda::ecmascript::FileExist(targetPath.c_str())) {
+        return false;
+    }
     std::ofstream fileStream;
     fileStream.open(targetPath, std::ios_base::out | std::ios_base::binary);
     if (!fileStream.is_open()) {

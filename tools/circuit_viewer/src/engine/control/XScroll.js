@@ -148,4 +148,4 @@ class XScroll {
 
 module.exports = {
   XScroll
-}
+};
