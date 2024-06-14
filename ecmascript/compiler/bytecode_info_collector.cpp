@@ -62,7 +62,7 @@ void BytecodeInfoCollector::ProcessClasses()
     std::map<uint32_t, std::pair<size_t, uint32_t>> processedMethod;
     Span<const uint32_t> classIndexes = jsPandaFile_->GetClasses();
 
-    auto &recordNames = bytecodeInfo_.GetRecordNames();
+    auto &recordNamePtrs = bytecodeInfo_.GetRecordNamePtrs();
     auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
     std::vector<panda_file::File::EntityId> methodIndexes;
     std::vector<panda_file::File::EntityId> classConstructIndexes;
@@ -73,9 +73,9 @@ void BytecodeInfoCollector::ProcessClasses()
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        const CString recordName = JSPandaFile::ParseEntryPoint(desc);
+        const std::shared_ptr<CString> recordNamePtr = std::make_shared<CString>(JSPandaFile::ParseEntryPoint(desc));
         cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedMethod,
-            &recordNames, &methodPcInfos, &recordName,
+            &recordNamePtrs, &methodPcInfos, &recordNamePtr,
             &methodIndexes, &classConstructIndexes] (panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
             methodIndexes.emplace_back(methodId);
@@ -86,8 +86,8 @@ void BytecodeInfoCollector::ProcessClasses()
             auto methodOffset = methodId.GetOffset();
             CString name = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(mda.GetNameId()).data);
             if (JSPandaFile::IsEntryOrPatch(name)) {
-                jsPandaFile_->UpdateMainMethodIndex(methodOffset, recordName);
-                recordNames.emplace_back(recordName);
+                jsPandaFile_->UpdateMainMethodIndex(methodOffset, *recordNamePtr);
+                recordNamePtrs.emplace_back(recordNamePtr);
             }
 
             MethodLiteral *methodLiteral = methods + (methodIdx++);
@@ -108,13 +108,13 @@ void BytecodeInfoCollector::ProcessClasses()
             auto it = processedMethod.find(methodOffset);
             if (it == processedMethod.end()) {
                 CollectMethodPcsFromBC(codeSize, insns, methodLiteral,
-                    recordName, methodOffset, classConstructIndexes);
+                    methodOffset, recordNamePtr, classConstructIndexes);
                 processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
             }
 
-            SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
+            SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset], recordNamePtr);
             jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
-            pfDecoder_.MatchAndMarkMethod(jsPandaFile_, recordName, name.c_str(), methodId);
+            pfDecoder_.MatchAndMarkMethod(jsPandaFile_, *recordNamePtr, name.c_str(), methodId);
         });
     }
     // class Construct need to use new target, can not fastcall
@@ -124,11 +124,8 @@ void BytecodeInfoCollector::ProcessClasses()
             method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
         }
     }
-    RearrangeInnerMethods();
-    LOG_COMPILER(INFO) << "Total number of methods in file: "
-                       << jsPandaFile_->GetJSPandaFileDesc()
-                       << " is: "
-                       << methodIdx;
+    LOG_COMPILER(INFO) << "Total number of methods in file: " << jsPandaFile_->GetJSPandaFileDesc()
+                       << " is: " << methodIdx;
 }
 
 void BytecodeInfoCollector::ProcessCurrMethod()
@@ -144,10 +141,11 @@ void BytecodeInfoCollector::ProcessMethod(MethodLiteral *methodLiteral)
         return;
     }
 
-    auto &recordNames = bytecodeInfo_.GetRecordNames();
+    auto &recordNamePtrs = bytecodeInfo_.GetRecordNamePtrs();
     auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
-    const CString recordName = jsPandaFile_->GetRecordNameWithBundlePack(methodIdx);
-    recordNames.emplace_back(recordName);
+    const std::shared_ptr<CString> recordNamePtr =
+        std::make_shared<CString>(jsPandaFile_->GetRecordNameWithBundlePack(methodIdx));
+    recordNamePtrs.emplace_back(recordNamePtr);
     ASSERT(jsPandaFile_->IsNewVersion());
 
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
@@ -159,15 +157,15 @@ void BytecodeInfoCollector::ProcessMethod(MethodLiteral *methodLiteral)
     const uint8_t *insns = codeDataAccessor.GetInstructions();
     std::vector<panda_file::File::EntityId> classConstructIndexes;
 
-    CollectMethodPcsFromBC(codeSize, insns, methodLiteral,
-        recordName, methodOffset, classConstructIndexes);
-    SetMethodPcInfoIndex(methodOffset, {methodPcInfos.size() - 1, methodOffset});
+    CollectMethodPcsFromBC(codeSize, insns, methodLiteral, methodOffset, recordNamePtr, classConstructIndexes);
+    SetMethodPcInfoIndex(methodOffset, {methodPcInfos.size() - 1, methodOffset}, recordNamePtr);
     processedMethod_.emplace(methodOffset);
 }
 
 void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
-    MethodLiteral *method, const CString &recordName, uint32_t methodOffset,
-    std::vector<panda_file::File::EntityId> &classConstructIndexes)
+                                                   MethodLiteral *method, uint32_t methodOffset,
+                                                   const std::shared_ptr<CString> recordNamePtr,
+                                                   std::vector<panda_file::File::EntityId> &classConstructIndexes)
 {
     auto bcIns = BytecodeInst(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
@@ -182,14 +180,14 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         bool fastCallFlag = true;
-        CollectMethodInfoFromBC(bcIns, method, bcIndex, classConstructIndexes, &fastCallFlag);
+        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr, classConstructIndexes, &fastCallFlag);
         if (!fastCallFlag) {
             canFastCall = false;
         }
         if (snapshotCPData_ != nullptr) {
-            snapshotCPData_->Record(bcIns, bcIndex, recordName, method);
+            snapshotCPData_->Record(bcIns, bcIndex, *recordNamePtr, method);
         }
-        pgoBCInfo_.Record(bcIns, bcIndex, recordName, method);
+        pgoBCInfo_.Record(bcIns, bcIndex, *recordNamePtr, method);
         if (noGC && !bytecodes_.GetBytecodeMetaData(curPc).IsNoGC()) {
             noGC = false;
         }
@@ -209,7 +207,8 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
 }
 
 void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
-                                                 const std::pair<size_t, uint32_t> &processedMethodInfo)
+                                                 const std::pair<size_t, uint32_t> &processedMethodInfo,
+                                                 const std::shared_ptr<CString> recordNamePtr)
 {
     auto processedMethodPcInfoIndex = processedMethodInfo.first;
     auto &methodList = bytecodeInfo_.GetMethodList();
@@ -220,84 +219,61 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
         methodInfo.SetMethodPcInfoIndex(processedMethodPcInfoIndex);
         return;
     }
-    MethodInfo info(GetMethodInfoID(), processedMethodPcInfoIndex,
-        MethodInfo::DEFAULT_OUTMETHOD_OFFSET);
+    MethodInfo info(GetNewMethodInfoID(), processedMethodPcInfoIndex, recordNamePtr);
     methodList.emplace(methodOffset, info);
 }
 
-void BytecodeInfoCollector::CollectInnerMethods(const MethodLiteral *method,
-                                                uint32_t innerMethodOffset,
-                                                bool isConstructor)
+void BytecodeInfoCollector::CollectMethods(const MethodLiteral *method, const std::shared_ptr<CString> recordNamePtr)
 {
     auto methodId = method->GetMethodId().GetOffset();
-    CollectInnerMethods(methodId, innerMethodOffset, isConstructor);
+    CollectMethods(methodId, recordNamePtr);
 }
 
-void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset, bool isConstructor)
+void BytecodeInfoCollector::CollectMethods(uint32_t methodId, const std::shared_ptr<CString> recordNamePtr)
 {
     auto &methodList = bytecodeInfo_.GetMethodList();
-    uint32_t methodInfoId = 0;
-    auto methodIter = methodList.find(methodId);
-    if (methodIter != methodList.end()) {
-        MethodInfo &methodInfo = methodIter->second;
-        methodInfoId = methodInfo.GetMethodInfoIndex();
-        methodInfo.AddInnerMethod(innerMethodOffset, isConstructor);
-    } else {
-        methodInfoId = GetMethodInfoID();
-        MethodInfo info(methodInfoId, 0);
-        methodList.emplace(methodId, info);
-        methodList.at(methodId).AddInnerMethod(innerMethodOffset, isConstructor);
+    if (methodList.find(methodId) == methodList.end()) {
+        methodList.emplace(methodId, MethodInfo(GetNewMethodInfoID(), 0, recordNamePtr));
     }
-
-    auto innerMethodIter = methodList.find(innerMethodOffset);
-    if (innerMethodIter != methodList.end()) {
-        innerMethodIter->second.SetOutMethodId(methodInfoId);
-        innerMethodIter->second.SetOutMethodOffset(methodId);
-        return;
-    }
-    MethodInfo innerInfo(GetMethodInfoID(), 0, methodInfoId, methodId);
-    methodList.emplace(innerMethodOffset, innerInfo);
 }
 
-void BytecodeInfoCollector::CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index)
+void BytecodeInfoCollector::CollectInnerMethodsFromLiteral(uint64_t index, const std::shared_ptr<CString> recordNamePtr)
 {
     std::vector<uint32_t> methodOffsets;
     LiteralDataExtractor::GetMethodOffsets(jsPandaFile_, index, methodOffsets);
     for (auto methodOffset : methodOffsets) {
-        CollectInnerMethods(method, methodOffset);
+        CollectMethods(methodOffset, recordNamePtr);
     }
 }
 
-void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(const MethodLiteral *method,
-                                                              panda_file::File::EntityId literalId)
+void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(panda_file::File::EntityId literalId,
+                                                              const std::shared_ptr<CString> recordNamePtr)
 {
     std::vector<uint32_t> methodOffsets;
     LiteralDataExtractor::GetMethodOffsets(jsPandaFile_, literalId, methodOffsets);
     for (auto methodOffset : methodOffsets) {
-        CollectInnerMethods(method, methodOffset);
+        CollectMethods(methodOffset, recordNamePtr);
     }
 }
 
 void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
-    int32_t bcIndex, std::vector<panda_file::File::EntityId> &classConstructIndexes, bool *canFastCall)
+                                                    int32_t bcIndex, const std::shared_ptr<CString> recordNamePtr,
+                                                    std::vector<panda_file::File::EntityId> &classConstructIndexes,
+                                                    bool *canFastCall)
 {
     if (!(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
         BytecodeInstruction::HasId(BytecodeInstruction::GetFormat(bcIns.GetOpcode()), 0))) {
+        CollectMethods(method, recordNamePtr);
         BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
         switch (opcode) {
-            uint32_t methodId;
+            uint32_t innerMethodId;
             case BytecodeInstruction::Opcode::DEFINEFUNC_IMM8_ID16_IMM8:
-            case BytecodeInstruction::Opcode::DEFINEFUNC_IMM16_ID16_IMM8: {
-                methodId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
-                    static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
-                CollectInnerMethods(method, methodId);
-                break;
-            }
+            case BytecodeInstruction::Opcode::DEFINEFUNC_IMM16_ID16_IMM8:
             case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM8_ID16_IMM8:
             case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
-                methodId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
+                innerMethodId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
-                CollectInnerMethods(method, methodId);
+                CollectMethods(innerMethodId, recordNamePtr);
                 break;
             }
             case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:{
@@ -305,11 +281,11 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
                 classConstructIndexes.emplace_back(entityId);
                 classDefBCIndexes_.insert(bcIndex);
-                methodId = entityId.GetOffset();
-                CollectInnerMethods(method, methodId, true);
+                innerMethodId = entityId.GetOffset();
+                CollectMethods(innerMethodId, recordNamePtr);
                 auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
-                CollectInnerMethodsFromNewLiteral(method, literalId);
+                CollectInnerMethodsFromNewLiteral(literalId, recordNamePtr);
                 break;
             }
             case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
@@ -317,35 +293,26 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                     (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
                 classConstructIndexes.emplace_back(entityId);
                 classDefBCIndexes_.insert(bcIndex);
-                methodId = entityId.GetOffset();
-                CollectInnerMethods(method, methodId, true);
+                innerMethodId = entityId.GetOffset();
+                CollectMethods(innerMethodId, recordNamePtr);
                 auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
-                CollectInnerMethodsFromNewLiteral(method, literalId);
+                CollectInnerMethodsFromNewLiteral(literalId, recordNamePtr);
                 break;
             }
             case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-            case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
-                auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
-                    static_cast<uint16_t>(bcIns.GetId().AsRawValue()));
-                CollectInnerMethodsFromNewLiteral(method, literalId);
-                break;
-            }
-            case BytecodeInstruction::Opcode::DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16: {
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
-                CollectInnerMethodsFromLiteral(method, imm);
-                break;
-            }
+            case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
             case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
             case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
                 auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     static_cast<uint16_t>(bcIns.GetId().AsRawValue()));
-                CollectInnerMethodsFromNewLiteral(method, literalId);
+                CollectInnerMethodsFromNewLiteral(literalId, recordNamePtr);
                 break;
             }
+            case BytecodeInstruction::Opcode::DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16:
             case BytecodeInstruction::Opcode::DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16: {
                 auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
-                CollectInnerMethodsFromLiteral(method, imm);
+                CollectInnerMethodsFromLiteral(imm, recordNamePtr);
                 break;
             }
             case EcmaOpcode::RESUMEGENERATOR:
@@ -364,15 +331,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             default:
                 break;
         }
-    }
-}
-
-void BytecodeInfoCollector::RearrangeInnerMethods()
-{
-    auto &methodList = bytecodeInfo_.GetMethodList();
-    for (auto &it : methodList) {
-        MethodInfo &methodInfo = it.second;
-        methodInfo.RearrangeInnerMethods();
     }
 }
 }  // namespace panda::ecmascript::kungfu

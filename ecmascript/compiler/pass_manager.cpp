@@ -57,7 +57,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
                                           maxMethodsInModule_);
     cmpDriver_->CompileMethod(jsPandaFile, methodLiteral, profileTypeInfo, pcStart, header, abcId,
                               [this, &fileName, &osrOffset] (
-                                const CString recordName,
+                                const CString &recordName,
                                 const std::string &methodName,
                                 MethodLiteral *methodLiteral,
                                 JSHandle<ProfileTypeInfo> &profileTypeInfo,
