@@ -577,15 +577,4 @@ private:
     ProfileType child_;
 };
 } // namespace panda::ecmascript::pgo
-
-namespace std {
-using panda::ecmascript::pgo::ProfileType;
-template<>
-struct hash<ProfileType> {
-    size_t operator()(const ProfileType& type) const noexcept
-    {
-        return hash<uint64_t>()(type.GetRaw());
-    }
-};
-} // namespace std
 #endif  // ECMASCRIPT_PGO_PROFILER_TYPES_PGO_PROFILE_TYPE_H
