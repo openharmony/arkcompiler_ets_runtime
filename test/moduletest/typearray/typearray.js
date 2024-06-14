@@ -895,3 +895,25 @@ function prettyPrinted(value) {
     C.of();
     print("Class extends "+ ctor.name + " test success!")
 });
+
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function (ctor, i) {
+    try {
+        let obj = {
+            __proto__: [1, 2, 3, 4],
+            length: 1n,
+        }
+        new ctor(obj);
+    } catch (e) {
+        print("Test New " + ctor.name + " with Bad_Obj Success!")
+    }
+});

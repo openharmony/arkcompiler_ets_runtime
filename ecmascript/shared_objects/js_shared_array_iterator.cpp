@@ -81,9 +81,10 @@ JSTaggedValue JSSharedArrayIterator::NextInternal(JSThread *thread, JSHandle<JSS
     } else {
         // 9.Else
         JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
-        length =
-            JSTaggedValue::ToLength(thread, JSTaggedValue::GetProperty(thread, array, lengthKey).GetValue()).ToUint32();
+        auto lengthValue =
+            JSTaggedValue::ToLength(thread, JSTaggedValue::GetProperty(thread, array, lengthKey).GetValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        length = lengthValue.ToUint32();
     }
 
     JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
