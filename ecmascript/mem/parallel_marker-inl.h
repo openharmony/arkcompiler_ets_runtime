@@ -153,19 +153,20 @@ inline void NonMovableMarker::HandleOldToNewRSet(uint32_t threadId, Region *regi
     region->IterateAllOldToNewBits([this, threadId, &region, isEdenMark](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());
-        if (value.IsHeapObject()) {
-            if (value.IsWeakForHeapObject()) {
-                RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem), region);
-            } else {
-                auto object = value.GetTaggedObject();
-                Region *objectRegion = Region::ObjectAddressToRange(object);
-                if (isEdenMark) {
-                    if (objectRegion->InEdenSpace()) {
-                        MarkObject(threadId, value.GetTaggedObject());
-                    }
-                } else {
+        if (!value.IsHeapObject()) {
+            return true;
+        }
+        if (value.IsWeakForHeapObject()) {
+            RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem), region);
+        } else {
+            auto object = value.GetTaggedObject();
+            Region *objectRegion = Region::ObjectAddressToRange(object);
+            if (isEdenMark) {
+                if (objectRegion->InEdenSpace()) {
                     MarkObject(threadId, value.GetTaggedObject());
                 }
+            } else {
+                MarkObject(threadId, value.GetTaggedObject());
             }
         }
         return true;

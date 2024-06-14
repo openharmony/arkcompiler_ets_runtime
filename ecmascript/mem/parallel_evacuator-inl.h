@@ -72,24 +72,26 @@ bool ParallelEvacuator::VisitBodyInObj(
 bool ParallelEvacuator::UpdateNewToEdenObjectSlot(ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsHeapObject()) {
-        TaggedObject *object = value.GetHeapObject();
-        Region *valueRegion = Region::ObjectAddressToRange(object);
+    if (!value.IsHeapObject()) {
+        return false;
+    }
+    TaggedObject *object = value.GetHeapObject();
+    Region *valueRegion = Region::ObjectAddressToRange(object);
 
-        // It is only update edenSpace object when iterate NewToEdenRSet
-        if (valueRegion->InEdenSpace()) {
-            MarkWord markWord(object);
-            if (markWord.IsForwardingAddress()) {
-                TaggedObject *dst = markWord.ToForwardingAddress();
-                if (value.IsWeakForHeapObject()) {
-                    dst = JSTaggedValue(dst).CreateAndGetWeakRef().GetRawTaggedObject();
-                }
-                slot.Update(dst);
-            } else {
-                if (value.IsWeakForHeapObject()) {
-                    slot.Clear();
-                }
-            }
+    // It is only update edenSpace object when iterate NewToEdenRSet
+    if (!valueRegion->InEdenSpace()) {
+        return false;
+    }
+    MarkWord markWord(object);
+    if (markWord.IsForwardingAddress()) {
+        TaggedObject *dst = markWord.ToForwardingAddress();
+        if (value.IsWeakForHeapObject()) {
+            dst = JSTaggedValue(dst).CreateAndGetWeakRef().GetRawTaggedObject();
+        }
+        slot.Update(dst);
+    } else {
+        if (value.IsWeakForHeapObject()) {
+            slot.Clear();
         }
     }
     return false;
