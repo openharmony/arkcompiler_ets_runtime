@@ -644,21 +644,6 @@ GateRef CircuitBuilder::JSCallTargetTypeCheck(GateRef func, GateRef methodIndex,
     return ret;
 }
 
-template<TypedCallTargetCheckOp Op>
-GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateRef func, GateRef gate)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.GetFrameState(gate);
-    uint64_t value = TypedCallTargetCheckAccessor::ToValue(Op);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(value), MachineType::I1,
-        {currentControl, currentDepend, func, IntPtr(INVALID_INDEX), frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
 template<TypedUnOp Op>
 GateRef CircuitBuilder::TypedUnaryOp(GateRef x, ParamType paramType)
 {

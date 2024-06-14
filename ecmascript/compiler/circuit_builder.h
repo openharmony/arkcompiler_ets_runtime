@@ -536,8 +536,6 @@ public:
     template<TypedCallTargetCheckOp Op>
     GateRef JSCallTargetTypeCheck(GateRef func, GateRef methodIndex, GateRef gate);
     template<TypedCallTargetCheckOp Op>
-    GateRef JSCallThisTargetTypeCheck(GateRef func, GateRef gate);
-    template<TypedCallTargetCheckOp Op>
     inline GateRef JSNoGCCallThisTargetTypeCheck(GateRef func, GateRef methodId, GateRef gate);
     GateRef TypeOfCheck(GateRef gate, ParamType paramType);
     GateRef TypedTypeOf(ParamType paramType);
