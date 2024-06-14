@@ -88,8 +88,9 @@ CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(const C
     }
     pos = path.rfind(PathHelper::SLASH_TAG);
     if (pos != CString::npos) {
-        requestName = ConcatImportFileNormalizedOhmurl(path.substr(0, pos + 1),
-            requestName, version);
+        CString entryPoint = path.substr(0, pos + 1) + requestName;
+        entryPoint = PathHelper::NormalizePath(entryPoint);
+        requestName = ConcatImportFileNormalizedOhmurl(entryPoint, "", version);
     }
     return requestName;
 }
@@ -222,7 +223,8 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
     }
     size_t pos = oldEntryPoint.find(PathHelper::SLASH_TAG);
     size_t pathPos = oldEntryPoint.find(PathHelper::SLASH_TAG, pos + 1);
-    LOG_ECMA(INFO) << "TransformToNormalizedOhmUrl oldEntryPoint: " << oldEntryPoint;
+    LOG_ECMA(DEBUG) << "TransformToNormalizedOhmUrl inputFileName: " << inputFileName << " oldEntryPoint: " <<
+        oldEntryPoint;
     if (pos == CString::npos && pathPos == CString::npos) {
         LOG_FULL(ERROR) << "TransformToNormalizedOhmUrl Invalid Ohmurl, please check.";
         return oldEntryPoint;
@@ -247,8 +249,9 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
         version = data[PKGINFO_VERSION_INDEX];
         entryPath = data[PKGINFO_ENTRY_PATH_INDEX];
     }
-    // If the inputFileName starts with '.test', it is a preview test, no need to splice the entry path.
-    if (StringHelper::StringStartWith(inputFileName, PREVIER_TEST_DIR)) {
+    // If the subPath starts with '.test', it is a preview test, no need to splice the entry path.
+    CString subPath = oldEntryPoint.substr(pathPos + 1);
+    if (StringHelper::StringStartWith(subPath, PREVIER_TEST_DIR)) {
         return ConcatPreviewTestUnifiedOhmUrl("", pkgname, path, version);
     }
     // When the entry path ends with a slash (/), use the entry path to concatenate ohmurl.
