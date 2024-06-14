@@ -14,17 +14,10 @@
  */
 
 /*
- * @tc.name:importJson
+ * @tc.name:cjsImportJson
  * @tc.desc:test import Json
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-import data from "./1.json"
-import { fun } from "./cjsImportJson";
-import {a} from './moduleCircularCheck';
-import {chinese} from './中文路径';
 
-print(data.name);
-fun();
-print(a);
-print(chinese);
+export let chinese = "中文路径";

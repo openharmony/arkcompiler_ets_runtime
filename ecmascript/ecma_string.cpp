@@ -1331,15 +1331,22 @@ std::string EcmaStringAccessor::ToStdString(StringConvertedUsage usage)
 
 CString EcmaStringAccessor::Utf8ConvertToString()
 {
-    std::string stdStr;
-    if (IsLineString()) {
-        base::StringHelper::Utf8ToString(GetDataUtf8(), GetLength(), stdStr);
-        return stdStr.c_str();
+    if (string_ == nullptr) {
+        return CString("");
     }
-    CVector<uint8_t> buf;
-    const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
-    base::StringHelper::Utf8ToString(data, GetLength(), stdStr);
-    return stdStr.c_str();
+    if (IsUtf8()) {
+        std::string stdStr;
+        if (IsLineString()) {
+            base::StringHelper::Utf8ToString(GetDataUtf8(), GetLength(), stdStr);
+            return stdStr.c_str();
+        }
+        CVector<uint8_t> buf;
+        const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
+        base::StringHelper::Utf8ToString(data, GetLength(), stdStr);
+        return stdStr.c_str();
+    } else {
+        return ToCString();
+    }
 }
 
 std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)

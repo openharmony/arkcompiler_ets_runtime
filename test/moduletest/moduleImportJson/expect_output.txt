@@ -17,3 +17,4 @@ check
 esmJsonFile
 cjsJsonFile
 moduleCircularCheck
+中文路径

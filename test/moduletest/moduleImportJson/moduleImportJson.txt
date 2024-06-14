@@ -5,3 +5,4 @@ cjsImportJson.js;cjsImportJson;commonjs;cjsImportJson.js;xxcjsImportJsonxx
 moduleCircularCheck.js;moduleCircularCheck;esm;moduleCircularCheck.js;xxmoduleCircularCheckxx
 3.js;3;esm;3.js;xx3xx
 check.js;check;esm;check.js;xxcheckxx
+中文路径.js;中文路径;esm;中文路径.js;xx中文路径xx
