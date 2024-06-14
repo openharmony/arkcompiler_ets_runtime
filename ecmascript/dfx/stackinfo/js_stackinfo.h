@@ -184,10 +184,6 @@ private:
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
-extern "C" int step_ark_managed_native_frame(
-    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz);
-extern "C" int get_ark_js_heap_crash_info(
-    int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz);
 extern "C" int ark_parse_js_frame_info(
     uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data,
     uint64_t dataSize, uintptr_t extractorptr, panda::ecmascript::JsFunction *jsFunction);

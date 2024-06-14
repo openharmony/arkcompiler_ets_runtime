@@ -1983,24 +1983,6 @@ __attribute__((visibility("default"))) int ark_translate_js_frame_info(
     return -1;
 }
 
-__attribute__((visibility("default"))) int step_ark_managed_native_frame(
-    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz)
-{
-    if (panda::ecmascript::StepArkManagedNativeFrame(pid, pc, fp, sp, buf, buf_sz)) {
-        return 1;
-    }
-    return -1;
-}
-
-__attribute__((visibility("default"))) int get_ark_js_heap_crash_info(
-    int pid, uintptr_t *x20, uintptr_t *fp, int outJsInfo, char *buf, size_t buf_sz)
-{
-    if (panda::ecmascript::GetArkJSHeapCrashInfo(pid, x20, fp, outJsInfo != 0, buf, buf_sz)) {
-        return 1;
-    }
-    return -1;
-}
-
 __attribute__((visibility("default"))) int get_ark_native_frame_info(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
     panda::ecmascript::JsFrame *jsFrame, size_t &size)
