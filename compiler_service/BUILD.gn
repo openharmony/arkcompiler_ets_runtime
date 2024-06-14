@@ -15,6 +15,15 @@ import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//build/ohos.gni")
 import("//build/ohos/sa_profile/sa_profile.gni")
 
+declare_args() {
+  code_sign_enable = true
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.security_code_signature)) {
+    code_sign_enable = false
+  }
+}
+
 config("aot_compiler_service_config") {
   visibility = [ ":*" ]
   include_dirs = [
@@ -43,7 +52,6 @@ ohos_shared_library("libcompiler_service") {
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
     "c_utils:utils",
-    "code_signature:liblocal_code_sign_sdk",
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
@@ -56,6 +64,13 @@ ohos_shared_library("libcompiler_service") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
+
+  defines = []
+  if (code_sign_enable) {
+    external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
+    defines += [ "CODE_SIGN_ENABLE" ]
+  }
+
   install_enable = true
   install_images = [ "system" ]
 

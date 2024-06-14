@@ -31,7 +31,9 @@
 #include "aot_compiler_service.h"
 #include "ecmascript/log_wrapper.h"
 #include "hitrace_meter.h"
+#ifdef CODE_SIGN_ENABLE
 #include "local_code_sign_kit.h"
+#endif
 #include "system_ability_definition.h"
 
 namespace OHOS::ArkCompiler {
@@ -127,11 +129,11 @@ void AotCompilerImpl::ExecuteInChildProcess(const std::vector<std::string> &aotV
     for (auto &arg : aotVector) {
         argv.emplace_back(arg.c_str());
     }
-    argv.emplace_back(nullptr);
     LOG_SA(DEBUG) << "argv size : " << argv.size();
     for (const auto &arg : argv) {
         LOG_SA(DEBUG) << arg;
     }
+    argv.emplace_back(nullptr);
     execv(argv[0], const_cast<char* const*>(argv.data()));
     LOG_SA(ERROR) << "execv failed : " << strerror(errno);
     exit(-1);
@@ -150,7 +152,7 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
         ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else if (WIFEXITED(status)) {
         int exit_status = WEXITSTATUS(status);
-        LOG_SA(INFO) << "child process exited with status: %{public}d" << exit_status;
+        LOG_SA(INFO) << "child process exited with status: " << exit_status;
         switch (exit_status) {
             case static_cast<int>(ErrOfCompile::COMPILE_OK):
                 ret = ERR_OK; break;
@@ -183,6 +185,7 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
 int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                                                std::vector<int16_t> &sigData)
 {
+#ifdef CODE_SIGN_ENABLE
     if (!allowAotCompiler_) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
@@ -207,6 +210,10 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
         return ERR_OK;
     }
     return ret ? ERR_AOT_COMPILER_CALL_FAILED : AOTLocalCodeSign(hapArgs.fileName, hapArgs.signature, sigData);
+#else
+    LOG_SA(ERROR) << "no need to AOT compile when code signature disable";
+    return ERR_AOT_COMPILER_SIGNATURE_DISABLE;
+#endif
 }
 
 int32_t AotCompilerImpl::GetAOTVersion(std::string& sigData)
@@ -227,6 +234,7 @@ int32_t AotCompilerImpl::NeedReCompile(const std::string& args, bool& sigData)
 int32_t AotCompilerImpl::AOTLocalCodeSign(const std::string &fileName, const std::string &appSignature,
                                           std::vector<int16_t> &sigData)
 {
+#ifdef CODE_SIGN_ENABLE
     Security::CodeSign::ByteBuffer sig;
     if (Security::CodeSign::LocalCodeSignKit::SignLocalCode(appSignature, fileName, sig)
                         != CommonErrCode::CS_SUCCESS) {
@@ -239,6 +247,10 @@ int32_t AotCompilerImpl::AOTLocalCodeSign(const std::string &fileName, const std
         sigData.emplace_back(static_cast<int16_t>(dataPtr[i]));
     }
     return ERR_OK;
+#else
+    LOG_SA(ERROR) << "no need to AOT local code sign when code signature disable";
+    return ERR_AOT_COMPILER_SIGNATURE_DISABLE;
+#endif
 }
 
 int32_t AotCompilerImpl::StopAotCompiler()
