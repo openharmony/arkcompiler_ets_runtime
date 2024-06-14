@@ -234,7 +234,7 @@ void EcmaVM::PostFork()
     ResetPGOProfiler();
 
     options_.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());
-
+    processStartRealtime_ = InitializeStartRealTime();
     bool jitEscapeDisable = ohos::JitTools::GetJitEscapeDisable();
     if (jitEscapeDisable || !JSNApi::IsJitEscape()) {
         if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName)) {
@@ -269,6 +269,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
     SetEnableOsr(options_.IsEnableOSR() && options_.IsEnableJIT() && options_.GetEnableAsmInterpreter());
+    processStartRealtime_ = InitializeStartRealTime();
 }
 
 // for jit
@@ -1122,5 +1123,26 @@ void EcmaVM::InitializeIcuData(const JSRuntimeOptions &options)
             u_setDataDirectory(absPath.c_str());
         }
     }
+}
+
+// Initialize Process StartRealTime
+int EcmaVM::InitializeStartRealTime()
+{
+    int startRealTime = 0;
+    struct timespec timespro = {0, 0};
+    struct timespec timessys = {0, 0};
+    auto res = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &timespro);
+    if (res) {
+        return startRealTime;
+    }
+    auto res1 = clock_gettime(CLOCK_MONOTONIC, &timessys);
+    if (res1) {
+        return startRealTime;
+    }
+
+    int whenpro = int(timespro.tv_sec * 1000) + int(timespro.tv_nsec / 1000000);
+    int whensys = int(timessys.tv_sec * 1000) + int(timessys.tv_nsec / 1000000);
+    startRealTime = (whensys - whenpro);
+    return startRealTime;
 }
 }  // namespace panda::ecmascript

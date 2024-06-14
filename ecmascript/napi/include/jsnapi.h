@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <sys/time.h>
 
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
