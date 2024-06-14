@@ -55,7 +55,7 @@ bool CpuProfiler::RegisterGetStackSignal()
         LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigemptyset failed, errno = " << errno;
         return false;
     }
-#if defined(PANDA_TARGET_ARM64)
+#if defined(PANDA_TARGET_ARM64) && !defined(ANDROID_PLATFORM)
     sa.sa_flags = SA_RESTART | SA_SIGINFO | SA_ONSTACK;
 #else
     sa.sa_flags = SA_RESTART | SA_SIGINFO;
@@ -64,8 +64,8 @@ bool CpuProfiler::RegisterGetStackSignal()
         LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigaction failed, errno = " << errno;
         return false;
     }
-#if defined(PANDA_TARGET_ARM64)
-    constexpr const size_t stackSize = 256_KB;
+#if defined(PANDA_TARGET_ARM64) && !defined(ANDROID_PLATFORM)
+    constexpr const size_t stackSize = 128_KB;
     segvStack_.ss_sp = valloc(stackSize);
     if (segvStack_.ss_sp == nullptr) {
         LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, valloc failed, errno = " << errno;
