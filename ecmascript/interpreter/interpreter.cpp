@@ -114,7 +114,7 @@ EcmaRuntimeCallInfo* EcmaInterpreter::ReBuildRuntimeCallInfo(JSThread *thread, E
     *(--currentSp) = thisObj.GetRawData();
     *(--currentSp) = newTarget.GetRawData();
     *(--currentSp) = func.GetRawData();
-    *(--currentSp) = numArgs + NUM_MANDATORY_JSFUNC_ARGS;
+    *(--currentSp) = numArgs + static_cast<int>(NUM_MANDATORY_JSFUNC_ARGS);
     *(--currentSp) = ToUintPtr(thread);
     EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(currentSp);
 

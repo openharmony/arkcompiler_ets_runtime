@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/aot_file/elf_checker.h"
+#include "ecmascript/platform/file.h"
 #include <fstream>
 #include <type_traits>
 
@@ -88,6 +89,9 @@ ElfChecker::ElfChecker(const void* data, int len) : elfLen_(len), elfErrorCode_(
 
 ElfChecker::ElfChecker(const std::string& path) : elfErrorCode_(0), fromMmap_(false)
 {
+    if (!panda::ecmascript::FileExist(path.c_str())) {
+        return;
+    }
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (file.is_open() == false) {
         elfData_ = nullptr;
