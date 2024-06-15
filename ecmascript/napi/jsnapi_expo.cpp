@@ -3512,6 +3512,11 @@ void JSNApi::SetBundle(EcmaVM *vm, bool value)
     vm->SetIsBundlePack(value);
 }
 
+bool JSNApi::IsNormalizedOhmUrlPack(EcmaVM *vm)
+{
+    return vm->IsNormalizedOhmUrlPack();
+}
+
 void JSNApi::SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::string &entryPoint)
 {
     SetAssetPath(vm, assetPath);
