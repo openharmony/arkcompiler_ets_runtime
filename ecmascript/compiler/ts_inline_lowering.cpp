@@ -154,7 +154,7 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
         auto jsPandaFile = ctx_->GetJSPandaFile();
         const std::string methodName(
             MethodLiteral::GetMethodName(jsPandaFile, inlinedMethod->GetMethodId()));
-        std::string fileName = jsPandaFile->GetFileName();
+        std::string fileName(jsPandaFile->GetJSPandaFileDesc());
         const std::string recordName(MethodLiteral::GetRecordName(jsPandaFile, inlinedMethod->GetMethodId()));
         std::string fullName = methodName + "@" + recordName + "@" + fileName;
         LOG_COMPILER(INFO) << "";
@@ -206,7 +206,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     CString recordName = MethodLiteral::GetRecordName(jsPandaFile, method->GetMethodId());
     bool hasTyps = jsPandaFile->HasTSTypes(recordName);
     const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
-    std::string fileName = jsPandaFile->GetFileName();
+    std::string fileName(jsPandaFile->GetJSPandaFileDesc());
     std::string fullName = methodName + "@" + std::string(recordName) + "@" + fileName;
 
     circuit_->InitRoot();
