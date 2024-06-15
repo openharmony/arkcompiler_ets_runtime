@@ -700,7 +700,7 @@ void BaselineAsyncgeneratorresolveV8V8V8StubBuilder::GenerateCircuit()
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp });
@@ -3877,7 +3877,7 @@ void BaselineReturnStubBuilder::GenerateCircuit()
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
@@ -5455,7 +5455,7 @@ void BaselineDeprecatedSuspendgeneratorPrefV8V8StubBuilder::GenerateCircuit()
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp });
@@ -6196,7 +6196,7 @@ void BaselineReturnundefinedStubBuilder::GenerateCircuit()
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
@@ -6310,7 +6310,7 @@ void BaselineSuspendgeneratorV8StubBuilder::GenerateCircuit()
         Return();
     }
     Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(varPc, IntPtr(std::numeric_limits<uint64_t>::max())), &pcEqualBaseline, &pcNotEqualBaseline);
+    BRANCH(IntPtrEqual(varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);

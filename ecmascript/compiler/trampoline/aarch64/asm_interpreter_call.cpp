@@ -1278,7 +1278,7 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
             if (methodRegister != X21) {
                 __ Mov(X21, methodRegister);
             }
-            __ Mov(currentSlotRegister, Immediate(std::numeric_limits<uint64_t>::max()));
+            __ Mov(currentSlotRegister, Immediate(BASELINEJIT_PC_FLAG));
             // -3: frame type, prevSp, pc
             __ Stur(currentSlotRegister, MemoryOperand(newSpRegister, -3 * FRAME_SLOT_SIZE));
             __ Mov(Register(X29), newSpRegister);
