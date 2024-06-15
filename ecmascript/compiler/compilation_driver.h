@@ -58,9 +58,6 @@ public:
         Module *module = GetModule();
         cb(recordName, methodName, methodLiteral, methodOffset,
             methodPcInfo, methodInfo, module);
-        if (methodInfo.IsTypeInferAbort()) {
-            return;
-        }
         IncCompiledMethod();
         CompileModuleThenDestroyIfNeeded(false);
     }
@@ -69,38 +66,20 @@ public:
     void Run(const CallMethodFlagMap &callMethonFlagMap, const Callback &cb)
     {
         SetCurrentCompilationFile();
-        auto &methodList = bytecodeInfo_.GetMethodList();
         const auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
-        for (auto &recordName : bytecodeInfo_.GetRecordNames()) {
-            auto mainMethodIndex = jsPandaFile_->GetMainMethodIndex(recordName);
-            std::queue<uint32_t> methodCompiledOrder;
-            methodCompiledOrder.push(mainMethodIndex);
-            while (!methodCompiledOrder.empty()) {
-                auto compilingMethod = methodCompiledOrder.front();
-                methodCompiledOrder.pop();
-                bytecodeInfo_.AddMethodOffsetToRecordName(compilingMethod, recordName);
-                auto &methodInfo = methodList.at(compilingMethod);
-                auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
-                auto methodLiteral = jsPandaFile_->FindMethodLiteral(compilingMethod);
-                const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile_, methodLiteral->GetMethodId()));
-                if (!callMethonFlagMap.IsAotCompile(jsPandaFile_->GetNormalizedFileDesc(),
-                                                    methodLiteral->GetMethodId().GetOffset())) {
-                    bytecodeInfo_.AddSkippedMethod(compilingMethod);
-                } else {
-                    if (!methodInfo.IsCompiled()) {
-                        methodInfo.SetIsCompiled(true);
-                        CompileMethod(cb, recordName, methodName, methodLiteral,
-                            compilingMethod, methodPcInfo, methodInfo);
-                    } else if (NeedSecondaryCompile(methodInfo)) {
-                        // if a method used to be not full compiled but now it's a deopt resolved method
-                        // it should be full compiled again
-                        CompileMethod(cb, recordName, methodName, methodLiteral,
-                            compilingMethod, methodPcInfo, methodInfo);
-                    }
-                }
-                auto &innerMethods = methodInfo.GetInnerMethods();
-                for (auto it : innerMethods) {
-                    methodCompiledOrder.push(it);
+        for (auto &[methodId, methodInfo] : bytecodeInfo_.GetMethodList()) {
+            bytecodeInfo_.AddMethodOffsetToRecordName(methodId, methodInfo.GetRecordName());
+            auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
+            auto methodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
+            const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile_, methodLiteral->GetMethodId()));
+            if (!callMethonFlagMap.IsAotCompile(jsPandaFile_->GetNormalizedFileDesc(),
+                                                methodLiteral->GetMethodId().GetOffset())) {
+                bytecodeInfo_.AddSkippedMethod(methodId);
+            } else {
+                if (!methodInfo.IsCompiled()) {
+                    methodInfo.SetIsCompiled(true);
+                    CompileMethod(cb, methodInfo.GetRecordName(), methodName, methodLiteral,
+                        methodId, methodPcInfo, methodInfo);
                 }
             }
         }
@@ -127,11 +106,6 @@ protected:
     void CompileModuleThenDestroyIfNeeded(bool isJit = false);
 
     void CompileLastModuleThenDestroyIfNeeded();
-
-    bool NeedSecondaryCompile(const MethodInfo &methodInfo) const
-    {
-        return methodInfo.IsTypeInferAbort() && methodInfo.IsResolvedMethod();
-    }
 
     std::vector<std::string> SplitString(const std::string &str, const char ch) const;
 
@@ -188,8 +162,8 @@ public:
         bytecodeInfo_.EraseSkippedMethod(methodOffset);
 
         Module *module = GetModule();
-        cb(bytecodeInfo_.GetRecordName(0), methodName, methodLiteral, profileTypeInfo, methodOffset, methodPcInfo,
-            methodInfo, module, pcStart, header, abcId);
+        cb(bytecodeInfo_.GetRecordNameWithIndex(0), methodName, methodLiteral, profileTypeInfo,
+            methodOffset, methodPcInfo, methodInfo, module, pcStart, header, abcId);
     }
 };
 } // namespace panda::ecmascript::kungfu

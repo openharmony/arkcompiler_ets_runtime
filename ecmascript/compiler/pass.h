@@ -200,32 +200,11 @@ public:
         return fileInfos_;
     }
 
-    bool IsTypeAbort() const
-    {
-        if (hasTypes_) {
-            // A ts method which has low type percent and not marked as a resolved method
-            // should be skipped from full compilation.
-            if (methodInfo_->IsTypeInferAbort() && !methodInfo_->IsResolvedMethod()) {
-                return true;
-            }
-        }
-        // when a method will be full compiled, we should confirm its TypeInferAbortBit to be false
-        // maybe it used to be true in the first round of compilation.
-        methodInfo_->SetTypeInferAbort(false);
-        log_->AddCompiledMethod(methodName_, recordName_);
-        return false;
-    }
-
     void AbortCompilation()
     {
         ctx_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
         methodInfo_->SetIsCompiled(false);
         log_->RemoveCompiledMethod(methodName_, recordName_);
-    }
-
-    void MarkAsTypeAbort()
-    {
-        methodInfo_->SetTypeInferAbort(true);
     }
 
 private:
