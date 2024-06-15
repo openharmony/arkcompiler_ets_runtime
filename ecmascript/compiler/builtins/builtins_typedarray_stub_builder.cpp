@@ -2487,7 +2487,8 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
 
     DEFVARIABLE(newArrayLen, VariableType::INT32(), TruncPtrToInt32(numArgs));
     NewObjectStubBuilder newBuilder(this);
-    GateRef thisObj = newBuilder.FastNewThisObject(glue, thisValue);
+    newBuilder.SetParameters(glue, 0);
+    GateRef thisObj = newBuilder.NewTypedArrayFromCtor(glue, thisValue, *newArrayLen, slowPath);
     GateRef arrayType = GetObjectType(LoadHClass(thisObj));
 
     BRANCH(IsEcmaObject(thisObj), &thisObjIsECmaObject, slowPath);
@@ -2496,9 +2497,6 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
     Bind(&thisObjIsFastTypedArray);
     BRANCH(HasConstructor(thisObj), slowPath, &defaultConstr);
     Bind(&defaultConstr);
-
-    newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewTypedArray(glue, thisObj, arrayType, *newArrayLen);
 
     DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
     Label firstArg(env);
@@ -2517,7 +2515,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
             TaggedIsUndefined(*kValue)), &setValue0, slowPath);
         Bind(&setValue0);
         // 0: first element in newArray
-        FastSetPropertyByIndex(glue, *kValue, newArray, Int32(0), arrayType);
+        FastSetPropertyByIndex(glue, *kValue, thisObj, Int32(0), arrayType);
         BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
         Bind(&hasException0);
         {
@@ -2537,7 +2535,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
                 TaggedIsUndefined(*kValue)), &setValue1, slowPath);
             Bind(&setValue1);
             // 1: second element in newArray
-            FastSetPropertyByIndex(glue, *kValue, newArray, Int32(1), arrayType);
+            FastSetPropertyByIndex(glue, *kValue, thisObj, Int32(1), arrayType);
             BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
             Bind(&hasException1);
             {
@@ -2556,7 +2554,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
                     TaggedIsUndefined(*kValue)), &setValue2, slowPath);
                 Bind(&setValue2);
                 // 2: third element in newArray
-                FastSetPropertyByIndex(glue, *kValue, newArray, Int32(2), arrayType);
+                FastSetPropertyByIndex(glue, *kValue, thisObj, Int32(2), arrayType);
                 BRANCH(HasPendingException(glue), &hasException2, &writeResult);
                 Bind(&hasException2);
                 {
@@ -2569,7 +2567,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
 
     Bind(&writeResult);
     {
-        result->WriteVariable(newArray);
+        result->WriteVariable(thisObj);
         Jump(exit);
     }
 }
