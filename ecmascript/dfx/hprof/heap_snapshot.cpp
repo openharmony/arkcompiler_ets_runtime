@@ -1059,14 +1059,13 @@ void HeapSnapshot::FillEdges(bool isSimplify)
     while (count++ < nodes_.size()) {
         ASSERT(*iter != nullptr);
         auto entryFrom = *iter;
-        auto *objFrom = reinterpret_cast<TaggedObject *>(entryFrom->GetAddress());
-        std::vector<Reference> referenceResources;
-        JSTaggedValue objValue(objFrom);
-        if (!objValue.IsHeapObject()) {
+        JSTaggedValue value(entryFrom->GetAddress());
+        if (!value.IsHeapObject()) {
             iter++;
             continue;
         }
-        objValue.DumpForSnapshot(referenceResources, isVmMode_);
+        std::vector<Reference> referenceResources;
+        value.DumpForSnapshot(referenceResources, isVmMode_);
         for (auto const &it : referenceResources) {
             JSTaggedValue toValue = it.value_;
             if (toValue.IsNumber() && !captureNumericValue_) {
