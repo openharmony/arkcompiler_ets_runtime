@@ -84,7 +84,7 @@ public:
     static constexpr char PACKAGE_ENTRY_FILE[] = "/index";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
-    static constexpr char MERGE_ABC_CARDS[] = "/ets/widgets.abc";
+    static constexpr char ABC[] = ".abc";
     static constexpr char MODULE_DEFAULE_ETS[] = "/ets/";
     static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
     static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
@@ -362,16 +362,14 @@ public:
     }
 
     /*
-     * Before: /data/storage/el1/bundle/moduleName/ets/modules.abc
-               /data/storage/el1/bundle/moduleName/ets/widgets.abc
+     * Before: /data/storage/el1/xxx/xxx/xxx/xxx.abc
      */
     inline static bool ValidateAbcPath(const CString &baseFileName)
     {
         CString bundleSubInstallName(BUNDLE_SUB_INSTALL_PATH);
         size_t startStrLen = bundleSubInstallName.length();
         if (baseFileName.length() > startStrLen && baseFileName.compare(0, startStrLen, bundleSubInstallName) == 0) {
-            if (baseFileName.rfind(MERGE_ABC_ETS_MODULES) != CString::npos ||
-                baseFileName.rfind(MERGE_ABC_CARDS) != CString::npos) {
+            if (baseFileName.rfind(ABC) != CString::npos) {
                 return true;
             }
         }
