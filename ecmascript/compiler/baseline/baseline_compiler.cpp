@@ -196,7 +196,7 @@ void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end
                 tmpValue += static_cast<uint8_t>(*(start + 2));                 // 2: get two bytes in bytecodes
                 tmpValue <<= 8;                                                 // 8: left shift 8 bits
                 tmpValue += static_cast<uint8_t>(*(start + 1));                 // 1: get one byte in bytecodes
-                size_t jumpTo = offset + static_cast<int32_t>(tmpValue);
+                size_t jumpTo = offset + static_cast<size_t>(tmpValue);
                 jumpToOffsets.insert(jumpTo);
                 break;
             }
@@ -1154,7 +1154,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(STA_V8)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDAI_IMM32)
 {
-    int32_t imm = READ_INST_32_0();
+    int32_t imm = static_cast<int32_t>(READ_INST_32_0());
     LOG_INST() << "    ldai " << static_cast<int16_t>(imm);
     uint64_t value = JSTaggedValue(imm).GetRawData();
     baselineAssembler.Move(SpecialRegister::ACC_REGISTER, Immediate(value));
@@ -3411,7 +3411,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM16)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM32)
 {
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
-    size_t pos = offset + bytecodeOffset;
+    size_t pos = static_cast<size_t>(offset) + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
     if (jumpMap.count(pos) != 0) {
@@ -3478,7 +3478,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JNEZ_IMM16)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JNEZ_IMM32)
 {
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
-    size_t pos = offset + bytecodeOffset;
+    size_t pos = static_cast<size_t>(offset) + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
     if (jumpMap.count(pos) != 0) {
@@ -3555,7 +3555,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JMP_IMM16)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JMP_IMM32)
 {
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
-    size_t pos = offset + bytecodeOffset;
+    size_t pos = static_cast<size_t>(offset) + bytecodeOffset;
 
     JumpLabel *jump = nullptr;
     if (jumpMap.count(pos) != 0) {
