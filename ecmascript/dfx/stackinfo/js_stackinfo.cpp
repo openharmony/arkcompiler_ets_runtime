@@ -250,9 +250,13 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
 
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
 {
-    if (JsStackInfo::loader != nullptr && !JsStackInfo::loader->IsEnableAOT() &&
-        JsStackInfo::options != nullptr && !JsStackInfo::options->IsEnableJIT() &&
+    if (JsStackInfo::loader == nullptr || JsStackInfo::options == nullptr) {
+        LOG_ECMA(ERROR) << "loader or options Initial error.";
+        return;
+    }
+    if (!JsStackInfo::loader->IsEnableAOT() && !JsStackInfo::options->IsEnableJIT() &&
         !JsStackInfo::options->IsEnablePGOProfiler()) {
+        LOG_ECMA(INFO) << "Aot or jit not enable.";
         return;
     }
     ohos::RuntimeInfoType type;
