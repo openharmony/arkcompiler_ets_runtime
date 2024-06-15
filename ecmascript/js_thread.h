@@ -1358,6 +1358,11 @@ public:
         }
     }
 
+    bool IsInSuspendedState() const
+    {
+        return GetState() == ThreadState::IS_SUSPENDED;
+    }
+
     bool IsInRunningState() const
     {
         return GetState() == ThreadState::RUNNING;

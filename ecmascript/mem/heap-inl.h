@@ -672,6 +672,21 @@ size_t Heap::GetHeapObjectSize() const
     return result;
 }
 
+size_t Heap::GetRegionCount() const
+{
+    size_t result = edenSpace_->GetRegionCount() +
+        activeSemiSpace_->GetRegionCount() +
+        oldSpace_->GetRegionCount() +
+        oldSpace_->GetCollectSetRegionCount() +
+        appSpawnSpace_->GetRegionCount() +
+        snapshotSpace_->GetRegionCount() +
+        nonMovableSpace_->GetRegionCount() +
+        hugeObjectSpace_->GetRegionCount() +
+        machineCodeSpace_->GetRegionCount() +
+        hugeMachineCodeSpace_->GetRegionCount();
+    return result;
+}
+
 uint32_t Heap::GetHeapObjectCount() const
 {
     uint32_t count = 0;

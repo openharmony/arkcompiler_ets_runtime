@@ -16,6 +16,7 @@
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 
 #include "ecmascript/mem/object_xray.h"
+#include "ecmascript/mem/rset_worklist_handler-inl.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/runtime.h"
@@ -27,16 +28,26 @@ void SharedGCMarker::MarkRoots(uint32_t threadId, SharedMarkType markType)
     MarkSerializeRoots(threadId);
     MarkSharedModule(threadId);
     MarkStringCache(threadId);
-    Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+    Runtime *runtime = Runtime::GetInstance();
+    if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
+        // The approximate size is enough, because even if some thread creates and registers after here, it will keep
+        // waiting in transition to RUNNING state before JSThread::SetReadyForGCIterating.
+        rSetHandlers_.reserve(runtime->ApproximateThreadListSize());
+        ASSERT(rSetHandlers_.empty());
+    }
+    runtime->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
-        MarkLocalVMRoots(threadId, vm, markType);
+        MarkLocalVMRoots(threadId, vm);
+        if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
+            CollectLocalVMRSet(vm);
+        }
     });
 }
 
-void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, SharedMarkType markType)
+void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkLocalRoots");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkLocalVMRoots");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     heap->GetSweeper()->EnsureAllTaskFinished();
     heap->WaitClearTaskFinished();
@@ -47,13 +58,16 @@ void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, Shared
                   std::placeholders::_3),
         std::bind(&SharedGCMarker::HandleLocalDerivedRoots, this, std::placeholders::_1, std::placeholders::_2,
                   std::placeholders::_3, std::placeholders::_4));
-    WorkNode *&localBuffer = heap->GetMarkingObjectLocalBuffer();
-    if (localBuffer != nullptr) {
-        sWorkManager_->PushLocalBufferToGlobal(localBuffer);
-    }
-    if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
-        ProcessLocalToShareNoMarkStack(threadId, const_cast<Heap*>(localVm->GetHeap()), markType);
-    }
+    heap->ProcessSharedGCMarkingLocalBuffer();
+}
+
+void SharedGCMarker::CollectLocalVMRSet(EcmaVM *localVm)
+{
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::CollectLocalVMRSet");
+    Heap *heap = const_cast<Heap*>(localVm->GetHeap());
+    RSetWorkListHandler *handler = new RSetWorkListHandler(heap);
+    heap->SetRSetWorkListHandler(handler);
+    rSetHandlers_.emplace_back(handler);
 }
 
 void SharedGCMarker::MarkSerializeRoots(uint32_t threadId)
@@ -126,6 +140,15 @@ void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
         MarkObject(threadId, hclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, visitor);
     }
+}
+
+void SharedGCMarker::MergeBackAndResetRSetWorkListHandler()
+{
+    for (RSetWorkListHandler *handler : rSetHandlers_) {
+        handler->MergeBack();
+        delete handler;
+    }
+    rSetHandlers_.clear();
 }
 
 void SharedGCMarker::ResetWorkManager(SharedGCWorkManager *workManager)

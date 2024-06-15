@@ -90,6 +90,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, ReadOnlyTest)
         perror("sigaction error");
         exit(1);
     }
+    SharedHeap::GetInstance()->WaitGCFinished(thread);
     auto ret = sigsetjmp(g_env, 1);
     if (ret != SIGSEGV) {
         heap->AllocateReadOnlyOrHugeObject(

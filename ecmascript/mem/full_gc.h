@@ -40,6 +40,7 @@ protected:
     void Finish() override;
 
 private:
+    void ProcessSharedGCRSetWorkList();
     bool HasEvacuated(Region *region);
 
     Heap *heap_;

@@ -600,12 +600,29 @@ void Heap::FillBumpPointerForTlab()
     sNonMovableTlab_->FillBumpPointer();
 }
 
+void Heap::ProcessSharedGCMarkingLocalBuffer()
+{
+    if (sharedGCData_.sharedConcurrentMarkingLocalBuffer_ != nullptr) {
+        ASSERT(thread_->IsSharedConcurrentMarkingOrFinished());
+        sHeap_->GetWorkManager()->PushLocalBufferToGlobal(sharedGCData_.sharedConcurrentMarkingLocalBuffer_);
+        ASSERT(sharedGCData_.sharedConcurrentMarkingLocalBuffer_ == nullptr);
+    }
+}
+
+void Heap::ProcessSharedGCRSetWorkList()
+{
+    if (sharedGCData_.rSetWorkListHandler_ != nullptr) {
+        ASSERT(thread_->IsSharedConcurrentMarkingOrFinished());
+        ASSERT(this == sharedGCData_.rSetWorkListHandler_->GetHeap());
+        sHeap_->GetSharedGCMarker()->ProcessThenMergeBackRSetFromBoundJSThread(sharedGCData_.rSetWorkListHandler_);
+        ASSERT(sharedGCData_.rSetWorkListHandler_ == nullptr);
+    }
+}
+
 void Heap::Destroy()
 {
-    if (sharedConcurrentMarkingLocalBuffer_ != nullptr) {
-        ASSERT(thread_->IsSharedConcurrentMarkingOrFinished());
-        sHeap_->GetWorkManager()->PushLocalBufferToGlobal(sharedConcurrentMarkingLocalBuffer_);
-    }
+    ProcessSharedGCRSetWorkList();
+    ProcessSharedGCMarkingLocalBuffer();
     if (sOldTlab_ != nullptr) {
         sOldTlab_->Reset();
         delete sOldTlab_;

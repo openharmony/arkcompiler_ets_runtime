@@ -72,6 +72,12 @@ public:
         }
     }
 
+    // Result may be inaccurate, just an approximate value.
+    size_t ApproximateThreadListSize()
+    {
+        return threads_.size();
+    }
+
     inline const GlobalEnvConstants *GetGlobalEnvConstants()
     {
         return globalConstants_;

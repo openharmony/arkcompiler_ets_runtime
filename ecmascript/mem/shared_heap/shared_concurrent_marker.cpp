@@ -14,22 +14,22 @@
  */
 
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
-#include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/mem/allocator-inl.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mark_word.h"
+#include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/gc_stats.h"
-#include "ecmascript/ecma_string_table.h"
-#include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+#include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
 SharedConcurrentMarker::SharedConcurrentMarker(EnableConcurrentMarkType type)
@@ -93,7 +93,8 @@ void SharedConcurrentMarker::ReMark()
     // If enable shared concurrent mark, the recorded weak reference slots from local to share may be changed
     // during LocalGC. For now just re-scan the local_to_share bit to record and update these weak references.
     sharedGCMarker->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::CONCURRENT_MARK_REMARK);
-    sharedGCMarker->ProcessMarkStack(DAEMON_THREAD_INDEX);
+    sharedGCMarker->DoMark<SharedMarkType::CONCURRENT_MARK_REMARK>(DAEMON_THREAD_INDEX);
+    sharedGCMarker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();
 }
 
@@ -137,7 +138,7 @@ void SharedConcurrentMarker::InitializeMarking()
 void SharedConcurrentMarker::DoMarking()
 {
     ClockScope clockScope;
-    sHeap_->GetSharedGCMarker()->ProcessMarkStack(DAEMON_THREAD_INDEX);
+    sHeap_->GetSharedGCMarker()->DoMark<SharedMarkType::CONCURRENT_MARK_INITIAL_MARK>(DAEMON_THREAD_INDEX);
     sHeap_->WaitRunningTaskFinished();
     FinishMarking(clockScope.TotalSpentTime());
 }

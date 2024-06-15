@@ -238,6 +238,11 @@ public:
         }
     }
 
+    size_t GetCollectSetRegionCount() const
+    {
+        return collectRegionSet_.size();
+    }
+
     void Merge(LocalSpace *localSpace);
 private:
     static constexpr int64_t PARTIAL_GC_MAX_EVACUATION_SIZE_FOREGROUND = 2_MB;
