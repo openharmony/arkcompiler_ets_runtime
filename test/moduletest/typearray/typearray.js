@@ -581,13 +581,41 @@ try {
 let res6 = arr2.reduceRight(fun1);
 print(res6);
 let res7 = arr1.reduceRight(fun1, undefined);
-print(res3);
+print(res7);
 let res8 = arr2.reduceRight(fun1, undefined);
-print(res4);
+print(res8);
 let res9 = arr1.reduceRight(fun1, null);
-print(res3);
+print(res9);
 let res10 = arr2.reduceRight(fun1, null);
+print(res10);
+
+for (let i = 0; i < 3; i++) {
+  arr2[i] = i + 1;
+}
+res1 = arr1.reduce(fun1, 1, 1);
+print(res1);
+res2 = arr2.reduce(fun1, 1, 1);
+print(res2);
+res3 = arr1.reduce(fun1, 1);
+print(res3);
+res4 = arr2.reduce(fun1, 1);
 print(res4);
+try {
+  let res5 = arr1.reduce(fun1);
+  print(res5);
+} catch (e) {
+  print(e.name);
+}
+res6 = arr2.reduce(fun1);
+print(res6);
+res7 = arr1.reduce(fun1, undefined);
+print(res7);
+res8 = arr2.reduce(fun1, undefined);
+print(res8);
+res9 = arr1.reduce(fun1, null);
+print(res9);
+res10 = arr2.reduce(fun1, null);
+print(res10);
 
 // Test case for findLastIndex()
 [

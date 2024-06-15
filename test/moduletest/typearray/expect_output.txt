@@ -134,16 +134,40 @@ TypeError
 3 2
 5 1
 6
-1
+undefined
 undefined 3
 NaN 2
 NaN 1
-7
-1
+NaN
+null
 null 3
 3 2
 5 1
+6
+1
+1 1
+2 2
+4 3
 7
+1
+1 1
+2 2
+4 3
+7
+TypeError
+1 2
+3 3
+6
+undefined
+undefined 1
+NaN 2
+NaN 3
+NaN
+null
+null 1
+1 2
+3 3
+6
 Float64Array test success !!!
 Float32Array test success !!!
 Int32Array test success !!!

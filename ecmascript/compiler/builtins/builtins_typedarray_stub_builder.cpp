@@ -1139,7 +1139,7 @@ void BuiltinsTypedArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, Gate
         Label accumulateBegin(env);
         Label defaultValue(env);
         // 2 : index of the param
-        BRANCH(Int64Equal(numArgs, IntPtr(2)), &updateAccumulator, &defaultValue);
+        BRANCH(numArgsLessThanTwo, &defaultValue, &updateAccumulator);
         Bind(&updateAccumulator);
         {
             accumulator = GetCallArg1(numArgs);
