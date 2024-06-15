@@ -61,7 +61,7 @@ inline int32_t AotCompilerImpl::FindArgsIdxToInteger(const std::unordered_map<st
 inline int32_t AotCompilerImpl::FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
                                                     const std::string &keyName, std::string &bundleArg)
 {
-    if ((argsMap.find(keyName) == argsMap.end()) || argsMap.at(keyName).empty()) {
+    if (argsMap.find(keyName) == argsMap.end()) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
     bundleArg = argsMap.at(keyName);
