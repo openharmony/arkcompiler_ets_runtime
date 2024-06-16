@@ -50,7 +50,7 @@ void JSValueRefIsVectorFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     jsVector->SetLength(0);
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsVector);
     Local<JSValueRef> isVector = JSNApiHelper::ToLocal<JSAPIVector>(argumentTag);
-    isVector->IsVector();
+    isVector->IsVector(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -64,7 +64,7 @@ void JSValueRefIsMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
         return;
     }
     Local<MapRef> map = MapRef::New(vm);
-    map->IsMap();
+    map->IsMap(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -90,7 +90,7 @@ void JSValueRefIsRegExpFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     jSRegExp->SetLength(0);
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
     Local<JSValueRef> regexp = JSNApiHelper::ToLocal<JSRegExp>(argumentTag);
-    regexp->IsRegExp();
+    regexp->IsRegExp(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -113,7 +113,7 @@ void JSValueRefIsSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
     set->SetLinkedSet(thread, hashSet);
     JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(set);
     Local<SetRef> isSet = JSNApiHelper::ToLocal<SetRef>(setTag);
-    isSet->IsSet();
+    isSet->IsSet(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -136,7 +136,7 @@ void JSValueRefIsTreeMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
     jsTreeMap->SetTreeMap(thread, treeMap);
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeMap);
     Local<JSValueRef> isTreeMap = JSNApiHelper::ToLocal<JSAPITreeMap>(argumentTag);
-    isTreeMap->IsTreeMap();
+    isTreeMap->IsTreeMap(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -158,7 +158,7 @@ void JSValueRefIsTreeSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
     jsTreeSet->SetTreeSet(thread, treeSet);
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeSet);
     Local<JSValueRef> isTreeSet = JSNApiHelper::ToLocal<JSAPITreeSet>(argumentTag);
-    isTreeSet->IsTreeSet();
+    isTreeSet->IsTreeSet(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

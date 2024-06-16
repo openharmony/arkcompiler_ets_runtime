@@ -32,7 +32,7 @@ void ObjectRefGetGlobalObjectFuzzTest([[maybe_unused]] const uint8_t *data, size
         return;
     }
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->IsObject();
+    globalObject->IsObject(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

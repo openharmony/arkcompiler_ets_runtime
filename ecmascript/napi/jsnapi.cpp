@@ -300,7 +300,7 @@ Local<StringRef> RegExpRef::GetOriginalSource(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(sourceHandle);
 }
 
-std::string RegExpRef::GetOriginalFlags()
+std::string RegExpRef::GetOriginalFlags([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
@@ -395,11 +395,11 @@ Local<JSValueRef> RegExpRef::IsStick(const EcmaVM *vm)
     return jsValue;
 }
 
-bool GeneratorFunctionRef::IsGenerator()
+bool GeneratorFunctionRef::IsGenerator(const EcmaVM *vm)
 {
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
-    return IsGeneratorFunction();
+    return IsGeneratorFunction(vm);
 }
 
 Local<JSValueRef> GeneratorObjectRef::GetGeneratorState(const EcmaVM *vm)

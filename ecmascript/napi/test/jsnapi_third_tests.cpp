@@ -172,7 +172,7 @@ void CheckReject(JsiRuntimeCallInfo *info)
 {
     ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> reason = info->GetCallArgRef(0);
-    ASSERT_TRUE(reason->IsString());
+    ASSERT_TRUE(reason->IsString(info->GetVM()));
     ASSERT_EQ(Local<StringRef>(reason)->ToString(), "Reject");
 }
 
@@ -206,7 +206,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsGeneratorObject)
     genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
     JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
     Local<JSValueRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
-    ASSERT_TRUE(genObjectRef->IsGeneratorObject());
+    ASSERT_TRUE(genObjectRef->IsGeneratorObject(vm_));
 }
 
 static JSFunction *JSObjectTestCreate(JSThread *thread)
@@ -247,7 +247,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsProxy)
     JSProxy::GetOwnProperty(thread_, proxyHandle, key, desc);
     EXPECT_EQ(desc.GetValue()->GetInt(), 1);
     Local<JSValueRef> proxy = JSNApiHelper::ToLocal<JSProxy>(JSHandle<JSTaggedValue>(proxyHandle));
-    ASSERT_TRUE(proxy->IsProxy());
+    ASSERT_TRUE(proxy->IsProxy(vm_));
 }
 
 /**
@@ -264,7 +264,7 @@ HWTEST_F_L0(JSNApiTests, BufferRef_New_ByteLength)
     LocalScope scope(vm_);
     int32_t length = 10;
     Local<BufferRef> buffer = BufferRef::New(vm_, length);
-    ASSERT_TRUE(buffer->IsBuffer());
+    ASSERT_TRUE(buffer->IsBuffer(vm_));
     EXPECT_EQ(buffer->ByteLength(vm_), length);
 }
 
@@ -283,9 +283,9 @@ HWTEST_F_L0(JSNApiTests, BufferRef_New_ByteLength_GetBuffer)
     LocalScope scope(vm_);
     int32_t length = 10;
     Local<BufferRef> buffer = BufferRef::New(vm_, length);
-    ASSERT_TRUE(buffer->IsBuffer());
+    ASSERT_TRUE(buffer->IsBuffer(vm_));
     EXPECT_EQ(buffer->ByteLength(vm_), 10U);
-    ASSERT_NE(buffer->GetBuffer(), nullptr);
+    ASSERT_NE(buffer->GetBuffer(vm_), nullptr);
 }
 
 /**
@@ -315,11 +315,11 @@ HWTEST_F_L0(JSNApiTests, BufferRef_New01_ByteLength_GetBuffer_BufferToStringCall
     Data *data = new Data();
     data->length = length;
     Local<BufferRef> bufferRef = BufferRef::New(vm_, buffer, length, deleter, data);
-    ASSERT_TRUE(bufferRef->IsBuffer());
-    ASSERT_TRUE(bufferRef->IsBuffer());
+    ASSERT_TRUE(bufferRef->IsBuffer(vm_));
+    ASSERT_TRUE(bufferRef->IsBuffer(vm_));
     EXPECT_EQ(bufferRef->ByteLength(vm_), 15U);
     Local<StringRef> bufferStr = bufferRef->ToString(vm_);
-    ASSERT_TRUE(bufferStr->IsString());
+    ASSERT_TRUE(bufferStr->IsString(vm_));
 }
 
 /**
@@ -489,7 +489,7 @@ HWTEST_F_L0(JSNApiTests, IsDetach)
     LocalScope scope(vm_);
     const int32_t length = 33;
     Local<ArrayBufferRef> arraybuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_FALSE(arraybuffer->IsDetach());
+    ASSERT_FALSE(arraybuffer->IsDetach(vm_));
 }
 
 /*
@@ -519,9 +519,9 @@ HWTEST_F_L0(JSNApiTests, New1)
     LocalScope scope(vm_);
     const int32_t length = 33;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
     ASSERT_EQ(arrayBuffer->ByteLength(vm_), length);
-    ASSERT_NE(arrayBuffer->GetBuffer(), nullptr);
+    ASSERT_NE(arrayBuffer->GetBuffer(vm_), nullptr);
 }
 
 /*
@@ -551,9 +551,9 @@ HWTEST_F_L0(JSNApiTests, New2)
         LocalScope scope(vm_);
         uint8_t *buffer = new uint8_t[length]();
         Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, buffer, length, deleter, data);
-        ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+        ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
         ASSERT_EQ(arrayBuffer->ByteLength(vm_), length);
-        ASSERT_EQ(arrayBuffer->GetBuffer(), buffer);
+        ASSERT_EQ(arrayBuffer->GetBuffer(vm_), buffer);
     }
 }
 
@@ -584,7 +584,7 @@ HWTEST_F_L0(JSNApiTests, GetBuffer)
     LocalScope scope(vm_);
     const int32_t length = 33;
     Local<ArrayBufferRef> arraybuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_NE(arraybuffer->GetBuffer(), nullptr);
+    ASSERT_NE(arraybuffer->GetBuffer(vm_), nullptr);
 }
 
 /*
@@ -603,10 +603,10 @@ HWTEST_F_L0(JSNApiTests, Is32Arraytest)
     char16_t utf16[] = u"This is a char16 array";
     int size = sizeof(utf16);
     Local<StringRef> obj = StringRef::NewFromUtf16(vm_, utf16, size);
-    ASSERT_FALSE(obj->IsInt32Array());
-    ASSERT_FALSE(obj->IsUint32Array());
-    ASSERT_FALSE(obj->IsFloat32Array());
-    ASSERT_FALSE(obj->IsFloat64Array());
+    ASSERT_FALSE(obj->IsInt32Array(vm_));
+    ASSERT_FALSE(obj->IsUint32Array(vm_));
+    ASSERT_FALSE(obj->IsFloat32Array(vm_));
+    ASSERT_FALSE(obj->IsFloat64Array(vm_));
 }
 
 /*
@@ -806,7 +806,7 @@ HWTEST_F_L0(JSNApiTests, GetNapiWrapperString)
 {
     LocalScope scope(vm_);
     Local<StringRef> result = StringRef::GetNapiWrapperString(vm_);
-    ASSERT_TRUE(result->IsString());
+    ASSERT_TRUE(result->IsString(vm_));
 }
 
 /*
@@ -844,7 +844,7 @@ HWTEST_F_L0(JSNApiTests, WeakMapRef_GetSize_GetTotalElements_GetKey_GetValue)
     JSHandle<JSTaggedValue> weakMapTag = JSHandle<JSTaggedValue>::Cast(weakMap);
 
     Local<WeakMapRef> map = JSNApiHelper::ToLocal<WeakMapRef>(weakMapTag);
-    EXPECT_TRUE(map->IsWeakMap());
+    EXPECT_TRUE(map->IsWeakMap(vm_));
     JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("key"));
     JSWeakMap::Set(thread, weakMap, key, value);
@@ -872,9 +872,9 @@ HWTEST_F_L0(JSNApiTests, IsAGJA)
     char16_t utf16[] = u"This is a char16 array";
     int size = sizeof(utf16);
     Local<StringRef> obj = StringRef::NewFromUtf16(vm_, utf16, size);
-    ASSERT_FALSE(obj->IsArgumentsObject());
-    ASSERT_FALSE(obj->IsGeneratorFunction());
-    ASSERT_FALSE(obj->IsAsyncFunction());
+    ASSERT_FALSE(obj->IsArgumentsObject(vm_));
+    ASSERT_FALSE(obj->IsGeneratorFunction(vm_));
+    ASSERT_FALSE(obj->IsAsyncFunction(vm_));
 }
 
 /**
@@ -889,7 +889,7 @@ HWTEST_F_L0(JSNApiTests, HasCaught)
     LocalScope scope(vm_);
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
     Local<JSValueRef> error = Exception::Error(vm_, message);
-    ASSERT_TRUE(error->IsError());
+    ASSERT_TRUE(error->IsError(vm_));
     JSNApi::ThrowException(vm_, error);
     TryCatch tryCatch(vm_);
     ASSERT_TRUE(tryCatch.HasCaught());
@@ -924,7 +924,7 @@ HWTEST_F_L0(JSNApiTests, GetAndClearException)
     LocalScope scope(vm_);
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
     Local<JSValueRef> error = Exception::Error(vm_, message);
-    ASSERT_TRUE(error->IsError());
+    ASSERT_TRUE(error->IsError(vm_));
     JSNApi::ThrowException(vm_, error);
     ASSERT_TRUE(vm_->GetJSThread()->HasPendingException());
     TryCatch tryCatch(vm_);

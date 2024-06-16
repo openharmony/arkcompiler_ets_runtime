@@ -150,7 +150,7 @@ void JSValueRefIsHashSetFuzzTest([[maybe_unused]] const uint8_t *data, size_t si
     JSHandle<JSAPIHashSet> setHandle = ConstructobjectHashSet(thread);
     JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(setHandle);
     Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
-    tag->IsHashSet();
+    tag->IsHashSet(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

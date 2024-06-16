@@ -60,7 +60,7 @@ void SetIteratorRefGetFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     JSTaggedValue::SameValue(jsSetIterator1->GetIteratedSet(), jsSet->GetLinkedSet());
     Local<SetIteratorRef> setIterator = JSNApiHelper::ToLocal<SetIteratorRef>(jsTagSetIterator);
     Local<JSValueRef> setIterator1 = setIterator;
-    setIterator1->IsSetIterator();
+    setIterator1->IsSetIterator(vm);
     setIterator->GetIndex();
     setIterator->GetKind(vm);
     JSNApi::DestroyJSVM(vm);

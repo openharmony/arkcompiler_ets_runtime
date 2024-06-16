@@ -45,10 +45,10 @@ void ArrayBufferRef_New_IsDetach_Detach_ByteLength_GetBuffer_FuzzTest(const uint
     }
     NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
-    arrayBuffer->IsDetach();
+    arrayBuffer->IsDetach(vm);
     arrayBuffer->Detach(vm);
     arrayBuffer->ByteLength(vm);
-    arrayBuffer->GetBuffer();
+    arrayBuffer->GetBuffer(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

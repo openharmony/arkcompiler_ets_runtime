@@ -38,7 +38,7 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "memcpy_s failed!";
             UNREACHABLE();
         }
-        res->WriteLatin1(value, (int)size);
+        res->WriteLatin1(vm, value, (int)size);
         delete[] value;
         value = nullptr;
         JSNApi::DestroyJSVM(vm);

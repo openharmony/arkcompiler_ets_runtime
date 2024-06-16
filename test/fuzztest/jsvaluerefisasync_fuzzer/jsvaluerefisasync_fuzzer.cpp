@@ -41,7 +41,7 @@ namespace OHOS {
         JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
         JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
         Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);
-        [[maybe_unused]] auto it = object->IsAsyncGeneratorFunction();
+        [[maybe_unused]] auto it = object->IsAsyncGeneratorFunction(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -58,7 +58,7 @@ namespace OHOS {
         ptr = const_cast<uint8_t*>(data);
         int num = static_cast<int>(size);
         Local<JSValueRef> object = IntegerRef::New(vm, num);
-        object->IsAsyncGeneratorFunction();
+        object->IsAsyncGeneratorFunction(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -79,7 +79,7 @@ namespace OHOS {
         JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
         JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
         Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);
-        [[maybe_unused]] auto it = object->IsAsyncGeneratorObject();
+        [[maybe_unused]] auto it = object->IsAsyncGeneratorObject(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -96,7 +96,7 @@ namespace OHOS {
         ptr = const_cast<uint8_t*>(data);
         int num = static_cast<int>(size);
         Local<JSValueRef> object = IntegerRef::New(vm, num);
-        object->IsAsyncGeneratorObject();
+        object->IsAsyncGeneratorObject(vm);
         JSNApi::DestroyJSVM(vm);
     }
 }

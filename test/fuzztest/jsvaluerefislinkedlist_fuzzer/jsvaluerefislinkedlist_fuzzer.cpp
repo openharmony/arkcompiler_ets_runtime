@@ -141,7 +141,7 @@ void JSValueRefIsLinkedListFuzzTest([[maybe_unused]] const uint8_t *data, size_t
     linkedList->SetDoubleList(thread, doubleList);
     JSHandle<JSTaggedValue> linkedlisttag = JSHandle<JSTaggedValue>::Cast(linkedList);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(linkedlisttag);
-    object->IsLinkedList();
+    object->IsLinkedList(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

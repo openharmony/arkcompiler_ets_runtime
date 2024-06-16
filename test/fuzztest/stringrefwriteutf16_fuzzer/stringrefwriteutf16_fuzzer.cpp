@@ -42,7 +42,7 @@ namespace OHOS {
         if (length == 1) {
             buffer[0] = '\0';
         } else if (length != 0) {
-            int count = res->WriteUtf16(buffer, length - 1);
+            int count = res->WriteUtf16(vm, buffer, length - 1);
             buffer[count] = '\0';
         }
         delete[] buffer;

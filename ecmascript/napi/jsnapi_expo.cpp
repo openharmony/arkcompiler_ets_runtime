@@ -511,7 +511,7 @@ bool JSValueRef::IsNumber()
     return JSNApiHelper::ToJSTaggedValue(this).IsNumber();
 }
 
-bool JSValueRef::IsBigInt()
+bool JSValueRef::IsBigInt([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsBigInt();
 }
@@ -531,22 +531,22 @@ bool JSValueRef::IsBoolean()
     return JSNApiHelper::ToJSTaggedValue(this).IsBoolean();
 }
 
-bool JSValueRef::IsString()
+bool JSValueRef::IsString([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsString();
 }
 
-bool JSValueRef::IsSymbol()
+bool JSValueRef::IsSymbol([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsSymbol();
 }
 
-bool JSValueRef::IsObject()
+bool JSValueRef::IsObject([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsECMAObject();
 }
 
-bool JSValueRef::IsArray(const EcmaVM *vm)
+bool JSValueRef::IsArray([[maybe_unused]] const EcmaVM *vm)
 {
     CROSS_THREAD_CHECK(vm);
     return JSNApiHelper::ToJSTaggedValue(this).IsArray(thread);
@@ -557,447 +557,448 @@ bool JSValueRef::IsJSArray([[maybe_unused]] const EcmaVM *vm)
     return JSNApiHelper::ToJSTaggedValue(this).IsJSArray();
 }
 
-bool JSValueRef::IsConstructor()
+bool JSValueRef::IsConstructor([[maybe_unused]] const EcmaVM *vm)
 {
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
     return value.IsHeapObject() && value.IsConstructor();
 }
 
-bool JSValueRef::IsFunction()
+bool JSValueRef::IsFunction([[maybe_unused]] const EcmaVM *vm)
 {
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
     return value.IsCallable();
 }
 
-bool JSValueRef::IsJSFunction()
+bool JSValueRef::IsJSFunction([[maybe_unused]] const EcmaVM *vm)
 {
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
     return value.IsJSFunction();
 }
 
-bool JSValueRef::IsProxy()
+bool JSValueRef::IsProxy([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSProxy();
 }
 
-bool JSValueRef::IsPromise()
+bool JSValueRef::IsPromise([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSPromise();
 }
 
-bool JSValueRef::IsDataView()
+bool JSValueRef::IsDataView([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsDataView();
 }
 
-bool JSValueRef::IsTypedArray()
+bool JSValueRef::IsTypedArray([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsTypedArray();
 }
 
-bool JSValueRef::IsNativePointer()
+bool JSValueRef::IsNativePointer([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSNativePointer();
 }
 
-bool JSValueRef::IsDate()
+bool JSValueRef::IsDate([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsDate();
 }
 
-bool JSValueRef::IsError()
+bool JSValueRef::IsError([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSError();
 }
 
-bool JSValueRef::IsMap()
+bool JSValueRef::IsMap([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSMap();
 }
 
-bool JSValueRef::IsSet()
+bool JSValueRef::IsSet([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSet();
 }
 
-bool JSValueRef::IsWeakRef()
+bool JSValueRef::IsWeakRef([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSWeakRef();
 }
 
-bool JSValueRef::IsWeakMap()
+bool JSValueRef::IsWeakMap([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSWeakMap();
 }
 
-bool JSValueRef::IsWeakSet()
+bool JSValueRef::IsWeakSet([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSWeakSet();
 }
 
-bool JSValueRef::IsRegExp()
+bool JSValueRef::IsRegExp([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSRegExp();
 }
 
-bool JSValueRef::IsArrayIterator()
+bool JSValueRef::IsArrayIterator([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSArrayIterator();
 }
 
-bool JSValueRef::IsStringIterator()
+bool JSValueRef::IsStringIterator([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsStringIterator();
 }
 
-bool JSValueRef::IsSetIterator()
+bool JSValueRef::IsSetIterator([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSetIterator();
 }
 
-bool JSValueRef::IsMapIterator()
+bool JSValueRef::IsMapIterator([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSMapIterator();
 }
 
-bool JSValueRef::IsArrayBuffer()
+bool JSValueRef::IsArrayBuffer([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsArrayBuffer();
 }
 
-bool JSValueRef::IsBuffer()
+bool JSValueRef::IsBuffer([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsArrayBuffer();
 }
 
-bool JSValueRef::IsUint8Array()
+bool JSValueRef::IsUint8Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSUint8Array();
 }
 
-bool JSValueRef::IsInt8Array()
+bool JSValueRef::IsInt8Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSInt8Array();
 }
 
-bool JSValueRef::IsUint8ClampedArray()
+bool JSValueRef::IsUint8ClampedArray([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSUint8ClampedArray();
 }
 
-bool JSValueRef::IsInt16Array()
+bool JSValueRef::IsInt16Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSInt16Array();
 }
 
-bool JSValueRef::IsUint16Array()
+bool JSValueRef::IsUint16Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSUint16Array();
 }
 
-bool JSValueRef::IsInt32Array()
+bool JSValueRef::IsInt32Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSInt32Array();
 }
 
-bool JSValueRef::IsUint32Array()
+bool JSValueRef::IsUint32Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSUint32Array();
 }
 
-bool JSValueRef::IsFloat32Array()
+bool JSValueRef::IsFloat32Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSFloat32Array();
 }
 
-bool JSValueRef::IsFloat64Array()
+bool JSValueRef::IsFloat64Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSFloat64Array();
 }
 
-bool JSValueRef::IsBigInt64Array()
+bool JSValueRef::IsBigInt64Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSBigInt64Array();
 }
 
-bool JSValueRef::IsBigUint64Array()
+bool JSValueRef::IsBigUint64Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSBigUint64Array();
 }
 
-bool JSValueRef::IsJSSharedInt8Array()
+bool JSValueRef::IsJSSharedInt8Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt8Array();
 }
 
-bool JSValueRef::IsJSSharedUint8Array()
+bool JSValueRef::IsJSSharedUint8Array([[maybe_unused]]const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint8Array();
 }
 
-bool JSValueRef::IsJSSharedUint8ClampedArray()
+bool JSValueRef::IsJSSharedUint8ClampedArray([[maybe_unused]]const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint8ClampedArray();
 }
 
-bool JSValueRef::IsJSSharedInt16Array()
+bool JSValueRef::IsJSSharedInt16Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt16Array();
 }
 
-bool JSValueRef::IsJSSharedUint16Array()
+bool JSValueRef::IsJSSharedUint16Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint16Array();
 }
 
-bool JSValueRef::IsJSSharedInt32Array()
+bool JSValueRef::IsJSSharedInt32Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt32Array();
 }
 
-bool JSValueRef::IsJSSharedUint32Array()
+bool JSValueRef::IsJSSharedUint32Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint32Array();
 }
 
-bool JSValueRef::IsJSPrimitiveRef()
+bool JSValueRef::IsJSPrimitiveRef([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSPrimitiveRef();
 }
 
-bool JSValueRef::IsJSPrimitiveNumber()
+bool JSValueRef::IsJSPrimitiveNumber([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsNumber();
 }
 
-bool JSValueRef::IsJSPrimitiveInt()
+bool JSValueRef::IsJSPrimitiveInt([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsInt();
 }
 
-bool JSValueRef::IsJSPrimitiveBoolean()
+bool JSValueRef::IsJSPrimitiveBoolean([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsBoolean();
 }
 
-bool JSValueRef::IsJSPrimitiveString()
+bool JSValueRef::IsJSPrimitiveString([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsString();
 }
 
-bool JSValueRef::IsJSPrimitiveSymbol()
+bool JSValueRef::IsJSPrimitiveSymbol([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsSymbol();
 }
 
-bool JSValueRef::IsGeneratorObject()
+bool JSValueRef::IsGeneratorObject([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsGeneratorObject();
 }
 
-bool JSValueRef::IsModuleNamespaceObject()
+bool JSValueRef::IsModuleNamespaceObject([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsModuleNamespace();
 }
 
-bool JSValueRef::IsNativeModuleErrorObject()
+bool JSValueRef::IsNativeModuleErrorObject([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsNativeModuleError();
 }
 
-bool JSValueRef::IsSharedArrayBuffer()
+bool JSValueRef::IsSharedArrayBuffer([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsSharedArrayBuffer();
 }
 
-bool JSValueRef::IsSendableArrayBuffer()
+bool JSValueRef::IsSendableArrayBuffer([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsSendableArrayBuffer();
 }
 
-bool JSValueRef::IsJSLocale()
+bool JSValueRef::IsJSLocale([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSLocale();
 }
 
-bool JSValueRef::IsJSDateTimeFormat()
+bool JSValueRef::IsJSDateTimeFormat([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSDateTimeFormat();
 }
 
-bool JSValueRef::IsJSRelativeTimeFormat()
+bool JSValueRef::IsJSRelativeTimeFormat([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSRelativeTimeFormat();
 }
 
-bool JSValueRef::IsJSIntl()
+bool JSValueRef::IsJSIntl([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSIntl();
 }
 
-bool JSValueRef::IsJSNumberFormat()
+bool JSValueRef::IsJSNumberFormat([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSNumberFormat();
 }
 
-bool JSValueRef::IsJSCollator()
+bool JSValueRef::IsJSCollator([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSCollator();
 }
 
-bool JSValueRef::IsJSPluralRules()
+bool JSValueRef::IsJSPluralRules([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSPluralRules();
 }
 
-bool JSValueRef::IsJSListFormat()
+bool JSValueRef::IsJSListFormat([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSListFormat();
 }
 
-bool JSValueRef::IsAsyncGeneratorObject()
+bool JSValueRef::IsAsyncGeneratorObject([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsAsyncGeneratorObject();
 }
 
-bool JSValueRef::IsAsyncFunction()
+bool JSValueRef::IsAsyncFunction([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAsyncFunction();
 }
 
-bool JSValueRef::IsConcurrentFunction()
+bool JSValueRef::IsConcurrentFunction([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
     return transFunc->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION;
 }
 
-bool JSValueRef::IsArgumentsObject()
+bool JSValueRef::IsArgumentsObject([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsArguments();
 }
 
-bool JSValueRef::IsGeneratorFunction()
+bool JSValueRef::IsGeneratorFunction([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsGeneratorFunction();
 }
 
-bool JSValueRef::IsAsyncGeneratorFunction()
+bool JSValueRef::IsAsyncGeneratorFunction([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsAsyncGeneratorFunction();
 }
 
-bool JSValueRef::IsArrayList()
+bool JSValueRef::IsArrayList([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIArrayList();
 }
 
-bool JSValueRef::IsDeque()
+bool JSValueRef::IsDeque([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIDeque();
 }
 
-bool JSValueRef::IsHashMap()
+bool JSValueRef::IsHashMap([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIHashMap();
 }
 
-bool JSValueRef::IsHashSet()
+bool JSValueRef::IsHashSet([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIHashSet();
 }
 
-bool JSValueRef::IsLightWeightMap()
+bool JSValueRef::IsLightWeightMap([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILightWeightMap();
 }
 
-bool JSValueRef::IsLightWeightSet()
+bool JSValueRef::IsLightWeightSet([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILightWeightSet();
 }
 
-bool JSValueRef::IsLinkedList()
+bool JSValueRef::IsLinkedList([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILinkedList();
 }
 
-bool JSValueRef::IsLinkedListIterator()
+bool JSValueRef::IsLinkedListIterator([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILinkedListIterator();
 }
 
-bool JSValueRef::IsList()
+bool JSValueRef::IsList([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIList();
 }
 
-bool JSValueRef::IsPlainArray()
+bool JSValueRef::IsPlainArray([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIPlainArray();
 }
 
-bool JSValueRef::IsQueue()
+bool JSValueRef::IsQueue([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIQueue();
 }
 
-bool JSValueRef::IsStack()
+bool JSValueRef::IsStack([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIStack();
 }
 
-bool JSValueRef::IsTreeMap()
+bool JSValueRef::IsTreeMap([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPITreeMap();
 }
 
-bool JSValueRef::IsTreeSet()
+bool JSValueRef::IsTreeSet([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPITreeSet();
 }
 
-bool JSValueRef::IsVector()
+bool JSValueRef::IsVector([[maybe_unused]] const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIVector();
 }
 
-bool JSValueRef::IsSendableObject()
+bool JSValueRef::IsSendableObject([[maybe_unused]] const EcmaVM *vm)
 {
-    return IsJSShared() && IsObject();
+    return IsJSShared(vm) && IsObject(vm);
 }
 
-bool JSValueRef::IsJSShared()
+bool JSValueRef::IsJSShared([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSShared();
 }
 
-bool JSValueRef::IsSharedArray()
+bool JSValueRef::IsSharedArray([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedArray();
 }
 
-bool JSValueRef::IsSharedTypedArray()
+bool JSValueRef::IsSharedTypedArray([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsSharedTypedArray();
 }
 
-bool JSValueRef::IsSharedSet()
+bool JSValueRef::IsSharedSet([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedSet();
 }
 
-bool JSValueRef::IsSharedMap()
+bool JSValueRef::IsSharedMap([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedMap();
 }
@@ -1009,7 +1010,7 @@ bool JSValueRef::IsHeapObject()
 
 void *JSValueRef::GetNativePointerValue(const EcmaVM* vm, bool &isNativePointer)
 {
-    if (IsJSShared()) {
+    if (IsJSShared(vm)) {
         ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         return GetNativePointerValueImpl(vm, isNativePointer);
     } else {
@@ -1020,7 +1021,7 @@ void *JSValueRef::GetNativePointerValue(const EcmaVM* vm, bool &isNativePointer)
 // private
 void *JSValueRef::GetNativePointerValueImpl(const EcmaVM* vm, bool &isNativePointer)
 {
-    if (!IsNativePointer()) {
+    if (!IsNativePointer(vm)) {
         isNativePointer = false;
         return nullptr;
     }
@@ -1030,10 +1031,10 @@ void *JSValueRef::GetNativePointerValueImpl(const EcmaVM* vm, bool &isNativePoin
     return JSHandle<JSNativePointer>(nativePointer)->GetExternalPointer();
 }
 
-bool JSValueRef::IsDetachedArraybuffer(bool &isArrayBuffer)
+bool JSValueRef::IsDetachedArraybuffer([[maybe_unused]] const EcmaVM *vm, bool &isArrayBuffer)
 {
     // arraybuffer is not shared. Do not need to switch state
-    if (!IsArrayBuffer()) {
+    if (!IsArrayBuffer(vm)) {
         isArrayBuffer = false;
         return false;
     }
@@ -1044,14 +1045,14 @@ bool JSValueRef::IsDetachedArraybuffer(bool &isArrayBuffer)
 
 void JSValueRef::DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer)
 {
-    if (IsArrayBuffer()) {
+    if (IsArrayBuffer(vm)) {
         JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
         if (arrayBuffer->IsDetach()) {
             return;
         }
         arrayBuffer->Detach(vm->GetJSThread());
         isArrayBuffer = true;
-    } else if (IsSendableArrayBuffer()) {
+    } else if (IsSendableArrayBuffer(vm)) {
         JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
         if (arrayBuffer->IsDetach()) {
             return;
@@ -1070,7 +1071,7 @@ void JSValueRef::GetDataViewInfo(const EcmaVM *vm,
                                  JSValueRef **arrayBuffer,
                                  size_t *byteOffset)
 {
-    if (!IsDataView()) {
+    if (!IsDataView(vm)) {
         isDataView = false;
         return;
     }
@@ -1450,7 +1451,7 @@ int32_t BufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
     return arrayBuffer->GetArrayBufferByteLength();
 }
 
-void *BufferRef::GetBuffer()
+void *BufferRef::GetBuffer([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
@@ -1750,21 +1751,21 @@ int32_t StringRef::Utf8Length(const EcmaVM *vm)
     return EcmaStringAccessor(EcmaStringAccessor::Flatten(vm, strHandle)).GetUtf8Length();
 }
 
-int StringRef::WriteUtf8(char *buffer, int length, bool isWriteBuffer)
+int StringRef::WriteUtf8([[maybe_unused]] const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
         .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length, isWriteBuffer);
 }
 
-int StringRef::WriteUtf16(char16_t *buffer, int length)
+int StringRef::WriteUtf16([[maybe_unused]] const EcmaVM *vm, char16_t *buffer, int length)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
         .WriteToUtf16(reinterpret_cast<uint16_t *>(buffer), length);
 }
 
-int StringRef::WriteLatin1(char *buffer, int length)
+int StringRef::WriteLatin1([[maybe_unused]] const EcmaVM *vm, char *buffer, int length)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
@@ -2607,7 +2608,7 @@ int32_t ArrayBufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
     return arrayBuffer->GetArrayBufferByteLength();
 }
 
-void *ArrayBufferRef::GetBuffer()
+void *ArrayBufferRef::GetBuffer([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
@@ -2626,7 +2627,7 @@ void ArrayBufferRef::Detach(const EcmaVM *vm)
     arrayBuffer->Detach(thread);
 }
 
-bool ArrayBufferRef::IsDetach()
+bool ArrayBufferRef::IsDetach([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
@@ -2670,14 +2671,14 @@ void SendableArrayBufferRef::Detach(const EcmaVM *vm)
     arrayBuffer->Detach(thread);
 }
 
-bool SendableArrayBufferRef::IsDetach()
+bool SendableArrayBufferRef::IsDetach([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
     JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     return arrayBuffer->IsDetach();
 }
 
-void *SendableArrayBufferRef::GetBuffer()
+void *SendableArrayBufferRef::GetBuffer([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
     JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
@@ -3003,7 +3004,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     EscapeLocalScope scope(vm);
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
-    if (!IsFunction()) {
+    if (!IsFunction(vm)) {
         return JSValueRef::Undefined(vm);
     }
     vm->GetJsDebuggerManager()->ClearSingleStepper();
@@ -3038,7 +3039,7 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
     ecmascript::ThreadManagedScope managedScope(thread);
     JSTaggedValue result;
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
-    ASSERT(IsFunction()); // IsFunction check has been done in napi.
+    ASSERT(IsFunction(vm)); // IsFunction check has been done in napi.
     {
         LocalScope scope(vm);
         ecmascript::tooling::JsDebuggerManager *dm = vm->GetJsDebuggerManager();
@@ -3092,7 +3093,7 @@ Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
-    if (!IsFunction()) {
+    if (!IsFunction(vm)) {
         return JSValueRef::Undefined(vm);
     }
     JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
@@ -3121,7 +3122,7 @@ JSValueRef* FunctionRef::ConstructorOptimize(const EcmaVM *vm,
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSTaggedValue result;
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
-    ASSERT(IsFunction()); // IsFunction check has been done in napi.
+    ASSERT(IsFunction(vm)); // IsFunction check has been done in napi.
     {
         LocalScope scope(vm);
         JSTaggedValue func = *reinterpret_cast<JSTaggedValue*>(this);

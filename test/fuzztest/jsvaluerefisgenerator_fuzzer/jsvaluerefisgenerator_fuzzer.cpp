@@ -48,7 +48,7 @@ void IsGeneratorObjectFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
     JSFunction::InitializeJSFunction(vm->GetJSThread(), generatorFunc, FunctionKind::GENERATOR_FUNCTION);
     JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
     Local<JSValueRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
-    genObjectRef->IsGeneratorObject();
+    genObjectRef->IsGeneratorObject(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }
