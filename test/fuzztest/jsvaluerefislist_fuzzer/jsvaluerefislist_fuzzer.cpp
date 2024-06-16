@@ -141,7 +141,7 @@ void JSValueRefIsListFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
     list->SetSingleList(thread, singleList);
     JSHandle<JSTaggedValue> Listtag = JSHandle<JSTaggedValue>::Cast(list);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(Listtag);
-    object->IsList();
+    object->IsList(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

@@ -32,7 +32,7 @@ void JSNApiIsConstructorFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
         return;
     }
     Local<IntegerRef> intValue = IntegerRef::New(vm_, (int)size);
-    intValue->IsConstructor();
+    intValue->IsConstructor(vm_);
     JSNApi::DestroyJSVM(vm_);
 }
 }

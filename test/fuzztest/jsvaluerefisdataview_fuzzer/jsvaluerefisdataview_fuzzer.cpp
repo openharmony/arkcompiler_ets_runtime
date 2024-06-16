@@ -32,7 +32,7 @@ void JSValueRefIsDataViewFuzzerTest([[maybe_unused]]const uint8_t *data, size_t 
     }
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (int32_t)size);
     Local<DataViewRef> dataView = DataViewRef::New(vm, arrayBuffer, 0, (int32_t)size - 1);
-    dataView->IsDataView();
+    dataView->IsDataView(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

@@ -167,12 +167,12 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunction)
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_));
 
     ASSERT_EQ("name", constructor->GetName(vm_)->ToString());
-    ASSERT_TRUE(constructor->IsFunction());
+    ASSERT_TRUE(constructor->IsFunction(vm_));
     JSHandle<JSTaggedValue> jsConstructor = JSNApiHelper::ToJSHandle(constructor);
     ASSERT_TRUE(jsConstructor->IsClassConstructor());
 
     Local<JSValueRef> functionPrototype = constructor->GetFunctionPrototype(vm_);
-    ASSERT_TRUE(functionPrototype->IsObject());
+    ASSERT_TRUE(functionPrototype->IsObject(vm_));
     JSHandle<JSTaggedValue> jsPrototype = JSNApiHelper::ToJSHandle(functionPrototype);
     ASSERT_TRUE(jsPrototype->IsClassPrototype());
 
@@ -446,7 +446,7 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionFunction)
         vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"), infos, FunctionRef::Null(vm_));
 
     Local<FunctionRef> staticValue = constructor->Get(vm_, staticKey);
-    ASSERT_TRUE(staticValue->IsFunction());
+    ASSERT_TRUE(staticValue->IsFunction(vm_));
     Local<JSValueRef> res = staticValue->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
     ASSERT_EQ("funcResult", res->ToString(vm_)->ToString());
 }

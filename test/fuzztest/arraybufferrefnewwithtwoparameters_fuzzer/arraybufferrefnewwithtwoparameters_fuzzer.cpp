@@ -61,7 +61,7 @@ void ArrayBufferRef_New_IsDetach_Detach_ByteLength_GetBuffer_FuzzTest(const uint
         UNREACHABLE();
     }
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, input);
-    arrayBuffer->IsDetach();
+    arrayBuffer->IsDetach(vm);
     arrayBuffer->Detach(vm);
     arrayBuffer->ByteLength(vm);
     JSNApi::DestroyJSVM(vm);

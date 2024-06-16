@@ -176,7 +176,7 @@ void JSValueRefIsLightWeightMapFuzzTest([[maybe_unused]] const uint8_t *data, si
     JSHandle<JSAPILightWeightMap> mapHandle = ConstructobjectLightWeightMap(thread);
     JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);
     Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
-    tag->IsLightWeightMap();
+    tag->IsLightWeightMap(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -193,7 +193,7 @@ void JSValueRefIsLightWeightSetFuzzTest([[maybe_unused]] const uint8_t *data, si
     JSHandle<JSAPILightWeightSet> mapHandle = ConstructobjectLightWeightSet(thread);
     JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);
     Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
-    tag->IsLightWeightSet();
+    tag->IsLightWeightSet(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

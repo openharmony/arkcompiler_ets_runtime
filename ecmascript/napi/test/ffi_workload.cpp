@@ -387,7 +387,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsFunction_True)
     Local<FunctionRef> obj(FunctionRef::NewClassFunction(vm_, FunCallback, deleter, cb, callNative, nativeBindingSize));
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        (void)obj->IsFunction();
+        (void)obj->IsFunction(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsFunction);
@@ -422,7 +422,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsSet)
     JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(set);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<SetRef>(setTag)->IsSet();
+        JSNApiHelper::ToLocal<SetRef>(setTag)->IsSet(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsSet);
@@ -501,7 +501,7 @@ HWTEST_F_L0(JSNApiSplTest, IsGeneratorFunction_True)
     Local<JSValueRef> genObject = genObjectRef->GetGeneratorFunction(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        genObject->IsGeneratorFunction();
+        genObject->IsGeneratorFunction(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsGeneratorFunction);
@@ -514,7 +514,7 @@ HWTEST_F_L0(JSNApiSplTest, IsGeneratorFunction_False)
     Local<BooleanRef> obj = BooleanRef::New(vm_, 0);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        obj->IsGeneratorFunction();
+        obj->IsGeneratorFunction(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsGeneratorFunction);
@@ -541,7 +541,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsArrayBuffer)
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, buffer, length, deleter, data);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        (void)arrayBuffer->IsArrayBuffer();
+        (void)arrayBuffer->IsArrayBuffer(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsArrayBuffer);
@@ -595,7 +595,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBuffer)
     Local<BufferRef> bufferRef = BufferRef::New(vm_, length);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        (void)bufferRef->IsBuffer();
+        (void)bufferRef->IsBuffer(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBuffer);
@@ -610,7 +610,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint32Array)
     Local<Uint32ArrayRef> typedArray = Uint32ArrayRef::New(vm_, arrayBuffer, 4, 6);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        (void)typedArray->IsUint32Array();
+        (void)typedArray->IsUint32Array(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBuIsUint32Arrayffer);
@@ -625,7 +625,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsFloat32Array)
     Local<Float32ArrayRef> typedArray = Float32ArrayRef::New(vm_, arrayBuffer, 4, 6);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        (void)typedArray->IsFloat32Array();
+        (void)typedArray->IsFloat32Array(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsFloat32Array);
@@ -640,7 +640,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsFloat64Array)
     Local<Float64ArrayRef> floatArray = Float64ArrayRef::New(vm_, arrayBuffer, 4, 6);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        (void)floatArray->IsFloat64Array();
+        (void)floatArray->IsFloat64Array(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsFloat64Array);
@@ -703,7 +703,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsArrayList)
     JSHandle<JSTaggedValue> arryListTag = JSHandle<JSTaggedValue>::Cast(jsArrayList);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<JSValueRef>(arryListTag)->IsArrayList();
+        JSNApiHelper::ToLocal<JSValueRef>(arryListTag)->IsArrayList(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsArrayList);
@@ -907,7 +907,7 @@ HWTEST_F_L0(JSNApiSplTest, ArrayBufferRef_IsDetach)
     arrayBuffer->Detach(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        (void)arrayBuffer->IsDetach();
+        (void)arrayBuffer->IsDetach(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(ArrayBufferRef::IsDetach);
@@ -935,7 +935,7 @@ HWTEST_F_L0(JSNApiSplTest, BufferRef_BufferRef)
     Local<BufferRef> obj = BufferRef::New(vm_, length);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        (void)obj->GetBuffer();
+        (void)obj->GetBuffer(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(BufferRef::BufferRef);
@@ -950,7 +950,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsArgumentsObject)
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(obj);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsArgumentsObject();
+        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsArgumentsObject(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsArgumentsObject);
@@ -963,7 +963,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncFunction)
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(asyncFuncObj);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsAsyncFunction();
+        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsAsyncFunction(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsAsyncFunction);
@@ -977,7 +977,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSLocale)
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsLocale);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsJSLocale();
+        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsJSLocale(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSLocale);
@@ -1000,7 +1000,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDeque)
     JSHandle<JSTaggedValue> deQue = JSHandle<JSTaggedValue>::Cast(jsQueue);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        (void)JSNApiHelper::ToLocal<JSValueRef>(deQue)->IsDeque();
+        (void)JSNApiHelper::ToLocal<JSValueRef>(deQue)->IsDeque(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsDeque);
@@ -1353,11 +1353,11 @@ HWTEST_F_L0(JSNApiSplTest, IsStringIterator)
     JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsStringIter);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<StringRef>(setTag)->IsStringIterator();
+        JSNApiHelper::ToLocal<StringRef>(setTag)->IsStringIterator(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsStringIterator);
-    GTEST_LOG_(INFO) << std::boolalpha << JSNApiHelper::ToLocal<StringRef>(setTag)->IsStringIterator();
+    GTEST_LOG_(INFO) << std::boolalpha << JSNApiHelper::ToLocal<StringRef>(setTag)->IsStringIterator(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8Array)
@@ -1368,11 +1368,11 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8Array)
     Local<Uint8ArrayRef> object = Uint8ArrayRef::New(vm_, buffer, 4, 5);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsUint8Array();
+        object->IsUint8Array(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsUint8Array);
-    GTEST_LOG_(INFO) << std::boolalpha << object->IsUint8Array();
+    GTEST_LOG_(INFO) << std::boolalpha << object->IsUint8Array(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt8Array)
@@ -1383,11 +1383,11 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt8Array)
     Local<ObjectRef> object = Int8ArrayRef::New(vm_, buffer, 4, 5);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsInt8Array();
+        object->IsInt8Array(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsInt8Array);
-    GTEST_LOG_(INFO) << std::boolalpha << object->IsInt8Array();
+    GTEST_LOG_(INFO) << std::boolalpha << object->IsInt8Array(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBigInt64Array)
@@ -1398,11 +1398,11 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBigInt64Array)
     Local<ObjectRef> object = BigInt64ArrayRef::New(vm_, buffer, 4, 5);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsBigInt64Array();
+        object->IsBigInt64Array(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBigInt64Array);
-    GTEST_LOG_(INFO) << std::boolalpha << object->IsBigInt64Array();
+    GTEST_LOG_(INFO) << std::boolalpha << object->IsBigInt64Array(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBigUint64Array)
@@ -1413,11 +1413,11 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBigUint64Array)
     Local<ObjectRef> object = BigUint64ArrayRef::New(vm_, buffer, 4, 5);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsBigUint64Array();
+        object->IsBigUint64Array(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBigUint64Array);
-    GTEST_LOG_(INFO) << std::boolalpha << object->IsBigUint64Array();
+    GTEST_LOG_(INFO) << std::boolalpha << object->IsBigUint64Array(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveRef)
@@ -1437,11 +1437,11 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveRef)
     Local<PrimitiveRef> jsValueRef = JSNApiHelper::ToLocal<JSPrimitiveRef>(jsTaggedValue);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        jsValueRef->IsJSPrimitiveRef();
+        jsValueRef->IsJSPrimitiveRef(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPrimitiveRef);
-    GTEST_LOG_(INFO) << std::boolalpha << jsValueRef->IsJSPrimitiveRef();
+    GTEST_LOG_(INFO) << std::boolalpha << jsValueRef->IsJSPrimitiveRef(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSDateTimeFormat)
@@ -1460,11 +1460,11 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSDateTimeFormat)
     JSHandle<JSTaggedValue> jsTaggedValue(thread_, JSTaggedValue(taggedObject));
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSDateTimeFormat();
+        JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSDateTimeFormat(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSDateTimeFormat);
-    GTEST_LOG_(INFO) << std::boolalpha << JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSDateTimeFormat();
+    GTEST_LOG_(INFO) << std::boolalpha << JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSDateTimeFormat(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSRelativeTimeFormat)
@@ -1483,11 +1483,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSRelativeTimeFormat)
     JSHandle<JSTaggedValue> jsTaggedValue(thread_, JSTaggedValue(taggedObject));
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSRelativeTimeFormat();
+        JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSRelativeTimeFormat(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSRelativeTimeFormat);
-    GTEST_LOG_(INFO) << std::boolalpha << JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSRelativeTimeFormat();
+    GTEST_LOG_(INFO) << std::boolalpha <<
+        JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSRelativeTimeFormat(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSIntl)
@@ -1505,11 +1506,11 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSIntl)
     JSHandle<JSTaggedValue> jsTaggedValue(thread_, JSTaggedValue(taggedObject));
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSIntl();
+        JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSIntl(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSIntl);
-    GTEST_LOG_(INFO) << std::boolalpha << JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSIntl();
+    GTEST_LOG_(INFO) << std::boolalpha << JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSIntl(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSNumberFormat)
@@ -1527,11 +1528,11 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSNumberFormat)
     JSHandle<JSTaggedValue> jsTaggedValue(thread_, JSTaggedValue(taggedObject));
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSNumberFormat();
+        JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSNumberFormat(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSNumberFormat);
-    GTEST_LOG_(INFO) << std::boolalpha << JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSNumberFormat();
+    GTEST_LOG_(INFO) << std::boolalpha << JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue)->IsJSNumberFormat(vm_);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsHashMap)
@@ -1543,7 +1544,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsHashMap)
     Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jsHashMap);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(tag->IsHashMap());
+        ASSERT_TRUE(tag->IsHashMap(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsHashMap);
@@ -1558,7 +1559,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsHashSet)
     Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jsHashMap);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(tag->IsHashSet());
+        ASSERT_TRUE(tag->IsHashSet(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsHashSet);
@@ -1573,7 +1574,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLightWeightMap)
     Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jsHashMap);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(tag->IsLightWeightMap());
+        ASSERT_TRUE(tag->IsLightWeightMap(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsLightWeightMap);
@@ -1588,7 +1589,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLightWeightSet)
     Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jsHashMap);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(tag->IsLightWeightSet());
+        ASSERT_TRUE(tag->IsLightWeightSet(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsLightWeightSet);
@@ -2019,7 +2020,7 @@ HWTEST_F_L0(JSNApiSplTest, GetOriginalFlags)
     Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsRegTag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetOriginalFlags();
+        object->GetOriginalFlags(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(RegExpRef::GetOriginalFlags);
@@ -2429,7 +2430,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsString_False)
     Local<JSValueRef> tag = BooleanRef::New(vm_, true);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsString();
+        bool b = tag->IsString(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2443,7 +2444,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsString_True)
     Local<JSValueRef> tag = StringRef::NewFromUtf8(vm_, "abc");
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsString();
+        bool b = tag->IsString(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2457,7 +2458,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsProxy_False)
     Local<JSValueRef> tag = BooleanRef::New(vm_, true);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsProxy();
+        bool b = tag->IsProxy(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2471,7 +2472,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsProxy_True)
     Local<JSValueRef> tag = ProxyRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsProxy();
+        bool b = tag->IsProxy(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2485,7 +2486,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPromise_False)
     Local<JSValueRef> tag = BooleanRef::New(vm_, true);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsPromise();
+        bool b = tag->IsPromise(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2499,7 +2500,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPromise_True)
     Local<JSValueRef> tag = PromiseCapabilityRef::New(vm_)->GetPromise(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsPromise();
+        bool b = tag->IsPromise(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2513,7 +2514,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDataView_False)
     Local<JSValueRef> tag = BooleanRef::New(vm_, true);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsDataView();
+        bool b = tag->IsDataView(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2528,7 +2529,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDataView_True)
     Local<JSValueRef> tag = DataViewRef::New(vm_, ArrayBufferRef::New(vm_, num), num, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsDataView();
+        bool b = tag->IsDataView(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2542,7 +2543,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakRef_False)
     Local<JSValueRef> tag = BooleanRef::New(vm_, true);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsWeakRef();
+        bool b = tag->IsWeakRef(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2556,7 +2557,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakMap_False)
     Local<JSValueRef> tag = BooleanRef::New(vm_, true);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsWeakMap();
+        bool b = tag->IsWeakMap(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2570,7 +2571,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakMap_True)
     Local<JSValueRef> tag = WeakMapRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsWeakMap();
+        bool b = tag->IsWeakMap(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2584,7 +2585,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakSet_False)
     Local<JSValueRef> tag = JSValueRef::Null(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsWeakSet();
+        bool b = tag->IsWeakSet(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -2598,7 +2599,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakSet_True)
     Local<JSValueRef> tag = WeakSetRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        bool b = tag->IsWeakSet();
+        bool b = tag->IsWeakSet(vm_);
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3080,7 +3081,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8)
     char cs[16] = {0};
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(cs, 6);
+        int length = local->WriteUtf8(vm_, cs, 6);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3095,7 +3096,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_all)
     char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(cs, local->Length());
+        int length = local->WriteUtf8(vm_, cs, local->Length());
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3110,7 +3111,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_0)
     char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(cs, 0);
+        int length = local->WriteUtf8(vm_, cs, 0);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3125,7 +3126,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_true)
     char cs[16] = {0}; // 16 =The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(cs, 6, true);
+        int length = local->WriteUtf8(vm_, cs, 6, true);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3140,7 +3141,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_all_true)
     char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(cs, local->Length(), true);
+        int length = local->WriteUtf8(vm_, cs, local->Length(), true);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3155,7 +3156,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf16)
     char16_t cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf16(cs, 3);
+        int length = local->WriteUtf16(vm_, cs, 3);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3170,7 +3171,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteLatin1)
     char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteLatin1(cs, 8);
+        int length = local->WriteLatin1(vm_, cs, 8);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3603,7 +3604,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_True)
     Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsMapIterator());
+        ASSERT_TRUE(object->IsMapIterator(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsMapIterator);
@@ -3617,7 +3618,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsMapIterator());
+        ASSERT_FALSE(object->IsMapIterator(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsMapIterator);
@@ -3633,7 +3634,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_True)
     Local<Uint8ClampedArrayRef> object = Uint8ClampedArrayRef::New(vm_, buffer, byteOffset, length);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsUint8ClampedArray());
+        ASSERT_TRUE(object->IsUint8ClampedArray(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsUint8ClampedArray);
@@ -3647,7 +3648,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsUint8ClampedArray());
+        ASSERT_FALSE(object->IsUint8ClampedArray(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsUint8ClampedArray);
@@ -3664,7 +3665,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_True)
     Local<Int16ArrayRef> object = Int16ArrayRef::New(vm_, arrayBuffer, byteOffset, len);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsInt16Array());
+        ASSERT_TRUE(object->IsInt16Array(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsInt16Array);
@@ -3678,7 +3679,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsInt16Array());
+        ASSERT_FALSE(object->IsInt16Array(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsInt16Array);
@@ -3695,7 +3696,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveNumber_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsJSPrimitiveNumber();
+        object->IsJSPrimitiveNumber(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPrimitiveNumber);
@@ -3708,7 +3709,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveNumber_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsJSPrimitiveNumber());
+        ASSERT_FALSE(object->IsJSPrimitiveNumber(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPrimitiveNumber);
@@ -3725,7 +3726,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveInt_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsJSPrimitiveInt();
+        object->IsJSPrimitiveInt(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPrimitiveInt);
@@ -3742,7 +3743,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveBoolean_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsJSPrimitiveBoolean();
+        object->IsJSPrimitiveBoolean(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPrimitiveBoolean);
@@ -3755,7 +3756,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveBoolean_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsJSPrimitiveBoolean());
+        ASSERT_FALSE(object->IsJSPrimitiveBoolean(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPrimitiveBoolean);
@@ -3778,7 +3779,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSCollator_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(collatorTagHandleVal);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsJSCollator());
+        ASSERT_TRUE(object->IsJSCollator(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSCollator);
@@ -3792,7 +3793,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSCollator_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsJSCollator());
+        ASSERT_FALSE(object->IsJSCollator(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSCollator);
@@ -3815,7 +3816,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(tagPlureRules);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsJSPluralRules());
+        ASSERT_TRUE(object->IsJSPluralRules(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPluralRules);
@@ -3829,7 +3830,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsJSPluralRules());
+        ASSERT_FALSE(object->IsJSPluralRules(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPluralRules);
@@ -3843,7 +3844,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSListFormat_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsJSListFormat());
+        ASSERT_FALSE(object->IsJSListFormat(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSListFormat);
@@ -3861,7 +3862,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsAsyncGeneratorFunction());
+        ASSERT_TRUE(object->IsAsyncGeneratorFunction(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsAsyncGeneratorFunction);
@@ -3875,7 +3876,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsAsyncGeneratorFunction());
+        ASSERT_FALSE(object->IsAsyncGeneratorFunction(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsAsyncGeneratorFunction);
@@ -3906,7 +3907,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(linkedListTag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsLinkedList());
+        ASSERT_TRUE(object->IsLinkedList(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsLinkedList);
@@ -3920,7 +3921,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsLinkedList());
+        ASSERT_FALSE(object->IsLinkedList(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsLinkedList);
@@ -3960,7 +3961,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(linkedListIteratortag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsLinkedListIterator());
+        ASSERT_TRUE(object->IsLinkedListIterator(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsLinkedListIterator);
@@ -3974,7 +3975,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsLinkedListIterator());
+        ASSERT_FALSE(object->IsLinkedListIterator(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsLinkedListIterator);
@@ -4006,7 +4007,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(Listtag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsList());
+        ASSERT_TRUE(object->IsList(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsList);
@@ -4019,7 +4020,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_False)
     int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsList());
+        ASSERT_FALSE(object->IsList(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsList);
@@ -4054,7 +4055,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_True)
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(plainarraytag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsPlainArray());
+        ASSERT_TRUE(object->IsPlainArray(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsPlainArray);
@@ -4068,7 +4069,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_False)
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsPlainArray());
+        ASSERT_FALSE(object->IsPlainArray(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsPlainArray);
@@ -4570,7 +4571,7 @@ HWTEST_F_L0(JSNApiSplTest, GeneratorFunctionRef_IsGenerator)
     Local<GeneratorFunctionRef> object = genObjectRef->GetGeneratorFunction(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsGenerator();
+        object->IsGenerator(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(GeneratorFunctionRef::IsGenerator);
@@ -4881,7 +4882,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsSymbol)
     Local<JSValueRef> res = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        res->IsSymbol();
+        res->IsSymbol(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsSymbol);
@@ -4895,7 +4896,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsObject)
     Local<JSValueRef> res = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        res->IsObject();
+        res->IsObject(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsObject);
@@ -4909,7 +4910,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsTypedArray)
     Local<JSValueRef> res = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        res->IsTypedArray();
+        res->IsTypedArray(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsTypedArray);
@@ -4923,7 +4924,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsNativePointer)
     Local<JSValueRef> res = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        res->IsNativePointer();
+        res->IsNativePointer(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsNativePointer);
@@ -4937,7 +4938,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsRegExp)
     Local<JSValueRef> res = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        res->IsRegExp();
+        res->IsRegExp(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsRegExp);
@@ -4951,7 +4952,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsArrayIterator)
     Local<JSValueRef> res = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        res->IsArrayIterator();
+        res->IsArrayIterator(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsArrayIterator);
@@ -5612,7 +5613,7 @@ HWTEST_F_L0(JSNApiSplTest, IsSetIterator_Ture)
     JSHandle<JSTaggedValue> setiter = JSHandle<JSTaggedValue>::Cast(jsSetIter);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(JSNApiHelper::ToLocal<JSValueRef>(setiter)->IsSetIterator());
+        ASSERT_TRUE(JSNApiHelper::ToLocal<JSValueRef>(setiter)->IsSetIterator(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsSetIterator);
@@ -5625,7 +5626,7 @@ HWTEST_F_L0(JSNApiSplTest, IsSetIterator_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsSetIterator());
+        ASSERT_FALSE(object->IsSetIterator(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsSetIterator);
@@ -5642,7 +5643,7 @@ HWTEST_F_L0(JSNApiSplTest, IsUint16Array_True)
     Local<Uint16ArrayRef> object = Uint16ArrayRef::New(vm_, buffer, byteOffset, length);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsUint16Array());
+        ASSERT_TRUE(object->IsUint16Array(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsUint16Array);
@@ -5655,7 +5656,7 @@ HWTEST_F_L0(JSNApiSplTest, IsUint16Array_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsUint16Array());
+        ASSERT_FALSE(object->IsUint16Array(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsUint16Array);
@@ -5672,7 +5673,7 @@ HWTEST_F_L0(JSNApiSplTest, IsInt32Array_True)
     Local<Int32ArrayRef> object = Int32ArrayRef::New(vm_, buffer, byteOffset, length);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsInt32Array());
+        ASSERT_TRUE(object->IsInt32Array(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsInt32Array);
@@ -5685,7 +5686,7 @@ HWTEST_F_L0(JSNApiSplTest, IsInt32Array_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsInt32Array());
+        ASSERT_FALSE(object->IsInt32Array(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsInt32Array);
@@ -5698,7 +5699,7 @@ HWTEST_F_L0(JSNApiSplTest, IsJSPrimitiveString_False)
     Local<ObjectRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsJSPrimitiveString());
+        ASSERT_FALSE(object->IsJSPrimitiveString(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPrimitiveString);
@@ -5723,7 +5724,7 @@ HWTEST_F_L0(JSNApiSplTest, IsGeneratorObject_True)
     Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(genObjectRef->IsGeneratorObject());
+        ASSERT_TRUE(genObjectRef->IsGeneratorObject(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsGeneratorObject);
@@ -5736,7 +5737,7 @@ HWTEST_F_L0(JSNApiSplTest, IsGeneratorObject_False)
     Local<ObjectRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsGeneratorObject());
+        ASSERT_FALSE(object->IsGeneratorObject(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsGeneratorObject);
@@ -5749,7 +5750,7 @@ HWTEST_F_L0(JSNApiSplTest, IsJSPrimitiveSymbol_False)
     Local<ObjectRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsJSPrimitiveSymbol());
+        ASSERT_FALSE(object->IsJSPrimitiveSymbol(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsJSPrimitiveSymbol);
@@ -5767,7 +5768,7 @@ HWTEST_F_L0(JSNApiSplTest, IsAsyncGeneratorObject_True)
     Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(genObjectRef->IsAsyncGeneratorObject());
+        ASSERT_TRUE(genObjectRef->IsAsyncGeneratorObject(vm_));
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsAsyncGeneratorObject);
@@ -5780,7 +5781,7 @@ HWTEST_F_L0(JSNApiSplTest, IsAsyncGeneratorObject_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsAsyncGeneratorObject();
+        object->IsAsyncGeneratorObject(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsAsyncGeneratorObject);
@@ -5795,7 +5796,7 @@ HWTEST_F_L0(JSNApiSplTest, IsModuleNamespaceObject_True)
     JSHandle<JSTaggedValue> modname = JSHandle<JSTaggedValue>::Cast(moduleNamespace);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ObjectRef>(modname)->IsModuleNamespaceObject();
+        JSNApiHelper::ToLocal<ObjectRef>(modname)->IsModuleNamespaceObject(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsModuleNamespaceObject);
@@ -5808,7 +5809,7 @@ HWTEST_F_L0(JSNApiSplTest, IsModuleNamespaceObject_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsModuleNamespaceObject();
+        object->IsModuleNamespaceObject(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsModuleNamespaceObject);
@@ -5824,7 +5825,7 @@ HWTEST_F_L0(JSNApiSplTest, IsSharedArrayBuffer_True)
     JSHandle<JSTaggedValue> SAbuffer = JSHandle<JSTaggedValue>::Cast(jsArrayBuffer);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ArrayRef>(SAbuffer)->IsSharedArrayBuffer();
+        JSNApiHelper::ToLocal<ArrayRef>(SAbuffer)->IsSharedArrayBuffer(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsSharedArrayBuffer);
@@ -5837,7 +5838,7 @@ HWTEST_F_L0(JSNApiSplTest, IsSharedArrayBuffer_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsSharedArrayBuffer();
+        object->IsSharedArrayBuffer(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsSharedArrayBuffer);
@@ -5888,7 +5889,7 @@ HWTEST_F_L0(JSNApiSplTest, IsQueue_Frue)
     JSHandle<JSTaggedValue> Que = JSHandle<JSTaggedValue>::Cast(jsQueue);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ArrayRef>(Que)->IsDeque();
+        JSNApiHelper::ToLocal<ArrayRef>(Que)->IsDeque(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsQueue);
@@ -5901,7 +5902,7 @@ HWTEST_F_L0(JSNApiSplTest, IsQueue_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsQueue();
+        object->IsQueue(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsQueue);
@@ -5920,7 +5921,7 @@ HWTEST_F_L0(JSNApiSplTest, IsStack_True)
     JSHandle<JSTaggedValue> stcak = JSHandle<JSTaggedValue>::Cast(jsStack);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ArrayRef>(stcak)->IsStack();
+        JSNApiHelper::ToLocal<ArrayRef>(stcak)->IsStack(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsStack);
@@ -5933,7 +5934,7 @@ HWTEST_F_L0(JSNApiSplTest, IsStack_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsStack();
+        object->IsStack(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsStack);
@@ -5954,7 +5955,7 @@ HWTEST_F_L0(JSNApiSplTest, IsTreeMap_True)
     JSHandle<JSTaggedValue> treapp = JSHandle<JSTaggedValue>::Cast(jsTreeMap);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ArrayRef>(treapp)->IsTreeMap();
+        JSNApiHelper::ToLocal<ArrayRef>(treapp)->IsTreeMap(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsTreeMap);
@@ -5967,7 +5968,7 @@ HWTEST_F_L0(JSNApiSplTest, IsTreeMap_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsTreeMap();
+        object->IsTreeMap(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsTreeMap);
@@ -5988,7 +5989,7 @@ HWTEST_F_L0(JSNApiSplTest, IsTreeSet_True)
     JSHandle<JSTaggedValue> tresett = JSHandle<JSTaggedValue>::Cast(jsTreeSet);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ArrayRef>(tresett)->IsTreeSet();
+        JSNApiHelper::ToLocal<ArrayRef>(tresett)->IsTreeSet(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsTreeSet);
@@ -6001,7 +6002,7 @@ HWTEST_F_L0(JSNApiSplTest, IsTreeSet_False)
     Local<JSValueRef> object = ObjectRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsTreeSet();
+        object->IsTreeSet(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsTreeSet);
@@ -6020,7 +6021,7 @@ HWTEST_F_L0(JSNApiSplTest, IsVector_True)
     JSHandle<JSTaggedValue> vectt = JSHandle<JSTaggedValue>::Cast(jsVector);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApiHelper::ToLocal<ArrayRef>(vectt)->IsVector();
+        JSNApiHelper::ToLocal<ArrayRef>(vectt)->IsVector(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsVector);
@@ -6341,7 +6342,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_InitForConcurrentFunction)
     size_t nativeBindingsize = 15;
     Local<FunctionRef> res =
         FunctionRef::NewClassFunction(vm_, FunCallback, deleter, cb, callNative, nativeBindingsize);
-    ASSERT_TRUE(res->IsFunction());
+    ASSERT_TRUE(res->IsFunction(vm_));
     Local<JSValueRef> res1 = res->GetFunctionPrototype(vm_);
     void *taskInfo = nullptr;
     gettimeofday(&g_beginTime, nullptr);
@@ -6854,31 +6855,31 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBigInt)
     Local<BigIntRef> maxBigintInt64 = BigIntRef::New(vm_, maxInt64);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        intValue->IsBigInt();
+        intValue->IsBigInt(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBigInt::IntegerRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        resUnit32->IsBigInt();
+        resUnit32->IsBigInt(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBigInt::NumberRef32);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        resUnit64->IsBigInt();
+        resUnit64->IsBigInt(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBigInt::NumberRef64);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        maxBigintUint64->IsBigInt();
+        maxBigintUint64->IsBigInt(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBigInt::BigIntRefU64);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        maxBigintInt64->IsBigInt();
+        maxBigintInt64->IsBigInt(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBigInt::BigIntRefI64);
@@ -6894,13 +6895,13 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBigInt2)
     Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        resBool->IsBigInt();
+        resBool->IsBigInt(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBigInt::BooleanRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        stringUtf8->IsBigInt();
+        stringUtf8->IsBigInt(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBigInt::StringRef);
@@ -7029,13 +7030,13 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsConstructor)
     Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        intValue->IsConstructor();
+        intValue->IsConstructor(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsConstructor::IntegerRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        resUnit32->IsConstructor();
+        resUnit32->IsConstructor(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsConstructor::NumberRef);
@@ -7061,19 +7062,19 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsConstructor2)
     Local<JSValueRef> funConstructor = JSNApiHelper::ToLocal<JSValueRef>(funcHandle);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        maxBigintUint64->IsConstructor();
+        maxBigintUint64->IsConstructor(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsConstructor::BigIntRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        stringUtf8->IsConstructor();
+        stringUtf8->IsConstructor(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsConstructor::StringRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        funConstructor->IsConstructor();
+        funConstructor->IsConstructor(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsConstructor::funConstructor);
@@ -7095,31 +7096,31 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDate)
     Local<DateRef> dateRef = DateRef::New(vm_, timeRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        intValue->IsDate();
+        intValue->IsDate(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsDate::IntegerRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        resUnit32->IsDate();
+        resUnit32->IsDate(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsDate::NumberRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        maxBigintUint64->IsDate();
+        maxBigintUint64->IsDate(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsDate::BigIntRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        stringUtf8->IsDate();
+        stringUtf8->IsDate(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsDate::StringRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        dateRef->IsDate();
+        dateRef->IsDate(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsDate::DateRef);
@@ -7141,31 +7142,31 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsError)
     Local<JSValueRef> error = Exception::Error(vm_, message);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        intValue->IsError();
+        intValue->IsError(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsError::IntegerRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        resUnit32->IsError();
+        resUnit32->IsError(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsError::NumberRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        maxBigintUint64->IsError();
+        maxBigintUint64->IsError(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsError::BigIntRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        stringUtf8->IsError();
+        stringUtf8->IsError(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsError::StringRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        error->IsError();
+        error->IsError(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsError::Exception::Error);
@@ -7186,31 +7187,31 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMap)
     Local<MapRef> mapRef = MapRef::New(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        intValue->IsMap();
+        intValue->IsMap(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsMap::IntegerRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        resUnit32->IsMap();
+        resUnit32->IsMap(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsMap::NumberRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        maxBigintUint64->IsMap();
+        maxBigintUint64->IsMap(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsMap::BigIntRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        stringUtf8->IsMap();
+        stringUtf8->IsMap(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsMap::StringRef);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        mapRef->IsMap();
+        mapRef->IsMap(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsMap::MapRef);

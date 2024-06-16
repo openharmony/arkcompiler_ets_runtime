@@ -72,7 +72,7 @@ void LocalRegExpRefGetOriginalFlagsFuzzTest([[maybe_unused]]const uint8_t *data,
     jSRegExp->SetLength(0);
     JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
     Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
-    object->GetOriginalFlags();
+    object->GetOriginalFlags(vm);
     JSNApi::DestroyJSVM(vm);
 }
 

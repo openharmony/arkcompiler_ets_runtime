@@ -34,7 +34,7 @@ namespace OHOS {
         }
         Local<StringRef> description = StringRef::NewFromUtf8(vm, (char*)data, size);
         Local<SymbolRef> symbol = SymbolRef::New(vm, description);
-        symbol->IsSymbol();
+        symbol->IsSymbol(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -49,7 +49,7 @@ namespace OHOS {
         }
         constexpr int input = 2147483646;
         Local<IntegerRef> intValue = IntegerRef::New(vm, input);
-        [[maybe_unused]]bool res = intValue->IsBigInt();
+        [[maybe_unused]]bool res = intValue->IsBigInt(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -63,7 +63,7 @@ namespace OHOS {
             return;
         }
         Local<JSValueRef> res = IntegerRef::New(vm, (int)size);
-        [[maybe_unused]]bool result = res->IsObject();
+        [[maybe_unused]]bool result = res->IsObject(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -79,7 +79,7 @@ namespace OHOS {
         ObjectFactory *factory = vm->GetFactory();
         JSHandle<JSArguments> obj = factory->NewJSArguments();
         JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(obj);
-        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsArgumentsObject();
+        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsArgumentsObject(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -94,7 +94,7 @@ namespace OHOS {
         }
         int length = size / sizeof(char16_t);
         Local<StringRef> obj =  StringRef::NewFromUtf16(vm, (char16_t*)data, length);
-        obj->IsJSPrimitiveBoolean();
+        obj->IsJSPrimitiveBoolean(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -109,7 +109,7 @@ namespace OHOS {
         }
         int length = size / sizeof(char16_t);
         Local<StringRef> obj = StringRef::NewFromUtf16(vm, (char16_t*)data, length);
-        obj->IsGeneratorFunction();
+        obj->IsGeneratorFunction(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -122,7 +122,7 @@ namespace OHOS {
             return;
         }
         Local<JSValueRef> object = IntegerRef::New(vm, (int)size);
-        object->IsMapIterator();
+        object->IsMapIterator(vm);
         JSNApi::DestroyJSVM(vm);
     }
 }

@@ -71,7 +71,7 @@ void JSValueRefIsStringValueFuzzTest(const uint8_t *data, size_t size)
         return;
     }
     Local<JSValueRef> tag = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-    tag->IsString();
+    tag->IsString(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -115,7 +115,7 @@ void JSValueRefIsFunctionValueFuzzTest(const uint8_t *data, size_t size)
     NativePointerCallback deleter = nullptr;
     FunctionCallback nativeFunc = FunCallback;
     Local<FunctionRef> obj(FunctionRef::NewClassFunction(vm, nativeFunc, deleter, (void *)(data + size)));
-    (void)obj->IsFunction();
+    (void)obj->IsFunction(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -137,7 +137,7 @@ void JSValueRefIsTypedArrayValueFuzzTest(const uint8_t *data, size_t size)
         UNREACHABLE();
     }
     Local<JSValueRef> targetUInt = IntegerRef::New(vm, number);
-    targetUInt->IsTypedArray();
+    targetUInt->IsTypedArray(vm);
     int32_t input;
     if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
         std::cout << "memcpy_s failed!";
@@ -148,9 +148,9 @@ void JSValueRefIsTypedArrayValueFuzzTest(const uint8_t *data, size_t size)
         input = MaxMenory;
     }
     Local<ArrayBufferRef> ref = ArrayBufferRef::New(vm, input);
-    ref->IsArrayBuffer();
+    ref->IsArrayBuffer(vm);
     Local<Uint32ArrayRef> typedArray = Uint32ArrayRef::New(vm, ref, (int32_t)size, (int32_t)size);
-    typedArray->IsTypedArray();
+    typedArray->IsTypedArray(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -190,10 +190,10 @@ void JSValueRefIsDateValueFuzzTest(const uint8_t *data, size_t size)
         UNREACHABLE();
     }
     Local<DateRef> dateRef = DateRef::New(vm, timeRef);
-    resUnit32->IsDate();
-    intValue->IsDate();
-    stringUtf8->IsDate();
-    dateRef->IsDate();
+    resUnit32->IsDate(vm);
+    intValue->IsDate(vm);
+    stringUtf8->IsDate(vm);
+    dateRef->IsDate(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -223,10 +223,10 @@ void JSValueRefIsErrorValueFuzzTest(const uint8_t *data, size_t size)
     Local<NumberRef> resUnit32 = NumberRef::New(vm, inputUnit32);
     Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
     Local<JSValueRef> error = Exception::Error(vm, stringUtf8);
-    resUnit32->IsError();
-    intValue->IsError();
-    stringUtf8->IsError();
-    error->IsError();
+    resUnit32->IsError(vm);
+    intValue->IsError(vm);
+    stringUtf8->IsError(vm);
+    error->IsError(vm);
     JSNApi::DestroyJSVM(vm);
 }
 

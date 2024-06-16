@@ -46,7 +46,7 @@ namespace OHOS {
         }
         Local<ArrayBufferRef> ref = ArrayBufferRef::New(vm, input);
         Local<Float64ArrayRef> float64ArrayRef = Float64ArrayRef::New(vm, ref, (int32_t)size, (int32_t)size);
-        float64ArrayRef->IsFloat64Array();
+        float64ArrayRef->IsFloat64Array(vm);
         JSNApi::DestroyJSVM(vm);
     }
 }

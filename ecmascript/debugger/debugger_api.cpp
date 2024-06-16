@@ -320,7 +320,7 @@ int32_t DebuggerApi::GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTagged
 
 void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className)
 {
-    if (!tagged->IsObject()) {
+    if (!tagged->IsObject(ecmaVM)) {
         return;
     }
     Local<JSValueRef> prototype = Local<ObjectRef>(tagged)->GetPrototype(ecmaVM);

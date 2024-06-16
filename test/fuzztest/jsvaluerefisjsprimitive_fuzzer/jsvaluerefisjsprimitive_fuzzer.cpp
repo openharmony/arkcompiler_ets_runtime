@@ -38,7 +38,7 @@ void IsJSPrimitiveSymbolFuzztest([[maybe_unused]]const uint8_t *data, size_t siz
     JSHandle<JSPrimitiveRef> jsPrimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_SYMBOL, jsTagValue);
     JSHandle<JSTaggedValue> jsTagPrimitive = JSHandle<JSTaggedValue>::Cast(jsPrimitive);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jsTagPrimitive);
-    object->IsJSPrimitiveSymbol();
+    object->IsJSPrimitiveSymbol(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -56,7 +56,7 @@ void IsJSPrimitiveStringFuzztest([[maybe_unused]]const uint8_t *data, size_t siz
     JSHandle<JSPrimitiveRef> jsPrimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_SYMBOL, jsTagValue);
     JSHandle<JSTaggedValue> jsTagPrimitive = JSHandle<JSTaggedValue>::Cast(jsPrimitive);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jsTagPrimitive);
-    object->IsJSPrimitiveString();
+    object->IsJSPrimitiveString(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -74,7 +74,7 @@ void IsJSPrimitiveIntFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     JSHandle<JSPrimitiveRef> jsPrimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BIGINT, jsTagValue);
     JSHandle<JSTaggedValue> jsTagPrimitive = JSHandle<JSTaggedValue>::Cast(jsPrimitive);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jsTagPrimitive);
-    object->IsJSPrimitiveInt();
+    object->IsJSPrimitiveInt(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

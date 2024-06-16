@@ -145,7 +145,7 @@ void JSValueRefIsPlainArrayFuzzTest([[maybe_unused]] const uint8_t *data, size_t
     plainArray->SetValues(thread, valueArray);
     JSHandle<JSTaggedValue> plainarraytag = JSHandle<JSTaggedValue>::Cast(plainArray);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(plainarraytag);
-    object->IsPlainArray();
+    object->IsPlainArray(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }
