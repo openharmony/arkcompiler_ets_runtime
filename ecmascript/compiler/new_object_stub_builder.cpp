@@ -1960,6 +1960,46 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
     return ret;
 }
 
+GateRef NewObjectStubBuilder::NewTypedArrayFromCtor(GateRef glue, GateRef ctor, GateRef length, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label thisObjIsECmaObject(env);
+    Label thisObjIsFastTypedArray(env);
+    Label defaultConstr(env);
+    Label exit(env);
+
+    GateRef thisObj = FastNewThisObject(glue, ctor);
+    result = thisObj;
+    GateRef arrayType = GetObjectType(LoadHClass(thisObj));
+
+    BRANCH(IsEcmaObject(thisObj), &thisObjIsECmaObject, slowPath);
+    Bind(&thisObjIsECmaObject);
+    BRANCH(IsFastTypeArray(arrayType), &thisObjIsFastTypedArray, slowPath);
+    Bind(&thisObjIsFastTypedArray);
+    BRANCH(HasConstructor(thisObj), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    DEFVARIABLE(buffer, VariableType::JS_ANY(), Undefined());
+    GateRef elementSize = GetElementSizeFromType(glue, arrayType);
+    GateRef newByteLength = Int32Mul(elementSize, length);
+    Label newByteArrayExit(env);
+    NewByteArray(&buffer, &newByteArrayExit, elementSize, length);
+    Bind(&newByteArrayExit);
+    Store(VariableType::JS_POINTER(), glue, thisObj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), *buffer);
+    Store(VariableType::INT32(), glue, thisObj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET), newByteLength);
+    Store(VariableType::INT32(), glue, thisObj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), length);
+    Jump(&exit);
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void NewObjectStubBuilder::NewByteArray(Variable *result, Label *exit, GateRef elementSize, GateRef length)
 {
     auto env = GetEnvironment();

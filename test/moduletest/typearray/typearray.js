@@ -704,6 +704,35 @@ function testTypeArrayOf2(ctor) {
     return typedArraysEqual(arr1, arr2);
 }
 
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayOf3(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayOf3(ctor) {
+    try {
+        const arr1 = new ctor();
+        arr1.proto = ctor;
+        Uint8Array.of("m");
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
 function typedArraysEqual(typedArr1, typedArr2) {
     if (typedArr1.length !== typedArr2.length) return false;
     for (let i = 0; i < typedArr1.length; i++) {
