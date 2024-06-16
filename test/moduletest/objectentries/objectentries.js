@@ -139,3 +139,8 @@ print(JSON.stringify(Object.entries(obj7)));
 print(JSON.stringify(Object.entries(obj8)));
 print(JSON.stringify(Object.entries(obj9)));
 print(JSON.stringify(Object.entries(obj10)));
+
+let arr =[];
+arr["aaa"]="va";
+arr["bbb"]="vb";
+print(Object.entries(arr))
