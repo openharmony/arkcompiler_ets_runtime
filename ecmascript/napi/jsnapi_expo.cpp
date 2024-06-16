@@ -4348,6 +4348,7 @@ void JSNApi::NotifyLoadModule([[maybe_unused]] const EcmaVM *vm)
 
 void JSNApi::NotifyUIIdle(const EcmaVM *vm, int idleTime)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerGCForIdle(idleTime);
 }
 
