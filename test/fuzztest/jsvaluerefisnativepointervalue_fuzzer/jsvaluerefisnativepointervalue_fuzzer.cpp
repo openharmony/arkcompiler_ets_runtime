@@ -33,7 +33,7 @@ void JSValueRefIsNativePointerValueFuzzTest(const uint8_t *data, size_t size)
     }
     NativePointerCallback callBack = nullptr;
     Local<NativePointerRef> res = NativePointerRef::New(vm, (void *)(data + size), callBack, (void *)data);
-    res->IsNativePointer();
+    res->IsNativePointer(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

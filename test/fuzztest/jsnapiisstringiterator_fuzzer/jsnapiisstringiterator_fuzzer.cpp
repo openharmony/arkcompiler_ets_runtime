@@ -35,7 +35,7 @@ void JSNApiIsStringIterator_FuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "memcpy_s failed!";
     }
     Local<StringRef> origin = StringRef::NewFromUtf8(vm_, value, (int)size);
-    origin->IsStringIterator();
+    origin->IsStringIterator(vm_);
     JSNApi::DestroyJSVM(vm_);
 }
 }

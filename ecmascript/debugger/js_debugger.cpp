@@ -301,7 +301,7 @@ bool JSDebugger::IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoin
     }
     JSThread *thread = ecmaVm_->GetJSThread();
     auto condFuncRef = breakpoint.value().GetConditionFunction();
-    if (condFuncRef->IsFunction()) {
+    if (condFuncRef->IsFunction(ecmaVm_)) {
         LOG_DEBUGGER(INFO) << "BreakpointCondition: evaluating condition";
         auto handlerPtr = std::make_shared<FrameHandler>(ecmaVm_->GetJSThread());
         auto evalResult = DebuggerApi::EvaluateViaFuncCall(const_cast<EcmaVM *>(ecmaVm_),

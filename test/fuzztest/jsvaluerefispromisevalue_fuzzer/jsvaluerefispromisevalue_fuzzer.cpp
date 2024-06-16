@@ -43,8 +43,8 @@ void JSValueRefIsPromiseValueFuzzTest(const uint8_t *data, size_t size)
     NativePointerCallback deleter = nullptr;
     Local<FunctionRef> reject = FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
     Local<PromiseRef> catchPromise = promise->Catch(vm, reject);
-    promise->IsPromise();
-    catchPromise->IsPromise();
+    promise->IsPromise(vm);
+    catchPromise->IsPromise(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

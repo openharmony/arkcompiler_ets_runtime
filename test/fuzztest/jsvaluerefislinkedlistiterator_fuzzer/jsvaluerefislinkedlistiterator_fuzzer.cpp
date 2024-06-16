@@ -153,7 +153,7 @@ void JSValueRefIsLinkedListIteratorFuzzTest([[maybe_unused]] const uint8_t *data
         JSAPILinkedListIterator::CreateLinkedListIterator(thread, taggedValueHandle).GetTaggedValue());
     JSHandle<JSTaggedValue> linkedListIteratortag = JSHandle<JSTaggedValue>::Cast(linkedListIterator);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(linkedListIteratortag);
-    object->IsLinkedListIterator();
+    object->IsLinkedListIterator(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

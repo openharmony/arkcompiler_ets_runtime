@@ -31,7 +31,7 @@ void JSValueRefIsBufferFuzzerTest([[maybe_unused]]const uint8_t *data, size_t si
         return;
     }
     Local<BufferRef> bufferRef = BufferRef::New(vm, (int32_t)size);
-    bufferRef->IsBuffer();
+    bufferRef->IsBuffer(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

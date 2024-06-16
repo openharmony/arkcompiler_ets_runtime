@@ -412,113 +412,114 @@ public:
     bool IsTrue();
     bool IsFalse();
     bool IsNumber();
-    bool IsBigInt();
+    bool IsBigInt(const EcmaVM *vm);
     bool IsInt();
     bool WithinInt32();
     bool IsBoolean();
-    bool IsString();
-    bool IsSymbol();
-    bool IsObject();
+    bool IsString(const EcmaVM *vm);
+    bool IsSymbol(const EcmaVM *vm);
+    bool IsObject(const EcmaVM *vm);
     bool IsArray(const EcmaVM *vm);
     bool IsJSArray(const EcmaVM *vm);
-    bool IsConstructor();
-    bool IsFunction();
-    bool IsJSFunction();
-    bool IsProxy();
-    bool IsPromise();
-    bool IsDataView();
-    bool IsTypedArray();
-    bool IsNativePointer();
-    bool IsDate();
-    bool IsError();
-    bool IsMap();
-    bool IsSet();
-    bool IsWeakRef();
-    bool IsWeakMap();
-    bool IsWeakSet();
-    bool IsRegExp();
-    bool IsArrayIterator();
-    bool IsStringIterator();
-    bool IsSetIterator();
-    bool IsMapIterator();
-    bool IsArrayBuffer();
-    bool IsBuffer();
-    bool IsUint8Array();
-    bool IsInt8Array();
-    bool IsUint8ClampedArray();
-    bool IsInt16Array();
-    bool IsUint16Array();
-    bool IsInt32Array();
-    bool IsUint32Array();
-    bool IsFloat32Array();
-    bool IsFloat64Array();
-    bool IsBigInt64Array();
-    bool IsBigUint64Array();
-    bool IsJSPrimitiveRef();
-    bool IsJSPrimitiveNumber();
-    bool IsJSPrimitiveInt();
-    bool IsJSPrimitiveBoolean();
-    bool IsJSPrimitiveString();
+    bool IsConstructor(const EcmaVM *vm);
+    bool IsFunction(const EcmaVM *vm);
 
-    bool IsJSSharedInt8Array();
-    bool IsJSSharedUint8Array();
-    bool IsJSSharedUint8ClampedArray();
-    bool IsJSSharedInt16Array();
-    bool IsJSSharedUint16Array();
-    bool IsJSSharedInt32Array();
-    bool IsJSSharedUint32Array();
+    bool IsJSFunction(const EcmaVM *vm);
+    bool IsProxy(const EcmaVM *vm);
+    bool IsPromise(const EcmaVM *vm);
+    bool IsDataView(const EcmaVM *vm);
+    bool IsTypedArray(const EcmaVM *vm);
+    bool IsNativePointer(const EcmaVM *vm);
+    bool IsDate(const EcmaVM *vm);
+    bool IsError(const EcmaVM *vm);
+    bool IsMap(const EcmaVM *vm);
+    bool IsSet(const EcmaVM *vm);
+    bool IsWeakRef(const EcmaVM *vm);
+    bool IsWeakMap(const EcmaVM *vm);
+    bool IsWeakSet(const EcmaVM *vm);
+    bool IsRegExp(const EcmaVM *vm);
+    bool IsArrayIterator(const EcmaVM *vm);
+    bool IsStringIterator(const EcmaVM *vm);
+    bool IsSetIterator(const EcmaVM *vm);
+    bool IsMapIterator(const EcmaVM *vm);
+    bool IsArrayBuffer(const EcmaVM *vm);
+    bool IsBuffer(const EcmaVM *vm);
+    bool IsUint8Array(const EcmaVM *vm);
+    bool IsInt8Array(const EcmaVM *vm);
+    bool IsUint8ClampedArray(const EcmaVM *vm);
+    bool IsInt16Array(const EcmaVM *vm);
+    bool IsUint16Array(const EcmaVM *vm);
+    bool IsInt32Array(const EcmaVM *vm);
+    bool IsUint32Array(const EcmaVM *vm);
+    bool IsFloat32Array(const EcmaVM *vm);
+    bool IsFloat64Array(const EcmaVM *vm);
+    bool IsBigInt64Array(const EcmaVM *vm);
+    bool IsBigUint64Array(const EcmaVM *vm);
+    bool IsJSPrimitiveRef(const EcmaVM *vm);
+    bool IsJSPrimitiveNumber(const EcmaVM *vm);
+    bool IsJSPrimitiveInt(const EcmaVM *vm);
+    bool IsJSPrimitiveBoolean(const EcmaVM *vm);
+    bool IsJSPrimitiveString(const EcmaVM *vm);
 
-    bool IsGeneratorObject();
-    bool IsJSPrimitiveSymbol();
+    bool IsJSSharedInt8Array(const EcmaVM *vm);
+    bool IsJSSharedUint8Array(const EcmaVM *vm);
+    bool IsJSSharedUint8ClampedArray(const EcmaVM *vm);
+    bool IsJSSharedInt16Array(const EcmaVM *vm);
+    bool IsJSSharedUint16Array(const EcmaVM *vm);
+    bool IsJSSharedInt32Array(const EcmaVM *vm);
+    bool IsJSSharedUint32Array(const EcmaVM *vm);
 
-    bool IsArgumentsObject();
-    bool IsGeneratorFunction();
-    bool IsAsyncFunction();
-    bool IsConcurrentFunction();
-    bool IsJSLocale();
-    bool IsJSDateTimeFormat();
-    bool IsJSRelativeTimeFormat();
-    bool IsJSIntl();
-    bool IsJSNumberFormat();
-    bool IsJSCollator();
-    bool IsJSPluralRules();
-    bool IsJSListFormat();
-    bool IsAsyncGeneratorFunction();
-    bool IsAsyncGeneratorObject();
+    bool IsGeneratorObject(const EcmaVM *vm);
+    bool IsJSPrimitiveSymbol(const EcmaVM *vm);
 
-    bool IsModuleNamespaceObject();
-    bool IsNativeModuleErrorObject();
-    bool IsSharedArrayBuffer();
-    bool IsSendableArrayBuffer();
+    bool IsArgumentsObject(const EcmaVM *vm);
+    bool IsGeneratorFunction(const EcmaVM *vm);
+    bool IsAsyncFunction(const EcmaVM *vm);
+    bool IsConcurrentFunction(const EcmaVM *vm);
+    bool IsJSLocale(const EcmaVM *vm);
+    bool IsJSDateTimeFormat(const EcmaVM *vm);
+    bool IsJSRelativeTimeFormat(const EcmaVM *vm);
+    bool IsJSIntl(const EcmaVM *vm);
+    bool IsJSNumberFormat(const EcmaVM *vm);
+    bool IsJSCollator(const EcmaVM *vm);
+    bool IsJSPluralRules(const EcmaVM *vm);
+    bool IsJSListFormat(const EcmaVM *vm);
+    bool IsAsyncGeneratorFunction(const EcmaVM *vm);
+    bool IsAsyncGeneratorObject(const EcmaVM *vm);
+
+    bool IsModuleNamespaceObject(const EcmaVM *vm);
+    bool IsNativeModuleErrorObject(const EcmaVM *vm);
+    bool IsSharedArrayBuffer(const EcmaVM *vm);
+    bool IsSendableArrayBuffer(const EcmaVM *vm);
 
     bool IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value);
     Local<StringRef> Typeof(const EcmaVM *vm);
     bool InstanceOf(const EcmaVM *vm, Local<JSValueRef> value);
 
-    bool IsArrayList();
-    bool IsDeque();
-    bool IsHashMap();
-    bool IsHashSet();
-    bool IsLightWeightMap();
-    bool IsLightWeightSet();
-    bool IsLinkedList();
-    bool IsLinkedListIterator();
-    bool IsList();
-    bool IsPlainArray();
-    bool IsQueue();
-    bool IsStack();
-    bool IsTreeMap();
-    bool IsTreeSet();
-    bool IsVector();
-    bool IsSendableObject();
-    bool IsJSShared();
-    bool IsSharedArray();
-    bool IsSharedTypedArray();
-    bool IsSharedSet();
-    bool IsSharedMap();
+    bool IsArrayList(const EcmaVM *vm);
+    bool IsDeque(const EcmaVM *vm);
+    bool IsHashMap(const EcmaVM *vm);
+    bool IsHashSet(const EcmaVM *vm);
+    bool IsLightWeightMap(const EcmaVM *vm);
+    bool IsLightWeightSet(const EcmaVM *vm);
+    bool IsLinkedList(const EcmaVM *vm);
+    bool IsLinkedListIterator(const EcmaVM *vm);
+    bool IsList(const EcmaVM *vm);
+    bool IsPlainArray(const EcmaVM *vm);
+    bool IsQueue(const EcmaVM *vm);
+    bool IsStack(const EcmaVM *vm);
+    bool IsTreeMap(const EcmaVM *vm);
+    bool IsTreeSet(const EcmaVM *vm);
+    bool IsVector(const EcmaVM *vm);
+    bool IsSendableObject(const EcmaVM *vm);
+    bool IsJSShared(const EcmaVM *vm);
+    bool IsSharedArray(const EcmaVM *vm);
+    bool IsSharedTypedArray(const EcmaVM *vm);
+    bool IsSharedSet(const EcmaVM *vm);
+    bool IsSharedMap(const EcmaVM *vm);
     bool IsHeapObject();
     void *GetNativePointerValue(const EcmaVM *vm, bool &isNativePointer);
-    bool IsDetachedArraybuffer(bool &isArrayBuffer);
+    bool IsDetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
     void DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
     void GetDataViewInfo(const EcmaVM *vm,
                          bool &isDataView,
@@ -847,9 +848,9 @@ public:
     std::string DebuggerToString();
     uint32_t Length();
     int32_t Utf8Length(const EcmaVM *vm);
-    int WriteUtf8(char *buffer, int length, bool isWriteBuffer = false);
-    int WriteUtf16(char16_t *buffer, int length);
-    int WriteLatin1(char *buffer, int length);
+    int WriteUtf8(const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer = false);
+    int WriteUtf16(const EcmaVM *vm, char16_t *buffer, int length);
+    int WriteLatin1(const EcmaVM *vm, char *buffer, int length);
     static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
 };
 
@@ -974,10 +975,10 @@ public:
                                      const NativePointerCallback &deleter, void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
-    void *GetBuffer();
+    void *GetBuffer(const EcmaVM *vm);
 
     void Detach(const EcmaVM *vm);
-    bool IsDetach();
+    bool IsDetach(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API SendableArrayBufferRef : public ObjectRef {
@@ -987,10 +988,10 @@ public:
                                              const NativePointerCallback &deleter, void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
-    void *GetBuffer();
+    void *GetBuffer(const EcmaVM *vm);
 
     void Detach(const EcmaVM *vm);
-    bool IsDetach();
+    bool IsDetach(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API DateRef : public ObjectRef {
@@ -1282,7 +1283,7 @@ public:
                                 void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
-    void *GetBuffer();
+    void *GetBuffer(const EcmaVM *vm);
     static ecmascript::JSTaggedValue BufferToStringCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo);
 };
 

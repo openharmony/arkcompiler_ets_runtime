@@ -33,7 +33,7 @@ void IsInt8ArrayFuzztest(const uint8_t *data, size_t size)
     NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     Local<JSValueRef> typedArray = Int8ArrayRef::New(vm, arrayBuffer, 0, (int32_t)size);
-    typedArray->IsInt8Array();
+    typedArray->IsInt8Array(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -49,7 +49,7 @@ void IsUint8ArrayFuzztest(const uint8_t *data, size_t size)
     NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     Local<JSValueRef> typedArray = Uint8ArrayRef::New(vm, arrayBuffer, 0, (int32_t)size);
-    typedArray->IsUint8Array();
+    typedArray->IsUint8Array(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -65,7 +65,7 @@ void IsUint8ClampedArrayFuzztest(const uint8_t *data, size_t size)
     NativePointerCallback deleter = nullptr;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     Local<JSValueRef> typedArray = Uint8ClampedArrayRef::New(vm, arrayBuffer, 0, (int32_t)size);
-    typedArray->IsUint8ClampedArray();
+    typedArray->IsUint8ClampedArray(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -82,7 +82,7 @@ void IsInt16ArrayFuzztest(const uint8_t *data, size_t size)
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     int32_t length = size / sizeof(int16_t);
     Local<JSValueRef> typedArray = Int16ArrayRef::New(vm, arrayBuffer, 0, length);
-    typedArray->IsInt16Array();
+    typedArray->IsInt16Array(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -99,7 +99,7 @@ void IsUint16ArrayFuzztest(const uint8_t *data, size_t size)
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     int32_t length = size / sizeof(uint16_t);
     Local<JSValueRef> typedArray = Uint16ArrayRef::New(vm, arrayBuffer, 0, length);
-    typedArray->IsUint16Array();
+    typedArray->IsUint16Array(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

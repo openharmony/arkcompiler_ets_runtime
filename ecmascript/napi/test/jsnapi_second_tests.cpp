@@ -159,7 +159,7 @@ void CheckReject(JsiRuntimeCallInfo *info)
 {
     ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> reason = info->GetCallArgRef(0);
-    ASSERT_TRUE(reason->IsString());
+    ASSERT_TRUE(reason->IsString(info->GetVM()));
     ASSERT_EQ(Local<StringRef>(reason)->ToString(), "Reject");
 }
 
@@ -259,7 +259,7 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_GetAllPropertyNames)
     Local<ObjectRef> object = ObjectRef::New(vm_);
     uint32_t filter = 3;
     Local<ArrayRef> res = object->GetAllPropertyNames(vm_, filter);
-    ASSERT_FALSE(res->IsBigInt());
+    ASSERT_FALSE(res->IsBigInt(vm_));
     ASSERT_TRUE(res->IsArray(vm_));
 }
 
@@ -322,7 +322,7 @@ HWTEST_F_L0(JSNApiTests, GetKind_entries_values_keys)
     Local<MapIteratorRef> mapIterator = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag);
     Local<JSValueRef> res = mapIterator->GetKind(vm_);
     EXPECT_EQ(expectedResult, res->ToString(vm_)->ToString());
-    EXPECT_TRUE(mapIterator->IsMapIterator());
+    EXPECT_TRUE(mapIterator->IsMapIterator(vm_));
     JSHandle<JSTaggedValue> jsMapIteratorTag1 = JSMapIterator::CreateMapIterator(thread, mapTag, IterationKind::KEY);
     Local<MapIteratorRef> mapIterator1 = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag1);
     Local<JSValueRef> res1 = mapIterator1->GetKind(vm_);
@@ -428,7 +428,7 @@ HWTEST_F_L0(JSNApiTests, GetKind_003)
     Local<MapIteratorRef> mapIterator = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag);
     Local<JSValueRef> res = mapIterator->GetKind(vm_);
     EXPECT_EQ(expectedResult, res->ToString(vm_)->ToString());
-    EXPECT_TRUE(mapIterator->IsMapIterator());
+    EXPECT_TRUE(mapIterator->IsMapIterator(vm_));
 }
 
 /*
@@ -444,11 +444,11 @@ HWTEST_F_L0(JSNApiTests, GetProperty_IsFunction)
     LocalScope scope(vm_);
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm_);
     ASSERT_FALSE(globalObject.IsEmpty());
-    ASSERT_TRUE(globalObject->IsObject());
+    ASSERT_TRUE(globalObject->IsObject(vm_));
 
     Local<ObjectRef> key = StringRef::NewFromUtf8(vm_, "Number");
     Local<ObjectRef> property = globalObject->Get(vm_, key);
-    ASSERT_TRUE(property->IsFunction());
+    ASSERT_TRUE(property->IsFunction(vm_));
 }
 
 /**
@@ -491,14 +491,14 @@ HWTEST_F_L0(JSNApiTests, PromiseRef_Finally_IsPromise)
     Local<PromiseRef> gitpromise = capability->GetPromise(vm_);
     Local<FunctionRef> rejectcallback = FunctionRef::New(vm_, RejectCallback);
     Local<PromiseRef> catchPromise = gitpromise->Finally(vm_, rejectcallback);
-    ASSERT_TRUE(gitpromise->IsPromise());
-    ASSERT_TRUE(catchPromise->IsPromise());
+    ASSERT_TRUE(gitpromise->IsPromise(vm_));
+    ASSERT_TRUE(catchPromise->IsPromise(vm_));
     Local<PromiseRef> catchPromise2 = gitpromise->Then(vm_, rejectcallback, rejectcallback);
-    ASSERT_TRUE(catchPromise2->IsPromise());
+    ASSERT_TRUE(catchPromise2->IsPromise(vm_));
     Local<FunctionRef> functioncallback = FunctionRef::New(vm_, FunctionCallback);
     ASSERT_TRUE(!functioncallback.IsEmpty());
     Local<PromiseRef> catchPromise3 = gitpromise->Then(vm_, functioncallback);
-    ASSERT_TRUE(catchPromise3->IsPromise());
+    ASSERT_TRUE(catchPromise3->IsPromise(vm_));
 }
 
 /**
@@ -513,7 +513,7 @@ HWTEST_F_L0(JSNApiTests, IsBuffer)
     LocalScope scope(vm_);
     const int32_t length = 15;
     Local<BufferRef> buffer = BufferRef::New(vm_, length);
-    ASSERT_TRUE(buffer->IsBuffer());
+    ASSERT_TRUE(buffer->IsBuffer(vm_));
 }
 
 /**
@@ -529,7 +529,7 @@ HWTEST_F_L0(JSNApiTests, IsDataView)
     const int32_t length = 15;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
     Local<DataViewRef> dataView = DataViewRef::New(vm_, arrayBuffer, 5, 7);
-    ASSERT_TRUE(dataView->IsDataView());
+    ASSERT_TRUE(dataView->IsDataView(vm_));
 }
 
 /**
@@ -544,7 +544,7 @@ HWTEST_F_L0(JSNApiTests, IsSharedArrayBuffer)
     LocalScope scope(vm_);
     const int32_t length = 15;
     Local<JSValueRef> sharedArrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_FALSE(sharedArrayBuffer->IsSharedArrayBuffer());
+    ASSERT_FALSE(sharedArrayBuffer->IsSharedArrayBuffer(vm_));
 }
 
 
@@ -587,7 +587,7 @@ HWTEST_F_L0(JSNApiTests, IsConstructor)
 {
     LocalScope scope(vm_);
     Local<FunctionRef> target = FunctionRef::New(vm_, FunctionCallback);
-    ASSERT_FALSE(target->IsConstructor());
+    ASSERT_FALSE(target->IsConstructor(vm_));
 }
 
 
@@ -631,7 +631,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsTreeMap)
     jsTreeMap->SetTreeMap(thread, treeMap);
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeMap);
     Local<JSValueRef> TreeMap = JSNApiHelper::ToLocal<JSAPITreeSet>(argumentTag);
-    EXPECT_TRUE(TreeMap->IsTreeMap());
+    EXPECT_TRUE(TreeMap->IsTreeMap(vm_));
 }
 
 /**
@@ -654,7 +654,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsTreeSet)
     jsTreeSet->SetTreeSet(thread, treeSet);
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeSet);
     Local<JSValueRef> TreeSet = JSNApiHelper::ToLocal<JSAPITreeSet>(argumentTag);
-    EXPECT_TRUE(TreeSet->IsTreeSet());
+    EXPECT_TRUE(TreeSet->IsTreeSet(vm_));
 }
 
 /**
@@ -676,7 +676,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsVector)
     jsVector->SetLength(0);
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsVector);
     Local<JSValueRef> Vector = JSNApiHelper::ToLocal<JSAPIVector>(argumentTag);
-    EXPECT_TRUE(Vector->IsVector());
+    EXPECT_TRUE(Vector->IsVector(vm_));
 }
 
 /**
@@ -707,7 +707,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsMap)
 {
     LocalScope scope(vm_);
     Local<MapRef> map = MapRef::New(vm_);
-    EXPECT_TRUE(map->IsMap());
+    EXPECT_TRUE(map->IsMap(vm_));
 }
 
 /**
@@ -730,7 +730,7 @@ HWTEST_F_L0(JSNApiTests, SetRef_IsSet)
     set->SetLinkedSet(thread, hashSet);
     JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(set);
     Local<SetRef> Set = JSNApiHelper::ToLocal<SetRef>(setTag);
-    EXPECT_TRUE(Set->IsSet());
+    EXPECT_TRUE(Set->IsSet(vm_));
 }
 
 /**
@@ -791,7 +791,7 @@ HWTEST_F_L0(JSNApiTests, ArrayRefNew_uint32Length_SetValueAt_GetValueAt)
     LocalScope scope(vm_);
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm_);
     ASSERT_FALSE(globalObject.IsEmpty());
-    ASSERT_TRUE(globalObject->IsObject());
+    ASSERT_TRUE(globalObject->IsObject(vm_));
     Local<ArrayRef> property = ArrayRef::New(vm_, 3); // 3 : length
     ASSERT_TRUE(property->IsArray(vm_));
     ASSERT_EQ(property->Length(vm_), 3); // 3 : test case of input
@@ -824,7 +824,7 @@ HWTEST_F_L0(JSNApiTests, WeakSetRef_GetSize_GetTotalElements_GetValue)
     weakSet->SetLinkedSet(thread, hashSet);
     JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
     Local<JSValueRef> set1 = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
-    EXPECT_TRUE(set1->IsWeakSet());
+    EXPECT_TRUE(set1->IsWeakSet(vm_));
     Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
     JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
     JSWeakSet::Add(thread, weakSet, value);
@@ -937,7 +937,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsRegExp)
     jSRegExp->SetLength(0);
     JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
     Local<JSValueRef> regexp = JSNApiHelper::ToLocal<JSRegExp>(argumentTag);
-    EXPECT_TRUE(regexp->IsRegExp());
+    EXPECT_TRUE(regexp->IsRegExp(vm_));
 }
 
 /**
@@ -954,7 +954,7 @@ HWTEST_F_L0(JSNApiTests, GetAndClearUncaughtException)
     EXPECT_FALSE(tryCatch.HasCaught());
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
     Local<JSValueRef> error = Exception::Error(vm_, message);
-    EXPECT_TRUE(error->IsError());
+    EXPECT_TRUE(error->IsError(vm_));
     JSNApi::ThrowException(vm_, error);
     EXPECT_TRUE(vm_->GetJSThread()->HasPendingException());
     JSNApi::GetAndClearUncaughtException(vm_);
@@ -976,7 +976,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsJSPrimitiveNumber)
     JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, jstagvalue);
     JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
-    EXPECT_FALSE(object->IsJSPrimitiveNumber());
+    EXPECT_FALSE(object->IsJSPrimitiveNumber(vm_));
 }
 
 
@@ -996,7 +996,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf16_NewFromUtf16_Length_WriteUtf16_01)
     Local<StringRef> testString = StringRef::NewFromUtf16(vm_, test);
     EXPECT_EQ(testString->Length(), 2);              // 2 : length of testString("年度")
     char16_t buffer[3];                              // 3 : length of testString + 1
-    EXPECT_EQ(testString->WriteUtf16(buffer, 2), 2); // 2 : length of testString("年度")
+    EXPECT_EQ(testString->WriteUtf16(vm_, buffer, 2), 2); // 2 : length of testString("年度")
     GTEST_LOG_(WARNING) << "年度test =" << buffer;
     ASSERT_EQ(buffer[0], u'年');
     ASSERT_EQ(buffer[1], u'度');
@@ -1017,7 +1017,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf16_NewFromUtf16_Length_WriteUtf16_02)
 
     EXPECT_EQ(testString->Length(), 14);
     char16_t buffer[15];                               // 15 : length of testString + 1
-    EXPECT_EQ(testString->WriteUtf16(buffer, 14), 14); // 14 : length of testString("hello world!!!")
+    EXPECT_EQ(testString->WriteUtf16(vm_, buffer, 14), 14); // 14 : length of testString("hello world!!!")
     ASSERT_EQ(buffer[0], u'h');
     ASSERT_EQ(buffer[13], u'?');
 }
@@ -1046,7 +1046,7 @@ HWTEST_F_L0(JSNApiTests, SetRef_IsSet_GetSize_GetTotalElements_GetValue)
     jsSet->SetLinkedSet(thread, hashSet);
     JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsSet);
     Local<SetRef> set = JSNApiHelper::ToLocal<SetRef>(setTag);
-    EXPECT_TRUE(set->IsSet());
+    EXPECT_TRUE(set->IsSet(vm_));
     JSHandle<JSTaggedValue> fristValue(factory->NewFromASCII("vlue1"));
     JSSet::Add(thread, jsSet, fristValue);
     JSSet::Add(thread, jsSet, fristValue);
@@ -1099,7 +1099,7 @@ HWTEST_F_L0(JSNApiTests, JSSetIterator_IsSetIterator_GetIndex_GetKind)
     JSHandle<JSSetIterator> jsSetIterator1(jsTagSetIterator);
     EXPECT_EQ(JSTaggedValue::SameValue(jsSetIterator1->GetIteratedSet(), jsSet->GetLinkedSet()), true);
     Local<SetIteratorRef> setIterator = JSNApiHelper::ToLocal<SetIteratorRef>(jsTagSetIterator);
-    EXPECT_TRUE(setIterator->IsSetIterator());
+    EXPECT_TRUE(setIterator->IsSetIterator(vm_));
     EXPECT_EQ(setIterator->GetIndex(), 0U);
     Local<JSValueRef> resultKey = StringRef::NewFromUtf8(vm_, "keys");
     EXPECT_EQ(setIterator->GetKind(vm_)->ToString(vm_)->ToString(), resultKey->ToString(vm_)->ToString());
@@ -1129,7 +1129,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsMapIterator)
     JSHandle<JSMapIterator> jsMapIterator(jsMapIteratorTag);
     EXPECT_EQ(JSTaggedValue::SameValue(jsMapIterator->GetIteratedMap(), jsMap->GetLinkedMap()), true);
     Local<JSValueRef> mapIterator = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag);
-    EXPECT_TRUE(mapIterator->IsMapIterator());
+    EXPECT_TRUE(mapIterator->IsMapIterator(vm_));
 }
 
 /**
@@ -1159,6 +1159,6 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsModuleNamespaceObject)
     EXPECT_TRUE(ModuleNamespace::PreventExtensions());
     JSHandle<JSTaggedValue> moduleNamespaceTag = JSHandle<JSTaggedValue>::Cast(np);
     Local<JSValueRef> moduleNamespace = JSNApiHelper::ToLocal<ModuleNamespace>(moduleNamespaceTag);
-    ASSERT_TRUE(moduleNamespace->IsModuleNamespaceObject());
+    ASSERT_TRUE(moduleNamespace->IsModuleNamespaceObject(vm_));
 }
 } // namespace panda::test

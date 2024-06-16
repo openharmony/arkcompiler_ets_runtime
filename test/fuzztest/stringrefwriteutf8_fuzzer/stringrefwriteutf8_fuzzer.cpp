@@ -39,7 +39,7 @@ namespace OHOS {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        res->WriteUtf8(value, (int)size);
+        res->WriteUtf8(vm, value, (int)size);
         delete[] value;
         value = nullptr;
         JSNApi::DestroyJSVM(vm);

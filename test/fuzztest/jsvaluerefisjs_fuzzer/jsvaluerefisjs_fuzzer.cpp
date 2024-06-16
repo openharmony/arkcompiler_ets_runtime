@@ -55,7 +55,7 @@ void JSValueRefIsJSPrimitiveNumberFuzzTest([[maybe_unused]]const uint8_t *data, 
     JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, jstagvalue);
     JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
-    object->IsJSPrimitiveNumber();
+    object->IsJSPrimitiveNumber(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }

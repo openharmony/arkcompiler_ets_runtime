@@ -72,7 +72,7 @@ void BufferRefGetBufferFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
         return;
     }
     Local<BufferRef> buffer = BufferRef::New(vm, (int32_t)size);
-    buffer->GetBuffer();
+    buffer->GetBuffer(vm);
     JSNApi::DestroyJSVM(vm);
 }
 

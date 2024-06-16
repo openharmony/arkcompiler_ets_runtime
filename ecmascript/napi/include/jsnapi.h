@@ -94,7 +94,7 @@ static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
 class ECMA_PUBLIC_API RegExpRef : public ObjectRef {
 public:
     Local<StringRef> GetOriginalSource(const EcmaVM *vm);
-    std::string GetOriginalFlags();
+    std::string GetOriginalFlags(const EcmaVM *vm);
     Local<JSValueRef> IsGlobal(const EcmaVM *vm);
     Local<JSValueRef> IsIgnoreCase(const EcmaVM *vm);
     Local<JSValueRef> IsMultiline(const EcmaVM *vm);
@@ -105,7 +105,7 @@ public:
 
 class ECMA_PUBLIC_API GeneratorFunctionRef : public ObjectRef {
 public:
-    bool IsGenerator();
+    bool IsGenerator(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API GeneratorObjectRef : public ObjectRef {

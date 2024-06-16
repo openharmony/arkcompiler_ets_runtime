@@ -437,7 +437,7 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     }
     auto maybeFuncRef = GetRequireNativeModuleFunc(vm, moduleType);
     // some function(s) may not registered in global object for non-main thread
-    if (!maybeFuncRef->IsFunction()) {
+    if (!maybeFuncRef->IsFunction(vm)) {
         LOG_FULL(WARN) << "Not found require func";
         return false;
     }
@@ -448,7 +448,7 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
         LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
         return false;
     }
-    if (UNLIKELY(exportObject->IsNativeModuleErrorObject())) {
+    if (UNLIKELY(exportObject->IsNativeModuleErrorObject(vm))) {
         requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
         LOG_FULL(ERROR) << "loading fails, NativeModuleErrorObject is returned";
         return false;

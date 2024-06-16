@@ -59,7 +59,7 @@ void IsModuleNamespaceObjectFuzztest([[maybe_unused]]const uint8_t *data, size_t
     ModuleNamespace::PreventExtensions();
     JSHandle<JSTaggedValue> moduleNamespaceTag = JSHandle<JSTaggedValue>::Cast(np);
     Local<JSValueRef> moduleNamespace = JSNApiHelper::ToLocal<ModuleNamespace>(moduleNamespaceTag);
-    moduleNamespace->IsModuleNamespaceObject();
+    moduleNamespace->IsModuleNamespaceObject(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -81,7 +81,7 @@ void IsProxyFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
     JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
     Local<JSValueRef> proxy = JSNApiHelper::ToLocal<JSProxy>(JSHandle<JSTaggedValue>(proxyHandle));
-    proxy->IsProxy();
+    proxy->IsProxy(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -105,7 +105,7 @@ void IsJSCollatorFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 
     JSHandle<JSTaggedValue> collatorTagHandleVal = JSHandle<JSTaggedValue>::Cast(initCollator);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(collatorTagHandleVal);
-    object->IsJSCollator();
+    object->IsJSCollator(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -130,7 +130,7 @@ void IsJSPluralRulesFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         JSPluralRules::InitializePluralRules(thread, pluralRules, localeStr, optionHandle);
     JSHandle<JSTaggedValue> tagPlureRules = JSHandle<JSTaggedValue>::Cast(initPluralRules);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(tagPlureRules);
-    object->IsJSPluralRules();
+    object->IsJSPluralRules(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -159,7 +159,7 @@ void IsJSListFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         return;
     }
     Local<JSValueRef> object = ObjectRef::New(vm);
-    object->IsJSListFormat();
+    object->IsJSListFormat(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -179,7 +179,7 @@ void IsJSPrimitiveRefFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     TaggedObject *taggedObject = factory->NewObject(jsClassHandle);
     JSHandle<JSTaggedValue> jsTaggedValue(thread, JSTaggedValue(taggedObject));
     Local<JSValueRef> jsValueRef = JSNApiHelper::ToLocal<JSPrimitiveRef>(jsTaggedValue);
-    jsValueRef->IsJSPrimitiveRef();
+    jsValueRef->IsJSPrimitiveRef(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -204,7 +204,7 @@ void IsDequeFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     jsQueue->SetElements(thread, newElements);
     JSHandle<JSTaggedValue> Que = JSHandle<JSTaggedValue>::Cast(jsQueue);
     Local<JSValueRef> jsValueRef = JSNApiHelper::ToLocal<ArrayRef>(Que);
-    jsValueRef->IsDeque();
+    jsValueRef->IsDeque(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -229,7 +229,7 @@ void IsJSIntlFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         return;
     }
     Local<JSValueRef> jsInt1 = CreateJSValueRef(vm, JSType::JS_INTL);
-    jsInt1->IsJSIntl();
+    jsInt1->IsJSIntl(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -243,7 +243,7 @@ void IsJSDateTimeFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size
         return;
     }
     Local<JSValueRef> dateTime = CreateJSValueRef(vm, JSType::JS_DATE_TIME_FORMAT);
-    dateTime->IsJSDateTimeFormat();
+    dateTime->IsJSDateTimeFormat(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -257,7 +257,7 @@ void IsJSNumberFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         return;
     }
     Local<JSValueRef> number = CreateJSValueRef(vm, JSType::JS_NUMBER_FORMAT);
-    number->IsJSNumberFormat();
+    number->IsJSNumberFormat(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -271,7 +271,7 @@ void IsJSRelativeTimeFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t 
         return;
     }
     Local<JSValueRef> relative = CreateJSValueRef(vm, JSType::JS_RELATIVE_TIME_FORMAT);
-    relative->IsJSRelativeTimeFormat();
+    relative->IsJSRelativeTimeFormat(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }
