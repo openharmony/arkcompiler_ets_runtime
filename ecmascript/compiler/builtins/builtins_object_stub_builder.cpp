@@ -2010,7 +2010,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, arrayProp, Int32(0), key);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, arrayProp, Int32(1), value);
                 GateRef propArray = CreateArrayFromList(glue, arrayProp);
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, allEnumArray, *idx, propArray);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, allEnumArray, *length, propArray);
                 length = Int32Add(*length, Int32(1));
                 Jump(&loopEnd);
             }
