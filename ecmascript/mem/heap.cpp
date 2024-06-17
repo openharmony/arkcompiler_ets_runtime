@@ -2155,7 +2155,7 @@ void Heap::CleanCallBack()
 
     auto &asyncCallbacks = this->GetEcmaVM()->GetAsyncNativePointerCallbacks();
     NativePointerTaskCallback asyncTaskCb = thread_->GetAsyncCleanTaskCallback();
-    if (asyncTaskCb != nullptr) {
+    if (asyncTaskCb != nullptr && this->GetJSThread()->IsMainThreadFast()) {
         asyncTaskCb(asyncCallbacks);
     } else {
         for (auto iter : asyncCallbacks) {
