@@ -1509,6 +1509,7 @@ public:
                         size_t &patchSize)> callBack);
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
+    static bool IsNormalizedOhmUrlPack(EcmaVM *vm);
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list);
