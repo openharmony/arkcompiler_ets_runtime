@@ -137,6 +137,7 @@ CString procEachCodeInValue(const char *value, CString product)
                     c += 2; // 2 : Skip 2 characters
                     break;
                 }
+                [[fallthrough]];
             default:
                 product = DefaultValueToQuotedString(*c, product);
         }

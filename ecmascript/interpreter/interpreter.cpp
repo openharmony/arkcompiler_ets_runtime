@@ -94,7 +94,7 @@ EcmaRuntimeCallInfo* EcmaInterpreter::ReBuildRuntimeCallInfo(JSThread *thread, E
     InterpretedEntryFrame *currentEntryState = InterpretedEntryFrame::GetFrameFromSp(currentSp);
     JSTaggedType *prevSp = currentEntryState->base.prev;
 
-    int actualArgc = info->GetArgsNumber();
+    int actualArgc = static_cast<int>(info->GetArgsNumber());
     std::vector<JSTaggedType> args(actualArgc);
     for (int i = 0; i < actualArgc; i++) {
         args[i] = info->GetCallArgValue(actualArgc - i - 1).GetRawData();

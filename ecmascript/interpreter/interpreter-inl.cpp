@@ -1114,7 +1114,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH_OFFSET(offset);
     }
     HANDLE_OPCODE(JMP_IMM32) {
-        int32_t offset = READ_INST_32_0();
+        int32_t offset = static_cast<int32_t>(READ_INST_32_0());
         UPDATE_HOTNESS_COUNTER(offset);
         LOG_INST() << "jmp " << std::hex << offset;
         DISPATCH_OFFSET(offset);
@@ -1144,7 +1144,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
     }
     HANDLE_OPCODE(JEQZ_IMM32) {
-        int32_t offset = READ_INST_32_0();
+        int32_t offset = static_cast<int32_t>(READ_INST_32_0());
         LOG_INST() << "jeqz ->\t"
                    << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
         if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
@@ -1180,7 +1180,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
     }
     HANDLE_OPCODE(JNEZ_IMM32) {
-        int32_t offset = READ_INST_32_0();
+        int32_t offset = static_cast<int32_t>(READ_INST_32_0());
         LOG_INST() << "jnez ->\t"
                    << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
         if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
@@ -1205,7 +1205,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(STA_V8);
     }
     HANDLE_OPCODE(LDAI_IMM32) {
-        int32_t imm = READ_INST_32_0();
+        int32_t imm = static_cast<int32_t>(READ_INST_32_0());
         LOG_INST() << "ldai " << std::hex << imm;
         SET_ACC(JSTaggedValue(imm));
         DISPATCH(LDAI_IMM32);

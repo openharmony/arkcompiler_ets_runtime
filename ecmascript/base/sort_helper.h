@@ -65,7 +65,7 @@ class TimSort {
     {
         int minSize = std::max(requestedSize, 32);
         if (!tmp_.IsEmpty()) {
-            int currentSize = tmp_->GetLength();
+            int currentSize = static_cast<int>(tmp_->GetLength());
             if (currentSize >= minSize) {
                 return tmp_;
             }

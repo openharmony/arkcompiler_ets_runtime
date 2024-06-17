@@ -134,7 +134,7 @@ void TimSort::BinarySort(JSThread *thread, JSHandle<TaggedArray> &array,
 void TimSort::MergeCollapse()
 {
     while (pending_.size() > 1) {
-        int n = pending_.size() - 2;
+        int n = static_cast<int>(pending_.size() - 2);
         if ((n > 0 && pending_[n - 1].len <= pending_[n].len + pending_[n + 1].len) ||
             (n > 1 && pending_[n - 2].len <= pending_[n - 1].len + pending_[n].len)) { //2: means minus 2
             if (pending_[n - 1].len < pending_[n + 1].len) {
@@ -152,7 +152,7 @@ void TimSort::MergeCollapse()
 void TimSort::MergeForceCollapse()
 {
     while (pending_.size() > 1) {
-        int n = pending_.size() - 2;
+        int n = static_cast<int>(pending_.size() - 2);
         if (n > 0 && pending_[n - 1].len < pending_[n + 1].len) {
             --n;
         }
@@ -162,7 +162,7 @@ void TimSort::MergeForceCollapse()
 
 void TimSort::MergeAt(int i)
 {
-    const int stackSize = pending_.size();
+    const int stackSize = static_cast<int>(pending_.size());
     ASSERT(stackSize >= 2); // 2: stackSize
     ASSERT(i >= 0);
     ASSERT(i == stackSize - 2 || i == stackSize - 3);  // the 2nd-last and 3rd-last run.

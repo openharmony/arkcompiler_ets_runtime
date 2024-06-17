@@ -671,8 +671,8 @@ std::optional<UCollationResult> TryFastCompareStrings([[maybe_unused]] const icu
 {
     processedUntilOut = 0;
 
-    const int length1 = EcmaStringAccessor(string1).GetLength();
-    const int length2 = EcmaStringAccessor(string2).GetLength();
+    const auto length1 = static_cast<int>(EcmaStringAccessor(string1).GetLength());
+    const auto length2 = static_cast<int>(EcmaStringAccessor(string2).GetLength());
     int commonLength = std::min(length1, length2);
 
     FastCompareStringsData fastCompareData;
@@ -711,7 +711,7 @@ icu::StringPiece ToICUStringPiece(const JSHandle<EcmaString>& string, int offset
     ASSERT(stringAcc.IsUtf8());
     ASSERT(!stringAcc.IsTreeString());
     return icu::StringPiece(reinterpret_cast<const char*>(EcmaStringAccessor::GetNonTreeUtf8Data(*string)) + offset,
-                            stringAcc.GetLength() - offset);
+                            static_cast<int>(stringAcc.GetLength()) - offset);
 }
 
 // Convert to a UTF16 string and partially convert to ICUUnicodeString
@@ -719,13 +719,13 @@ icu::UnicodeString ToICUUnicodeString(const JSHandle<EcmaString> &string, int of
 {
     EcmaStringAccessor stringAcc(string);
     ASSERT(!stringAcc.IsTreeString());
-    uint32_t strLength = stringAcc.GetLength();
-    uint32_t partialLength = strLength - offset;
+    int strLength = static_cast<int>(stringAcc.GetLength());
+    int partialLength = strLength - offset;
     if (stringAcc.IsUtf8()) {
-        constexpr uint32_t SHORT_STRING_LENGTH = 80;
-        if (partialLength <= SHORT_STRING_LENGTH) {
+        constexpr int shortStringLength = 80;  // 80: short string length
+        if (partialLength <= shortStringLength) {
             // short string on stack
-            UChar shortStringBuffer[SHORT_STRING_LENGTH];
+            UChar shortStringBuffer[shortStringLength];
             // utf8 is within ascii, std::copy_n from utf8 to utf16 is OK
             std::copy_n(EcmaStringAccessor::GetNonTreeUtf8Data(*string) + offset, partialLength, shortStringBuffer);
             return icu::UnicodeString(shortStringBuffer, partialLength);
