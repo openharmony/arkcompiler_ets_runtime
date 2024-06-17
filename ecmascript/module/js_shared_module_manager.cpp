@@ -131,17 +131,12 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModule(JSThrea
 JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModuleWithMerge(JSThread *thread,
     const CString &fileName, const CString &recordName, bool executeFromJob)
 {
-    std::shared_ptr<JSPandaFile> jsPandaFile = ModulePathHelper::SkipDefaultBundleFile(thread, fileName) ? nullptr :
+    std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, recordName, false);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     if (jsPandaFile == nullptr) {
-        // In Aot Module Instantiate, we miss some runtime parameters from framework like bundleName or moduleName
-        // which may cause wrong recordName parsing and we also can't load files not in this app hap. But in static
-        // phase, these should not be an error, just skip it is ok.
-        if (thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
-            CString msg = "Load file with filename '" + fileName + "' failed, recordName '" + recordName + "'";
-            THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
-        }
+        CString msg = "Load file with filename '" + fileName + "' failed, recordName '" + recordName + "'";
+        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);

@@ -596,16 +596,6 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_LOG) != 0;
     }
 
-    void DisableReportModuleResolvingFailure()
-    {
-        reportModuleResolvingFailure_ = false;
-    }
-
-    bool EnableReportModuleResolvingFailure() const
-    {
-        return reportModuleResolvingFailure_;
-    }
-
     bool WasSetMaxNonmovableSpaceCapacity() const
     {
         return WasOptionSet(OPTION_MAX_UNMOVABLE_SPACE);
@@ -1919,7 +1909,6 @@ private:
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};
     bool enableFrameworkAOT_ {true};
-    bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
     uint32_t pgoSaveMinInterval_ {30};

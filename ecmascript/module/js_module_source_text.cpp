@@ -125,8 +125,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-    if (entryPoint == ModulePathHelper::PREVIEW_OF_ACROSS_HAP_FLAG &&
-        thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
+    if (entryPoint == ModulePathHelper::PREVIEW_OF_ACROSS_HAP_FLAG) {
         THROW_SYNTAX_ERROR_AND_RETURN(thread, "", thread->GlobalConstants()->GetHandledUndefined());
     }
 #endif
@@ -276,10 +275,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     }
     // 6. If SameValue(exportName, "default") is true, then
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
-    // In Aot static parse phase, some importModule maybe empty aot module, all elements will be undefined, it will
-    // return hole for resolve index binding at the end to skip error.
-    if (JSTaggedValue::SameValue(exportName, defaultString) &&
-        thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
+    if (JSTaggedValue::SameValue(exportName, defaultString)) {
         // a. Assert: A default export was not explicitly defined by this module.
         // b. Return null.
         // c. NOTE: A default export cannot be provided by an export *.
@@ -290,10 +286,6 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     // 8. For each ExportEntry Record e in module.[[StarExportEntries]], do
     JSTaggedValue starExportEntriesTv = module->GetStarExportEntries();
     if (starExportEntriesTv.IsUndefined()) {
-        // return Hole in Aot static parse phase to skip error.
-        if (!thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
-            starResolution.Update(JSTaggedValue::Hole());
-        }
         return starResolution;
     }
     JSMutableHandle<StarExportEntry> ee(thread, globalConstants->GetUndefined());
@@ -887,23 +879,17 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
             SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            if (thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
-                CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
-                CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
-                            ConvertToString(importName.GetTaggedValue());
-                if (!module->GetEcmaModuleRecordName().IsUndefined()) {
-                    CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(
-                        module->GetEcmaModuleRecordName()));
-                    msg += "' which imported by '" + recordStr + "'";
-                } else {
-                    msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
-                }
-                THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
+            CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
+                        ConvertToString(importName.GetTaggedValue());
+            if (!module->GetEcmaModuleRecordName().IsUndefined()) {
+                CString recordStr = ModulePathHelper::ReformatPath(ConvertToString(
+                    module->GetEcmaModuleRecordName()));
+                msg += "' which imported by '" + recordStr + "'";
             } else {
-                // if in aot compiation, we should skip this error.
-                envRec->Set(thread, idx, JSTaggedValue::Hole());
-                continue;
+                msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
             }
+            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // iii. Call envRec.CreateImportBinding(
         //    in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
@@ -1658,13 +1644,6 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
     }
 
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // if step into GetStarResolution in aot phase, the module must be a normal SourceTextModule not an empty
-    // aot module. Sometimes for normal module, if indirectExportEntries, localExportEntries, starExportEntries
-    // all don't have right exportName which means the export element is not from this module,
-    // it should return null but now will be hole.
-    if (!thread->GetEcmaVM()->EnableReportModuleResolvingFailure() && resolution->IsHole()) {
-        return globalConstants->GetHandledNull();
-    }
     // c. If resolution is "ambiguous", return "ambiguous".
     if (resolution->IsString()) { // if resolution is string, resolution must be "ambiguous"
         return globalConstants->GetHandledAmbiguousString();

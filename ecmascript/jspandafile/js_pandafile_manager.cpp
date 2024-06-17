@@ -73,9 +73,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-            if (vm->EnableReportModuleResolvingFailure()) {
-                LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
-            }
+            LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
 #endif
             LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
             return nullptr;
@@ -96,9 +94,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
         if (!getBuffer) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-            if (vm->EnableReportModuleResolvingFailure()) {
-                LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
-            }
+            LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
 #endif
             LOG_FULL(FATAL) << "resolveBufferCallback get hsp buffer failed, hsp path:" << filename
                 << ", errorMsg:" << errorMsg;

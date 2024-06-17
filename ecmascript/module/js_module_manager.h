@@ -117,9 +117,6 @@ private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
 
-    JSHandle<JSTaggedValue> ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
-        const JSHandle<EcmaString> recordName, bool executeFromJob = false);
-    JSHandle<JSTaggedValue> CreateEmptyModule();
     JSTaggedValue GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   int32_t index, JSTaggedValue value);
@@ -153,7 +150,6 @@ private:
 
     EcmaVM *vm_ {nullptr};
     JSTaggedValue resolvedModules_ {JSTaggedValue::Hole()};
-    JSTaggedValue cachedEmptyModule_ {JSTaggedValue::Hole()};
     bool isExecuteBuffer_ {false};
     CVector<CString> InstantiatingSModuleList_;
 

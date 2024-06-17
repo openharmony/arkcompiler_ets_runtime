@@ -363,20 +363,6 @@ bool ModuleManager::IsEvaluatedModule(JSTaggedValue referencing)
     return false;
 }
 
-JSHandle<JSTaggedValue> ModuleManager::ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
-    const JSHandle<EcmaString> recordName, bool executeFromJob)
-{
-    // In static parse Phase, due to lack of some parameters, we will create a empty SourceTextModule which will
-    // be marked as INSTANTIATED to skip Dfs traversal of this import branch.
-    CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
-    if (!vm_->EnableReportModuleResolvingFailure() && (jsPandaFile == nullptr ||
-        (jsPandaFile != nullptr && !jsPandaFile->HasRecord(recordNameStr)))) {
-        return CreateEmptyModule();
-    } else {
-        return ResolveModuleWithMerge(thread, jsPandaFile, recordName, executeFromJob);
-    }
-}
-
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const CString &moduleFileName,
     const CString &recordName, bool executeFromJob)
 {
@@ -401,17 +387,12 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
 {
     JSThread *thread = vm_->GetJSThread();
     CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
-    std::shared_ptr<JSPandaFile> jsPandaFile = ModulePathHelper::SkipDefaultBundleFile(thread, moduleFileName) ?
-        nullptr : JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordNameStr, false);
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordNameStr, false);
     if (jsPandaFile == nullptr) {
-        // In Aot Module Instantiate, we miss some runtime parameters from framework like bundleName or moduleName
-        // which may cause wrong recordName parsing and we also can't load files not in this app hap. But in static
-        // phase, these should not be an error, just skip it is ok.
-        if (vm_->EnableReportModuleResolvingFailure()) {
-            LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
-        }
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
     }
-    JSHandle<JSTaggedValue> moduleRecord = ResolveModuleInMergedABC(thread,
+    JSHandle<JSTaggedValue> moduleRecord = ResolveModuleWithMerge(thread,
         jsPandaFile.get(), recordName, executeFromJob);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
@@ -419,20 +400,6 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
         moduleRecord, PropertyAttributes::Default()).GetTaggedValue();
 
     return moduleRecord;
-}
-
-JSHandle<JSTaggedValue> ModuleManager::CreateEmptyModule()
-{
-    if (!cachedEmptyModule_.IsHole()) {
-        return JSHandle<JSTaggedValue>(vm_->GetJSThread(), cachedEmptyModule_);
-    }
-    ObjectFactory *factory = vm_->GetFactory();
-    JSHandle<SourceTextModule> tmpModuleRecord = factory->NewSourceTextModule();
-    tmpModuleRecord->SetStatus(ModuleStatus::INSTANTIATED);
-    tmpModuleRecord->SetTypes(ModuleTypes::ECMA_MODULE);
-    tmpModuleRecord->SetIsNewBcVersion(true);
-    cachedEmptyModule_ = tmpModuleRecord.GetTaggedValue();
-    return JSHandle<JSTaggedValue>::Cast(tmpModuleRecord);
 }
 
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &referencingModule, bool executeFromJob)
@@ -671,7 +638,6 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(JSTaggedValue localName,
 void ModuleManager::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&resolvedModules_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&cachedEmptyModule_)));
 }
 
 CString ModuleManager::GetRecordName(JSTaggedValue module)

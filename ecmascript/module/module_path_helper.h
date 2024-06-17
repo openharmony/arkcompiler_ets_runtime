@@ -194,18 +194,6 @@ public:
     static CString ConcatNormalizedOhmurlWithData(CVector<CString> &data, CString &pkgName, CString &entryPath);
     static CString GetBundleNameWithRecordName(EcmaVM *vm, const CString &recordName);
     static CString Utf8ConvertToString(JSTaggedValue str);
-    static inline bool IsSandboxPath(const CString &moduleFileName)
-    {
-        return base::StringHelper::StringStartWith(moduleFileName, ModulePathHelper::BUNDLE_INSTALL_PATH);
-    }
-
-    static inline bool IsRelativeFilePath(const CString &moduleFileName)
-    {
-        const char relativeFilePath[] = "..";
-        return base::StringHelper::StringStartWith(moduleFileName, relativeFilePath);
-    }
-
-    static bool SkipDefaultBundleFile(JSThread *thread, const CString &moduleFileName);
 
     static CString ParseFileNameToVMAName(const CString &filename);
 
