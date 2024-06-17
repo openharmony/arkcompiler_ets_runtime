@@ -167,6 +167,14 @@ void AotCompilerPreprocessor::AOTInitialize()
     RuntimeStubCSigns::Initialize();
 }
 
+void AotCompilerPreprocessor::Process(CompilationOptions &cOptions)
+{
+    GenerateBytecodeInfoCollectors(cOptions);
+    GeneratePGOTypes();
+    SnapshotInitialize();
+    GenerateMethodMap(cOptions);
+}
+
 uint32_t AotCompilerPreprocessor::GenerateAbcFileInfos()
 {
     size_t size = pandaFileNames_.size();
@@ -193,6 +201,17 @@ uint32_t AotCompilerPreprocessor::GenerateAbcFileInfos()
         fileInfos_.emplace_back(fileInfo);
     }
     return checksum;
+}
+
+void AotCompilerPreprocessor::GenerateBytecodeInfoCollectors(const CompilationOptions &cOptions)
+{
+    bcInfoCollectors_.reserve(fileInfos_.size());
+    for (const AbcFileInfo &fileInfo : fileInfos_) {
+        JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
+        auto collectorPtr = std::make_unique<BytecodeInfoCollector>(&aotCompilationEnv_, jsPandaFile,
+                                                                    profilerDecoder_, cOptions.maxAotMethodSize_);
+        bcInfoCollectors_.emplace_back(std::move(collectorPtr));
+    }
 }
 
 bool AotCompilerPreprocessor::HandleMergedPgoFile(uint32_t checksum)
@@ -243,52 +262,46 @@ void AotCompilerPreprocessor::ResolveModule(const JSPandaFile *jsPandaFile, cons
     }
 }
 
-void AotCompilerPreprocessor::RecordArrayElement(const CompilationOptions &cOptions)
+void AotCompilerPreprocessor::RecordArrayElement(const JSPandaFile* jsPandaFile, BytecodeInfoCollector& collector)
 {
-    for (const AbcFileInfo &fileInfo : fileInfos_) {
-        JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
-        PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
-        ptManager->SetCurCompilationFile(jsPandaFile);
-        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_,
-            cOptions.maxAotMethodSize_);
-        BCInfo &bytecodeInfo = collector.GetBytecodeInfo();
-        const PGOBCInfo *bcInfo = collector.GetPGOBCInfo();
-        auto &methodList = bytecodeInfo.GetMethodList();
-        for (const auto &method : methodList) {
-            uint32_t methodOffset = method.first;
-            CString recordName = MethodLiteral::GetRecordName(jsPandaFile, EntityId(methodOffset));
-            auto callback = [this, ptManager, methodOffset, &recordName]
-                (const uint32_t, const uint32_t, const uint32_t cpIdx) {
-                    JSThread *thread = vm_->GetJSThread();
-                    JSTaggedValue cp = ptManager->GetConstantPoolByMethodOffset(methodOffset);
-                    JSHandle<ConstantPool> constpoolHandle(thread, cp);
-                    JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()
-                        ->FindOrCreateUnsharedConstpool(constpoolHandle.GetTaggedValue());
-                    ASSERT(ConstantPool::CheckUnsharedConstpool(unsharedCp));
-                    JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-                            thread, unsharedCp, cpIdx, recordName);
-                    JSHandle<JSArray> arrayHandle(thread, arr);
-                    panda_file::File::EntityId id =
-                        ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);
-                    ptManager->RecordElements(id, arrayHandle->GetElements());
-                };
+    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    ptManager->SetCurCompilationFile(jsPandaFile);
+    BCInfo &bytecodeInfo = collector.GetBytecodeInfo();
+    const PGOBCInfo *bcInfo = collector.GetPGOBCInfo();
+    auto &methodList = bytecodeInfo.GetMethodList();
+    for (const auto &method : methodList) {
+        uint32_t methodOffset = method.first;
+        CString recordName = MethodLiteral::GetRecordName(jsPandaFile, EntityId(methodOffset));
+        auto callback = [this, ptManager, methodOffset, &recordName]
+            (const uint32_t, const uint32_t, const uint32_t cpIdx) {
+                JSThread *thread = vm_->GetJSThread();
+                JSTaggedValue cp = ptManager->GetConstantPoolByMethodOffset(methodOffset);
+                JSHandle<ConstantPool> constpoolHandle(thread, cp);
+                JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()
+                    ->FindOrCreateUnsharedConstpool(constpoolHandle.GetTaggedValue());
+                ASSERT(ConstantPool::CheckUnsharedConstpool(unsharedCp));
+                JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
+                        thread, unsharedCp, cpIdx, recordName);
+                JSHandle<JSArray> arrayHandle(thread, arr);
+                panda_file::File::EntityId id =
+                    ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);
+                ptManager->RecordElements(id, arrayHandle->GetElements());
+            };
 
-            bcInfo->IterateInfoByType(methodOffset, PGOBCInfo::Type::ARRAY_LITERAL, callback);
-        }
+        bcInfo->IterateInfoByType(methodOffset, PGOBCInfo::Type::ARRAY_LITERAL, callback);
     }
 }
 
-void AotCompilerPreprocessor::GeneratePGOTypes(const CompilationOptions &cOptions)
+void AotCompilerPreprocessor::GeneratePGOTypes()
 {
     PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
-    for (const AbcFileInfo &fileInfo : fileInfos_) {
-        JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
-        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_,
-            cOptions.maxAotMethodSize_);
+    for (uint32_t i = 0; i < fileInfos_.size(); ++i) {
+        JSPandaFile *jsPandaFile = fileInfos_[i].jsPandaFile_.get();
+        auto& collector = *bcInfoCollectors_[i];
         PGOTypeParser parser(profilerDecoder_, ptManager);
         parser.CreatePGOType(collector);
+        RecordArrayElement(jsPandaFile, collector);
     }
-    RecordArrayElement(cOptions);
 }
 
 void AotCompilerPreprocessor::SnapshotInitialize()
@@ -378,12 +391,9 @@ bool AotCompilerPreprocessor::IsSkipMethod(const JSPandaFile *jsPandaFile, const
 
 void AotCompilerPreprocessor::GenerateMethodMap(CompilationOptions &cOptions)
 {
-    JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
-    jsPandaFileManager->EnumerateNonVirtualJSPandaFiles(
-        [this, &cOptions] (std::shared_ptr<JSPandaFile> jsPandaFilePtr) {
-        JSPandaFile *jsPandaFile = jsPandaFilePtr.get();
-        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_,
-            cOptions.maxAotMethodSize_);
+    for (uint32_t i = 0; i < fileInfos_.size(); ++i) {
+        JSPandaFile *jsPandaFile = fileInfos_[i].jsPandaFile_.get();
+        auto& collector = *bcInfoCollectors_[i];
         BCInfo &bytecodeInfo = collector.GetBytecodeInfo();
         const auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
         auto &methodList = bytecodeInfo.GetMethodList();
@@ -403,8 +413,7 @@ void AotCompilerPreprocessor::GenerateMethodMap(CompilationOptions &cOptions)
             callMethodFlagMap_.SetIsFastCall(fileDesc, offset, isFastCall);
             LOG_COMPILER(INFO) <<"!!!"<< fileDesc <<" "<< offset << " " << isAotcompile << " " << isFastCall;
         }
-        return true;
-    });
+    }
 }
 
 std::string AotCompilerPreprocessor::GetMainPkgArgsAppSignature() const

@@ -216,12 +216,26 @@ JitPassManager::~JitPassManager()
     }
 }
 
+void PassManager::CompileValidFiles(AOTFileGenerator &generator, bool &ret, AotCompilerStats &compilerStats)
+{
+    for (uint32_t i = 0 ; i < fileInfos_.size(); ++i) {
+        JSPandaFile *jsPandaFile = fileInfos_[i].jsPandaFile_.get();
+        auto &collector = *bcInfoCollectors_[i];
+        const std::string &extendedFilePath = fileInfos_[i].extendedFilePath_;
+        LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;
+        generator.SetCurrentCompileFileName(jsPandaFile->GetNormalizedFileDesc());
+        if (!Compile(jsPandaFile, extendedFilePath, generator, compilerStats, collector)) {
+            ret = false;
+            continue;
+        }
+    }
+}
+
 bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen,
-    AotCompilerStats &compilerStats)
+                          AotCompilerStats &compilerStats, BytecodeInfoCollector &collector)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(compilationEnv_->GetJSThread());
 
-    BytecodeInfoCollector collector(compilationEnv_, jsPandaFile, profilerDecoder_, maxAotMethodSize_);
     // Checking released/debuggable pandafile uses method literals, which are initialized in BytecodeInfoCollector,
     // should after it.
     if (!IsReleasedPandaFile(jsPandaFile)) {
