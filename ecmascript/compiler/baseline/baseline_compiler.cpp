@@ -196,7 +196,7 @@ void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end
                 tmpValue += static_cast<uint8_t>(*(start + 2));                 // 2: get two bytes in bytecodes
                 tmpValue <<= 8;                                                 // 8: left shift 8 bits
                 tmpValue += static_cast<uint8_t>(*(start + 1));                 // 1: get one byte in bytecodes
-                size_t jumpTo = offset + static_cast<size_t>(tmpValue);
+                size_t jumpTo = static_cast<size_t>(static_cast<int32_t>(offset) + static_cast<int32_t>(tmpValue));
                 jumpToOffsets.insert(jumpTo);
                 break;
             }
@@ -3411,7 +3411,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM16)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JEQZ_IMM32)
 {
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
-    size_t pos = static_cast<size_t>(offset) + bytecodeOffset;
+    size_t pos = static_cast<size_t>(offset + static_cast<int32_t>(bytecodeOffset));
 
     JumpLabel *jump = nullptr;
     if (jumpMap.count(pos) != 0) {
@@ -3478,7 +3478,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JNEZ_IMM16)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JNEZ_IMM32)
 {
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
-    size_t pos = static_cast<size_t>(offset) + bytecodeOffset;
+    size_t pos = static_cast<size_t>(offset + static_cast<int32_t>(bytecodeOffset));
 
     JumpLabel *jump = nullptr;
     if (jumpMap.count(pos) != 0) {
@@ -3555,7 +3555,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(JMP_IMM16)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(JMP_IMM32)
 {
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
-    size_t pos = static_cast<size_t>(offset) + bytecodeOffset;
+    size_t pos = static_cast<size_t>(offset + static_cast<int32_t>(bytecodeOffset));
 
     JumpLabel *jump = nullptr;
     if (jumpMap.count(pos) != 0) {
