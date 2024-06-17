@@ -391,7 +391,7 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
         // for unit test
     } else {
         CString info = "compile method:" + jitTask_->GetMethodName() + ", in jit thread";
-        Jit::TimeScope scope(info, jitTask_->GetCompilerTier());
+        Jit::TimeScope scope(jitTask_->GetHostThread()->GetEcmaVM(), info, jitTask_->GetCompilerTier());
 
         jitTask_->Optimize();
         jitTask_->Finalize();

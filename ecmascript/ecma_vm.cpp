@@ -366,6 +366,8 @@ void EcmaVM::EnableJit()
     bool jitDisableCodeSign = ohos::JitTools::GetCodeSignDisable();
     options_.SetDisableCodeSign(jitDisableCodeSign);
     LOG_JIT(INFO) << "jit disable codesigner:" << jitDisableCodeSign;
+
+    SetEnableJitLogSkip(ohos::JitTools::GetSkipJitLogEnable());
 }
 
 Jit *EcmaVM::GetJit() const

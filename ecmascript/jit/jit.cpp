@@ -273,7 +273,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     }
 
     CString msg = "compile method:" + methodInfo + ", in work thread";
-    TimeScope scope(msg, tier, true, true);
+    TimeScope scope(vm, msg, tier, true, true);
     if (vm->GetJSThread()->IsMachineCodeLowMemory()) {
         if (tier == CompilerTier::BASELINE) {
             LOG_BASELINEJIT(DEBUG) << "skip jit task, as low code memory:" << methodInfo;
@@ -497,6 +497,10 @@ Jit::TimeScope::~TimeScope()
             return;
         }
         ASSERT(tier_ == CompilerTier::FAST);
+        auto bundleName = vm_->GetBundleName();
+        if (vm_->GetEnableJitLogSkip() && bundleName != "" && message_.find(bundleName) == std::string::npos) {
+            return;
+        }
         LOG_JIT(INFO) << message_ << ": " << TotalSpentTime() << "ms";
     }
 }
