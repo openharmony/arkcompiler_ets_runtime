@@ -29,7 +29,6 @@ namespace panda::ecmascript::kungfu {
     V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
     V(IsUndefinedOrHoleCheck, IS_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                    \
     V(IsNotUndefinedOrHoleCheck, IS_NOT_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
-    V(IsEcmaObjectCheck, IS_ECMA_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                               \
     V(IsDataViewCheck, IS_DATA_VIEW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                   \
     V(IsTaggedBooleanCheck, IS_TAGGED_BOOLEAN_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                         \
     V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                              \
@@ -160,6 +159,7 @@ namespace panda::ecmascript::kungfu {
     V(ReflectApply, REFLECT_APPLY, GateFlags::NONE_FLAG, 1, 1, 3)                               \
     V(FunctionPrototypeApply, FUNCTION_PROTOTYPE_APPLY, GateFlags::NONE_FLAG, 1, 1, 3)          \
     V(FunctionPrototypeBind, FUNCTION_PROTOTYPE_BIND, GateFlags::NONE_FLAG, 1, 1, 2)            \
+    V(HeapObjectIsEcmaObjectCheck, HEAP_OBJECT_IS_ECMA_OBJECT, GateFlags::CHECKABLE, 1, 1, 1)   \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \

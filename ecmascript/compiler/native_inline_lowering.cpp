@@ -918,7 +918,7 @@ void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, Built
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     GateRef thisObj = acc_.GetValueIn(gate, 0); // 0: this
-    builder_.IsEcmaObjectCheck(thisObj);
+    builder_.EcmaObjectCheck(thisObj);
     builder_.IsDataViewCheck(thisObj);
     GateRef dataViewCallID = builder_.Int32(id);
     GateRef index = acc_.GetValueIn(gate, 1); // 1: index of dataView
@@ -946,7 +946,7 @@ void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, Built
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     GateRef thisObj = acc_.GetValueIn(gate, 0); // 0: this
-    builder_.IsEcmaObjectCheck(thisObj);
+    builder_.EcmaObjectCheck(thisObj);
     builder_.IsDataViewCheck(thisObj);
     GateRef dataViewCallID = builder_.Int32(id);
     GateRef index = acc_.GetValueIn(gate, 1); // 1: index

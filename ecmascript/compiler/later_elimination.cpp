@@ -40,6 +40,7 @@ GateRef LaterElimination::VisitGate(GateRef gate)
         case OpCode::ARRAY_GUARDIAN_CHECK:
         case OpCode::HCLASS_STABLE_ARRAY_CHECK:
         case OpCode::HEAP_OBJECT_CHECK:
+        case OpCode::ECMA_OBJECT_CHECK:
         case OpCode::INT32_UNSIGNED_UPPER_BOUND_CHECK:
         case OpCode::OVERFLOW_CHECK:
         case OpCode::VALUE_CHECK_NEG_OVERFLOW:

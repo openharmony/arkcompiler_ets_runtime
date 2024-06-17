@@ -510,6 +510,7 @@ public:
     // **************************** Middle IR ****************************
     GateRef EcmaObjectCheck(GateRef gate);
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
+    GateRef HeapObjectIsEcmaObjectCheck(GateRef gate, GateRef frameState);
     GateRef ProtoChangeMarkerCheck(GateRef gate, GateRef frameState = Gate::InvalidGateRef);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
@@ -553,7 +554,6 @@ public:
     GateRef LexVarIsHoleCheck(GateRef value);
     GateRef IsUndefinedOrHoleCheck(GateRef value);
     GateRef IsNotUndefinedOrHoleCheck(GateRef value);
-    GateRef IsEcmaObjectCheck(GateRef obj);
     GateRef IsDataViewCheck(GateRef obj);
     GateRef IsTaggedBooleanCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);

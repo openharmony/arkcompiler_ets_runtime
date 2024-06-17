@@ -38,7 +38,6 @@ private:
 
     void DeleteStateSplit(GateRef gate);
     void LowerArrayGuardianCheck(GateRef gate);
-    void LowerEcmaObjectCheck(GateRef gate);
     void LowerHeapObjectCheck(GateRef gate);
     void LowerTaggedIsHeapObject(GateRef gate);
     void LowerIsMarkerCellValid(GateRef gate);
@@ -83,6 +82,7 @@ private:
     void LowerMigrateFromHeapValueToRawValue(GateRef gate);
     void LowerMigrateFromHoleIntToHoleNumber(GateRef gate);
     void LowerMigrateFromHoleNumberToHoleInt(GateRef gate);
+    void LowerHeapObjectIsEcmaObject(GateRef gate);
 
     GateRef ConvertSpecialHoleIntToTagged(GateRef gate, Label* exit);
     GateRef ConvertSpecialHoleDoubleToTagged(GateRef gate, Label* exit);

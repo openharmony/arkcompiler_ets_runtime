@@ -74,6 +74,20 @@ GateRef CircuitBuilder::EcmaObjectCheck(GateRef value)
     return ret;
 }
 
+GateRef CircuitBuilder::HeapObjectIsEcmaObjectCheck(GateRef gate, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->HeapObjectIsEcmaObjectCheck(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, gate, frameState},
+                                        GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::ProtoChangeMarkerCheck(GateRef gate, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -714,21 +728,6 @@ GateRef CircuitBuilder::IsNotUndefinedOrHoleCheck(GateRef value)
     auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->IsNotUndefinedOrHoleCheck(),
         MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::IsEcmaObjectCheck(GateRef gate)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->IsEcmaObjectCheck(),
-                                        MachineType::I1,
-                                        {currentControl, currentDepend, gate, frameState},
-                                        GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

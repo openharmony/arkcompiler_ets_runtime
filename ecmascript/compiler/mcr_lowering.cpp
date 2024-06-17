@@ -43,9 +43,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_CHECK:
             LowerHeapObjectCheck(gate);
             break;
-        case OpCode::ECMA_OBJECT_CHECK:
-            LowerEcmaObjectCheck(gate);
-            break;
         case OpCode::ELEMENTSKIND_CHECK:
             LowerElementskindCheck(gate);
             break;
@@ -103,9 +100,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::IS_NOT_UNDEFINED_OR_HOLE_CHECK:
             LowerIsNotUndefinedOrHoleCheck(gate);
             break;
-        case OpCode::IS_ECMA_OBJECT_CHECK:
-            LowerIsEcmaObjectCheck(gate);
-            break;
         case OpCode::IS_TAGGED_BOOLEAN_CHECK:
             LowerIsTaggedBooleanCheck(gate);
             break;
@@ -138,6 +132,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::MIGRATE_FROM_HOLENUMBER_TO_HOLEINT:
             LowerMigrateFromHoleNumberToHoleInt(gate);
+            break;
+        case OpCode::HEAP_OBJECT_IS_ECMA_OBJECT:
+            LowerHeapObjectIsEcmaObject(gate);
             break;
         default:
             break;
@@ -213,26 +210,6 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
     GateRef heapObjectCheck = builder_.TaggedIsHeapObject(receiver);
     builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT1);
 
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-void MCRLowering::LowerEcmaObjectCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    DEFVALUE(condition, (&builder_), VariableType::BOOL(), builder_.False());
-    Label heapObject(&builder_);
-    Label exit(&builder_);
-
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef value = acc_.GetValueIn(gate, 0);
-    BRANCH_CIR(builder_.TaggedIsHeapObject(value), &heapObject, &exit);
-    builder_.Bind(&heapObject);
-    {
-        condition = builder_.TaggedObjectIsEcmaObject(value);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    builder_.DeoptCheck(*condition, frameState, DeoptType::NOTECMAOBJECT1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -929,16 +906,6 @@ void MCRLowering::LowerIsNotUndefinedOrHoleCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void MCRLowering::LowerIsEcmaObjectCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef obj = acc_.GetValueIn(gate, 0);
-    GateRef isEcmaObject = builder_.IsEcmaObject(obj);
-    builder_.DeoptCheck(isEcmaObject, frameState, DeoptType::ISNOTECMAOBJECT);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
 void MCRLowering::LowerIsDataViewCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1324,6 +1291,18 @@ void MCRLowering::LowerMigrateFromHoleNumberToHoleInt(GateRef gate)
     }
 
     builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerHeapObjectIsEcmaObject(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+
+    GateRef isEcmaObject = builder_.TaggedObjectIsEcmaObject(value);
+    builder_.DeoptCheck(isEcmaObject, frameState, DeoptType::NOT_ECMA_OBJECT);
+
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript
