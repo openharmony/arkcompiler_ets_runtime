@@ -167,7 +167,7 @@ void JsStackInfo::DumpJitCode(JSThread *thread)
         return;
     }
     std::string outFile = realOutPath + "/" + fileName;
-    int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0664);
+    int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     jitDumpElf.WriteJitElfFile(fd);
     close(fd);
 }

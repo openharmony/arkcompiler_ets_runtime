@@ -496,11 +496,7 @@ void JSThread::UpdateJitCodeMapReference(const WeakRootVisitor &visitor)
         auto obj = reinterpret_cast<TaggedObject *>(it->first);
         auto fwd = visitor(obj);
         if (fwd == nullptr) {
-            // ForwardAddress should be null because death jsError objects in jitCodeMaps_ have been clear in markPhase.
-            // If concurrent copy feature is enabled in the future, jsError with null ForwardAddress should be treated
-            // as alive. (Because it should be add to map after mark finish.)
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
+            it = jitCodeMaps_.erase(it);
         } else if (fwd != obj) {
             jitCodeMaps_.emplace(JSTaggedValue(fwd).GetRawData(), it->second);
             it = jitCodeMaps_.erase(it);
