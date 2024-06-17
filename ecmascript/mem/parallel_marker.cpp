@@ -75,6 +75,7 @@ void Marker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, Jit
                 MarkObject(threadId, jitCode);
             }
         }
+        it++;
     }
 }
 
