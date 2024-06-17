@@ -36,4 +36,30 @@ JSTaggedValue ConstantPool::GetMethodFromCache(JSTaggedValue constpool, uint32_t
 
     return val.IsHole() ? JSTaggedValue::Undefined() : val;
 }
+
+bool ConstantPool::IsAotMethodLiteralInfo(JSTaggedValue literalInfo)
+{
+    return literalInfo.IsAOTLiteralInfo() && (AOTLiteralInfo::Cast(literalInfo.GetTaggedObject())->
+        GetLiteralType() == AOTLiteralInfo::METHOD_LITERAL_TYPE);
+}
+
+void ConstantPool::UpdateConstpoolWhenDeserialAI(EcmaVM *vm, const ConstantPool *aiCP,
+                                                 ConstantPool *sharedCP, ConstantPool *unsharedCP)
+{
+    uint32_t constpoolLen = aiCP->GetCacheLength();
+    for (uint32_t i = 0; i < constpoolLen; i++) {
+        JSThread *thread = vm->GetJSThread();
+        auto val = aiCP->GetObjectFromCache(i);
+        if (IsAotMethodLiteralInfo(val)) {
+            JSHandle<AOTLiteralInfo> valHandle(thread, val);
+            JSHandle<AOTLiteralInfo> methodLiteral = CopySharedMethodAOTLiteralInfo(vm, valHandle);
+            sharedCP->SetObjectToCache(thread, i, methodLiteral.GetTaggedValue());
+        }
+        // update method, class and object aotliteralinfo
+        if (val.IsAOTLiteralInfo()) {
+            unsharedCP->SetObjectToCache(thread, i, val);
+        }
+    }
+    unsharedCP->InitConstantPoolTail(aiCP);
+}
 }

@@ -51,32 +51,32 @@ public:
     DECL_DUMP()
 };
 
-/*                  ConstantPool
- *      +--------------------------------+----
- *      |           ReviseData           |  ^
- *      |              ...               |  |
- *      |        string(EcmaString)      |  |
- *      |        method(Method)          |cacheLength
- *      |     array literal(JSArray)     |  |
- *      |    object literal(JSObject)    |  |
- *      |   class literal(ClassLiteral)  |  v
- *      +--------------------------------+----
- *      |          AOTSymbolInfo         |TaggedArray
- *      +--------------------------------+----
- *      |      unshared constpool index  |int32_t
- *      +--------------------------------+----
- *      |      shared constpool id       |int32_t
- *      +--------------------------------+----
- *      |          AOTHClassInfo         |TaggedArray
- *      +--------------------------------+----
- *      |          AOTArrayInfo          |TaggedArray
- *      +--------------------------------+----
- *      |         constIndexInfo         |TaggedArray
- *      +--------------------------------+----
- *      |           IndexHeader          |
- *      +--------------------------------+
- *      |           JSPandaFile          |
- *      +--------------------------------+
+/*                         ConstantPool(TaggedArray)
+ *      +--------------------------------+----------------------------------
+ *      |               ...              |       ^           ^          ^   index 0
+ *      |              Method            |       |           |          |
+ *      |              String            |       |           |          |
+ *      |           Array Literal        | ConstpoolLength   |          |
+ *      |           Class Literal        |       |           |          |
+ *      |           Object Literal       |       |           |          |
+ *      |               ...              |       v           |          |
+ *      +--------------------------------+---------------    |          |
+ *      |          AOTSymbolInfo         |TaggedArray        |          |
+ *      +--------------------------------+---------------    |          |
+ *      |      unshared constpool index  |int32_t        CacheLength    |
+ *      +--------------------------------+---------------    |        Length
+ *      |      shared constpool id       |int32_t            |          |
+ *      +--------------------------------+---------------    |          |
+ *      |          AOTHClassInfo         |TaggedArray        |          |
+ *      +--------------------------------+---------------    |          |
+ *      |          AOTArrayInfo          |TaggedArray        |          |
+ *      +--------------------------------+---------------    |          |
+ *      |         constIndexInfo         |TaggedArray        v          |
+ *      +--------------------------------+--------------------------    |
+ *      |           IndexHeader          |                              |
+ *      +--------------------------------+                              |
+ *      |           JSPandaFile          |                              v    index: Length-1
+ *      +--------------------------------+-----------------------------------
  */
 class ConstantPool : public TaggedArray {
 public:
@@ -182,12 +182,6 @@ public:
         return constpool;
     }
 
-    static bool IsAotMethodLiteralInfo(JSTaggedValue literalInfo)
-    {
-        return literalInfo.IsAOTLiteralInfo() && (AOTLiteralInfo::Cast(literalInfo.GetTaggedObject())->
-            GetLiteralType() == AOTLiteralInfo::METHOD_LITERAL_TYPE);
-    }
-
     static bool IsAotSymbolInfoExist(JSHandle<TaggedArray> symbolInfo, JSTaggedValue symbol)
     {
         return symbolInfo->GetLength() > 0 && !symbol.IsHole();
@@ -197,7 +191,7 @@ public:
         EcmaVM *vm, JSHandle<ConstantPool> constpool, int32_t cpId = 0)
     {
         JSHandle<ConstantPool> sconstpool(vm->GetJSThread(), JSTaggedValue::Hole());
-        uint32_t capacity = constpool->GetConstpoolSize();
+        uint32_t capacity = constpool->GetConstpoolLength();
         if (sconstpool.GetTaggedValue().IsHole()) {
             ObjectFactory *factory = vm->GetFactory();
             sconstpool = factory->NewSConstantPool(capacity);
@@ -334,7 +328,7 @@ public:
         return GetLength() - RESERVED_POOL_LENGTH;
     }
 
-    inline uint32_t GetConstpoolSize() const
+    inline uint32_t GetConstpoolLength() const
     {
         return GetLength() - RESERVED_POOL_LENGTH - EXTEND_DATA_NUM;
     }
@@ -349,9 +343,22 @@ public:
         return Barriers::GetValue<JSPandaFile *>(GetData(), GetJSPandaFileOffset());
     }
 
+    inline void InitConstantPoolTail(const ConstantPool *constPool)
+    {
+        SetAotArrayInfo(constPool->GetAotArrayInfo());
+        SetAotHClassInfo(constPool->GetAotHClassInfo());
+        SetConstantIndexInfo(constPool->GetConstantIndexInfo());
+        SetAotSymbolInfo(constPool->GetAotSymbolInfo());
+    }
+
     inline void SetConstantIndexInfo(JSTaggedValue info)
     {
         Barriers::SetPrimitive(GetData(), GetConstantIndexInfoOffset(), info.GetRawData());
+    }
+
+    inline JSTaggedValue GetConstantIndexInfo() const
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetConstantIndexInfoOffset()));
     }
 
     inline void SetAotArrayInfo(JSTaggedValue info)
@@ -359,7 +366,7 @@ public:
         Barriers::SetPrimitive(GetData(), GetAotArrayInfoOffset(), info.GetRawData());
     }
 
-    inline JSTaggedValue GetAotArrayInfo()
+    inline JSTaggedValue GetAotArrayInfo() const
     {
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotArrayInfoOffset()));
     }
@@ -399,6 +406,11 @@ public:
     inline void SetAotHClassInfo(JSTaggedValue info)
     {
         Barriers::SetPrimitive(GetData(), GetAotHClassInfoOffset(), info.GetRawData());
+    }
+
+    inline JSTaggedValue GetAotHClassInfo() const
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotHClassInfoOffset()));
     }
 
     inline void SetAotHClassInfoWithBarrier(JSThread *thread, JSTaggedValue info)
@@ -486,6 +498,11 @@ public:
     }
 
     static JSTaggedValue PUBLIC_API GetMethodFromCache(JSTaggedValue constpool, uint32_t index);
+
+    static void PUBLIC_API UpdateConstpoolWhenDeserialAI(EcmaVM *vm, const ConstantPool *aiCP,
+        ConstantPool *sharedCP, ConstantPool *unsharedCP);
+
+    static bool PUBLIC_API IsAotMethodLiteralInfo(JSTaggedValue literalInfo);
 
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
         uint32_t literal, CString entry, JSHandle<JSTaggedValue> sendableEnv = JSHandle<JSTaggedValue>(),
