@@ -2971,7 +2971,6 @@
         "mjsunit/es6/string-iterator7.js",
         "mjsunit/es6/string-iterator3.js",
         "mjsunit/es6/for-each-in-catch.js",
-        "mjsunit/es6/typedarray-map.js",
         "mjsunit/es6/rest-params.js",
         "mjsunit/es6/block-for-sloppy.js",
         "mjsunit/es6/computed-property-names-classes.js",

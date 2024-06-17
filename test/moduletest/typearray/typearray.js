@@ -974,3 +974,11 @@ function prettyPrinted(value) {
         print("Test New " + ctor.name + " with Bad_Obj Success!")
     }
 });
+
+try { 
+    new Uint8Array(5).map(function() {
+		ArkTools.ArrayBufferDetach(this.buffer);
+    })
+} catch(e) {
+    print(e instanceof TypeError);
+}
