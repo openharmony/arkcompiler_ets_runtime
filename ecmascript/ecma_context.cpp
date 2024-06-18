@@ -1217,6 +1217,10 @@ void EcmaContext::ClearKeptObjects()
 
 void EcmaContext::AddToKeptObjects(JSHandle<JSTaggedValue> value)
 {
+    if (value->IsInSharedHeap()) {
+        return;
+    }
+
     JSHandle<GlobalEnv> globalEnv = GetGlobalEnv();
     JSHandle<LinkedHashSet> linkedSet;
     if (globalEnv->GetWeakRefKeepObjects()->IsUndefined()) {
