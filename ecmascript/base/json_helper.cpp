@@ -115,6 +115,7 @@ CString JsonHelper::ValueToQuotedString(CString str)
                     c += 2; // 2 : Skip 2 characters
                     break;
                 }
+                [[fallthrough]];
             default:
                 // c. Else if C has a code unit value less than 0x0020 (SPACE), then
                 if (*c > 0 && *c < CODE_SPACE) {

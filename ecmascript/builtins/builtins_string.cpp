@@ -1368,7 +1368,7 @@ std::pair<int32_t, bool> ProcessDigitCapture(const JSHandle<EcmaString> &replace
             canBeCompress = false;
         }
     }
-    return {peekIndex + advance, canBeCompress};
+    return {static_cast<int32_t>(peekIndex) + advance, canBeCompress};
 }
 
 // Handle $< case

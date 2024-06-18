@@ -2462,6 +2462,9 @@ void Heap::ReleaseEdenAllocator()
 {
     auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
     auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
+    if (!topAddress || !endAddress) {
+        return;
+    }
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
 }
 
@@ -2472,6 +2475,9 @@ void Heap::InstallEdenAllocator()
     }
     auto topAddress = edenSpace_->GetAllocationTopAddress();
     auto endAddress = edenSpace_->GetAllocationEndAddress();
+    if (!topAddress || !endAddress) {
+        return;
+    }
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
 }
 

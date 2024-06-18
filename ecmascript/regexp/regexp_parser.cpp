@@ -202,7 +202,7 @@ void RegExpParser::ParseDisjunction(bool isBackward)
                     buffer_.PutU8(ptr, RegExpOpCode::OP_SPARSE);
                     buffer_.PutU16(ptr + 1, cnt);
                     ptr += SPARSE_HEAD_OFFSET;
-                    for (int32_t i = chars.size() - 1; i >= 0; i--) {
+                    for (int32_t i = static_cast<int32_t>(chars.size() - 1); i >= 0; i--) {
                         buffer_.PutU16(ptr, chars[i]);
                         offsets[i] += opCharSize - opSplitSize * std::max(0, cnt - i -2);
                         buffer_.PutU32(ptr + SPARSE_OFF_OFFSET, offsets[i]);
